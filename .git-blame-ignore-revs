@@ -1,2 +1,4 @@
 # Formatted all Protobuf files
 f69fbf22552deac9ec81503d629fb70919acabdb
+# Rewrote interface{} -> any
+89a0b4f9d7f34bae59bbf4b32b2c156ab28875f4

@@ -38,7 +38,7 @@ func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Read
 	return nil
 }
 
-func isNil(i interface{}) bool {
+func isNil(i any) bool {
 	if i == nil {
 		return true
 	}

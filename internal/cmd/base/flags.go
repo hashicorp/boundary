@@ -88,7 +88,7 @@ func (b *boolValue) Set(s string) error {
 	return nil
 }
 
-func (b *boolValue) Get() interface{} { return *b.target }
+func (b *boolValue) Get() any         { return *b.target }
 func (b *boolValue) String() string   { return strconv.FormatBool(*b.target) }
 func (b *boolValue) Example() string  { return "" }
 func (b *boolValue) Hidden() bool     { return b.hidden }
@@ -153,10 +153,10 @@ func (i *intValue) Set(s string) error {
 	return nil
 }
 
-func (i *intValue) Get() interface{} { return int(*i.target) }
-func (i *intValue) String() string   { return strconv.Itoa(int(*i.target)) }
-func (i *intValue) Example() string  { return "int" }
-func (i *intValue) Hidden() bool     { return i.hidden }
+func (i *intValue) Get() any        { return int(*i.target) }
+func (i *intValue) String() string  { return strconv.Itoa(int(*i.target)) }
+func (i *intValue) Example() string { return "int" }
+func (i *intValue) Hidden() bool    { return i.hidden }
 
 // -- Int64Var and int64Value
 type Int64Var struct {
@@ -217,10 +217,10 @@ func (i *int64Value) Set(s string) error {
 	return nil
 }
 
-func (i *int64Value) Get() interface{} { return int64(*i.target) }
-func (i *int64Value) String() string   { return strconv.FormatInt(int64(*i.target), 10) }
-func (i *int64Value) Example() string  { return "int" }
-func (i *int64Value) Hidden() bool     { return i.hidden }
+func (i *int64Value) Get() any        { return int64(*i.target) }
+func (i *int64Value) String() string  { return strconv.FormatInt(int64(*i.target), 10) }
+func (i *int64Value) Example() string { return "int" }
+func (i *int64Value) Hidden() bool    { return i.hidden }
 
 // -- UintVar && uintValue
 type UintVar struct {
@@ -281,10 +281,10 @@ func (i *uintValue) Set(s string) error {
 	return nil
 }
 
-func (i *uintValue) Get() interface{} { return uint(*i.target) }
-func (i *uintValue) String() string   { return strconv.FormatUint(uint64(*i.target), 10) }
-func (i *uintValue) Example() string  { return "uint" }
-func (i *uintValue) Hidden() bool     { return i.hidden }
+func (i *uintValue) Get() any        { return uint(*i.target) }
+func (i *uintValue) String() string  { return strconv.FormatUint(uint64(*i.target), 10) }
+func (i *uintValue) Example() string { return "uint" }
+func (i *uintValue) Hidden() bool    { return i.hidden }
 
 // -- Uint64Var and uint64Value
 type Uint64Var struct {
@@ -345,10 +345,10 @@ func (i *uint64Value) Set(s string) error {
 	return nil
 }
 
-func (i *uint64Value) Get() interface{} { return uint64(*i.target) }
-func (i *uint64Value) String() string   { return strconv.FormatUint(uint64(*i.target), 10) }
-func (i *uint64Value) Example() string  { return "uint" }
-func (i *uint64Value) Hidden() bool     { return i.hidden }
+func (i *uint64Value) Get() any        { return uint64(*i.target) }
+func (i *uint64Value) String() string  { return strconv.FormatUint(uint64(*i.target), 10) }
+func (i *uint64Value) Example() string { return "uint" }
+func (i *uint64Value) Hidden() bool    { return i.hidden }
 
 // -- StringVar and stringValue
 type StringVar struct {
@@ -402,10 +402,10 @@ func (s *stringValue) Set(val string) error {
 	return nil
 }
 
-func (s *stringValue) Get() interface{} { return *s.target }
-func (s *stringValue) String() string   { return *s.target }
-func (s *stringValue) Example() string  { return "string" }
-func (s *stringValue) Hidden() bool     { return s.hidden }
+func (s *stringValue) Get() any        { return *s.target }
+func (s *stringValue) String() string  { return *s.target }
+func (s *stringValue) Example() string { return "string" }
+func (s *stringValue) Hidden() bool    { return s.hidden }
 
 // -- Float64Var and float64Value
 type Float64Var struct {
@@ -466,10 +466,10 @@ func (f *float64Value) Set(s string) error {
 	return nil
 }
 
-func (f *float64Value) Get() interface{} { return float64(*f.target) }
-func (f *float64Value) String() string   { return strconv.FormatFloat(float64(*f.target), 'g', -1, 64) }
-func (f *float64Value) Example() string  { return "float" }
-func (f *float64Value) Hidden() bool     { return f.hidden }
+func (f *float64Value) Get() any        { return float64(*f.target) }
+func (f *float64Value) String() string  { return strconv.FormatFloat(float64(*f.target), 'g', -1, 64) }
+func (f *float64Value) Example() string { return "float" }
+func (f *float64Value) Hidden() bool    { return f.hidden }
 
 // -- DurationVar and durationValue
 type DurationVar struct {
@@ -534,10 +534,10 @@ func (d *durationValue) Set(s string) error {
 	return nil
 }
 
-func (d *durationValue) Get() interface{} { return time.Duration(*d.target) }
-func (d *durationValue) String() string   { return (*d.target).String() }
-func (d *durationValue) Example() string  { return "duration" }
-func (d *durationValue) Hidden() bool     { return d.hidden }
+func (d *durationValue) Get() any        { return time.Duration(*d.target) }
+func (d *durationValue) String() string  { return (*d.target).String() }
+func (d *durationValue) Example() string { return "duration" }
+func (d *durationValue) Hidden() bool    { return d.hidden }
 
 // appendDurationSuffix is used as a backwards-compat tool for assuming users
 // meant "seconds" when they do not provide a suffixed duration value.
@@ -637,10 +637,10 @@ func (s *stringSliceValue) Set(val string) error {
 	return nil
 }
 
-func (s *stringSliceValue) Get() interface{} { return *s.target }
-func (s *stringSliceValue) String() string   { return strings.Join(*s.target, ",") }
-func (s *stringSliceValue) Example() string  { return "string" }
-func (s *stringSliceValue) Hidden() bool     { return s.hidden }
+func (s *stringSliceValue) Get() any        { return *s.target }
+func (s *stringSliceValue) String() string  { return strings.Join(*s.target, ",") }
+func (s *stringSliceValue) Example() string { return "string" }
+func (s *stringSliceValue) Hidden() bool    { return s.hidden }
 
 // -- StringMapVar and stringMapValue
 type StringMapVar struct {
@@ -697,10 +697,10 @@ func (s *stringMapValue) Set(val string) error {
 	return nil
 }
 
-func (s *stringMapValue) Get() interface{} { return *s.target }
-func (s *stringMapValue) String() string   { return mapToKV(*s.target) }
-func (s *stringMapValue) Example() string  { return "key=value" }
-func (s *stringMapValue) Hidden() bool     { return s.hidden }
+func (s *stringMapValue) Get() any        { return *s.target }
+func (s *stringMapValue) String() string  { return mapToKV(*s.target) }
+func (s *stringMapValue) Example() string { return "key=value" }
+func (s *stringMapValue) Hidden() bool    { return s.hidden }
 
 func mapToKV(m map[string]string) string {
 	list := make([]string, 0, len(m))
@@ -826,10 +826,10 @@ func sliceMapToKV(m map[string][]string) string {
 	return strings.Join(list, ", ")
 }
 
-func (c *stringSliceMapValue) Get() interface{} { return *c.target }
-func (c *stringSliceMapValue) String() string   { return sliceMapToKV(*c.target) }
-func (c *stringSliceMapValue) Example() string  { return "key1=val-a, key2=val-b,val-c" }
-func (c *stringSliceMapValue) Hidden() bool     { return c.hidden }
+func (c *stringSliceMapValue) Get() any        { return *c.target }
+func (c *stringSliceMapValue) String() string  { return sliceMapToKV(*c.target) }
+func (c *stringSliceMapValue) Example() string { return "key1=val-a, key2=val-b,val-c" }
+func (c *stringSliceMapValue) Hidden() bool    { return c.hidden }
 
 // -- VarFlag
 type VarFlag struct {
@@ -1011,7 +1011,7 @@ func (c *combinedSliceValue) Set(val string) error {
 	return nil
 }
 
-func (c *combinedSliceValue) Get() interface{} { return *c.target }
-func (c *combinedSliceValue) String() string   { return pretty.Sprint(*c.target) }
-func (c *combinedSliceValue) Example() string  { return "" }
-func (c *combinedSliceValue) Hidden() bool     { return c.hidden }
+func (c *combinedSliceValue) Get() any        { return *c.target }
+func (c *combinedSliceValue) String() string  { return pretty.Sprint(*c.target) }
+func (c *combinedSliceValue) Example() string { return "" }
+func (c *combinedSliceValue) Hidden() bool    { return c.hidden }

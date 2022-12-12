@@ -170,17 +170,26 @@ func TestSession_RequestAuthorizeConnection(t *testing.T) {
 	}
 	conn, left, err := sess.RequestAuthorizeConnection(context.Background(), "workerid", cancel)
 	require.NoError(t, err)
-	assert.Equal(t, ConnInfo{Id: "conn1", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED}, conn)
+
+	assert.Equal(t, "conn1", conn.Id)
+	assert.Equal(t, pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED, conn.Status)
+	assert.NotNil(t, conn.BytesUp)
+	assert.NotNil(t, conn.BytesDown)
+	assert.Zero(t, conn.BytesUp())
+	assert.Zero(t, conn.BytesDown())
 	assert.Equal(t, int32(-1), left)
 }
 
 func TestWorkerMakeCloseConnectionRequest(t *testing.T) {
 	require := require.New(t)
-	in := map[string]string{"foo": "one", "bar": "two"}
+	in := map[string]*ConnectionCloseData{
+		"foo": {SessionId: "one", BytesUp: 1000, BytesDown: 2000},
+		"bar": {SessionId: "two", BytesUp: 1000, BytesDown: 2000},
+	}
 	expected := &pbs.CloseConnectionRequest{
 		CloseRequestData: []*pbs.CloseConnectionRequestData{
-			{ConnectionId: "foo", Reason: session.UnknownReason.String()},
-			{ConnectionId: "bar", Reason: session.UnknownReason.String()},
+			{ConnectionId: "foo", Reason: session.UnknownReason.String(), BytesUp: 1000, BytesDown: 2000},
+			{ConnectionId: "bar", Reason: session.UnknownReason.String(), BytesUp: 1000, BytesDown: 2000},
 		},
 	}
 	actual := makeCloseConnectionRequest(in)
@@ -189,7 +198,7 @@ func TestWorkerMakeCloseConnectionRequest(t *testing.T) {
 
 func TestMakeSessionCloseInfo(t *testing.T) {
 	require := require.New(t)
-	closeInfo := map[string]string{"foo": "one", "bar": "two"}
+	closeInfo := map[string]*ConnectionCloseData{"foo": {SessionId: "one"}, "bar": {SessionId: "two"}}
 	response := &pbs.CloseConnectionResponse{
 		CloseResponseData: []*pbs.CloseConnectionResponseData{
 			{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
@@ -218,7 +227,7 @@ func TestMakeSessionCloseInfoErrorIfCloseInfoNil(t *testing.T) {
 
 func TestMakeSessionCloseInfoEmpty(t *testing.T) {
 	require := require.New(t)
-	actual, err := makeSessionCloseInfo(make(map[string]string), nil)
+	actual, err := makeSessionCloseInfo(make(map[string]*ConnectionCloseData), nil)
 	require.NoError(err)
 	require.Equal(
 		make(map[string][]*pbs.CloseConnectionResponseData),
@@ -228,7 +237,7 @@ func TestMakeSessionCloseInfoEmpty(t *testing.T) {
 
 func TestMakeFakeSessionCloseInfo(t *testing.T) {
 	require := require.New(t)
-	closeInfo := map[string]string{"foo": "one", "bar": "two"}
+	closeInfo := map[string]*ConnectionCloseData{"foo": {SessionId: "one"}, "bar": {SessionId: "two"}}
 	expected := map[string][]*pbs.CloseConnectionResponseData{
 		"one": {
 			{ConnectionId: "foo", Status: pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CLOSED},
@@ -251,10 +260,30 @@ func TestMakeFakeSessionCloseInfoErrorIfCloseInfoNil(t *testing.T) {
 
 func TestMakeFakeSessionCloseInfoEmpty(t *testing.T) {
 	require := require.New(t)
-	actual, err := makeFakeSessionCloseInfo(make(map[string]string))
+	actual, err := makeFakeSessionCloseInfo(make(map[string]*ConnectionCloseData))
 	require.NoError(err)
 	require.Equal(
 		make(map[string][]*pbs.CloseConnectionResponseData),
 		actual,
 	)
+}
+
+func TestApplyConnectionCounterCallbacks(t *testing.T) {
+	s := &sess{connInfoMap: make(map[string]*ConnInfo)}
+
+	connId := "conn1"
+	bytesUpFn := func() int64 { return 10 }
+	bytesDnFn := func() int64 { return 20 }
+	err := s.ApplyConnectionCounterCallbacks(connId, bytesUpFn, bytesDnFn)
+	require.EqualError(t, err, "failed to find connection info for connection id \"conn1\"")
+
+	s.connInfoMap[connId] = &ConnInfo{}
+	require.NoError(t, s.ApplyConnectionCounterCallbacks("conn1", bytesUpFn, bytesDnFn))
+
+	ci, ok := s.connInfoMap[connId]
+	require.True(t, ok)
+	require.NotNil(t, ci.BytesUp)
+	require.NotNil(t, ci.BytesDown)
+	require.EqualValues(t, ci.BytesUp(), 10)
+	require.EqualValues(t, ci.BytesDown(), 20)
 }

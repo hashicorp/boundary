@@ -30,7 +30,7 @@ func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
 			ScopeId:            scopeId,

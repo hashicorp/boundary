@@ -47,7 +47,7 @@ func (a *attribute) VetForUpdate(p []string) map[string]string {
 	return badFields
 }
 
-func newAttribute(m interface{}) targets.Attributes {
+func newAttribute(m any) targets.Attributes {
 	a := &attribute{
 		&pb.TcpTargetAttributes{},
 	}

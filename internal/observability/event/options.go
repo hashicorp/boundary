@@ -27,10 +27,10 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withId               string
-	withDetails          map[string]interface{}
-	withHeader           map[string]interface{}
+	withDetails          map[string]any
+	withHeader           map[string]any
 	withFlush            bool
-	withInfo             map[string]interface{}
+	withInfo             map[string]any
 	withRequestInfo      *RequestInfo
 	withNow              time.Time
 	withRequest          *Request
@@ -70,7 +70,7 @@ func WithId(id string) Option {
 
 // WithDetails allows an optional set of key/value pairs about an observation
 // event at the detail level and observation events may have multiple "details"
-func WithDetails(args ...interface{}) Option {
+func WithDetails(args ...any) Option {
 	return func(o *options) {
 		o.withDetails = ConvertArgs(args...)
 	}
@@ -78,7 +78,7 @@ func WithDetails(args ...interface{}) Option {
 
 // WithHeader allows an optional set of key/value pairs about an event at the
 // header level and observation events will only have one "header"
-func WithHeader(args ...interface{}) Option {
+func WithHeader(args ...any) Option {
 	return func(o *options) {
 		o.withHeader = ConvertArgs(args...)
 	}
@@ -96,7 +96,7 @@ func WithFlush() Option {
 // specified after WithInfo(...), then WithInfoMsg(...) will overwrite any
 // values from WithInfo(...).  It's recommend that these two options not be used
 // together.
-func WithInfo(args ...interface{}) Option {
+func WithInfo(args ...any) Option {
 	return func(o *options) {
 		o.withInfo = ConvertArgs(args...)
 	}
@@ -107,11 +107,11 @@ func WithInfo(args ...interface{}) Option {
 // WithInfo(...) is specified after WithInfoMsg(...), then WithInfo(...) will
 // overwrite any values from WithInfo(...).  It's recommend that these two
 // options not be used together.
-func WithInfoMsg(msg string, args ...interface{}) Option {
+func WithInfoMsg(msg string, args ...any) Option {
 	return func(o *options) {
 		o.withInfo = ConvertArgs(args...)
 		if o.withInfo == nil {
-			o.withInfo = map[string]interface{}{
+			o.withInfo = map[string]any{
 				msgField: msg,
 			}
 			return

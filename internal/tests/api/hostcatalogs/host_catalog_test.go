@@ -169,12 +169,12 @@ func TestCrud(t *testing.T) {
 
 	// Plugin catalogs
 	c, err := hcClient.Create(tc.Context(), "plugin", proj.GetPublicId(), hostcatalogs.WithName("pluginfoo"), hostcatalogs.WithPluginId("pl_1234567890"),
-		hostcatalogs.WithAttributes(map[string]interface{}{"foo": "bar"}))
+		hostcatalogs.WithAttributes(map[string]any{"foo": "bar"}))
 	require.NoError(err)
 
 	c, err = hcClient.Update(tc.Context(), c.Item.Id, c.Item.Version, hostcatalogs.WithName("bar"),
-		hostcatalogs.WithAttributes(map[string]interface{}{"key": "val", "foo": nil}),
-		hostcatalogs.WithSecrets(map[string]interface{}{"secretkey": "secretval"}))
+		hostcatalogs.WithAttributes(map[string]any{"key": "val", "foo": nil}),
+		hostcatalogs.WithSecrets(map[string]any{"secretkey": "secretval"}))
 	checkCatalog("update", c.Item, err, "bar", 2)
 	assert.Contains(c.Item.Attributes, "key")
 	assert.NotContains(c.Item.Attributes, "foo")
@@ -184,7 +184,7 @@ func TestCrud(t *testing.T) {
 	checkCatalog("update", c.Item, err, "", 3)
 
 	c, err = hcClient.Update(tc.Context(), c.Item.Id, 0, hostcatalogs.WithAutomaticVersioning(true),
-		hostcatalogs.WithSecrets(map[string]interface{}{
+		hostcatalogs.WithSecrets(map[string]any{
 			"key1": "val1",
 			"key2": "val2",
 		}))

@@ -157,7 +157,7 @@ func Test_getOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 		opts = GetOpts(WithWhere("id = ? and foo = ?", 1234, "bar"))
 		testOpts.withWhereClause = "id = ? and foo = ?"
-		testOpts.withWhereClauseArgs = []interface{}{1234, "bar"}
+		testOpts.withWhereClauseArgs = []any{1234, "bar"}
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithOrder", func(t *testing.T) {
@@ -231,7 +231,7 @@ func Test_getOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		assert.Equal(opts, testOpts)
 		columns := SetColumns([]string{"name", "description"})
-		columnValues := SetColumnValues(map[string]interface{}{"expiration": "NULL"})
+		columnValues := SetColumnValues(map[string]any{"expiration": "NULL"})
 		testOnConflict := OnConflict{
 			Target: Constraint("uniq-name"),
 			Action: append(columns, columnValues...),

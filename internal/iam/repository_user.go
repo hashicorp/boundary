@@ -83,7 +83,7 @@ func (r *Repository) UpdateUser(ctx context.Context, user *User, version uint32,
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"name":        user.Name,
 			"description": user.Description,
 		},
@@ -347,7 +347,7 @@ func (r *Repository) getUserWithAccount(ctx context.Context, withAccountId strin
 	if withAccountId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing account id")
 	}
-	rows, err := r.reader.Query(ctx, whereUserAccount, []interface{}{withAccountId})
+	rows, err := r.reader.Query(ctx, whereUserAccount, []any{withAccountId})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to query account %s", withAccountId)))
 	}
@@ -375,7 +375,7 @@ func (r *Repository) ListUserAccounts(ctx context.Context, userId string, opt ..
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 	var accounts []*authAccount
-	if err := r.list(ctx, &accounts, "iam_user_id = ?", []interface{}{userId}, opt...); err != nil {
+	if err := r.list(ctx, &accounts, "iam_user_id = ?", []any{userId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	if len(accounts) == 0 {
@@ -795,7 +795,7 @@ func associationChanges(ctx context.Context, reader db.Reader, userId string, ac
 	}
 	query := fmt.Sprintf(accountChangesQuery, inClause)
 
-	var params []interface{}
+	var params []any
 	for _, v := range accountIds {
 		params = append(params, v)
 	}
@@ -877,7 +877,7 @@ func (r *Repository) getUsers(ctx context.Context, userId string, scopeIds []str
 	}
 	dbArgs = append(dbArgs, db.WithLimit(limit))
 
-	var args []interface{}
+	var args []any
 	var where []string
 	switch {
 	case userId != "":

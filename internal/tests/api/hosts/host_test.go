@@ -97,14 +97,14 @@ func TestPluginHosts(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(hc)
 
-	hset, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id, hostsets.WithAttributes(map[string]interface{}{
-		"host_info": []interface{}{
-			map[string]interface{}{
+	hset, err := hostsets.NewClient(client).Create(tc.Context(), hc.Item.Id, hostsets.WithAttributes(map[string]any{
+		"host_info": []any{
+			map[string]any{
 				"external_id":  "test1",
 				"ip_addresses": []string{"10.0.0.1", "192.168.1.1"},
 				"dns_names":    []string{"foo.hashicorp.com", "boundaryproject.io"},
 			},
-			map[string]interface{}{
+			map[string]any{
 				"external_id":  "test2",
 				"ip_addresses": []string{"10.0.0.2", "192.168.1.2"},
 				"dns_names":    []string{"foo2.hashicorp.com", "boundaryproject2.io"},

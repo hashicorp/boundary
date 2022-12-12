@@ -335,6 +335,6 @@ func Is(err, target error) bool {
 
 // As is the equivalent of the std errors.As, and allows devs to only import
 // this package for the capability.
-func As(err error, target interface{}) bool {
+func As(err error, target any) bool {
 	return errors.As(err, target)
 }

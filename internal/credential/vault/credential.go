@@ -117,8 +117,8 @@ func (c *Credential) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
-func (c *Credential) insertQuery() (query string, queryValues []interface{}) {
-	queryValues = []interface{}{
+func (c *Credential) insertQuery() (query string, queryValues []any) {
+	queryValues = []any{
 		sql.Named("public_id", c.PublicId),
 		sql.Named("library_id", c.LibraryId),
 		sql.Named("session_id", c.SessionId),
@@ -138,8 +138,8 @@ func (c *Credential) insertQuery() (query string, queryValues []interface{}) {
 	return
 }
 
-func (c *Credential) updateSessionQuery(purpose credential.Purpose) (query string, queryValues []interface{}) {
-	queryValues = []interface{}{
+func (c *Credential) updateSessionQuery(purpose credential.Purpose) (query string, queryValues []any) {
+	queryValues = []any{
 		sql.Named("public_id", c.PublicId),
 		sql.Named("library_id", c.LibraryId),
 		sql.Named("session_id", c.SessionId),
@@ -149,8 +149,8 @@ func (c *Credential) updateSessionQuery(purpose credential.Purpose) (query strin
 	return
 }
 
-func (c *Credential) updateExpirationQuery() (query string, queryValues []interface{}) {
-	queryValues = []interface{}{
+func (c *Credential) updateExpirationQuery() (query string, queryValues []any) {
+	queryValues = []any{
 		int(c.expiration.Round(time.Second).Seconds()),
 		c.PublicId,
 	}
@@ -158,8 +158,8 @@ func (c *Credential) updateExpirationQuery() (query string, queryValues []interf
 	return
 }
 
-func (c *Credential) updateStatusQuery(status CredentialStatus) (query string, queryValues []interface{}) {
-	queryValues = []interface{}{
+func (c *Credential) updateStatusQuery(status CredentialStatus) (query string, queryValues []any) {
+	queryValues = []any{
 		status,
 		c.PublicId,
 	}

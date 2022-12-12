@@ -1,10 +1,15 @@
 package session
 
 import (
+	"crypto/rand"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -17,11 +22,13 @@ func TestNewRepository(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 	ctx := context.Background()
+	testReader := strings.NewReader("notrandom")
 
 	type args struct {
-		r db.Reader
-		w db.Writer
-		k *kms.Kms
+		r    db.Reader
+		w    db.Writer
+		k    *kms.Kms
+		opts []Option
 	}
 	tests := []struct {
 		name          string
@@ -37,11 +44,14 @@ func TestNewRepository(t *testing.T) {
 				w: rw,
 				k: testKms,
 			},
-			want: func() *Repository {
-				ret, err := NewRepository(ctx, rw, rw, testKms)
-				require.NoError(t, err)
-				return ret
-			}(),
+			want: &Repository{
+				reader:       rw,
+				writer:       rw,
+				kms:          testKms,
+				defaultLimit: db.DefaultLimit,
+				permissions:  nil,
+				randomReader: rand.Reader,
+			},
 			wantErr: false,
 		},
 		{
@@ -64,11 +74,33 @@ func TestNewRepository(t *testing.T) {
 			wantErr:       true,
 			wantErrString: "session.NewRepository: nil reader: parameter violation: error #100",
 		},
+		{
+			name: "providing-options",
+			args: args{
+				r: rw,
+				w: rw,
+				k: testKms,
+				opts: []Option{
+					WithLimit(100),
+					WithPermissions(&perms.UserPermissions{}),
+					WithRandomReader(testReader),
+				},
+			},
+			want: &Repository{
+				reader:       rw,
+				writer:       rw,
+				kms:          testKms,
+				defaultLimit: 100,
+				permissions:  &perms.UserPermissions{},
+				randomReader: testReader,
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(ctx, tt.args.r, tt.args.w, tt.args.k)
+			got, err := NewRepository(ctx, tt.args.r, tt.args.w, tt.args.k, tt.args.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrString, err.Error())
@@ -78,4 +110,49 @@ func TestNewRepository(t *testing.T) {
 			assert.Equal(tt.want, got)
 		})
 	}
+}
+
+func TestRepository_convertToSessions(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	rootWrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, rootWrapper)
+	kmsCache := kms.TestKms(t, conn, rootWrapper)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, err)
+	composedOf := TestSessionParams(t, conn, rootWrapper, iamRepo)
+	sess, err := New(composedOf)
+	require.NoError(t, err)
+	sessionWrapper, err := kmsCache.GetWrapper(ctx, sess.ProjectId, kms.KeyPurposeSessions)
+	require.NoError(t, err)
+	sess, err = repo.CreateSession(ctx, sessionWrapper, sess, []string{"0.0.0.0"})
+	require.NoError(t, err)
+
+	query := fmt.Sprintf(sessionList, "", "", "", "")
+	rows, err := rw.Query(ctx, query, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := rows.Close()
+		require.NoError(t, err)
+	})
+
+	var sessionsList []*sessionListView
+	for rows.Next() {
+		var s sessionListView
+		err := rw.ScanRows(ctx, rows, &s)
+		require.NoError(t, err)
+		sessionsList = append(sessionsList, &s)
+	}
+
+	sessions, err := repo.convertToSessions(ctx, sessionsList)
+	require.NoError(t, err)
+	assert.Len(t, sessions, 1)
+	// Check that encrypted values are redacted
+	sess.CtCertificatePrivateKey = nil
+	sess.CertificatePrivateKey = nil
+	sess.CtTofuToken = nil
+	sess.TofuToken = nil
+	sess.KeyId = ""
+	assert.Equal(t, sessions[0], sess)
 }

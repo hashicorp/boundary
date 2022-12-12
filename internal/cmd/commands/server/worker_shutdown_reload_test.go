@@ -99,7 +99,9 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	sConn.TestSendRecvAll(t)
 
 	// Shutdown the worker and close the connection, as the worker will otherwise wait for it to close.
-	sConn.Close()
+	err = sConn.Close()
+	require.NoError(err)
+
 	workerCmd.ShutdownCh <- struct{}{}
 	if <-workerCodeChan != 0 {
 		output := workerCmd.UI.(*cli.MockUi).ErrorWriter.String() + workerCmd.UI.(*cli.MockUi).OutputWriter.String()
@@ -131,7 +133,7 @@ func setAuthToken(ctx context.Context, t *testing.T, client *api.Client) {
 		ctx,
 		"ampw_1234567890",
 		"login",
-		map[string]interface{}{
+		map[string]any{
 			"login_name": "admin",
 			"password":   "passpass",
 		},

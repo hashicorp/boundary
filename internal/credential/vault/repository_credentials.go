@@ -15,7 +15,7 @@ var _ credential.Issuer = (*Repository)(nil)
 
 // Issue issues and returns dynamic credentials from Vault for all of the
 // requests and assigns them to sessionId.
-func (r *Repository) Issue(ctx context.Context, sessionId string, requests []credential.Request) ([]credential.Dynamic, error) {
+func (r *Repository) Issue(ctx context.Context, sessionId string, requests []credential.Request, opt ...credential.Option) ([]credential.Dynamic, error) {
 	const op = "vault.(Repository).Issue"
 	if sessionId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no session id")
@@ -37,7 +37,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 	var minLease time.Duration
 	runJobsInterval := r.scheduler.GetRunJobsInterval()
 	for _, lib := range libs {
-		cred, err := lib.retrieveCredential(ctx, op, sessionId)
+		cred, err := lib.retrieveCredential(ctx, op, sessionId, opt...)
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +103,7 @@ func (r *Repository) Revoke(ctx context.Context, sessionId string) error {
 
 	_, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			if _, err := w.Exec(ctx, revokeCredentialsQuery, []interface{}{sessionId}); err != nil {
+			if _, err := w.Exec(ctx, revokeCredentialsQuery, []any{sessionId}); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			return nil

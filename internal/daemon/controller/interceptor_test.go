@@ -83,7 +83,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 
 	factoryCtx := context.Background()
 
-	returnCtxHandler := func(ctx context.Context, req interface{}) (interface{}, error) {
+	returnCtxHandler := func(ctx context.Context, req any) (any, error) {
 		return ctx, nil
 	}
 
@@ -311,7 +311,7 @@ func Test_requestCtxInterceptor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			interceptor, err := requestCtxInterceptor(factoryCtx, tt.iamRepoFn, tt.authTokenRepoFn, tt.serversRepoFn, tt.kms, tt.ticket, tt.eventer)
+			interceptor, err := requestCtxInterceptor(factoryCtx, tt.iamRepoFn, tt.authTokenRepoFn, tt.serversRepoFn, nil, nil, tt.kms, tt.ticket, tt.eventer)
 			if tt.wantFactoryErr {
 				require.Error(err)
 				assert.Nil(interceptor)
@@ -468,7 +468,7 @@ func Test_workerRequestInfoInterceptor(t *testing.T) {
 	factoryCtx := context.Background()
 	requestCtx := context.Background()
 
-	returnCtxHandler := func(ctx context.Context, req interface{}) (interface{}, error) {
+	returnCtxHandler := func(ctx context.Context, req any) (any, error) {
 		return ctx, nil
 	}
 

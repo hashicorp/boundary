@@ -3,9 +3,11 @@ package session
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
 )
@@ -13,8 +15,12 @@ import (
 const deleteTerminatedThreshold = time.Hour
 
 // RegisterJobs registers session related jobs with the provided scheduler.
-func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, w db.Writer, r db.Reader, k *kms.Kms, gracePeriod time.Duration) error {
+func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, w db.Writer, r db.Reader, k *kms.Kms, gracePeriod *atomic.Int64) error {
 	const op = "session.RegisterJobs"
+
+	if gracePeriod == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "nil grace period")
+	}
 
 	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(w, gracePeriod)
 	if err != nil {

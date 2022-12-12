@@ -5,10 +5,18 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
+
+// FIXME: This is really ugly -- but not as ugly as plumbing this value into the
+// interface. We should figure out something better. For now, it will at least
+// keep sync with any changes to the value once it's initialized as the worker
+// will set it in its new function; it can also be overridden in tests if
+// desired with normal global variable caveats.
+var CloseCallTimeout = new(atomic.Int64)
 
 // Manager stores session information locally and exposes ways to operate on the
 // set of sessions locally in batch.
@@ -35,15 +43,15 @@ type Manager interface {
 	// no error is returned.
 	DeleteLocalSession([]string)
 
-	// RequestCloseConnections sends connection close requests to the controller,
-	// and sets close times within the worker. It should be called during the worker
-	// status loop and on connection exit on the proxy.
+	// RequestCloseConnections sends connection close requests to the
+	// controller, and sets close times within the worker. It should be called
+	// during the worker status loop and on connection exit on the proxy.
 	//
 	// The boolean indicates whether the function was successful, e.g. had any
 	// errors. Individual events will be sent for the errors if there are any.
 	//
-	// closeInfo is a map of connection ids mapped to their individual session ids.
-	RequestCloseConnections(context.Context, map[string]string) bool
+	// closeInfo is a map of connection ids mapped to connection metadata.
+	RequestCloseConnections(context.Context, map[string]*ConnectionCloseData) bool
 }
 
 type manager struct {
@@ -123,11 +131,11 @@ func (m *manager) DeleteLocalSession(sessIds []string) {
 	}
 }
 
-func (m *manager) RequestCloseConnections(ctx context.Context, closeInfo map[string]string) bool {
+func (m *manager) RequestCloseConnections(ctx context.Context, closeInfo map[string]*ConnectionCloseData) bool {
 	return closeConnections(ctx, m.controllerSessionConn, m, closeInfo)
 }
 
-func isNil(i interface{}) bool {
+func isNil(i any) bool {
 	if i == nil {
 		return true
 	}

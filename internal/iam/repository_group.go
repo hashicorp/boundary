@@ -70,7 +70,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"name":        group.Name,
 			"description": group.Description,
 		},
@@ -177,7 +177,7 @@ func (r *Repository) ListGroups(ctx context.Context, withScopeIds []string, opt 
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	var grps []*Group
-	err := r.list(ctx, &grps, "scope_id in (?)", []interface{}{withScopeIds}, opt...)
+	err := r.list(ctx, &grps, "scope_id in (?)", []any{withScopeIds}, opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -191,7 +191,7 @@ func (r *Repository) ListGroupMembers(ctx context.Context, withGroupId string, o
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing group id")
 	}
 	members := []*GroupMember{}
-	if err := r.list(ctx, &members, "group_id = ?", []interface{}{withGroupId}, opt...); err != nil {
+	if err := r.list(ctx, &members, "group_id = ?", []any{withGroupId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return members, nil
@@ -219,7 +219,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
 	}
 
-	newGroupMembers := make([]interface{}, 0, len(userIds))
+	newGroupMembers := make([]any, 0, len(userIds))
 	for _, id := range userIds {
 		gm, err := NewGroupMemberUser(groupId, id)
 		if err != nil {
@@ -312,7 +312,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get group members %s scope", groupId)))
 	}
 
-	deleteMembers := make([]interface{}, 0, len(userIds))
+	deleteMembers := make([]any, 0, len(userIds))
 	for _, id := range userIds {
 		member, err := NewGroupMemberUser(groupId, id)
 		if err != nil {
@@ -494,7 +494,7 @@ func (r *Repository) SetGroupMembers(ctx context.Context, groupId string, groupV
 }
 
 // groupMemberChanges returns two slices: members to add and delete
-func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, userIds []string) ([]interface{}, []interface{}, error) {
+func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, userIds []string) ([]any, []any, error) {
 	const op = "iam.groupMemberChanges"
 	var inClauseSpots []string
 	// starts at 2 because there is already a ? in the query
@@ -507,7 +507,7 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 	}
 	query := fmt.Sprintf(grpMemberChangesQuery, inClause)
 
-	var params []interface{}
+	var params []any
 	for _, v := range userIds {
 		params = append(params, v)
 	}
@@ -531,8 +531,8 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 		}
 		changes = append(changes, &chg)
 	}
-	addMembers := []interface{}{}
-	deleteMembers := []interface{}{}
+	addMembers := []any{}
+	deleteMembers := []any{}
 	for _, c := range changes {
 		if c.MemberId == "" {
 			return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id in change result")

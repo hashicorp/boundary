@@ -52,7 +52,7 @@ func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repo
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit
-func (r *Repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
+func (r *Repository) list(ctx context.Context, resources any, where string, args []any, opt ...Option) error {
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
 	if opts.withLimit != 0 {
@@ -87,7 +87,7 @@ func (r *Repository) create(ctx context.Context, resource Resource, _ ...Option)
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var returnedResource interface{}
+	var returnedResource any
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -155,7 +155,7 @@ func (r *Repository) update(ctx context.Context, resource Resource, version uint
 	dbOpts = append(dbOpts, db.WithOplog(oplogWrapper, metadata))
 
 	var rowsUpdated int
-	var returnedResource interface{}
+	var returnedResource any
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -211,7 +211,7 @@ func (r *Repository) delete(ctx context.Context, resource Resource, _ ...Option)
 	}
 
 	var rowsDeleted int
-	var deleteResource interface{}
+	var deleteResource any
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,

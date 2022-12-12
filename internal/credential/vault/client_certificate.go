@@ -115,9 +115,9 @@ func (c *ClientCertificate) hmacCertificateKey(ctx context.Context, cipher wrapp
 	return nil
 }
 
-func (c *ClientCertificate) insertQuery() (query string, queryValues []interface{}) {
+func (c *ClientCertificate) insertQuery() (query string, queryValues []any) {
 	query = upsertClientCertQuery
-	queryValues = []interface{}{
+	queryValues = []any{
 		sql.Named("store_id", c.StoreId),
 		sql.Named("certificate", c.Certificate),
 		sql.Named("certificate_key", c.CtCertificateKey),
@@ -127,9 +127,9 @@ func (c *ClientCertificate) insertQuery() (query string, queryValues []interface
 	return
 }
 
-func (c *ClientCertificate) deleteQuery() (query string, queryValues []interface{}) {
+func (c *ClientCertificate) deleteQuery() (query string, queryValues []any) {
 	query = deleteClientCertQuery
-	queryValues = []interface{}{
+	queryValues = []any{
 		c.StoreId,
 	}
 	return

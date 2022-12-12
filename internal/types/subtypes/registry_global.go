@@ -15,7 +15,7 @@ var globalRegistry = newRegistry()
 func newRegistry() *registry {
 	return &registry{
 		subtypesPrefixes: make(map[string]map[string]Subtype),
-		knownSubtypes:    make(map[string]map[Subtype]interface{}),
+		knownSubtypes:    make(map[string]map[Subtype]any),
 	}
 }
 
@@ -23,7 +23,7 @@ func newRegistry() *registry {
 // prefixes and allows for translating prefixes back to registered subtypes.
 type registry struct {
 	subtypesPrefixes map[string]map[string]Subtype
-	knownSubtypes    map[string]map[Subtype]interface{}
+	knownSubtypes    map[string]map[Subtype]any
 
 	sync.RWMutex
 }
@@ -97,7 +97,7 @@ func (r *registry) register(ctx context.Context, domain string, subtype Subtype,
 
 	knownSubtypes, present := r.knownSubtypes[domain]
 	if !present {
-		knownSubtypes = make(map[Subtype]interface{})
+		knownSubtypes = make(map[Subtype]any)
 		r.knownSubtypes[domain] = knownSubtypes
 		r.subtypesPrefixes[domain] = make(map[string]Subtype)
 	}

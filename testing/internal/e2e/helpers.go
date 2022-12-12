@@ -2,13 +2,26 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"testing"
 )
+
+// CommandResult captures the output from running an external command
+type CommandResult struct {
+	Stdout   []byte
+	Stderr   []byte
+	ExitCode int
+	Err      error
+}
+
+// CliError parses the Stderr from running a boundary command
+type CliError struct {
+	Status int `json:"status"`
+}
 
 // Option is a func that sets optional attributes for a call. This does not need
 // to be used directly, but instead option arguments are built from the
@@ -21,7 +34,7 @@ type Option func(*options)
 
 type options struct {
 	withArgs []string
-	withPipe []string
+	withEnv  map[string]string
 }
 
 func getOpts(opt ...Option) options {
@@ -35,59 +48,38 @@ func getOpts(opt ...Option) options {
 	return opts
 }
 
-// CommandResult encapsulates the output from running an external command
-type CommandResult struct {
-	Stdout   []byte
-	Stderr   []byte
-	ExitCode int
-	Err      error
-}
-
 const EnvToCheckSkip = "E2E_PASSWORD_AUTH_METHOD_ID"
 
 // RunCommand executes external commands on the system. Returns the results
 // of running the provided command.
 //
-//	RunCommand("ls")
-//	RunCommand("ls", WithArgs("-al", "/path"))
-//	RunCommand("ls", WithArgs("-al", "/path"), WithPipe("grep", "file"))
+//	RunCommand(context.Background(), "ls")
+//	RunCommand(context.Background(), "ls", WithArgs("-al", "/path"))
 //
 // CommandResult is always valid even if there is an error.
-func RunCommand(command string, opt ...Option) *CommandResult {
+func RunCommand(ctx context.Context, command string, opt ...Option) *CommandResult {
+	var cmd *exec.Cmd
 	var outbuf, errbuf bytes.Buffer
-	var err error
-	var c1, c2 *exec.Cmd
 
 	opts := getOpts(opt...)
 
 	if opts.withArgs == nil {
-		c1 = exec.Command(command)
+		cmd = exec.CommandContext(ctx, command)
 	} else {
-		c1 = exec.Command(command, opts.withArgs...)
+		cmd = exec.CommandContext(ctx, command, opts.withArgs...)
 	}
 
-	if opts.withPipe == nil {
-		c1.Stdout = &outbuf
-		c1.Stderr = &errbuf
-		err = c1.Run()
-	} else {
-		pipeCommand := opts.withPipe[0]
-		pipeArgs := opts.withPipe[1:]
-		c2 = exec.Command(pipeCommand, pipeArgs...)
-
-		r, w := io.Pipe()
-		c1.Stdout = w
-		c2.Stdin = r
-
-		c2.Stdout = &outbuf
-		c2.Stderr = &errbuf
-
-		c1.Start()
-		c2.Start()
-		c1.Wait()
-		w.Close()
-		c2.Wait()
+	if opts.withEnv != nil {
+		cmd.Env = os.Environ()
+		for k, v := range opts.withEnv {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
 	}
+
+	cmd.Stdout = &outbuf
+	cmd.Stderr = &errbuf
+
+	err := cmd.Run()
 
 	var ee *exec.ExitError
 	var exitCode int
@@ -104,18 +96,28 @@ func RunCommand(command string, opt ...Option) *CommandResult {
 }
 
 // WithArgs is an option to RunCommand that allows the user to specify arguments
-// for the provided command
+// for the provided command. This option can be used multiple times in one command.
 func WithArgs(args ...string) Option {
 	return func(o *options) {
-		o.withArgs = args
+		if o.withArgs == nil {
+			o.withArgs = args
+		} else {
+			o.withArgs = append(o.withArgs, args...)
+		}
 	}
 }
 
-// WithPipe is an option to RunCommand that allows the user to specify a command+arguments
-// to pipe to
-func WithPipe(command ...string) Option {
+// WithEnv is an option to RunCommand that allows the user to specify environment variables
+// to be set when running the command. This option can be used multiple times in one command.
+//
+//	RunCommand(context.Background(), "ls", WithEnv("NAME", "VALUE"), WithEnv("NAME", "VALUE"))
+func WithEnv(name string, value string) Option {
 	return func(o *options) {
-		o.withPipe = command
+		if o.withEnv == nil {
+			o.withEnv = map[string]string{name: value}
+		} else {
+			o.withEnv[name] = value
+		}
 	}
 }
 

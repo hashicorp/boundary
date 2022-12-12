@@ -408,6 +408,25 @@ and
 	session_state.start_time < wt_sub_seconds_from_now(@threshold_seconds)
 ;
 `
+	sessionCredentialRewrapQuery = `
+select distinct
+  cred.session_id,
+  cred.key_id,
+  cred.credential,
+  cred.credential_sha256
+from session
+  inner join session_credential cred
+    on cred.session_id = session.public_id
+where session.project_id = ?
+  and cred.key_id = ?
+`
+	sessionCredentialRewrapUpdate = `
+update session_credential
+	set credential = ?,
+		key_id = ?
+where session_id = ?
+	and credential_sha256 = ?;
+`
 )
 
 const (
@@ -424,16 +443,16 @@ values
 `
 )
 
-func batchInsertsessionCredentialDynamic(creds []*DynamicCredential) (string, []interface{}, error) {
+func batchInsertSessionCredentialDynamic(creds []*DynamicCredential) (string, []any, error) {
 	if len(creds) <= 0 {
 		return "", nil, fmt.Errorf("empty slice of DynamicCredential, cannot build query")
 	}
 	batchInsertParams := make([]string, 0, len(creds))
-	batchInsertArgs := make([]interface{}, 0, len(creds)*3)
+	batchInsertArgs := make([]any, 0, len(creds)*3)
 
 	for _, cred := range creds {
 		batchInsertParams = append(batchInsertParams, sessionCredentialDynamicBatchInsertValue)
-		batchInsertArgs = append(batchInsertArgs, []interface{}{cred.SessionId, cred.LibraryId, cred.CredentialPurpose}...)
+		batchInsertArgs = append(batchInsertArgs, []any{cred.SessionId, cred.LibraryId, cred.CredentialPurpose}...)
 	}
 
 	q := sessionCredentialDynamicBatchInsertBase + strings.Join(batchInsertParams, ",") + sessionCredentialDynamicBatchInsertReturning

@@ -292,7 +292,7 @@ func (b *testMockBroker) RegisterPipeline(def eventlogger.Pipeline) error {
 	return nil
 }
 
-func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload interface{}) (eventlogger.Status, error) {
+func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload any) (eventlogger.Status, error) {
 	if b.errorOnSend != nil {
 		return eventlogger.Status{}, b.errorOnSend
 	}

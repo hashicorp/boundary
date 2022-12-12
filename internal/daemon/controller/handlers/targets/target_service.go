@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
@@ -95,15 +97,16 @@ var (
 type Service struct {
 	pbs.UnsafeTargetServiceServer
 
-	repoFn           target.RepositoryFactory
-	iamRepoFn        common.IamRepoFactory
-	serversRepoFn    common.ServersRepoFactory
-	sessionRepoFn    session.RepositoryFactory
-	pluginHostRepoFn common.PluginHostRepoFactory
-	staticHostRepoFn common.StaticRepoFactory
-	vaultCredRepoFn  common.VaultCredentialRepoFactory
-	staticCredRepoFn common.StaticCredentialRepoFactory
-	kmsCache         *kms.Kms
+	repoFn                  target.RepositoryFactory
+	iamRepoFn               common.IamRepoFactory
+	serversRepoFn           common.ServersRepoFactory
+	sessionRepoFn           session.RepositoryFactory
+	pluginHostRepoFn        common.PluginHostRepoFactory
+	staticHostRepoFn        common.StaticRepoFactory
+	vaultCredRepoFn         common.VaultCredentialRepoFactory
+	staticCredRepoFn        common.StaticCredentialRepoFactory
+	kmsCache                *kms.Kms
+	workerStatusGracePeriod *atomic.Int64
 }
 
 var _ pbs.TargetServiceServer = (*Service)(nil)
@@ -120,6 +123,7 @@ func NewService(
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
 	staticCredRepoFn common.StaticCredentialRepoFactory,
+	workerStatusGracePeriod *atomic.Int64,
 ) (Service, error) {
 	const op = "targets.NewService"
 	if repoFn == nil {
@@ -147,15 +151,16 @@ func NewService(
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
 	}
 	return Service{
-		repoFn:           repoFn,
-		iamRepoFn:        iamRepoFn,
-		serversRepoFn:    serversRepoFn,
-		sessionRepoFn:    sessionRepoFn,
-		pluginHostRepoFn: pluginHostRepoFn,
-		staticHostRepoFn: staticHostRepoFn,
-		vaultCredRepoFn:  vaultCredRepoFn,
-		staticCredRepoFn: staticCredRepoFn,
-		kmsCache:         kmsCache,
+		repoFn:                  repoFn,
+		iamRepoFn:               iamRepoFn,
+		serversRepoFn:           serversRepoFn,
+		sessionRepoFn:           sessionRepoFn,
+		pluginHostRepoFn:        pluginHostRepoFn,
+		staticHostRepoFn:        staticHostRepoFn,
+		vaultCredRepoFn:         vaultCredRepoFn,
+		staticCredRepoFn:        staticCredRepoFn,
+		kmsCache:                kmsCache,
+		workerStatusGracePeriod: workerStatusGracePeriod,
 	}, nil
 }
 
@@ -192,7 +197,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	}
 
 	// Get all user permissions for the requested scope(s).
-	userPerms := authResults.ACL().ListPermissions(authzScopes, resource.Target, IdActions)
+	userPerms := authResults.ACL().ListPermissions(authzScopes, resource.Target, IdActions, authResults.UserId)
 	if len(userPerms) == 0 {
 		return &pbs.ListTargetsResponse{}, nil
 	}
@@ -681,7 +686,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	// worker IDs below is used to contain their IDs in the same order. This is
 	// used to fetch tags for filtering. But we avoid allocation unless we
 	// actually need it.
-	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
+	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(time.Duration(s.workerStatusGracePeriod.Load())))
 	if err != nil {
 		return nil, err
 	}
@@ -702,6 +707,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			codes.FailedPrecondition,
 			"No workers are available to handle this session, or all have been filtered.")
 	}
+
+	// Randomize the workers
+	rand.Shuffle(len(selectedWorkers), func(i, j int) {
+		selectedWorkers[i], selectedWorkers[j] = selectedWorkers[j], selectedWorkers[i]
+	})
 
 	requestedId := req.GetHostId()
 	staticHostRepo, err := s.staticHostRepoFn()
@@ -836,7 +846,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	sess, privKey, err := sessionRepo.CreateSession(ctx, wrapper, sess, workerList(selectedWorkers).addresses())
+	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, workerList(selectedWorkers).addresses())
 	if err != nil {
 		return nil, err
 	}
@@ -848,7 +858,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		dynamic, err = credRepo.Issue(ctx, sess.GetPublicId(), vaultReqs)
+		dynamic, err = credRepo.Issue(ctx, sess.GetPublicId(), vaultReqs, credential.WithTemplateData(authResults.UserData))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -932,7 +942,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		CreatedTime:     sess.CreateTime.GetTimestamp(),
 		Type:            t.GetType().String(),
 		Certificate:     sess.Certificate,
-		PrivateKey:      privKey,
+		PrivateKey:      sess.CertificatePrivateKey,
 		HostId:          chosenEndpoint.HostId,
 		Endpoint:        endpointUrl.String(),
 		WorkerInfo:      workerList(selectedWorkers).workerInfos(),
@@ -1823,7 +1833,7 @@ func (w workerList) workerInfos() []*pb.WorkerInfo {
 func (w workerList) filtered(eval *bexpr.Evaluator) (workerList, error) {
 	var ret []*server.Worker
 	for _, worker := range w {
-		filterInput := map[string]interface{}{
+		filterInput := map[string]any{
 			"name": worker.GetName(),
 			"tags": worker.CanonicalTags(),
 		}

@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -27,7 +28,8 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	const gracePeriod = 1 * time.Second
+	gracePeriod := new(atomic.Int64)
+	gracePeriod.Store(int64(time.Second))
 
 	require, assert := require.New(t), assert.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -100,12 +102,12 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	}
 
 	// Create the job.
-	job, err := newSessionConnectionCleanupJob(rw, deadWorkerConnCloseMinGrace)
+	job, err := newSessionConnectionCleanupJob(rw, gracePeriod)
 	job.gracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
 	require.NoError(err)
 
 	// sleep the status grace period.
-	time.Sleep(gracePeriod)
+	time.Sleep(time.Duration(gracePeriod.Load()))
 
 	// Push an upsert to the first worker so that its status has been
 	// updated.
@@ -149,7 +151,10 @@ func TestSessionConnectionCleanupJobNewJobErr(t *testing.T) {
 	const op = "session.newNewSessionConnectionCleanupJob"
 	require := require.New(t)
 
-	job, err := newSessionConnectionCleanupJob(nil, 0)
+	grace := new(atomic.Int64)
+	grace.Store(1000000)
+
+	job, err := newSessionConnectionCleanupJob(nil, grace)
 	require.Equal(err, errors.E(
 		ctx,
 		errors.WithCode(errors.InvalidParameter),
@@ -161,12 +166,21 @@ func TestSessionConnectionCleanupJobNewJobErr(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 
-	job, err = newSessionConnectionCleanupJob(rw, 0)
+	job, err = newSessionConnectionCleanupJob(rw, nil)
 	require.Equal(err, errors.E(
 		ctx,
 		errors.WithCode(errors.InvalidParameter),
 		errors.WithOp(op),
-		errors.WithMsg(fmt.Sprintf("invalid gracePeriod, must be greater than %s", deadWorkerConnCloseMinGrace)),
+		errors.WithMsg(fmt.Sprintf("missing grace period")),
+	))
+	require.Nil(job)
+
+	job, err = newSessionConnectionCleanupJob(rw, new(atomic.Int64))
+	require.Equal(err, errors.E(
+		ctx,
+		errors.WithCode(errors.InvalidParameter),
+		errors.WithOp(op),
+		errors.WithMsg(fmt.Sprintf("grace period is zero")),
 	))
 	require.Nil(job)
 }
@@ -188,7 +202,10 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(err)
 
-	job, err := newSessionConnectionCleanupJob(rw, deadWorkerConnCloseMinGrace)
+	defaultLiveness := new(atomic.Int64)
+	defaultLiveness.Store(int64(server.DefaultLiveness))
+
+	job, err := newSessionConnectionCleanupJob(rw, defaultLiveness)
 	require.NoError(err)
 
 	// connection count = 6 * states(authorized, connected, closed = 3) * servers_with_open_connections(3)
@@ -448,7 +465,10 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 
-	job, err := newSessionConnectionCleanupJob(rw, time.Hour)
+	hourDuration := new(atomic.Int64)
+	hourDuration.Store(int64(time.Hour))
+
+	job, err := newSessionConnectionCleanupJob(rw, hourDuration)
 	require.NoError(err)
 
 	createConnection := func(workerId string) *Connection {

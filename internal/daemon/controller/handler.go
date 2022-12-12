@@ -153,7 +153,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterAuthTokenServiceServer(s, authtoks)
 	}
 	if _, ok := currentServices[services.ScopeService_ServiceDesc.ServiceName]; !ok {
-		os, err := scopes.NewService(c.IamRepoFn)
+		os, err := scopes.NewService(c.baseContext, c.IamRepoFn, c.kms)
 		if err != nil {
 			return fmt.Errorf("failed to create scope handler service: %w", err)
 		}
@@ -177,7 +177,8 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.PluginHostRepoFn,
 			c.StaticHostRepoFn,
 			c.VaultCredentialRepoFn,
-			c.StaticCredentialRepoFn)
+			c.StaticCredentialRepoFn,
+			c.workerStatusGracePeriod)
 		if err != nil {
 			return fmt.Errorf("failed to create target handler service: %w", err)
 		}
@@ -461,8 +462,8 @@ func wrapHandlerWithCors(h http.Handler, props HandlerProperties) http.Handler {
 }
 
 type cmdAttrs struct {
-	Command    string      `json:"command,omitempty"`
-	Attributes interface{} `json:"attributes,omitempty"`
+	Command    string `json:"command,omitempty"`
+	Attributes any    `json:"attributes,omitempty"`
 }
 
 func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Handler {
@@ -526,7 +527,7 @@ func wrapHandlerWithCallbackInterceptor(h http.Handler, c *Controller) http.Hand
 		switch {
 		case useForm:
 			if len(req.Form) > 0 {
-				values := make(map[string]interface{}, len(req.Form))
+				values := make(map[string]any, len(req.Form))
 				// This won't handle repeated values. That's fine, at least for now.
 				// We can address that if needed, which seems unlikely.
 				for k := range req.Form {

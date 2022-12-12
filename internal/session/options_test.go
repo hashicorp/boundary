@@ -1,6 +1,7 @@
 package session
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -73,6 +74,21 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithSessionIds("s_1", "s_2", "s_3"))
 		testOpts := getDefaultOptions()
 		testOpts.withSessionIds = []string{"s_1", "s_2", "s_3"}
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithIgnoreDecryptionFailures", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithIgnoreDecryptionFailures(true))
+		testOpts := getDefaultOptions()
+		testOpts.withIgnoreDecryptionFailures = true
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithRandomReader", func(t *testing.T) {
+		assert := assert.New(t)
+		reader := strings.NewReader("notrandom")
+		opts := getOpts(WithRandomReader(reader))
+		testOpts := getDefaultOptions()
+		testOpts.withRandomReader = reader
 		assert.Equal(opts, testOpts)
 	})
 }

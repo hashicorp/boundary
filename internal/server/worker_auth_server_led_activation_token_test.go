@@ -94,13 +94,6 @@ func TestWorkerAuthActivationTokenConstraints(t *testing.T) {
 			},
 			wantErrContains: "immutable column: worker_auth_server_led_activation_token.token_id: integrity violation",
 		},
-		{
-			name: "modify-create-time",
-			updateModifyFn: func(t *testing.T, in *WorkerAuthServerLedActivationToken) (string, []any) {
-				return "update worker_auth_server_led_activation_token set creation_time_encrypted = ? where worker_id = ?", []any{in.CreationTimeEncrypted[0:5], in.WorkerId}
-			},
-			wantErrContains: "immutable column: worker_auth_server_led_activation_token.creation_time_encrypted: integrity violation",
-		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

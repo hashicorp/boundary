@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -55,7 +56,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 	var scopePublicId string
 	var scopeMetadata oplog.Metadata
-	var scopeRaw interface{}
+	var scopeRaw any
 	{
 		scopeType := scope.Map[s.Type]
 		if opts.withPublicId != "" {
@@ -82,12 +83,12 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var adminRolePublicId string
 	var adminRoleMetadata oplog.Metadata
 	var adminRole *Role
-	var adminRoleRaw interface{}
+	var adminRoleRaw any
 	switch {
 	case userId == "",
-		userId == "u_anon",
-		userId == "u_auth",
-		userId == "u_recovery",
+		userId == globals.AnonymousUserId,
+		userId == globals.AnyAuthenticatedUserId,
+		userId == globals.RecoveryUserId,
 		opts.withSkipAdminRoleCreation:
 		// TODO: Cause a log entry. The repo doesn't have a logger right now,
 		// and ideally we will be using context to pass around log info scoped
@@ -123,7 +124,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var defaultRolePublicId string
 	var defaultRoleMetadata oplog.Metadata
 	var defaultRole *Role
-	var defaultRoleRaw interface{}
+	var defaultRoleRaw any
 	if !opts.withSkipDefaultRoleCreation {
 		defaultRole, err = NewRole(scopePublicId)
 		if err != nil {
@@ -224,7 +225,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 				}
 				roleGrantOplogMsgs := make([]*oplog.Message, 0, 1)
-				if err := w.CreateItems(ctx, []interface{}{roleGrant}, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
+				if err := w.CreateItems(ctx, []any{roleGrant}, db.NewOplogMsgs(&roleGrantOplogMsgs)); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
 				}
 				msgs = append(msgs, roleGrantOplogMsgs...)
@@ -234,7 +235,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role user"))
 				}
 				roleUserOplogMsgs := make([]*oplog.Message, 0, 1)
-				if err := w.CreateItems(ctx, []interface{}{rolePrincipal}, db.NewOplogMsgs(&roleUserOplogMsgs)); err != nil {
+				if err := w.CreateItems(ctx, []any{rolePrincipal}, db.NewOplogMsgs(&roleUserOplogMsgs)); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grants"))
 				}
 				msgs = append(msgs, roleUserOplogMsgs...)
@@ -283,7 +284,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				// Grants
 				{
-					grants := []interface{}{}
+					grants := []any{}
 
 					switch s.Type {
 					case scope.Project.String():
@@ -312,7 +313,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 						}
 						grants = append(grants, roleGrant)
 
-						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id={{account.id}};actions=read,change-password")
+						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id={{.Account.Id}};actions=read,change-password")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
@@ -334,10 +335,10 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				// Principals
 				{
-					principals := []interface{}{}
-					userId := "u_anon"
+					principals := []any{}
+					userId := globals.AnonymousUserId
 					if s.Type == scope.Project.String() {
-						userId = "u_auth"
+						userId = globals.AnyAuthenticatedUserId
 					}
 					rolePrincipal, err := NewUserRole(defaultRolePublicId, userId)
 					if err != nil {
@@ -395,7 +396,7 @@ func (r *Repository) UpdateScope(ctx context.Context, scope *Scope, version uint
 	}
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
-		map[string]interface{}{
+		map[string]any{
 			"name":                scope.Name,
 			"description":         scope.Description,
 			"PrimaryAuthMethodId": scope.PrimaryAuthMethodId, // gorm: it's important that the field start with a capital letter.
@@ -463,7 +464,7 @@ func (r *Repository) ListScopes(ctx context.Context, withParentIds []string, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing parent id")
 	}
 	var items []*Scope
-	err := r.list(ctx, &items, "parent_id in (?)", []interface{}{withParentIds}, opt...)
+	err := r.list(ctx, &items, "parent_id in (?)", []any{withParentIds}, opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -476,7 +477,7 @@ func (r *Repository) ListScopesRecursively(ctx context.Context, rootScopeId stri
 	const op = "iam.(Repository).ListRecursively"
 	var scopes []*Scope
 	var where string
-	var args []interface{}
+	var args []any
 	switch {
 	case rootScopeId == scope.Global.String():
 		// Nothing -- we want all scopes

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
@@ -187,7 +188,7 @@ func TestList(t *testing.T) {
 			})))
 
 			// Test anonymous listing
-			got, gErr = s.ListCredentials(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListCredentials(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(t, gErr)
 			assert.Len(t, got.Items, len(tc.anonRes.Items))
 			for _, item := range got.GetItems() {
@@ -386,7 +387,7 @@ func TestGet(t *testing.T) {
 			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()))
 
 			// Test anonymous get
-			got, gErr = s.GetCredential(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), req)
+			got, gErr = s.GetCredential(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), req)
 			require.NoError(t, gErr)
 			require.Nil(t, got.Item.CreatedTime)
 			require.Nil(t, got.Item.UpdatedTime)

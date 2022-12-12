@@ -26,13 +26,14 @@ import (
 	berrors "github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/go-multierror"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
@@ -48,21 +49,6 @@ import (
 )
 
 const (
-	// defaultStatusGracePeriod is the default status grace period, or the period
-	// of time that we will go without a status report before we start
-	// disconnecting and marking connections as closed. This is tied to the
-	// server default liveness setting, a related value. See the server package
-	// for more details.
-	defaultStatusGracePeriod = server.DefaultLiveness
-
-	// statusGracePeriodEnvVar is the environment variable that can be used to
-	// configure the status grace period. This setting is provided in seconds,
-	// and can never be lower than the default status grace period defined above.
-	//
-	// TODO: This value is temporary, it will be removed once we have a better
-	// story/direction on attributes and system defaults.
-	statusGracePeriodEnvVar = "BOUNDARY_STATUS_GRACE_PERIOD"
-
 	// File name to use for storing workerAuth requests
 	WorkerAuthReqFile = "auth_request_token"
 )
@@ -144,11 +130,6 @@ type Server struct {
 	DevDatabaseCleanupFunc func() error
 
 	Database *db.DB
-
-	// StatusGracePeriodDuration represents the period of time (as a
-	// duration) that the controller will wait before marking
-	// connections from a disconnected worker as invalid.
-	StatusGracePeriodDuration time.Duration
 }
 
 // NewServer creates a new Server.
@@ -565,6 +546,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 	sharedConfig := config.SharedConfig
 	var pluginLogger hclog.Logger
 	var err error
+	var previousRootKms wrapping.Wrapper
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
 			purpose = strings.ToLower(purpose)
@@ -575,7 +557,10 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				if opts.withSkipWorkerAuthKmsInstantiation {
 					continue
 				}
-			case globals.KmsPurposeRoot, globals.KmsPurposeConfig, globals.KmsPurposeWorkerAuthStorage:
+			case globals.KmsPurposeRoot,
+				globals.KmsPurposePreviousRoot,
+				globals.KmsPurposeConfig,
+				globals.KmsPurposeWorkerAuthStorage:
 			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
 					kms.Config["key"] = config.DevRecoveryKey
@@ -636,20 +621,57 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 
 			kms.Purpose = origPurpose
 			switch purpose {
+			case globals.KmsPurposePreviousRoot:
+				if previousRootKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
+				previousRootKms = wrapper
 			case globals.KmsPurposeRoot:
+				if b.RootKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.RootKms = wrapper
 			case globals.KmsPurposeWorkerAuth:
+				if b.WorkerAuthKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.WorkerAuthKms = wrapper
 			case globals.KmsPurposeWorkerAuthStorage:
+				if b.WorkerAuthStorageKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.WorkerAuthStorageKms = wrapper
 			case globals.KmsPurposeRecovery:
+				if b.RecoveryKms != nil {
+					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
+				}
 				b.RecoveryKms = wrapper
 			case globals.KmsPurposeConfig:
 				// Do nothing, can be set in same file but not needed at runtime
+				continue
 			default:
 				return fmt.Errorf("KMS purpose of %q is unknown", purpose)
 			}
 		}
+	}
+
+	// Handle previous root KMS
+	if previousRootKms != nil {
+		if util.IsNil(b.RootKms) {
+			return fmt.Errorf("KMS block contains '%s' without '%s'", globals.KmsPurposePreviousRoot, globals.KmsPurposeRoot)
+		}
+		mw, err := multi.NewPooledWrapper(ctx, previousRootKms)
+		if err != nil {
+			return fmt.Errorf("failed to create multi wrapper: %w", err)
+		}
+		ok, err := mw.SetEncryptingWrapper(ctx, b.RootKms)
+		if err != nil {
+			return fmt.Errorf("failed to set root wrapper as active in multi wrapper: %w", err)
+		}
+		if !ok {
+			return fmt.Errorf("KMS blocks with purposes '%s' and '%s' must have different key IDs", globals.KmsPurposeRoot, globals.KmsPurposePreviousRoot)
+		}
+		b.RootKms = mw
 	}
 
 	// prepare a secure random reader
@@ -806,49 +828,4 @@ func MakeSighupCh() chan struct{} {
 		}
 	}()
 	return resultCh
-}
-
-// SetStatusGracePeriodDuration sets the value for
-// StatusGracePeriodDuration.
-//
-// The grace period is the length of time we allow connections to run
-// on a worker in the event of an error sending status updates. The
-// period is defined the length of time since the last successful
-// update.
-//
-// The setting is derived from one of the following, in order:
-//
-//   - Via the supplied value if non-zero.
-//   - BOUNDARY_STATUS_GRACE_PERIOD, if defined, can be set to an
-//     integer value to define the setting.
-//   - If either of these is missing, the default is used. See the
-//     defaultStatusGracePeriod value for the default value.
-//
-// The minimum setting for this value is the default setting. Values
-// below this will be reset to the default.
-func (s *Server) SetStatusGracePeriodDuration(value time.Duration) {
-	const op = "base.(Server).SetStatusGracePeriodDuration"
-	ctx := context.TODO()
-	var result time.Duration
-	switch {
-	case value > 0:
-		result = value
-	case os.Getenv(statusGracePeriodEnvVar) != "":
-		// TODO: See the description of the constant for more details on
-		// this env var
-		v := os.Getenv(statusGracePeriodEnvVar)
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("could not read status grace period setting", "envvar", statusGracePeriodEnvVar, "value", v))
-			break
-		}
-
-		result = time.Second * time.Duration(n)
-	}
-
-	if result < defaultStatusGracePeriod {
-		result = defaultStatusGracePeriod
-	}
-
-	s.StatusGracePeriodDuration = result
 }

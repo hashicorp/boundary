@@ -12,8 +12,7 @@ begin;
   --
   -- Note that some aggregates depend on data from other aggretates, so the order
   -- that they are passed to this function matters.
-  create function wtt_load(persona text, variadic aggregates text[])
-    returns void
+  create function wtt_load(persona text, variadic aggregates text[]) returns void
   as $$
   declare
     agg text;

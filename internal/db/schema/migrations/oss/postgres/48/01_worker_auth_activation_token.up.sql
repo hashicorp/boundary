@@ -24,6 +24,7 @@ create table worker_auth_server_led_activation_token(
 comment on table worker_auth_server_led_activation_token is
   'worker_auth_server_led_activation_token is a table where each row represents an activation token for a worker. Only one activation token is allowed per worker.';
 
+-- this trigger is updated in 58/05_mutable_ciphertext_columns.up.sql
 create trigger immutable_columns before update on worker_auth_server_led_activation_token
   for each row execute procedure immutable_columns('worker_id', 'token_id', 'creation_time_encrypted');
 

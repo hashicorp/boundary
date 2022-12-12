@@ -257,7 +257,7 @@ func addCtxOptions(ctx context.Context, opt ...Option) ([]Option, error) {
 //
 // This function should never be used when sending events while
 // handling API requests.
-func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...interface{}) {
+func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...any) {
 	const op = "event.WriteSysEvent"
 
 	info := ConvertArgs(args...)
@@ -265,7 +265,7 @@ func WriteSysEvent(ctx context.Context, caller Op, msg string, args ...interface
 		return
 	}
 	if info == nil {
-		info = make(map[string]interface{}, 1)
+		info = make(map[string]any, 1)
 	}
 	info[msgField] = msg
 
@@ -339,7 +339,7 @@ const MissingKey = "EXTRA_VALUE_AT_END"
 // ConvertArgs will convert the key/value pair args to a map.  If the args
 // provided are an odd number (they're missing a key in their key/value pairs)
 // then MissingKey is used to the missing key.
-func ConvertArgs(args ...interface{}) map[string]interface{} {
+func ConvertArgs(args ...any) map[string]any {
 	if len(args) == 0 {
 		return nil
 	}
@@ -348,7 +348,7 @@ func ConvertArgs(args ...interface{}) map[string]interface{} {
 		args = append(args[:len(args)-1], MissingKey, extra)
 	}
 
-	m := map[string]interface{}{}
+	m := map[string]any{}
 	for i := 0; i < len(args); i = i + 2 {
 		var key string
 		switch st := args[i].(type) {

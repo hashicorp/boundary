@@ -2,7 +2,68 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
- ## Next
+## Next
+
+## 0.11.1 (2022/11/30)
+
+### New and Improved
+
+* Vault Parameter Templating: In `vault` credential libraries, the paths and any
+  POST bodies can contain templated parameters using Go template syntax (similar
+  to Consul-Template). The following template parameters are supported (note
+  that account values are tied to the account associated with the token making
+  the call):
+    * `{{ .User.Id }}`: the user's ID
+    * `{{ .User.Name }}`: the user's name (from the user resource)
+    * `{{ .User.FullName }}`: the user's name (from the account corresponding to
+    the primary auth method in the user's scope; this may not be populated or
+    maybe different than the account name in the template)
+    * `{{ .User.Email }}`: the user's email address (same caveat as `FullName`)
+    * `{{ .Account.Id }}`: the account's ID
+    * `{{ .Account.Name }}`: the account's name (from the account resource)
+    * `{{ .Account.LoginName }}`: the account's login name (if used by that type
+    of account)
+    * `{{ .Account.Subject }}`: the account's subject (if used by that type
+    of account)
+    * `{{ .Account.Email }}`: the account's email (if used by that type
+    of account)
+
+    Additionally, there is currently a single function that strips the rest of a
+    string after a specified substring; this is useful for pulling an user/account name from an email address. In the following example it uses the account email can be any other parameter:
+
+    * `{{ truncateFrom .Account.Email "@" }}`: this would turn `foo@example.com` into `foo`
+
+### Bug Fixes
+
+* accounts: Deleted auth accounts would still show up as being associated with a
+  User when reading the User
+  ([PR](https://github.com/hashicorp/boundary/pull/2528))
+* sessions: Fix workers not being in random order when returned to clients at
+  `authorize-session` time, which could allow one worker to bear the majority of
+  sessions ([PR](https://github.com/hashicorp/boundary/pull/2544))
+* workers: In some error conditions when sending status to controllers, errors
+  could be written to stdout along with a message that they could not
+  successfully be evented instead of being written to the event log
+  ([PR](https://github.com/hashicorp/boundary/pull/2544))
+* workers: Fixed a panic that can happen in certain situations
+  ([PR](https://github.com/hashicorp/boundary/pull/2553))
+* sessions: Fixed a panic in a controller when a worker is deleted while
+  sessions are ongoing ([PR](https://github.com/hashicorp/boundary/pull/2612))
+* sessions: Fixed a panic in a worker when a user with an active
+  session is deleted ([PR](https://github.com/hashicorp/boundary/pull/2629))
+* sessions: Fixed a bug where reading a session after its associated project
+  had been deleted would result in an error
+  ([PR](https://github.com/hashicorp/boundary/pull/2615))
+* config: Fixed a bug where supplying multiple KMS blocks with the same purpose
+  would silently ignore all but the last block
+  ([PR](https://github.com/hashicorp/boundary/pull/2639))
+
+### Deprecations/Changes
+
+* In order to standardize on the templating format, [templates in
+  grants](https://developer.hashicorp.com/boundary/docs/concepts/security/permissions/permission-grant-formats#templates)
+  now are documented to use the new capitalization and format; however, the
+  previous style will continue to work.
 
 ## 0.11.0 (2022/09/27)
 
@@ -33,8 +94,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ### New and Improved
 
 * vault: (HCP Boundary only): Private Vault clusters can be used with HCP Boundary by using PKI workers
-  deployed in the same network as a private cluster. Tags are used to control which PKI workers can manage private Vault 
-  requests by specifying a `worker_filter` attribute when configuring a Vault credential store. 
+  deployed in the same network as a private cluster. Tags are used to control which PKI workers can manage private Vault
+  requests by specifying a `worker_filter` attribute when configuring a Vault credential store.
 * credentials: There is now a `json` credential type supported by `static`
   credential stores that allows submitting a generic JSON object to Boundary for
   use with credential brokering workflows
@@ -555,7 +616,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
 
 ### Deprecations/Changes
 
-* permissions: Fix bug in _Host Sets_ service that authenticated requests  
+* permissions: Fix bug in _Host Sets_ service that authenticated requests
   againist incorrect grant actions. This bug affects the _SetHosts_, _AddHosts_
   and _RemoveHosts_ paths that do not have wildcard (`*`) action grants.
   If affected, please update grant actions as follows:
@@ -681,7 +742,7 @@ isolate transactions and prevent resource contention that caused deadlocks.
   `audit`. All events are emitted as
   [cloudevents](https://github.com/cloudevents/spec/blob/v1.0.1/spec.md) and we
   support both a `cloudevents-json` format and custom Boundary
-  `cloudevents-text` format.   
+  `cloudevents-text` format.
 
   **Notes**:
   * There are still a few lingering hclog bits within Boundary. If you wish to
@@ -696,12 +757,12 @@ isolate transactions and prevent resource contention that caused deadlocks.
   * Observation events are MVP and contain a minimal set of observations about a
     request. Observations are aggregated for each request, so only one
     observation event will be emitted per request. We anticipate that a rich set
-    of aggregate data about each request will be developed over time.   
+    of aggregate data about each request will be developed over time.
   * Audit events are a WIP and will only be emitted if they are both enabled
     and the env var `BOUNDARY_DEVELOPER_ENABLE_EVENTS` equals true.  We
     anticipate many changes for audit events before they are generally available
     including what data is included and different options for
-    redacting/encrypting that data.   
+    redacting/encrypting that data.
 
 
   PRs:

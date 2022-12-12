@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
@@ -204,7 +205,7 @@ func TestVerify_AuditEvent(t *testing.T) {
 			name:              "no-auth-data",
 			opt:               []Option{WithScopeId(o.PublicId)},
 			wantAuthAuditData: true,
-			wantUserId:        "u_anon",
+			wantUserId:        globals.AnonymousUserId,
 		},
 		{
 			name:              "disable-auth",
@@ -240,7 +241,7 @@ func TestVerify_AuditEvent(t *testing.T) {
 			got := api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
 			if tt.wantAuthAuditData {
-				auth, ok := got.Data.(map[string]interface{})["auth"].(map[string]interface{})
+				auth, ok := got.Data.(map[string]any)["auth"].(map[string]any)
 				require.True(ok)
 				assert.Equal(encrypt.RedactedData, auth["email"])
 				assert.Equal(encrypt.RedactedData, auth["name"])
@@ -249,7 +250,7 @@ func TestVerify_AuditEvent(t *testing.T) {
 					assert.Equal(true, auth["disabled_auth_entirely"])
 				}
 				if tt.wantUserId != "" {
-					userInfo, ok := auth["user_info"].(map[string]interface{})
+					userInfo, ok := auth["user_info"].(map[string]any)
 					require.True(ok)
 					assert.Equal(tt.wantUserId, userInfo["id"])
 				}

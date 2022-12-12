@@ -697,7 +697,7 @@ func toJsonStorageCredential(ctx context.Context, storeId string, in *pb.Credent
 	attrs := in.GetJsonAttributes()
 	object := attrs.GetObject()
 	if object == nil {
-		object, err = structpb.NewStruct(map[string]interface{}{})
+		object, err = structpb.NewStruct(map[string]any{})
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential"))
 		}

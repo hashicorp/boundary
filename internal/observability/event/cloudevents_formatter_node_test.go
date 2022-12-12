@@ -162,7 +162,7 @@ func TestNode_Process(t *testing.T) {
 		n               *cloudEventsFormatterFilter
 		e               *eventlogger.Event
 		format          cloudevents.Format
-		predicate       func(ctx context.Context, ce interface{}) (bool, error)
+		predicate       func(ctx context.Context, ce any) (bool, error)
 		wantCloudEvent  *cloudevents.Event
 		wantText        string
 		wantIsError     error

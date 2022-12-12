@@ -97,7 +97,7 @@ func (r *SetSyncJob) Run(ctx context.Context) error {
 	// Fetch all sets that will reach their sync point within the syncWindow.
 	// This is done to avoid constantly scheduling the set sync job when there
 	// are multiple sets to sync in sequence.
-	err := r.reader.SearchWhere(ctx, &setAggs, setSyncJobQuery, []interface{}{-1 * setSyncJobRunInterval.Seconds()}, db.WithLimit(r.limit))
+	err := r.reader.SearchWhere(ctx, &setAggs, setSyncJobQuery, []any{-1 * setSyncJobRunInterval.Seconds()}, db.WithLimit(r.limit))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -144,7 +144,7 @@ func nextSync(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 		return 0, errors.NewDeprecated(errors.Unknown, op, "unknown job")
 	}
 
-	rows, err := r.Query(context.Background(), query, []interface{}{setSyncJobRunInterval})
+	rows, err := r.Query(context.Background(), query, []any{setSyncJobRunInterval})
 	if err != nil {
 		return 0, errors.WrapDeprecated(err, op)
 	}
@@ -243,7 +243,7 @@ func (r *SetSyncJob) syncSets(ctx context.Context, setAggs []*hostSetAgg) error 
 		catIds = append(catIds, k)
 	}
 	var catAggs []*catalogAgg
-	if err := r.reader.SearchWhere(ctx, &catAggs, "public_id in (?)", []interface{}{catIds}); err != nil {
+	if err := r.reader.SearchWhere(ctx, &catAggs, "public_id in (?)", []any{catIds}); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("can't retrieve catalogs %v", catIds)))
 	}
 	if len(catAggs) == 0 {
@@ -544,7 +544,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				}
 
 				// Update last sync time
-				numRows, err := w.Exec(ctx, updateSyncDataQuery, []interface{}{setId})
+				numRows, err := w.Exec(ctx, updateSyncDataQuery, []any{setId})
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("updating last sync time"))
 				}

@@ -53,8 +53,8 @@ func TestWorkerStatusReport(t *testing.T) {
 
 	type testCase struct {
 		worker              *server.Worker
-		req                 []session.StateReport
-		want                []session.StateReport
+		req                 []*session.StateReport
+		want                []*session.StateReport
 		orphanedConnections []string
 	}
 	cases := []struct {
@@ -67,8 +67,8 @@ func TestWorkerStatusReport(t *testing.T) {
 				worker := server.TestKmsWorker(t, conn, wrapper)
 				return testCase{
 					worker: worker,
-					req:    []session.StateReport{},
-					want:   []session.StateReport{},
+					req:    []*session.StateReport{},
+					want:   []*session.StateReport{},
 				}
 			},
 		},
@@ -99,8 +99,8 @@ func TestWorkerStatusReport(t *testing.T) {
 
 				return testCase{
 					worker: worker,
-					req:    []session.StateReport{},
-					want:   []session.StateReport{},
+					req:    []*session.StateReport{},
+					want:   []*session.StateReport{},
 				}
 			},
 		},
@@ -127,14 +127,16 @@ func TestWorkerStatusReport(t *testing.T) {
 				require.NoError(t, err)
 				return testCase{
 					worker: worker,
-					req: []session.StateReport{
+					req: []*session.StateReport{
 						{
-							SessionId:     sess.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection.PublicId},
+							SessionId: sess.PublicId,
+							Status:    session.StatusActive,
+							Connections: []*session.Connection{
+								{PublicId: connection.PublicId},
+							},
 						},
 					},
-					want: []session.StateReport{},
+					want: []*session.StateReport{},
 				}
 			},
 		},
@@ -162,14 +164,16 @@ func TestWorkerStatusReport(t *testing.T) {
 
 				return testCase{
 					worker: worker,
-					req: []session.StateReport{
+					req: []*session.StateReport{
 						{
-							SessionId:     sess.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection.PublicId},
+							SessionId: sess.PublicId,
+							Status:    session.StatusActive,
+							Connections: []*session.Connection{
+								{PublicId: connection.PublicId},
+							},
 						},
 					},
-					want: []session.StateReport{
+					want: []*session.StateReport{
 						{
 							SessionId: sess.PublicId,
 							Status:    session.StatusCanceling,
@@ -220,19 +224,23 @@ func TestWorkerStatusReport(t *testing.T) {
 
 				return testCase{
 					worker: worker,
-					req: []session.StateReport{
+					req: []*session.StateReport{
 						{
-							SessionId:     sess.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection.PublicId},
+							SessionId: sess.PublicId,
+							Status:    session.StatusActive,
+							Connections: []*session.Connection{
+								{PublicId: connection.PublicId},
+							},
 						},
 						{
-							SessionId:     sess2.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection2.PublicId},
+							SessionId: sess2.PublicId,
+							Status:    session.StatusActive,
+							Connections: []*session.Connection{
+								{PublicId: connection2.PublicId},
+							},
 						},
 					},
-					want: []session.StateReport{
+					want: []*session.StateReport{
 						{
 							SessionId: sess.PublicId,
 							Status:    session.StatusCanceling,
@@ -284,14 +292,16 @@ func TestWorkerStatusReport(t *testing.T) {
 
 				return testCase{
 					worker: worker,
-					req: []session.StateReport{
+					req: []*session.StateReport{
 						{
-							SessionId:     sess2.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection2.PublicId},
+							SessionId: sess2.PublicId,
+							Status:    session.StatusActive,
+							Connections: []*session.Connection{
+								{PublicId: connection2.PublicId},
+							},
 						},
 					},
-					want:                []session.StateReport{},
+					want:                []*session.StateReport{},
 					orphanedConnections: []string{connection.PublicId},
 				}
 			},
@@ -340,19 +350,23 @@ func TestWorkerStatusReport(t *testing.T) {
 
 				return testCase{
 					worker: worker,
-					req: []session.StateReport{
+					req: []*session.StateReport{
 						{
-							SessionId:     sess.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection.PublicId},
+							SessionId: sess.PublicId,
+							Status:    session.StatusActive,
+							Connections: []*session.Connection{
+								{PublicId: connection.PublicId},
+							},
 						},
 						{
-							SessionId:     sess2.PublicId,
-							Status:        session.StatusActive,
-							ConnectionIds: []string{connection2.PublicId},
+							SessionId: sess2.PublicId,
+							Status:    session.StatusActive,
+							Connections: []*session.Connection{
+								{PublicId: connection2.PublicId},
+							},
 						},
 					},
-					want: []session.StateReport{
+					want: []*session.StateReport{
 						{
 							SessionId: sess.PublicId,
 							Status:    session.StatusCanceling,

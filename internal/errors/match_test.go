@@ -13,12 +13,12 @@ func TestT(t *testing.T) {
 	stdErr := stderrors.New("test error")
 	tests := []struct {
 		name string
-		args []interface{}
+		args []any
 		want *Template
 	}{
 		{
 			name: "all fields",
-			args: []interface{}{
+			args: []any{
 				"test error msg",
 				Op("alice.Bob"),
 				InvalidParameter,
@@ -37,7 +37,7 @@ func TestT(t *testing.T) {
 		},
 		{
 			name: "Kind only",
-			args: []interface{}{
+			args: []any{
 				Integrity,
 			},
 			want: &Template{
@@ -46,7 +46,7 @@ func TestT(t *testing.T) {
 		},
 		{
 			name: "multiple Kinds",
-			args: []interface{}{
+			args: []any{
 				Search,
 				Integrity,
 			},
@@ -56,7 +56,7 @@ func TestT(t *testing.T) {
 		},
 		{
 			name: "ignore",
-			args: []interface{}{
+			args: []any{
 				32,
 			},
 			want: &Template{},

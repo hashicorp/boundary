@@ -84,6 +84,6 @@ func (h *hostPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error
 	return nil
 }
 
-func (h *hostPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
+func (h *hostPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (any, error) {
 	return pb.NewHostPluginServiceClient(c), nil
 }

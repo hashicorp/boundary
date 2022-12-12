@@ -14,11 +14,11 @@ import (
 )
 
 type (
-	beforeWriteFn func(interface{}) error
-	afterWriteFn  func(interface{}, int) error
+	beforeWriteFn func(any) error
+	afterWriteFn  func(any, int) error
 )
 
-func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, opType OpType, opts Options) (beforeWriteFn, afterWriteFn, error) {
+func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i any, opType OpType, opts Options) (beforeWriteFn, afterWriteFn, error) {
 	const op = "db.generateOplogBeforeAfterOpts"
 	withOplog := opts.withOplog
 	if !withOplog && opts.newOplogMsg == nil && opts.newOplogMsgs == nil {
@@ -35,7 +35,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 	}
 
 	var isSlice bool
-	var items []interface{}
+	var items []any
 	rv := reflect.ValueOf(i)
 	if isSlice = rv.Kind() == reflect.Slice; isSlice {
 		for i := 0; i < rv.Len(); i++ {
@@ -74,7 +74,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 
 	var ticket *store.Ticket
 	if opts.withOplog {
-		beforeFn = func(interface{}) error {
+		beforeFn = func(any) error {
 			const op = "db.beforeFn"
 			var err error
 			switch isSlice {
@@ -91,7 +91,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 	}
 	switch {
 	case withOplog && (opType == CreateOp || opType == UpdateOp || opType == DeleteOp):
-		afterFn = func(i interface{}, rowsAffected int) error {
+		afterFn = func(i any, rowsAffected int) error {
 			const op = "db.afterFnSingleItem"
 			switch {
 			case onConflictDoNothing && rowsAffected == 0:
@@ -103,9 +103,9 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 			return nil
 		}
 	case withOplog && (opType == CreateItemsOp || opType == DeleteItemsOp):
-		afterFn = func(i interface{}, rowsAffected int) error {
+		afterFn = func(i any, rowsAffected int) error {
 			const op = "db.afterFnMultiItem"
-			err := rw.addOplogForItems(ctx, opType, opts, ticket, i.([]interface{}))
+			err := rw.addOplogForItems(ctx, opType, opts, ticket, i.([]any))
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("returning oplog msgs failed"))
 			}
@@ -115,7 +115,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 		if isSlice {
 			return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "new oplog msg (singular) is not a supported option")
 		}
-		afterFn = func(i interface{}, rowsAffected int) error {
+		afterFn = func(i any, rowsAffected int) error {
 			const op = "db.afterFnNewOplogMsg"
 			switch {
 			case onConflictDoNothing && rowsAffected == 0:
@@ -130,7 +130,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 		}
 
 	case opts.newOplogMsgs != nil:
-		afterFn = func(i interface{}, rowsAffected int) error {
+		afterFn = func(i any, rowsAffected int) error {
 			const op = "db.afterFnNewOplogMsgs"
 			if rowsAffected > 0 {
 				msgs, err := rw.oplogMsgsForItems(ctx, CreateOp, opts, items)
@@ -145,7 +145,7 @@ func (rw *Db) generateOplogBeforeAfterOpts(ctx context.Context, i interface{}, o
 	return beforeFn, afterFn, nil
 }
 
-func validateOplogArgs(ctx context.Context, i interface{}, opts Options) (oplog.ReplayableMessage, error) {
+func validateOplogArgs(ctx context.Context, i any, opts Options) (oplog.ReplayableMessage, error) {
 	const op = "db.validateOplogArgs"
 	oplogArgs := opts.oplogOpts
 	if oplogArgs.wrapper == nil {
@@ -179,7 +179,7 @@ func (rw *Db) getTicketFor(ctx context.Context, aggregateName string) (*store.Ti
 
 // GetTicket returns an oplog ticket for the aggregate root of "i" which can
 // be used to WriteOplogEntryWith for that aggregate root.
-func (rw *Db) GetTicket(ctx context.Context, i interface{}) (*store.Ticket, error) {
+func (rw *Db) GetTicket(ctx context.Context, i any) (*store.Ticket, error) {
 	const op = "db.GetTicket"
 	if rw.underlying == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing underlying db", errors.WithoutEvent())
@@ -194,7 +194,7 @@ func (rw *Db) GetTicket(ctx context.Context, i interface{}) (*store.Ticket, erro
 	return rw.getTicketFor(ctx, replayable.TableName())
 }
 
-func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options, items []interface{}) ([]*oplog.Message, error) {
+func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options, items []any) ([]*oplog.Message, error) {
 	const op = "db.oplogMsgsForItems"
 	if len(items) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing items", errors.WithoutEvent())
@@ -221,7 +221,7 @@ func (rw *Db) oplogMsgsForItems(ctx context.Context, opType OpType, opts Options
 // addOplogForItems will add a multi-message oplog entry with one msg for each
 // item. Items must all be of the same type.  Only CreateOp and DeleteOp are
 // currently supported operations.
-func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, items []interface{}) error {
+func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, items []any) error {
 	const op = "db.addOplogForItems"
 	oplogArgs := opts.oplogOpts
 	if ticket == nil {
@@ -271,7 +271,7 @@ func (rw *Db) addOplogForItems(ctx context.Context, opType OpType, opts Options,
 	return nil
 }
 
-func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, i interface{}) error {
+func (rw *Db) addOplog(ctx context.Context, opType OpType, opts Options, ticket *store.Ticket, i any) error {
 	const op = "db.addOplog"
 	oplogArgs := opts.oplogOpts
 	replayable, err := validateOplogArgs(ctx, i, opts)
@@ -357,7 +357,7 @@ func (rw *Db) WriteOplogEntryWith(ctx context.Context, wrapper wrapping.Wrapper,
 	return nil
 }
 
-func (rw *Db) newOplogMessage(ctx context.Context, opType OpType, i interface{}, opt ...Option) (*oplog.Message, error) {
+func (rw *Db) newOplogMessage(ctx context.Context, opType OpType, i any, opt ...Option) (*oplog.Message, error) {
 	const op = "db.newOplogMessage"
 	opts := GetOpts(opt...)
 	replayable, ok := i.(oplog.ReplayableMessage)

@@ -247,7 +247,7 @@ func TestScheduler_RegisterJob(t *testing.T) {
 
 			// Verify job has been persisted
 			var dbJob job.Job
-			err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tt.job.Name()})
+			err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tt.job.Name()})
 			require.NoError(err)
 			require.NotNil(dbJob)
 			assert.Equal(tt.job.Name(), dbJob.Name)
@@ -344,14 +344,14 @@ func TestScheduler_UpdateJobNextRunInAtLeast(t *testing.T) {
 
 		// get job from repo
 		var dbJob job.Job
-		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tj.name})
 		require.NoError(err)
 		previousNextRun := dbJob.NextScheduledRun.AsTime()
 
 		err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, time.Hour)
 		require.NoError(err)
 
-		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tj.name})
 		require.NoError(err)
 		// Verify job run time in repo is at least 1 hour before than the previous run time
 		assert.Equal(previousNextRun.Add(-1*time.Hour).Round(time.Minute), dbJob.NextScheduledRun.AsTime().Round(time.Minute))
@@ -369,14 +369,14 @@ func TestScheduler_UpdateJobNextRunInAtLeast(t *testing.T) {
 
 		// get job from repo
 		var dbJob job.Job
-		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tj.name})
 		require.NoError(err)
 		previousNextRun := dbJob.NextScheduledRun.AsTime()
 
 		err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, 4*time.Hour)
 		require.NoError(err)
 
-		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tj.name})
 		require.NoError(err)
 		// Job should not have updated next run time, since its later than the already scheduled time
 		assert.Equal(previousNextRun, dbJob.NextScheduledRun.AsTime())
@@ -384,7 +384,7 @@ func TestScheduler_UpdateJobNextRunInAtLeast(t *testing.T) {
 		err = sched.UpdateJobNextRunInAtLeast(context.Background(), tj.name, time.Hour)
 		require.NoError(err)
 
-		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []interface{}{tj.name})
+		err = rw.LookupWhere(context.Background(), &dbJob, "name = ?", []any{tj.name})
 		require.NoError(err)
 		// Verify job run time in repo is at least 1 hour before than the previous run time
 		assert.Equal(previousNextRun.Add(-1*time.Hour).Round(time.Minute), dbJob.NextScheduledRun.AsTime().Round(time.Minute))

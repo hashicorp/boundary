@@ -2,6 +2,10 @@ module "az_finder" {
   source = "./modules/az_finder"
 }
 
+module "bats_deps" {
+  source = "./modules/bats_deps"
+}
+
 module "binary_finder" {
   source = "./modules/binary_finder"
 }
@@ -23,16 +27,20 @@ module "boundary" {
   alb_listener_api_port = var.alb_listener_api_port
 }
 
-module "bats_deps" {
-  source = "./modules/bats_deps"
-}
-
 module "build_crt" {
   source = "./modules/build_crt"
 }
 
 module "build_local" {
   source = "./modules/build_local"
+}
+
+module "generate_aws_host_tag_vars" {
+  source = "./modules/generate_aws_host_tag_vars"
+}
+
+module "iam_setup" {
+  source = "./modules/iam_setup"
 }
 
 module "infra" {
@@ -77,14 +85,14 @@ module "vault" {
   ssh_aws_keypair = var.aws_ssh_keypair_name
 }
 
-module "test_smoke" {
-  source = "./modules/test_smoke"
-}
-
 module "test_cli_ui" {
   source = "./modules/test_cli_ui"
 }
 
 module "test_e2e" {
   source = "./modules/test_e2e"
+}
+
+module "test_smoke" {
+  source = "./modules/test_smoke"
 }

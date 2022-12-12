@@ -7,7 +7,7 @@ import (
 // ColumnValue defines a column and it's assigned value for a database operation
 type ColumnValue struct {
 	column string
-	value  interface{}
+	value  any
 }
 
 // column represents a table column
@@ -20,7 +20,7 @@ type column struct {
 // Expr(...) to create these values.
 type ExprValue struct {
 	sql  string
-	vars []interface{}
+	vars []any
 }
 
 // Expr creates an expression value (ExprValue) which can be used when setting
@@ -33,12 +33,12 @@ type ExprValue struct {
 // Set exp_time column to N seconds from now:
 //
 //	SetColumnValues(map[string]interface{}{"exp_time": Expr("wt_add_seconds_to_now(?)", 10)})
-func Expr(expr string, args ...interface{}) ExprValue {
+func Expr(expr string, args ...any) ExprValue {
 	return ExprValue{sql: expr, vars: args}
 }
 
 // SetColumnValues defines a map from column names to values
-func SetColumnValues(columnValues map[string]interface{}) []ColumnValue {
+func SetColumnValues(columnValues map[string]any) []ColumnValue {
 	keys := make([]string, 0, len(columnValues))
 	for key := range columnValues {
 		keys = append(keys, key)
@@ -72,14 +72,14 @@ type OnConflict struct {
 	// be any one of these:
 	//	Columns: the name of a specific column or columns
 	//  Constraint: the name of a unique constraint
-	Target interface{}
+	Target any
 
 	// Action specifies the action to take on conflict. This can be any one of
 	// these:
 	//	DoNothing: leaves the conflicting record as-is
 	//  UpdateAll: updates all the columns of the conflicting record using the resource's data
 	//  []ColumnValue: update a set of columns of the conflicting record using the set of assignments
-	Action interface{}
+	Action any
 }
 
 // Constraint defines database constraint name

@@ -63,7 +63,7 @@ func (c *Command) printListTable(items []*managedgroups.ManagedGroup) string {
 }
 
 func printItemTable(item *managedgroups.ManagedGroup, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

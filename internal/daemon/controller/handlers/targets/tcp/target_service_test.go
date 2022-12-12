@@ -2,15 +2,21 @@ package tcp_test
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"path"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
@@ -73,6 +79,8 @@ var testAuthorizedActions = []string{
 func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
+	statusGracePeriod := new(atomic.Int64)
+	statusGracePeriod.Store(int64(server.DefaultLiveness))
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, rw, rw, kms, o...)
 	}
@@ -97,7 +105,7 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	staticCredRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
-	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn)
+	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
 }
 
 func TestGet(t *testing.T) {
@@ -233,7 +241,7 @@ func TestList(t *testing.T) {
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
 	ar := iam.TestRole(t, conn, proj.GetPublicId())
-	_ = iam.TestUserRole(t, conn, ar.GetPublicId(), auth.AnonymousUserId)
+	_ = iam.TestUserRole(t, conn, ar.GetPublicId(), globals.AnonymousUserId)
 	_ = iam.TestRoleGrant(t, conn, ar.GetPublicId(), "id=*;type=target;actions=*")
 
 	otherOrg, otherProj := iam.TestScopes(t, iamRepo)
@@ -2260,6 +2268,12 @@ func TestAuthorizeSession(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
+	passwordAuthRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kms)
+	}
+	oidcAuthRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(ctx, rw, rw, kms)
+	}
 
 	plg := host.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
@@ -2290,12 +2304,23 @@ func TestAuthorizeSession(t *testing.T) {
 		return plugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 
+	loginName := "foo@bar.com"
+	accountName := "passname"
+	userName := "username"
+
 	org, proj := iam.TestScopes(t, iamRepo)
-	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
-	ctx = auth.NewVerifierContext(requests.NewRequestContext(ctx),
+	at := authtoken.TestAuthToken(t,
+		conn,
+		kms,
+		org.GetPublicId(),
+		authtoken.WithPasswordOptions(password.WithLoginName(loginName), password.WithName(accountName)),
+		authtoken.WithIamOptions(iam.WithName(userName)))
+	ctx = auth.NewVerifierContextWithAccounts(requests.NewRequestContext(ctx),
 		iamRepoFn,
 		atRepoFn,
 		serversRepoFn,
+		passwordAuthRepoFn,
+		oidcAuthRepoFn,
 		kms,
 		&authpb.RequestInfo{
 			Token:       at.GetToken(),
@@ -2327,7 +2352,7 @@ func TestAuthorizeSession(t *testing.T) {
 	plugin.TestRunSetSync(t, conn, kms, plgm)
 
 	v := vault.NewTestVaultServer(t)
-	v.MountPKI(t)
+	v.MountPKI(t, vault.WithTestMountPath("pki/"+userName))
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "pki"}))
 
 	vaultStore := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
@@ -2340,13 +2365,13 @@ func TestAuthorizeSession(t *testing.T) {
 		Attrs: &credlibpb.CredentialLibrary_VaultCredentialLibraryAttributes{
 			VaultCredentialLibraryAttributes: &credlibpb.VaultCredentialLibraryAttributes{
 				Path: &wrapperspb.StringValue{
-					Value: path.Join("pki", "issue", "boundary"),
+					Value: path.Join("pki/{{ .User.Name}}", "issue", "boundary"),
 				},
 				HttpMethod: &wrapperspb.StringValue{
 					Value: "POST",
 				},
 				HttpRequestBody: &wrapperspb.StringValue{
-					Value: `{"common_name":"boundary.com"}`,
+					Value: `{"common_name":"boundary.com", "alt_names": "{{.User.Name}},{{.Account.Name}},{{.Account.LoginName}},{{ truncateFrom .Account.LoginName "@" }}"}`,
 				},
 			},
 		},
@@ -2384,7 +2409,9 @@ func TestAuthorizeSession(t *testing.T) {
 		},
 	}
 
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn)
+	statusGracePeriod := new(atomic.Int64)
+	statusGracePeriod.Store(int64(server.DefaultLiveness))
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
 	require.NoError(t, err)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2453,7 +2480,7 @@ func TestAuthorizeSession(t *testing.T) {
 				}},
 				// TODO: validate the contents of the authorization token is what is expected
 			}
-			wantSecret := map[string]interface{}{
+			wantSecret := map[string]any{
 				"certificate":      "-----BEGIN CERTIFICATE-----\n",
 				"issuing_ca":       "-----BEGIN CERTIFICATE-----\n",
 				"private_key":      "-----BEGIN RSA PRIVATE KEY-----\n",
@@ -2474,6 +2501,16 @@ func TestAuthorizeSession(t *testing.T) {
 				require.True(t, ok)
 				assert.Truef(t, strings.HasPrefix(gotV.(string), v.(string)), "%q:%q doesn't have prefix %q", k, gotV, v)
 			}
+
+			b, _ := pem.Decode([]byte(dSec["certificate"].(string)))
+			require.NotNil(t, b)
+			cert, err := x509.ParseCertificate(b.Bytes)
+			require.NoError(t, err)
+			assert.Contains(t, cert.DNSNames, userName)
+			assert.Contains(t, cert.DNSNames, accountName)
+			assert.Contains(t, cert.DNSNames, strings.Split(loginName, "@")[0])
+			assert.Contains(t, cert.EmailAddresses, loginName)
+
 			gotCred.Secret = nil
 
 			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
@@ -2539,7 +2576,9 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn)
+	statusGracePeriod := new(atomic.Int64)
+	statusGracePeriod.Store(int64(server.DefaultLiveness))
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
 	require.NoError(t, err)
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -2780,7 +2819,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"password": "my-pass",
 						"username": "my-user",
 					}
@@ -2806,7 +2845,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"password": "my-pass",
 						"username": "my-user",
 					}
@@ -2832,7 +2871,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.UsernamePasswordType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"password": "static-password",
 						"username": "static-username",
 					}
@@ -2858,7 +2897,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"private_key": string(testdata.PEMBytes["ed25519"]),
 						"username":    "static-username",
 					}
@@ -2884,7 +2923,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"private_key": "my-pk",
 						"username":    "my-user",
 					}
@@ -2910,7 +2949,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"username":    "my-user",
 						"private_key": "my-special-pk",
 					}
@@ -2936,7 +2975,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"private_key_passphrase": testdata.PEMEncryptedKeys[0].EncryptionKey,
 						"private_key":            string(testdata.PEMEncryptedKeys[0].PEMBytes),
 						"username":               "static-username",
@@ -2963,7 +3002,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"username":               "my-user",
 						"private_key":            "my-pk",
 						"private_key_passphrase": "my-pass",
@@ -2990,7 +3029,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					CredentialType:    string(credential.SshPrivateKeyType),
 				},
 				Credential: func() *structpb.Struct {
-					data := map[string]interface{}{
+					data := map[string]any{
 						"username":               "my-user",
 						"private_key":            "my-special-pk",
 						"private_key_passphrase": "my-special-pass",
@@ -3102,7 +3141,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 	org, proj := iam.TestScopes(t, iamRepo)
 
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn)
+	statusGracePeriod := new(atomic.Int64)
+	statusGracePeriod.Store(int64(server.DefaultLiveness))
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
 	require.NoError(t, err)
 
 	// Authorized user gets full permissions
@@ -3132,7 +3173,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	// Set previous token to expired in the database and revoke in Vault to validate a
 	// credential store with an expired token is correctly returned over the API
 	num, err := rw.Exec(context.Background(), "update credential_vault_token set status = ? where store_id = ?",
-		[]interface{}{vault.ExpiredToken, expiredStore.PublicId})
+		[]any{vault.ExpiredToken, expiredStore.PublicId})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 	v.RevokeToken(t, tok1)
@@ -3319,9 +3360,9 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 }
 
-func decodeJsonSecret(t *testing.T, in string) map[string]interface{} {
+func decodeJsonSecret(t *testing.T, in string) map[string]any {
 	t.Helper()
-	ret := make(map[string]interface{})
+	ret := make(map[string]any)
 	dec := json.NewDecoder(base64.NewDecoder(base64.StdEncoding, strings.NewReader(in)))
 	require.NoError(t, dec.Decode(&ret))
 	return ret

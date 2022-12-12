@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/globals"
-	metric "github.com/hashicorp/boundary/internal/daemon/internal/metric"
+	"github.com/hashicorp/boundary/internal/daemon/metric"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

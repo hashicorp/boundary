@@ -125,7 +125,7 @@ func TestState_Delete(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			var initialState State
-			err := rw.LookupWhere(context.Background(), &initialState, "session_id = ? and state = ?", []interface{}{tt.state.SessionId, tt.state.Status})
+			err := rw.LookupWhere(context.Background(), &initialState, "session_id = ? and state = ?", []any{tt.state.SessionId, tt.state.Status})
 			require.NoError(err)
 
 			deleteState := allocState()
@@ -147,7 +147,7 @@ func TestState_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundState := allocState()
-			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and start_time = ?", []interface{}{tt.state.SessionId, initialState.StartTime})
+			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and start_time = ?", []any{tt.state.SessionId, initialState.StartTime})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})

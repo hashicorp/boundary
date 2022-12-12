@@ -36,7 +36,7 @@ func (c *PluginCommand) extraPluginHelpFunc(helpMap map[string]func() string) st
 			"",
 			"  Create a host set of a type provided by a plugin. Example:",
 			"",
-			`    $ boundary host-sets create plugin -plugin-id plg_1234567890 -name prodops -description "Plugin host-set for ProdOps"`,
+			`    $ boundary host-sets create plugin -host-catalog-id hcst_1234567890 -name prodops -description "Plugin host-set for ProdOps"`,
 			"",
 			"",
 		})

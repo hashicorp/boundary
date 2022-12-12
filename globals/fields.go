@@ -86,4 +86,9 @@ const (
 	ActiveConnectionCountField                  = "active_connection_count"
 	ControllerGeneratedActivationToken          = "controller_generated_activation_token"
 	ReleaseVersionField                         = "release_version"
+	KeyPurposeField                             = "purpose"
+	KeyVersionsField                            = "key_versions"
+	KeyVersionIdField                           = "key_version_id"
+	CompletedCountField                         = "completed_count"
+	TotalCountField                             = "total_count"
 )

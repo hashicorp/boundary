@@ -11,6 +11,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_catalogs"
@@ -469,7 +470,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostCatalogs() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Test with anon user
-			got, gErr = s.ListHostCatalogs(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId("u_anon")), tc.req)
+			got, gErr = s.ListHostCatalogs(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
@@ -1390,7 +1391,7 @@ func TestUpdate_Plugin(t *testing.T) {
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 
 	freshCatalog := func(t *testing.T) *pb.HostCatalog {
-		attr, err := structpb.NewStruct(map[string]interface{}{
+		attr, err := structpb.NewStruct(map[string]any{
 			"foo": "bar",
 		})
 		require.NoError(t, err)
@@ -1474,7 +1475,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			changes: []updateFn{
 				clearReadOnlyFields(),
 				updateAttrs(func() *structpb.Struct {
-					attr, err := structpb.NewStruct(map[string]interface{}{
+					attr, err := structpb.NewStruct(map[string]any{
 						"newkey": "newvalue",
 						"foo":    nil,
 					})
@@ -1483,7 +1484,7 @@ func TestUpdate_Plugin(t *testing.T) {
 				}()),
 			},
 			check: func(t *testing.T, in *pb.HostCatalog) {
-				assert.Equal(t, map[string]interface{}{"newkey": "newvalue"}, in.GetAttributes().AsMap())
+				assert.Equal(t, map[string]any{"newkey": "newvalue"}, in.GetAttributes().AsMap())
 			},
 		},
 		{
@@ -1506,7 +1507,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			changes: []updateFn{
 				clearReadOnlyFields(),
 				updateSecrets(func() *structpb.Struct {
-					attr, err := structpb.NewStruct(map[string]interface{}{
+					attr, err := structpb.NewStruct(map[string]any{
 						"key1": "val1",
 					})
 					require.NoError(t, err)

@@ -48,7 +48,7 @@ func Test_ManagedGroupTable(t *testing.T) {
 			require := require.New(t)
 
 			_, err := rw.Exec(context.Background(), "insert into auth_managed_group values (@public_id, @auth_method_id)",
-				[]interface{}{
+				[]any{
 					sql.Named("public_id", tt.publicId),
 					sql.Named("auth_method_id", tt.authMethodId),
 				})
@@ -82,7 +82,7 @@ func Test_ManagedGroupTable(t *testing.T) {
 		t.Run("update: "+tt.testName, func(t *testing.T) {
 			assert := assert.New(t)
 			_, err := rw.Exec(context.Background(), fmt.Sprintf("update auth_managed_group set %s = @value where public_id = @public_id", tt.column),
-				[]interface{}{
+				[]any{
 					sql.Named("value", tt.value),
 					sql.Named("public_id", tt.publicId),
 				})
@@ -160,7 +160,7 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 			t.Run("insert: "+tt.testName, func(t *testing.T) {
 				require := require.New(t)
 				_, err := rw.Exec(ctx, "insert into auth_oidc_managed_group (public_id, auth_method_id, name, filter) values (@public_id, @auth_method_id, @name, @filter)",
-					[]interface{}{
+					[]any{
 						sql.Named("public_id", tt.publicId),
 						sql.Named("auth_method_id", tt.authMethodId),
 						sql.Named("name", tt.name),
@@ -187,7 +187,7 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 		updateTests := []struct {
 			testName string
 			column   string
-			value    interface{}
+			value    any
 			wantErr  bool
 		}{
 			{
@@ -219,7 +219,7 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 			t.Run("update: "+tt.testName, func(t *testing.T) {
 				require := require.New(t)
 				_, err = rw.Exec(ctx, fmt.Sprintf("update auth_oidc_managed_group set %s = @value where public_id = @public_id", tt.column),
-					[]interface{}{
+					[]any{
 						sql.Named("value", tt.value), sql.Named("public_id", managedGroupId),
 					})
 				require.True(tt.wantErr == (err != nil))
@@ -247,7 +247,7 @@ func Test_OidcManagedGroupTable(t *testing.T) {
 	assert.Equal(t, defaultOidcAuthMethodId, auth_method_id)
 
 	// Delete the value from the subtype table
-	affected, err := rw.Exec(ctx, "delete from auth_oidc_managed_group where public_id = @public_id", []interface{}{sql.Named("public_id", managedGroupId)})
+	affected, err := rw.Exec(ctx, "delete from auth_oidc_managed_group where public_id = @public_id", []any{sql.Named("public_id", managedGroupId)})
 	require.EqualValues(t, 1, affected)
 
 	// It should no longer be in the base table
@@ -271,7 +271,7 @@ func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
 
 	// Insert valid data in auth_oidc_managed_group to use for the following tests
 	_, err := rw.Exec(ctx, "insert into auth_oidc_managed_group (public_id, auth_method_id, name, filter) values (@public_id, @auth_method_id, @name, @filter)",
-		[]interface{}{
+		[]any{
 			sql.Named("public_id", managedGroupId),
 			sql.Named("auth_method_id", defaultOidcAuthMethodId),
 			sql.Named("name", name),
@@ -324,7 +324,7 @@ func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
 			t.Run("insert: "+tt.testName, func(t *testing.T) {
 				assert := assert.New(t)
 				_, err = rw.Exec(ctx, "insert into auth_oidc_managed_group_member_account (managed_group_id, member_id) values (@group_id, @member_id)",
-					[]interface{}{
+					[]any{
 						sql.Named("group_id", tt.managedGroupId),
 						sql.Named("member_id", tt.memberId),
 					})
@@ -347,7 +347,7 @@ func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
 		updateTests := []struct {
 			testName string
 			column   string
-			value    interface{}
+			value    any
 			wantErr  bool
 		}{
 			{
@@ -373,7 +373,7 @@ func Test_AuthManagedOidcGroupMemberAccountTable(t *testing.T) {
 			t.Run("update: "+tt.testName, func(t *testing.T) {
 				assert := assert.New(t)
 				_, err = rw.Exec(ctx, fmt.Sprintf("update auth_managed_group_member_account set %s = ? where managed_group_id = @group_id and member_id = @member_id", tt.column),
-					[]interface{}{
+					[]any{
 						sql.Named("group_id", managedGroupId),
 						sql.Named("member_id", accountId),
 					})

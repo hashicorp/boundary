@@ -75,7 +75,7 @@ func TestManager_RequestCloseConnections(t *testing.T) {
 	manager, err := NewManager(mockSessionClient)
 	require.NoError(t, err)
 	assert.False(t, manager.RequestCloseConnections(ctx, nil))
-	assert.False(t, manager.RequestCloseConnections(ctx, map[string]string{}))
+	assert.False(t, manager.RequestCloseConnections(ctx, map[string]*ConnectionCloseData{}))
 
 	mockSessionClient.LookupSessionFn = func(_ context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 		return &pbs.LookupSessionResponse{
@@ -98,7 +98,7 @@ func TestManager_RequestCloseConnections(t *testing.T) {
 	mockSessionClient.CloseConnectionFn = func(context.Context, *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {
 		return nil, errors.New("error")
 	}
-	assert.False(t, manager.RequestCloseConnections(ctx, map[string]string{"connection id": session1.GetId()}))
+	assert.False(t, manager.RequestCloseConnections(ctx, map[string]*ConnectionCloseData{"connection id": {SessionId: session1.GetId()}}))
 	mockSessionClient.CloseConnectionFn = func(_ context.Context, req *pbs.CloseConnectionRequest) (*pbs.CloseConnectionResponse, error) {
 		var data []*pbs.CloseConnectionResponseData
 		for _, r := range req.GetCloseRequestData() {
@@ -110,8 +110,8 @@ func TestManager_RequestCloseConnections(t *testing.T) {
 		return &pbs.CloseConnectionResponse{CloseResponseData: data}, nil
 	}
 	// There is no connection information yet for this connection.
-	assert.False(t, manager.RequestCloseConnections(ctx, map[string]string{
-		"random_connection_id": session1.GetId(),
+	assert.False(t, manager.RequestCloseConnections(ctx, map[string]*ConnectionCloseData{
+		"random_connection_id": {SessionId: session1.GetId()},
 	}))
 
 	// Load the connection info into the local storage
@@ -126,17 +126,17 @@ func TestManager_RequestCloseConnections(t *testing.T) {
 	c1, _, err := session1.RequestAuthorizeConnection(ctx, "worker id", cancelFn)
 	require.NoError(t, err)
 
-	assert.True(t, manager.RequestCloseConnections(ctx, map[string]string{
-		c1.Id: session1.GetId(),
+	assert.True(t, manager.RequestCloseConnections(ctx, map[string]*ConnectionCloseData{
+		c1.Id: {SessionId: session1.GetId()},
 	}))
 
 	c2, _, err := session2.RequestAuthorizeConnection(ctx, "worker id", cancelFn)
 	require.NoError(t, err)
 	c3, _, err := session3.RequestAuthorizeConnection(ctx, "worker id", cancelFn)
 	require.NoError(t, err)
-	assert.True(t, manager.RequestCloseConnections(ctx, map[string]string{
-		c2.Id: session2.GetId(),
-		c3.Id: session3.GetId(),
+	assert.True(t, manager.RequestCloseConnections(ctx, map[string]*ConnectionCloseData{
+		c2.Id: {SessionId: session2.GetId()},
+		c3.Id: {SessionId: session3.GetId()},
 	}))
 }
 

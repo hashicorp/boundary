@@ -31,11 +31,11 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	pl, err := net.Listen("tcp", "localhost:0")
 	require.NoError(err)
 	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config:                    conf,
-		InitialResourcesSuffix:    "1234567890",
-		Logger:                    logger.Named("c1"),
-		PublicClusterAddr:         pl.Addr().String(),
-		StatusGracePeriodDuration: helper.DefaultGracePeriod,
+		Config:                          conf,
+		InitialResourcesSuffix:          "1234567890",
+		Logger:                          logger.Named("c1"),
+		PublicClusterAddr:               pl.Addr().String(),
+		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 	})
 	defer c1.Shutdown()
 
@@ -53,10 +53,10 @@ func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	require.NotEmpty(t, proxy.ListenerAddr())
 
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		WorkerAuthKms:             c1.Config().WorkerAuthKms,
-		InitialUpstreams:          []string{proxy.ListenerAddr()},
-		Logger:                    logger.Named("w1"),
-		StatusGracePeriodDuration: helper.DefaultGracePeriod,
+		WorkerAuthKms:                       c1.Config().WorkerAuthKms,
+		InitialUpstreams:                    []string{proxy.ListenerAddr()},
+		Logger:                              logger.Named("w1"),
+		SuccessfulStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 	})
 	defer w1.Shutdown()
 

@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/util/template"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	vault "github.com/hashicorp/vault/api"
@@ -25,7 +26,7 @@ type baseCred struct {
 	*Credential
 
 	lib        *issueCredentialLibrary
-	secretData map[string]interface{}
+	secretData map[string]any
 }
 
 func (bc *baseCred) Secret() credential.SecretData { return bc.secretData }
@@ -283,13 +284,20 @@ func (pl *issueCredentialLibrary) client(ctx context.Context) (vaultClient, erro
 type dynamicCred interface {
 	credential.Dynamic
 	getExpiration() time.Duration
-	insertQuery() (query string, queryValues []interface{})
-	updateSessionQuery(purpose credential.Purpose) (query string, queryValues []interface{})
+	insertQuery() (query string, queryValues []any)
+	updateSessionQuery(purpose credential.Purpose) (query string, queryValues []any)
 }
 
 // retrieveCredential retrieves a dynamic credential from Vault for the
 // given sessionId.
-func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, sessionId string) (dynamicCred, error) {
+//
+// Supported options: credential.WithTemplateData
+func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, sessionId string, opt ...credential.Option) (dynamicCred, error) {
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
 	// Get the credential ID early. No need to get a secret from Vault
 	// if there is no way to save it in the database.
 	credId, err := newCredentialId()
@@ -303,19 +311,47 @@ func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op err
 	}
 
 	var secret *vault.Secret
+	var reqErr error
+
+	// Template the path
+	path := pl.VaultPath
+	if path != "" {
+		parsedTmpl, err := template.New(ctx, path)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		path, err = parsedTmpl.Generate(ctx, opts.WithTemplateData)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	// Template the body
+	body := string(pl.HttpRequestBody)
+	if body != "" {
+		parsedTmpl, err := template.New(ctx, body)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		body, err = parsedTmpl.Generate(ctx, opts.WithTemplateData)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
 	switch Method(pl.HttpMethod) {
 	case MethodGet:
-		secret, err = client.get(ctx, pl.VaultPath)
+		secret, reqErr = client.get(ctx, path)
 	case MethodPost:
-		secret, err = client.post(ctx, pl.VaultPath, pl.HttpRequestBody)
+		secret, reqErr = client.post(ctx, path, []byte(body))
 	default:
 		return nil, errors.New(ctx, errors.Internal, op, fmt.Sprintf("unknown http method: library: %s", pl.PublicId))
 	}
 
-	if err != nil {
+	if reqErr != nil {
 		// TODO(mgaffney) 05/2021: detect if the error is because of an
 		// expired or invalid token
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, reqErr, op)
 	}
 	if secret == nil {
 		return nil, errors.E(ctx, errors.WithCode(errors.VaultEmptySecret), errors.WithOp(op))
@@ -359,7 +395,7 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 
 	query := fmt.Sprintf(selectLibrariesQuery, inClause)
 
-	var params []interface{}
+	var params []any
 	for idx, v := range libIds {
 		params = append(params, sql.Named(fmt.Sprintf("%d", idx+1), v))
 	}

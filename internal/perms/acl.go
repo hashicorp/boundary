@@ -3,12 +3,11 @@ package perms
 import (
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 )
-
-const AnonymousUserId = "u_anon"
 
 // ACL provides an entry point into the permissions engine for determining if an
 // action is allowed on a resource based on a principal's (user or group) grants.
@@ -138,7 +137,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 		// general-purpose cases below (3 and 4). See notes there about ID being
 		// present or not.
 		case !opts.withSkipAnonymousUserRestrictions &&
-			(userId == AnonymousUserId || userId == ""):
+			(userId == globals.AnonymousUserId || userId == ""):
 			switch {
 			// Allow discovery of scopes, so that auth methods within can be
 			// discovered
@@ -234,7 +233,11 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 // or for action.All in order for a Permission to be created for the scope.
 // The set of "id actions" is resource dependant, but will generally include all
 // actions that can be taken on an individual resource.
-func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, requestedType resource.Type, idActions action.ActionSet) []Permission {
+func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
+	requestedType resource.Type,
+	idActions action.ActionSet,
+	userId string,
+) []Permission {
 	perms := make([]Permission, 0, len(requestedScopes))
 	for scopeId := range requestedScopes {
 		p := Permission{
@@ -242,6 +245,12 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo, reque
 			Resource: requestedType,
 			Action:   action.List,
 			OnlySelf: true, // default to only self to be restrictive
+		}
+		if userId == globals.RecoveryUserId {
+			p.All = true
+			p.OnlySelf = false
+			perms = append(perms, p)
+			continue
 		}
 
 		// Get grants for a specific scope id from the source of truth.

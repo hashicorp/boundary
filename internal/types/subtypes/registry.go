@@ -25,7 +25,7 @@ func (t Subtype) String() string {
 // prefixes and allows for translating prefixes back to registered subtypes.
 type Registry struct {
 	subtypesPrefixes map[string]Subtype
-	knownSubtypes    map[Subtype]interface{}
+	knownSubtypes    map[Subtype]any
 
 	sync.RWMutex
 }
@@ -34,7 +34,7 @@ type Registry struct {
 func NewRegistry() *Registry {
 	return &Registry{
 		subtypesPrefixes: make(map[string]Subtype),
-		knownSubtypes:    make(map[Subtype]interface{}),
+		knownSubtypes:    make(map[Subtype]any),
 	}
 }
 

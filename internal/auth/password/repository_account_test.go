@@ -251,7 +251,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
-			opts := getOpts(tt.opts...)
+			opts := GetOpts(tt.opts...)
 			if opts.withPassword {
 				authAcct, err := repo.Authenticate(context.Background(), org.GetPublicId(), tt.in.AuthMethodId, tt.in.LoginName, opts.password)
 				require.NoError(err)

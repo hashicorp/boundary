@@ -253,7 +253,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 			assert.NoError(err)
 
 			found := allocGroupMember()
-			err = w.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []interface{}{gm.GroupId, gm.MemberId})
+			err = w.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []any{gm.GroupId, gm.MemberId})
 			require.NoError(err)
 			assert.Empty(cmp.Diff(gm, &found, protocmp.Transform()))
 		})
@@ -331,7 +331,7 @@ func Test_GroupMemberDelete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			found := allocGroupMember()
-			err = rw.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []interface{}{tt.gm.GetGroupId(), tt.gm.GetMemberId()})
+			err = rw.LookupWhere(context.Background(), &found, "group_id = ? and member_id = ?", []any{tt.gm.GetGroupId(), tt.gm.GetMemberId()})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})

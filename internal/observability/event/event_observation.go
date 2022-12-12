@@ -12,13 +12,13 @@ import (
 const observationVersion = "v0.1"
 
 type observation struct {
-	Version     string                 `json:"version"`
-	Op          Op                     `json:"op,omitempty"`
-	RequestInfo *RequestInfo           `json:"request_info,omitempty"`
-	ID          string                 `json:"-"`
-	Flush       bool                   `json:"-"`
-	Header      map[string]interface{} `json:"header,omitempty"`
-	Detail      map[string]interface{} `json:"detail,omitempty"`
+	Version     string         `json:"version"`
+	Op          Op             `json:"op,omitempty"`
+	RequestInfo *RequestInfo   `json:"request_info,omitempty"`
+	ID          string         `json:"-"`
+	Flush       bool           `json:"-"`
+	Header      map[string]any `json:"header,omitempty"`
+	Detail      map[string]any `json:"detail,omitempty"`
 }
 
 func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
@@ -72,13 +72,13 @@ func (i *observation) validate() error {
 // Flushed/Processed from a collection of gated observation events.  The payload
 // returned is  not a Gateable payload intentionally.  Note: the receiver is
 // always nil when this function is called.
-func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType, interface{}, error) {
+func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType, any, error) {
 	const op = "event.(observation).ComposedFrom"
 	if len(events) == 0 {
 		return "", nil, fmt.Errorf("%s: missing events: %w", op, eventlogger.ErrInvalidParameter)
 	}
 
-	payload := map[string]interface{}{}
+	payload := map[string]any{}
 	for i, v := range events {
 		g, ok := v.Payload.(*observation)
 		if !ok {

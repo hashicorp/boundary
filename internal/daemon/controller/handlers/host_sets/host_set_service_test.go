@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_sets"
@@ -343,7 +344,7 @@ func TestList_Static(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Test with anon user
-			got, gErr = s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
@@ -456,7 +457,7 @@ func TestList_Plugin(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListHostSets(%q) got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Test with anon user
-			got, gErr = s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListHostSets(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {
@@ -842,7 +843,7 @@ func TestCreate_Plugin(t *testing.T) {
 	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
-	attrs := map[string]interface{}{
+	attrs := map[string]any{
 		"int":         1,
 		"zero int":    0,
 		"string":      "foo",
@@ -851,7 +852,7 @@ func TestCreate_Plugin(t *testing.T) {
 		"zero bytes":  nil,
 		"bool":        true,
 		"zero bool":   false,
-		"nested": map[string]interface{}{
+		"nested": map[string]any{
 			"int":         1,
 			"zero int":    0,
 			"string":      "foo",
@@ -866,7 +867,7 @@ func TestCreate_Plugin(t *testing.T) {
 	require.NoError(t, err)
 	// The result should clear out all keys with nil values...
 	delete(attrs, "zero bytes")
-	delete(attrs["nested"].(map[string]interface{}), "zero bytes")
+	delete(attrs["nested"].(map[string]any), "zero bytes")
 	testOutputAttrs, err := structpb.NewStruct(attrs)
 	require.NoError(t, err)
 
@@ -1491,7 +1492,7 @@ func TestUpdate_Plugin(t *testing.T) {
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 
 	freshSet := func(t *testing.T) *pb.HostSet {
-		attr, err := structpb.NewStruct(map[string]interface{}{
+		attr, err := structpb.NewStruct(map[string]any{
 			"foo": "bar",
 		})
 		require.NoError(t, err)
@@ -1578,7 +1579,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			changes: []updateFn{
 				clearReadOnlyFields(),
 				updateAttrs(func() *structpb.Struct {
-					attr, err := structpb.NewStruct(map[string]interface{}{
+					attr, err := structpb.NewStruct(map[string]any{
 						"newkey": "newvalue",
 						"foo":    nil,
 					})
@@ -1587,7 +1588,7 @@ func TestUpdate_Plugin(t *testing.T) {
 				}()),
 			},
 			check: func(t *testing.T, in *pb.HostSet) {
-				assert.Equal(t, map[string]interface{}{"newkey": "newvalue"}, in.GetAttributes().AsMap())
+				assert.Equal(t, map[string]any{"newkey": "newvalue"}, in.GetAttributes().AsMap())
 			},
 		},
 		{

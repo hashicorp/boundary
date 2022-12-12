@@ -55,7 +55,7 @@ func allocRole() Role {
 }
 
 // Clone creates a clone of the Role.
-func (r *Role) Clone() interface{} {
+func (r *Role) Clone() any {
 	cp := proto.Clone(r.Role)
 	return &Role{
 		Role: cp.(*store.Role),

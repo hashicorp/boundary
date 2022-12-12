@@ -22,7 +22,7 @@ create table auth_oidc_scope (
   primary key(oidc_method_id, scope)
 );
 comment on table auth_oidc_scope is
-'auth_oidc_scope entries are the optional scopes for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any scopes, they will be added to provider requests along with the openid default.';
+  'auth_oidc_scope entries are the optional scopes for a specific oidc auth method.  There can be 0 or more for each parent oidc auth method.  If an auth method has any scopes, they will be added to provider requests along with the openid default.';
 
 create trigger default_create_time_column before insert on auth_oidc_scope
   for each row execute procedure default_create_time();
@@ -76,6 +76,6 @@ from
   left outer join auth_oidc_scope         cs    on am.public_id = cs.oidc_method_id
 group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
 comment on view oidc_auth_method_with_value_obj is
-'oidc auth method with its associated value objects (algs, auds, certs, scopes) as columns with | delimited values';
+  'oidc auth method with its associated value objects (algs, auds, certs, scopes) as columns with | delimited values';
 
 commit;

@@ -58,7 +58,7 @@ func allocRoleGrant() RoleGrant {
 }
 
 // Clone creates a clone of the RoleGrant
-func (g *RoleGrant) Clone() interface{} {
+func (g *RoleGrant) Clone() any {
 	cp := proto.Clone(g.RoleGrant)
 	return &RoleGrant{
 		RoleGrant: cp.(*store.RoleGrant),

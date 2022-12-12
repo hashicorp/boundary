@@ -48,7 +48,7 @@ func NewGroup(scopeId string, opt ...Option) (*Group, error) {
 }
 
 // Clone creates a clone of the Group.
-func (g *Group) Clone() interface{} {
+func (g *Group) Clone() any {
 	cp := proto.Clone(g.Group)
 	return &Group{
 		Group: cp.(*store.Group),

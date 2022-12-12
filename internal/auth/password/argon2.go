@@ -108,9 +108,9 @@ func (c *Argon2Configuration) oplog(op oplog.OpType) oplog.Metadata {
 	return metadata
 }
 
-func (c *Argon2Configuration) whereDup() (string, []interface{}) {
+func (c *Argon2Configuration) whereDup() (string, []any) {
 	var where []string
-	var args []interface{}
+	var args []any
 
 	where, args = append(where, "password_method_id = ?"), append(args, c.PasswordMethodId)
 	where, args = append(where, "iterations = ?"), append(args, c.Iterations)

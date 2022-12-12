@@ -56,7 +56,7 @@ func testVaultToken(t *testing.T,
 	require.NoError(inToken.encrypt(context.Background(), databaseWrapper))
 
 	query := insertTokenQuery
-	queryValues := []interface{}{
+	queryValues := []any{
 		sql.Named("1", inToken.TokenHmac),
 		sql.Named("2", inToken.CtToken),
 		sql.Named("3", inToken.StoreId),
@@ -81,7 +81,7 @@ func testVaultToken(t *testing.T,
 	require.NoError(err)
 
 	outToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &outToken, "token_hmac = ?", []interface{}{inToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &outToken, "token_hmac = ?", []any{inToken.TokenHmac}))
 	require.NoError(outToken.decrypt(context.Background(), databaseWrapper))
 
 	return outToken
@@ -117,7 +117,7 @@ func testVaultCred(t *testing.T,
 	require.NoError(err)
 
 	query := insertCredentialWithExpirationQuery
-	queryValues := []interface{}{
+	queryValues := []any{
 		sql.Named("public_id", id),
 		sql.Named("library_id", cl.GetPublicId()),
 		sql.Named("session_id", sess.GetPublicId()),
@@ -144,7 +144,7 @@ func testVaultCred(t *testing.T,
 	assert.NoError(err)
 
 	outCred := allocCredential()
-	require.NoError(rw.LookupWhere(context.Background(), &outCred, "public_id = ?", []interface{}{id}))
+	require.NoError(rw.LookupWhere(context.Background(), &outCred, "public_id = ?", []any{id}))
 
 	return secret, outCred
 }
@@ -300,7 +300,7 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 			}
 
 			// inserting new tokens moves the current token to a maintaining state, move it back to current and set expiration time
-			numRows, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []interface{}{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
+			numRows, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []any{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
 			require.NoError(err)
 			assert.Equal(1, numRows)
 
@@ -357,12 +357,12 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	expiredToken := testVaultToken(t, conn, wrapper, v, cs, ExpiredToken, time.Minute)
 
 	// inserting new tokens moves the current token to a maintaining state, move it back to current and set expiration time
-	count, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []interface{}{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
+	count, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []any{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	currentToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &currentToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &currentToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), cs.ProjectId, kms.KeyPurposeDatabase)
 	require.NoError(err)
 	require.NoError(currentToken.decrypt(context.Background(), databaseWrapper))
@@ -412,18 +412,18 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 
 	// Verify current and maintaining tokens were renewed in repo
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{currentToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{currentToken.TokenHmac}))
 	assert.True(currentToken.GetExpirationTime().AsTime().Before(repoToken.GetExpirationTime().AsTime()))
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{maintainToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{maintainToken.TokenHmac}))
 	assert.True(maintainToken.GetExpirationTime().AsTime().Before(repoToken.GetExpirationTime().AsTime()))
 
 	// Verify revoked and expired tokens were not renewed in the repo
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{revokedToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{revokedToken.TokenHmac}))
 	assert.Equal(revokedToken.GetExpirationTime().AsTime(), repoToken.GetExpirationTime().AsTime())
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{expiredToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{expiredToken.TokenHmac}))
 	assert.Equal(expiredToken.GetExpirationTime().AsTime(), repoToken.GetExpirationTime().AsTime())
 }
 
@@ -467,7 +467,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 
 	// Verify token was expired in repo
 	token := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &token, "store_id = ?", []interface{}{cs.GetPublicId()}))
+	require.NoError(rw.LookupWhere(context.Background(), &token, "store_id = ?", []any{cs.GetPublicId()}))
 	assert.Equal(string(ExpiredToken), token.Status)
 
 	// Updating the credential store with a token that will expire before the job scheduler can run should return an error
@@ -601,7 +601,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 				}
 
 				// inserting new tokens moves the current token to a maintaining state, move it back to current and set expiration time
-				count, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []interface{}{CurrentToken, tt.currentTokenExp.Seconds(), cs.outputToken.TokenHmac})
+				count, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []any{CurrentToken, tt.currentTokenExp.Seconds(), cs.outputToken.TokenHmac})
 				require.NoError(err)
 				assert.Equal(1, count)
 			}
@@ -772,7 +772,7 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 			}
 
 			// inserting new tokens moves the current token to a maintaining state, move it back to current and set expiration time
-			numRows, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []interface{}{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
+			numRows, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []any{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
 			require.NoError(err)
 			assert.Equal(1, numRows)
 
@@ -834,7 +834,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	revokeToken := testVaultToken(t, conn, wrapper, v, cs, RevokeToken, 5*time.Minute)
 
 	// inserting new tokens moves the current token to a maintaining state, move it back to current and set expiration time
-	count, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []interface{}{CurrentToken, (5 * time.Minute).Seconds(), cs.outputToken.TokenHmac})
+	count, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []any{CurrentToken, (5 * time.Minute).Seconds(), cs.outputToken.TokenHmac})
 	require.NoError(err)
 	assert.Equal(1, count)
 
@@ -882,7 +882,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Verify noCredsToken was set to revoked in repo
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{noCredsToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{noCredsToken.TokenHmac}))
 	assert.Equal(string(RevokedToken), repoToken.Status)
 
 	// Verify revokeToken was revoked in vault
@@ -890,7 +890,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Verify revokeToken was set to revoked in repo
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{revokeToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{revokeToken.TokenHmac}))
 	assert.Equal(string(RevokedToken), repoToken.Status)
 
 	// Verify revokeCred attached to revokeToken were marked as revoked
@@ -919,7 +919,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Verify credsToken was set to revoked in repo
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{credsToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{credsToken.TokenHmac}))
 	assert.Equal(string(RevokedToken), repoToken.Status)
 
 	err = r.Run(context.Background())
@@ -1177,7 +1177,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	})
 
 	csToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &csToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &csToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
 	credRenewal, err := newCredentialRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
@@ -1287,7 +1287,7 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	})
 
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
 	credRenewal, err := newCredentialRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
@@ -1608,7 +1608,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 	})
 
 	repoToken := allocToken()
-	require.NoError(t, rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
+	require.NoError(t, rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
 	count := 10
 	tests := []struct {
@@ -1722,7 +1722,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	})
 
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
 	r, err := newCredentialRevocationJob(rw, rw, kmsCache)
 	require.NoError(err)
@@ -1816,7 +1816,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	})
 
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
 	r, err := newCredentialRevocationJob(rw, rw, kmsCache)
 	require.NoError(err)
@@ -1991,11 +1991,11 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 
 	// Get token hmac for verifications below
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []interface{}{cs1.PublicId}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []any{cs1.PublicId}))
 	cs1TokenHmac := repoToken.TokenHmac
 
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []interface{}{cs2.PublicId}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []any{cs2.PublicId}))
 	cs2TokenHmac := repoToken.TokenHmac
 
 	// create second token on cs2
@@ -2029,11 +2029,11 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 
 	// Verify tokens have been set to revoke
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []interface{}{cs1.PublicId}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []any{cs1.PublicId}))
 	assert.Equal(string(RevokeToken), repoToken.Status)
 
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []interface{}{cs2.PublicId}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []any{cs2.PublicId}))
 	assert.Equal(string(RevokeToken), repoToken.Status)
 
 	// Both soft deleted credential stores should not be cleaned up yet
@@ -2042,7 +2042,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	assert.Equal(0, r.numStores)
 
 	// Update cs1 token to be marked as revoked
-	count, err = rw.Exec(context.Background(), updateTokenStatusQuery, []interface{}{RevokedToken, cs1TokenHmac})
+	count, err = rw.Exec(context.Background(), updateTokenStatusQuery, []any{RevokedToken, cs1TokenHmac})
 	require.NoError(err)
 	assert.Equal(1, count)
 
@@ -2058,7 +2058,7 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	require.Error(err)
 	assert.True(errors.IsNotFoundError(err))
 	repoToken = allocToken()
-	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs1TokenHmac})
+	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs1TokenHmac})
 	require.Error(err)
 	assert.True(errors.IsNotFoundError(err))
 
@@ -2066,11 +2066,11 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	_, err = repo.LookupCredentialStore(context.Background(), cs2.PublicId)
 	require.NoError(err)
 	repoToken = allocToken()
-	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs2TokenHmac})
+	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs2TokenHmac})
 	require.NoError(err)
 
 	// Update cs2 token expiration time
-	count, err = rw.Exec(context.Background(), "update credential_vault_token set expiration_time = now() where token_hmac = ?;", []interface{}{cs2TokenHmac})
+	count, err = rw.Exec(context.Background(), "update credential_vault_token set expiration_time = now() where token_hmac = ?;", []any{cs2TokenHmac})
 	require.NoError(err)
 	assert.Equal(1, count)
 
@@ -2083,11 +2083,11 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	_, err = repo.LookupCredentialStore(context.Background(), cs2.PublicId)
 	require.NoError(err)
 	repoToken = allocToken()
-	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs2TokenHmac})
+	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs2TokenHmac})
 	require.NoError(err)
 
 	// set secondToken with an expired status
-	count, err = rw.Exec(context.Background(), updateTokenStatusQuery, []interface{}{ExpiredToken, secondToken.TokenHmac})
+	count, err = rw.Exec(context.Background(), updateTokenStatusQuery, []any{ExpiredToken, secondToken.TokenHmac})
 	require.NoError(err)
 	assert.Equal(1, count)
 
@@ -2103,10 +2103,10 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	require.Error(err)
 	assert.True(errors.IsNotFoundError(err))
 	repoToken = allocToken()
-	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs2TokenHmac})
+	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs2TokenHmac})
 	require.Error(err)
 	assert.True(errors.IsNotFoundError(err))
-	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{secondToken.TokenHmac})
+	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{secondToken.TokenHmac})
 	require.Error(err)
 	assert.True(errors.IsNotFoundError(err))
 }
@@ -2217,7 +2217,7 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	})
 
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []interface{}{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
 	r, err := newCredentialCleanupJob(rw)
 	require.NoError(err)

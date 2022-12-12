@@ -67,15 +67,15 @@ func TestCrud(t *testing.T) {
 	checkAuthMethod("create", pw.Item, "bar", 1)
 
 	got := tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
-	reqItem := tests_api.GetEventDetails(t, got, "request")["item"].(map[string]interface{})
+	reqItem := tests_api.GetEventDetails(t, got, "request")["item"].(map[string]any)
 	tests_api.AssertRedactedValues(t, reqItem)
 	tests_api.AssertRedactedValues(t, reqItem["Attrs"])
-	tests_api.AssertRedactedValues(t, reqItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
+	tests_api.AssertRedactedValues(t, reqItem["Attrs"].(map[string]any)["PasswordAuthMethodAttributes"])
 
-	respItem := tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
+	respItem := tests_api.GetEventDetails(t, got, "response")["item"].(map[string]any)
 	tests_api.AssertRedactedValues(t, respItem)
 	tests_api.AssertRedactedValues(t, respItem["Attrs"])
-	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]any)["PasswordAuthMethodAttributes"])
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
 	pw, err = amClient.Read(tc.Context(), pw.Item.Id)
@@ -85,10 +85,10 @@ func TestCrud(t *testing.T) {
 	got = tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 	tests_api.AssertRedactedValues(t, tests_api.GetEventDetails(t, got, "request"))
 
-	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
+	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]any)
 	tests_api.AssertRedactedValues(t, respItem)
 	tests_api.AssertRedactedValues(t, respItem["Attrs"])
-	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]any)["PasswordAuthMethodAttributes"])
 
 	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
 	pw, err = amClient.Update(tc.Context(), pw.Item.Id, pw.Item.Version, authmethods.WithName("buz"))
@@ -96,12 +96,12 @@ func TestCrud(t *testing.T) {
 	checkAuthMethod("update", pw.Item, "buz", 2)
 	got = tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
-	tests_api.AssertRedactedValues(t, tests_api.GetEventDetails(t, got, "request")["item"].(map[string]interface{}))
+	tests_api.AssertRedactedValues(t, tests_api.GetEventDetails(t, got, "request")["item"].(map[string]any))
 
-	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
+	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]any)
 	tests_api.AssertRedactedValues(t, respItem)
 	tests_api.AssertRedactedValues(t, respItem["Attrs"])
-	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["PasswordAuthMethodAttributes"])
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]any)["PasswordAuthMethodAttributes"])
 
 	pw, err = amClient.Update(tc.Context(), pw.Item.Id, pw.Item.Version, authmethods.DefaultName())
 	require.NoError(err)
@@ -123,15 +123,15 @@ func TestCrud(t *testing.T) {
 	checkAuthMethod("create", oidc.Item, "foo", 1)
 	got = tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
 
-	reqItem = tests_api.GetEventDetails(t, got, "request")["item"].(map[string]interface{})
+	reqItem = tests_api.GetEventDetails(t, got, "request")["item"].(map[string]any)
 	tests_api.AssertRedactedValues(t, reqItem)
 	tests_api.AssertRedactedValues(t, reqItem["Attrs"])
-	tests_api.AssertRedactedValues(t, reqItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"])
+	tests_api.AssertRedactedValues(t, reqItem["Attrs"].(map[string]any)["OidcAuthMethodsAttributes"])
 
-	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
+	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]any)
 	tests_api.AssertRedactedValues(t, respItem)
 	tests_api.AssertRedactedValues(t, respItem["Attrs"])
-	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"])
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]any)["OidcAuthMethodsAttributes"])
 
 	oidc, err = amClient.Read(tc.Context(), oidc.Item.Id)
 	require.NoError(err)
@@ -295,11 +295,11 @@ func TestCustomMethods(t *testing.T) {
 	reqDetails := tests_api.GetEventDetails(t, got, "request")
 	tests_api.AssertRedactedValues(t, reqDetails)
 	tests_api.AssertRedactedValues(t, reqDetails["Attrs"])
-	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]interface{})["OidcChangeStateAttributes"])
+	tests_api.AssertRedactedValues(t, reqDetails["Attrs"].(map[string]any)["OidcChangeStateAttributes"])
 
-	respItem := tests_api.GetEventDetails(t, got, "response")["item"].(map[string]interface{})
+	respItem := tests_api.GetEventDetails(t, got, "response")["item"].(map[string]any)
 	tests_api.AssertRedactedValues(t, respItem)
-	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]interface{})["OidcAuthMethodsAttributes"])
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]any)["OidcAuthMethodsAttributes"])
 
 	_, err = amClient.ChangeState(tc.Context(), u.Item.Id, u.Item.Version, "", authmethods.WithOidcAuthMethodDisableDiscoveredConfigValidation(true))
 	assert.Error(err)
@@ -364,7 +364,7 @@ func TestErrors(t *testing.T) {
 	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 
 	// Passing in a invalid authentication method sub-type should return an  error
-	_, err = amClient.Authenticate(tc.Context(), "ampwd_1234567890", "login", map[string]interface{}{
+	_, err = amClient.Authenticate(tc.Context(), "ampwd_1234567890", "login", map[string]any{
 		"login_name": "admin",
 		"password":   "password",
 	})

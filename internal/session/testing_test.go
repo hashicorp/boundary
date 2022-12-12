@@ -65,7 +65,7 @@ func Test_TestConnectionState(t *testing.T) {
 
 	rw := db.New(conn)
 	var initialState ConnectionState
-	err := rw.LookupWhere(context.Background(), &initialState, "connection_id = ? and state = ?", []interface{}{cs.ConnectionId, cs.Status})
+	err := rw.LookupWhere(context.Background(), &initialState, "connection_id = ? and state = ?", []any{cs.ConnectionId, cs.Status})
 	require.NoError(err)
 	assert.NotEmpty(initialState.StartTime)
 }
@@ -80,12 +80,9 @@ func Test_TestWorker(t *testing.T) {
 
 func Test_TestCert(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	wrapper := db.TestWrapper(t)
-	userId, err := db.NewPublicId(iam.UserPrefix)
-	require.NoError(err)
 	sessionId, err := newId()
 	require.NoError(err)
-	key, cert, err := TestCert(wrapper, userId, sessionId)
+	key, cert, err := TestCert(sessionId)
 	require.NoError(err)
 	assert.NotNil(key)
 	assert.NotNil(cert)

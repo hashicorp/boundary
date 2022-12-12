@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/hashicorp/go-dbw"
+	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/stretchr/testify/assert"
@@ -109,7 +110,7 @@ func TestSetupWithMock(t *testing.T) (*DB, sqlmock.Sqlmock) {
 	return ret, mock
 }
 
-// TestWrapper initializes an AEAD wrapping.Wrapper for testing the oplog
+// TestWrapper initializes an AEAD wrapping.Wrapper for testing
 func TestWrapper(t testing.TB) wrapping.Wrapper {
 	t.Helper()
 	rootKey := make([]byte, 32)
@@ -131,6 +132,25 @@ func TestWrapper(t testing.TB) wrapping.Wrapper {
 	return root
 }
 
+// TestDBWrapper initializes a DB wrapper for testing
+func TestDBWrapper(t testing.TB, conn *DB, purpose kms.KeyPurpose) wrapping.Wrapper {
+	t.Helper()
+	purposes := []kms.KeyPurpose{purpose}
+	if purpose != "oplog" {
+		// Always add the oplog purpose, most tests need it
+		purposes = append(purposes, "oplog")
+	}
+	kmsCache, err := kms.New(dbw.New(conn.wrapped.Load()), dbw.New(conn.wrapped.Load()), purposes)
+	require.NoError(t, err)
+	err = kmsCache.AddExternalWrapper(context.Background(), kms.KeyPurposeRootKey, TestWrapper(t))
+	require.NoError(t, err)
+	err = kmsCache.CreateKeys(context.Background(), "global", purposes)
+	require.NoError(t, err)
+	wrapper, err := kmsCache.GetWrapper(context.Background(), "global", purpose)
+	require.NoError(t, err)
+	return wrapper
+}
+
 // AssertPublicId is a test helper that asserts that the provided id is in
 // the format of a public id.
 func AssertPublicId(t testing.TB, prefix, actual string) {
@@ -143,7 +163,7 @@ func AssertPublicId(t testing.TB, prefix, actual string) {
 
 // TestDeleteWhere allows you to easily delete resources for testing purposes
 // including all the current resources.
-func TestDeleteWhere(t testing.TB, conn *DB, i interface{}, whereClause string, args ...interface{}) {
+func TestDeleteWhere(t testing.TB, conn *DB, i any, whereClause string, args ...any) {
 	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
@@ -193,7 +213,7 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 	}
 
 	where := whereBase
-	whereArgs := []interface{}{
+	whereArgs := []any{
 		whereKey,
 		resourceId,
 	}
@@ -214,7 +234,7 @@ and create_time > NOW()::timestamp - (interval '1 second' * ?)
 	}
 
 	var foundEntry oplog.Entry
-	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", []interface{}{metadata.EntryId}); err != nil {
+	if err := r.LookupWhere(context.Background(), &foundEntry, "id = ?", []any{metadata.EntryId}); err != nil {
 		return err
 	}
 	return nil

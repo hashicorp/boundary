@@ -11,7 +11,7 @@ import (
 func TestNewFilter_everythingMatchesEmpty(t *testing.T) {
 	f, err := NewFilter("")
 	require.NoError(t, err)
-	for _, v := range []interface{}{
+	for _, v := range []any{
 		nil,
 		"foo",
 		"",
@@ -39,7 +39,7 @@ func TestNewFilter(t *testing.T) {
 		name   string
 		filter string
 		fErr   bool
-		in     interface{}
+		in     any
 		match  bool
 	}{
 		{

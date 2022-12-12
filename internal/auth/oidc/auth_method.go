@@ -274,11 +274,11 @@ func (am *AuthMethod) isComplete(ctx context.Context) error {
 }
 
 type convertedValues struct {
-	Algs             []interface{}
-	Auds             []interface{}
-	Certs            []interface{}
-	ClaimsScopes     []interface{}
-	AccountClaimMaps []interface{}
+	Algs             []any
+	Auds             []any
+	Certs            []any
+	ClaimsScopes     []any
+	AccountClaimMaps []any
 }
 
 // convertValueObjects converts the embedded value objects. It will return an
@@ -289,7 +289,7 @@ func (am *AuthMethod) convertValueObjects(ctx context.Context) (*convertedValues
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
 	var err error
-	var addAlgs, addAuds, addCerts, addScopes, addAccountClaimMaps []interface{}
+	var addAlgs, addAuds, addCerts, addScopes, addAccountClaimMaps []any
 	if addAlgs, err = am.convertSigningAlgs(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -317,12 +317,12 @@ func (am *AuthMethod) convertValueObjects(ctx context.Context) (*convertedValues
 // convertSigningAlgs converts the embedded signing algorithms from []string
 // to []interface{} where each slice element is a *SigningAlg. It will return an
 // error if the AuthMethod's public id is not set.
-func (am *AuthMethod) convertSigningAlgs(ctx context.Context) ([]interface{}, error) {
+func (am *AuthMethod) convertSigningAlgs(ctx context.Context) ([]any, error) {
 	const op = "oidc.(AuthMethod).convertSigningAlgs"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
-	newInterfaces := make([]interface{}, 0, len(am.SigningAlgs))
+	newInterfaces := make([]any, 0, len(am.SigningAlgs))
 	for _, a := range am.SigningAlgs {
 		obj, err := NewSigningAlg(ctx, am.PublicId, Alg(a))
 		if err != nil {
@@ -336,12 +336,12 @@ func (am *AuthMethod) convertSigningAlgs(ctx context.Context) ([]interface{}, er
 // convertAudClaims converts the embedded audience claims from []string
 // to []interface{} where each slice element is a *AudClaim. It will return an
 // error if the AuthMethod's public id is not set.
-func (am *AuthMethod) convertAudClaims(ctx context.Context) ([]interface{}, error) {
+func (am *AuthMethod) convertAudClaims(ctx context.Context) ([]any, error) {
 	const op = "oidc.(AuthMethod).convertAudClaims"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
-	newInterfaces := make([]interface{}, 0, len(am.AudClaims))
+	newInterfaces := make([]any, 0, len(am.AudClaims))
 	for _, a := range am.AudClaims {
 		obj, err := NewAudClaim(ctx, am.PublicId, a)
 		if err != nil {
@@ -355,12 +355,12 @@ func (am *AuthMethod) convertAudClaims(ctx context.Context) ([]interface{}, erro
 // convertCertificates converts the embedded certificates from []string
 // to []interface{} where each slice element is a *Certificate. It will return an
 // error if the AuthMethod's public id is not set.
-func (am *AuthMethod) convertCertificates(ctx context.Context) ([]interface{}, error) {
+func (am *AuthMethod) convertCertificates(ctx context.Context) ([]any, error) {
 	const op = "oidc.(AuthMethod).convertCertificates"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
-	newInterfaces := make([]interface{}, 0, len(am.Certificates))
+	newInterfaces := make([]any, 0, len(am.Certificates))
 	for _, cert := range am.Certificates {
 		obj, err := NewCertificate(ctx, am.PublicId, cert)
 		if err != nil {
@@ -374,12 +374,12 @@ func (am *AuthMethod) convertCertificates(ctx context.Context) ([]interface{}, e
 // convertClaimsScopes converts the embedded claims scopes from []string
 // to []interface{} where each slice element is a *ClaimsScope. It will return an
 // error if the AuthMethod's public id is not set.
-func (am *AuthMethod) convertClaimsScopes(ctx context.Context) ([]interface{}, error) {
+func (am *AuthMethod) convertClaimsScopes(ctx context.Context) ([]any, error) {
 	const op = "oidc.(AuthMethod).convertClaimsScopes"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
-	newInterfaces := make([]interface{}, 0, len(am.ClaimsScopes))
+	newInterfaces := make([]any, 0, len(am.ClaimsScopes))
 	for _, cs := range am.ClaimsScopes {
 		obj, err := NewClaimsScope(ctx, am.PublicId, cs)
 		if err != nil {
@@ -394,12 +394,12 @@ func (am *AuthMethod) convertClaimsScopes(ctx context.Context) ([]interface{}, e
 // []string to []interface{} where each slice element is a *AccountClaimMap. It
 // will return an error if the AuthMethod's public id is not set or it can
 // convert the account claim maps.
-func (am *AuthMethod) convertAccountClaimMaps(ctx context.Context) ([]interface{}, error) {
+func (am *AuthMethod) convertAccountClaimMaps(ctx context.Context) ([]any, error) {
 	const op = "oidc.(AuthMethod).convertAccountClaimMaps"
 	if am.PublicId == "" {
 		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
 	}
-	newInterfaces := make([]interface{}, 0, len(am.AccountClaimMaps))
+	newInterfaces := make([]any, 0, len(am.AccountClaimMaps))
 	const (
 		from = 0
 		to   = 1

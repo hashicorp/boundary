@@ -35,7 +35,7 @@ func (c *Client) SetPassword(ctx context.Context, accountId, password string, ve
 		version = existingTarget.Item.Version
 	}
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"version":  version,
 		"password": password,
 	}

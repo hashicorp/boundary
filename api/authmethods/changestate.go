@@ -46,9 +46,9 @@ func (c *Client) ChangeState(ctx context.Context, authMethodId string, version u
 
 	reqBody := opts.postMap
 	reqBody[versionPostBodyKey] = version
-	attrMap, ok := reqBody[attributesPostBodyKey].(map[string]interface{})
+	attrMap, ok := reqBody[attributesPostBodyKey].(map[string]any)
 	if !ok {
-		attrMap = make(map[string]interface{})
+		attrMap = make(map[string]any)
 		reqBody[attributesPostBodyKey] = attrMap
 	}
 	attrMap[statePostBodyKey] = state

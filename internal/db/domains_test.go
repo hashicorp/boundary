@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-sql/civil"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -499,7 +500,7 @@ func TestDomain_DefaultUsersExist(t *testing.T) {
 	conn, _ := TestSetup(t, "postgres")
 	db, err := conn.SqlDB(ctx)
 	require.NoError(t, err)
-	for _, val := range []string{"u_anon", "u_auth"} {
+	for _, val := range []string{globals.AnonymousUserId, globals.AnyAuthenticatedUserId} {
 		rows, err := db.Query(`select from iam_user where public_id = $1`, val)
 		require.NoError(t, err)
 		var count int

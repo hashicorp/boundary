@@ -65,7 +65,7 @@ func CreateHostPlugin(
 		return nil, cleanup, err
 	}
 
-	var raw interface{}
+	var raw any
 	switch client := plugClient.(type) {
 	case plugin.ClientProtocol:
 		raw, err = client.Dispense(hostServicePluginSetName)

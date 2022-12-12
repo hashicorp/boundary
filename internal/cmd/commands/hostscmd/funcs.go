@@ -114,7 +114,7 @@ func (c *Command) printListTable(items []*hosts.Host) string {
 }
 
 func printItemTable(item *hosts.Host, resp *api.Response) string {
-	nonAttributeMap := map[string]interface{}{}
+	nonAttributeMap := map[string]any{}
 	if item.Id != "" {
 		nonAttributeMap["ID"] = item.Id
 	}

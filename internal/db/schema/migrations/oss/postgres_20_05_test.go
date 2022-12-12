@@ -60,7 +60,7 @@ insert into iam_scope
 	(parent_id, type, public_id, name)
 values
 	('global', 'org', ?, 'my-org-scope')
-`, []interface{}{orgId})
+`, []any{orgId})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -70,7 +70,7 @@ values
 insert into iam_scope
 	(parent_id, type, public_id, name)
 values
-	(?, 'project', ?, 'my-project-scope')`, []interface{}{orgId, projectId})
+	(?, 'project', ?, 'my-project-scope')`, []any{orgId, projectId})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -80,7 +80,7 @@ values
 insert into static_host_catalog
 	(scope_id,  public_id,    name)
 values
-	(?, ?, 'my-host-catalog')`, []interface{}{projectId, hostCatalogId})
+	(?, ?, 'my-host-catalog')`, []any{projectId, hostCatalogId})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -90,7 +90,7 @@ values
 insert into static_host_set
 	(catalog_id,    public_id,   name)
 values
-	(?, ?, 'my-host-set')`, []interface{}{hostCatalogId, hostSetId})
+	(?, ?, 'my-host-set')`, []any{hostCatalogId, hostSetId})
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
@@ -215,11 +215,11 @@ values
 	for _, tt := range insertTests {
 		t.Run("insert: "+tt.testName, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			_, err := rw.Exec(ctx, "delete from host_set_preferred_endpoint where host_set_id = ?", []interface{}{tt.hostSetId})
+			_, err := rw.Exec(ctx, "delete from host_set_preferred_endpoint where host_set_id = ?", []any{tt.hostSetId})
 			require.NoError(err)
 
 			// Add items to insert
-			var items []interface{}
+			var items []any
 			for _, cond := range tt.conditions {
 				ep := host.AllocPreferredEndpoint()
 				ep.HostSetId = tt.hostSetId

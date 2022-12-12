@@ -217,11 +217,11 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
 
 			outToken := allocToken()
-			assert.NoError(rw.LookupWhere(ctx, &outToken, "store_id = ?", []interface{}{got.PublicId}))
+			assert.NoError(rw.LookupWhere(ctx, &outToken, "store_id = ?", []any{got.PublicId}))
 
 			if tt.tls == TestClientTLS {
 				outClientCert := allocClientCertificate()
-				assert.NoError(rw.LookupWhere(ctx, &outClientCert, "store_id = ?", []interface{}{got.PublicId}))
+				assert.NoError(rw.LookupWhere(ctx, &outClientCert, "store_id = ?", []any{got.PublicId}))
 			}
 		})
 	}
@@ -248,7 +248,7 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 
 	rows, err = rw.Exec(context.Background(),
 		"update credential_vault_token set status = ? where token_hmac = ?",
-		[]interface{}{ExpiredToken, csWithExpiredToken.Token().TokenHmac})
+		[]any{ExpiredToken, csWithExpiredToken.Token().TokenHmac})
 	require.NoError(t, err)
 	require.Equal(t, 1, rows)
 
@@ -1054,7 +1054,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			updateToken: func(ctx context.Context, tokenHmac []byte) {
 				_, err := rw.Exec(ctx,
 					"update credential_vault_token set status = ? where token_hmac = ?",
-					[]interface{}{ExpiredToken, tokenHmac})
+					[]any{ExpiredToken, tokenHmac})
 				require.NoError(t, err)
 			},
 			wantCount: 1,
@@ -1128,7 +1128,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			assert.NotNil(got)
 
 			var tokens []*Token
-			require.NoError(rw.SearchWhere(ctx, &tokens, "store_id = ?", []interface{}{orig.GetPublicId()}))
+			require.NoError(rw.SearchWhere(ctx, &tokens, "store_id = ?", []any{orig.GetPublicId()}))
 			assert.Len(tokens, 2)
 			assert.Equal(string(tt.wantOldTokenStatus), tokens[0].Status)
 
@@ -1314,7 +1314,7 @@ func TestRepository_ListCredentialStores_Multiple_Scopes(t *testing.T) {
 	for _, cs := range stores {
 		rows, err := rw.Exec(context.Background(),
 			"update credential_vault_token set status = ? where token_hmac = ?",
-			[]interface{}{ExpiredToken, cs.Token().TokenHmac})
+			[]any{ExpiredToken, cs.Token().TokenHmac})
 		require.NoError(err)
 		require.Equal(1, rows)
 	}
@@ -1384,7 +1384,7 @@ update credential_vault_token
 		ctx := context.Background()
 
 		for i := 0; i < count; i++ {
-			rows, err := rw.Exec(ctx, query, []interface{}{storeId})
+			rows, err := rw.Exec(ctx, query, []any{storeId})
 			require.Equal(t, 1, rows)
 			require.NoError(t, err)
 			tokens[storeId].revoked++
@@ -1406,7 +1406,7 @@ update credential_vault_token
 		ctx := context.Background()
 
 		for i := 0; i < count; i++ {
-			rows, err := rw.Exec(ctx, query, []interface{}{storeId})
+			rows, err := rw.Exec(ctx, query, []any{storeId})
 			require.Equal(t, 1, rows)
 			require.NoError(t, err)
 			tokens[storeId].expired++
@@ -1585,7 +1585,7 @@ group by store_id, status;
 			{
 				rows, err := repo.reader.Query(ctx,
 					"select * from credential_vault_token_renewal_revocation where token_status = $1",
-					[]interface{}{ExpiredToken})
+					[]any{ExpiredToken})
 				require.NoError(err)
 				defer rows.Close()
 				assert.False(rows.Next())
@@ -1660,7 +1660,7 @@ group by store_id, status;
 			{
 				rows, err := repo.reader.Query(ctx,
 					"select * from credential_vault_token_renewal_revocation where token_status = $1",
-					[]interface{}{RevokeToken})
+					[]any{RevokeToken})
 				require.NoError(err)
 				defer rows.Close()
 
@@ -1707,7 +1707,7 @@ group by store_id, status;
 			{
 				rows, err := repo.reader.Query(ctx,
 					"select * from credential_vault_token_renewal_revocation where token_status = $1",
-					[]interface{}{RevokeToken})
+					[]any{RevokeToken})
 				require.NoError(err)
 				defer rows.Close()
 

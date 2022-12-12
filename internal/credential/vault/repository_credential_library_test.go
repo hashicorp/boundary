@@ -476,7 +476,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 
 					// verify it was persisted in the database
 					override := allocUsernamePasswordOverride()
-					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []interface{}{got.GetPublicId()}))
+					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []any{got.GetPublicId()}))
 
 				case *SshPrivateKeyOverride:
 					g, ok := got.MappingOverride.(*SshPrivateKeyOverride)
@@ -487,7 +487,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 
 					// verify it was persisted in the database
 					override := allocSshPrivateKeyOverride()
-					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []interface{}{got.GetPublicId()}))
+					assert.NoError(rw.LookupWhere(ctx, &override, "library_id = ?", []any{got.GetPublicId()}))
 
 				default:
 					assert.Fail("Unknown mapping override")
@@ -1650,7 +1650,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		// Expire the credential store Vault token
 		rows, err := rw.Exec(context.Background(),
 			"update credential_vault_token set status = ? where token_hmac = ?",
-			[]interface{}{ExpiredToken, cs.Token().TokenHmac})
+			[]any{ExpiredToken, cs.Token().TokenHmac})
 		require.NoError(err)
 		require.Equal(1, rows)
 
@@ -1709,7 +1709,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 		csWithExpiredToken := css[1]
 		rows, err := rw.Exec(context.Background(),
 			"update credential_vault_token set status = ? where token_hmac = ?",
-			[]interface{}{ExpiredToken, csWithExpiredToken.Token().TokenHmac})
+			[]any{ExpiredToken, csWithExpiredToken.Token().TokenHmac})
 		require.NoError(t, err)
 		require.Equal(t, 1, rows)
 

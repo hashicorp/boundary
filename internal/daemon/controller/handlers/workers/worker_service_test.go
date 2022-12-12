@@ -43,7 +43,7 @@ var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-w
 
 func structListValue(t *testing.T, ss ...string) *structpb.ListValue {
 	t.Helper()
-	var val []interface{}
+	var val []any
 	for _, s := range ss {
 		val = append(val, s)
 	}
@@ -351,7 +351,7 @@ func TestList(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListWorkers(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Test the anon case
-			got, gErr = s.ListWorkers(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(auth.AnonymousUserId)), tc.req)
+			got, gErr = s.ListWorkers(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(gErr)
 			assert.Len(got.Items, len(tc.res.Items))
 			for _, item := range got.GetItems() {

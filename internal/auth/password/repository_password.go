@@ -81,7 +81,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 			return acct.Account, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("update credential"))
 		}
 
-		fields := []string{"CtSalt", "DerivedKey", "PasswordConfId"}
+		fields := []string{"CtSalt", "DerivedKey", "PasswordConfId", "KeyId"}
 		metadata := cred.oplog(oplog.OpType_OP_TYPE_UPDATE)
 
 		_, err = r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
@@ -214,7 +214,7 @@ func (r *Repository) authenticate(ctx context.Context, scopeId, authMethodId, lo
 	const op = "password.(Repository).authenticate"
 	var accts []authAccount
 
-	rows, err := r.reader.Query(ctx, authenticateQuery, []interface{}{sql.Named("auth_method_id", authMethodId), sql.Named("login_name", loginName)})
+	rows, err := r.reader.Query(ctx, authenticateQuery, []any{sql.Named("auth_method_id", authMethodId), sql.Named("login_name", loginName)})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -316,7 +316,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 			acct = updatedAccount
 
 			oldCred := allocCredential()
-			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", []interface{}{accountId}); err != nil {
+			if err := rr.LookupWhere(ctx, &oldCred, "password_account_id = ?", []any{accountId}); err != nil {
 				if !errors.IsNotFoundError(err) {
 					return errors.Wrap(ctx, err, op)
 				}

@@ -98,7 +98,7 @@ func allocConnectionState() ConnectionState {
 }
 
 // Clone creates a clone of the State
-func (s *ConnectionState) Clone() interface{} {
+func (s *ConnectionState) Clone() any {
 	clone := &ConnectionState{
 		ConnectionId: s.ConnectionId,
 		Status:       s.Status,

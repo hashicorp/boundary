@@ -40,7 +40,7 @@ func TestListPassword(t *testing.T) {
 	expected := lr.Items
 	assert.Len(expected, 0)
 
-	expected = append(expected, &accounts.Account{Attributes: map[string]interface{}{"login_name": "loginname0"}})
+	expected = append(expected, &accounts.Account{Attributes: map[string]any{"login_name": "loginname0"}})
 
 	cr, err := accountClient.Create(tc.Context(), am.Id, accounts.WithPasswordAccountLoginName(expected[0].Attributes["login_name"].(string)))
 	require.NoError(err)
