@@ -275,7 +275,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	tw.name = opts.Config.Worker.Name
 
 	if opts.SuccessfulStatusGracePeriodDuration != 0 {
-		opts.Config.Worker.SuccessfulStatusGracePeriod = opts.SuccessfulStatusGracePeriodDuration
+		opts.Config.Worker.SuccessfulStatusGracePeriodDuration = opts.SuccessfulStatusGracePeriodDuration
 	}
 
 	serverName, err := os.Hostname()

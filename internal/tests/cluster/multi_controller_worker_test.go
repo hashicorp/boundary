@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,6 +9,8 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,4 +85,58 @@ func TestMultiControllerMultiWorkerConnections(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	expectWorkers(t, c1, w1, w2)
 	expectWorkers(t, c2, w1, w2)
+}
+
+func TestWorkerAppendInitialUpstreams(t *testing.T) {
+	ctx := context.Background()
+	require, assert := require.New(t), assert.New(t)
+	logger := hclog.New(&hclog.LoggerOptions{
+		Level: hclog.Trace,
+	})
+
+	conf, err := config.DevController()
+	require.NoError(err)
+
+	c1 := controller.NewTestController(t, &controller.TestControllerOpts{
+		Config: conf,
+		Logger: logger.Named("c1"),
+	})
+	defer c1.Shutdown()
+
+	expectWorkers(t, c1)
+
+	initialUpstreams := append(c1.ClusterAddrs(), "127.0.0.9")
+	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
+		WorkerAuthKms:                       c1.Config().WorkerAuthKms,
+		InitialUpstreams:                    initialUpstreams,
+		Logger:                              logger.Named("w1"),
+		SuccessfulStatusGracePeriodDuration: 1 * time.Second,
+	})
+	defer w1.Shutdown()
+
+	// Wait for worker to send status
+	cancelCtx, _ := context.WithTimeout(ctx, 10*time.Second)
+	for {
+		select {
+		case <-time.After(500 * time.Millisecond):
+			break
+		case <-cancelCtx.Done():
+			require.FailNow("No worker found after 10 seconds")
+		}
+		successSent := w1.Worker().LastStatusSuccess()
+		if successSent != nil {
+			break
+		}
+	}
+	expectWorkers(t, c1, w1)
+
+	// Upstreams should be equivalent to the controller cluster addr after status updates
+	assert.Equal(c1.ClusterAddrs(), w1.Worker().LastStatusSuccess().LastCalculatedUpstreams)
+
+	// Bring down the controller
+	c1.Shutdown()
+	time.Sleep(3 * time.Second) // Wait a little longer than the grace period
+
+	// Upstreams should now match initial upstreams
+	assert.True(strutil.EquivalentSlices(initialUpstreams, w1.Worker().LastStatusSuccess().LastCalculatedUpstreams))
 }

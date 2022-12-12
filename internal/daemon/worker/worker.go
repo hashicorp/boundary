@@ -203,7 +203,6 @@ func New(conf *Config) (*Worker, error) {
 				err)
 		}
 	}
-
 	switch conf.RawConfig.Worker.SuccessfulStatusGracePeriodDuration {
 	case 0:
 		w.successfulStatusGracePeriod.Store(int64(server.DefaultLiveness))
