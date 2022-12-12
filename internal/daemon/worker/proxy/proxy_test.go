@@ -12,7 +12,6 @@ import (
 )
 
 func TestRegisterHandler(t *testing.T) {
-	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 
 	fn := func(context.Context, net.Conn, *ProxyDialer, string, *anypb.Any) (ProxyConnFn, error) {
@@ -37,7 +36,6 @@ func TestRegisterHandler(t *testing.T) {
 }
 
 func TestGetHandler(t *testing.T) {
-	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 
 	fn := func(context.Context, net.Conn, *ProxyDialer, string, *anypb.Any) (ProxyConnFn, error) {
