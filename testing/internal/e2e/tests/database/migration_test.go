@@ -37,6 +37,7 @@ func TestDatabaseMigration(t *testing.T) {
 	require.NoError(t, err)
 	err = pool.Client.Ping()
 	require.NoError(t, err)
+
 	// This ensures that the latest Boundary image is used
 	err = pool.Client.PullImage(docker.PullImageOptions{
 		Repository: "hashicorp/boundary",
@@ -79,25 +80,7 @@ func TestDatabaseMigration(t *testing.T) {
 	t.Cleanup(func() {
 		pool.Purge(dbInit.Resource)
 	})
-
-	_, err = pool.Client.WaitContainer(dbInit.Resource.Container.ID)
-	require.NoError(t, err)
-	buf := bytes.NewBuffer(nil)
-	ebuf := bytes.NewBuffer(nil)
-	err = pool.Client.Logs(docker.LogsOptions{
-		Container:    dbInit.Resource.Container.ID,
-		OutputStream: buf,
-		ErrorStream:  ebuf,
-		Follow:       true,
-		Stdout:       true,
-		Stderr:       true,
-	})
-	require.NoError(t, err)
-	require.Empty(t, ebuf)
-
-	var dbInitInfo boundary.DbInitInfo
-	err = json.Unmarshal(buf.Bytes(), &dbInitInfo)
-	require.NoError(t, err, buf.String())
+	dbInitInfo := infra.GetDbInitInfoFromContainer(t, pool, dbInit)
 
 	// Start a Boundary server and wait until Boundary has finished loading
 	b := infra.StartBoundary(t, pool, network, db.UriNetwork)
@@ -105,8 +88,8 @@ func TestDatabaseMigration(t *testing.T) {
 		pool.Purge(b.Resource)
 	})
 
-	buf = bytes.NewBuffer(nil)
-	ebuf = bytes.NewBuffer(nil)
+	buf := bytes.NewBuffer(nil)
+	ebuf := bytes.NewBuffer(nil)
 	_, err = b.Resource.Exec([]string{"boundary", "version"}, dockertest.ExecOptions{
 		StdOut: buf,
 		StdErr: ebuf,
@@ -131,19 +114,51 @@ func TestDatabaseMigration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Prepare to populate database with additional data
+	// Populate database with additional data
+	populateBoundaryDatabase(t, ctx, pool, network, c, dbInitInfo, target.UriNetwork, b)
+
+	// Migrate database
+	t.Log("Stopping boundary before migrating...")
+	err = pool.Client.StopContainer(b.Resource.Container.ID, 10)
+	require.NoError(t, err)
+
+	bonfigFilePath, err := filepath.Abs("testdata/boundary-config.hcl")
+	require.NoError(t, err)
+
+	t.Log("Starting database migration...")
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("database", "migrate", "-config", bonfigFilePath),
+		e2e.WithEnv("BOUNDARY_POSTGRES_URL", db.UriLocalhost),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	t.Logf("%s", output.Stdout)
+	t.Logf("Migration Output: %s", output.Stderr)
+}
+
+func populateBoundaryDatabase(
+	t testing.TB,
+	ctx context.Context,
+	pool *dockertest.Pool,
+	network *dockertest.Network,
+	c *config,
+	dbInitInfo boundary.DbInitInfo,
+	targetAddress string,
+	b *infra.Container,
+) {
 	os.Setenv("BOUNDARY_ADDR", b.UriLocalhost)
 	os.Setenv("E2E_PASSWORD_AUTH_METHOD_ID", dbInitInfo.AuthMethod.AuthMethodId)
 	os.Setenv("E2E_PASSWORD_ADMIN_LOGIN_NAME", dbInitInfo.AuthMethod.LoginName)
 	os.Setenv("E2E_PASSWORD_ADMIN_PASSWORD", dbInitInfo.AuthMethod.Password)
 
-	// Create resources for target. Uses the local CLI so that these methods can be reused
+	// Create resources for target. Uses the local CLI so that these methods can be reused.
+	// While the CLI version used won't necessarily match the controller version, it should be (and is
+	// supposed to be) backwards ompatible
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, target.UriNetwork)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, targetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, "2222") // openssh-server uses port 2222
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
@@ -201,7 +216,7 @@ func TestDatabaseMigration(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var tokenCreateResult vault.CreateTokenResponse
-	err = json.Unmarshal(output.Stdout, &tokenCreateResult)
+	err := json.Unmarshal(output.Stdout, &tokenCreateResult)
 	require.NoError(t, err)
 	credStoreToken := tokenCreateResult.Auth.Client_Token
 	t.Log("Created Vault Cred Store Token")
@@ -226,8 +241,8 @@ func TestDatabaseMigration(t *testing.T) {
 	// Create a session. Uses Boundary in a docker container to do the connect in order to avoid
 	// modifying the runner's /etc/hosts file. Otherwise, you would need to add a `127.0.0.1
 	// localhost boundary` entry into /etc/hosts.
-	buf = bytes.NewBuffer(nil)
-	ebuf = bytes.NewBuffer(nil)
+	buf := bytes.NewBuffer(nil)
+	ebuf := bytes.NewBuffer(nil)
 	_, err = b.Resource.Exec(
 		[]string{
 			"boundary", "authenticate", "password",
@@ -269,21 +284,4 @@ func TestDatabaseMigration(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, ebuf)
 	t.Log("Created session")
-
-	// Migrate database
-	t.Log("Stopping boundary before migrating...")
-	err = pool.Client.StopContainer(b.Resource.Container.ID, 10)
-	require.NoError(t, err)
-
-	bonfigFilePath, err := filepath.Abs("testdata/boundary-config.hcl")
-	require.NoError(t, err)
-
-	t.Log("Starting database migration...")
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("database", "migrate", "-config", bonfigFilePath),
-		e2e.WithEnv("BOUNDARY_POSTGRES_URL", db.UriLocalhost),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	t.Logf("%s", output.Stdout)
-	t.Logf("Migration Output: %s", output.Stderr)
 }

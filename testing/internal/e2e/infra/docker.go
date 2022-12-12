@@ -1,12 +1,15 @@
 package infra
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
@@ -91,6 +94,31 @@ func InitBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockerte
 	require.NoError(t, err)
 
 	return &Container{Resource: resource}
+}
+
+// GetDbInitInfoFromContainer extracts info from calling `boundary database init` in the specified
+// container. Returns a struct containing the generated info.
+func GetDbInitInfoFromContainer(t testing.TB, pool *dockertest.Pool, container *Container) boundary.DbInitInfo {
+	_, err := pool.Client.WaitContainer(container.Resource.Container.ID)
+	require.NoError(t, err)
+	buf := bytes.NewBuffer(nil)
+	ebuf := bytes.NewBuffer(nil)
+	err = pool.Client.Logs(docker.LogsOptions{
+		Container:    container.Resource.Container.ID,
+		OutputStream: buf,
+		ErrorStream:  ebuf,
+		Follow:       true,
+		Stdout:       true,
+		Stderr:       true,
+	})
+	require.NoError(t, err)
+	require.Empty(t, ebuf)
+
+	var dbInitInfo boundary.DbInitInfo
+	err = json.Unmarshal(buf.Bytes(), &dbInitInfo)
+	require.NoError(t, err, buf.String())
+
+	return dbInitInfo
 }
 
 // StartBoundary starts a boundary container and spins up an instance of boundary using the
