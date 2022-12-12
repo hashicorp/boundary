@@ -12,10 +12,6 @@ terraform {
   }
 }
 
-provider "aws" {
-  region = "us-east-1"
-}
-
 locals {
   enterprise_repositories = ["boundary-enterprise", "boundary-hcp"]
   is_ent                  = contains(local.enterprise_repositories, var.repository)
@@ -26,12 +22,16 @@ locals {
 resource "aws_iam_role" "role" {
   count = local.is_ent ? 0 : 1 // only create a role for the OSS repositories
 
+  provider = aws.us_east_1
+
   name               = local.service_user
   assume_role_policy = data.aws_iam_policy_document.assume_role_policy_document[0].json
 }
 
 data "aws_iam_policy_document" "assume_role_policy_document" {
   count = local.is_ent ? 0 : 1 // only create a policy for the OSS repositories
+
+  provider = aws.us_east_1
 
   statement {
     effect  = "Allow"
@@ -47,12 +47,16 @@ data "aws_iam_policy_document" "assume_role_policy_document" {
 resource "aws_iam_role_policy" "role_policy" {
   count = local.is_ent ? 0 : 1 // only create a policy for the OSS repositories
 
+  provider = aws.us_east_1
+
   role   = aws_iam_role.role[0].name
   name   = "${local.service_user}_policy"
   policy = data.aws_iam_policy_document.iam_policy_document.json
 }
 
 data "aws_iam_policy_document" "iam_policy_document" {
+  provider = aws.us_east_1
+
   statement {
     effect = "Allow"
     actions = [

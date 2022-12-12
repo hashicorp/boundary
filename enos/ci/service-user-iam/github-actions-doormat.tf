@@ -13,6 +13,9 @@ locals {
 // Doormat Github Actions assume policy
 data "aws_iam_policy_document" "github_actions_doormat_assume" {
   count = local.is_ent ? 1 : 0
+
+  provider = aws.us_east_1
+
   statement {
     actions = [
       "sts:AssumeRole",
@@ -29,7 +32,10 @@ data "aws_iam_policy_document" "github_actions_doormat_assume" {
 # Doormat Github Actions roles
 resource "aws_iam_role" "github_actions_doormat_role" {
   count = local.is_ent ? 1 : 0
-  name  = local.boundary_gha_iam_role_name
+
+  provider = aws.us_east_1
+
+  name = local.boundary_gha_iam_role_name
   tags = {
     hc-service-uri = local.github_actions_doormat_rwqs[var.repository]
   }
