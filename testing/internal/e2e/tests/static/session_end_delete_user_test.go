@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCliSessionEndWhenUserIsDeleted tests that an active session is canceled when the respective
+// user who started the session is deleted.
 func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
@@ -24,6 +26,12 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
+	t.Cleanup(func() {
+		ctx := context.Background()
+		boundary.AuthenticateAdminCli(t, ctx)
+		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
@@ -33,6 +41,13 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 	acctName := "e2e-account"
 	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, acctName)
+	t.Cleanup(func() {
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+	})
 	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
@@ -73,7 +88,7 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("users", "delete", "-id", newUserId))
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	// Check is session has terminated
+	// Check if session has terminated
 	t.Log("Waiting for session to be canceling/terminated...")
 	err = backoff.RetryNotify(
 		func() error {

@@ -183,9 +183,33 @@ func DefaultDescription() Option {
 	}
 }
 
+func WithEgressWorkerFilter(inEgressWorkerFilter string) Option {
+	return func(o *options) {
+		o.postMap["egress_worker_filter"] = inEgressWorkerFilter
+	}
+}
+
+func DefaultEgressWorkerFilter() Option {
+	return func(o *options) {
+		o.postMap["egress_worker_filter"] = nil
+	}
+}
+
 func WithHostId(inHostId string) Option {
 	return func(o *options) {
 		o.postMap["host_id"] = inHostId
+	}
+}
+
+func WithIngressWorkerFilter(inIngressWorkerFilter string) Option {
+	return func(o *options) {
+		o.postMap["ingress_worker_filter"] = inIngressWorkerFilter
+	}
+}
+
+func DefaultIngressWorkerFilter() Option {
+	return func(o *options) {
+		o.postMap["ingress_worker_filter"] = nil
 	}
 }
 

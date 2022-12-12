@@ -135,12 +135,35 @@ message Target {
   ]; // @gotags: `class:"public"`
 
   // Optional boolean expression to filter the workers that are allowed to satisfy this request.
+  // Deprecated; use egress or ingress worker filters instead.
   google.protobuf.StringValue worker_filter = 140 [
     json_name = "worker_filter",
+    deprecated = true,
     (custom_options.v1.generate_sdk_option) = true,
     (custom_options.v1.mask_mapping) = {
       this: "worker_filter"
       that: "WorkerFilter"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Optional boolean expressions to filter the egress workers that are allowed to satisfy this request.
+  google.protobuf.StringValue egress_worker_filter = 160 [
+    json_name = "egress_worker_filter",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "egress_worker_filter"
+      that: "EgressWorkerFilter"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request.
+  // Unsupported on OSS.
+  google.protobuf.StringValue ingress_worker_filter = 170 [
+    json_name = "ingress_worker_filter",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "ingress_worker_filter"
+      that: "IngressWorkerFilter"
     }
   ]; // @gotags: `class:"public"`
 

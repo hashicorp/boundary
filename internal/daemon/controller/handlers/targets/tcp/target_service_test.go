@@ -534,6 +534,10 @@ func TestCreate(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
+	// Ensure we are using the OSS worker filter function
+	workerFilterFn := targets.AuthorizeSessionWorkerFilterFn
+	targets.AuthorizeSessionWorkerFilterFn = targets.AuthorizeSessionWithWorkerFilter
+
 	cases := []struct {
 		name string
 		req  *pbs.CreateTargetRequest
@@ -552,7 +556,7 @@ func TestCreate(t *testing.T) {
 						DefaultPort: wrapperspb.UInt32(2),
 					},
 				},
-				WorkerFilter: wrapperspb.String(`type == "bar"`),
+				EgressWorkerFilter: wrapperspb.String(`type == "bar"`),
 			}},
 			res: &pbs.CreateTargetResponse{
 				Uri: fmt.Sprintf("targets/%s_", tcp.TargetPrefix),
@@ -570,18 +574,18 @@ func TestCreate(t *testing.T) {
 					SessionMaxSeconds:      wrapperspb.UInt32(28800),
 					SessionConnectionLimit: wrapperspb.Int32(-1),
 					AuthorizedActions:      testAuthorizedActions,
-					WorkerFilter:           wrapperspb.String(`type == "bar"`),
+					EgressWorkerFilter:     wrapperspb.String(`type == "bar"`),
 				},
 			},
 		},
 		{
 			name: "Create a target with no port",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				ScopeId:      proj.GetPublicId(),
-				Name:         wrapperspb.String("name"),
-				Description:  wrapperspb.String("desc"),
-				Type:         tcp.Subtype.String(),
-				WorkerFilter: wrapperspb.String(`type == "bar"`),
+				ScopeId:            proj.GetPublicId(),
+				Name:               wrapperspb.String("name"),
+				Description:        wrapperspb.String("desc"),
+				Type:               tcp.Subtype.String(),
+				EgressWorkerFilter: wrapperspb.String(`type == "bar"`),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -643,7 +647,23 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Invalid worker filter expression",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
-				WorkerFilter: wrapperspb.String("bad expression"),
+				EgressWorkerFilter: wrapperspb.String("bad expression"),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Deprecated worker filter",
+			req: &pbs.CreateTargetRequest{Item: &pb.Target{
+				WorkerFilter: wrapperspb.String(`"/name" matches "test-worker"`),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Ingress filter unsupported on OSS",
+			req: &pbs.CreateTargetRequest{Item: &pb.Target{
+				IngressWorkerFilter: wrapperspb.String(`"/name" matches "test-worker"`),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -687,6 +707,8 @@ func TestCreate(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateTarget(%q)\n got response %q\n, wanted %q\n", tc.req, got, tc.res)
 		})
 	}
+	// Reset worker filter func
+	targets.AuthorizeSessionWorkerFilterFn = workerFilterFn
 }
 
 func TestUpdate(t *testing.T) {
@@ -756,6 +778,12 @@ func TestUpdate(t *testing.T) {
 
 	tested, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Failed to create a new host set service.")
+
+	// Ensure we are using the OSS worker filter functions
+	workerFilterFn := targets.AuthorizeSessionWorkerFilterFn
+	targets.AuthorizeSessionWorkerFilterFn = targets.AuthorizeSessionWithWorkerFilter
+	validateIngressFn := targets.ValidateIngressWorkerFilterFn
+	targets.ValidateIngressWorkerFilterFn = targets.IngressWorkerFilterUnsupported
 
 	cases := []struct {
 		name string
@@ -1054,6 +1082,33 @@ func TestUpdate(t *testing.T) {
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "Ingress filter unsupported",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"ingress_worker_filter"},
+				},
+				Item: &pb.Target{
+					IngressWorkerFilter: wrapperspb.String(`type == "bar"`),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Can't update worker filter and egress filter",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"worker_filter", "egress_worker_filter"},
+				},
+				Item: &pb.Target{
+					WorkerFilter:       wrapperspb.String(`type == "bar"`),
+					EgressWorkerFilter: wrapperspb.String(`type == "bar"`),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1095,6 +1150,9 @@ func TestUpdate(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateTarget(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
+	// Reset worker filter funcs
+	targets.AuthorizeSessionWorkerFilterFn = workerFilterFn
+	targets.ValidateIngressWorkerFilterFn = validateIngressFn
 }
 
 func TestUpdate_BadVersion(t *testing.T) {

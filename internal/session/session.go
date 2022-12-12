@@ -47,11 +47,13 @@ type ComposedOf struct {
 	ExpirationTime *timestamp.Timestamp
 	// Max connections for the session
 	ConnectionLimit int32
-	// Worker filter. Active filter when the session was created, used to
+	// Ingress and egress worker filters. Active filters when the session was created, used to
 	// validate the session via the same set of rules at consumption time as
 	// existed at creation time. Round tripping it through here saves a lookup
 	// in the DB. It is not stored in the warehouse.
-	WorkerFilter string
+	WorkerFilter        string
+	EgressWorkerFilter  string
+	IngressWorkerFilter string
 	// DynamicCredentials are dynamic credentials that will be retrieved
 	// for the session. DynamicCredentials optional.
 	DynamicCredentials []*DynamicCredential
@@ -103,8 +105,11 @@ type Session struct {
 	Endpoint string `json:"-" gorm:"default:null"`
 	// Maximum number of connections in a session
 	ConnectionLimit int32 `json:"connection_limit,omitempty" gorm:"default:null"`
-	// Worker filter
-	WorkerFilter string `json:"-" gorm:"default:null"`
+
+	// Worker filters
+	WorkerFilter        string `json:"-" gorm:"default:null"`
+	EgressWorkerFilter  string `json:"-" gorm:"default:null"`
+	IngressWorkerFilter string `json:"-" gorm:"default:null"`
 
 	// key_id is the ID of the key version used to encrypt any fields in this struct
 	KeyId string `json:"key_id,omitempty" gorm:"default:null"`
@@ -147,18 +152,20 @@ var (
 func New(c ComposedOf, _ ...Option) (*Session, error) {
 	const op = "session.New"
 	s := Session{
-		UserId:             c.UserId,
-		HostId:             c.HostId,
-		TargetId:           c.TargetId,
-		HostSetId:          c.HostSetId,
-		AuthTokenId:        c.AuthTokenId,
-		ProjectId:          c.ProjectId,
-		Endpoint:           c.Endpoint,
-		ExpirationTime:     c.ExpirationTime,
-		ConnectionLimit:    c.ConnectionLimit,
-		WorkerFilter:       c.WorkerFilter,
-		DynamicCredentials: c.DynamicCredentials,
-		StaticCredentials:  c.StaticCredentials,
+		UserId:              c.UserId,
+		HostId:              c.HostId,
+		TargetId:            c.TargetId,
+		HostSetId:           c.HostSetId,
+		AuthTokenId:         c.AuthTokenId,
+		ProjectId:           c.ProjectId,
+		Endpoint:            c.Endpoint,
+		ExpirationTime:      c.ExpirationTime,
+		ConnectionLimit:     c.ConnectionLimit,
+		WorkerFilter:        c.WorkerFilter,
+		EgressWorkerFilter:  c.EgressWorkerFilter,
+		IngressWorkerFilter: c.IngressWorkerFilter,
+		DynamicCredentials:  c.DynamicCredentials,
+		StaticCredentials:   c.StaticCredentials,
 	}
 	if err := s.validateNewSession(); err != nil {
 		return nil, errors.WrapDeprecated(err, op)
@@ -174,19 +181,21 @@ func AllocSession() Session {
 // Clone creates a clone of the Session
 func (s *Session) Clone() any {
 	clone := &Session{
-		PublicId:          s.PublicId,
-		UserId:            s.UserId,
-		HostId:            s.HostId,
-		TargetId:          s.TargetId,
-		HostSetId:         s.HostSetId,
-		AuthTokenId:       s.AuthTokenId,
-		ProjectId:         s.ProjectId,
-		TerminationReason: s.TerminationReason,
-		Version:           s.Version,
-		Endpoint:          s.Endpoint,
-		ConnectionLimit:   s.ConnectionLimit,
-		WorkerFilter:      s.WorkerFilter,
-		KeyId:             s.KeyId,
+		PublicId:            s.PublicId,
+		UserId:              s.UserId,
+		HostId:              s.HostId,
+		TargetId:            s.TargetId,
+		HostSetId:           s.HostSetId,
+		AuthTokenId:         s.AuthTokenId,
+		ProjectId:           s.ProjectId,
+		TerminationReason:   s.TerminationReason,
+		Version:             s.Version,
+		Endpoint:            s.Endpoint,
+		ConnectionLimit:     s.ConnectionLimit,
+		WorkerFilter:        s.WorkerFilter,
+		EgressWorkerFilter:  s.EgressWorkerFilter,
+		IngressWorkerFilter: s.IngressWorkerFilter,
+		KeyId:               s.KeyId,
 	}
 	if len(s.States) > 0 {
 		clone.States = make([]*State, 0, len(s.States))
@@ -300,6 +309,10 @@ func (s *Session) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType
 			return errors.New(ctx, errors.InvalidParameter, op, "connection limit is immutable")
 		case contains(opts.WithFieldMaskPaths, "WorkerFilter"):
 			return errors.New(ctx, errors.InvalidParameter, op, "worker filter is immutable")
+		case contains(opts.WithFieldMaskPaths, "EgressWorkerFilter"):
+			return errors.New(ctx, errors.InvalidParameter, op, "egress worker filter is immutable")
+		case contains(opts.WithFieldMaskPaths, "IngressWorkerFilter"):
+			return errors.New(ctx, errors.InvalidParameter, op, "ingress worker filter is immutable")
 		case contains(opts.WithFieldMaskPaths, "DynamicCredentials"):
 			return errors.New(ctx, errors.InvalidParameter, op, "dynamic credentials are immutable")
 		case contains(opts.WithFieldMaskPaths, "StaticCredentials"):

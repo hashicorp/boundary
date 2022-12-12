@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/version"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -167,8 +168,14 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithRoot", func(t *testing.T) {
 		opts := getDefaultOptions()
 		assert.Empty(t, opts.withRoot)
-		opts = GetOpts(WithRoot("a"))
-		assert.Equal(t, "a", opts.withRoot)
+		opts = GetOpts(WithRoot(RootInfo{
+			RootId:  "a",
+			RootVer: "0.1.0",
+		}))
+		assert.Equal(t, RootInfo{
+			RootId:  "a",
+			RootVer: "0.1.0",
+		}, opts.withRoot)
 	})
 	t.Run("WithStopAfter", func(t *testing.T) {
 		opts := getDefaultOptions()
@@ -201,5 +208,13 @@ func Test_GetOpts(t *testing.T) {
 		assert.Empty(t, opts.withActiveWorkers)
 		opts = GetOpts(WithActiveWorkers(true))
 		assert.Equal(t, true, opts.withActiveWorkers)
+	})
+	t.Run("WithFeature", func(t *testing.T) {
+		opts := GetOpts(WithFeature(version.MultiHopSessionFeature))
+		testOpts := getDefaultOptions()
+		testOpts.withFeature = version.MultiHopSessionFeature
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
 	})
 }

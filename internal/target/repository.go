@@ -524,6 +524,8 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		case strings.EqualFold("sessionmaxseconds", f):
 		case strings.EqualFold("sessionconnectionlimit", f):
 		case strings.EqualFold("workerfilter", f):
+		case strings.EqualFold("egressworkerfilter", f):
+		case strings.EqualFold("ingressworkerfilter", f):
 		default:
 			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -537,6 +539,8 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 			"SessionMaxSeconds":      target.GetSessionMaxSeconds(),
 			"SessionConnectionLimit": target.GetSessionConnectionLimit(),
 			"WorkerFilter":           target.GetWorkerFilter(),
+			"EgressWorkerFilter":     target.GetEgressWorkerFilter(),
+			"IngressWorkerFilter":    target.GetIngressWorkerFilter(),
 		},
 		fieldMaskPaths,
 		[]string{"SessionMaxSeconds", "SessionConnectionLimit"},

@@ -127,7 +127,7 @@ func TestManager_RequestCloseConnections(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.True(t, manager.RequestCloseConnections(ctx, map[string]*ConnectionCloseData{
-		c1.Id: {SessionId: session1.GetId()},
+		c1.GetConnectionId(): {SessionId: session1.GetId()},
 	}))
 
 	c2, _, err := session2.RequestAuthorizeConnection(ctx, "worker id", cancelFn)
@@ -135,8 +135,8 @@ func TestManager_RequestCloseConnections(t *testing.T) {
 	c3, _, err := session3.RequestAuthorizeConnection(ctx, "worker id", cancelFn)
 	require.NoError(t, err)
 	assert.True(t, manager.RequestCloseConnections(ctx, map[string]*ConnectionCloseData{
-		c2.Id: {SessionId: session2.GetId()},
-		c3.Id: {SessionId: session3.GetId()},
+		c2.GetConnectionId(): {SessionId: session2.GetId()},
+		c3.GetConnectionId(): {SessionId: session3.GetId()},
 	}))
 }
 

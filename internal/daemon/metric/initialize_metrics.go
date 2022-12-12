@@ -15,12 +15,13 @@ import (
 )
 
 const (
-	LabelGrpcService = "grpc_service"
-	LabelGrpcMethod  = "grpc_method"
-	LabelGrpcCode    = "grpc_code"
-	LabelHttpPath    = "path"
-	LabelHttpMethod  = "method"
-	LabelHttpCode    = "code"
+	LabelConnectionType = "conn_type"
+	LabelGrpcService    = "grpc_service"
+	LabelGrpcMethod     = "grpc_method"
+	LabelGrpcCode       = "grpc_code"
+	LabelHttpPath       = "path"
+	LabelHttpMethod     = "method"
+	LabelHttpCode       = "code"
 
 	invalidPathValue = "invalid"
 )
@@ -32,7 +33,10 @@ var (
 
 /* The following methods are used to initialize Prometheus histogram vectors for gRPC connections. */
 
-func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor) bool {
+// rangeProtoFiles returns true while there are services with associated methods in the proto package.
+// It relies on RangeFilesByPackage to range through the package, and it adds them into map m.
+// Services and methods for which filter() returns true are not added into the map.
+func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor, filter func(string, string) bool) bool {
 	if fd.Services().Len() == 0 {
 		return true
 	}
@@ -43,11 +47,18 @@ func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor) bool
 			continue
 		}
 
+		serviceName := string(s.FullName())
 		methods := []string{}
 		for j := 0; j < s.Methods().Len(); j++ {
-			methods = append(methods, string(s.Methods().Get(j).Name()))
+			methodName := string(s.Methods().Get(j).Name())
+			if filter(serviceName, methodName) {
+				continue
+			}
+			methods = append(methods, methodName)
 		}
-		m[string(s.FullName())] = methods
+		if len(methods) > 0 {
+			m[serviceName] = methods
+		}
 	}
 
 	return true
@@ -55,27 +66,32 @@ func rangeProtoFiles(m map[string][]string, fd protoreflect.FileDescriptor) bool
 
 // appendServicesAndMethods ranges through all registered files in a specified proto package
 // and appends service and method names to the provided map m.
-// This method is exported for testing purposes.
-func appendServicesAndMethods(m map[string][]string, pkg protoreflect.FileDescriptor) {
+func appendServicesAndMethods(m map[string][]string, pkg protoreflect.FileDescriptor, filter func(string, string) bool) {
 	protoregistry.GlobalFiles.RangeFilesByPackage(
 		pkg.Package(),
-		func(fd protoreflect.FileDescriptor) bool { return rangeProtoFiles(m, fd) },
+		func(fd protoreflect.FileDescriptor) bool { return rangeProtoFiles(m, fd, filter) },
 	)
 }
 
 // InitializeGrpcCollectorsFromPackage registers and zeroes a Prometheus
 // histogram, populating all service and method labels by ranging through
 // the package containing the provided FileDescriptor.
+// The filter function takes in a service name and method name and skips adding them as labels
+// upon returning true.
 // Note: inputting a protoreflect.FileDescriptor will populate all services and methods
 // found in its package, not just methods associated with that specific FileDescriptor.
-func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec, pkg protoreflect.FileDescriptor, codes []codes.Code) {
+func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.ObserverVec,
+	pkgs []protoreflect.FileDescriptor, codes []codes.Code, filter func(string, string) bool,
+) {
 	if r == nil {
 		return
 	}
 	r.MustRegister(v)
 
 	serviceNamesToMethodNames := make(map[string][]string, 0)
-	appendServicesAndMethods(serviceNamesToMethodNames, pkg)
+	for _, p := range pkgs {
+		appendServicesAndMethods(serviceNamesToMethodNames, p, filter)
+	}
 
 	for serviceName, serviceMethods := range serviceNamesToMethodNames {
 		for _, sm := range serviceMethods {
@@ -83,6 +99,15 @@ func InitializeGrpcCollectorsFromPackage(r prometheus.Registerer, v prometheus.O
 				v.With(prometheus.Labels{LabelGrpcService: serviceName, LabelGrpcMethod: sm, LabelGrpcCode: c.String()})
 			}
 		}
+	}
+}
+
+func InitializeConnectionCounters(r prometheus.Registerer, counters []prometheus.CounterVec) {
+	if r == nil {
+		return
+	}
+	for _, c := range counters {
+		r.MustRegister(c)
 	}
 }
 

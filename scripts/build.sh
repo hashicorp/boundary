@@ -54,26 +54,38 @@ if [ "${CI_BUILD}x" != "x" ]; then
     exit
 fi
 
+# Declare binary paths!
+BINARY_NAME="boundary${BINARY_SUFFIX}"
+BIN_PATH=${BIN_PATH:=bin/${BINARY_NAME}}
+BIN_PARENT_DIR="${BIN_PATH%/*}"
+BIN_PARENT_DIR="${BIN_PARENT_DIR##*/}"
+
 # Delete the old dir
-echo "==> Removing old directory..."
-rm -f bin/*
-mkdir -p bin/
+echo "==> Removing old directory ${BIN_PARENT_DIR}..."
+rm -rf ${BIN_PARENT_DIR}
+mkdir -p ${BIN_PARENT_DIR}
 
 # Build!
-echo "==> Building into bin/ for ${GOOS}_${GOARCH}..."
-BINARY_NAME="boundary${BINARY_SUFFIX}"
+echo "==> Building into ${BIN_PARENT_DIR} for ${GOOS}_${GOARCH}..."
 ${GO_CMD} build \
     -tags="${BUILD_TAGS}" \
-    -ldflags "-X github.com/hashicorp/boundary/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY}" \
-    -o "bin/${BINARY_NAME}" \
+    -trimpath \
+    -buildvcs=false \
+    -ldflags "
+      -X github.com/hashicorp/boundary/version.GitCommit=${GIT_COMMIT}${GIT_DIRTY}
+      -X 'github.com/hashicorp/boundary/version.Version=$PRODUCT_VERSION'
+      -X 'github.com/hashicorp/boundary/version.VersionPrerelease=$PRERELEASE_PRODUCT_VERSION'
+      -X 'github.com/hashicorp/boundary/version.VersionMetadata=$METADATA_PRODUCT_VERSION'
+      " \
+    -o "$BIN_PATH" \
     ./cmd/boundary
 
 # Copy binary into gopath if desired
 if [ "${BOUNDARY_INSTALL_BINARY}x" != "x" ]; then
     echo "==> Moving binary into GOPATH/bin..."
-    mv -f "bin/${BINARY_NAME}" "${GOPATH}/bin/"
+    mv -f "${BIN_PATH}" "${GOPATH}/bin/"
 fi
 
 # Done!
 echo "==> Results:"
-ls -hl bin/
+ls -hl ${BIN_PARENT_DIR}

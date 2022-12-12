@@ -71,4 +71,18 @@ message Target {
     this: "WorkerFilter"
     that: "worker_filter"
   }];
+
+  // A boolean expression that allows filtering the egress workers that can handle a session
+  // @inject_tag: `gorm:"default:null"`
+  string egress_worker_filter = 130 [(custom_options.v1.mask_mapping) = {
+    this: "EgressWorkerFilter"
+    that: "egress_worker_filter"
+  }];
+
+  // A boolean expression that allows filtering the ingress workers that can handle a session
+  // @inject_tag: `gorm:"default:null"`
+  string ingress_worker_filter = 140 [(custom_options.v1.mask_mapping) = {
+    this: "IngressWorkerFilter"
+    that: "ingress_worker_filter"
+  }];
 }

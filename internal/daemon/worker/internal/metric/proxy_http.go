@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	proxySubSystem   = "worker_proxy"
+	proxySubsystem   = "worker_proxy"
 	proxyPathValue   = "/v1/proxy"
 	invalidPathValue = "invalid"
 )
@@ -44,7 +44,7 @@ var (
 var httpTimeUntilHeader prometheus.ObserverVec = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Namespace: globals.MetricNamespace,
-		Subsystem: proxySubSystem,
+		Subsystem: proxySubsystem,
 		Name:      "http_write_header_duration_seconds",
 		Help:      "Histogram of time elapsed after the TLS connection is established to when the first http header is written back from the server.",
 		Buckets:   prometheus.DefBuckets,

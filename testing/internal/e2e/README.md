@@ -35,6 +35,7 @@ account.
 ### Local
 Set the appropriate environment variables...
 ```shell
+export E2E_TESTS=true  # This is needed for any e2e test. Otherwise, the test is skipped
 export BOUNDARY_ADDR=  # e.g. http://127.0.0.1:9200
 export E2E_PASSWORD_AUTH_METHOD_ID=  # e.g. ampw_1234567890
 export E2E_PASSWORD_ADMIN_LOGIN_NAME=  # e.g. "admin"

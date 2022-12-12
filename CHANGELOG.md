@@ -4,6 +4,29 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* Custom Response Headers: Adds ability to set api and ui response headers based
+  on status code. Includes default secure CSP and other headers.
+  ([PR](https://github.com/hashicorp/boundary/pull/2587))
+* metrics: Adds accepted connections and closed connections counters to keep track
+  downstream connections for worker and controller servers.
+  ([PR](https://github.com/hashicorp/boundary/pull/2668))
+
+### Bug Fixes
+
+* plugins: Ignore `SIGHUP` sent to parent process; some init systems, notably
+  `dumb-init`, would pass them along to the child processes and cause the
+  plugin to exit ([PR](https://github.com/hashicorp/boundary/pull/2677))
+
+## 0.11.2 (2022/12/09)
+
+### Security
+
+* Boundary now uses Go 1.19.4 to address security vulnerability (CVE-2022-41717) See the
+  [Go announcement](https://groups.google.com/g/golang-announce/c/L_3rmdT0BMU) for
+  more details.
+
 ## 0.11.1 (2022/11/30)
 
 ### New and Improved
@@ -41,6 +64,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   Upgrade notice: If the Database purpose DEK for a scope is destroyed, you must use
   the API to cancel any sessions that predate the upgrade.
   ([PR](https://github.com/hashicorp/boundary/pull/2477))
+
+* session: The amount of bytes received and transmitted over a session
+  is now recorded and persisted. ([PR](https://github.com/hashicorp/boundary/pull/2503))
 
 ### Bug Fixes
 
