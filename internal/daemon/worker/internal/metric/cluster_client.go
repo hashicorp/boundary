@@ -6,15 +6,24 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/metric"
-	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	cservices "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 const (
 	clusterClientSubsystem = "cluster_client"
 )
+
+// grpcCollectorFilter is currently used to filter the services and methods of the
+// controller.servers.services package upon running InitializeClusterClientCollectors.
+var grpcCollectorFilter = noopFilter
+
+func noopFilter(serviceName string, methodName string) bool {
+	return false
+}
 
 // grpcRequestLatency collects measurements of how long a gRPC
 // request between a cluster and its clients takes.
@@ -37,8 +46,7 @@ type requestRecorder struct {
 	start time.Time
 }
 
-// NewRequestRecorder creates a requestRecorder struct which is used to measure gRPC client request latencies.
-// For testing purposes, this method is exported.
+// newRequestRecorder creates a requestRecorder struct which is used to measure gRPC client request latencies.
 func newRequestRecorder(fullMethodName string, reqLatency prometheus.ObserverVec) requestRecorder {
 	service, method := metric.SplitMethodName(fullMethodName)
 	r := requestRecorder{
@@ -82,5 +90,8 @@ func InstrumentClusterClient() grpc.UnaryClientInterceptor {
 // prometheus register and initializes them to 0 for all possible label
 // combinations.
 func InitializeClusterClientCollectors(r prometheus.Registerer) {
-	metric.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency, services.File_controller_servers_services_v1_session_service_proto, expectedGrpcClientCodes)
+	metric.InitializeGrpcCollectorsFromPackage(r, grpcRequestLatency,
+		[]protoreflect.FileDescriptor{
+			cservices.File_controller_servers_services_v1_session_service_proto,
+		}, expectedGrpcClientCodes, grpcCollectorFilter)
 }
