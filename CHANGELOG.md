@@ -6,6 +6,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* Direct Address Targets: You can now set an address directly on a target,
+  bypassing the need for host catalogs, host sets and hosts.
+  ([PR](https://github.com/hashicorp/boundary/pull/2613))
 * Custom Response Headers: Adds ability to set api and ui response headers based
   on status code. Includes default secure CSP and other headers.
   ([PR](https://github.com/hashicorp/boundary/pull/2587))

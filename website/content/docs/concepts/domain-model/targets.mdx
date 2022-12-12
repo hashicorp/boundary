@@ -19,11 +19,13 @@ A target can contain references to [host sets][] from [host catalogs][]
 which belong to the same project as the target.
 A target can contain references to [credential libraries][]
 from [credential stores][] which belong to the same project as the target.
-A user can establish a session with a [host][]
-in any host set referenced by the target
-if the user has been assigned a [role][]
-with the `authorize-session` [permission][]
-for the target.
+A target can contain an address
+which is used by a session to connect to a networked resource.
+A target cannot have an address and also reference host sources.
+A user must be assigned a [role][] with the `authorize-session` [permission][]
+for the target to
+establish a session with a networked resource by way of an address,
+or host in any host set referenced by the target.
 
 ## Attributes
 
@@ -33,6 +35,10 @@ A target has the following configurable attributes:
   The `name` must be unique within the target's [project][].
 
 - `description` - (optional)
+
+- `address` - (optional)
+  Represents a network resource address and is used when establishing a session.
+  Accepts no port, only an IP address or DNS name.
 
 ### TCP Target Attributes
 
