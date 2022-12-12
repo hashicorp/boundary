@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/hashicorp/boundary/testing/internal/e2e/infra"
 	"github.com/hashicorp/boundary/testing/internal/e2e/vault"
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
@@ -60,7 +60,7 @@ func TestDatabaseMigration(t *testing.T) {
 	pool.MaxWait = 10 * time.Second
 	t.Log("Waiting for database to load...")
 	err = pool.Retry(func() error {
-		db, err := sql.Open("postgres", db.UriLocalhost)
+		db, err := sql.Open("pgx", db.UriLocalhost)
 		if err != nil {
 			return err
 		}
