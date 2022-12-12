@@ -132,7 +132,8 @@ func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Netw
 	}
 }
 
-// ConnectToTarget starts a boundary container and attempts to connect to the specified target.
+// ConnectToTarget starts a boundary container and attempts to connect to the specified target. The
+// goal of this method is to create a session entry in the database.
 // Returns information about the container.
 func ConnectToTarget(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, boundaryAddr string, token string, targetId string) *Container {
 	t.Log("Connecting to target...")
@@ -144,8 +145,9 @@ func ConnectToTarget(t testing.TB, pool *dockertest.Pool, network *dockertest.Ne
 			"boundary", "connect",
 			"-token", "env://E2E_AUTH_TOKEN",
 			"-target-id", targetId,
-			"-exec", "ls", // Needed to execute something so that the command exits
-			// Note: Would have used `connect ssh` here, but ssh does not exist in the image
+			"-exec", "ls", // Execute something so that the command exits
+			// Note: Would have used `connect ssh` here, but ssh does not exist in the image. Also,
+			// this method only cares about creating a session entry in the database, so the ssh is unnecessary
 		},
 		Env: []string{
 			"BOUNDARY_ADDR=" + boundaryAddr,
