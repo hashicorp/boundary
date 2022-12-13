@@ -7,8 +7,6 @@ description: |-
 
 # Permissions in Boundary
 
-## Overview
-
 Boundary's permissions model is a composable, RBAC, allow-only model that
 attempts to marry flexibility with usability. This page discusses the permission
 model's fundamental concepts, provides examples of the specific forms of allowed
@@ -31,7 +29,7 @@ relatively simple and predictable.
 At a very high level, permissions within Boundary are declared via grant strings
 and mapped to users via roles.
 
-### Grant Strings
+## Grant Strings
 
 A grant string has a form similar to:
 
@@ -61,7 +59,7 @@ Additionally, there are two types of assigned permissions:
 
 Grant strings can be supplied via a human-friendly string syntax or via JSON.
 
-### Roles
+## Roles
 
 Roles map grant strings to _principals_, currently users and groups. Every role
 assigns grants within a specific scope: either the scope in which the role

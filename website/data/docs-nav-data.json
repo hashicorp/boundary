@@ -14,7 +14,7 @@
         "title": "Boundary vs. Other Software",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Compare Boundary",
             "path": "overview/vs/other-software"
           },
           {
@@ -49,7 +49,7 @@
     "title": "Getting Started",
     "routes": [
       {
-        "title": "Overview",
+        "title": "Boundary Offerings",
         "path": "getting-started"
       },
       {
@@ -80,14 +80,14 @@
     "title": "Configuration",
     "routes": [
       {
-        "title": "Overview/Top-Level Parameters",
+        "title": "Top-Level Parameters",
         "path": "configuration"
       },
       {
         "title": "worker",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Stanza",
             "path": "configuration/worker"
           },
           {
@@ -109,7 +109,7 @@
         "title": "listener",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Stanza",
             "path": "configuration/listener"
           },
           {
@@ -126,7 +126,7 @@
         "title": "KMS",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Stanza",
             "path": "configuration/kms"
           },
           {
@@ -163,7 +163,7 @@
         "title": "events",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Stanza",
             "path": "configuration/events"
           },
           {
@@ -204,7 +204,7 @@
     "title": "Concepts",
     "routes": [
       {
-        "title": "Overview",
+        "title": "Understand Boundary",
         "path": "concepts"
       },
       {
@@ -215,14 +215,14 @@
         "title": "Security",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Security Model",
             "path": "concepts/security"
           },
           {
             "title": "Permissions",
             "routes": [
               {
-                "title": "Overview",
+                "title": "Permissions in Boundary",
                 "path": "concepts/security/permissions"
               },
               {
@@ -253,7 +253,7 @@
         "title": "Domain Model",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Boundary's Domain Model",
             "path": "concepts/domain-model"
           },
           {
@@ -326,7 +326,7 @@
         "title": "Filtering",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Filter Expressions",
             "path": "concepts/filtering"
           },
           {
@@ -404,7 +404,7 @@
     "title": "API/Clients",
     "routes": [
       {
-        "title": "Overview",
+        "title": "Clients",
         "path": "api-clients"
       },
       {
@@ -437,14 +437,14 @@
     "title": "Boundary OSS",
     "routes": [
       {
-        "title": "Overview",
+        "title": "OSS Distribution",
         "path": "oss"
       },
       {
         "title": "Installation",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Install Boundary",
             "path": "oss/installing"
           },
           {
@@ -485,7 +485,7 @@
         "title": "Operations",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Operate Boundary",
             "path": "oss/operations"
           },
           {
@@ -499,18 +499,18 @@
         ]
       },
       {
-        "title": "Developing Boundary",
+        "title": "Development",
         "routes": [
           {
-            "title": "Overview",
+            "title": "Develop Boundary",
             "path": "oss/developing"
           },
           {
-            "title": "Building",
+            "title": "Build Boundary",
             "path": "oss/developing/building"
           },
           {
-            "title": "Developing the UI",
+            "title": "Develop the UI",
             "path": "oss/developing/ui"
           }
         ]
