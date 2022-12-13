@@ -16,6 +16,7 @@ on:
 
 jobs:
   bootstrap-ci-oss:
+    if: ${{ github.event.repository.name == 'boundary' }}
     env:
       TF_WORKSPACE: "boundary-ci-enos-bootstrap"
       TF_VAR_repository: boundary
