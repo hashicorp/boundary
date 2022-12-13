@@ -13,7 +13,7 @@ func init() {
 	kms.RegisterTableRewrapFn("host_plugin_catalog_secret", hostCatalogSecretRewrapFn)
 }
 
-func hostCatalogSecretRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func hostCatalogSecretRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "plugin.hostCatalogSecretRewrapFn"
 	if dataKeyVersionId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing data key version id")

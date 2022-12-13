@@ -15,7 +15,7 @@ func init() {
 	kms.RegisterTableRewrapFn("worker_auth_server_led_activation_token", workerAuthServerLedActivationTokenRewrapFn)
 }
 
-func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) string {
+func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) string {
 	if dataKeyVersionId == "" {
 		return "missing data key version id"
 	}
@@ -34,7 +34,7 @@ func rewrapParameterChecks(ctx context.Context, dataKeyVersionId string, scopeId
 	return ""
 }
 
-func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "server.workerAuthCertRewrapFn"
 	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
 		return errors.New(ctx, errors.InvalidParameter, op, errStr)
@@ -63,7 +63,7 @@ func workerAuthCertRewrapFn(ctx context.Context, dataKeyVersionId string, scopeI
 	return nil
 }
 
-func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "server.workerAuthRewrapFn"
 	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
 		return errors.New(ctx, errors.InvalidParameter, op, errStr)
@@ -108,7 +108,7 @@ func workerAuthRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, r
 	return nil
 }
 
-func workerAuthServerLedActivationTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func workerAuthServerLedActivationTokenRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "server.workerAuthServerLedActivationTokenRewrapFn"
 	if errStr := rewrapParameterChecks(ctx, dataKeyVersionId, scopeId, reader, writer, kmsRepo); errStr != "" {
 		return errors.New(ctx, errors.InvalidParameter, op, errStr)

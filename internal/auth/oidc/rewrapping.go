@@ -13,7 +13,7 @@ func init() {
 	kms.RegisterTableRewrapFn(defaultAuthMethodTableName, authMethodRewrapFn)
 }
 
-func authMethodRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo *kms.Kms) error {
+func authMethodRewrapFn(ctx context.Context, dataKeyVersionId, scopeId string, reader db.Reader, writer db.Writer, kmsRepo kms.GetWrapperer) error {
 	const op = "oidc.authMethodRewrapFn"
 	if dataKeyVersionId == "" {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing data key version id")
