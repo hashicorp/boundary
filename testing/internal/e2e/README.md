@@ -106,17 +106,17 @@ workflow must be updated to include the new scenario (see the `matrix`).
 ### Development
 To assist with iterating on tests on enos launched infrastructure, you can perform the following...
 
-Add the following snippet to print out environment variable information
+Launch an enos scenario and print out the environment variables
 ```
-# `c` is the output from `loadConfig()`
-s, _ := json.MarshalIndent(c, "", "\t")
-log.Printf("%s", s)
-```
-Launch an enos scenario
-```
+cd enos
 enos scenario launch e2e_{scenario} builder:local
 enos scenario output
+cd .enos
+ls -ltr
+cd <most_recent_directory> # bottom of list
+terraform show -json terraform.tfstate | jq -r '.values.root_module.child_modules[].resources[] | select(.address=="module.run_e2e_test.enos_local_exec.run_e2e_test") | .values.environment | to_entries[] | "export \(.key)=\(.value)"'
 ```
+
 Take the printed environment variable information and export them into another terminal session
 ```
 export BOUNDARY_ADDR=
