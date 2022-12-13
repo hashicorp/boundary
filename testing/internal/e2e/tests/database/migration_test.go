@@ -23,6 +23,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type TestEnvironment struct {
+	Pool       *dockertest.Pool
+	Network    *dockertest.Network
+	Boundary   *infra.Container
+	Database   *infra.Container
+	Target     *infra.Container
+	DbInitInfo boundary.DbInitInfo
+}
+
 // TestDatabaseMigration tests migrating the Boundary database from the latest released version to
 // the version under test. It creates a database, populates the database with a number of resources,
 // and uses the Boundary version under test to migrate the database.
@@ -32,7 +41,28 @@ func TestDatabaseMigration(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
+	te := setupEnvironment(t, ctx, c)
+	populateBoundaryDatabase(t, ctx, c, te)
 
+	// Migrate database
+	t.Log("Stopping boundary before migrating...")
+	err = te.Pool.Client.StopContainer(te.Boundary.Resource.Container.ID, 10)
+	require.NoError(t, err)
+
+	bonfigFilePath, err := filepath.Abs("testdata/boundary-config.hcl")
+	require.NoError(t, err)
+
+	t.Log("Starting database migration...")
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("database", "migrate", "-config", bonfigFilePath),
+		e2e.WithEnv("BOUNDARY_POSTGRES_URL", te.Database.UriLocalhost),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	t.Logf("%s", output.Stdout)
+	t.Logf("Migration Output: %s", output.Stderr)
+}
+
+func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironment {
 	pool, err := dockertest.NewPool("")
 	require.NoError(t, err)
 	err = pool.Client.Ping()
@@ -114,41 +144,21 @@ func TestDatabaseMigration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Populate database with additional data
-	populateBoundaryDatabase(t, ctx, pool, network, c, dbInitInfo, target.UriNetwork, b)
-
-	// Migrate database
-	t.Log("Stopping boundary before migrating...")
-	err = pool.Client.StopContainer(b.Resource.Container.ID, 10)
-	require.NoError(t, err)
-
-	bonfigFilePath, err := filepath.Abs("testdata/boundary-config.hcl")
-	require.NoError(t, err)
-
-	t.Log("Starting database migration...")
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("database", "migrate", "-config", bonfigFilePath),
-		e2e.WithEnv("BOUNDARY_POSTGRES_URL", db.UriLocalhost),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	t.Logf("%s", output.Stdout)
-	t.Logf("Migration Output: %s", output.Stderr)
+	return TestEnvironment{
+		Pool:       pool,
+		Network:    network,
+		Boundary:   b,
+		Database:   db,
+		Target:     target,
+		DbInitInfo: dbInitInfo,
+	}
 }
 
-func populateBoundaryDatabase(
-	t testing.TB,
-	ctx context.Context,
-	pool *dockertest.Pool,
-	network *dockertest.Network,
-	c *config,
-	dbInitInfo boundary.DbInitInfo,
-	targetAddress string,
-	b *infra.Container,
-) {
-	os.Setenv("BOUNDARY_ADDR", b.UriLocalhost)
-	os.Setenv("E2E_PASSWORD_AUTH_METHOD_ID", dbInitInfo.AuthMethod.AuthMethodId)
-	os.Setenv("E2E_PASSWORD_ADMIN_LOGIN_NAME", dbInitInfo.AuthMethod.LoginName)
-	os.Setenv("E2E_PASSWORD_ADMIN_PASSWORD", dbInitInfo.AuthMethod.Password)
+func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te TestEnvironment) {
+	os.Setenv("BOUNDARY_ADDR", te.Boundary.UriLocalhost)
+	os.Setenv("E2E_PASSWORD_AUTH_METHOD_ID", te.DbInitInfo.AuthMethod.AuthMethodId)
+	os.Setenv("E2E_PASSWORD_ADMIN_LOGIN_NAME", te.DbInitInfo.AuthMethod.LoginName)
+	os.Setenv("E2E_PASSWORD_ADMIN_PASSWORD", te.DbInitInfo.AuthMethod.Password)
 
 	// Create resources for target. Uses the local CLI so that these methods can be reused.
 	// While the CLI version used won't necessarily match the controller version, it should be (and is
@@ -158,7 +168,7 @@ func populateBoundaryDatabase(
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, targetAddress)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, te.Target.UriNetwork)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, "2222") // openssh-server uses port 2222
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
@@ -243,19 +253,19 @@ func populateBoundaryDatabase(
 	// localhost boundary` entry into /etc/hosts.
 	buf := bytes.NewBuffer(nil)
 	ebuf := bytes.NewBuffer(nil)
-	_, err = b.Resource.Exec(
+	_, err = te.Boundary.Resource.Exec(
 		[]string{
 			"boundary", "authenticate", "password",
-			"-addr", b.UriNetwork,
-			"-auth-method-id", dbInitInfo.AuthMethod.AuthMethodId,
-			"-login-name", dbInitInfo.AuthMethod.LoginName,
+			"-addr", te.Boundary.UriNetwork,
+			"-auth-method-id", te.DbInitInfo.AuthMethod.AuthMethodId,
+			"-login-name", te.DbInitInfo.AuthMethod.LoginName,
 			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
 			"-format", "json",
 		},
 		dockertest.ExecOptions{
 			StdOut: buf,
 			StdErr: ebuf,
-			Env:    []string{"E2E_TEST_BOUNDARY_PASSWORD=" + dbInitInfo.AuthMethod.Password},
+			Env:    []string{"E2E_TEST_BOUNDARY_PASSWORD=" + te.DbInitInfo.AuthMethod.Password},
 		},
 	)
 	require.NoError(t, err)
@@ -265,15 +275,15 @@ func populateBoundaryDatabase(
 	require.NoError(t, err)
 	auth_token := authenticationResult.Item.Attributes["token"].(string)
 
-	connectTarget := infra.ConnectToTarget(t, pool, network, b.UriNetwork, auth_token, newTargetId)
+	connectTarget := infra.ConnectToTarget(t, te.Pool, te.Network, te.Boundary.UriNetwork, auth_token, newTargetId)
 	t.Cleanup(func() {
-		pool.Purge(connectTarget.Resource)
+		te.Pool.Purge(connectTarget.Resource)
 	})
-	_, err = pool.Client.WaitContainer(connectTarget.Resource.Container.ID)
+	_, err = te.Pool.Client.WaitContainer(connectTarget.Resource.Container.ID)
 	require.NoError(t, err)
 	buf = bytes.NewBuffer(nil)
 	ebuf = bytes.NewBuffer(nil)
-	err = pool.Client.Logs(docker.LogsOptions{
+	err = te.Pool.Client.Logs(docker.LogsOptions{
 		Container:    connectTarget.Resource.Container.ID,
 		OutputStream: buf,
 		ErrorStream:  ebuf,
