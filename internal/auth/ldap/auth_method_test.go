@@ -45,7 +45,7 @@ func TestNewAuthMethod(t *testing.T) {
 			opts: []Option{
 				WithName(testCtx, "test-name"),
 				WithDescription(testCtx, "test-description"),
-				WithStartTls(testCtx),
+				WithStartTLS(testCtx),
 				WithInsecureTLS(testCtx),
 				WithDiscoverDn(testCtx),
 				WithAnonGroupSearch(testCtx),
@@ -204,7 +204,7 @@ func TestAuthMethod_clone(t *testing.T) {
 			testCtx,
 			"global",
 			TestConvertToUrls(t, "ldaps://alice.com"),
-			WithStartTls(testCtx),
+			WithStartTLS(testCtx),
 			WithInsecureTLS(testCtx),
 			WithDiscoverDn(testCtx),
 			WithAnonGroupSearch(testCtx),

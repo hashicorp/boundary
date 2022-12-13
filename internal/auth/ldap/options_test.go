@@ -34,7 +34,7 @@ func Test_getOpts(t *testing.T) {
 	})
 	t.Run("WithStartTLS", func(t *testing.T) {
 		assert := assert.New(t)
-		opts, err := getOpts(WithStartTls(testCtx))
+		opts, err := getOpts(WithStartTLS(testCtx))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
 		assert.NotEqual(opts, testOpts)

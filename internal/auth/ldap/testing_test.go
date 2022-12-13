@@ -38,7 +38,7 @@ func Test_testAuthMethod(t *testing.T) {
 		[]string{"ldaps://d1.alice.com", "ldap://d2.alice.com"},
 		WithName(testCtx, "test-name"),
 		WithDescription(testCtx, "test-desc"),
-		WithStartTls(testCtx),
+		WithStartTLS(testCtx),
 		WithInsecureTLS(testCtx),
 		WithDiscoverDn(testCtx),
 		WithAnonGroupSearch(testCtx),

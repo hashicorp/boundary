@@ -63,9 +63,9 @@ func WithDescription(_ context.Context, desc string) Option {
 	}
 }
 
-// WithStartTls optionally enables a StartTLS command after establishing an
+// WithStartTLS optionally enables a StartTLS command after establishing an
 // unencrypted connection.
-func WithStartTls(_ context.Context) Option {
+func WithStartTLS(_ context.Context) Option {
 	return func(o *options) error {
 		o.withStartTls = true
 		return nil
