@@ -521,11 +521,6 @@
     "divider": true
   },
   {
-    "title": "Roadmap",
-    "path": "roadmap",
-    "hidden": true
-  },
-  {
     "title": "Release Notes",
     "routes": [
       {

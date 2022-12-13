@@ -17,4 +17,9 @@ module.exports = [
     destination: '/boundary/docs/overview/use-cases',
     permanent: true,
   },
+  {
+    source: '/boundary/docs/roadmap',
+    destination: 'boundary/docs/overview/what-is-boundary',
+    permanent: true,
+  },
 ]
