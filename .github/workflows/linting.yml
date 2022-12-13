@@ -1,0 +1,30 @@
+name: "golangci-lint"
+on: ["pull_request"]
+
+jobs:
+  lint:
+    name: "Run Linter"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+      - name: Determine Go version
+        id: get-go-version
+        # We use .go-version as our source of truth for current Go
+        # version, because "goenv" can react to it automatically.
+        run: |
+          echo "Building with Go $(cat .go-version)"
+          echo "::set-output name=go-version::$(cat .go-version)"
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "${{ steps.get-go-version.outputs.go-version }}"
+      - name: Install Dependencies
+        # if we really need to we can update this to run `make tools`
+        # later but its just not necessary to only run linters
+        run: |
+          make golangci-lint
+      - name: Running Linters
+        run: |
+          LINT_DIFF_BRANCH="origin/${GITHUB_BASE_REF}" make lint-diff

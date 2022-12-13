@@ -40,6 +40,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(err)
 	sessionRepo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
 	connectionRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 

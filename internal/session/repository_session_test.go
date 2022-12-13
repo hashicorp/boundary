@@ -1564,6 +1564,7 @@ func TestRepository_deleteTargetFKey(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	ctx := context.Background()
 	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
 	targetRepo, err := target.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
