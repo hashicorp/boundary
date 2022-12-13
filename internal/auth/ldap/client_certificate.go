@@ -56,7 +56,7 @@ func NewClientCertificate(ctx context.Context, authMethodId string, privKey []by
 	}, nil
 }
 
-// Url makes an empty one in memory
+// allocClientCertificate makes an empty one in memory
 func allocClientCertificate() *ClientCertificate {
 	return &ClientCertificate{
 		ClientCertificate: &store.ClientCertificate{},
@@ -71,7 +71,7 @@ func (cc *ClientCertificate) clone() *ClientCertificate {
 	}
 }
 
-// TableNameUrl returns the table name
+// TableName returns the table name
 func (cc *ClientCertificate) TableName() string {
 	if cc.tableName != "" {
 		return cc.tableName

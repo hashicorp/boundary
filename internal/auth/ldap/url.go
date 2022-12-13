@@ -43,7 +43,7 @@ func NewUrl(ctx context.Context, authMethodId string, connectionPriority int, ur
 	}, nil
 }
 
-// Url makes an empty one in memory
+// allocUrl makes an empty one in memory
 func allocUrl() *Url {
 	return &Url{
 		Url: &store.Url{},

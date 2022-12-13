@@ -166,6 +166,8 @@ func WithBindCredential(ctx context.Context, dn, password string) Option {
 	const op = "ldap.WithBindCredential"
 	return func(o *options) error {
 		switch {
+		case dn == "" && password == "":
+			return errors.New(ctx, errors.InvalidParameter, op, "missing both dn and password")
 		case dn != "" && password == "":
 			return errors.New(ctx, errors.InvalidParameter, op, "missing password")
 		case dn == "" && password != "":

@@ -40,7 +40,7 @@ func NewBindCredential(ctx context.Context, authMethodId string, dn string, pass
 	}, nil
 }
 
-// Url makes an empty one in memory
+// allocBindCredential makes an empty one in memory
 func allocBindCredential() *BindCredential {
 	return &BindCredential{
 		BindCredential: &store.BindCredential{},

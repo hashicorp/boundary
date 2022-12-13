@@ -155,6 +155,12 @@ func Test_getOpts(t *testing.T) {
 		assert.Empty(opts.withBindDn)
 		assert.Empty(opts.withBindPassword)
 	})
+	t.Run("WithBindCredential-missing-dn-and-password", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithBindCredential(testCtx, "", ""))
+		require.Error(t, err)
+		assert.Empty(opts.withBindDn)
+	})
 	t.Run("WithCertificates", func(t *testing.T) {
 		assert := assert.New(t)
 		testCert, _ := testGenerateCA(t, "localhost")
