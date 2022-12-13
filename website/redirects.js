@@ -19,7 +19,7 @@ module.exports = [
   },
   {
     source: '/boundary/docs/roadmap',
-    destination: 'boundary/docs/overview/what-is-boundary',
+    destination: '/boundary/docs/overview/what-is-boundary',
     permanent: true,
   },
 ]
