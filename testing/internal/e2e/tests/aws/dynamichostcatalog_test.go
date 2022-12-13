@@ -24,8 +24,8 @@ import (
 type config struct {
 	AwsAccessKeyId     string `envconfig:"E2E_AWS_ACCESS_KEY_ID" required:"true"`
 	AwsSecretAccessKey string `envconfig:"E2E_AWS_SECRET_ACCESS_KEY" required:"true"`
-	AwsHostSetFilter1  string `envconfig:"E2E_AWS_HOST_SET_FILTER1" required:"true"` // e.g. "tag:testtag=true"
-	AwsHostSetIps1     string `envconfig:"E2E_AWS_HOST_SET_IPS1" required:"true"`    // e.g. "[\"1.2.3.4\", \"2.3.4.5\"]"
+	AwsHostSetFilter1  string `envconfig:"E2E_AWS_HOST_SET_FILTER" required:"true"`  // e.g. "tag:testtag=true"
+	AwsHostSetIps1     string `envconfig:"E2E_AWS_HOST_SET_IPS" required:"true"`     // e.g. "[\"1.2.3.4\", \"2.3.4.5\"]"
 	AwsHostSetFilter2  string `envconfig:"E2E_AWS_HOST_SET_FILTER2" required:"true"` // e.g. "tag:testtagtwo=test"
 	AwsHostSetIps2     string `envconfig:"E2E_AWS_HOST_SET_IPS2" required:"true"`    // e.g. "[\"1.2.3.4\"]"
 	TargetSshKeyPath   string `envconfig:"E2E_SSH_KEY_PATH" required:"true"`         // e.g. "/Users/username/key.pem"

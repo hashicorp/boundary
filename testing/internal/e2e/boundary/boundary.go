@@ -21,9 +21,22 @@ type config struct {
 	AdminLoginPassword string `envconfig:"E2E_PASSWORD_ADMIN_PASSWORD" required:"true"`
 }
 
-type authenticateCliOutput struct {
+// AuthenticateCliOutput parses the json response from running `boundary authenticate`
+type AuthenticateCliOutput struct {
 	Item     *authmethods.AuthenticateResult
 	response *api.Response
+}
+
+// AuthMethodInfo parses auth method info in the json response from running `boundary database init`
+type AuthMethodInfo struct {
+	AuthMethodId string `json:"auth_method_id"`
+	LoginName    string `json:"login_name"`
+	Password     string `json:"password"`
+}
+
+// DbInitInfo parses the json response from running `boundary database init`
+type DbInitInfo struct {
+	AuthMethod AuthMethodInfo `json:"auth_method"`
 }
 
 func loadConfig() (*config, error) {
@@ -110,7 +123,7 @@ func GetAuthenticationTokenCli(t testing.TB, ctx context.Context, loginName stri
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	var authenticationResult authenticateCliOutput
+	var authenticationResult AuthenticateCliOutput
 	err = json.Unmarshal(output.Stdout, &authenticationResult)
 	require.NoError(t, err)
 

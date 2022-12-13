@@ -36,32 +36,50 @@ account.
 Set the appropriate environment variables...
 ```shell
 export E2E_TESTS=true  # This is needed for any e2e test. Otherwise, the test is skipped
+
+# For e2e/tests/static
 export BOUNDARY_ADDR=  # e.g. http://127.0.0.1:9200
 export E2E_PASSWORD_AUTH_METHOD_ID=  # e.g. ampw_1234567890
 export E2E_PASSWORD_ADMIN_LOGIN_NAME=  # e.g. "admin"
 export E2E_PASSWORD_ADMIN_PASSWORD=  # e.g. "password"
 
-# For e2e/host/static
 export E2E_TARGET_IP=  # e.g. 192.168.0.1
 export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
 export E2E_SSH_USER=  # e.g. ubuntu
 
-# For e2e/host/aws
-export E2E_AWS_ACCESS_KEY_ID=
-export E2E_AWS_SECRET_ACCESS_KEY=
-export E2E_AWS_HOST_SET_FILTER1=  # e.g. "tag:testtag=true"
-export E2E_AWS_HOST_SET_IPS1=  # e.g. "[\"1.2.3.4\", \"2.3.4.5\"]"
-export E2E_AWS_HOST_SET_FILTER2=  # e.g. "tag:testtagtwo=test"
-export E2E_AWS_HOST_SET_IPS2=  # e.g. "[\"1.2.3.4\"]
-export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
-export E2E_SSH_USER=  # e.g. ubuntu
+# For e2e/tests/static_with_vault
+export BOUNDARY_ADDR=  # e.g. http://127.0.0.1:9200
+export E2E_PASSWORD_AUTH_METHOD_ID=  # e.g. ampw_1234567890
+export E2E_PASSWORD_ADMIN_LOGIN_NAME=  # e.g. "admin"
+export E2E_PASSWORD_ADMIN_PASSWORD=  # e.g. "password"
 
-# For e2e/credential/vault
 export VAULT_ADDR=  # e.g. http://127.0.0.1:8200
 export VAULT_TOKEN=
 export E2E_TARGET_IP=  # e.g. 192.168.0.1
 export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
 export E2E_SSH_USER=  # e.g. ubuntu
+
+# For e2e/tests/aws
+export BOUNDARY_ADDR=  # e.g. http://127.0.0.1:9200
+export E2E_PASSWORD_AUTH_METHOD_ID=  # e.g. ampw_1234567890
+export E2E_PASSWORD_ADMIN_LOGIN_NAME=  # e.g. "admin"
+export E2E_PASSWORD_ADMIN_PASSWORD=  # e.g. "password"
+
+export E2E_AWS_ACCESS_KEY_ID=
+export E2E_AWS_SECRET_ACCESS_KEY=
+export E2E_AWS_HOST_SET_FILTER=  # e.g. "tag:testtag=true"
+export E2E_AWS_HOST_SET_IPS=  # e.g. "[\"1.2.3.4\", \"2.3.4.5\"]"
+export E2E_AWS_HOST_SET_FILTER2=  # e.g. "tag:testtagtwo=test"
+export E2E_AWS_HOST_SET_IPS2=  # e.g. "[\"1.2.3.4\"]
+export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
+export E2E_SSH_USER=  # e.g. ubuntu
+
+# For e2e/tests/database
+export E2E_AWS_ACCESS_KEY_ID=
+export E2E_AWS_SECRET_ACCESS_KEY=
+export E2E_AWS_HOST_SET_FILTER=  # e.g. "tag:testtag=true"
+export VAULT_ADDR=  # e.g. http://127.0.0.1:8200
+export VAULT_TOKEN=
 ```
 
 Then, run...
@@ -74,8 +92,9 @@ go test github.com/hashicorp/boundary/testing/e2e/target -v -run '^TestCreateTar
 
 ## Adding Tests
 
-Tests live under this directory. Additional tests can be added to an existing go package or a new
-one can be created. If a new package is created, a new enos scenario would also need to be created.
+Tests live in the `tests/` directory. Additional tests can be added to an existing go package or a
+new one can be created. If a new package is created, a new enos scenario would also need to be
+created.
 
 Enos is comprised of scenarios, where a scenario is the environment you want the tests to operate
 in. In one scenario, there may be a boundary cluster and a target. Another scenario might involve a
@@ -87,17 +106,17 @@ workflow must be updated to include the new scenario (see the `matrix`).
 ### Development
 To assist with iterating on tests on enos launched infrastructure, you can perform the following...
 
-Add the following snippet to print out environment variable information
+Launch an enos scenario and print out the environment variables
 ```
-# `c` is the output from `loadConfig()`
-s, _ := json.MarshalIndent(c, "", "\t")
-log.Printf("%s", s)
-```
-Launch an enos scenario
-```
+cd enos
 enos scenario launch e2e_{scenario} builder:local
 enos scenario output
+cd .enos
+ls -ltr
+cd <most_recent_directory> # bottom of list
+terraform show -json terraform.tfstate | jq -r '.values.root_module.child_modules[].resources[] | select(.address=="module.run_e2e_test.enos_local_exec.run_e2e_test") | .values.environment | to_entries[] | "export \(.key)=\(.value)"'
 ```
+
 Take the printed environment variable information and export them into another terminal session
 ```
 export BOUNDARY_ADDR=
