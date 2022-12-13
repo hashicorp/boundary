@@ -347,20 +347,6 @@ func (w *Worker) updateAddresses(cancelCtx context.Context, addrs []string, addr
 			event.WriteSysEvent(cancelCtx, op, fmt.Sprintf("Upstreams after first status set to: %s", addrs))
 		}
 	}
-
-	// regardless of whether or not it's a new address, we need to set
-	// them for dialingListeners
-	for _, as := range *addressReceivers {
-		switch {
-		case as.Type() == dialingListenerReceiverType:
-			tmpAddrs := make([]string, len(addrs))
-			copy(tmpAddrs, addrs)
-			if len(tmpAddrs) == 0 {
-				tmpAddrs = append(tmpAddrs, w.conf.RawConfig.Worker.InitialUpstreams...)
-			}
-			as.SetAddresses(tmpAddrs)
-		}
-	}
 }
 
 // cleanupConnections walks all sessions and shuts down all proxy connections.
