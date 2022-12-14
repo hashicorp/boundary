@@ -18,7 +18,7 @@ import (
 // WithUnauthenticatedUser options is supported and all other options are
 // ignored.
 func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt ...Option) (*AuthMethod, error) {
-	const op = "oidc.(Repository).LookupAuthMethod"
+	const op = "ldap.(Repository).LookupAuthMethod"
 	if publicId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
@@ -33,7 +33,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 // WithUnauthenticatedUser, WithLimit and WithOrder options are supported and
 // all other options are ignored.
 func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
-	const op = "oidc.(Repository).ListAuthMethods"
+	const op = "ldap.(Repository).ListAuthMethods"
 	if len(scopeIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope IDs")
 	}
@@ -46,7 +46,7 @@ func (r *Repository) ListAuthMethods(ctx context.Context, scopeIds []string, opt
 
 // lookupAuthMethod will lookup a single auth method
 func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, opt ...Option) (*AuthMethod, error) {
-	const op = "oidc.(Repository).lookupAuthMethod"
+	const op = "ldap.(Repository).lookupAuthMethod"
 	var err error
 	ams, err := r.getAuthMethods(ctx, authMethodId, nil, opt...)
 	if err != nil {
@@ -74,7 +74,7 @@ func (r *Repository) lookupAuthMethod(ctx context.Context, authMethodId string, 
 //
 // When no record is found it returns nil, nil
 func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, scopeIds []string, opt ...Option) ([]*AuthMethod, error) {
-	const op = "oidc.(Repository).getAuthMethods"
+	const op = "ldap.(Repository).getAuthMethods"
 	if authMethodId == "" && len(scopeIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing search criteria: both auth method id and scope ids are empty")
 	}
@@ -195,7 +195,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	return authMethods, nil
 }
 
-// authMethodAgg is a view that aggregates the auth method's value objects if
+// authMethodAgg is a view that aggregates the auth method's value objects. If
 // the value object can have multiple values like Urls and Certs, then the
 // string field is delimited with the aggregateDelimiter of "|"
 type authMethodAgg struct {
