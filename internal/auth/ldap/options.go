@@ -27,13 +27,20 @@ type options struct {
 	withBindPassword         string
 	withClientCertificate    string
 	withClientCertificateKey []byte
+	withLimit                int
+	withUnauthenticatedUser  bool
+	withOrderByCreateTime    bool
+	ascending                bool
+	withOperationalState     AuthMethodState
 }
 
 // Option - how options are passed as args
 type Option func(*options) error
 
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		withOperationalState: InactiveState,
+	}
 }
 
 func getOpts(opt ...Option) (options, error) {
@@ -220,6 +227,44 @@ func WithClientCertificate(ctx context.Context, privKey []byte, cert *x509.Certi
 			}
 			o.withClientCertificate = pem[0]
 		}
+		return nil
+	}
+}
+
+// WithLimit provides an option to provide a limit.  Intentionally allowing
+// negative integers.   If WithLimit < 0, then unlimited results are returned.
+// If WithLimit == 0, then default limits are used for results.
+func WithLimit(l int) Option {
+	return func(o *options) error {
+		o.withLimit = l
+		return nil
+	}
+}
+
+// WithUnauthenticatedUser provides an option for filtering results for
+// an unauthenticated users.
+func WithUnauthenticatedUser(enabled bool) Option {
+	return func(o *options) error {
+		o.withUnauthenticatedUser = enabled
+		return nil
+	}
+}
+
+// WithOrderByCreateTime provides an option to specify ordering by the
+// CreateTime field.
+func WithOrderByCreateTime(ascending bool) Option {
+	return func(o *options) error {
+		o.withOrderByCreateTime = true
+		o.ascending = ascending
+		return nil
+	}
+}
+
+// WithOperationalState provides an option for specifying the auth method's
+// operational state
+func WithOperationalState(state AuthMethodState) Option {
+	return func(o *options) error {
+		o.withOperationalState = state
 		return nil
 	}
 }
