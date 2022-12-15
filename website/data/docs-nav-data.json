@@ -521,6 +521,13 @@
     "divider": true
   },
   {
+    "title": "HCP",
+    "href": "https://developer.hashicorp.com/hcp/docs/boundary"
+  },
+  {
+    "divider": true
+  },
+  {
     "title": "Release Notes",
     "routes": [
       {
