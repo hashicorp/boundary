@@ -145,6 +145,7 @@ func TestPopulateAttrFlags(t *testing.T) {
 			flagSet := c.FlagSet(base.FlagSetNone)
 			f := flagSet.NewFlagSet("Attribute Options")
 			cmd := "create"
+
 			flagNames := map[string][]string{
 				cmd: {
 					"attributes",
@@ -155,7 +156,16 @@ func TestPopulateAttrFlags(t *testing.T) {
 				},
 			}
 
-			PopulateAttributeFlags(c, f, flagNames, cmd)
+			attrsInput := CombinedSliceFlagValuePopulationInput{
+				FlagSet:                          f,
+				FlagNames:                        flagNames[cmd],
+				FullPopulationFlag:               &c.FlagAttributes,
+				FullPopulationInputName:          "attributes",
+				PiecewisePopulationFlag:          &c.FlagAttrs,
+				PiecewisePopulationInputBaseName: "attr",
+			}
+			PopulateCombinedSliceFlagValue(attrsInput)
+
 			err := flagSet.Parse(tt.args)
 			if tt.expectedErr != "" {
 				require.Error(err)

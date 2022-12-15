@@ -94,7 +94,15 @@ func (c *JsonCommand) Flags() *base.FlagSets {
 	common.PopulateCommonFlags(c.Command, f, "json-type credential", flagsJsonMap, c.Func)
 
 	f = set.NewFlagSet("Object Options")
-	common.PopulateObjectFlags(c.Command, f, flagsJsonMap, c.Func)
+	objsInput := common.CombinedSliceFlagValuePopulationInput{
+		FlagSet:                          f,
+		FlagNames:                        flagsJsonMap[c.Func],
+		FullPopulationFlag:               &c.FlagObject,
+		FullPopulationInputName:          "object",
+		PiecewisePopulationFlag:          &c.FlagKv,
+		PiecewisePopulationInputBaseName: "kv",
+	}
+	common.PopulateCombinedSliceFlagValue(objsInput)
 
 	extraJsonFlagsFunc(c, set, f)
 

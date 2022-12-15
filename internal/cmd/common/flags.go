@@ -116,151 +116,106 @@ func PopulateCommonFlags(c *base.Command, f *base.FlagSet, resourceType string, 
 	}
 }
 
-func PopulateAttributeFlags(c *base.Command, f *base.FlagSet, flagNames map[string][]string, command string) {
-	keyDelimiter := "."
-	for _, name := range flagNames[command] {
-		switch name {
-		case "attributes":
-			f.StringVar(&base.StringVar{
-				Name:   "attributes",
-				Target: &c.FlagAttributes,
-				Usage:  `A JSON map value to use as the entirety of the request's attributes map. Usually this will be sourced from a file via "file://" syntax. Is exclusive with the other attr flags.`,
-			})
-		case "attr":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "attr",
-				Target:         &c.FlagAttrs,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value attribute to add to the request's attributes map. The type is automatically inferred. Use -string-attr, -bool-attr, or -num-attr if the type needs to be overridden. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "string-attr":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "string-attr",
-				Target:         &c.FlagAttrs,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value string attribute to add to the request's attributes map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "bool-attr":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "bool-attr",
-				Target:         &c.FlagAttrs,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value bool attribute to add to the request's attributes map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "num-attr":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "num-attr",
-				Target:         &c.FlagAttrs,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value numeric attribute to add to the request's attributes map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		}
-	}
+type CombinedSliceFlagValuePopulationInput struct {
+	// FlagSet is the flag set to add vars to
+	FlagSet *base.FlagSet
+
+	// FlagNames is the set of flag names
+	FlagNames []string
+
+	// FullPopulationFlag is the string var to set if a fully-specified map is
+	// supplied, e.g. "attributes"
+	FullPopulationFlag *string
+
+	// FullPopulationInputName is the name of the flag when setting a
+	// fully-specified map; also used for generating help texts
+	FullPopulationInputName string
+
+	// PiecewisePopulationFlag is the var that is built up via the combination
+	// method, e.g. "attr", "string-attr", etc.
+	PiecewisePopulationFlag *[]base.CombinedSliceFlagValue
+
+	// PiecewisePopulationInputName is the base name of the flag when using the
+	// combination method, e.g. "attr" will be used to build "string-attr"; also
+	// used for generating help texts
+	PiecewisePopulationInputBaseName string
 }
 
-func PopulateSecretFlags(c *base.Command, f *base.FlagSet, flagNames map[string][]string, command string) {
+func PopulateCombinedSliceFlagValue(input CombinedSliceFlagValuePopulationInput) {
 	keyDelimiter := "."
-	for _, name := range flagNames[command] {
+	for _, name := range input.FlagNames {
 		switch name {
-		case "secrets":
-			f.StringVar(&base.StringVar{
-				Name:   "secrets",
-				Target: &c.FlagSecrets,
-				Usage:  `A JSON map value to use as the entirety of the request's secrets map. Usually this will be sourced from a file via "file://" syntax. Is exclusive with the other secret flags.`,
+		case input.FullPopulationInputName:
+			input.FlagSet.StringVar(&base.StringVar{
+				Name:   input.FullPopulationInputName,
+				Target: input.FullPopulationFlag,
+				Usage: fmt.Sprintf(
+					"A JSON map value to use as the entirety of the request's %s map. "+
+						"Usually this will be sourced from a file via \"file://\" syntax. "+
+						"Is exclusive with the other %s flags.",
+					input.FullPopulationInputName,
+					input.PiecewisePopulationInputBaseName,
+				),
 			})
-		case "secret":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "secret",
-				Target:         &c.FlagScrts,
+		case input.PiecewisePopulationInputBaseName:
+			input.FlagSet.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           input.PiecewisePopulationInputBaseName,
+				Target:         input.PiecewisePopulationFlag,
 				KvSplit:        true,
 				KeyDelimiter:   &keyDelimiter,
 				ProtoCompatKey: true,
-				Usage:          `A key=value secret to add to the request's secrets map. The type is automatically inferred. Use -string-secret, -bool-secret, or -num-secret if the type needs to be overridden. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+				Usage: fmt.Sprintf(
+					"A key=value pair to add to the request's %s map. "+
+						"The type is automatically inferred. Use -string-%s, -bool-%s, or -num-%s if the type needs to be overridden. "+
+						"Can be specified multiple times. "+
+						"Supports sourcing values from files via \"file://\" and env vars via \"env://\".",
+					input.FullPopulationInputName,
+					input.PiecewisePopulationInputBaseName,
+					input.PiecewisePopulationInputBaseName,
+					input.PiecewisePopulationInputBaseName,
+				),
 			})
-		case "string-secret":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "string-secret",
-				Target:         &c.FlagScrts,
+		case "string-" + input.PiecewisePopulationInputBaseName:
+			input.FlagSet.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           "string-" + input.PiecewisePopulationInputBaseName,
+				Target:         input.PiecewisePopulationFlag,
 				KvSplit:        true,
 				KeyDelimiter:   &keyDelimiter,
 				ProtoCompatKey: true,
-				Usage:          `A key=value string secret to add to the request's secrets map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+				Usage: fmt.Sprintf(
+					"A key=value string value to add to the request's %s map. "+
+						"Can be specified multiple times. "+
+						"Supports sourcing values from files via \"file://\" and env vars via \"env://\"`.",
+					input.FullPopulationInputName,
+				),
 			})
-		case "bool-secret":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "bool-secret",
-				Target:         &c.FlagScrts,
+		case "bool-" + input.PiecewisePopulationInputBaseName:
+			input.FlagSet.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           "bool-" + input.PiecewisePopulationInputBaseName,
+				Target:         input.PiecewisePopulationFlag,
 				KvSplit:        true,
 				KeyDelimiter:   &keyDelimiter,
 				ProtoCompatKey: true,
-				Usage:          `A key=value bool secret to add to the request's secrets map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+				Usage: fmt.Sprintf(
+					"A key=value bool value to add to the request's %s map. "+
+						"Can be specified multiple times. "+
+						"Supports sourcing values from files via \"file://\" and env vars via \"env://\"`.",
+					input.FullPopulationInputName,
+				),
 			})
-		case "num-secret":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "num-secret",
-				Target:         &c.FlagScrts,
+		case "num-" + input.PiecewisePopulationInputBaseName:
+			input.FlagSet.CombinationSliceVar(&base.CombinationSliceVar{
+				Name:           "num-" + input.PiecewisePopulationInputBaseName,
+				Target:         input.PiecewisePopulationFlag,
 				KvSplit:        true,
 				KeyDelimiter:   &keyDelimiter,
 				ProtoCompatKey: true,
-				Usage:          `A key=value numeric secret to add to the request's secrets map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		}
-	}
-}
-
-func PopulateObjectFlags(c *base.Command, f *base.FlagSet, flagNames map[string][]string, command string) {
-	keyDelimiter := "."
-	for _, name := range flagNames[command] {
-		switch name {
-		case "object":
-			f.StringVar(&base.StringVar{
-				Name:   "object",
-				Target: &c.FlagObject,
-				Usage:  `A JSON map value to use as the entirety of the request's object map. Usually this will be sourced from a file via "file://" syntax. Is exclusive with the other kv flags.`,
-			})
-		case "kv":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "kv",
-				Target:         &c.FlagKv,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value pair to add to the request's object map. The type is automatically inferred. Use -string-kv, -bool-kv, or -num-kv if the type needs to be overridden. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "string-kv":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "string-kv",
-				Target:         &c.FlagKv,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value string value to add to the request's object map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "bool-kv":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "bool-kv",
-				Target:         &c.FlagKv,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value bool value to add to the request's object map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
-			})
-		case "num-kv":
-			f.CombinationSliceVar(&base.CombinationSliceVar{
-				Name:           "num-kv",
-				Target:         &c.FlagKv,
-				KvSplit:        true,
-				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
-				Usage:          `A key=value numeric value to add to the request's object map. Can be specified multiple times. Supports sourcing values from files via "file://" and env vars via "env://"`,
+				Usage: fmt.Sprintf(
+					"A key=value numeric value to add to the request's %s map. "+
+						"Can be specified multiple times. "+
+						"Supports sourcing values from files via \"file://\" and env vars via \"env://\"`.",
+					input.FullPopulationInputName,
+				),
 			})
 		}
 	}

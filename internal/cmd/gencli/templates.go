@@ -205,17 +205,41 @@ func (c *{{ camelCase .SubActionPrefix }}Command) Flags() *base.FlagSets {
 
 	{{ if .HasGenericAttributes }}
 	f = set.NewFlagSet("Attribute Options")
-	common.PopulateAttributeFlags(c.Command, f, flags{{ camelCase .SubActionPrefix }}Map, c.Func)
+		attrsInput := common.CombinedSliceFlagValuePopulationInput{
+		FlagSet: f,
+		FlagNames: flags{{ camelCase .SubActionPrefix }}Map[c.Func],
+		FullPopulationFlag: &c.FlagAttributes,
+		FullPopulationInputName: "attributes",
+		PiecewisePopulationFlag: &c.FlagAttrs,
+		PiecewisePopulationInputBaseName: "attr",
+	}
+	common.PopulateCombinedSliceFlagValue(attrsInput)
 	{{ end }}
 
 	{{ if .HasGenericSecrets }}
 	f = set.NewFlagSet("Secrets Options")
-	common.PopulateSecretFlags(c.Command, f, flags{{ camelCase .SubActionPrefix }}Map, c.Func)
+	scrtsInput := common.CombinedSliceFlagValuePopulationInput{
+		FlagSet: f,
+		FlagNames: flags{{ camelCase .SubActionPrefix }}Map[c.Func],
+		FullPopulationFlag: &c.FlagSecrets,
+		FullPopulationInputName: "secrets",
+		PiecewisePopulationFlag: &c.FlagScrts,
+		PiecewisePopulationInputBaseName: "secret",
+	}
+	common.PopulateCombinedSliceFlagValue(scrtsInput)
 	{{ end }}
 
 	{{ if .HasJsonObject }}
 	f = set.NewFlagSet("Object Options")
-	common.PopulateObjectFlags(c.Command, f, flags{{ camelCase .SubActionPrefix }}Map, c.Func)
+		objsInput := common.CombinedSliceFlagValuePopulationInput{
+		FlagSet: f,
+		FlagNames: flags{{ camelCase .SubActionPrefix }}Map[c.Func],
+		FullPopulationFlag: &c.FlagObject,
+		FullPopulationInputName: "object",
+		PiecewisePopulationFlag: &c.FlagKv,
+		PiecewisePopulationInputBaseName: "kv",
+	}
+	common.PopulateCombinedSliceFlagValue(objsInput)
 	{{ end }}
 
 	extra{{ camelCase .SubActionPrefix }}FlagsFunc(c, set, f)
