@@ -204,4 +204,36 @@ func Test_getOpts(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(err.Error(), "asn1: structure error")
 	})
+	t.Run("WithLimit", func(t *testing.T) {
+		opts, err := getOpts(WithLimit(5))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withLimit = 5
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithUnauthenticatedUser", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithUnauthenticatedUser(true))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withUnauthenticatedUser = true
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithOrderByCreateTime", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithOrderByCreateTime(true))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withOrderByCreateTime = true
+		testOpts.ascending = true
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithOperationalState", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithOperationalState(ActivePublicState))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withOperationalState = ActivePublicState
+		assert.Equal(opts, testOpts)
+	})
 }
