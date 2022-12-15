@@ -170,6 +170,11 @@ message AuthMethod {
   // password is updated in the database.
   // @inject_tag: `gorm:"-"`
   bytes bind_password_hmac = 270;
+
+  // is_primary_auth_method is a read-only output field which indicates if the
+  // auth method is set as the scope's primary auth method.
+  // @inject_tag: `gorm:"-"`
+  bool is_primary_auth_method = 280;
 }
 
 // Url represents LDAP URLs that specify LDAP servers to connection to.  There
