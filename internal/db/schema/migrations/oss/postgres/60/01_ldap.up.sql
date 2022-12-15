@@ -401,7 +401,10 @@ select
   string_agg(distinct cert.certificate, '|') as certs,
 
   -- the rest of the fields are zero to one relationships that are stored in
-  -- related tables.
+  -- related tables. Since we're outer joining with these tables, we need to
+  -- either add them to the group by, use an aggregating func, or handle
+  -- multiple rows returning for each auth method. I've chosen to just use
+  -- string_agg(...) 
   string_agg(distinct uc.user_dn, '|') as user_dn, 
   string_agg(distinct uc.user_attr, '|') as user_attr, 
   string_agg(distinct uc.user_filter, '|') as user_filter, 
