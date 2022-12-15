@@ -97,9 +97,17 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 
 	// Check if session has terminated
 	t.Log("Waiting for session to be canceling/terminated...")
+	select {
+	case output := <-errChan:
+		// `boundary connect` returns a 255 when cancelled
+		require.Equal(t, output.ExitCode, 255, string(output.Stdout), string(output.Stderr))
+	case <-time.After(time.Second * 5):
+		t.Fatal("Timed out waiting for session command to exit")
+	}
+
 	err = backoff.RetryNotify(
 		func() error {
-			// Check if session is active
+			// Check that session has been canceled or terminated
 			output = e2e.RunCommand(ctx, "boundary",
 				e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
 			)

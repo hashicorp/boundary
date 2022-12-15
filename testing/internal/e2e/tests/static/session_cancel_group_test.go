@@ -80,7 +80,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 		),
 	)
 	require.Error(t, output.Err, string(output.Stdout), string(output.Stderr))
-	var response e2e.CliError
+	var response boundary.CliError
 	err = json.Unmarshal(output.Stderr, &response)
 	require.NoError(t, err)
 	require.Equal(t, 403, int(response.Status))
