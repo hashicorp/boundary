@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	"sort"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ const testInvalidPem = `-----BEGIN CERTIFICATE-----
 MIICUTCCAfugAwIBAgIBADANBgkqhkiG9w0BAQQFADBXMQswCQYDVQQGEwJDTjEL
 -----END CERTIFICATE-----`
 
-func testAuthMethod(t testing.TB,
+func TestAuthMethod(t testing.TB,
 	conn *db.DB,
 	databaseWrapper wrapping.Wrapper,
 	scopeId string,
@@ -96,6 +97,7 @@ func testAuthMethod(t testing.TB,
 			if err := w.Create(testCtx, cc); err != nil {
 				return err
 			}
+			am.ClientCertificateKeyHmac = cc.CertificateKeyHmac
 		}
 		if opts.withBindDn != "" || opts.withBindPassword != "" {
 			bc, err := NewBindCredential(testCtx, am.PublicId, opts.withBindDn, []byte(opts.withBindPassword))
@@ -108,6 +110,7 @@ func testAuthMethod(t testing.TB,
 			if err := w.Create(testCtx, bc); err != nil {
 				return err
 			}
+			am.BindPasswordHmac = bc.PasswordHmac
 		}
 		return nil
 	})
@@ -184,4 +187,23 @@ func TestConvertToUrls(t testing.TB, urls ...string) []*url.URL {
 		convertedUrls = append(convertedUrls, parsed)
 	}
 	return convertedUrls
+}
+
+// TestSortAuthMethods will sort the provided auth methods by public id and it
+// will sort each auth method's embedded value objects
+func TestSortAuthMethods(t testing.TB, methods []*AuthMethod) {
+	// sort them by public id first...
+	sort.Slice(methods, func(a, b int) bool {
+		return methods[a].PublicId < methods[b].PublicId
+	})
+
+	// sort all the embedded value objects...
+	for _, am := range methods {
+		sort.Slice(am.Urls, func(a, b int) bool {
+			return am.Urls[a] < am.Urls[b]
+		})
+		sort.Slice(am.Certificates, func(a, b int) bool {
+			return am.Certificates[a] < am.Certificates[b]
+		})
+	}
 }
