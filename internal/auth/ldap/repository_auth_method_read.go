@@ -114,6 +114,8 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 	}
 
 	if opts.withUnauthenticatedUser {
+		// the caller is asking for a list of auth methods which can be returned
+		// to unauthenticated users (so they can authen).
 		where, args = append(where, "state = ?"), append(args, string(ActivePublicState))
 	}
 
