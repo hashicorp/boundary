@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/kr/pretty"
 	"github.com/posener/complete"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // FlagExample is an interface which declares an example value.
@@ -943,7 +944,7 @@ func (f *FlagSet) CombinationSliceVar(i *CombinationSliceVar) {
 type CombinedSliceFlagValue struct {
 	Name  string
 	Keys  []string
-	Value string
+	Value *wrapperspb.StringValue
 }
 
 type combinedSliceValue struct {
@@ -971,21 +972,24 @@ var protoIdentifierRegex = regexp.MustCompile("^[a-zA-Z][A-Za-z0-9_]*$")
 func (c *combinedSliceValue) Set(val string) error {
 	ret := CombinedSliceFlagValue{
 		Name:  c.name,
-		Value: strings.TrimSpace(val),
+		Value: wrapperspb.String(strings.TrimSpace(val)),
 	}
 
 	if c.kvSplit {
-		kv := strings.SplitN(ret.Value, "=", 2)
+		kv := strings.SplitN(ret.Value.GetValue(), "=", 2)
 		switch len(kv) {
 		case 0:
+			// This shouldn't happen
+			return fmt.Errorf("unexpected length of string after splitting")
 		case 1:
-			ret.Value = strings.TrimSpace(kv[0])
+			ret.Keys = []string{kv[0]}
+			ret.Value = nil
 		default:
 			ret.Keys = []string{kv[0]}
 			if c.keyDelimiter != nil {
 				ret.Keys = strings.Split(kv[0], *c.keyDelimiter)
 			}
-			ret.Value = strings.TrimSpace(kv[1])
+			ret.Value = wrapperspb.String(strings.TrimSpace(kv[1]))
 		}
 	}
 
@@ -1002,9 +1006,14 @@ func (c *combinedSliceValue) Set(val string) error {
 		}
 	}
 
-	var err error
-	if ret.Value, err = parseutil.ParsePath(ret.Value); err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
-		return fmt.Errorf("error checking if value is a path: %w", err)
+	if ret.Value != nil {
+		pathParsedValue, err := parseutil.ParsePath(ret.Value.GetValue())
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return fmt.Errorf("error checking if value is a path: %w", err)
+		}
+		if pathParsedValue != "" {
+			ret.Value = wrapperspb.String(pathParsedValue)
+		}
 	}
 
 	*c.target = append(*c.target, ret)
