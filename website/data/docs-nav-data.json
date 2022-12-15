@@ -508,8 +508,8 @@
     "divider": true
   },
   {
-    "title": "HCP",
-    "href": "hcp/docs/boundary"
+    "title": "Boundary HCP",
+    "href": "https://developer.hashicorp.com/hcp/docs/boundary/"
   },
   {
     "divider": true
