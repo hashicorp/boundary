@@ -40,7 +40,7 @@ func TestRewrap_bindCredentialRewrapFn(t *testing.T) {
 			name: "success",
 			ctx:  testCtx,
 			setup: func() (string, string, *BindCredential, *AuthMethod) {
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
 				bc := allocBindCredential()
 				err = rw.LookupWhere(testCtx, &bc, "ldap_method_id = ?", []any{am.PublicId})
 				require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestRewrap_bindCredentialRewrapFn(t *testing.T) {
 			name: "missing-key-id",
 			ctx:  testCtx,
 			setup: func() (string, string, *BindCredential, *AuthMethod) {
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
 				bc := allocBindCredential()
 				err = rw.LookupWhere(testCtx, &bc, "ldap_method_id = ?", []any{am.PublicId})
 				require.NoError(t, err)
@@ -81,7 +81,7 @@ func TestRewrap_bindCredentialRewrapFn(t *testing.T) {
 			name: "missing-scope-id",
 			ctx:  testCtx,
 			setup: func() (string, string, *BindCredential, *AuthMethod) {
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
 				bc := allocBindCredential()
 				err = rw.LookupWhere(testCtx, &bc, "ldap_method_id = ?", []any{am.PublicId})
 				require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestRewrap_bindCredentialRewrapFn(t *testing.T) {
 			name: "missing-reader",
 			ctx:  testCtx,
 			setup: func() (string, string, *BindCredential, *AuthMethod) {
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
 				bc := allocBindCredential()
 				err = rw.LookupWhere(testCtx, &bc, "ldap_method_id = ?", []any{am.PublicId})
 				require.NoError(t, err)
@@ -125,7 +125,7 @@ func TestRewrap_bindCredentialRewrapFn(t *testing.T) {
 			name: "missing-writer",
 			ctx:  testCtx,
 			setup: func() (string, string, *BindCredential, *AuthMethod) {
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
 				bc := allocBindCredential()
 				err = rw.LookupWhere(testCtx, &bc, "ldap_method_id = ?", []any{am.PublicId})
 				require.NoError(t, err)
@@ -147,7 +147,7 @@ func TestRewrap_bindCredentialRewrapFn(t *testing.T) {
 			name: "missing-kms",
 			ctx:  testCtx,
 			setup: func() (string, string, *BindCredential, *AuthMethod) {
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
 				bc := allocBindCredential()
 				err = rw.LookupWhere(testCtx, &bc, "ldap_method_id = ?", []any{am.PublicId})
 				require.NoError(t, err)
@@ -169,7 +169,7 @@ func TestRewrap_bindCredentialRewrapFn(t *testing.T) {
 			name: "GetWrapper-err",
 			ctx:  testCtx,
 			setup: func() (string, string, *BindCredential, *AuthMethod) {
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
 				bc := allocBindCredential()
 				err = rw.LookupWhere(testCtx, &bc, "ldap_method_id = ?", []any{am.PublicId})
 				require.NoError(t, err)
@@ -193,7 +193,7 @@ func TestRewrap_bindCredentialRewrapFn(t *testing.T) {
 			name: "encrypt-err",
 			ctx:  testCtx,
 			setup: func() (string, string, *BindCredential, *AuthMethod) {
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
 				bc := allocBindCredential()
 				err = rw.LookupWhere(testCtx, &bc, "ldap_method_id = ?", []any{am.PublicId})
 				require.NoError(t, err)
@@ -220,7 +220,7 @@ func TestRewrap_bindCredentialRewrapFn(t *testing.T) {
 			name: "decrypt-err",
 			ctx:  testCtx,
 			setup: func() (string, string, *BindCredential, *AuthMethod) {
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithBindCredential(testCtx, "bind-dn", "bind-password"))
 				bc := allocBindCredential()
 				err = rw.LookupWhere(testCtx, &bc, "ldap_method_id = ?", []any{am.PublicId})
 				require.NoError(t, err)
@@ -321,7 +321,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 				cert, _ := testGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
 				cc := allocClientCertificate()
 				err = rw.LookupWhere(testCtx, &cc, "ldap_method_id = ?", []any{am.GetPublicId()})
 				require.NoError(t, err)
@@ -345,7 +345,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 				cert, _ := testGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
 				cc := allocClientCertificate()
 				err = rw.LookupWhere(testCtx, &cc, "ldap_method_id = ?", []any{am.GetPublicId()})
 				require.NoError(t, err)
@@ -372,7 +372,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 				cert, _ := testGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
 				cc := allocClientCertificate()
 				err = rw.LookupWhere(testCtx, &cc, "ldap_method_id = ?", []any{am.GetPublicId()})
 				require.NoError(t, err)
@@ -399,7 +399,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 				cert, _ := testGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
 				cc := allocClientCertificate()
 				err = rw.LookupWhere(testCtx, &cc, "ldap_method_id = ?", []any{am.GetPublicId()})
 				require.NoError(t, err)
@@ -426,7 +426,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 				cert, _ := testGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
 				cc := allocClientCertificate()
 				err = rw.LookupWhere(testCtx, &cc, "ldap_method_id = ?", []any{am.GetPublicId()})
 				require.NoError(t, err)
@@ -453,7 +453,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 				cert, _ := testGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
 				cc := allocClientCertificate()
 				err = rw.LookupWhere(testCtx, &cc, "ldap_method_id = ?", []any{am.GetPublicId()})
 				require.NoError(t, err)
@@ -480,7 +480,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 				cert, _ := testGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
 				cc := allocClientCertificate()
 				err = rw.LookupWhere(testCtx, &cc, "ldap_method_id = ?", []any{am.GetPublicId()})
 				require.NoError(t, err)
@@ -509,7 +509,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 				cert, _ := testGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
 				cc := allocClientCertificate()
 				err = rw.LookupWhere(testCtx, &cc, "ldap_method_id = ?", []any{am.GetPublicId()})
 				require.NoError(t, err)
@@ -541,7 +541,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 				cert, _ := testGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
-				am := testAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
+				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
 				cc := allocClientCertificate()
 				err = rw.LookupWhere(testCtx, &cc, "ldap_method_id = ?", []any{am.GetPublicId()})
 				require.NoError(t, err)
