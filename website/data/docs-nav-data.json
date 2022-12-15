@@ -522,7 +522,7 @@
   },
   {
     "title": "HCP",
-    "href": "https://developer.hashicorp.com/hcp/docs/boundary/"
+    "href": "hcp/docs/boundary"
   },
   {
     "divider": true
