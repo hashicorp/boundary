@@ -32,7 +32,7 @@ func Test_testAuthMethod(t *testing.T) {
 	derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 	require.NoError(err)
 
-	am := testAuthMethod(
+	am := TestAuthMethod(
 		t, conn, databaseWrapper,
 		org.PublicId,
 		[]string{"ldaps://d1.alice.com", "ldap://d2.alice.com"},
@@ -44,8 +44,12 @@ func Test_testAuthMethod(t *testing.T) {
 		WithAnonGroupSearch(testCtx),
 		WithUpnDomain(testCtx, "alice.com"),
 		WithCertificates(testCtx, c1, c2),
-		WithUserDn(testCtx, "dn"),
+		WithUserDn(testCtx, "user-dn"),
+		WithUserAttr(testCtx, "user-attr"),
+		WithUserFilter(testCtx, "user-filter"),
 		WithGroupDn(testCtx, "group-dn"),
+		WithGroupAttr(testCtx, "group-attr"),
+		WithGroupFilter(testCtx, "group-filter"),
 		WithClientCertificate(testCtx, derPrivKey, c2), // not a client cert, but good enough for the test.
 		WithBindCredential(testCtx, "bind-dn", "bind-password"),
 	)
@@ -83,12 +87,16 @@ func Test_testAuthMethod(t *testing.T) {
 	foundUserSearchConf := allocUserEntrySearchConf()
 	err = rw.LookupWhere(testCtx, &foundUserSearchConf, "ldap_method_id = ?", []any{found.PublicId})
 	require.NoError(err)
-	assert.Equal("dn", foundUserSearchConf.GetUserDn())
+	assert.Equal("user-dn", foundUserSearchConf.GetUserDn())
+	assert.Equal("user-attr", foundUserSearchConf.GetUserAttr())
+	assert.Equal("user-filter", foundUserSearchConf.GetUserFilter())
 
 	foundGroupSearchConf := allocGroupEntrySearchConf()
 	err = rw.LookupWhere(testCtx, &foundGroupSearchConf, "ldap_method_id = ?", []any{found.PublicId})
 	require.NoError(err)
 	assert.Equal("group-dn", foundGroupSearchConf.GetGroupDn())
+	assert.Equal("group-attr", foundGroupSearchConf.GetGroupAttr())
+	assert.Equal("group-filter", foundGroupSearchConf.GetGroupFilter())
 
 	foundClientCert := allocClientCertificate()
 	err = rw.LookupWhere(testCtx, &foundClientCert, "ldap_method_id = ?", []any{found.PublicId})
