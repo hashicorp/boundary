@@ -96,7 +96,15 @@ func (c *PluginCommand) Flags() *base.FlagSets {
 	common.PopulateCommonFlags(c.Command, f, "plugin-type host set", flagsPluginMap, c.Func)
 
 	f = set.NewFlagSet("Attribute Options")
-	common.PopulateAttributeFlags(c.Command, f, flagsPluginMap, c.Func)
+	attrsInput := common.CombinedSliceFlagValuePopulationInput{
+		FlagSet:                          f,
+		FlagNames:                        flagsPluginMap[c.Func],
+		FullPopulationFlag:               &c.FlagAttributes,
+		FullPopulationInputName:          "attributes",
+		PiecewisePopulationFlag:          &c.FlagAttrs,
+		PiecewisePopulationInputBaseName: "attr",
+	}
+	common.PopulateCombinedSliceFlagValue(attrsInput)
 
 	extraPluginFlagsFunc(c, set, f)
 
