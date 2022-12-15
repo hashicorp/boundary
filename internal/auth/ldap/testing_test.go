@@ -55,7 +55,7 @@ func Test_testAuthMethod(t *testing.T) {
 	)
 
 	rw := db.New(conn)
-	found := allocAuthMethod()
+	found := AllocAuthMethod()
 	found.PublicId = am.PublicId
 	rw.LookupById(testCtx, &found)
 	assert.Equal(am.PublicId, found.PublicId)
