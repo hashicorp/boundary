@@ -57,7 +57,7 @@ func NewAuthMethod(ctx context.Context, scopeId string, urls []*url.URL, opt ...
 			ScopeId:              scopeId,
 			Name:                 opts.withName,
 			Description:          opts.withDescription,
-			OperationalState:     string(InactiveState), // all new auth methods are initially inactive
+			OperationalState:     string(opts.withOperationalState), // if no option is specified, a new auth method is initially inactive
 			Urls:                 strUrls,
 			StartTls:             opts.withStartTls,
 			InsecureTls:          opts.withInsecureTls,
