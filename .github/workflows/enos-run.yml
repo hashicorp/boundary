@@ -40,6 +40,8 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: ${{ inputs.go-version }}
+      - name: Install tools to get tparse
+        run: make tools
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
