@@ -202,7 +202,6 @@ func Test_RotateKeys(t *testing.T) {
 	rw := db.New(conn)
 
 	t.Run("success", func(t *testing.T) {
-		t.Parallel()
 		// arrange
 		// we're not trying to test the ListKeys function, although we need to use it to validate the rotation
 		keys, err := kmsCache.ListKeys(testCtx, "global")
@@ -222,11 +221,10 @@ func Test_RotateKeys(t *testing.T) {
 			keyCount += len(key.Versions)
 		}
 
-		require.Equal(t, keyCount, 14)
+		require.Equal(t, 14, keyCount)
 	})
 
 	t.Run("reader provided, missing writer", func(t *testing.T) {
-		t.Parallel()
 		// arrange
 		WithReader := func(reader db.Reader) Option {
 			return func(o *options) {
@@ -242,7 +240,6 @@ func Test_RotateKeys(t *testing.T) {
 	})
 
 	t.Run("writer provided, missing reader", func(t *testing.T) {
-		t.Parallel()
 		// arrange
 		WithWriter := func(writer db.Writer) Option {
 			return func(o *options) {
@@ -258,7 +255,6 @@ func Test_RotateKeys(t *testing.T) {
 	})
 
 	t.Run("invalid reader", func(t *testing.T) {
-		t.Parallel()
 		// act
 		err := kmsCache.RotateKeys(testCtx, "global", WithReaderWriter(&invalidReader{}, rw))
 
@@ -267,7 +263,6 @@ func Test_RotateKeys(t *testing.T) {
 	})
 
 	t.Run("invalid writer", func(t *testing.T) {
-		t.Parallel()
 		// act
 		err := kmsCache.RotateKeys(testCtx, "global", WithReaderWriter(rw, &invalidWriter{}))
 
@@ -276,8 +271,7 @@ func Test_RotateKeys(t *testing.T) {
 	})
 
 	t.Run("both reader and writer succeed", func(t *testing.T) {
-		t.Parallel()
-		err = kmsCache.RotateKeys(testCtx, "global", WithReaderWriter(rw, rw))
+		err := kmsCache.RotateKeys(testCtx, "global", WithReaderWriter(rw, rw))
 		require.NoError(t, err)
 	})
 
