@@ -128,8 +128,8 @@ func TestCliVaultConnectTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	newSessionAuthorization := newSessionAuthorizationResult.Item
-	retrievedUser := fmt.Sprintf("%s", newSessionAuthorization.Credentials[0].Credential["username"])
-	retrievedKey := fmt.Sprintf("%s", newSessionAuthorization.Credentials[0].Credential["private_key"])
+	retrievedUser := newSessionAuthorization.Credentials[0].Credential["username"].(string)
+	retrievedKey := newSessionAuthorization.Credentials[0].Credential["private_key"].(string)
 	assert.Equal(t, c.TargetSshUser, retrievedUser)
 
 	k, err := os.ReadFile(c.TargetSshKeyPath)
