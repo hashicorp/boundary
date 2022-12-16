@@ -244,6 +244,16 @@ message TcpTargetAttributes {
       that: "DefaultPort"
     }
   ]; // @gotags: `class:"public"`
+
+  // The default TCP port that will be listened on by the client's local proxy.
+  google.protobuf.UInt32Value default_client_port = 20 [
+    json_name = "default_client_port",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.default_client_port"
+      that: "DefaultClientPort"
+    }
+  ]; // @gotags: `class:"public"`
 }
 
 // SshTargetAttributes contains attributes relevant to Targets of type "ssh"
@@ -256,6 +266,16 @@ message SshTargetAttributes {
     (custom_options.v1.mask_mapping) = {
       this: "attributes.default_port"
       that: "DefaultPort"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // The default TCP port that will be listened on by the client's local proxy.
+  google.protobuf.UInt32Value default_client_port = 20 [
+    json_name = "default_client_port",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.default_client_port"
+      that: "DefaultClientPort"
     }
   ]; // @gotags: `class:"public"`
 }
@@ -336,6 +356,9 @@ message SessionAuthorization {
 
   // Output only. The credentials for this session.
   repeated SessionCredential credentials = 110 [json_name = "credentials"];
+
+  // Output only. A default port to listen on for client connections.
+  uint32 default_client_port = 120 [json_name = "default_client_port"]; // @gotags: `class:"public"`
 }
 
 // The layout of the struct for "credential" field in SessionCredential for a username_password credential type.

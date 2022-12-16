@@ -38,8 +38,8 @@ func TestStructToProtoToStruct(t *testing.T) {
 		},
 		{
 			name:     "tcp target",
-			pb:       &targetspb.TcpTargetAttributes{DefaultPort: &wrapperspb.UInt32Value{Value: 22}},
-			wantJson: `{"default_port": 22}`,
+			pb:       &targetspb.TcpTargetAttributes{DefaultPort: &wrapperspb.UInt32Value{Value: 22}, DefaultClientPort: &wrapperspb.UInt32Value{Value: 23}},
+			wantJson: `{"default_port": 22, "default_client_port": 23}`,
 		},
 		{
 			name:     "static host",

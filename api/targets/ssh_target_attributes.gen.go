@@ -8,7 +8,8 @@ import (
 )
 
 type SshTargetAttributes struct {
-	DefaultPort uint32 `json:"default_port,omitempty"`
+	DefaultPort       uint32 `json:"default_port,omitempty"`
+	DefaultClientPort uint32 `json:"default_client_port,omitempty"`
 }
 
 func AttributesMapToSshTargetAttributes(in map[string]interface{}) (*SshTargetAttributes, error) {

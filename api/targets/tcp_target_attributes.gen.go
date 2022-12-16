@@ -8,7 +8,8 @@ import (
 )
 
 type TcpTargetAttributes struct {
-	DefaultPort uint32 `json:"default_port,omitempty"`
+	DefaultPort       uint32 `json:"default_port,omitempty"`
+	DefaultClientPort uint32 `json:"default_client_port,omitempty"`
 }
 
 func AttributesMapToTcpTargetAttributes(in map[string]interface{}) (*TcpTargetAttributes, error) {

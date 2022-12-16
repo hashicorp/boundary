@@ -27,6 +27,7 @@ type options struct {
 	WithName                   string
 	WithDescription            string
 	WithDefaultPort            uint32
+	WithDefaultClientPort      uint32
 	WithLimit                  int
 	WithProjectId              string
 	WithProjectIds             []string
@@ -53,6 +54,7 @@ func getDefaultOptions() options {
 		WithDescription:            "",
 		WithLimit:                  0,
 		WithDefaultPort:            0,
+		WithDefaultClientPort:      0,
 		WithProjectId:              "",
 		WithProjectIds:             nil,
 		WithProjectName:            "",
@@ -99,6 +101,13 @@ func WithLimit(limit int) Option {
 func WithDefaultPort(p uint32) Option {
 	return func(o *options) {
 		o.WithDefaultPort = p
+	}
+}
+
+// WithDefaultClientPort provides an option to specify the default client listening port.
+func WithDefaultClientPort(p uint32) Option {
+	return func(o *options) {
+		o.WithDefaultClientPort = p
 	}
 }
 

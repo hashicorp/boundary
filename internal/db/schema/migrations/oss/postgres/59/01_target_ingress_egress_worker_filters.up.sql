@@ -73,6 +73,7 @@ drop view whx_credential_dimension_source;
 drop view whx_host_dimension_source;
 
 -- Replaces target_all_subtypes defined in 44/03_targets.up.sql
+-- Replaced in 67/01_target_default_client_port.up.sql
 drop view target_all_subtypes;
 create view target_all_subtypes as
 select public_id,

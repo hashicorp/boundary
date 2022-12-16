@@ -461,6 +461,10 @@ func (c *Command) Run(args []string) (retCode int) {
 		return dialer.DialContext(ctx, network, addr)
 	}
 
+	if c.flagListenPort == 0 && c.sessionAuthz != nil {
+		c.flagListenPort = int(c.sessionAuthz.DefaultClientPort)
+	}
+
 	c.listener, err = net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   listenAddr,
 		Port: c.flagListenPort,

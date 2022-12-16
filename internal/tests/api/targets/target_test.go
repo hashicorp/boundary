@@ -360,6 +360,7 @@ func TestList(t *testing.T) {
 			proj.GetPublicId(),
 			targets.WithName(expected[i].Name),
 			targets.WithTcpTargetDefaultPort(uint32(i)),
+			targets.WithTcpTargetDefaultClientPort(uint32(i+100)),
 		)
 		require.NoError(err)
 		expected[i] = tcr.Item

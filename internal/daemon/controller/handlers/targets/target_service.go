@@ -1050,6 +1050,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		HostId:             hostId,
 		HostSetId:          hostSetId,
 		Endpoint:           endpointUrl.String(),
+		DefaultClientPort:  t.GetDefaultClientPort(),
 		Credentials:        creds,
 	}
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil

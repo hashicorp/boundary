@@ -82,6 +82,7 @@ begin;
 
   -- replaces view from 15/02_wh_rename_host_dimension_org.up.sql
   -- adds the network_address_group_key.
+  -- replaced in 68/01_target_default_client_port.up.sql
   drop view whx_host_dimension_target;
   create view whx_host_dimension_target as
   select key,

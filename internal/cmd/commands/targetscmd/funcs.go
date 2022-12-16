@@ -789,7 +789,8 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 }
 
 var keySubstMap = map[string]string{
-	"default_port": "Default Port",
+	"default_port":        "Default Port",
+	"default_client_port": "Default Client Port",
 }
 
 func exampleOutput() string {

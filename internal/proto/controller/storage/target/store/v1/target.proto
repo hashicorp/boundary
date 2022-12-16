@@ -50,6 +50,10 @@ message TargetView {
   // @inject_tag: `gorm:"default:null"`
   uint32 default_port = 90;
 
+  // Default port for the listening client to use when establishing a session
+  // @inject_tag: `gorm:"default:null"`
+  uint32 default_client_port = 95;
+
   // Maximum total lifetime of a created session, in seconds
   // @inject_tag: `gorm:"default:null"`
   uint32 session_max_seconds = 100;

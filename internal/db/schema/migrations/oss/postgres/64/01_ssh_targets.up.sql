@@ -116,6 +116,7 @@ begin;
     target_ssh;
 
   -- replaces view from oss/60/03_wh_sessions.up.sql
+  -- replaced in 68/01_target_default_client_port.up.sql
   create view whx_host_dimension_source as
   with 
   host_sources (
@@ -249,6 +250,7 @@ begin;
   -- The whx_credential_dimension_source view shows the current values in the
   -- operational tables of the credential dimension.
   -- Replaces whx_credential_dimension_source defined in oss/63/03_wh_ssh_cert_library.up.sql
+  -- Replaced in 68/01_target_default_client_port.up.sql
   create view whx_credential_dimension_source as
     with vault_generic_library as (
       select vcl.public_id                                        as public_id,

@@ -6,11 +6,13 @@ package boundary
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/stretchr/testify/require"
 )
@@ -44,15 +46,23 @@ func AddHostSourceToTargetApi(t testing.TB, ctx context.Context, client *api.Cli
 
 // CreateNewTargetCli uses the cli to create a new target in boundary
 // Returns the id of the new target.
-func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string) string {
+func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string, opt ...target.Option) string {
+	opts := target.GetOpts(opt...)
+
+	args := []string{
+		"targets", "create", "tcp",
+		"-scope-id", projectId,
+		"-default-port", defaultPort,
+		"-name", "e2e Target",
+		"-format", "json",
+	}
+
+	if opts.WithDefaultClientPort != 0 {
+		args = append(args, "-default-client-port", fmt.Sprintf("%d", opts.WithDefaultClientPort))
+	}
+
 	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"targets", "create", "tcp",
-			"-scope-id", projectId,
-			"-default-port", defaultPort,
-			"-name", "e2e Target",
-			"-format", "json",
-		),
+		e2e.WithArgs(args...),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	var newTargetResult targets.TargetCreateResult

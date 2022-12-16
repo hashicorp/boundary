@@ -21,13 +21,14 @@ func init() {
 
 func extraTcpActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {"address", "default-port", "session-max-seconds", "session-connection-limit", "egress-worker-filter", "ingress-worker-filter"},
-		"update": {"address", "default-port", "session-max-seconds", "session-connection-limit", "worker-filter", "egress-worker-filter", "ingress-worker-filter"},
+		"create": {"address", "default-port", "default-client-port", "session-max-seconds", "session-connection-limit", "egress-worker-filter", "ingress-worker-filter"},
+		"update": {"address", "default-port", "default-client-port", "session-max-seconds", "session-connection-limit", "worker-filter", "egress-worker-filter", "ingress-worker-filter"},
 	}
 }
 
 type extraTcpCmdVars struct {
 	flagDefaultPort            string
+	flagDefaultClientPort      string
 	flagSessionMaxSeconds      string
 	flagSessionConnectionLimit string
 	flagWorkerFilter           string
@@ -81,6 +82,12 @@ func extraTcpFlagsFuncImpl(c *TcpCommand, set *base.FlagSets, f *base.FlagSet) {
 				Target: &c.flagDefaultPort,
 				Usage:  "The default port to set on the target.",
 			})
+		case "default-client-port":
+			fs.StringVar(&base.StringVar{
+				Name:   "default-client-port",
+				Target: &c.flagDefaultClientPort,
+				Usage:  "The default client port to set on the target.",
+			})
 		case "session-max-seconds":
 			fs.StringVar(&base.StringVar{
 				Name:   "session-max-seconds",
@@ -127,6 +134,19 @@ func extraTcpFlagsHandlingFuncImpl(c *TcpCommand, _ *base.FlagSets, opts *[]targ
 			return false
 		}
 		*opts = append(*opts, targets.WithTcpTargetDefaultPort(uint32(port)))
+	}
+
+	switch c.flagDefaultClientPort {
+	case "":
+	case "null":
+		*opts = append(*opts, targets.DefaultTcpTargetDefaultClientPort())
+	default:
+		port, err := strconv.ParseUint(c.flagDefaultClientPort, 10, 32)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagDefaultClientPort, err))
+			return false
+		}
+		*opts = append(*opts, targets.WithTcpTargetDefaultClientPort(uint32(port)))
 	}
 
 	switch c.flagSessionMaxSeconds {
