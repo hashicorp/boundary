@@ -20,10 +20,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliCreateAwsDynamicHostCatalog uses the boundary cli to create a host catalog with the AWS
+// TestCliCreateAwsDynamicHostCatalogWithHostSet uses the boundary cli to create a host catalog with the AWS
 // plugin. The test sets up an AWS dynamic host catalog, creates some host sets, sets up a target to
 // one of the host sets, and attempts to connect to the target.
-func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
+func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
