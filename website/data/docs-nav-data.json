@@ -1,9 +1,9 @@
 [
   {
-    "title": "Introduction",
+    "title": "What is Boundary?",
     "routes": [
       {
-        "title": "What is Boundary?",
+        "title": "Introduction",
         "path": "overview/what-is-boundary"
       },
       {
@@ -14,7 +14,7 @@
         "title": "Boundary vs. Other Software",
         "routes": [
           {
-            "title": "Compare Boundary",
+            "title": "Introduction",
             "path": "overview/vs/other-software"
           },
           {
@@ -46,10 +46,10 @@
     ]
   },
   {
-    "title": "Getting Started",
+    "title": "Get Started",
     "routes": [
       {
-        "title": "Boundary Offerings",
+        "title": "Deployment Options",
         "path": "getting-started"
       },
       {
@@ -201,10 +201,10 @@
     ]
   },
   {
-    "title": "Concepts",
+    "title": "Core Concepts",
     "routes": [
       {
-        "title": "Understand Boundary",
+        "title": "Introduction",
         "path": "concepts"
       },
       {
@@ -215,14 +215,14 @@
         "title": "Security",
         "routes": [
           {
-            "title": "Security Model",
+            "title": "Introduction",
             "path": "concepts/security"
           },
           {
             "title": "Permissions",
             "routes": [
               {
-                "title": "Permissions in Boundary",
+                "title": "Permissions Model",
                 "path": "concepts/security/permissions"
               },
               {
@@ -253,7 +253,7 @@
         "title": "Domain Model",
         "routes": [
           {
-            "title": "Boundary's Domain Model",
+            "title": "Introduction",
             "path": "concepts/domain-model"
           },
           {
@@ -326,7 +326,7 @@
         "title": "Filtering",
         "routes": [
           {
-            "title": "Filter Expressions",
+            "title": "Expressions",
             "path": "concepts/filtering"
           },
           {
@@ -404,7 +404,7 @@
     "title": "API/Clients",
     "routes": [
       {
-        "title": "Clients",
+        "title": "Introduction",
         "path": "api-clients"
       },
       {
@@ -437,7 +437,7 @@
     "title": "Boundary OSS",
     "routes": [
       {
-        "title": "OSS Distribution",
+        "title": "Introduction",
         "path": "oss"
       },
       {
@@ -482,10 +482,10 @@
         ]
       },
       {
-        "title": "Operations",
+        "title": "Maintain and Operate Boundary",
         "routes": [
           {
-            "title": "Operate Boundary",
+            "title": "Introduction",
             "path": "oss/operations"
           },
           {
@@ -502,7 +502,7 @@
         "title": "Development",
         "routes": [
           {
-            "title": "Develop Boundary",
+            "title": "Contribute to Boundary",
             "path": "oss/developing"
           },
           {
