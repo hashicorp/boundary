@@ -183,7 +183,7 @@ func (am *AuthMethod) convertUrls(ctx context.Context) ([]any, error) {
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		obj, err := NewUrl(ctx, am.PublicId, priority, parsed)
+		obj, err := NewUrl(ctx, am.PublicId, priority+1, parsed)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

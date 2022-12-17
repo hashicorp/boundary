@@ -271,7 +271,7 @@ func Test_convertValueObjects(t *testing.T) {
 
 	testUrls := make([]any, 0, len(testLdapServers))
 	for priority, uu := range TestConvertToUrls(t, testLdapServers...) {
-		u, err := NewUrl(testCtx, testPublicId, priority, uu)
+		u, err := NewUrl(testCtx, testPublicId, priority+1, uu)
 		require.NoError(t, err)
 		testUrls = append(testUrls, u)
 	}
