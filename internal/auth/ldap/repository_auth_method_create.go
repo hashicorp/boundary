@@ -10,6 +10,14 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 )
 
+// CreateAuthMethod creates am (*AuthMethod) in the repo along with its
+// associated embedded optional value objects (urls, certs, client certs, bind
+// creds, user search conf and group search conf) and returns the newly created
+// AuthMethod (with its PublicId set)
+//
+// The AuthMethod's public id and version must be empty (zero values).
+//
+// All options are ignored.
 func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...Option) (*AuthMethod, error) {
 	const op = "ldap.(Repository).CreateAuthMethod"
 	switch {
