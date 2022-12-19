@@ -10,30 +10,14 @@ import (
 
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/kelseyhightower/envconfig"
 	"github.com/stretchr/testify/require"
 )
-
-type config struct {
-	VaultAddr  string `envconfig:"VAULT_ADDR" required:"true"` // e.g. "http://127.0.0.1:8200"
-	VaultToken string `envconfig:"VAULT_TOKEN" required:"true"`
-}
 
 // CreateTokenResponse parses the json response from running `vault token create`
 type CreateTokenResponse struct {
 	Auth struct {
 		Client_Token string
 	}
-}
-
-func loadConfig() (*config, error) {
-	var c config
-	err := envconfig.Process("", &c)
-	if err != nil {
-		return nil, err
-	}
-
-	return &c, nil
 }
 
 // Setup verifies if appropriate credentials are set and adds the boundary controller
