@@ -99,7 +99,7 @@ scenario "e2e_database" {
       storage_backend = "raft"
       unseal_method   = "awskms"
       vault_release = {
-        version = "1.12.2"
+        version = var.vault_version
         edition = "oss"
       }
       vpc_id = step.create_base_infra.vpc_id
