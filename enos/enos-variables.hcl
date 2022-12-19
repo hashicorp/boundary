@@ -110,6 +110,12 @@ variable "vault_instance_type" {
   default     = "t3a.small"
 }
 
+variable "vault_version" {
+  description = "Version of Vault to use"
+  type        = string
+  default     = "1.12.2"
+}
+
 variable "test_email" {
   description = "Email address for setting up AWS IAM user (module: iam_setup)"
   type        = string
