@@ -508,6 +508,13 @@
     "divider": true
   },
   {
+    "title": "HCP Boundary",
+    "href": "https://cloud.hashicorp.com/docs/boundary/"
+  },
+  {
+    "divider": true
+  },
+  {
     "title": "Release Notes",
     "routes": [
       {
