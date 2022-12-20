@@ -37,6 +37,7 @@ func TestProxyDialer(t *testing.T) {
 		d, err := NewProxyDialer(ctx, func(...Option) (net.Conn, error) {
 			return nil, expectedErr
 		})
+		require.NoError(t, err)
 		assert.Nil(t, d.LastConnectionAddr())
 		badC, err := d.Dial(ctx)
 		require.Error(t, err)
@@ -48,6 +49,7 @@ func TestProxyDialer(t *testing.T) {
 		d, err := NewProxyDialer(ctx, func(...Option) (net.Conn, error) {
 			return net.Dial("tcp", l.Addr().String())
 		})
+		require.NoError(t, err)
 		assert.Nil(t, d.LastConnectionAddr())
 		c, err := d.Dial(ctx)
 		require.NoError(t, err)
