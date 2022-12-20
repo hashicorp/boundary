@@ -66,6 +66,7 @@ type Command struct {
 	flagUnprivilegedLoginName        string
 	flagUnprivilegedPassword         string
 	flagIdSuffix                     string
+	flagSecondaryIdSuffix            string
 	flagHostAddress                  string
 	flagTargetDefaultPort            int
 	flagTargetSessionMaxSeconds      int
@@ -141,7 +142,15 @@ func (c *Command) Flags() *base.FlagSets {
 		Target:  &c.flagIdSuffix,
 		Default: "1234567890",
 		EnvVar:  "BOUNDARY_DEV_ID_SUFFIX",
-		Usage:   `If set, auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. As an example, if this is set to "1234567890", the generated password auth method ID will be "ampw_1234567890", the generated TCP target ID will be "ttcp_1234567890", and so on.`,
+		Usage:   `If set, auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. As an example, if this is set to "1234567890", the generated password auth method ID will be "ampw_1234567890", the generated TCP target ID will be "ttcp_1234567890", and so on. Must be different from -secondary-id-suffix (BOUNDARY_DEV_SECONDARY_ID_SUFFIX).`,
+	})
+
+	f.StringVar(&base.StringVar{
+		Name:    "secondary-id-suffix",
+		Target:  &c.flagSecondaryIdSuffix,
+		Default: "0987654321",
+		EnvVar:  "BOUNDARY_DEV_SECONDARY_ID_SUFFIX",
+		Usage:   `If set, secondary auto-created resources will use this value for their identifier (along with their resource-specific prefix). Must be 10 alphanumeric characters. Currently only used for the target resource. Must be different from -id-suffix (BOUNDARY_DEV_ID_SUFFIX).`,
 	})
 
 	f.StringVar(&base.StringVar{
@@ -449,6 +458,23 @@ func (c *Command) Run(args []string) int {
 		c.DevHostSetId = fmt.Sprintf("%s_%s", static.HostSetPrefix, c.flagIdSuffix)
 		c.DevHostId = fmt.Sprintf("%s_%s", static.HostPrefix, c.flagIdSuffix)
 		c.DevTargetId = fmt.Sprintf("%s_%s", tcp.TargetPrefix, c.flagIdSuffix)
+	}
+	if c.flagSecondaryIdSuffix != "" {
+		if len(c.flagSecondaryIdSuffix) != 10 {
+			c.UI.Error("Invalid secondary ID suffix, must be exactly 10 characters")
+			return base.CommandUserError
+		}
+		if !handlers.ValidId(handlers.Id("abc_"+c.flagSecondaryIdSuffix), "abc") {
+			c.UI.Error("Invalid secondary ID suffix, must be in the set A-Za-z0-9")
+			return base.CommandUserError
+		}
+		c.DevSecondaryTargetId = fmt.Sprintf("%s_%s", tcp.TargetPrefix, c.flagSecondaryIdSuffix)
+	}
+
+	if c.flagIdSuffix != "" && c.flagSecondaryIdSuffix != "" &&
+		strings.EqualFold(c.flagIdSuffix, c.flagSecondaryIdSuffix) {
+		c.UI.Error("Primary and secondary ID suffixes are equal, must be distinct")
+		return base.CommandUserError
 	}
 
 	host, port, err := net.SplitHostPort(c.flagHostAddress)

@@ -14,15 +14,18 @@ import (
 // We try to pull these from TestController, but targets et al are
 // computed off of a suffix instead of having constants. Just define
 // for now here, this can be tweaked later if need be.
-const defaultTestTargetId = "ttcp_1234567890"
+const (
+	defaultTestTargetId          = "ttcp_1234567890"
+	defaultSecondaryTestTargetId = "ttcp_0987654321"
 
-const rootKmsConfig = `
+	rootKmsConfig = `
 kms "aead" {
 	purpose = "root"
 	aead_type = "aes-gcm"
 	key = "%s"
 	key_id = "global_root"
 }`
+)
 
 type testServerCommandOpts struct {
 	// Whether or not to create the dev database
@@ -34,8 +37,8 @@ type testServerCommandOpts struct {
 	// Use the well-known dev mode auth method id (1234567890)
 	UseDevAuthMethod bool
 
-	// Use the well-known dev mode target method id (1234567890)
-	UseDevTarget bool
+	// Use the well-known dev mode target method ids (1234567890 and 0987654321)
+	UseDevTargets bool
 
 	// Whether or not to enable metric collection. If enable metrics will use
 	// prometheus' default registerer.
@@ -71,8 +74,9 @@ func testServerCommand(t *testing.T, opts testServerCommandOpts) *Command {
 			cmd.Server.DevPassword = controller.DefaultTestPassword
 		}
 
-		if opts.UseDevTarget {
+		if opts.UseDevTargets {
 			cmd.Server.DevTargetId = defaultTestTargetId
+			cmd.Server.DevSecondaryTargetId = defaultSecondaryTestTargetId
 		}
 
 		err = cmd.CreateDevDatabase(cmd.Context, base.WithDatabaseTemplate("boundary_template"), base.WithSkipOidcAuthMethodCreation())
