@@ -2,6 +2,7 @@ package proxy
 
 import (
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"net"
 )
 
 // Option - how Options are passed as arguments.
@@ -19,11 +20,13 @@ func GetOpts(opt ...Option) Options {
 // Options = how options are represented
 type Options struct {
 	WithInjectedApplicationCredentials []*serverpb.Credential
+	WithPostConnectionHook             func(net.Conn)
 }
 
 func getDefaultOptions() Options {
 	return Options{
 		WithInjectedApplicationCredentials: nil,
+		WithPostConnectionHook:             nil,
 	}
 }
 
@@ -32,5 +35,15 @@ func getDefaultOptions() Options {
 func WithInjectedApplicationCredentials(creds []*serverpb.Credential) Option {
 	return func(o *Options) {
 		o.WithInjectedApplicationCredentials = creds
+	}
+}
+
+// WithPostConnectionHook provides a hook function to be called after a
+// connection is established in a dialFunction.  When a dialer accepts
+// WithPostConnectionHook the passed in function should be called prior to any
+// other blocking call.
+func WithPostConnectionHook(fn func(net.Conn)) Option {
+	return func(o *Options) {
+		o.WithPostConnectionHook = fn
 	}
 }

@@ -21,7 +21,7 @@ func directDialer(ctx context.Context, endpoint *url.URL, _ *pbs.AuthorizeConnec
 	if endpoint == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "endpoint is nil")
 	}
-	d, err := NewProxyDialer(ctx, func() (net.Conn, error) {
+	d, err := NewProxyDialer(ctx, func(...Option) (net.Conn, error) {
 		remoteConn, err := net.Dial("tcp", endpoint.Host)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -53,12 +53,12 @@ func (p *proxyAddr) Port() uint32 {
 
 // ProxyDialer dials downstream to eventually get to the target host.
 type ProxyDialer struct {
-	dialFn     func() (net.Conn, error)
+	dialFn     func(...Option) (net.Conn, error)
 	latestAddr atomic.Pointer[proxyAddr]
 }
 
 // Returns a new proxy dialer using the provided function to get the net.Conn.
-func NewProxyDialer(ctx context.Context, df func() (net.Conn, error)) (*ProxyDialer, error) {
+func NewProxyDialer(ctx context.Context, df func(...Option) (net.Conn, error)) (*ProxyDialer, error) {
 	const op = "proxy.NewProxyDialer"
 	if df == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "dialing function is nil")
@@ -78,9 +78,9 @@ func (d *ProxyDialer) LastConnectionAddr() *proxyAddr {
 // Dial uses the provided dial function to get a net.Conn and record its
 // net.Addr information.  The returned net.Addr should contain the information
 // for the endpoint that is being proxied to.
-func (d *ProxyDialer) Dial(ctx context.Context) (net.Conn, error) {
+func (d *ProxyDialer) Dial(ctx context.Context, opt ...Option) (net.Conn, error) {
 	const op = "proxy.(*ProxyDialer).Dial"
-	c, err := d.dialFn()
+	c, err := d.dialFn(opt...)
 	if err != nil {
 		return nil, err
 	}

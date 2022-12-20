@@ -12,20 +12,18 @@ import (
 )
 
 func init() {
-	err := proxy.RegisterHandler("tcp", handleProxy)
+	err := proxy.RegisterHandler(proxy.TcpHandlerName, handleProxy)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// handleProxy creates a tcp proxy between the incoming websocket conn and the
-// connection it creates with the remote endpoint. handleTcpProxyV1 sets the connectionId
-// as connected in the repository.
+// handleProxy creates a tcp proxy between the incoming conn and the
+// connection created by the ProxyDialer.
 //
-// handleProxy blocks until an error (EOF on happy path) is received on either
-// connection.
-//
-// All options are ignored.
+// handleProxy returns a ProxyConnFn which starts the copy between the
+// connections and blocks until an error (EOF on happy path) is received on
+// either connection.
 func handleProxy(ctx context.Context, conn net.Conn, out *proxy.ProxyDialer, connId string, pi *anypb.Any) (proxy.ProxyConnFn, error) {
 	const op = "tcp.HandleProxy"
 	switch {
@@ -43,7 +41,7 @@ func handleProxy(ctx context.Context, conn net.Conn, out *proxy.ProxyDialer, con
 		return nil, err
 	}
 
-	return func() {
+	return func(ctx context.Context) {
 		connWg := new(sync.WaitGroup)
 		connWg.Add(2)
 		go func() {

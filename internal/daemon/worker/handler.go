@@ -273,7 +273,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 
 		// Verify the protocol has a supported proxy before calling RequestAuthorizeConnection
-		handleProxyFn, err := proxyHandlers.GetHandler(endpointUrl.Scheme)
+		handleProxyFn, err := proxyHandlers.GetHandler(workerId, ci.GetProtocolContext())
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to get proxy handler")
 			event.WriteError(ctx, op, err)
@@ -306,7 +306,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			return
 		}
 
-		runProxy()
+		runProxy(ctx)
 	}, nil
 }
 

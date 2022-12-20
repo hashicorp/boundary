@@ -15,7 +15,7 @@ func TestNewProxyDialer(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, d)
 
-	d, err = NewProxyDialer(context.Background(), func() (net.Conn, error) {
+	d, err = NewProxyDialer(context.Background(), func(...Option) (net.Conn, error) {
 		c, _ := net.Pipe()
 		return c, nil
 	})
@@ -34,7 +34,7 @@ func TestProxyDialer(t *testing.T) {
 
 	t.Run("Dial error", func(t *testing.T) {
 		expectedErr := errors.New("test error")
-		d, err := NewProxyDialer(ctx, func() (net.Conn, error) {
+		d, err := NewProxyDialer(ctx, func(...Option) (net.Conn, error) {
 			return nil, expectedErr
 		})
 		assert.Nil(t, d.LastConnectionAddr())
@@ -45,7 +45,7 @@ func TestProxyDialer(t *testing.T) {
 	})
 
 	t.Run("Successful Dial", func(t *testing.T) {
-		d, err := NewProxyDialer(ctx, func() (net.Conn, error) {
+		d, err := NewProxyDialer(ctx, func(...Option) (net.Conn, error) {
 			return net.Dial("tcp", l.Addr().String())
 		})
 		assert.Nil(t, d.LastConnectionAddr())

@@ -35,9 +35,8 @@ func TestRegisterHandler(t *testing.T) {
 	require.NoError(err)
 }
 
-func TestGetHandler(t *testing.T) {
+func TestAlwaysTcpGetHandler(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-
 	fn := func(context.Context, net.Conn, *ProxyDialer, string, *anypb.Any) (ProxyConnFn, error) {
 		return nil, nil
 	}
@@ -47,15 +46,13 @@ func TestGetHandler(t *testing.T) {
 	})
 	handlers = sync.Map{}
 
-	err := RegisterHandler("fn", fn)
-	require.NoError(err)
-
-	gotFn, err := GetHandler("fake")
+	_, err := tcpOnly("wid", nil)
 	require.Error(err)
 	assert.ErrorIs(err, ErrUnknownProtocol)
-	assert.Nil(gotFn)
 
-	gotFn, err = GetHandler("fn")
+	require.NoError(RegisterHandler("tcp", fn))
+
+	handler, err := tcpOnly("wid", nil)
 	require.NoError(err)
-	assert.NotNil(gotFn)
+	require.NotNil(handler)
 }

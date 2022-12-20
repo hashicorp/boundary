@@ -29,7 +29,7 @@ func TestHandleProxy_Errors(t *testing.T) {
 	t.Cleanup(func() {
 		l.Close()
 	})
-	dialer, err := proxy.NewProxyDialer(context.Background(), func() (net.Conn, error) {
+	dialer, err := proxy.NewProxyDialer(context.Background(), func(...proxy.Option) (net.Conn, error) {
 		return net.Dial("tcp", l.Addr().String())
 	})
 	require.NoError(t, err)
@@ -156,7 +156,7 @@ func TestHandleTcpProxyV1(t *testing.T) {
 	resp, _, err := s.RequestAuthorizeConnection(ctx, "workerid", connCancelFn)
 	require.NoError(err)
 
-	tDial, err := proxy.NewProxyDialer(ctx, func() (net.Conn, error) {
+	tDial, err := proxy.NewProxyDialer(ctx, func(...proxy.Option) (net.Conn, error) {
 		return net.Dial("tcp", l.Addr().String())
 	})
 	require.NoError(err)
@@ -170,7 +170,7 @@ func TestHandleTcpProxyV1(t *testing.T) {
 			// https://pkg.go.dev/testing#T.FailNow
 			require.NoError(err)
 		})
-		fn()
+		fn(context.Background())
 	}()
 
 	// wait for HandleTcpProxyV1 to dial endpoint
