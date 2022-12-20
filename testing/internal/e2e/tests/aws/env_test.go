@@ -21,5 +21,5 @@ func loadConfig() (*config, error) {
 		return nil, err
 	}
 
-	return &c, err
+	return &c, nil
 }
