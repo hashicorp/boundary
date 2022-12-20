@@ -1,8 +1,9 @@
 package proxy
 
 import (
-	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"net"
+
+	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 )
 
 // Option - how Options are passed as arguments.
