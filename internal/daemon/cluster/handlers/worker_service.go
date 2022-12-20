@@ -57,7 +57,7 @@ var (
 
 // singleHopConnectionRoute returns a route consisting of the singlehop worker (the root worker id)
 func singleHopConnectionRoute(_ context.Context, rootInfo server.RootInfo, _ *session.AuthzSummary, _ *server.Repository, _ common.Downstreamers) ([]string, error) {
-	return []string{rootInfo.RootId}, nil
+	return []string{}, nil
 }
 
 func NewWorkerServiceServer(
