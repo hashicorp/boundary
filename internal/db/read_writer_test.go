@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/hashicorp/boundary/internal/db/db_test"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -1322,6 +1323,35 @@ func TestDb_DoTx(t *testing.T) {
 		err = rw.LookupByPublicId(context.Background(), foundUser)
 		require.NoError(err)
 		assert.Equal(foundUser.Name, user.Name)
+	})
+	t.Run("commit-and-rollback-errors", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		mockConn, mock := TestSetupWithMock(t)
+		mockConn.Debug(true)
+		rw := New(mockConn)
+		user, err := db_test.NewTestUser()
+		require.NoError(err)
+		user.Id = 1
+
+		mock.ExpectBegin()
+		mock.ExpectExec(`UPDATE`).WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+		mock.ExpectCommit().WillReturnError(fmt.Errorf("commit-err"))
+		mock.ExpectRollback().WillReturnError(fmt.Errorf("rollback-err"))
+		_, err = rw.DoTx(context.Background(), 10, ExpBackoff{}, func(r Reader, w Writer) error {
+			user.Name = "friendly-name"
+			rowsUpdated, err := w.Update(context.Background(), user, []string{"Name"}, nil)
+			if err != nil {
+				return err
+			}
+			if rowsUpdated != 1 {
+				return fmt.Errorf("error in number of rows updated %d", rowsUpdated)
+			}
+			return nil
+		})
+		require.Error(err)
+		assert.Contains(err.Error(), "commit error")
+		assert.Contains(err.Error(), "rollback error")
 	})
 }
 

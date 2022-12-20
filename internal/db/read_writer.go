@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -438,11 +439,16 @@ func (rw *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler T
 			return info, errors.Wrap(ctx, err, op, errors.WithoutEvent())
 		}
 
-		if err := beginTx.Commit(ctx); err != nil {
+		var txnErr *multierror.Error
+		if commitErr := beginTx.Commit(ctx); commitErr != nil {
+			txnErr = multierror.Append(txnErr, errors.Wrap(ctx, commitErr, op, errors.WithMsg("commit error")))
+			// unsure if rolling back is required or possible, but including
+			// this attempt to rollback on a commit error just in case it's
+			// possible.
 			if err := beginTx.Rollback(ctx); err != nil {
-				return info, errors.Wrap(ctx, err, op)
+				return info, multierror.Append(txnErr, errors.Wrap(ctx, err, op, errors.WithMsg("rollback error")))
 			}
-			return info, errors.Wrap(ctx, err, op)
+			return info, txnErr
 		}
 		return info, nil // it all worked!!!
 	}
