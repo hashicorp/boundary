@@ -709,7 +709,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 								t.Fatal(err)
 							}
 							if !opts.DisableTargetCreation {
-								if _, err := tc.b.CreateInitialTarget(ctx); err != nil {
+								if _, err := tc.b.CreateInitialTargetWithHostSources(ctx); err != nil {
 									t.Fatal(err)
 								}
 							}

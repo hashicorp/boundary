@@ -426,26 +426,42 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 	}
 
 	c.DevTargetSessionConnectionLimit = -1
-	t, err := c.CreateInitialTarget(c.Context)
+	ta, err := c.CreateInitialTargetWithAddress(c.Context)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating initial target: %w", err).Error())
 		return base.CommandCliError
 	}
+	taInfo := &TargetInfo{
+		TargetId:               ta.GetPublicId(),
+		DefaultPort:            ta.GetDefaultPort(),
+		SessionMaxSeconds:      ta.GetSessionMaxSeconds(),
+		SessionConnectionLimit: ta.GetSessionConnectionLimit(),
+		Type:                   string(ta.GetType()),
+		ScopeId:                ta.GetProjectId(),
+		Name:                   ta.GetName(),
+	}
 
-	targetInfo := &TargetInfo{
-		TargetId:               c.DevTargetId,
-		DefaultPort:            t.GetDefaultPort(),
-		SessionMaxSeconds:      t.GetSessionMaxSeconds(),
-		SessionConnectionLimit: t.GetSessionConnectionLimit(),
-		Type:                   "tcp",
-		ScopeId:                c.DevProjectId,
-		Name:                   t.GetName(),
+	ths, err := c.CreateInitialTargetWithHostSources(c.Context)
+	if err != nil {
+		c.UI.Error(fmt.Errorf("Error creating initial secondary target: %w", err).Error())
+		return base.CommandCliError
+	}
+	thsInfo := &TargetInfo{
+		TargetId:               ths.GetPublicId(),
+		DefaultPort:            ths.GetDefaultPort(),
+		SessionMaxSeconds:      ths.GetSessionMaxSeconds(),
+		SessionConnectionLimit: ths.GetSessionConnectionLimit(),
+		Type:                   string(ths.GetType()),
+		ScopeId:                ths.GetProjectId(),
+		Name:                   ths.GetName(),
 	}
 	switch base.Format(c.UI) {
 	case "table":
-		c.UI.Output(generateInitialTargetTableOutput(targetInfo))
+		c.UI.Output(generateInitialTargetTableOutput(taInfo))
+		c.UI.Output(generateInitialTargetTableOutput(thsInfo))
 	case "json":
-		jsonMap["target"] = targetInfo
+		jsonMap["target"] = taInfo
+		jsonMap["target_secondary"] = thsInfo
 	}
 
 	return base.CommandSuccess

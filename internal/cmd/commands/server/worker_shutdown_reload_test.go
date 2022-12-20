@@ -78,9 +78,10 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	tcl := targets.NewClient(client)
 	tgtL, err := tcl.List(ctx, scope.Global.String(), targets.WithRecursive(true))
 	require.NoError(err)
-	require.Len(tgtL.Items, 1)
+	require.Len(tgtL.Items, 2)
 	tgt := tgtL.Items[0]
 	require.NotNil(tgt)
+	require.NotNil(tgtL.GetItems()[1])
 
 	// Create test server, update default port on target
 	ts := helper.NewTestTcpServer(t)

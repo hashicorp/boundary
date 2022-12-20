@@ -106,8 +106,10 @@ type Server struct {
 	DevHostCatalogId                 string
 	DevHostSetId                     string
 	DevHostId                        string
-	DevTargetId                      string
-	DevHostAddress                   string
+	DevTargetId                      string // Target using address.
+	DevSecondaryTargetId             string // Target using host sources.
+	DevHostAddress                   string // Host address for target using host sources.
+	DevTargetAddress                 string // Network address for target with address.
 	DevTargetDefaultPort             int
 	DevTargetSessionMaxSeconds       int
 	DevTargetSessionConnectionLimit  int
