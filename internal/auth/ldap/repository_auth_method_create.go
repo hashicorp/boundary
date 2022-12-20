@@ -150,7 +150,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...
 	case err != nil:
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to lookup created auth method %q", am.GetPublicId()))
 	case len(found) != 1:
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("found %q auth method (%q) and expected 1", len(found), am.GetPublicId()))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("found %d auth methods with public id of %q and expected 1", len(found), am.GetPublicId()))
 	default:
 		return found[0], nil
 	}
