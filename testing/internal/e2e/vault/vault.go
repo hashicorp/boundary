@@ -33,7 +33,7 @@ func loadConfig() (*config, error) {
 		return nil, err
 	}
 
-	return &c, err
+	return &c, nil
 }
 
 // Setup verifies if appropriate credentials are set and adds the boundary controller

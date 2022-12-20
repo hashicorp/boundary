@@ -51,7 +51,7 @@ func loadConfig() (*config, error) {
 		return nil, err
 	}
 
-	return &c, err
+	return &c, nil
 }
 
 // NewApiClient creates a new Api client for the specified Boundary instance and
