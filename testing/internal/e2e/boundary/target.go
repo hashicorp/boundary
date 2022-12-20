@@ -61,10 +61,60 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 	return newTargetId
 }
 
-// AddHostSourceToTargetCli uses the cli to add a host source (host set or host) to a target
-func AddHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId string, hostSourceId string) {
+// CreateNewAddressTargetCli uses the cli to create a new target using an
+// address in boundary.
+// Returns the id of the new target.
+func CreateNewAddressTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string, address string) string {
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "create", "tcp",
+			"-scope-id", projectId,
+			"-default-port", defaultPort,
+			"-name", "e2e Target",
+			"-address", address,
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	var newTargetResult targets.TargetCreateResult
+	err := json.Unmarshal(output.Stdout, &newTargetResult)
+	require.NoError(t, err)
+	newTargetId := newTargetResult.Item.Id
+	t.Logf("Created Target: %s", newTargetId)
+
+	return newTargetId
+}
+
+// AddHostSourceToTargetCli uses the cli to add a host source (host set or host)
+// to a target.
+// Boundary's `add-host-sources` functionality appends a new host source to the
+// existing set of host sources in the target.
+func AddHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "add-host-sources", "-id", targetId, "-host-source", hostSourceId),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+}
+
+// SetHostSourceToTargetCli uses the cli to set a host source (host set or host)
+// to a target.
+// Boundary's `set-host-sources` functionality replaces all existing host sets
+// on a target with the provided one.
+func SetHostSourceToTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) {
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("targets", "set-host-sources", "-id", targetId, "-host-source", hostSourceId),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+}
+
+// RemoveHostSourceFromTargetCli uses the cli to remove a host source (host set or host) to a target
+func RemoveHostSourceFromTargetCli(t testing.TB, ctx context.Context, targetId, hostSourceId string) {
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "remove-host-sources",
+			"-id", targetId,
+			"-host-source", hostSourceId,
+		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 }
