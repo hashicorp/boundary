@@ -65,8 +65,10 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 
 	newSessionAuthorization := newSessionAuthorizationResult.Item
-	retrievedUser := newSessionAuthorization.Credentials[0].Credential["username"].(string)
-	retrievedPassword := newSessionAuthorization.Credentials[0].Credential["password"].(string)
+	retrievedUser, ok := newSessionAuthorization.Credentials[0].Credential["username"].(string)
+	require.True(t, ok)
+	retrievedPassword, ok := newSessionAuthorization.Credentials[0].Credential["password"].(string)
+	require.True(t, ok)
 	assert.Equal(t, c.TargetSshUser, retrievedUser)
 	assert.Equal(t, "password", retrievedPassword)
 
@@ -156,8 +158,10 @@ func TestApiStaticCredentialStore(t *testing.T) {
 	newSessionAuthorizationResult, err := tClient.AuthorizeSession(ctx, newTargetId)
 	require.NoError(t, err)
 	newSessionAuthorization := newSessionAuthorizationResult.Item
-	retrievedUser := newSessionAuthorization.Credentials[0].Credential["username"].(string)
-	retrievedKey := newSessionAuthorization.Credentials[0].Credential["private_key"].(string)
+	retrievedUser, ok := newSessionAuthorization.Credentials[0].Credential["username"].(string)
+	require.True(t, ok)
+	retrievedKey, ok := newSessionAuthorization.Credentials[0].Credential["private_key"].(string)
+	require.True(t, ok)
 	assert.Equal(t, c.TargetSshUser, retrievedUser)
 	require.Equal(t, string(k), retrievedKey)
 	t.Log("Successfully retrieved credentials for target")

@@ -52,8 +52,11 @@ func TestCliConnectTargetWithAuthzToken(t *testing.T) {
 	require.NoError(t, err)
 
 	newSessionAuthorization := newSessionAuthorizationResult.Item
-	retrievedUser := newSessionAuthorization.Credentials[0].Credential["username"].(string)
-	retrievedKey := newSessionAuthorization.Credentials[0].Credential["private_key"].(string) + "\n"
+	retrievedUser, ok := newSessionAuthorization.Credentials[0].Credential["username"].(string)
+	require.True(t, ok)
+	retrievedKey, ok := newSessionAuthorization.Credentials[0].Credential["private_key"].(string)
+	require.True(t, ok)
+	retrievedKey += "\n"
 	assert.Equal(t, c.TargetSshUser, retrievedUser)
 
 	k, err := os.ReadFile(c.TargetSshKeyPath)
