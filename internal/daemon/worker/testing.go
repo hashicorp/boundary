@@ -457,3 +457,39 @@ func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext
 
 	return kmsWorker, pkiWorker, childPkiWorker
 }
+
+// NewAuthorizedPkiTestWorker creates a new test worker with the provided upstreams
+// and creates it in the provided repo as an authroized worker. It returns
+// The TestWorker and it's boundary id.
+func NewAuthorizedPkiTestWorker(t *testing.T, repo *server.Repository, name string, upstreams []string) (*TestWorker, string) {
+	t.Helper()
+	logger := hclog.New(&hclog.LoggerOptions{
+		Level: hclog.Trace,
+	})
+	wcfg, err := config.DevWorker()
+	require.NoError(t, err)
+	wcfg.Worker.Name = ""
+	wcfg.Worker.InitialUpstreams = upstreams
+	w := NewTestWorker(t, &TestWorkerOpts{
+		InitialUpstreams: upstreams,
+		Logger:           logger.Named(name),
+		Config:           wcfg,
+	})
+	t.Cleanup(w.Shutdown)
+
+	// Perform initial authentication of worker to controller
+	reqBytes, err := base58.FastBase58Decoding(w.Worker().WorkerAuthRegistrationRequest)
+	require.NoError(t, err)
+
+	// Decode the proto into the request and create the worker
+	pkiWorkerReq := new(types.FetchNodeCredentialsRequest)
+	require.NoError(t, proto.Unmarshal(reqBytes, pkiWorkerReq))
+	wr, err := repo.CreateWorker(context.Background(), &server.Worker{
+		Worker: &store.Worker{
+			Name:    name,
+			ScopeId: scope.Global.String(),
+		},
+	}, server.WithFetchNodeCredentialsRequest(pkiWorkerReq))
+	require.NoError(t, err)
+	return w, wr.GetPublicId()
+}
