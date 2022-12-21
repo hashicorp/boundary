@@ -67,8 +67,8 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 	bytesUp := 0
 	bytesDown := 0
 	t.Log("Reading bytes_up/bytes_down values...")
-	for i := 1; i <= 3; i++ {
-		if i != 1 {
+	for i := 0; i < 3; i++ {
+		if i != 0 {
 			time.Sleep(2 * time.Second)
 		}
 

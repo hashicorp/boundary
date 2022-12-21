@@ -41,8 +41,8 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	// Check that there are no hosts in the host set
 	t.Logf("Looking for items in the host set...")
 	var actualHostSetCount int
-	for i := 1; i <= 3; i++ {
-		if i != 1 {
+	for i := 0; i < 3; i++ {
+		if i != 0 {
 			time.Sleep(3 * time.Second)
 		}
 
@@ -68,8 +68,8 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	// Check that there are no hosts in the host catalog
 	t.Logf("Looking for items in the host catalog...")
 	var actualHostCatalogCount int
-	for i := 1; i <= 3; i++ {
-		if i != 1 {
+	for i := 0; i < 3; i++ {
+		if i != 0 {
 			time.Sleep(3 * time.Second)
 		}
 
