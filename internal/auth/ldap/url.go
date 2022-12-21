@@ -23,12 +23,15 @@ type Url struct {
 	tableName string
 }
 
-// NewUrl creates a new in memory Url. No options are currently supported.
+// NewUrl creates a new in memory Url.  connectionPriority cannot be less than
+// one. No options are currently supported.
 func NewUrl(ctx context.Context, authMethodId string, connectionPriority int, url *url.URL, _ ...Option) (*Url, error) {
 	const op = "ldap.NewUrl"
 	switch {
 	case authMethodId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
+	case connectionPriority < 1:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "connection priority cannot be less than one")
 	case url == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing url")
 	case !strutil.StrListContainsCaseInsensitive([]string{"ldap", "ldaps"}, url.Scheme):
