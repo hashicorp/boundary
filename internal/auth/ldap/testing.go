@@ -24,6 +24,8 @@ const testInvalidPem = `-----BEGIN CERTIFICATE-----
 MIICUTCCAfugAwIBAgIBADANBgkqhkiG9w0BAQQFADBXMQswCQYDVQQGEwJDTjEL
 -----END CERTIFICATE-----`
 
+// TestAuthMethod creates a new auth method and it's persisted in the database.
+// See NewAuthMethod for list of supported options.
 func TestAuthMethod(t testing.TB,
 	conn *db.DB,
 	databaseWrapper wrapping.Wrapper,
@@ -49,7 +51,7 @@ func TestAuthMethod(t testing.TB,
 			return err
 		}
 		for priority, u := range urls {
-			storeUrl, err := NewUrl(testCtx, am.PublicId, priority, TestConvertToUrls(t, u)[0])
+			storeUrl, err := NewUrl(testCtx, am.PublicId, priority+1, TestConvertToUrls(t, u)[0])
 			if err != nil {
 				return err
 			}

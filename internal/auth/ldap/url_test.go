@@ -51,6 +51,7 @@ func TestNewUrl(t *testing.T) {
 		{
 			name:            "missing-url",
 			ctx:             testCtx,
+			priority:        1,
 			authMethodId:    "test-id",
 			wantErr:         true,
 			wantErrCode:     errors.InvalidParameter,
@@ -60,6 +61,7 @@ func TestNewUrl(t *testing.T) {
 			name:         "invalid-scheme",
 			ctx:          testCtx,
 			authMethodId: "test-id",
+			priority:     1,
 			url: func() *url.URL {
 				parsed, err := url.Parse("https://alice.com")
 				require.NoError(t, err)
@@ -125,19 +127,20 @@ func TestUrl_SetTableName(t *testing.T) {
 func TestUrl_clone(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
+	const priorityOfOne = 1
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		u, err := NewUrl(testCtx, "test-id", 0, TestConvertToUrls(t, "ldaps://alice.com")[0])
+		u, err := NewUrl(testCtx, "test-id", priorityOfOne, TestConvertToUrls(t, "ldaps://alice.com")[0])
 		require.NoError(err)
 		cp := u.clone()
 		assert.True(proto.Equal(cp.Url, u.Url))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		u, err := NewUrl(testCtx, "test-id", 0, TestConvertToUrls(t, "ldaps://alice.com")[0])
+		u, err := NewUrl(testCtx, "test-id", priorityOfOne, TestConvertToUrls(t, "ldaps://alice.com")[0])
 		require.NoError(err)
 
-		u2, err := NewUrl(testCtx, "test-id", 0, TestConvertToUrls(t, "ldaps://bob.com")[0])
+		u2, err := NewUrl(testCtx, "test-id", priorityOfOne, TestConvertToUrls(t, "ldaps://bob.com")[0])
 		require.NoError(err)
 
 		cp := u.clone()
