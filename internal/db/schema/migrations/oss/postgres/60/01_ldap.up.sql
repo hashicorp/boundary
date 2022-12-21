@@ -99,8 +99,8 @@ create table auth_ldap_url (
     constraint url_invalid_protocol
         check (url ~ 'ldaps?:\/\/*'),
   connection_priority int not null
-    constraint connection_priority_less_than_zero
-      check(connection_priority >= 0),
+    constraint connection_priority_less_than_one
+      check(connection_priority >= 1),
   primary key(ldap_method_id, connection_priority)
 );
 comment on table auth_ldap_url is
@@ -117,10 +117,10 @@ begin
       raise exception 'During % of auth_ldap_url: auth_ldap_method id=% must have at least one url, not %',tg_op,new.ldap_method_id,n;
     end if;
   end if;
-  if tg_op = 'UPDATE' or tg_op = 'DELETE' then 
+  if tg_op = 'UPDATE' then 
       select into n count(*) from auth_ldap_url where ldap_method_id = old.ldap_method_id;
       if n < 1 then 
-        raise exception 'During % of auth_ldap_url: auth_ldap_method id=% must have at least one url, not %',tg_op,old.ldap_method_id,n;
+        raise exception 'During % of %: auth_ldap_method id=% must have at least one url, not %',tg_op,tg_table_name,old.ldap_method_id,n;
       end if;
   end if;
 
@@ -128,8 +128,10 @@ begin
 end;
 $$ language plpgsql;
 comment on function auth_ldap_url_parent_children() is 
-'function used on auth_ldap_url after insert/update/delete initially deferred to ensure each '
-'auth_ldap_method has at least one auth_ldap_url';
+'function used on auth_ldap_url after insert/update initially deferred to ensure each '
+'auth_ldap_method has at least one auth_ldap_url. Unfortunately, it cannot be used on '
+'delete since that would make it impossible to delete an ldap auth method, because you '
+'would not be able to remove all of its urls';
 
 create constraint trigger auth_ldap_url_children_per_parent_tg
   after insert or update or delete on auth_ldap_url deferrable initially deferred 
