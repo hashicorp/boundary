@@ -181,9 +181,9 @@ func TestAuthMethod_SetTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			def := allocAuthMethod()
+			def := AllocAuthMethod()
 			require.Equal(defaultTableName, def.TableName())
-			m := allocAuthMethod()
+			m := AllocAuthMethod()
 			m.SetTableName(tt.setNameTo)
 			assert.Equal(tt.want, m.TableName())
 		})
@@ -238,7 +238,7 @@ func TestAuthMethod_clone(t *testing.T) {
 func TestAuthMethod_oplog(t *testing.T) {
 	t.Parallel()
 	t.Run("create", func(t *testing.T) {
-		am := allocAuthMethod()
+		am := AllocAuthMethod()
 		am.PublicId = "global"
 		assert.Equal(t, oplog.Metadata{
 			"resource-public-id": []string{am.GetPublicId()},
@@ -248,7 +248,7 @@ func TestAuthMethod_oplog(t *testing.T) {
 		}, am.oplog(oplog.OpType_OP_TYPE_CREATE))
 	})
 	t.Run("update", func(t *testing.T) {
-		am := allocAuthMethod()
+		am := AllocAuthMethod()
 		am.PublicId = "global"
 		assert.Equal(t, oplog.Metadata{
 			"resource-public-id": []string{am.GetPublicId()},
@@ -271,7 +271,7 @@ func Test_convertValueObjects(t *testing.T) {
 
 	testUrls := make([]any, 0, len(testLdapServers))
 	for priority, uu := range TestConvertToUrls(t, testLdapServers...) {
-		u, err := NewUrl(testCtx, testPublicId, priority, uu)
+		u, err := NewUrl(testCtx, testPublicId, priority+1, uu)
 		require.NoError(t, err)
 		testUrls = append(testUrls, u)
 	}

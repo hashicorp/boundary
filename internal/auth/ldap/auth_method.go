@@ -81,8 +81,8 @@ func NewAuthMethod(ctx context.Context, scopeId string, urls []*url.URL, opt ...
 	return a, nil
 }
 
-// allocAuthMethod makes an empty one in memory
-func allocAuthMethod() AuthMethod {
+// AllocAuthMethod makes an empty one in memory
+func AllocAuthMethod() AuthMethod {
 	return AuthMethod{
 		AuthMethod: &store.AuthMethod{},
 	}
@@ -145,17 +145,25 @@ func (am *AuthMethod) convertValueObjects(ctx context.Context) (*convertedValues
 	if converted.Certs, err = am.convertCertificates(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if converted.UserEntrySearchConf, err = am.convertUserEntrySearchConf(ctx); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	if am.UserDn != "" || am.UserAttr != "" || am.UserFilter != "" {
+		if converted.UserEntrySearchConf, err = am.convertUserEntrySearchConf(ctx); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
-	if converted.GroupEntrySearchConf, err = am.convertGroupEntrySearchConf(ctx); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	if am.GroupDn != "" || am.GroupAttr != "" || am.GroupFilter != "" {
+		if converted.GroupEntrySearchConf, err = am.convertGroupEntrySearchConf(ctx); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
-	if converted.ClientCertificate, err = am.convertClientCertificate(ctx); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	if am.ClientCertificate != "" || am.ClientCertificateKey != nil {
+		if converted.ClientCertificate, err = am.convertClientCertificate(ctx); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
-	if converted.BindCredential, err = am.convertBindCredential(ctx); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	if am.BindDn != "" || am.BindPassword != "" {
+		if converted.BindCredential, err = am.convertBindCredential(ctx); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	return converted, nil
@@ -175,7 +183,7 @@ func (am *AuthMethod) convertUrls(ctx context.Context) ([]any, error) {
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		obj, err := NewUrl(ctx, am.PublicId, priority, parsed)
+		obj, err := NewUrl(ctx, am.PublicId, priority+1, parsed)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
