@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -58,7 +59,7 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 		require.NoError(t, err)
 
 		actualHostSetCount = len(hostSetsReadResult.Item.HostIds)
-		require.Equal(t, actualHostSetCount, 0,
+		require.Equal(t, 0, actualHostSetCount,
 			fmt.Sprintf("Detected incorrect number of hosts. Expected: 0, Actual: %d", actualHostSetCount),
 		)
 	}
@@ -81,7 +82,7 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 		require.NoError(t, err)
 
 		actualHostCatalogCount = len(hostCatalogListResult.Items)
-		require.Equal(t, actualHostCatalogCount, 0,
+		require.Equal(t, 0, actualHostCatalogCount,
 			fmt.Sprintf("Detected incorrect number of hosts. Expected: 0, Actual: %d", actualHostCatalogCount),
 		)
 	}
@@ -111,6 +112,6 @@ func TestCliCreateAwsDynamicHostCatalogWithEmptyHostSet(t *testing.T) {
 	var response boundary.CliError
 	err = json.Unmarshal(output.Stderr, &response)
 	require.NoError(t, err)
-	require.Equal(t, response.Status, 404, "Expected to error when connecting to a target with zero hosts")
+	require.Equal(t, http.StatusNotFound, response.Status, "Expected to error when connecting to a target with zero hosts")
 	t.Log("Successfully failed to connect to target")
 }

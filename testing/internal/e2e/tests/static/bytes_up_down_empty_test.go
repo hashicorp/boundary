@@ -83,8 +83,8 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 		bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
 
 		if i != 1 {
-			require.Equal(t, int(newSessionReadResult.Item.Connections[0].BytesUp), bytesUp)
-			require.Equal(t, int(newSessionReadResult.Item.Connections[0].BytesDown), bytesDown)
+			require.Equal(t, bytesUp, int(newSessionReadResult.Item.Connections[0].BytesUp))
+			require.Equal(t, bytesDown, int(newSessionReadResult.Item.Connections[0].BytesDown))
 		}
 
 		t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
