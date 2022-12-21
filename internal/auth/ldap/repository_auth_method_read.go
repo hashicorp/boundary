@@ -158,7 +158,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 				return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt bind password"))
 			}
 		}
-		am := allocAuthMethod()
+		am := AllocAuthMethod()
 		am.PublicId = agg.PublicId
 		am.ScopeId = agg.ScopeId
 		am.IsPrimaryAuthMethod = agg.IsPrimaryAuthMethod

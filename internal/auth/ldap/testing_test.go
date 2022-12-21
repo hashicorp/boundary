@@ -55,7 +55,7 @@ func Test_testAuthMethod(t *testing.T) {
 	)
 
 	rw := db.New(conn)
-	found := allocAuthMethod()
+	found := AllocAuthMethod()
 	found.PublicId = am.PublicId
 	rw.LookupById(testCtx, &found)
 	assert.Equal(am.PublicId, found.PublicId)
@@ -74,9 +74,9 @@ func Test_testAuthMethod(t *testing.T) {
 	err = rw.SearchWhere(testCtx, &foundUrls, "ldap_method_id = ?", []any{found.PublicId}, db.WithOrder("connection_priority asc"))
 	require.NoError(err)
 	assert.Equal("ldaps://d1.alice.com", foundUrls[0].GetServerUrl())
-	assert.Equal(uint32(0), foundUrls[0].ConnectionPriority)
+	assert.Equal(uint32(1), foundUrls[0].ConnectionPriority)
 	assert.Equal("ldap://d2.alice.com", foundUrls[1].GetServerUrl())
-	assert.Equal(uint32(1), foundUrls[1].ConnectionPriority)
+	assert.Equal(uint32(2), foundUrls[1].ConnectionPriority)
 
 	foundCerts := []*Certificate{}
 	err = rw.SearchWhere(testCtx, &foundCerts, "ldap_method_id = ?", []any{found.PublicId}, db.WithOrder("create_time asc"))
