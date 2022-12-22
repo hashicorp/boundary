@@ -3,14 +3,11 @@ package static_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
-	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/require"
@@ -55,41 +52,7 @@ func TestCliConnectTargetWithLocalhost(t *testing.T) {
 	}()
 	t.Cleanup(cancel)
 
-	// Wait for session to appear
-	t.Log("Waiting for session to appear...")
-	err = backoff.RetryNotify(
-		func() error {
-			output := e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs("sessions", "list", "-scope-id", newProjectId, "-format", "json"),
-			)
-			if output.Err != nil {
-				return backoff.Permanent(errors.New(string(output.Stderr)))
-			}
-
-			var sessionListResult sessions.SessionListResult
-			err := json.Unmarshal(output.Stdout, &sessionListResult)
-			if err != nil {
-				return backoff.Permanent(err)
-			}
-
-			sessionCount := len(sessionListResult.Items)
-			if sessionCount == 0 {
-				return errors.New("No items are appearing in the session list")
-			}
-
-			t.Logf("Found %d session(s)", sessionCount)
-			if sessionCount != 1 {
-				return backoff.Permanent(errors.New("Only one session was expected to be found"))
-			}
-
-			return nil
-		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
-		func(err error, td time.Duration) {
-			t.Logf("%s. Retrying...", err.Error())
-		},
-	)
-	require.NoError(t, err)
+	boundary.WaitForSessionCli(t, ctx, newProjectId)
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "ssh",
