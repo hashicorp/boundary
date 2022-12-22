@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -12,6 +13,38 @@ import (
 )
 
 var _ credential.Issuer = (*Repository)(nil)
+
+func insertQuery(c *Credential, sessionId string) (query string, queryValues []any) {
+	queryValues = []any{
+		sql.Named("public_id", c.PublicId),
+		sql.Named("library_id", c.LibraryId),
+		sql.Named("session_id", sessionId),
+		sql.Named("token_hmac", c.TokenHmac),
+		sql.Named("external_id", c.ExternalId),
+		sql.Named("is_renewable", c.IsRenewable),
+		sql.Named("status", c.Status),
+		sql.Named("last_renewal_time", "now()"),
+	}
+	switch {
+	case c.expiration == 0:
+		query = insertCredentialWithInfiniteExpirationQuery
+	default:
+		query = insertCredentialWithExpirationQuery
+		queryValues = append(queryValues, sql.Named("expiration_time", int(c.expiration.Round(time.Second).Seconds())))
+	}
+	return
+}
+
+func updateSessionQuery(c *Credential, sessionId string, purpose credential.Purpose) (query string, queryValues []any) {
+	queryValues = []any{
+		sql.Named("public_id", c.PublicId),
+		sql.Named("library_id", c.LibraryId),
+		sql.Named("session_id", sessionId),
+		sql.Named("purpose", string(purpose)),
+	}
+	query = updateSessionCredentialQuery
+	return
+}
 
 // Issue issues and returns dynamic credentials from Vault for all of the
 // requests and assigns them to sessionId.
@@ -37,7 +70,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 	var minLease time.Duration
 	runJobsInterval := r.scheduler.GetRunJobsInterval()
 	for _, lib := range libs {
-		cred, err := lib.retrieveCredential(ctx, op, sessionId, opt...)
+		cred, err := lib.retrieveCredential(ctx, op, opt...)
 		if err != nil {
 			return nil, err
 		}
@@ -54,8 +87,18 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 		if minLease > cred.getExpiration() {
 			minLease = cred.getExpiration()
 		}
-		insertQuery, insertQueryValues := cred.insertQuery()
-		updateQuery, updateQueryValues := cred.updateSessionQuery(lib.Purpose)
+
+		underlyingCred := cred.getCredential()
+
+		insertQuery, insertQueryValues := insertQuery(underlyingCred, sessionId)
+		if err != nil {
+			return nil, err
+		}
+		updateQuery, updateQueryValues := updateSessionQuery(underlyingCred, sessionId, lib.Purpose)
+		if err != nil {
+			return nil, err
+		}
+
 		if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, w db.Writer) error {
 				rowsInserted, err := w.Exec(ctx, insertQuery, insertQueryValues)

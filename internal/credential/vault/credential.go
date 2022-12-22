@@ -1,10 +1,8 @@
 package vault
 
 import (
-	"database/sql"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db/sanitize"
 	"github.com/hashicorp/boundary/internal/db/sentinel"
@@ -46,13 +44,10 @@ type Credential struct {
 	expiration time.Duration `gorm:"-"`
 }
 
-func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, expiration time.Duration) (*Credential, error) {
+func newCredential(libraryId, externalId string, tokenHmac []byte, expiration time.Duration) (*Credential, error) {
 	const op = "vault.newCredential"
 	if libraryId == "" {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no library id")
-	}
-	if sessionId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no session id")
 	}
 	if len(tokenHmac) == 0 {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no tokenHmac")
@@ -69,7 +64,6 @@ func newCredential(libraryId, sessionId, externalId string, tokenHmac []byte, ex
 		expiration: expiration.Round(time.Second),
 		Credential: &store.Credential{
 			LibraryId:  libraryId,
-			SessionId:  sessionId,
 			ExternalId: externalId,
 			TokenHmac:  tokenHmac,
 			Status:     status,
@@ -115,38 +109,6 @@ func (c *Credential) oplog(op oplog.OpType) oplog.Metadata {
 		metadata["library-id"] = []string{c.LibraryId}
 	}
 	return metadata
-}
-
-func (c *Credential) insertQuery() (query string, queryValues []any) {
-	queryValues = []any{
-		sql.Named("public_id", c.PublicId),
-		sql.Named("library_id", c.LibraryId),
-		sql.Named("session_id", c.SessionId),
-		sql.Named("token_hmac", c.TokenHmac),
-		sql.Named("external_id", c.ExternalId),
-		sql.Named("is_renewable", c.IsRenewable),
-		sql.Named("status", c.Status),
-		sql.Named("last_renewal_time", "now()"),
-	}
-	switch {
-	case c.expiration == 0:
-		query = insertCredentialWithInfiniteExpirationQuery
-	default:
-		query = insertCredentialWithExpirationQuery
-		queryValues = append(queryValues, sql.Named("expiration_time", int(c.expiration.Round(time.Second).Seconds())))
-	}
-	return
-}
-
-func (c *Credential) updateSessionQuery(purpose credential.Purpose) (query string, queryValues []any) {
-	queryValues = []any{
-		sql.Named("public_id", c.PublicId),
-		sql.Named("library_id", c.LibraryId),
-		sql.Named("session_id", c.SessionId),
-		sql.Named("purpose", string(purpose)),
-	}
-	query = updateSessionCredentialQuery
-	return
 }
 
 func (c *Credential) updateExpirationQuery() (query string, queryValues []any) {

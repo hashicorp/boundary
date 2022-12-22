@@ -33,6 +33,7 @@ func (bc *baseCred) Secret() credential.SecretData { return bc.secretData }
 func (bc *baseCred) Library() credential.Library   { return bc.lib }
 func (bc *baseCred) Purpose() credential.Purpose   { return bc.lib.Purpose }
 func (bc *baseCred) getExpiration() time.Duration  { return bc.expiration }
+func (bc *baseCred) getCredential() *Credential    { return bc.Credential }
 
 // convert converts bc to a specific credential type if bc is not
 // UnspecifiedType.
@@ -284,15 +285,14 @@ func (pl *issueCredentialLibrary) client(ctx context.Context) (vaultClient, erro
 type dynamicCred interface {
 	credential.Dynamic
 	getExpiration() time.Duration
-	insertQuery() (query string, queryValues []any)
-	updateSessionQuery(purpose credential.Purpose) (query string, queryValues []any)
+	getCredential() *Credential
 }
 
 // retrieveCredential retrieves a dynamic credential from Vault for the
 // given sessionId.
 //
 // Supported options: credential.WithTemplateData
-func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, sessionId string, opt ...credential.Option) (dynamicCred, error) {
+func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, opt ...credential.Option) (dynamicCred, error) {
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -358,7 +358,7 @@ func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op err
 	}
 
 	leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
-	cred, err := newCredential(pl.GetPublicId(), sessionId, secret.LeaseID, pl.TokenHmac, leaseDuration)
+	cred, err := newCredential(pl.GetPublicId(), secret.LeaseID, pl.TokenHmac, leaseDuration)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
