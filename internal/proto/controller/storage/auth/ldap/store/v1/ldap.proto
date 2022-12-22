@@ -368,20 +368,24 @@ message Account {
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 20;
 
-  // ldap_method_id is the FK to the Account's LDAP auth method.
+  // update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 30;
+
+  // auth_method_id is the FK to the Account's LDAP auth method.
   // @inject_tag: `gorm:"not_null"`
-  string ldap_method_id = 30;
+  string auth_method_id = 40;
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 40 [(custom_options.v1.mask_mapping) = {
+  string name = 50 [(custom_options.v1.mask_mapping) = {
     this: "Name"
     that: "name"
   }];
 
   // description is optional.
   // @inject_tag: `gorm:"default:null"`
-  string description = 50 [(custom_options.v1.mask_mapping) = {
+  string description = 60 [(custom_options.v1.mask_mapping) = {
     this: "Description"
     that: "description"
   }];
@@ -390,14 +394,41 @@ message Account {
   // included here as it is used only to ensure data integrity in the database
   // between iam users and auth methods.
   // @inject_tag: `gorm:"not_null"`
-  string scope_id = 60;
+  string scope_id = 70;
 
   // @inject_tag: `gorm:"default:null"`
-  uint32 version = 70;
+  uint32 version = 80;
 
-  // login_name of the authenticated user.  This is the RDN (not the DN) of the
-  // user.  It's the username entered by the user when authenticating (typically
-  // the uid or cn attribute)
+  // login_name of the authenticated user.  This is the login_name (or username)
+  // entered by the user when authenticating (typically the uid or cn attribute) 
   // @inject_tag: `gorm:"not_null"`
-  string login_name = 80;
+  string login_name = 90;
+
+  // full_name is a string that maps to the name attribute for the authenticated
+  // user. 
+  // @inject_tag: `gorm:"default:null"`
+  string full_name = 100;
+
+  // email is a string that maps to the email address attribute for the
+  // authenticated user.
+  // @inject_tag: `gorm:"default:null"`
+  string email = 110;
+
+  // dn is the distinguished name authenticated user's entry.  Will be null until
+  // the user's first successful authentication
+  // @inject_tag: `gorm:"default:null"`
+  string dn = 120;
+
+
+  // entry_attributes are the marshalled attributes from the authenticated
+  // user's ldap entry. Will be null until the user's first successful
+  // authentication.
+  // @inject_tag: `gorm:"default:null"`
+  string entry_attributes = 130;
+
+  // member_of_groups are the json marshalled groups the authenticated user is a
+  // member of. Will be null until the user's first successful authentication.
+  // This attribute is updated every time a user successfully authenticates.
+  // @inject_tag: `gorm:"default:null"`
+  string member_of_groups = 140;
 }

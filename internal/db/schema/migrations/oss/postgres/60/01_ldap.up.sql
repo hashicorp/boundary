@@ -326,6 +326,17 @@ create table auth_ldap_account (
       check(lower(trim(login_name)) = login_name)
     constraint login_name_must_not_be_empty
       check(length(trim(login_name)) > 0),
+  email wt_email, 
+  full_name wt_full_name, 
+  dn text -- will be null until the first successful authentication
+    constraint dn_must_not_be_empty
+      check(length(trim(dn)) > 0), 
+  entry_attributes jsonb -- will be null until the first successful authentication
+    constraint entry_attributes_must_not_be_empty
+      check(length(trim(entry_attributes::text)) > 0),
+  member_of_groups jsonb -- will be null until the first successful authentication
+    constraint member_of_groups_must_not_be_empty
+      check(length(trim(member_of_groups::text)) > 0),
   constraint auth_ldap_method_fkey
     foreign key (scope_id, auth_method_id)
       references auth_ldap_method (scope_id, public_id)
@@ -340,6 +351,8 @@ create table auth_ldap_account (
     unique(auth_method_id, name),
   constraint auth_ldap_account_auth_method_id_login_name_uq
     unique(auth_method_id, login_name),
+  constraint auth_ldap_account_auth_method_id_dn_uq
+    unique(auth_method_id, dn),
   constraint auth_ldap_account_auth_method_id_public_id_uq
     unique(auth_method_id, public_id)
 );
