@@ -3,6 +3,7 @@ package ldap
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -11,6 +12,10 @@ import (
 type options struct {
 	withName                 string
 	withDescription          string
+	withFullName             string
+	withEmail                string
+	withDn                   string
+	withEntryAttributes      string
 	withStartTls             bool
 	withInsecureTls          bool
 	withDiscoverDn           bool
@@ -54,10 +59,50 @@ func getOpts(opt ...Option) (options, error) {
 	return opts, nil
 }
 
+// WithEmail provides an optional email address for the account.
+func WithEmail(_ context.Context, email string) Option {
+	return func(o *options) error {
+		o.withEmail = email
+		return nil
+	}
+}
+
+// WithFullName provides an optional full name for the account.
+func WithFullName(_ context.Context, n string) Option {
+	return func(o *options) error {
+		o.withFullName = n
+		return nil
+	}
+}
+
+// WithDn provides an optional distinguished name
+func WithDn(ctx context.Context, dn string) Option {
+	const op = "ldap.WithDn"
+	return func(o *options) error {
+		o.withDn = dn
+		return nil
+	}
+}
+
 // WithName provides an optional name.
 func WithName(_ context.Context, n string) Option {
 	return func(o *options) error {
 		o.withName = n
+		return nil
+	}
+}
+
+// WithEntryAttributes provides optional ldap entry attributes
+func WithEntryAttributes(ctx context.Context, attrs map[string][]string) Option {
+	const op = "ldap.WithUserAttributes"
+	return func(o *options) error {
+		if attrs != nil {
+			enc, err := json.Marshal(attrs)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshall attributes"))
+			}
+			o.withEntryAttributes = string(enc)
+		}
 		return nil
 	}
 }
