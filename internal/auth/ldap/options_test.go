@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -234,6 +235,47 @@ func Test_getOpts(t *testing.T) {
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
 		testOpts.withOperationalState = ActivePublicState
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithDn", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithDn(testCtx, "test"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withDn = "test"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithFullName", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithFullName(testCtx, "test"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withFullName = "test"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithEmail", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithEmail(testCtx, "test"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withEmail = "test"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithEntryAttributes", func(t *testing.T) {
+		assert := assert.New(t)
+		testAttrs := map[string][]string{
+			"email": {"alice@bob.com"},
+		}
+
+		opts, err := getOpts(WithEntryAttributes(testCtx, testAttrs))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		encodedAttrs, err := json.Marshal(testAttrs)
+		require.NoError(t, err)
+		testOpts.withEntryAttributes = string(encodedAttrs)
 		assert.Equal(opts, testOpts)
 	})
 }
