@@ -284,15 +284,13 @@ func (pl *issueCredentialLibrary) client(ctx context.Context) (vaultClient, erro
 type dynamicCred interface {
 	credential.Dynamic
 	getExpiration() time.Duration
-	insertQuery() (query string, queryValues []any)
-	updateSessionQuery(purpose credential.Purpose) (query string, queryValues []any)
 }
 
 // retrieveCredential retrieves a dynamic credential from Vault for the
 // given sessionId.
 //
 // Supported options: credential.WithTemplateData
-func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, sessionId string, opt ...credential.Option) (dynamicCred, error) {
+func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, opt ...credential.Option) (dynamicCred, error) {
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -358,7 +356,7 @@ func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op err
 	}
 
 	leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
-	cred, err := newCredential(pl.GetPublicId(), sessionId, secret.LeaseID, pl.TokenHmac, leaseDuration)
+	cred, err := newCredential(pl.GetPublicId(), secret.LeaseID, pl.TokenHmac, leaseDuration)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
