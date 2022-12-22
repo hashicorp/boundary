@@ -122,35 +122,34 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	var addUserSearchConf, deleteUserSearchConf any
-	if strutil.StrListContains(dbMask, UserDnField) || strutil.StrListContains(dbMask, UserAttrField) || strutil.StrListContains(dbMask, UserFilterField) {
+	if strListContainsOneOf(dbMask, UserDnField, UserAttrField, UserAttrField) {
 		addUserSearchConf, err = NewUserEntrySearchConf(ctx, am.PublicId, WithUserDn(ctx, am.UserDn), WithUserAttr(ctx, am.UserAttr), WithUserFilter(ctx, am.UserFilter))
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 	}
-	if strutil.StrListContains(dbMask, UserDnField) || strutil.StrListContains(dbMask, UserAttrField) || strutil.StrListContains(dbMask, UserFilterField) ||
-		strutil.StrListContains(nullFields, UserDnField) || strutil.StrListContains(nullFields, UserAttrField) || strutil.StrListContains(nullFields, UserFilterField) {
+	combinedMasks := append(dbMask, nullFields...)
+	if strListContainsOneOf(combinedMasks, UserDnField, UserAttrField, UserAttrField) {
 		deleteUserSearchConf, err = NewUserEntrySearchConf(ctx, am.PublicId, WithUserDn(ctx, origAm.UserDn), WithUserAttr(ctx, origAm.UserAttr), WithUserFilter(ctx, origAm.UserFilter))
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 	}
 	var addGroupSearchConf, deleteGroupSearchConf any
-	if strutil.StrListContains(dbMask, GroupDnField) || strutil.StrListContains(dbMask, GroupAttrField) || strutil.StrListContains(dbMask, GroupFilterField) {
+	if strListContainsOneOf(dbMask, GroupDnField, GroupAttrField, GroupAttrField) {
 		addGroupSearchConf, err = NewGroupEntrySearchConf(ctx, am.PublicId, WithGroupDn(ctx, am.GroupDn), WithGroupAttr(ctx, am.GroupAttr), WithGroupFilter(ctx, am.GroupFilter))
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 	}
-	if strutil.StrListContains(dbMask, GroupDnField) || strutil.StrListContains(dbMask, GroupAttrField) || strutil.StrListContains(dbMask, GroupFilterField) ||
-		strutil.StrListContains(nullFields, GroupDnField) || strutil.StrListContains(nullFields, GroupAttrField) || strutil.StrListContains(nullFields, GroupFilterField) {
+	if strListContainsOneOf(combinedMasks, GroupDnField, GroupAttrField, GroupAttrField) {
 		deleteGroupSearchConf, err = NewGroupEntrySearchConf(ctx, am.PublicId, WithGroupDn(ctx, origAm.GroupDn), WithGroupAttr(ctx, origAm.GroupAttr), WithGroupFilter(ctx, origAm.GroupFilter))
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 	}
 	var addClientCert, deleteClientCert any
-	if strutil.StrListContains(dbMask, ClientCertificateField) || strutil.StrListContains(dbMask, ClientCertificateKeyField) {
+	if strListContainsOneOf(dbMask, ClientCertificateField, ClientCertificateKeyField) {
 		cc, err := NewClientCertificate(ctx, am.PublicId, am.ClientCertificateKey, am.ClientCertificate)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
@@ -160,15 +159,14 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		}
 		addClientCert = cc
 	}
-	if strutil.StrListContains(dbMask, ClientCertificateField) || strutil.StrListContains(dbMask, ClientCertificateKeyField) ||
-		strutil.StrListContains(nullFields, ClientCertificateField) || strutil.StrListContains(nullFields, ClientCertificateKeyField) {
+	if strListContainsOneOf(combinedMasks, ClientCertificateField, ClientCertificateKeyField) {
 		deleteClientCert, err = NewClientCertificate(ctx, am.PublicId, origAm.ClientCertificateKey, origAm.ClientCertificate)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 	}
 	var addBindCred, deleteBindCred any
-	if strutil.StrListContains(dbMask, BindDnField) || strutil.StrListContains(dbMask, BindPasswordField) {
+	if strListContainsOneOf(dbMask, BindDnField, BindPasswordField) {
 		bc, err := NewBindCredential(ctx, am.PublicId, am.BindDn, []byte(am.BindPassword))
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
@@ -178,8 +176,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		}
 		addBindCred = bc
 	}
-	if strutil.StrListContains(dbMask, BindDnField) || strutil.StrListContains(dbMask, BindPasswordField) ||
-		strutil.StrListContains(nullFields, BindDnField) || strutil.StrListContains(nullFields, BindPasswordField) {
+	if strListContainsOneOf(combinedMasks, BindDnField, BindPasswordField) {
 		deleteBindCred, err = NewBindCredential(ctx, am.PublicId, origAm.BindDn, []byte(origAm.BindPassword))
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
@@ -487,7 +484,7 @@ var supportedFactories = map[voName]factoryFunc{
 }
 
 // valueObjectChanges takes the new and old list of VOs (value objects) and
-// using the dbMasks/nullFields it will return lists of VOs where need to be
+// using the dbMasks/nullFields it will return lists of VOs which need to be
 // added and deleted in order to reconcile auth method's value objects.
 func valueObjectChanges(
 	ctx context.Context,
@@ -498,7 +495,7 @@ func valueObjectChanges(
 	dbMask,
 	nullFields []string,
 ) (add []any, del []any, e error) {
-	const op = "valueObjectChanges"
+	const op = "ldap.valueObjectChanges"
 	switch {
 	case publicId == "":
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
@@ -560,4 +557,15 @@ func valueObjectChanges(
 		}
 	}
 	return adds, deletes, nil
+}
+
+func strListContainsOneOf(haystack []string, needles ...string) bool {
+	for _, item := range haystack {
+		for _, n := range needles {
+			if item == n {
+				return true
+			}
+		}
+	}
+	return false
 }
