@@ -49,6 +49,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		WithUserDn(testCtx, "user-dn"),
 		WithUserAttr(testCtx, "user-attr"),
 		WithUserFilter(testCtx, "user-filter"),
+		WithEnableGroups(testCtx),
 		WithGroupDn(testCtx, "group-dn"),
 		WithGroupAttr(testCtx, "group-attr"),
 		WithGroupFilter(testCtx, "group-filter"),
