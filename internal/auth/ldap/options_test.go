@@ -69,6 +69,15 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withAnonGroupSearch = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithEnableGroups", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithEnableGroups(testCtx))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withEnableGroups = true
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithUpnDomain", func(t *testing.T) {
 		assert := assert.New(t)
 		opts, err := getOpts(WithUpnDomain(testCtx, "domain.com"))

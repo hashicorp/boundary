@@ -103,8 +103,16 @@ message AuthMethod {
   // @inject_tag: `gorm:"-"`
   string user_filter = 170;
 
+  // enable_groups if true, an authenticated user's groups will be found during
+  // authentication. Defaults to false.
+  // @inject_tag: `gorm:"not_null;default:false"`
+  bool enable_groups = 175;
+
   // group_dn (optional) is the base DN under which to perform user search.
   // Example: ou=Groups,dc=example,dc=com
+  //
+  // Note: there is no default, so no base dn will be used for group searches if
+  // it's not specified.
   // @inject_tag: `gorm:"-"`
   string group_dn = 180;
 
@@ -420,7 +428,7 @@ message Account {
   string dn = 120;
 
 
-  // entry_attributes are the marshalled attributes from the authenticated
+  // entry_attributes are the json marshalled attributes from the authenticated 
   // user's ldap entry. Will be null until the user's first successful
   // authentication.
   // @inject_tag: `gorm:"default:null"`
