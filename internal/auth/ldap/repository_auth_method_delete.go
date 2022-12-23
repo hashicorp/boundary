@@ -38,7 +38,11 @@ func (r *Repository) DeleteAuthMethod(ctx context.Context, publicId string, _ ..
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
 			cp := am.clone()
-			rowsDeleted, err = w.Delete(ctx, cp, db.WithOplog(oplogWrapper, cp.oplog(oplog.OpType_OP_TYPE_DELETE)))
+			md, err := cp.oplog(ctx, oplog.OpType_OP_TYPE_DELETE)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate oplog metadata"))
+			}
+			rowsDeleted, err = w.Delete(ctx, cp, db.WithOplog(oplogWrapper, md))
 			if err != nil {
 				return err
 			}
