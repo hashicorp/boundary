@@ -29,6 +29,7 @@ const (
 	UserDnField               = "UserDn"
 	UserAttrField             = "UserAttr"
 	UserFilterField           = "UserFilter"
+	EnableGroupsField         = "EnableGroups"
 	GroupDnField              = "GroupDn"
 	GroupAttrField            = "GroupAttr"
 	GroupFilterField          = "GroupFilter"
@@ -77,6 +78,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			UserDnField:               am.UserDn,
 			UserAttrField:             am.UserAttr,
 			UserFilterField:           am.UserFilter,
+			EnableGroupsField:         am.EnableGroups,
 			GroupDnField:              am.GroupDn,
 			GroupAttrField:            am.GroupAttr,
 			GroupFilterField:          am.GroupFilter,
@@ -201,7 +203,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	for _, f := range nullFields {
 		switch f {
 		case
-			StartTlsField, InsecureTlsField, DiscoverDnField, AnonGroupSearchField,
+			StartTlsField, InsecureTlsField, DiscoverDnField, AnonGroupSearchField, EnableGroupsField,
 			UrlsField,
 			CertificatesField,
 			UserDnField, UserAttrField, UserFilterField,
@@ -431,6 +433,7 @@ func validateFieldMask(ctx context.Context, fieldMaskPaths []string) error {
 		case strings.EqualFold(UserDnField, f):
 		case strings.EqualFold(UserAttrField, f):
 		case strings.EqualFold(UserFilterField, f):
+		case strings.EqualFold(EnableGroupsField, f):
 		case strings.EqualFold(GroupDnField, f):
 		case strings.EqualFold(GroupAttrField, f):
 		case strings.EqualFold(GroupFilterField, f):

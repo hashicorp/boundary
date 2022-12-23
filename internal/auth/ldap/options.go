@@ -20,6 +20,7 @@ type options struct {
 	withInsecureTls          bool
 	withDiscoverDn           bool
 	withAnonGroupSearch      bool
+	withEnableGroups         bool
 	withUpnDomain            string
 	withUserDn               string
 	withUserAttr             string
@@ -120,6 +121,15 @@ func WithDescription(_ context.Context, desc string) Option {
 func WithStartTLS(_ context.Context) Option {
 	return func(o *options) error {
 		o.withStartTls = true
+		return nil
+	}
+}
+
+// WithEnableGroups optionally enables an authenticated user's groups will be
+// found during authentication.
+func WithEnableGroups(_ context.Context) Option {
+	return func(o *options) error {
+		o.withEnableGroups = true
 		return nil
 	}
 }
