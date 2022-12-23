@@ -239,26 +239,99 @@ func TestAuthMethod_clone(t *testing.T) {
 
 func TestAuthMethod_oplog(t *testing.T) {
 	t.Parallel()
-	t.Run("create", func(t *testing.T) {
-		am := AllocAuthMethod()
-		am.PublicId = "global"
-		assert.Equal(t, oplog.Metadata{
-			"resource-public-id": []string{am.GetPublicId()},
-			"resource-type":      []string{"ldap auth method"},
-			"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
-			"scope-id":           []string{am.ScopeId},
-		}, am.oplog(oplog.OpType_OP_TYPE_CREATE))
-	})
-	t.Run("update", func(t *testing.T) {
-		am := AllocAuthMethod()
-		am.PublicId = "global"
-		assert.Equal(t, oplog.Metadata{
-			"resource-public-id": []string{am.GetPublicId()},
-			"resource-type":      []string{"ldap auth method"},
-			"op-type":            []string{oplog.OpType_OP_TYPE_UPDATE.String()},
-			"scope-id":           []string{am.ScopeId},
-		}, am.oplog(oplog.OpType_OP_TYPE_UPDATE))
-	})
+	testCtx := context.Background()
+	testAm, err := NewAuthMethod(testCtx, "global", TestConvertToUrls(t, "ldap://ldap1"))
+	testAm.PublicId = "test-public-id"
+	require.NoError(t, err)
+	tests := []struct {
+		name            string
+		ctx             context.Context
+		am              *AuthMethod
+		opType          oplog.OpType
+		want            oplog.Metadata
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:   "create",
+			ctx:    testCtx,
+			am:     testAm,
+			opType: oplog.OpType_OP_TYPE_CREATE,
+			want: oplog.Metadata{
+				"resource-public-id": {"test-public-id"},
+				"scope-id":           {"global"},
+				"op-type":            {oplog.OpType_OP_TYPE_CREATE.String()},
+				"resource-type":      {"ldap auth method"},
+			},
+		},
+		{
+			name:   "update",
+			ctx:    testCtx,
+			am:     testAm,
+			opType: oplog.OpType_OP_TYPE_UPDATE,
+			want: oplog.Metadata{
+				"resource-public-id": {"test-public-id"},
+				"scope-id":           {"global"},
+				"op-type":            {oplog.OpType_OP_TYPE_UPDATE.String()},
+				"resource-type":      {"ldap auth method"},
+			},
+		},
+		{
+			name: "missing-scope-id",
+			ctx:  testCtx,
+			am: func() *AuthMethod {
+				cp := testAm.clone()
+				cp.ScopeId = ""
+				return cp
+			}(),
+			opType:          oplog.OpType_OP_TYPE_UPDATE,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing scope id",
+		},
+		{
+			name: "missing-public-id",
+			ctx:  testCtx,
+			am: func() *AuthMethod {
+				cp := testAm.clone()
+				cp.PublicId = ""
+				return cp
+			}(),
+			opType:          oplog.OpType_OP_TYPE_UPDATE,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing public id",
+		},
+		{
+			name:            "missing-op-type",
+			ctx:             testCtx,
+			am:              testAm,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing op type",
+		},
+		{
+			name:            "missing-auth-method",
+			ctx:             testCtx,
+			opType:          oplog.OpType_OP_TYPE_UPDATE,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing auth method",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, err := tc.am.oplog(tc.ctx, tc.opType)
+			if tc.wantErrMatch != nil {
+				require.Error(err)
+				assert.Nil(got)
+				assert.True(errors.Match(tc.wantErrMatch, err))
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tc.want, got)
+		})
+	}
 }
 
 func Test_convertValueObjects(t *testing.T) {
