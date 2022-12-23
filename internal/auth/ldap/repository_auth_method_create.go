@@ -136,7 +136,11 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...
 				}
 				msgs = append(msgs, &bcOplogMsg)
 			}
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, am.oplog(oplog.OpType_OP_TYPE_CREATE), msgs); err != nil {
+			md, err := am.oplog(ctx, oplog.OpType_OP_TYPE_CREATE)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate oplog metadata"))
+			}
+			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, md, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 			return nil
