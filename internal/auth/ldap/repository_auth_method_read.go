@@ -172,6 +172,7 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		am.InsecureTls = agg.InsecureTLS
 		am.DiscoverDn = agg.DiscoverDn
 		am.AnonGroupSearch = agg.AnonGroupSearch
+		am.EnableGroups = agg.EnableGroups
 		am.UpnDomain = agg.UpnDomain
 		if agg.Urls != "" {
 			am.Urls = strings.Split(agg.Urls, aggregateDelimiter)
@@ -220,6 +221,7 @@ type authMethodAgg struct {
 	UserDn                   string
 	UserAttr                 string
 	UserFilter               string
+	EnableGroups             bool
 	GroupDn                  string
 	GroupAttr                string
 	GroupFilter              string
