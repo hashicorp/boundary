@@ -111,14 +111,25 @@ func (am *AuthMethod) SetTableName(n string) {
 }
 
 // oplog will create oplog metadata for the AuthMethod.
-func (am *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {
+func (am *AuthMethod) oplog(ctx context.Context, opType oplog.OpType) (oplog.Metadata, error) {
+	const op = "ldap.(AuthMethod).oplog"
+	switch {
+	case am == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method")
+	case opType == oplog.OpType_OP_TYPE_UNSPECIFIED:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing op type")
+	case am.PublicId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+	case am.ScopeId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+	}
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{am.GetPublicId()},
+		"resource-public-id": []string{am.PublicId},
 		"resource-type":      []string{"ldap auth method"},
-		"op-type":            []string{op.String()},
+		"op-type":            []string{opType.String()},
 		"scope-id":           []string{am.ScopeId},
 	}
-	return metadata
+	return metadata, nil
 }
 
 type convertedValues struct {
