@@ -390,7 +390,10 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				msgs = append(msgs, &addBindCredOplogMsg)
 			}
 
-			metadata := updatedAm.oplog(oplog.OpType_OP_TYPE_UPDATE)
+			metadata, err := updatedAm.oplog(ctx, oplog.OpType_OP_TYPE_UPDATE)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate oplog metadata"))
+			}
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, ticket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
