@@ -1021,24 +1021,29 @@ type Account struct {
 	// @inject_tag: `gorm:"default:null"`
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" gorm:"default:null"`
 	// login_name of the authenticated user.  This is the login_name (or username)
-	// entered by the user when authenticating (typically the uid or cn attribute)
+	// entered by the user when authenticating (typically the uid or cn
+	// attribute).  Account login names must be lower case.
 	// @inject_tag: `gorm:"not_null"`
 	LoginName string `protobuf:"bytes,90,opt,name=login_name,json=loginName,proto3" json:"login_name,omitempty" gorm:"not_null"`
 	// full_name is a string that maps to the name attribute for the authenticated
-	// user.
+	// user.  This attribute is updated every time a user successfully
+	// authenticates.
 	// @inject_tag: `gorm:"default:null"`
 	FullName string `protobuf:"bytes,100,opt,name=full_name,json=fullName,proto3" json:"full_name,omitempty" gorm:"default:null"`
 	// email is a string that maps to the email address attribute for the
-	// authenticated user.
+	// authenticated user.  This attribute is updated every time a user
+	// successfully authenticates.
 	// @inject_tag: `gorm:"default:null"`
 	Email string `protobuf:"bytes,110,opt,name=email,proto3" json:"email,omitempty" gorm:"default:null"`
 	// dn is the distinguished name authenticated user's entry.  Will be null until
-	// the user's first successful authentication
+	// the user's first successful authentication.  This attribute is updated
+	// every time a user successfully authenticates.
 	// @inject_tag: `gorm:"default:null"`
 	Dn string `protobuf:"bytes,120,opt,name=dn,proto3" json:"dn,omitempty" gorm:"default:null"`
 	// entry_attributes are the json marshalled attributes from the authenticated
 	// user's ldap entry. Will be null until the user's first successful
-	// authentication.
+	// authentication.  This attribute is updated every time a user successfully
+	// authenticates.
 	// @inject_tag: `gorm:"default:null"`
 	EntryAttributes string `protobuf:"bytes,130,opt,name=entry_attributes,json=entryAttributes,proto3" json:"entry_attributes,omitempty" gorm:"default:null"`
 	// member_of_groups are the json marshalled groups the authenticated user is a

@@ -387,6 +387,19 @@ func TestAccount_validate(t *testing.T) {
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 			wantErrContains: "full name is too long",
 		},
+		{
+			name:   "login-name-not-lower-case",
+			ctx:    testCtx,
+			caller: "test",
+			acct: func() *Account {
+				a, err := NewAccount(testCtx, "global", "test-auth-method-id", "test-login-name")
+				require.NoError(t, err)
+				a.LoginName = "Test-Login-Name"
+				return a
+			}(),
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "login name must be lower case",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

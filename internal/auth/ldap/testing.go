@@ -121,6 +121,24 @@ func TestAuthMethod(t testing.TB,
 	return am
 }
 
+// TestAccount creates a test ldap auth account.
+func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, loginName string, opt ...Option) *Account {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	a, err := NewAccount(ctx, am.ScopeId, am.PublicId, loginName, opt...)
+	require.NoError(err)
+
+	id, err := newAccountId(ctx)
+	require.NoError(err)
+	a.PublicId = id
+
+	require.NoError(rw.Create(ctx, a))
+	return a
+}
+
 // testGenerateCA will generate a test x509 CA cert, along with it encoded in a
 // PEM format.
 func testGenerateCA(t testing.TB, hosts ...string) (*x509.Certificate, string) {
