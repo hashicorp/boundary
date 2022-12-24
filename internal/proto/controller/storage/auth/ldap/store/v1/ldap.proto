@@ -408,29 +408,33 @@ message Account {
   uint32 version = 80;
 
   // login_name of the authenticated user.  This is the login_name (or username)
-  // entered by the user when authenticating (typically the uid or cn attribute) 
+  // entered by the user when authenticating (typically the uid or cn
+  // attribute).  Account login names must be lower case.
   // @inject_tag: `gorm:"not_null"`
   string login_name = 90;
 
   // full_name is a string that maps to the name attribute for the authenticated
-  // user. 
+  // user.  This attribute is updated every time a user successfully
+  // authenticates.
   // @inject_tag: `gorm:"default:null"`
   string full_name = 100;
 
   // email is a string that maps to the email address attribute for the
-  // authenticated user.
+  // authenticated user.  This attribute is updated every time a user
+  // successfully authenticates.
   // @inject_tag: `gorm:"default:null"`
   string email = 110;
 
   // dn is the distinguished name authenticated user's entry.  Will be null until
-  // the user's first successful authentication
+  // the user's first successful authentication.  This attribute is updated
+  // every time a user successfully authenticates.
   // @inject_tag: `gorm:"default:null"`
   string dn = 120;
 
-
-  // entry_attributes are the json marshalled attributes from the authenticated 
+  // entry_attributes are the json marshalled attributes from the authenticated
   // user's ldap entry. Will be null until the user's first successful
-  // authentication.
+  // authentication.  This attribute is updated every time a user successfully
+  // authenticates.
   // @inject_tag: `gorm:"default:null"`
   string entry_attributes = 130;
 
