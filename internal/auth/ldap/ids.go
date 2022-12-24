@@ -32,3 +32,12 @@ func newAuthMethodId(ctx context.Context) (string, error) {
 	}
 	return id, nil
 }
+
+func newAccountId(ctx context.Context) (string, error) {
+	const op = "ldap.newAuthMethodId"
+	id, err := db.NewPublicId(AccountPrefix)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op)
+	}
+	return id, nil
+}

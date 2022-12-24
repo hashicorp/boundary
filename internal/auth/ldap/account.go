@@ -2,6 +2,7 @@ package ldap
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
@@ -71,6 +72,8 @@ func (a *Account) validate(ctx context.Context, caller errors.Op) error {
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing auth method id")
 	case a.LoginName == "":
 		return errors.New(ctx, errors.InvalidParameter, caller, "missing login name")
+	case strings.ToLower(a.LoginName) != a.LoginName:
+		return errors.New(ctx, errors.InvalidParameter, op, "login name must be lower case")
 	case a.Email != "" && len(a.Email) > 320:
 		return errors.New(ctx, errors.InvalidParameter, caller, "email address is too long")
 	case a.FullName != "" && len(a.FullName) > 512:
