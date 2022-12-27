@@ -357,9 +357,35 @@ create table auth_ldap_account (
 );
 comment on table auth_ldap_account is 
 'auth_ldap_account entries are subtypes of auth_account and represent an ldap account.';
+  
+-- insert_auth_ldap_account_subtype is intended as a before insert
+-- trigger on auth_ldap_account. Its purpose is to insert a base
+-- auth_account for new ldap accounts.  It's a bit different than the
+-- standard trigger for this, because it will have conflicting PKs
+-- and we just want to "do nothing" on those conflicts, deferring the
+-- raising on an error to insert into the auth_ldap_account table.
+-- this is all necessary because of we're using predictable public ids
+-- for ldap accounts.
+create or replace function insert_auth_ldap_account_subtype() returns trigger
+as $$
+begin
+  select auth_method.scope_id
+    into new.scope_id
+  from auth_method
+  where auth_method.public_id = new.auth_method_id;
 
-create trigger insert_auth_account_subtype before insert on auth_ldap_account
-  for each row execute procedure insert_auth_account_subtype();
+  insert into auth_account
+    (public_id, auth_method_id, scope_id)
+  values
+    (new.public_id, new.auth_method_id, new.scope_id)
+  on conflict do nothing;
+
+  return new;
+end;
+  $$ language plpgsql;
+
+create trigger insert_auth_ldap_account_subtype before insert on auth_ldap_account
+  for each row execute procedure insert_auth_ldap_account_subtype();
 
 create trigger delete_auth_account_subtype after delete on auth_ldap_account
     for each row execute procedure delete_auth_account_subtype();

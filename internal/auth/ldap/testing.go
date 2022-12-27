@@ -131,7 +131,7 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, loginName string, op
 	a, err := NewAccount(ctx, am.ScopeId, am.PublicId, loginName, opt...)
 	require.NoError(err)
 
-	id, err := newAccountId(ctx)
+	id, err := newAccountId(ctx, am.PublicId, loginName)
 	require.NoError(err)
 	a.PublicId = id
 
