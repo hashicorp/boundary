@@ -33,9 +33,10 @@ func newAuthMethodId(ctx context.Context) (string, error) {
 	return id, nil
 }
 
-func newAccountId(ctx context.Context) (string, error) {
-	const op = "ldap.newAuthMethodId"
-	id, err := db.NewPublicId(AccountPrefix)
+func newAccountId(ctx context.Context, authMethodId, loginName string) (string, error) {
+	const op = "ldap.newAccountId"
+	// there's a unique index on: auth method id + login name
+	id, err := db.NewPublicId(AccountPrefix, db.WithPrngValues([]string{authMethodId, loginName}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
