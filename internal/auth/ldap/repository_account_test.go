@@ -420,9 +420,9 @@ func TestRepository_LookupAccount(t *testing.T) {
 	assert.NoError(t, err)
 
 	authMethod := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
-	account := TestAccount(t, testConn, authMethod, "test-subject")
+	account := TestAccount(t, testConn, authMethod, "test-login-name")
 
-	newAcctId, err := newAccountId(testCtx)
+	newAcctId, err := newAccountId(testCtx, authMethod.PublicId, "test-not-matching")
 	require.NoError(t, err)
 	tests := []struct {
 		name            string
@@ -497,7 +497,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	require.NoError(t, err)
 	authMethod := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
 	account := TestAccount(t, testConn, authMethod, "create-success")
-	newAcctId, err := newAccountId(testCtx)
+	newAcctId, err := newAccountId(testCtx, authMethod.PublicId, "not-matching")
 	require.NoError(t, err)
 
 	testRepo, err := NewRepository(testCtx, testRw, testRw, testKms)
@@ -606,6 +606,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := tc.repo.DeleteAccount(context.Background(), tc.publicId)
 			if tc.wantErrMatch != nil {
+				require.Error(err)
 				assert.Truef(errors.Match(tc.wantErrMatch, err), "Unexpected error %s", err)
 				if tc.wantErrContains != "" {
 					assert.Contains(err.Error(), tc.wantErrContains)
