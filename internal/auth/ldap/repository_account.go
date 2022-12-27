@@ -34,7 +34,7 @@ func (r *Repository) CreateAccount(ctx context.Context, a *Account, _ ...Option)
 			return nil, err // err already wrapped
 		}
 	}
-	id, err := newAccountId(ctx)
+	id, err := newAccountId(ctx, a.AuthMethodId, a.LoginName)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -146,7 +146,6 @@ func (r *Repository) DeleteAccount(ctx context.Context, withPublicId string, _ .
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) (err error) {
-
 			dAc := ac.clone()
 			rowsDeleted, err = w.Delete(ctx, dAc, db.WithOplog(oplogWrapper, metadata))
 			switch {
