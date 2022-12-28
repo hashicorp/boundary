@@ -183,6 +183,11 @@ message AuthMethod {
   // auth method is set as the scope's primary auth method.
   // @inject_tag: `gorm:"-"`
   bool is_primary_auth_method = 280;
+
+  // use_token_groups if true, use the Active Directory tokenGroups constructed
+  // attribute of the user to find the group memberships. This will find all
+  // security groups including nested ones.
+  bool use_token_groups = 290;
 }
 
 // Url represents LDAP URLs that specify LDAP servers to connection to.  There
