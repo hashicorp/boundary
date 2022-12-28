@@ -77,6 +77,15 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withEnableGroups = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithUseTokenGroups", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithUseTokenGroups(testCtx))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withUseTokenGroups = true
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithUpnDomain", func(t *testing.T) {
 		assert := assert.New(t)
 		opts, err := getOpts(WithUpnDomain(testCtx, "domain.com"))
