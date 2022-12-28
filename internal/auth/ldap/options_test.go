@@ -5,7 +5,6 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -271,20 +270,6 @@ func Test_getOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		assert.NotEqual(opts, testOpts)
 		testOpts.withEmail = "test"
-		assert.Equal(opts, testOpts)
-	})
-	t.Run("WithEntryAttributes", func(t *testing.T) {
-		assert := assert.New(t)
-		testAttrs := map[string][]string{
-			"email": {"alice@bob.com"},
-		}
-
-		opts, err := getOpts(WithEntryAttributes(testCtx, testAttrs))
-		require.NoError(t, err)
-		testOpts := getDefaultOptions()
-		encodedAttrs, err := json.Marshal(testAttrs)
-		require.NoError(t, err)
-		testOpts.withEntryAttributes = string(encodedAttrs)
 		assert.Equal(opts, testOpts)
 	})
 }

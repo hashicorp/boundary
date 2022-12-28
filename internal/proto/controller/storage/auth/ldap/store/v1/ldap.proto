@@ -431,13 +431,6 @@ message Account {
   // @inject_tag: `gorm:"default:null"`
   string dn = 120;
 
-  // entry_attributes are the json marshalled attributes from the authenticated
-  // user's ldap entry. Will be null until the user's first successful
-  // authentication.  This attribute is updated every time a user successfully
-  // authenticates.
-  // @inject_tag: `gorm:"default:null"`
-  string entry_attributes = 130;
-
   // member_of_groups are the json marshalled groups the authenticated user is a
   // member of. Will be null until the user's first successful authentication.
   // This attribute is updated every time a user successfully authenticates.
