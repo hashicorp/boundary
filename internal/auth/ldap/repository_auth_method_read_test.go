@@ -173,6 +173,7 @@ func TestRepository_getAuthMethods(t *testing.T) {
 					WithUserAttr(testCtx, "user-attr"),
 					WithUserFilter(testCtx, "user-filter"),
 					WithEnableGroups(testCtx),
+					WithUseTokenGroups(testCtx),
 					WithGroupDn(testCtx, "group-dn"),
 					WithGroupAttr(testCtx, "group-attr"),
 					WithGroupFilter(testCtx, "group-filter"),
