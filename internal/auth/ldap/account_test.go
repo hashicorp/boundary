@@ -2,7 +2,6 @@ package ldap
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -21,11 +20,6 @@ func TestNewAccount(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
 	testAuthMethodId := fmt.Sprintf("%s_1", AuthMethodPrefix)
-	testEntryAttrs := map[string][]string{
-		"email": {"alice@bob.com"},
-	}
-	testEncodedEntryAttrs, err := json.Marshal(testEntryAttrs)
-	require.NoError(t, err)
 	tests := []struct {
 		name            string
 		ctx             context.Context
@@ -49,19 +43,17 @@ func TestNewAccount(t *testing.T) {
 				WithEmail(testCtx, "alice@bob.com"),
 				WithFullName(testCtx, "alice eve smith"),
 				WithDn(testCtx, "uid=alice, ou=people, o=test org"),
-				WithEntryAttributes(testCtx, testEntryAttrs),
 			},
 			want: &Account{
 				Account: &store.Account{
-					AuthMethodId:    testAuthMethodId,
-					ScopeId:         "global",
-					LoginName:       "test-login-name",
-					Name:            "test-name",
-					Description:     "test-description",
-					Email:           "alice@bob.com",
-					FullName:        "alice eve smith",
-					Dn:              "uid=alice, ou=people, o=test org",
-					EntryAttributes: string(testEncodedEntryAttrs),
+					AuthMethodId: testAuthMethodId,
+					ScopeId:      "global",
+					LoginName:    "test-login-name",
+					Name:         "test-name",
+					Description:  "test-description",
+					Email:        "alice@bob.com",
+					FullName:     "alice eve smith",
+					Dn:           "uid=alice, ou=people, o=test org",
 				},
 			},
 		},

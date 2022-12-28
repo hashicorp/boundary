@@ -3,7 +3,6 @@ package ldap
 import (
 	"context"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -15,7 +14,6 @@ type options struct {
 	withFullName             string
 	withEmail                string
 	withDn                   string
-	withEntryAttributes      string
 	withStartTls             bool
 	withInsecureTls          bool
 	withDiscoverDn           bool
@@ -89,21 +87,6 @@ func WithDn(ctx context.Context, dn string) Option {
 func WithName(_ context.Context, n string) Option {
 	return func(o *options) error {
 		o.withName = n
-		return nil
-	}
-}
-
-// WithEntryAttributes provides optional ldap entry attributes
-func WithEntryAttributes(ctx context.Context, attrs map[string][]string) Option {
-	const op = "ldap.WithUserAttributes"
-	return func(o *options) error {
-		if attrs != nil {
-			enc, err := json.Marshal(attrs)
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to marshall attributes"))
-			}
-			o.withEntryAttributes = string(enc)
-		}
 		return nil
 	}
 }
