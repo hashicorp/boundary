@@ -94,6 +94,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.DiscoverDn = true
 				am.AnonGroupSearch = true
 				am.EnableGroups = true
+				am.UseTokenGroups = true
 				am.UpnDomain = "alice.com"
 				am.UserDn = "user-dn"
 				am.UserAttr = "user-attr"
@@ -121,6 +122,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				UserAttrField,
 				UserFilterField,
 				EnableGroupsField,
+				UseTokenGroupsField,
 				GroupDnField,
 				GroupAttrField,
 				GroupFilterField,
@@ -144,6 +146,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.UserAttr = updateWith.UserAttr
 				am.UserFilter = updateWith.UserFilter
 				am.EnableGroups = updateWith.EnableGroups
+				am.UseTokenGroups = updateWith.UseTokenGroups
 				am.GroupDn = updateWith.GroupDn
 				am.GroupAttr = updateWith.GroupAttr
 				am.GroupFilter = updateWith.GroupFilter
@@ -196,6 +199,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				UserAttrField,
 				UserFilterField,
 				EnableGroupsField,
+				UseTokenGroupsField,
 				GroupDnField,
 				GroupAttrField,
 				GroupFilterField,
@@ -243,6 +247,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.DiscoverDn = true
 				am.AnonGroupSearch = true
 				am.EnableGroups = true
+				am.UseTokenGroups = true
 				am.UpnDomain = "alice.com"
 				return &am
 			},
@@ -254,6 +259,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				DiscoverDnField,
 				AnonGroupSearchField,
 				EnableGroupsField,
+				UseTokenGroupsField,
 				UpnDomainField,
 			},
 			version: 1,
@@ -267,6 +273,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.AnonGroupSearch = updateWith.AnonGroupSearch
 				am.UpnDomain = updateWith.UpnDomain
 				am.EnableGroups = updateWith.EnableGroups
+				am.UseTokenGroups = updateWith.UseTokenGroups
 				return am
 			},
 		},
@@ -307,6 +314,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				AnonGroupSearchField,
 				UpnDomainField,
 				EnableGroupsField,
+				UseTokenGroupsField,
 			},
 			version: 1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -318,6 +326,8 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.DiscoverDn = updateWith.DiscoverDn
 				am.AnonGroupSearch = updateWith.AnonGroupSearch
 				am.UpnDomain = updateWith.UpnDomain
+				am.EnableGroups = updateWith.EnableGroups
+				am.UseTokenGroups = updateWith.UseTokenGroups
 				return am
 			},
 		},
