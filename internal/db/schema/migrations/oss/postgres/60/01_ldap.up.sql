@@ -332,9 +332,6 @@ create table auth_ldap_account (
   dn text -- will be null until the first successful authentication
     constraint dn_must_not_be_empty
       check(length(trim(dn)) > 0), 
-  entry_attributes jsonb -- will be null until the first successful authentication
-    constraint entry_attributes_must_not_be_empty
-      check(length(trim(entry_attributes::text)) > 0),
   member_of_groups jsonb -- will be null until the first successful authentication
     constraint member_of_groups_must_not_be_empty
       check(length(trim(member_of_groups::text)) > 0),
