@@ -19,6 +19,7 @@ type options struct {
 	withDiscoverDn           bool
 	withAnonGroupSearch      bool
 	withEnableGroups         bool
+	withUseTokenGroups       bool
 	withUpnDomain            string
 	withUserDn               string
 	withUserAttr             string
@@ -113,6 +114,16 @@ func WithStartTLS(_ context.Context) Option {
 func WithEnableGroups(_ context.Context) Option {
 	return func(o *options) error {
 		o.withEnableGroups = true
+		return nil
+	}
+}
+
+// WithUseTokenGroups optionally enables the use the Active Directory
+// tokenGroups constructed attribute of the user to find the group memberships.
+// This will find all security groups including nested ones,
+func WithUseTokenGroups(_ context.Context) Option {
+	return func(o *options) error {
+		o.withUseTokenGroups = true
 		return nil
 	}
 }
