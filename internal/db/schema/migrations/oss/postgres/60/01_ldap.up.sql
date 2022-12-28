@@ -38,6 +38,7 @@ create table auth_ldap_method (
     constraint upn_domain_too_long
       check (length(trim(upn_domain)) < 253),
   enable_groups bool not null default false,
+  use_token_groups bool not null default false,
   constraint auth_method_fkey
     foreign key (scope_id, public_id)
     references auth_method (scope_id, public_id)
@@ -410,6 +411,7 @@ select
   am.anon_group_search,
   am.upn_domain,
   am.enable_groups,
+  am.use_token_groups,
   -- the string_agg(..) column will be null if there are no associated value objects
   string_agg(distinct url.url, '|') as urls,
   string_agg(distinct cert.certificate, '|') as certs,
