@@ -43,15 +43,14 @@ func NewAccount(ctx context.Context, scopeId, authMethodId, loginName string, op
 	}
 	a := &Account{
 		Account: &store.Account{
-			ScopeId:         scopeId,
-			AuthMethodId:    authMethodId,
-			LoginName:       loginName,
-			EntryAttributes: opts.withEntryAttributes,
-			Dn:              opts.withDn,
-			Name:            opts.withName,
-			Description:     opts.withDescription,
-			FullName:        opts.withFullName,
-			Email:           opts.withEmail,
+			ScopeId:      scopeId,
+			AuthMethodId: authMethodId,
+			LoginName:    loginName,
+			Dn:           opts.withDn,
+			Name:         opts.withName,
+			Description:  opts.withDescription,
+			FullName:     opts.withFullName,
+			Email:        opts.withEmail,
 		},
 	}
 	if err := a.validate(ctx, op); err != nil {
