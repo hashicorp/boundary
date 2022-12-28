@@ -68,6 +68,7 @@ func NewAuthMethod(ctx context.Context, scopeId string, urls []*url.URL, opt ...
 			UserAttr:             opts.withUserAttr,
 			UserFilter:           opts.withUserFilter,
 			EnableGroups:         opts.withEnableGroups,
+			UseTokenGroups:       opts.withUseTokenGroups,
 			GroupDn:              opts.withGroupDn,
 			GroupAttr:            opts.withGroupAttr,
 			GroupFilter:          opts.withGroupFilter,
