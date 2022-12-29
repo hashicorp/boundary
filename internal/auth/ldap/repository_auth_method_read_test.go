@@ -180,6 +180,7 @@ func TestRepository_getAuthMethods(t *testing.T) {
 					WithBindCredential(testCtx, "bind-dn", "bind-password"),
 					WithCertificates(testCtx, testCert),
 					WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.)
+					WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{"mail": ToEmailAttribute, "displayName": ToFullNameAttribute}),
 				)
 				return am.PublicId, nil, []*AuthMethod{am}
 			},

@@ -32,6 +32,19 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withDescription = "test"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithAccountAttributeMap", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{
+			"mail": ToEmailAttribute,
+		}))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withAccountAttributeMap = map[string]AccountToAttribute{
+			"mail": ToEmailAttribute,
+		}
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithStartTLS", func(t *testing.T) {
 		assert := assert.New(t)
 		opts, err := getOpts(WithStartTLS(testCtx))

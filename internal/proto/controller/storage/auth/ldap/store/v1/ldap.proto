@@ -188,6 +188,17 @@ message AuthMethod {
   // attribute of the user to find the group memberships. This will find all
   // security groups including nested ones.
   bool use_token_groups = 290;
+
+  // account_attribute_maps are optional attribute maps from custom attributes
+  // to the standard attributes of fullname and email.  These maps are
+  // represented as key=value where the key equals the from_attribute and the
+  // value equals the to_attribute.  For example "preferredName=fullName".  All
+  // attribute names are case insensitive. 
+  // @inject_tag: `gorm:"-"`
+  repeated string account_attribute_maps = 300 [(custom_options.v1.mask_mapping) = {
+    this: "AccountAttributeMaps"
+    that: "attributes.account_attribute_maps"
+  }];
 }
 
 // Url represents LDAP URLs that specify LDAP servers to connection to.  There
@@ -441,4 +452,26 @@ message Account {
   // This attribute is updated every time a user successfully authenticates.
   // @inject_tag: `gorm:"default:null"`
   string member_of_groups = 140;
+}
+
+
+
+// AccountAttributeMap entries are optional from/to account attribute maps.
+message AccountAttributeMap {
+  // @inject_tag: `gorm:"primary_key"`
+  string ldap_method_id = 10;
+
+  // from_attribute is the attribute from the user's entry that you need to map
+  // to a standard account attribute. 
+  // @inject_tag: `gorm:"not_null"`
+  string from_attribute = 20;
+
+  // to_attribute is the standard account attribute to map the from_attribute
+  // to.  Valid values are: fullname, email
+  // @inject_tag: `gorm:"column:to_attribute;primary_key"`
+  string to_attribute = 30;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 40;
 }
