@@ -57,6 +57,9 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		WithBindCredential(testCtx, "bind-dn", "bind-password"),
 		WithCertificates(testCtx, testCert, testCert2),
 		WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.
+		WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{
+			"mail": ToEmailAttribute,
+		}),
 	)
 	require.NoError(t, err)
 
