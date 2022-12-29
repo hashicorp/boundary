@@ -70,6 +70,17 @@ func TestAuthMethod(t testing.TB,
 				}
 			}
 		}
+		if len(opts.withAccountAttributeMap) > 0 {
+			for from, to := range opts.withAccountAttributeMap {
+				aam, err := NewAccountAttributeMap(testCtx, am.PublicId, from, AccountToAttribute(string(to)))
+				if err != nil {
+					return err
+				}
+				if err := w.Create(testCtx, aam); err != nil {
+					return err
+				}
+			}
+		}
 		if opts.withUserDn != "" || opts.withUserAttr != "" || opts.withUserFilter != "" {
 			uc, err := NewUserEntrySearchConf(testCtx, am.PublicId, opt...)
 			if err != nil {
@@ -224,6 +235,9 @@ func TestSortAuthMethods(t testing.TB, methods []*AuthMethod) {
 		})
 		sort.Slice(am.Certificates, func(a, b int) bool {
 			return am.Certificates[a] < am.Certificates[b]
+		})
+		sort.Slice(am.AccountAttributeMaps, func(a, b int) bool {
+			return am.AccountAttributeMaps[a] < am.AccountAttributeMaps[b]
 		})
 	}
 }

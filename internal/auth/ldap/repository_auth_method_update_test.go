@@ -80,6 +80,10 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
 					WithCertificates(testCtx, testCert),
 					WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.
+					WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{
+						"displayName": ToFullNameAttribute,
+						"mail":        ToEmailAttribute,
+					}),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -107,6 +111,9 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.Certificates = []string{testCertEncoded2}
 				am.ClientCertificate = testCertEncoded2
 				am.ClientCertificateKey = derPrivKey2
+				am.AccountAttributeMaps = []string{
+					fmt.Sprintf("%s=%s", "cn", ToFullNameAttribute),
+				}
 				return &am
 			},
 			fieldMasks: []string{
@@ -130,6 +137,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				BindPasswordField,
 				CertificatesField,
 				ClientCertificateField,
+				AccountAttributeMapsField,
 			},
 			version: 1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -157,6 +165,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.ClientCertificateKey = updateWith.ClientCertificateKey
 				am.ClientCertificate = updateWith.ClientCertificate
 				am.ClientCertificateKeyHmac = updateWith.ClientCertificateKeyHmac
+				am.AccountAttributeMaps = updateWith.AccountAttributeMaps
 				return am
 			},
 		},
@@ -181,6 +190,10 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
 					WithCertificates(testCtx, testCert),
 					WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.
+					WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{
+						"mail": ToEmailAttribute,
+						"cn":   ToFullNameAttribute,
+					}),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -207,6 +220,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				BindPasswordField,
 				CertificatesField,
 				ClientCertificateField,
+				AccountAttributeMapsField,
 			},
 			version: 1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -352,6 +366,10 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
 					WithCertificates(testCtx, testCert),
 					WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.
+					WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{
+						"mail": ToEmailAttribute,
+						"cn":   ToFullNameAttribute,
+					}),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -369,6 +387,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.Certificates = []string{testCertEncoded}
 				am.ClientCertificate = testCertEncoded
 				am.ClientCertificateKey = derPrivKey
+				am.AccountAttributeMaps = []string{"cn=fullName"}
 				return &am
 			},
 			fieldMasks: []string{
@@ -383,6 +402,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				BindPasswordField,
 				CertificatesField,
 				ClientCertificateField,
+				AccountAttributeMapsField,
 			},
 			version: 1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -400,6 +420,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.ClientCertificateKey = updateWith.ClientCertificateKey
 				am.ClientCertificate = updateWith.ClientCertificate
 				am.ClientCertificateKeyHmac = updateWith.ClientCertificateKeyHmac
+				am.AccountAttributeMaps = updateWith.AccountAttributeMaps
 				return am
 			},
 		},
@@ -421,6 +442,10 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
 					WithCertificates(testCtx, testCert),
 					WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.
+					WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{
+						"mail": ToEmailAttribute,
+						"cn":   ToFullNameAttribute,
+					}),
 				)
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -439,6 +464,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				BindPasswordField,
 				CertificatesField,
 				ClientCertificateField,
+				AccountAttributeMapsField,
 			},
 			version: 1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
@@ -456,6 +482,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.ClientCertificateKey = updateWith.ClientCertificateKey
 				am.ClientCertificate = updateWith.ClientCertificate
 				am.ClientCertificateKeyHmac = updateWith.ClientCertificateKeyHmac
+				am.AccountAttributeMaps = updateWith.AccountAttributeMaps
 				return am
 			},
 		},
@@ -658,6 +685,23 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			wantErrContains: "valueObjectChanges: ldap.NewCertificate: failed to parse certificate",
 		},
 		{
+			name:       "account-maps-conversion-err",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{AccountAttributeMapsField},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+				am.AccountAttributeMaps = []string{"invalid-map"}
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				return orig
+			},
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "ldap.ParseAccountAttributeMaps: error parsing attribute",
+		},
+		{
 			name:       "user-entry-search-conversion-err",
 			ctx:        testCtx,
 			repo:       testRepo,
@@ -790,6 +834,7 @@ func Test_validateFieldMask(t *testing.T) {
 				ClientCertificateKeyField,
 				BindDnField,
 				BindPasswordField,
+				AccountAttributeMapsField,
 			},
 		},
 		{
@@ -904,6 +949,12 @@ func Test_valueObjectChanges(t *testing.T) {
 					aa := gotDel[a]
 					bb := gotDel[b]
 					return aa.(*Url).ServerUrl < bb.(*Url).ServerUrl
+				})
+			case AccountAttributeMapsVO:
+				sort.Slice(gotDel, func(a, b int) bool {
+					aa := gotDel[a]
+					bb := gotDel[b]
+					return aa.(*AccountAttributeMap).ToAttribute < bb.(*AccountAttributeMap).ToAttribute
 				})
 			}
 			assert.Equalf(tc.wantDel, gotDel, "wantDel: %s\ngotDel:  %s\n", tc.wantDel, gotDel)
