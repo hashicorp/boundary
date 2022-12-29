@@ -37,6 +37,7 @@ type options struct {
 	withOrderByCreateTime    bool
 	ascending                bool
 	withOperationalState     AuthMethodState
+	withAccountAttributeMap  map[string]AccountToAttribute
 }
 
 // Option - how options are passed as args
@@ -314,6 +315,14 @@ func WithOrderByCreateTime(_ context.Context, ascending bool) Option {
 func WithOperationalState(_ context.Context, state AuthMethodState) Option {
 	return func(o *options) error {
 		o.withOperationalState = state
+		return nil
+	}
+}
+
+// WithAccountAttributeMap provides an option for specifying an Account Attribute map.
+func WithAccountAttributeMap(_ context.Context, aam map[string]AccountToAttribute) Option {
+	return func(o *options) error {
+		o.withAccountAttributeMap = aam
 		return nil
 	}
 }
