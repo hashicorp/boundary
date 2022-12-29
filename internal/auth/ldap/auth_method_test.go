@@ -60,6 +60,7 @@ func TestNewAuthMethod(t *testing.T) {
 				WithBindCredential(testCtx, "bind-dn", "bind-password"),
 				WithCertificates(testCtx, testCert),
 				WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.
+				WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{"mail": "email"}),
 			},
 			want: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
@@ -85,6 +86,7 @@ func TestNewAuthMethod(t *testing.T) {
 					Certificates:         []string{testCertEncoded},
 					ClientCertificate:    testCertEncoded,
 					ClientCertificateKey: derPrivKey,
+					AccountAttributeMaps: []string{"mail=email"},
 				},
 			},
 		},
@@ -351,6 +353,18 @@ func Test_convertValueObjects(t *testing.T) {
 		testUrls = append(testUrls, u)
 	}
 
+	testAttrMaps := []string{"email_address=email", "display_name=fullName"}
+	testAccountAttributeMaps := make([]any, 0, len(testAttrMaps))
+	acms, err := ParseAccountAttributeMaps(testCtx, testAttrMaps...)
+	require.NoError(t, err)
+	for _, m := range acms {
+		toAttribute, err := ConvertToAccountToAttribute(testCtx, m.To)
+		require.NoError(t, err)
+		obj, err := NewAccountAttributeMap(testCtx, testPublicId, m.From, toAttribute)
+		require.NoError(t, err)
+		testAccountAttributeMaps = append(testAccountAttributeMaps, obj)
+	}
+
 	testUserSearchConf, err := NewUserEntrySearchConf(testCtx, testPublicId, WithUserDn(testCtx, "user-dn"), WithUserAttr(testCtx, "user-attr"))
 	require.NoError(t, err)
 
@@ -392,6 +406,7 @@ func Test_convertValueObjects(t *testing.T) {
 					ClientCertificate:    testClientCertEncoded,
 					BindDn:               "bind-dn",
 					BindPassword:         "bind-password",
+					AccountAttributeMaps: testAttrMaps,
 				},
 			},
 			wantValues: &convertedValues{
@@ -401,6 +416,7 @@ func Test_convertValueObjects(t *testing.T) {
 				GroupEntrySearchConf: testGroupSearchConf,
 				ClientCertificate:    testClientCertificate,
 				BindCredential:       testBindCredential,
+				AccountAttributeMaps: testAccountAttributeMaps,
 			},
 		},
 		{
@@ -421,65 +437,77 @@ func Test_convertValueObjects(t *testing.T) {
 			},
 			wantErrMatch: errors.T(errors.InvalidPublicId),
 		},
+		{
+			name: "invalid-to-account-attr-map",
+			am: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					PublicId:             testPublicId,
+					AccountAttributeMaps: []string{"displayName=invalid-to-attr"},
+				},
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "not a valid ToAccountAttribute value",
+		},
+		{
+			name: "invalid-account-attr-map-format",
+			am: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					PublicId:             testPublicId,
+					AccountAttributeMaps: []string{"not-valid"},
+				},
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "format must be key=value",
+		},
+		{
+			name: "invalid-cert",
+			am: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					PublicId:     testPublicId,
+					Certificates: []string{testInvalidPem},
+				},
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "failed to parse certificate",
+		},
+		{
+			name: "invalid-url-scheme",
+			am: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					PublicId: testPublicId,
+					Urls:     []string{"https://ldap1"},
+				},
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "scheme \"https\" is not ldap or ldaps",
+		},
+		{
+			name: "invalid-url-starts-with-space",
+			am: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					PublicId: testPublicId,
+					Urls:     []string{"  ldaps://ldap1"},
+				},
+			},
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "first path segment in URL cannot contain colon",
+		},
+		{
+			name: "invalid-client-cert",
+			am: &AuthMethod{
+				AuthMethod: &store.AuthMethod{
+					PublicId:             testPublicId,
+					ClientCertificateKey: testClientCertKey,
+					ClientCertificate:    testInvalidPem,
+				},
+			},
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "failed to parse certificate",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-
-			convertedCerts, err := tc.am.convertCertificates(testCtx)
-			if tc.wantErrMatch != nil {
-				require.Error(err)
-				assert.Truef(errors.Match(tc.wantErrMatch, err), "wanted err %q and got: %+v", tc.wantErrMatch.Code, err)
-			} else {
-				require.NoError(err)
-				assert.Equal(tc.wantValues.Certs, convertedCerts)
-			}
-
-			convertedUrls, err := tc.am.convertUrls(testCtx)
-			if tc.wantErrMatch != nil {
-				require.Error(err)
-				assert.Truef(errors.Match(tc.wantErrMatch, err), "wanted err %q and got: %+v", tc.wantErrMatch.Code, err)
-			} else {
-				require.NoError(err)
-				assert.Equal(tc.wantValues.Urls, convertedUrls)
-			}
-
-			convertedUserSearchConf, err := tc.am.convertUserEntrySearchConf(testCtx)
-			if tc.wantErrMatch != nil {
-				require.Error(err)
-				assert.Truef(errors.Match(tc.wantErrMatch, err), "wanted err %q and got: %+v", tc.wantErrMatch.Code, err)
-			} else {
-				require.NoError(err)
-				assert.Equal(tc.wantValues.UserEntrySearchConf, convertedUserSearchConf)
-			}
-
-			convertedGroupSearchConf, err := tc.am.convertGroupEntrySearchConf(testCtx)
-			if tc.wantErrMatch != nil {
-				require.Error(err)
-				assert.Truef(errors.Match(tc.wantErrMatch, err), "wanted err %q and got: %+v", tc.wantErrMatch.Code, err)
-			} else {
-				require.NoError(err)
-				assert.Equal(tc.wantValues.GroupEntrySearchConf, convertedGroupSearchConf)
-			}
-
-			convertedClientCertificate, err := tc.am.convertClientCertificate(testCtx)
-			if tc.wantErrMatch != nil {
-				require.Error(err)
-				assert.Truef(errors.Match(tc.wantErrMatch, err), "wanted err %q and got: %+v", tc.wantErrMatch.Code, err)
-			} else {
-				require.NoError(err)
-				assert.Equal(tc.wantValues.ClientCertificate, convertedClientCertificate)
-			}
-
-			convertedBindCredential, err := tc.am.convertBindCredential(testCtx)
-			if tc.wantErrMatch != nil {
-				require.Error(err)
-				assert.Truef(errors.Match(tc.wantErrMatch, err), "wanted err %q and got: %+v", tc.wantErrMatch.Code, err)
-			} else {
-				require.NoError(err)
-				assert.Equal(tc.wantValues.BindCredential, convertedBindCredential)
-			}
-
 			values, err := tc.am.convertValueObjects(testCtx)
 			if tc.wantErrMatch != nil {
 				require.Error(err)
@@ -495,6 +523,59 @@ func Test_convertValueObjects(t *testing.T) {
 			assert.Equal(tc.wantValues, values)
 		})
 	}
+	t.Run("missing-public-id", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		wantErrMatch := errors.T(errors.InvalidPublicId)
+		am := &AuthMethod{
+			AuthMethod: &store.AuthMethod{
+				Certificates:         testCerts,
+				Urls:                 testLdapServers,
+				UserDn:               "user-dn",
+				UserAttr:             "user-attr",
+				GroupDn:              "group-dn",
+				GroupAttr:            "group-attr",
+				ClientCertificateKey: testClientCertKey,
+				ClientCertificate:    testClientCertEncoded,
+				BindDn:               "bind-dn",
+				BindPassword:         "bind-password",
+				AccountAttributeMaps: testAttrMaps,
+			},
+		}
+		convertedCerts, err := am.convertCertificates(testCtx)
+		require.Error(err)
+		assert.Nil(convertedCerts)
+		assert.Truef(errors.Match(wantErrMatch, err), "wanted err %q and got: %+v", wantErrMatch.Code, err)
+
+		convertedUrls, err := am.convertUrls(testCtx)
+		require.Error(err)
+		assert.Nil(convertedUrls)
+		assert.Truef(errors.Match(wantErrMatch, err), "wanted err %q and got: %+v", wantErrMatch.Code, err)
+
+		convertedMaps, err := am.convertAccountAttributeMaps(testCtx)
+		require.Error(err)
+		assert.Nil(convertedMaps)
+		assert.Truef(errors.Match(wantErrMatch, err), "wanted err %q and got: %+v", wantErrMatch.Code, err)
+
+		convertedUserSearchConf, err := am.convertUserEntrySearchConf(testCtx)
+		require.Error(err)
+		assert.Nil(convertedUserSearchConf)
+		assert.Truef(errors.Match(wantErrMatch, err), "wanted err %q and got: %+v", wantErrMatch.Code, err)
+
+		convertedGroupSearchConf, err := am.convertGroupEntrySearchConf(testCtx)
+		require.Error(err)
+		assert.Nil(convertedGroupSearchConf)
+		assert.Truef(errors.Match(wantErrMatch, err), "wanted err %q and got: %+v", wantErrMatch.Code, err)
+
+		convertedClientCertificate, err := am.convertClientCertificate(testCtx)
+		require.Error(err)
+		assert.Nil(convertedClientCertificate)
+		assert.Truef(errors.Match(wantErrMatch, err), "wanted err %q and got: %+v", wantErrMatch.Code, err)
+
+		convertedBindCredential, err := am.convertBindCredential(testCtx)
+		require.Error(err)
+		assert.Nil(convertedBindCredential)
+		assert.Truef(errors.Match(wantErrMatch, err), "wanted err %q and got: %+v", wantErrMatch.Code, err)
+	})
 }
 
 type converted []any

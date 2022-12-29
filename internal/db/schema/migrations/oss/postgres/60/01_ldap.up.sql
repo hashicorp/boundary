@@ -311,6 +311,36 @@ comment on table auth_ldap_bind_credential is
 'auth_ldap_bind_credential entries allow Boundary to bind (aka authenticate) using '
 'the provided credentials when searching for the user entry used to authenticate.';
 
+-- auth_ldap_account_attribute_map entries are the optional attribute maps from custom
+-- attributes to the standard attribute of fullname and email.  There can be 0 or more
+-- for each parent ldap auth method. 
+create table auth_ldap_account_attribute_map (
+  create_time wt_timestamp,
+  ldap_method_id wt_public_id 
+    constraint auth_ldap_method_fkey
+    references auth_ldap_method(public_id)
+    on delete cascade
+    on update cascade,
+  from_attribute text not null
+    constraint from_attribute_must_not_be_empty
+       check(length(trim(from_attribute)) > 0) 
+    constraint from_attribute_must_be_less_than_1024_chars
+      check(length(trim(from_attribute)) < 1024),
+  to_attribute text not null 
+    constraint to_attribute_valid_values 
+      check (lower(to_attribute) in ('fullname', 'email')), -- intentionally case-sensitive matching
+  primary key(ldap_method_id, to_attribute)
+);
+comment on table auth_ldap_account_attribute_map is
+  'auth_ldap_account_attribute_map entries are the optional attribute maps from custom attributes to '
+  'the standard attributes of sub, name and email.  There can be 0 or more for each parent ldap auth method.';
+
+create trigger default_create_time_column before insert on auth_ldap_account_attribute_map
+  for each row execute procedure default_create_time();
+
+create trigger immutable_columns before update on auth_ldap_account_attribute_map
+  for each row execute procedure immutable_columns('ldap_method_id', 'from_attribute', 'to_attribute', 'create_time');
+
 create table auth_ldap_account (
   public_id wt_public_id primary key,
   auth_method_id wt_public_id not null,
@@ -441,7 +471,8 @@ select
   -- the string_agg(..) column will be null if there are no associated value objects
   string_agg(distinct url.url, '|') as urls,
   string_agg(distinct cert.certificate, '|') as certs,
-
+  string_agg(distinct concat_ws('=', aam.from_attribute, aam.to_attribute), '|') as account_attribute_map,
+  
   -- the rest of the fields are zero to one relationships that are stored in
   -- related tables. Since we're outer joining with these tables, we need to
   -- either add them to the group by, use an aggregating func, or handle
@@ -463,13 +494,14 @@ select
   string_agg(distinct bc.key_id, '|') as bind_password_key_id 
 from 	
   auth_ldap_method am 
-  left outer join iam_scope                     s     on am.public_id = s.primary_auth_method_id 
-  left outer join auth_ldap_url                 url   on am.public_id = url.ldap_method_id
-  left outer join auth_ldap_certificate         cert  on am.public_id = cert.ldap_method_id
-  left outer join auth_ldap_user_entry_search   uc    on am.public_id = uc.ldap_method_id
-  left outer join auth_ldap_group_entry_search  gc    on am.public_id = gc.ldap_method_id
-  left outer join auth_ldap_client_certificate  cc    on am.public_id = cc.ldap_method_id
-  left outer join auth_ldap_bind_credential     bc    on am.public_id = bc.ldap_method_id
+  left outer join iam_scope                       s     on am.public_id = s.primary_auth_method_id 
+  left outer join auth_ldap_url                   url   on am.public_id = url.ldap_method_id
+  left outer join auth_ldap_certificate           cert  on am.public_id = cert.ldap_method_id
+  left outer join auth_ldap_account_attribute_map aam   on am.public_id = aam.ldap_method_id
+  left outer join auth_ldap_user_entry_search     uc    on am.public_id = uc.ldap_method_id
+  left outer join auth_ldap_group_entry_search    gc    on am.public_id = gc.ldap_method_id
+  left outer join auth_ldap_client_certificate    cc    on am.public_id = cc.ldap_method_id
+  left outer join auth_ldap_bind_credential       bc    on am.public_id = bc.ldap_method_id
 group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
 comment on view ldap_auth_method_with_value_obj is
   'ldap auth method with its associated value objects (urls, certs, search config, etc)';

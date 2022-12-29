@@ -79,6 +79,12 @@ func NewAuthMethod(ctx context.Context, scopeId string, urls []*url.URL, opt ...
 			ClientCertificateKey: opts.withClientCertificateKey,
 		},
 	}
+	if len(opts.withAccountAttributeMap) > 0 {
+		a.AccountAttributeMaps = make([]string, 0, len(opts.withAccountAttributeMap))
+		for k, v := range opts.withAccountAttributeMap {
+			a.AccountAttributeMaps = append(a.AccountAttributeMaps, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
 
 	return a, nil
 }
@@ -140,6 +146,7 @@ type convertedValues struct {
 	GroupEntrySearchConf any
 	ClientCertificate    any
 	BindCredential       any
+	AccountAttributeMaps []any
 }
 
 // convertValueObjects converts the embedded value objects. It will return an
@@ -177,6 +184,9 @@ func (am *AuthMethod) convertValueObjects(ctx context.Context) (*convertedValues
 		if converted.BindCredential, err = am.convertBindCredential(ctx); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
+	}
+	if converted.AccountAttributeMaps, err = am.convertAccountAttributeMaps(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	return converted, nil
@@ -282,4 +292,36 @@ func (am *AuthMethod) convertBindCredential(ctx context.Context) (any, error) {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return bc, nil
+}
+
+// convertAccountAttributeMaps converts the embedded account attribute maps from
+// []string to []interface{} where each slice element is a *AccountAttributeMap. It
+// will return an error if the AuthMethod's public id is not set or it can
+// convert the account attribute maps.
+func (am *AuthMethod) convertAccountAttributeMaps(ctx context.Context) ([]any, error) {
+	const op = "ldap.(AuthMethod).convertAccountAttributeMaps"
+	if am.PublicId == "" {
+		return nil, errors.New(ctx, errors.InvalidPublicId, op, "missing public id")
+	}
+	newInterfaces := make([]any, 0, len(am.AccountAttributeMaps))
+	const (
+		from = 0
+		to   = 1
+	)
+	acms, err := ParseAccountAttributeMaps(ctx, am.AccountAttributeMaps...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	for _, m := range acms {
+		toClaim, err := ConvertToAccountToAttribute(ctx, m.To)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		obj, err := NewAccountAttributeMap(ctx, am.PublicId, m.From, toClaim)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		newInterfaces = append(newInterfaces, obj)
+	}
+	return newInterfaces, nil
 }
