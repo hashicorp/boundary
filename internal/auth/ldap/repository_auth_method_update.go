@@ -39,6 +39,7 @@ const (
 	ClientCertificateKeyField = "ClientCertificateKey"
 	BindDnField               = "BindDn"
 	BindPasswordField         = "BindPassword"
+	AccountAttributeMapsField = "AccountAttributeMaps"
 )
 
 // UpdateAuthMethod will retrieve the auth method from the repository,
@@ -90,6 +91,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			BindDnField:               am.BindDn,
 			BindPasswordField:         am.BindPassword,
 			UrlsField:                 am.Urls,
+			AccountAttributeMapsField: am.AccountAttributeMaps,
 		},
 		fieldMaskPaths,
 		nil,
@@ -122,6 +124,10 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	addCerts, deleteCerts, err := valueObjectChanges(ctx, origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
+	if err != nil {
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	addMaps, deleteMaps, err := valueObjectChanges(ctx, origAm.PublicId, AccountAttributeMapsVO, am.AccountAttributeMaps, origAm.AccountAttributeMaps, dbMask, nullFields)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
@@ -193,6 +199,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		case
 			UrlsField,
 			CertificatesField,
+			AccountAttributeMapsField,
 			UserDnField, UserAttrField, UserFilterField,
 			GroupDnField, GroupAttrField, GroupFilterField,
 			ClientCertificateField, ClientCertificateKeyField,
@@ -208,6 +215,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			StartTlsField, InsecureTlsField, DiscoverDnField, AnonGroupSearchField, EnableGroupsField, UseTokenGroupsField,
 			UrlsField,
 			CertificatesField,
+			AccountAttributeMapsField,
 			UserDnField, UserAttrField, UserFilterField,
 			GroupDnField, GroupAttrField, GroupFilterField,
 			ClientCertificateField, ClientCertificateKeyField,
@@ -232,7 +240,9 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		addClientCert == nil &&
 		deleteClientCert == nil &&
 		addBindCred == nil &&
-		deleteBindCred == nil {
+		deleteBindCred == nil &&
+		len(addMaps) == 0 &&
+		len(deleteMaps) == 0 {
 		return origAm, db.NoRowsAffected, nil
 	}
 
@@ -391,6 +401,24 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				}
 				msgs = append(msgs, &addBindCredOplogMsg)
 			}
+			if len(deleteMaps) > 0 {
+				deleteMapsOplogMsgs := make([]*oplog.Message, 0, len(deleteMaps))
+				rowsDeleted, err := w.DeleteItems(ctx, deleteMaps, db.NewOplogMsgs(&deleteMapsOplogMsgs))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete account attribute maps"))
+				}
+				if rowsDeleted != len(deleteMaps) {
+					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("account attribute maps deleted %d did not match request for %d", rowsDeleted, len(deleteMaps)))
+				}
+				msgs = append(msgs, deleteMapsOplogMsgs...)
+			}
+			if len(addMaps) > 0 {
+				addMapsOplogMsgs := make([]*oplog.Message, 0, len(addMaps))
+				if err := w.CreateItems(ctx, addMaps, db.NewOplogMsgs(&addMapsOplogMsgs)); err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add account attribute maps"))
+				}
+				msgs = append(msgs, addMapsOplogMsgs...)
+			}
 
 			metadata, err := updatedAm.oplog(ctx, oplog.OpType_OP_TYPE_UPDATE)
 			if err != nil {
@@ -449,6 +477,7 @@ func validateFieldMask(ctx context.Context, fieldMaskPaths []string) error {
 		case strings.EqualFold(BindDnField, f):
 		case strings.EqualFold(BindPasswordField, f):
 		case strings.EqualFold(UrlsField, f):
+		case strings.EqualFold(AccountAttributeMapsField, f):
 		default:
 			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid field mask: %q", f))
 		}
@@ -460,14 +489,15 @@ func validateFieldMask(ctx context.Context, fieldMaskPaths []string) error {
 type voName string
 
 const (
-	CertificateVO voName = "Certificates"
-	UrlVO         voName = "Urls"
+	CertificateVO          voName = "Certificates"
+	UrlVO                  voName = "Urls"
+	AccountAttributeMapsVO voName = "AccountAttributeMaps"
 )
 
 // validVoName decides if the name is valid
 func validVoName(name voName) bool {
 	switch name {
-	case CertificateVO, UrlVO:
+	case CertificateVO, UrlVO, AccountAttributeMapsVO:
 		return true
 	default:
 		return false
@@ -475,20 +505,37 @@ func validVoName(name voName) bool {
 }
 
 // factoryFunc defines a func type for value object factories
-type factoryFunc func(ctx context.Context, publicId string, idx int, i any) (any, error)
+type factoryFunc func(ctx context.Context, publicId string, idx int, s string) (any, error)
 
 // supportedFactories are the currently supported factoryFunc for value objects
 var supportedFactories = map[voName]factoryFunc{
-	CertificateVO: func(ctx context.Context, publicId string, idx int, i any) (any, error) {
-		str := fmt.Sprintf("%s", i)
-		return NewCertificate(ctx, publicId, str)
+	CertificateVO: func(ctx context.Context, publicId string, idx int, s string) (any, error) {
+		return NewCertificate(ctx, publicId, s)
 	},
-	UrlVO: func(ctx context.Context, publicId string, idx int, i any) (any, error) {
-		u, err := url.Parse(fmt.Sprintf("%s", i))
+	UrlVO: func(ctx context.Context, publicId string, idx int, s string) (any, error) {
+		u, err := url.Parse(s)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, "ldap.urlFactory")
 		}
 		return NewUrl(ctx, publicId, idx+1, u)
+	},
+	AccountAttributeMapsVO: func(ctx context.Context, publicId string, idx int, s string) (any, error) {
+		const op = "ldap.AccountAttributeMapsFactory"
+		acm, err := ParseAccountAttributeMaps(ctx, s)
+		if err != nil {
+			return nil, err
+		}
+		if len(acm) > 1 {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to parse account attribute map %s", s))
+		}
+		var m AttributeMap
+		for _, m = range acm {
+		}
+		to, err := ConvertToAccountToAttribute(ctx, m.To)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		return NewAccountAttributeMap(ctx, publicId, m.From, to)
 	},
 }
 
