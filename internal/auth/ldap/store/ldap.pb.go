@@ -127,7 +127,7 @@ type AuthMethod struct {
 	// certificates are optional PEM encoded x509 certificates in ASN.1 DER form
 	// that can be used as trust anchors when connecting to an LDAP provider.
 	// These are Value Objects that will be stored as Certificate messages, and
-	// are operatated on as a complete set (not individually).
+	// are operated on as a complete set (not individually).
 	// @inject_tag: `gorm:"-"`
 	Certificates []string `protobuf:"bytes,210,rep,name=certificates,proto3" json:"certificates,omitempty" gorm:"-"`
 	// client_certificate is the certificate in ASN.1 DER form encoded as PEM. It
