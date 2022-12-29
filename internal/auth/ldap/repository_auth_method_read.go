@@ -193,6 +193,9 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 		am.BindDn = agg.BindDn
 		am.BindPassword = string(bindPassword.Pt)
 		am.BindPasswordHmac = agg.BindPasswordHmac
+		if agg.AccountAttributeMap != "" {
+			am.AccountAttributeMaps = strings.Split(agg.AccountAttributeMap, aggregateDelimiter)
+		}
 
 		authMethods = append(authMethods, &am)
 	}
@@ -235,6 +238,7 @@ type authMethodAgg struct {
 	BindPassword             []byte
 	BindPasswordHmac         []byte
 	BindKeyId                string
+	AccountAttributeMap      string
 }
 
 // TableName returns the table name for gorm
