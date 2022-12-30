@@ -26,7 +26,7 @@ func (r *Repository) LookupAuthMethod(ctx context.Context, publicId string, opt 
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return r.lookupAuthMethod(ctx, publicId, WithUnauthenticatedUser(opts.withUnauthenticatedUser))
+	return r.lookupAuthMethod(ctx, publicId, WithUnauthenticatedUser(ctx, opts.withUnauthenticatedUser))
 }
 
 // ListAuthMethods returns a slice of AuthMethods for the scopeId. The
