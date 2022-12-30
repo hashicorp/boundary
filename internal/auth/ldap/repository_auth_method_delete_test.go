@@ -41,7 +41,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 				databaseWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithOperationalState(InactiveState))
+				return TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithOperationalState(testCtx, InactiveState))
 			}(),
 			wantRowsDeleted: 1,
 		},
@@ -80,7 +80,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 				databaseWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithOperationalState(InactiveState))
+				return TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithOperationalState(testCtx, InactiveState))
 			}(),
 			wantErrMatch:    errors.T(errors.Internal),
 			wantErrContains: "lookup-err",
@@ -100,7 +100,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 				databaseWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithOperationalState(InactiveState))
+				return TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithOperationalState(testCtx, InactiveState))
 			}(),
 			wantErrMatch:    errors.T(errors.Internal),
 			wantErrContains: "delete-err",
@@ -125,7 +125,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 				databaseWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithOperationalState(InactiveState))
+				return TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithOperationalState(testCtx, InactiveState))
 			}(),
 			wantErrMatch:    errors.T(errors.MultipleRecords),
 			wantErrContains: "more than 1 auth method would have been deleted",
@@ -141,7 +141,7 @@ func TestRepository_DeleteAuthMethod(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 				databaseWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				return TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithOperationalState(InactiveState))
+				return TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithOperationalState(testCtx, InactiveState))
 			}(),
 			wantErrMatch:    errors.T(errors.Encrypt),
 			wantErrContains: "unable to get oplog wrapper",
