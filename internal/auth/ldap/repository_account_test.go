@@ -746,34 +746,34 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 		},
 		{
 			name:     "with-repo-limit",
-			repoOpts: []Option{WithLimit(3)},
+			repoOpts: []Option{WithLimit(testCtx, 3)},
 			wantLen:  3,
 		},
 		{
 			name:     "with-negative-repo-limit",
-			repoOpts: []Option{WithLimit(-1)},
+			repoOpts: []Option{WithLimit(testCtx, -1)},
 			wantLen:  accountCount,
 		},
 		{
 			name:     "with-list-limit",
-			listOpts: []Option{WithLimit(3)},
+			listOpts: []Option{WithLimit(testCtx, 3)},
 			wantLen:  3,
 		},
 		{
 			name:     "with-negative-list-limit",
-			listOpts: []Option{WithLimit(-1)},
+			listOpts: []Option{WithLimit(testCtx, -1)},
 			wantLen:  accountCount,
 		},
 		{
 			name:     "with-repo-smaller-than-list-limit",
-			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6)},
+			repoOpts: []Option{WithLimit(testCtx, 2)},
+			listOpts: []Option{WithLimit(testCtx, 6)},
 			wantLen:  6,
 		},
 		{
 			name:     "with-repo-larger-than-list-limit",
-			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2)},
+			repoOpts: []Option{WithLimit(testCtx, 6)},
+			listOpts: []Option{WithLimit(testCtx, 2)},
 			wantLen:  2,
 		},
 	}
