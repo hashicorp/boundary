@@ -25,9 +25,9 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 	orgDbWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	amInactive := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap1.alice.com"}, WithOperationalState(InactiveState))
-	amActivePriv := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap2.alice.com"}, WithOperationalState(ActivePrivateState))
-	amActivePub := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap3.alice.com"}, WithOperationalState(ActivePublicState))
+	amInactive := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap1.alice.com"}, WithOperationalState(testCtx, InactiveState))
+	amActivePriv := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap2.alice.com"}, WithOperationalState(testCtx, ActivePrivateState))
+	amActivePub := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://ldap3.alice.com"}, WithOperationalState(testCtx, ActivePublicState))
 	amActivePub.IsPrimaryAuthMethod = true
 	iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, testConn, testWrapper), org, amActivePub.PublicId)
 
@@ -66,20 +66,20 @@ func TestRepository_LookupAuthMethod(t *testing.T) {
 		{
 			name: "unauthenticated-user-not-found-using-active-priv",
 			in:   amActivePriv.GetPublicId(),
-			opt:  []Option{WithUnauthenticatedUser(true)},
+			opt:  []Option{WithUnauthenticatedUser(testCtx, true)},
 			want: nil,
 		},
 		{
 			name:          "unauthenticated-user-found-active-pub",
 			in:            amActivePub.GetPublicId(),
-			opt:           []Option{WithUnauthenticatedUser(true)},
+			opt:           []Option{WithUnauthenticatedUser(testCtx, true)},
 			want:          amActivePub,
 			wantIsPrimary: true,
 		},
 		{
 			name: "unauthenticated-user-found-inactive",
 			in:   amInactive.GetPublicId(),
-			opt:  []Option{WithUnauthenticatedUser(true)},
+			opt:  []Option{WithUnauthenticatedUser(testCtx, true)},
 			want: nil,
 		},
 	}
@@ -131,9 +131,9 @@ func TestRepository_getAuthMethods(t *testing.T) {
 				require.NoError(t, err)
 
 				// make a test auth method with all options
-				am1a := TestAuthMethod(t, testConn, orgDBWrapper, org.PublicId, []string{"ldaps://ldap1.alice.com"}, WithOperationalState(InactiveState))
-				am1b := TestAuthMethod(t, testConn, orgDBWrapper, org.PublicId, []string{"ldaps://ldap2.alice.com"}, WithOperationalState(InactiveState))
-				am2 := TestAuthMethod(t, testConn, orgDBWrapper2, org2.PublicId, []string{"ldaps://ldap3.alice.com"}, WithOperationalState(InactiveState))
+				am1a := TestAuthMethod(t, testConn, orgDBWrapper, org.PublicId, []string{"ldaps://ldap1.alice.com"}, WithOperationalState(testCtx, InactiveState))
+				am1b := TestAuthMethod(t, testConn, orgDBWrapper, org.PublicId, []string{"ldaps://ldap2.alice.com"}, WithOperationalState(testCtx, InactiveState))
+				am2 := TestAuthMethod(t, testConn, orgDBWrapper2, org2.PublicId, []string{"ldaps://ldap3.alice.com"}, WithOperationalState(testCtx, InactiveState))
 				return "", []string{am1a.ScopeId, am1b.ScopeId, am2.ScopeId}, []*AuthMethod{am1a, am1b, am2}
 			},
 		},
@@ -143,8 +143,8 @@ func TestRepository_getAuthMethods(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 				orgDBWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				am1a := TestAuthMethod(t, testConn, orgDBWrapper, org.PublicId, []string{"ldaps://ldap1.alice.com"}, WithOperationalState(InactiveState))
-				am1b := TestAuthMethod(t, testConn, orgDBWrapper, org.PublicId, []string{"ldaps://ldap2.alice.com"}, WithOperationalState(InactiveState))
+				am1a := TestAuthMethod(t, testConn, orgDBWrapper, org.PublicId, []string{"ldaps://ldap1.alice.com"}, WithOperationalState(testCtx, InactiveState))
+				am1b := TestAuthMethod(t, testConn, orgDBWrapper, org.PublicId, []string{"ldaps://ldap2.alice.com"}, WithOperationalState(testCtx, InactiveState))
 
 				return "", []string{am1a.ScopeId}, []*AuthMethod{am1a, am1b}
 			},
@@ -195,7 +195,7 @@ func TestRepository_getAuthMethods(t *testing.T) {
 
 				return "", []string{am1a.ScopeId}, []*AuthMethod{am1a}
 			},
-			opt: []Option{WithLimit(1), WithOrderByCreateTime(true)},
+			opt: []Option{WithLimit(testCtx, 1), WithOrderByCreateTime(testCtx, true)},
 		},
 		{
 			name: "unauthenticated-user",
@@ -203,13 +203,13 @@ func TestRepository_getAuthMethods(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 				databaseWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				_ = TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1.alice.com"}, WithOperationalState(InactiveState))
-				_ = TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap2.alice.com"}, WithOperationalState(ActivePrivateState))
-				amActivePub := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap3.alice.com"}, WithOperationalState(ActivePublicState))
+				_ = TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1.alice.com"}, WithOperationalState(testCtx, InactiveState))
+				_ = TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap2.alice.com"}, WithOperationalState(testCtx, ActivePrivateState))
+				amActivePub := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap3.alice.com"}, WithOperationalState(testCtx, ActivePublicState))
 
 				return "", []string{amActivePub.ScopeId}, []*AuthMethod{amActivePub}
 			},
-			opt: []Option{WithUnauthenticatedUser(true)},
+			opt: []Option{WithUnauthenticatedUser(testCtx, true)},
 		},
 		{
 			name: "not-found-auth-method-id",
@@ -298,7 +298,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 
 				return []string{am1a.ScopeId}, []*AuthMethod{am1a}, am1a.PublicId
 			},
-			opt: []Option{WithLimit(1), WithOrderByCreateTime(true)},
+			opt: []Option{WithLimit(testCtx, 1), WithOrderByCreateTime(testCtx, true)},
 		},
 		{
 			name: "no-search-criteria",
