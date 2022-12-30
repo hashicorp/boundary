@@ -223,7 +223,7 @@ func Test_getOpts(t *testing.T) {
 		assert.Contains(err.Error(), "asn1: structure error")
 	})
 	t.Run("WithLimit", func(t *testing.T) {
-		opts, err := getOpts(WithLimit(5))
+		opts, err := getOpts(WithLimit(testCtx, 5))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
 		testOpts.withLimit = 5
@@ -231,7 +231,7 @@ func Test_getOpts(t *testing.T) {
 	})
 	t.Run("WithUnauthenticatedUser", func(t *testing.T) {
 		assert := assert.New(t)
-		opts, err := getOpts(WithUnauthenticatedUser(true))
+		opts, err := getOpts(WithUnauthenticatedUser(testCtx, true))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
 		testOpts.withUnauthenticatedUser = true
@@ -239,7 +239,7 @@ func Test_getOpts(t *testing.T) {
 	})
 	t.Run("WithOrderByCreateTime", func(t *testing.T) {
 		assert := assert.New(t)
-		opts, err := getOpts(WithOrderByCreateTime(true))
+		opts, err := getOpts(WithOrderByCreateTime(testCtx, true))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
 		testOpts.withOrderByCreateTime = true
@@ -248,7 +248,7 @@ func Test_getOpts(t *testing.T) {
 	})
 	t.Run("WithOperationalState", func(t *testing.T) {
 		assert := assert.New(t)
-		opts, err := getOpts(WithOperationalState(ActivePublicState))
+		opts, err := getOpts(WithOperationalState(testCtx, ActivePublicState))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
 		testOpts.withOperationalState = ActivePublicState
