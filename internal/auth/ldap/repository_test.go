@@ -50,7 +50,7 @@ func TestNewRepository(t *testing.T) {
 				r:    rw,
 				w:    rw,
 				kms:  kmsCache,
-				opts: []Option{WithLimit(5)},
+				opts: []Option{WithLimit(context.Background(), 5)},
 			},
 			want: &Repository{
 				reader:       rw,
