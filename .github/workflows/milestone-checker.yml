@@ -23,7 +23,7 @@ jobs:
         with:
           repository: "grafana/grafana-github-actions"
           path: ./actions
-          ref: main
+          ref: be89ad434792280ebaa4d982ac72ba548b6f7095
       - name: Install Actions
         run: npm install --production --prefix ./actions
       - name: Run PR Checks
