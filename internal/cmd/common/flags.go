@@ -264,15 +264,17 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 		// First, perform any needed parsing if we are given the type
 		switch field.Name {
 		case "num-" + suffix:
-			// JSON treats all numbers equally, however, we will try to be a
-			// little better so that we don't include decimals if we don't need
-			// to (and don't have to worry about precision if not necessary)
-			if strings.Contains(field.Value.GetValue(), ".") {
+			switch {
+			case field.Value == nil:
+			case strings.Contains(field.Value.GetValue(), "."):
+				// JSON treats all numbers equally, however, we will try to be a
+				// little better so that we don't include decimals if we don't need
+				// to (and don't have to worry about precision if not necessary)
 				val, err = strconv.ParseFloat(field.Value.GetValue(), 64)
 				if err != nil {
 					return fmt.Errorf("error parsing value %q as a float: %w", field.Value, err)
 				}
-			} else {
+			default:
 				val, err = strconv.ParseInt(field.Value.GetValue(), 10, 64)
 				if err != nil {
 					return fmt.Errorf("error parsing value %q as an integer: %w", field.Value, err)
@@ -280,22 +282,32 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			}
 
 		case "string-" + suffix:
-			val = strings.Trim(field.Value.GetValue(), `"`)
+			switch {
+			case field.Value == nil:
+			default:
+				val = strings.Trim(field.Value.GetValue(), `"`)
+			}
 
 		case "bool-" + suffix:
-			switch field.Value.GetValue() {
-			case "true":
-				val = true
-			case "false":
-				val = false
+			switch {
+			case field.Value == nil:
 			default:
-				return fmt.Errorf("error parsing value %q as a bool", field.Value)
+				switch field.Value.GetValue() {
+				case "true":
+					val = true
+				case "false":
+					val = false
+				default:
+					return fmt.Errorf("error parsing value %q as a bool", field.Value)
+				}
 			}
 
 		case suffix:
 			// In this case, use heuristics to just do the right thing the vast
 			// majority of the time
 			switch {
+			case field.Value == nil: // Key-only, set to null
+
 			case field.Value.GetValue() == "null": // Explicit null, we want to set to a null value to clear it
 				val = nil
 
@@ -341,10 +353,10 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 				val = m
 
 			default:
-				// Default is to treat as a string value, or a null value if
-				// Value is a null pointer
+				// Default is to treat as a string value
 				val = field.Value
 			}
+
 		default:
 			return fmt.Errorf("unknown flag %q", field.Name)
 		}

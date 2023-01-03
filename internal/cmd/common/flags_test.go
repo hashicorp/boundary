@@ -72,6 +72,28 @@ func TestPopulateAttrFlags(t *testing.T) {
 			},
 		},
 		{
+			name: "keys-only",
+			args: []string{"-attr", "foo", "-bool-attr", "bar", "-num-attr", "zip", "-string-attr", "zap"},
+			expected: []base.CombinedSliceFlagValue{
+				{
+					Name: "attr",
+					Keys: []string{"foo"},
+				},
+				{
+					Name: "bool-attr",
+					Keys: []string{"bar"},
+				},
+				{
+					Name: "num-attr",
+					Keys: []string{"zip"},
+				},
+				{
+					Name: "string-attr",
+					Keys: []string{"zap"},
+				},
+			},
+		},
+		{
 			name: "mixed",
 			args: []string{"-num-attr", "foo=9820", "-string-attr", "bar=9820", "-attr", "baz=9820"},
 			expected: []base.CombinedSliceFlagValue{
@@ -279,6 +301,33 @@ func TestHandleAttributeFlags(t *testing.T) {
 				},
 			},
 			expectedErr: "as a bool",
+		},
+		{
+			name: "keys-only",
+			args: []base.CombinedSliceFlagValue{
+				{
+					Name: "bool-%s",
+					Keys: []string{"foo"},
+				},
+				{
+					Name: "num-%s",
+					Keys: []string{"bar"},
+				},
+				{
+					Name: "string-%s",
+					Keys: []string{"zip"},
+				},
+				{
+					Name: "%s",
+					Keys: []string{"zap"},
+				},
+			},
+			expectedMap: map[string]any{
+				"foo": nil,
+				"bar": nil,
+				"zip": nil,
+				"zap": nil,
+			},
 		},
 		{
 			name: "attr-only",
