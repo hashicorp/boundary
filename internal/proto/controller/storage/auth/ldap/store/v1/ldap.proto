@@ -193,7 +193,7 @@ message AuthMethod {
   // to the standard attributes of fullname and email.  These maps are
   // represented as key=value where the key equals the from_attribute and the
   // value equals the to_attribute.  For example "preferredName=fullName".  All
-  // attribute names are case insensitive. 
+  // attribute names are case insensitive.
   // @inject_tag: `gorm:"-"`
   repeated string account_attribute_maps = 300 [(custom_options.v1.mask_mapping) = {
     this: "AccountAttributeMaps"
@@ -454,15 +454,13 @@ message Account {
   string member_of_groups = 140;
 }
 
-
-
 // AccountAttributeMap entries are optional from/to account attribute maps.
 message AccountAttributeMap {
   // @inject_tag: `gorm:"primary_key"`
   string ldap_method_id = 10;
 
   // from_attribute is the attribute from the user's entry that you need to map
-  // to a standard account attribute. 
+  // to a standard account attribute.
   // @inject_tag: `gorm:"not_null"`
   string from_attribute = 20;
 
