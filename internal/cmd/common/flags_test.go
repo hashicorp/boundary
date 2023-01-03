@@ -72,26 +72,29 @@ func TestPopulateAttrFlags(t *testing.T) {
 			},
 		},
 		{
-			name: "keys-only",
-			args: []string{"-attr", "foo", "-bool-attr", "bar", "-num-attr", "zip", "-string-attr", "zap"},
+			name: "key-only",
+			args: []string{"-attr", "foo"},
 			expected: []base.CombinedSliceFlagValue{
 				{
 					Name: "attr",
 					Keys: []string{"foo"},
 				},
-				{
-					Name: "bool-attr",
-					Keys: []string{"bar"},
-				},
-				{
-					Name: "num-attr",
-					Keys: []string{"zip"},
-				},
-				{
-					Name: "string-attr",
-					Keys: []string{"zap"},
-				},
 			},
+		},
+		{
+			name:        "bad-key-only-bool",
+			args:        []string{"-bool-attr", "foo"},
+			expectedErr: `invalid value "foo" for flag -bool-attr: key-only value provided but not supported for this flag`,
+		},
+		{
+			name:        "bad-key-only-num",
+			args:        []string{"-num-attr", "foo"},
+			expectedErr: `invalid value "foo" for flag -num-attr: key-only value provided but not supported for this flag`,
+		},
+		{
+			name:        "bad-key-only-string",
+			args:        []string{"-string-attr", "foo"},
+			expectedErr: `invalid value "foo" for flag -string-attr: key-only value provided but not supported for this flag`,
 		},
 		{
 			name: "mixed",
@@ -303,31 +306,46 @@ func TestHandleAttributeFlags(t *testing.T) {
 			expectedErr: "as a bool",
 		},
 		{
-			name: "keys-only",
+			name: "key-only-bare",
+			args: []base.CombinedSliceFlagValue{
+				{
+					Name: "%s",
+					Keys: []string{"foo"},
+				},
+			},
+			expectedMap: map[string]any{
+				"foo": nil,
+			},
+		},
+		{
+			name: "bad-key-only-bool",
 			args: []base.CombinedSliceFlagValue{
 				{
 					Name: "bool-%s",
 					Keys: []string{"foo"},
 				},
+			},
+			expectedErr: `does not support key-only values`,
+		},
+		{
+			name: "bad-key-only-num",
+			args: []base.CombinedSliceFlagValue{
 				{
 					Name: "num-%s",
-					Keys: []string{"bar"},
+					Keys: []string{"foo"},
 				},
+			},
+			expectedErr: `does not support key-only values`,
+		},
+		{
+			name: "bad-key-only-string",
+			args: []base.CombinedSliceFlagValue{
 				{
 					Name: "string-%s",
-					Keys: []string{"zip"},
-				},
-				{
-					Name: "%s",
-					Keys: []string{"zap"},
+					Keys: []string{"foo"},
 				},
 			},
-			expectedMap: map[string]any{
-				"foo": nil,
-				"bar": nil,
-				"zip": nil,
-				"zap": nil,
-			},
+			expectedErr: `does not support key-only values`,
 		},
 		{
 			name: "attr-only",

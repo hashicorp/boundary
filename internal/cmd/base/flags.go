@@ -910,6 +910,9 @@ func (f *FlagSet) Var(value flag.Value, name, usage string) {
 // Value parts so that validation can happen at parsing time. If you don't want
 // this kind of behavior, simply combine them, or set KvSplit to false.
 //
+// If KeyOnlyAllowed is true then it is valid to parse an input with only a key
+// segment and no value.
+//
 // If KeyDelimiter is non-nil (along with KvSplit being true), the string will
 // be used to split the key. Otherwise, the Keys will be a single-element slice
 // containing the full value.
@@ -925,6 +928,7 @@ type CombinationSliceVar struct {
 	Target         *[]CombinedSliceFlagValue
 	Completion     complete.Predictor
 	KvSplit        bool
+	KeyOnlyAllowed bool
 	KeyDelimiter   *string
 	ProtoCompatKey bool
 }
@@ -934,7 +938,7 @@ func (f *FlagSet) CombinationSliceVar(i *CombinationSliceVar) {
 		Name:       i.Name,
 		Aliases:    i.Aliases,
 		Usage:      i.Usage,
-		Value:      newCombinedSliceValue(i.Name, i.Target, i.Hidden, i.KvSplit, i.KeyDelimiter, i.ProtoCompatKey),
+		Value:      newCombinedSliceValue(i.Name, i.Target, i.Hidden, i.KvSplit, i.KeyOnlyAllowed, i.KeyDelimiter, i.ProtoCompatKey),
 		Completion: i.Completion,
 	})
 }
@@ -951,17 +955,19 @@ type combinedSliceValue struct {
 	name           string
 	hidden         bool
 	kvSplit        bool
+	keyOnlyAllowed bool
 	keyDelimiter   *string
 	protoCompatKey bool
 	target         *[]CombinedSliceFlagValue
 }
 
-func newCombinedSliceValue(name string, target *[]CombinedSliceFlagValue, hidden, kvSplit bool, keyDelimiter *string, protoCompatKey bool) *combinedSliceValue {
+func newCombinedSliceValue(name string, target *[]CombinedSliceFlagValue, hidden, kvSplit, keyOnlyAllowed bool, keyDelimiter *string, protoCompatKey bool) *combinedSliceValue {
 	return &combinedSliceValue{
 		name:           name,
 		hidden:         hidden,
 		kvSplit:        kvSplit,
 		keyDelimiter:   keyDelimiter,
+		keyOnlyAllowed: keyOnlyAllowed,
 		protoCompatKey: protoCompatKey,
 		target:         target,
 	}
@@ -982,6 +988,9 @@ func (c *combinedSliceValue) Set(val string) error {
 			// This shouldn't happen
 			return fmt.Errorf("unexpected length of string after splitting")
 		case 1:
+			if !c.keyOnlyAllowed {
+				return fmt.Errorf("key-only value provided but not supported for this flag")
+			}
 			ret.Keys = []string{kv[0]}
 			ret.Value = nil
 		default:

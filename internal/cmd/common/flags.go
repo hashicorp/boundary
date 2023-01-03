@@ -164,6 +164,7 @@ func PopulateCombinedSliceFlagValue(input CombinedSliceFlagValuePopulationInput)
 				KvSplit:        true,
 				KeyDelimiter:   &keyDelimiter,
 				ProtoCompatKey: true,
+				KeyOnlyAllowed: true,
 				Usage: fmt.Sprintf(
 					"A key=value pair to add to the request's %s map. "+
 						"This can also be a key value only which will set a JSON null as the value. "+
@@ -264,8 +265,10 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 		// First, perform any needed parsing if we are given the type
 		switch field.Name {
 		case "num-" + suffix:
+			if field.Value == nil {
+				return fmt.Errorf("num-%s flag does not support key-only values", suffix)
+			}
 			switch {
-			case field.Value == nil:
 			case strings.Contains(field.Value.GetValue(), "."):
 				// JSON treats all numbers equally, however, we will try to be a
 				// little better so that we don't include decimals if we don't need
@@ -282,24 +285,22 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			}
 
 		case "string-" + suffix:
-			switch {
-			case field.Value == nil:
-			default:
-				val = strings.Trim(field.Value.GetValue(), `"`)
+			if field.Value == nil {
+				return fmt.Errorf("string-%s flag does not support key-only values", suffix)
 			}
+			val = strings.Trim(field.Value.GetValue(), `"`)
 
 		case "bool-" + suffix:
-			switch {
-			case field.Value == nil:
+			if field.Value == nil {
+				return fmt.Errorf("bool-%s flag does not support key-only values", suffix)
+			}
+			switch field.Value.GetValue() {
+			case "true":
+				val = true
+			case "false":
+				val = false
 			default:
-				switch field.Value.GetValue() {
-				case "true":
-					val = true
-				case "false":
-					val = false
-				default:
-					return fmt.Errorf("error parsing value %q as a bool", field.Value)
-				}
+				return fmt.Errorf("error parsing value %q as a bool", field.Value)
 			}
 
 		case suffix:
