@@ -1,4 +1,4 @@
-package handlers_test
+package handlers
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
-	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -140,7 +139,7 @@ func TestLookupSession(t *testing.T) {
 	err = repo.AddSessionCredentials(ctx, sessWithCreds.ProjectId, sessWithCreds.GetPublicId(), workerCreds)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
 	require.NotNil(t, s)
 
 	cases := []struct {
@@ -276,6 +275,9 @@ func TestAuthorizeConnection(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
+	currentConnFn := connectionRouteFn
+	connectionRouteFn = singleHopConnectionRoute
+
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	serversRepoFn := func() (*server.Repository, error) {
@@ -320,7 +322,7 @@ func TestAuthorizeConnection(t *testing.T) {
 	repo, err := sessionRepoFn()
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kmsCache, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, new(atomic.Int64))
 	require.NotNil(t, s)
 
 	cases := []struct {
@@ -344,6 +346,7 @@ func TestAuthorizeConnection(t *testing.T) {
 			want: &pbs.AuthorizeConnectionResponse{
 				Status:          pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
 				ConnectionsLeft: -1,
+				Route:           []string{worker.PublicId},
 			},
 		},
 		{
@@ -371,6 +374,7 @@ func TestAuthorizeConnection(t *testing.T) {
 			want: &pbs.AuthorizeConnectionResponse{
 				Status:          pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_AUTHORIZED,
 				ConnectionsLeft: -1,
+				Route:           []string{worker.PublicId},
 			},
 		},
 		{
@@ -418,6 +422,7 @@ func TestAuthorizeConnection(t *testing.T) {
 			assert.Empty(t, cmp.Diff(resp, tc.want, protocmp.Transform()))
 		})
 	}
+	connectionRouteFn = currentConnFn
 }
 
 func TestCancelSession(t *testing.T) {
@@ -458,7 +463,7 @@ func TestCancelSession(t *testing.T) {
 		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
-	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
 	require.NotNil(t, s)
 	cases := []struct {
 		name       string
@@ -540,13 +545,13 @@ func TestHcpbWorkers(t *testing.T) {
 		var opt []server.Option
 		if i > 0 {
 			// Out of three KMS workers we expect to see two
-			opt = append(opt, server.WithWorkerTags(&server.Tag{Key: handlers.ManagedWorkerTagKey, Value: "true"}))
+			opt = append(opt, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}))
 		}
 		server.TestKmsWorker(t, conn, wrapper, append(opt, server.WithAddress(fmt.Sprintf("kms.%d", i)))...)
 		server.TestPkiWorker(t, conn, wrapper, opt...)
 	}
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, new(sync.Map), kmsCache, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, new(atomic.Int64))
 	require.NotNil(t, s)
 
 	res, err := s.ListHcpbWorkers(ctx, &pbs.ListHcpbWorkersRequest{})
