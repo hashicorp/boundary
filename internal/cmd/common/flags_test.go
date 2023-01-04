@@ -325,7 +325,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 					Keys: []string{"foo"},
 				},
 			},
-			expectedErr: `does not support key-only values`,
+			expectedErr: `requires a value`,
 		},
 		{
 			name: "bad-key-only-num",
@@ -335,7 +335,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 					Keys: []string{"foo"},
 				},
 			},
-			expectedErr: `does not support key-only values`,
+			expectedErr: `requires a value`,
 		},
 		{
 			name: "bad-key-only-string",
@@ -345,7 +345,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 					Keys: []string{"foo"},
 				},
 			},
-			expectedErr: `does not support key-only values`,
+			expectedErr: `requires a value`,
 		},
 		{
 			name: "attr-only",
