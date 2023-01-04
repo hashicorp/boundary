@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // TestPopulateAttrFlags tests common patterns we'll actually be using. Note
@@ -29,12 +30,12 @@ func TestPopulateAttrFlags(t *testing.T) {
 				{
 					Name:  "string-attr",
 					Keys:  []string{"foo"},
-					Value: "bar",
+					Value: wrapperspb.String("bar"),
 				},
 				{
 					Name:  "string-attr",
 					Keys:  []string{"bar"},
-					Value: `"baz"`,
+					Value: wrapperspb.String(`"baz"`),
 				},
 			},
 		},
@@ -45,12 +46,12 @@ func TestPopulateAttrFlags(t *testing.T) {
 				{
 					Name:  "num-attr",
 					Keys:  []string{"foo"},
-					Value: "-1.2",
+					Value: wrapperspb.String("-1.2"),
 				},
 				{
 					Name:  "num-attr",
 					Keys:  []string{"bar"},
-					Value: "5",
+					Value: wrapperspb.String("5"),
 				},
 			},
 		},
@@ -61,14 +62,39 @@ func TestPopulateAttrFlags(t *testing.T) {
 				{
 					Name:  "bool-attr",
 					Keys:  []string{"foo"},
-					Value: "true",
+					Value: wrapperspb.String("true"),
 				},
 				{
 					Name:  "bool-attr",
 					Keys:  []string{"bar"},
-					Value: "false",
+					Value: wrapperspb.String("false"),
 				},
 			},
+		},
+		{
+			name: "key-only",
+			args: []string{"-attr", "foo"},
+			expected: []base.CombinedSliceFlagValue{
+				{
+					Name: "attr",
+					Keys: []string{"foo"},
+				},
+			},
+		},
+		{
+			name:        "bad-key-only-bool",
+			args:        []string{"-bool-attr", "foo"},
+			expectedErr: `invalid value "foo" for flag -bool-attr: key-only value provided but not supported for this flag`,
+		},
+		{
+			name:        "bad-key-only-num",
+			args:        []string{"-num-attr", "foo"},
+			expectedErr: `invalid value "foo" for flag -num-attr: key-only value provided but not supported for this flag`,
+		},
+		{
+			name:        "bad-key-only-string",
+			args:        []string{"-string-attr", "foo"},
+			expectedErr: `invalid value "foo" for flag -string-attr: key-only value provided but not supported for this flag`,
 		},
 		{
 			name: "mixed",
@@ -77,17 +103,17 @@ func TestPopulateAttrFlags(t *testing.T) {
 				{
 					Name:  "num-attr",
 					Keys:  []string{"foo"},
-					Value: "9820",
+					Value: wrapperspb.String("9820"),
 				},
 				{
 					Name:  "string-attr",
 					Keys:  []string{"bar"},
-					Value: "9820",
+					Value: wrapperspb.String("9820"),
 				},
 				{
 					Name:  "attr",
 					Keys:  []string{"baz"},
-					Value: "9820",
+					Value: wrapperspb.String("9820"),
 				},
 			},
 		},
@@ -98,17 +124,17 @@ func TestPopulateAttrFlags(t *testing.T) {
 				{
 					Name:  "num-attr",
 					Keys:  []string{"foo", "bar", "baz"},
-					Value: "9820",
+					Value: wrapperspb.String("9820"),
 				},
 				{
 					Name:  "string-attr",
 					Keys:  []string{"bar", "baz", "foo"},
-					Value: "9820",
+					Value: wrapperspb.String("9820"),
 				},
 				{
 					Name:  "attr",
 					Keys:  []string{"baz", "foo", "bar"},
-					Value: "9820",
+					Value: wrapperspb.String("9820"),
 				},
 			},
 		},
@@ -129,7 +155,7 @@ func TestPopulateAttrFlags(t *testing.T) {
 				{
 					Name:  "attr",
 					Keys:  []string{"filter"},
-					Value: "tagName eq 'application:south-seas'",
+					Value: wrapperspb.String("tagName eq 'application:south-seas'"),
 				},
 			},
 		},
@@ -195,12 +221,12 @@ func TestHandleAttributeFlags(t *testing.T) {
 				{
 					Name:  "string-%s",
 					Keys:  []string{"foo"},
-					Value: "bar",
+					Value: wrapperspb.String("bar"),
 				},
 				{
 					Name:  "string-%s",
 					Keys:  []string{"bar"},
-					Value: `"baz"`,
+					Value: wrapperspb.String(`"baz"`),
 				},
 			},
 			expectedMap: map[string]any{
@@ -214,12 +240,12 @@ func TestHandleAttributeFlags(t *testing.T) {
 				{
 					Name:  "num-%s",
 					Keys:  []string{"foo"},
-					Value: "-1.2",
+					Value: wrapperspb.String("-1.2"),
 				},
 				{
 					Name:  "num-%s",
 					Keys:  []string{"bar"},
-					Value: "5",
+					Value: wrapperspb.String("5"),
 				},
 			},
 			expectedMap: map[string]any{
@@ -233,7 +259,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 				{
 					Name:  "num-%s",
 					Keys:  []string{"foo"},
-					Value: "-15d.2",
+					Value: wrapperspb.String("-15d.2"),
 				},
 			},
 			expectedErr: "as a float",
@@ -244,7 +270,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 				{
 					Name:  "num-%s",
 					Keys:  []string{"foo"},
-					Value: "-15d3",
+					Value: wrapperspb.String("-15d3"),
 				},
 			},
 			expectedErr: "as an int",
@@ -255,12 +281,12 @@ func TestHandleAttributeFlags(t *testing.T) {
 				{
 					Name:  "bool-%s",
 					Keys:  []string{"foo"},
-					Value: "true",
+					Value: wrapperspb.String("true"),
 				},
 				{
 					Name:  "bool-%s",
 					Keys:  []string{"bar"},
-					Value: "false",
+					Value: wrapperspb.String("false"),
 				},
 			},
 			expectedMap: map[string]any{
@@ -274,10 +300,52 @@ func TestHandleAttributeFlags(t *testing.T) {
 				{
 					Name:  "bool-%s",
 					Keys:  []string{"foo"},
-					Value: "t",
+					Value: wrapperspb.String("t"),
 				},
 			},
 			expectedErr: "as a bool",
+		},
+		{
+			name: "key-only-bare",
+			args: []base.CombinedSliceFlagValue{
+				{
+					Name: "%s",
+					Keys: []string{"foo"},
+				},
+			},
+			expectedMap: map[string]any{
+				"foo": nil,
+			},
+		},
+		{
+			name: "bad-key-only-bool",
+			args: []base.CombinedSliceFlagValue{
+				{
+					Name: "bool-%s",
+					Keys: []string{"foo"},
+				},
+			},
+			expectedErr: `does not support key-only values`,
+		},
+		{
+			name: "bad-key-only-num",
+			args: []base.CombinedSliceFlagValue{
+				{
+					Name: "num-%s",
+					Keys: []string{"foo"},
+				},
+			},
+			expectedErr: `does not support key-only values`,
+		},
+		{
+			name: "bad-key-only-string",
+			args: []base.CombinedSliceFlagValue{
+				{
+					Name: "string-%s",
+					Keys: []string{"foo"},
+				},
+			},
+			expectedErr: `does not support key-only values`,
 		},
 		{
 			name: "attr-only",
@@ -285,53 +353,53 @@ func TestHandleAttributeFlags(t *testing.T) {
 				{
 					Name:  "%s",
 					Keys:  []string{"b1"},
-					Value: "true",
+					Value: wrapperspb.String("true"),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"b2"},
-					Value: "false",
+					Value: wrapperspb.String("false"),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"s1"},
-					Value: "scoopde",
+					Value: wrapperspb.String("scoopde"),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"s2"},
-					Value: `"woop"`,
+					Value: wrapperspb.String(`"woop"`),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"n1"},
-					Value: "-1.2",
+					Value: wrapperspb.String("-1.2"),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"n2"},
-					Value: "5",
+					Value: wrapperspb.String("5"),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"a"},
-					Value: `["foo", 1.5, true, ["bar"], {"hip": "hop"}]`,
+					Value: wrapperspb.String(`["foo", 1.5, true, ["bar"], {"hip": "hop"}]`),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"nil"},
-					Value: "null",
+					Value: wrapperspb.String("null"),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"m"},
-					Value: `{"b": true, "n": 6, "s": "scoopde", "a": ["bar"], "m": {"hip": "hop"}}`,
+					Value: wrapperspb.String(`{"b": true, "n": 6, "s": "scoopde", "a": ["bar"], "m": {"hip": "hop"}}`),
 				},
 			},
 			expectedMap: map[string]any{
 				"b1": true,
 				"b2": false,
-				"s1": "scoopde",
+				"s1": wrapperspb.String("scoopde"),
 				"s2": "woop",
 				"n1": float64(-1.2),
 				"n2": int64(5),
@@ -358,43 +426,43 @@ func TestHandleAttributeFlags(t *testing.T) {
 				{
 					Name:  "%s",
 					Keys:  []string{"bools"},
-					Value: "true",
+					Value: wrapperspb.String("true"),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"bools"},
-					Value: "false",
+					Value: wrapperspb.String("false"),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"strings", "s1"},
-					Value: "scoopde",
+					Value: wrapperspb.String("scoopde"),
 				},
 				{
 					Name:  "%s",
-					Keys:  []string{"strings", "s2"},
-					Value: `"woop"`,
-				},
-				{
-					Name:  "%s",
-					Keys:  []string{"numbers", "reps"},
-					Value: "-1.2",
+					Keys:  []string{"strings", "s2"}, // Overwritten below
+					Value: wrapperspb.String(`"woop"`),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"numbers", "reps"},
-					Value: "5",
+					Value: wrapperspb.String("-1.2"),
+				},
+				{
+					Name:  "%s",
+					Keys:  []string{"numbers", "reps"},
+					Value: wrapperspb.String("5"),
 				},
 				{
 					Name:  "%s",
 					Keys:  []string{"strings", "s2"}, // This will overwrite above!
-					Value: "null",
+					Value: wrapperspb.String("null"),
 				},
 			},
 			expectedMap: map[string]any{
 				"bools": []any{true, false},
 				"strings": map[string]any{
-					"s1": "scoopde",
+					"s1": wrapperspb.String("scoopde"),
 					"s2": nil,
 				},
 				"numbers": map[string]any{

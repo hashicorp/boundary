@@ -118,7 +118,7 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, _ *base.FlagSets, opts *[]c
 	switch len(c.flagCredentialMapping) {
 	case 0:
 	case 1:
-		if len(c.flagCredentialMapping[0].Keys) == 0 && c.flagCredentialMapping[0].Value == "null" {
+		if len(c.flagCredentialMapping[0].Keys) == 1 && c.flagCredentialMapping[0].Keys[0] == "null" && c.flagCredentialMapping[0].Value == nil {
 			*opts = append(*opts, credentiallibraries.DefaultCredentialMappingOverrides())
 			break
 		}
@@ -127,16 +127,16 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, _ *base.FlagSets, opts *[]c
 		mappings := make(map[string]any, len(c.flagCredentialMapping))
 		for _, mapping := range c.flagCredentialMapping {
 			switch {
-			case len(mapping.Keys) != 1 || mapping.Keys[0] == "" || mapping.Value == "":
+			case len(mapping.Keys) != 1 || mapping.Keys[0] == "" || mapping.Value == nil || mapping.Value.GetValue() == "":
 				// mapping override does not support key segments (e.g. 'x.y=z')
 				c.UI.Error("Credential mapping override must be in the format 'key=value', 'key=null' to clear field or 'null' to clear all.")
 				return false
-			case mapping.Value == "null":
+			case mapping.Value.GetValue() == "null":
 				// user provided 'key=null' indicating the field specific override should
 				// be cleared, set map value to nil
 				mappings[mapping.Keys[0]] = nil
 			default:
-				mappings[mapping.Keys[0]] = mapping.Value
+				mappings[mapping.Keys[0]] = mapping.Value.GetValue()
 			}
 		}
 		*opts = append(*opts, credentiallibraries.WithCredentialMappingOverrides(mappings))
