@@ -13,8 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliSessionCancelAdmin uses the boundary cli to start and then cancel a session
-func TestCliSessionCancelAdmin(t *testing.T) {
+// TestCliBytesUpDownEmpty uses the cli to verify that the bytes_up/bytes_down fields of a
+// session correctly increase when data is transmitting during a session.
+func TestCliBytesUpDownEmpty(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -36,7 +37,7 @@ func TestCliSessionCancelAdmin(t *testing.T) {
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
-	// Connect to target to create a session
+	// Create a session where no additional commands are run
 	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
@@ -53,41 +54,39 @@ func TestCliSessionCancelAdmin(t *testing.T) {
 				"-o", "IdentitiesOnly=yes", // forces the use of the provided key
 				"-p", "{{boundary.port}}", // this is provided by boundary
 				"{{boundary.ip}}",
-				"hostname -i; sleep 60",
 			),
 		)
 	}()
 	t.Cleanup(cancel)
-	session := boundary.WaitForSessionToBeActiveCli(t, ctx, newProjectId)
+
+	session := boundary.WaitForSessionCli(t, ctx, newProjectId)
 	assert.Equal(t, newTargetId, session.TargetId)
 	assert.Equal(t, newHostId, session.HostId)
 
-	// Cancel session
-	t.Log("Canceling session...")
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("sessions", "cancel", "-id", session.Id),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	// Confirm that bytesUp and bytesDown do not change
+	bytesUp := 0
+	bytesDown := 0
+	t.Log("Reading bytes_up/bytes_down values...")
+	for i := 0; i < 3; i++ {
+		if i != 0 {
+			time.Sleep(2 * time.Second)
+		}
 
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newSessionReadResult sessions.SessionReadResult
-	err = json.Unmarshal(output.Stdout, &newSessionReadResult)
-	require.NoError(t, err)
-	require.Condition(t, func() bool {
-		return newSessionReadResult.Item.Status == "canceling" || newSessionReadResult.Item.Status == "terminated"
-	})
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+		var newSessionReadResult sessions.SessionReadResult
+		err = json.Unmarshal(output.Stdout, &newSessionReadResult)
+		require.NoError(t, err)
+		bytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
+		bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
 
-	// Check output from session
-	select {
-	case output := <-errChan:
-		// `boundary connect` returns a 255 when cancelled
-		require.Equal(t, 255, output.ExitCode, string(output.Stdout), string(output.Stderr))
-	case <-time.After(time.Second * 5):
-		t.Fatal("Timed out waiting for session command to exit")
+		if i != 1 {
+			require.Equal(t, bytesUp, int(newSessionReadResult.Item.Connections[0].BytesUp))
+			require.Equal(t, bytesDown, int(newSessionReadResult.Item.Connections[0].BytesDown))
+		}
+
+		t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
 	}
-
-	t.Log("Successfully cancelled session")
 }

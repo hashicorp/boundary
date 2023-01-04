@@ -3,7 +3,6 @@ package static_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 
@@ -52,8 +51,11 @@ func TestCliConnectTargetWithSsh(t *testing.T) {
 	require.NoError(t, err)
 
 	newSessionAuthorization := newSessionAuthorizationResult.Item
-	retrievedUser := fmt.Sprintf("%s", newSessionAuthorization.Credentials[0].Credential["username"])
-	retrievedKey := fmt.Sprintf("%s\n", newSessionAuthorization.Credentials[0].Credential["private_key"])
+	retrievedUser, ok := newSessionAuthorization.Credentials[0].Credential["username"].(string)
+	require.True(t, ok)
+	retrievedKey, ok := newSessionAuthorization.Credentials[0].Credential["private_key"].(string)
+	require.True(t, ok)
+	retrievedKey += "\n"
 	assert.Equal(t, c.TargetSshUser, retrievedUser)
 
 	k, err := os.ReadFile(c.TargetSshKeyPath)

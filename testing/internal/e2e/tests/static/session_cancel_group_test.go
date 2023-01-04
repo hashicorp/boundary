@@ -3,6 +3,7 @@ package static_test
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"testing"
 	"time"
 
@@ -83,7 +84,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	var response boundary.CliError
 	err = json.Unmarshal(output.Stderr, &response)
 	require.NoError(t, err)
-	require.Equal(t, 403, int(response.Status))
+	require.Equal(t, http.StatusForbidden, int(response.Status))
 	t.Log("Successfully received an error when connecting to target as a user without permissions")
 
 	// Create a group
@@ -168,7 +169,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	select {
 	case output := <-errChan:
 		// `boundary connect` returns a 255 when cancelled
-		require.Equal(t, output.ExitCode, 255, string(output.Stdout), string(output.Stderr))
+		require.Equal(t, 255, output.ExitCode, string(output.Stdout), string(output.Stderr))
 	case <-time.After(time.Second * 5):
 		t.Fatal("Timed out waiting for session command to exit")
 	}

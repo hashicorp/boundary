@@ -273,7 +273,8 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	var authenticationResult boundary.AuthenticateCliOutput
 	err = json.Unmarshal(buf.Bytes(), &authenticationResult)
 	require.NoError(t, err)
-	auth_token := authenticationResult.Item.Attributes["token"].(string)
+	auth_token, ok := authenticationResult.Item.Attributes["token"].(string)
+	require.True(t, ok)
 
 	connectTarget := infra.ConnectToTarget(t, te.Pool, te.Network, te.Boundary.UriNetwork, auth_token, newTargetId)
 	t.Cleanup(func() {
