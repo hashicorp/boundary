@@ -266,7 +266,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 		switch field.Name {
 		case "num-" + suffix:
 			if field.Value == nil {
-				return fmt.Errorf("num-%s flag does not support key-only values", suffix)
+				return fmt.Errorf("num-%s flag requires a value", suffix)
 			}
 			switch {
 			case strings.Contains(field.Value.GetValue(), "."):
@@ -286,13 +286,13 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 
 		case "string-" + suffix:
 			if field.Value == nil {
-				return fmt.Errorf("string-%s flag does not support key-only values", suffix)
+				return fmt.Errorf("string-%s flag requires a value", suffix)
 			}
 			val = strings.Trim(field.Value.GetValue(), `"`)
 
 		case "bool-" + suffix:
 			if field.Value == nil {
-				return fmt.Errorf("bool-%s flag does not support key-only values", suffix)
+				return fmt.Errorf("bool-%s flag requires a value", suffix)
 			}
 			switch field.Value.GetValue() {
 			case "true":
