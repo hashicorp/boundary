@@ -30,4 +30,4 @@ jobs:
         uses: ./actions/pr-checks
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          configPath: configs/milestone-check
+          configPath: milestone-check
