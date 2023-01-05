@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"testing"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
+	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/tests/helper"

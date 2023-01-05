@@ -2,7 +2,6 @@ package credentials_test
 
 import (
 	"fmt"
-	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"net/http"
 	"testing"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/iam"
