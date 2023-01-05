@@ -211,7 +211,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			wantMgmAcctIds: []string{acct3.PublicId},
 		},
 		{
-			name:    "duplicate-name", // must follow "with-valid-description" test
+			name:    "duplicate-name", // must follow "valid-description" test
 			ctx:     testCtx,
 			repo:    testRepo,
 			scopeId: org.GetPublicId(),

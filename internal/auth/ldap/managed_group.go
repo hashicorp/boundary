@@ -24,6 +24,12 @@ type ManagedGroup struct {
 // AuthMethod. Supported options are WithName and WithDescription.
 func NewManagedGroup(ctx context.Context, authMethodId string, groupNames []string, opt ...Option) (*ManagedGroup, error) {
 	const op = "ldap.NewManagedGroup"
+	switch {
+	case authMethodId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
+	case len(groupNames) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing group names")
+	}
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -40,22 +46,7 @@ func NewManagedGroup(ctx context.Context, authMethodId string, groupNames []stri
 			GroupNames:   string(n),
 		},
 	}
-	if err := mg.validate(ctx, op); err != nil {
-		return nil, err // intentionally not wrapped.
-	}
-
 	return mg, nil
-}
-
-// validate the Managed Group.  On success, it will return nil.
-func (mg *ManagedGroup) validate(ctx context.Context, caller errors.Op) error {
-	if mg.AuthMethodId == "" {
-		return errors.New(ctx, errors.InvalidParameter, caller, "missing auth method id")
-	}
-	if len(mg.GroupNames) == 0 {
-		return errors.New(ctx, errors.InvalidParameter, caller, "missing filter")
-	}
-	return nil
 }
 
 // AllocManagedGroup makes an empty one in memory

@@ -1303,7 +1303,8 @@ type ManagedGroup struct {
 	// @inject_tag: `gorm:"not_null"`
 	AuthMethodId string `protobuf:"bytes,70,opt,name=auth_method_id,json=authMethodId,proto3" json:"auth_method_id,omitempty" gorm:"not_null"`
 	// groups is json marshalled list of groups that make up the ManagedGroup
-	GroupNames string `protobuf:"bytes,80,opt,name=group_names,json=groupNames,proto3" json:"group_names,omitempty"`
+	// @inject_tag: `gorm:"not_null"`
+	GroupNames string `protobuf:"bytes,80,opt,name=group_names,json=groupNames,proto3" json:"group_names,omitempty" gorm:"not_null"`
 }
 
 func (x *ManagedGroup) Reset() {

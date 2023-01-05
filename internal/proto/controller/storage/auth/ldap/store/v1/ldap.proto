@@ -510,5 +510,6 @@ message ManagedGroup {
   string auth_method_id = 70;
 
   // groups is json marshalled list of groups that make up the ManagedGroup
+  // @inject_tag: `gorm:"not_null"`
   string group_names = 80;
 }
