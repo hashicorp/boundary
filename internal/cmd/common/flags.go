@@ -288,7 +288,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			if field.Value == nil {
 				return fmt.Errorf("string-%s flag requires a value", suffix)
 			}
-			val = strings.Trim(field.Value.GetValue(), `"`)
+			val = field.Value.GetValue()
 
 		case "bool-" + suffix:
 			if field.Value == nil {
@@ -317,9 +317,6 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 
 			case field.Value.GetValue() == "false": // bool false
 				val = false
-
-			case strings.HasPrefix(field.Value.GetValue(), `"`): // explicitly quoted string
-				val = strings.Trim(field.Value.GetValue(), `"`)
 
 			case jsonNumberRegex.MatchString(strings.Trim(field.Value.GetValue(), `"`)): // number
 				// Same logic as above
@@ -355,7 +352,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 
 			default:
 				// Default is to treat as a string value
-				val = field.Value
+				val = field.Value.GetValue()
 			}
 
 		default:
