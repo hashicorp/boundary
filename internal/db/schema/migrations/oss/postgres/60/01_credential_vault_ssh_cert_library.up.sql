@@ -1,5 +1,25 @@
 begin;
 
+  -- drop constraint so we can add ssh_certificate
+  alter table credential_type_enm
+    drop constraint only_predefined_credential_types_allowed;
+
+  -- Add new constraint that only allows known types
+  -- This replaces the constraint defined in 39/01_static_ssh_private_key_creds_up
+  alter table credential_type_enm
+    add constraint only_predefined_credential_types_allowed
+      check (
+        name in (
+          'unspecified',
+          'username_password',
+          'ssh_private_key',
+          'ssh_certificate'
+        )
+      );
+
+  insert into credential_type_enm (name)
+   values ('ssh_certificate');
+
   create table credential_vault_ssh_cert_key_type_enm (
     name text primary key
       constraint only_predefined_key_types_allowed
@@ -59,5 +79,12 @@ begin;
     constraint credential_vault_ssh_cert_library_store_id_public_id_uq
       unique(store_id, public_id)
   );
+
+  insert into oplog_ticket (name, version)
+  values
+    ('credential_vault_ssh_cert_library', 1);
+
+  create trigger insert_credential_library_subtype before insert on credential_vault_ssh_cert_library
+    for each row execute procedure insert_credential_library_subtype();
 
 commit;
