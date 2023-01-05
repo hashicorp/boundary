@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/session"
@@ -75,6 +76,7 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 	return func(t *testing.T) {
 		t.Parallel()
 		require := require.New(t)
+		tg.SetupSuiteTargetFilters(t)
 		logger := hclog.New(&hclog.LoggerOptions{
 			Name:  t.Name(),
 			Level: hclog.Trace,
@@ -201,6 +203,7 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 	const op = "cluster.testWorkerSessionCleanupMulti"
 	return func(t *testing.T) {
 		t.Parallel()
+		tg.SetupSuiteTargetFilters(t)
 		require := require.New(t)
 		logger := hclog.New(&hclog.LoggerOptions{
 			Name:  t.Name(),

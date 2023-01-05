@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/tests/helper"
@@ -29,6 +30,7 @@ func TestCustomX509Verification_Client(t *testing.T) {
 	ctx := context.Background()
 	ec := event.TestEventerConfig(t, "TestWorkerReplay", event.TestWithObservationSink(t), event.TestWithSysSink(t))
 	testLock := &sync.Mutex{}
+	tg.SetupSuiteTargetFilters(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 		Name:  "test",
@@ -174,6 +176,7 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 		t.Parallel()
 		req := require.New(t)
 		ctx := context.Background()
+		tg.SetupSuiteTargetFilters(t)
 
 		conf, err := config.DevController()
 		conf.Eventing = &ec.EventerConfig
