@@ -139,27 +139,6 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "valid-POST-method",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:     cs.GetPublicId(),
-					KeyType:     "POST",
-					Description: "test-description-repo",
-					VaultPath:   "/some/path",
-					Username:    "admin",
-				},
-			},
-			want: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:     cs.GetPublicId(),
-					KeyType:     "POST",
-					Description: "test-description-repo",
-					VaultPath:   "/some/path",
-					Username:    "admin",
-				},
-			},
-		},
 	}
 
 	for _, tt := range tests {
@@ -181,7 +160,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+			assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -245,7 +224,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -284,7 +263,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -294,7 +273,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		got2, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, CredentialLibraryPrefix, got2.GetPublicId())
+		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got2.GetPublicId())
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
