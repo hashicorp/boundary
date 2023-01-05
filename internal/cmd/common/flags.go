@@ -352,7 +352,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 
 			default:
 				// Default is to treat as a string value
-				val = strings.Trim(field.Value.GetValue(), `"`)
+				val = field.Value.GetValue()
 			}
 
 		default:

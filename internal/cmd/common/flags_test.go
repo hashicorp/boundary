@@ -98,7 +98,7 @@ func TestPopulateAttrFlags(t *testing.T) {
 		},
 		{
 			name: "mixed",
-			args: []string{"-num-attr", "foo=9820", "-string-attr", "bar=9820", "-attr", "baz=9820", "-attr", "zoom=\"flubber\""},
+			args: []string{"-num-attr", "foo=9820", "-string-attr", "bar=9820", "-attr", "baz=9820", "-attr", `zoom="flubber"`},
 			expected: []base.CombinedSliceFlagValue{
 				{
 					Name:  "num-attr",
@@ -118,7 +118,7 @@ func TestPopulateAttrFlags(t *testing.T) {
 				{
 					Name:  "attr",
 					Keys:  []string{"zoom"},
-					Value: wrapperspb.String(`"flubber"`),
+					Value: wrapperspb.String("\"flubber\""),
 				},
 			},
 		},
@@ -373,7 +373,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 				{
 					Name:  "%s",
 					Keys:  []string{"s2"},
-					Value: wrapperspb.String(`"woop"`),
+					Value: wrapperspb.String("\"woo\"p"),
 				},
 				{
 					Name:  "%s",
@@ -405,7 +405,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 				"b1": true,
 				"b2": false,
 				"s1": "scoopde",
-				"s2": "woop",
+				"s2": "\"woo\"p",
 				"n1": float64(-1.2),
 				"n2": int64(5),
 				"a": []any{
