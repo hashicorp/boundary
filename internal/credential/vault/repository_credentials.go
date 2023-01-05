@@ -94,7 +94,7 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 		if err != nil {
 			return nil, err
 		}
-		updateQuery, updateQueryValues := updateSessionQuery(underlyingCred, sessionId, lib.Purpose)
+		updateQuery, updateQueryValues := updateSessionQuery(underlyingCred, sessionId, cred.Purpose())
 		if err != nil {
 			return nil, err
 		}

@@ -25,7 +25,7 @@ var _ credential.Dynamic = (*baseCred)(nil)
 type baseCred struct {
 	*Credential
 
-	lib        *issueCredentialLibrary
+	lib        *genericIssuingCredentialLibrary
 	secretData map[string]any
 }
 
@@ -133,12 +133,17 @@ func baseToSshPriKey(ctx context.Context, bc *baseCred) (*sshPrivateKeyCred, err
 	}, nil
 }
 
-var _ credential.Library = (*issueCredentialLibrary)(nil)
+var _ credential.Library = (*genericIssuingCredentialLibrary)(nil)
 
-// A issueCredentialLibrary contains all the values needed to connect to Vault and
+type issuingCredentialLibrary interface {
+	GetPublicId() string
+	retrieveCredential(context.Context, errors.Op, ...credential.Option) (dynamicCred, error)
+}
+
+// A genericIssuingCredentialLibrary contains all the values needed to connect to Vault and
 // retrieve credentials.
-type issueCredentialLibrary struct {
-	PublicId                      string `gorm:"primary_key"`
+type genericIssuingCredentialLibrary struct {
+	PublicId                      string
 	StoreId                       string
 	Name                          string
 	Description                   string
@@ -148,7 +153,7 @@ type issueCredentialLibrary struct {
 	VaultPath                     string
 	HttpMethod                    string
 	HttpRequestBody               []byte
-	CredType                      string `gorm:"column:credential_type"`
+	CredType                      string
 	ProjectId                     string
 	VaultAddress                  string
 	Namespace                     string
@@ -168,13 +173,13 @@ type issueCredentialLibrary struct {
 	PasswordAttribute             string
 	PrivateKeyAttribute           string
 	PrivateKeyPassphraseAttribute string
-	Purpose                       credential.Purpose `gorm:"-"`
+	Purpose                       credential.Purpose
 }
 
-func (pl *issueCredentialLibrary) clone() *issueCredentialLibrary {
+func (pl *genericIssuingCredentialLibrary) clone() *genericIssuingCredentialLibrary {
 	// The 'append(a[:0:0], a...)' comes from
 	// https://github.com/go101/go101/wiki/How-to-perfectly-clone-a-slice%3F
-	return &issueCredentialLibrary{
+	return &genericIssuingCredentialLibrary{
 		PublicId:                      pl.PublicId,
 		StoreId:                       pl.StoreId,
 		CredType:                      pl.CredType,
@@ -209,15 +214,15 @@ func (pl *issueCredentialLibrary) clone() *issueCredentialLibrary {
 	}
 }
 
-func (pl *issueCredentialLibrary) GetPublicId() string                 { return pl.PublicId }
-func (pl *issueCredentialLibrary) GetStoreId() string                  { return pl.StoreId }
-func (pl *issueCredentialLibrary) GetName() string                     { return pl.Name }
-func (pl *issueCredentialLibrary) GetDescription() string              { return pl.Description }
-func (pl *issueCredentialLibrary) GetVersion() uint32                  { return pl.Version }
-func (pl *issueCredentialLibrary) GetCreateTime() *timestamp.Timestamp { return pl.CreateTime }
-func (pl *issueCredentialLibrary) GetUpdateTime() *timestamp.Timestamp { return pl.UpdateTime }
+func (pl *genericIssuingCredentialLibrary) GetPublicId() string                 { return pl.PublicId }
+func (pl *genericIssuingCredentialLibrary) GetStoreId() string                  { return pl.StoreId }
+func (pl *genericIssuingCredentialLibrary) GetName() string                     { return pl.Name }
+func (pl *genericIssuingCredentialLibrary) GetDescription() string              { return pl.Description }
+func (pl *genericIssuingCredentialLibrary) GetVersion() uint32                  { return pl.Version }
+func (pl *genericIssuingCredentialLibrary) GetCreateTime() *timestamp.Timestamp { return pl.CreateTime }
+func (pl *genericIssuingCredentialLibrary) GetUpdateTime() *timestamp.Timestamp { return pl.UpdateTime }
 
-func (pl *issueCredentialLibrary) CredentialType() credential.Type {
+func (pl *genericIssuingCredentialLibrary) CredentialType() credential.Type {
 	switch ct := pl.CredType; ct {
 	case "":
 		return credential.UnspecifiedType
@@ -226,41 +231,8 @@ func (pl *issueCredentialLibrary) CredentialType() credential.Type {
 	}
 }
 
-func (pl *issueCredentialLibrary) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "vault.(issueCredentialLibrary).decrypt"
-
-	if pl.CtToken != nil {
-		type ptk struct {
-			Token   []byte `wrapping:"pt,token_data"`
-			CtToken []byte `wrapping:"ct,token_data"`
-		}
-		ptkv := &ptk{
-			CtToken: pl.CtToken,
-		}
-		if err := structwrapping.UnwrapStruct(ctx, cipher, ptkv, nil); err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
-		}
-		pl.Token = ptkv.Token
-	}
-
-	if pl.CtClientKey != nil && pl.ClientCert != nil {
-		type pck struct {
-			Key   []byte `wrapping:"pt,key_data"`
-			CtKey []byte `wrapping:"ct,key_data"`
-		}
-		pckv := &pck{
-			CtKey: pl.CtClientKey,
-		}
-		if err := structwrapping.UnwrapStruct(ctx, cipher, pckv, nil); err != nil {
-			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
-		}
-		pl.ClientKey = pckv.Key
-	}
-	return nil
-}
-
-func (pl *issueCredentialLibrary) client(ctx context.Context) (vaultClient, error) {
-	const op = "vault.(issueCredentialLibrary).client"
+func (pl *genericIssuingCredentialLibrary) client(ctx context.Context) (vaultClient, error) {
+	const op = "vault.(genericIssuingCredentialLibrary).client"
 	clientConfig := &clientConfig{
 		Addr:          pl.VaultAddress,
 		Token:         pl.Token,
@@ -292,7 +264,7 @@ type dynamicCred interface {
 // given sessionId.
 //
 // Supported options: credential.WithTemplateData
-func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, opt ...credential.Option) (dynamicCred, error) {
+func (pl *genericIssuingCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, opt ...credential.Option) (dynamicCred, error) {
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -374,11 +346,11 @@ func (pl *issueCredentialLibrary) retrieveCredential(ctx context.Context, op err
 }
 
 // TableName returns the table name for gorm.
-func (pl *issueCredentialLibrary) TableName() string {
+func (pl *genericIssuingCredentialLibrary) TableName() string {
 	return "credential_vault_library_issue_credentials"
 }
 
-func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []credential.Request) ([]*issueCredentialLibrary, error) {
+func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []credential.Request) ([]issuingCredentialLibrary, error) {
 	const op = "vault.(Repository).getIssueCredLibraries"
 
 	mapper, err := newMapper(requests)
@@ -405,9 +377,9 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 	}
 	defer rows.Close()
 
-	var libs []*issueCredentialLibrary
+	var libs []*privateCredentialLibraryAllTypes
 	for rows.Next() {
-		var lib issueCredentialLibrary
+		var lib privateCredentialLibraryAllTypes
 		if err := r.reader.ScanRows(ctx, rows, &lib); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
 		}
@@ -422,6 +394,7 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 		}
 	}
 
+	var decryptedLibs []issuingCredentialLibrary
 	for _, pl := range libs {
 		databaseWrapper, err := r.kms.GetWrapper(ctx, pl.ProjectId, kms.KeyPurposeDatabase)
 		if err != nil {
@@ -431,9 +404,155 @@ func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []crede
 		if err := pl.decrypt(ctx, databaseWrapper); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
+		decryptedLibs = append(decryptedLibs, pl.toTypedIssuingCredentialLibrary())
 	}
 
-	return libs, nil
+	return decryptedLibs, nil
+}
+
+// privateCredentialLibraryAllTypes is a clone of genericIssuingCredentialLibrary. Contains
+// all the values needed to connect to Vault and retrieve credentials.
+type privateCredentialLibraryAllTypes struct {
+	PublicId                      string `gorm:"primary_key"`
+	StoreId                       string
+	Name                          string
+	Description                   string
+	CreateTime                    *timestamp.Timestamp
+	UpdateTime                    *timestamp.Timestamp
+	Version                       uint32
+	VaultPath                     string
+	HttpMethod                    string
+	HttpRequestBody               []byte
+	CredType                      string `gorm:"column:credential_type"`
+	ProjectId                     string
+	VaultAddress                  string
+	Namespace                     string
+	CaCert                        []byte
+	TlsServerName                 string
+	TlsSkipVerify                 bool
+	WorkerFilter                  string
+	Token                         TokenSecret
+	CtToken                       []byte
+	TokenHmac                     []byte
+	TokenKeyId                    string
+	ClientCert                    []byte
+	ClientKey                     KeySecret
+	CtClientKey                   []byte
+	ClientKeyId                   string
+	UsernameAttribute             string
+	PasswordAttribute             string
+	PrivateKeyAttribute           string
+	PrivateKeyPassphraseAttribute string
+	Purpose                       credential.Purpose `gorm:"-"`
+}
+
+func (pl *privateCredentialLibraryAllTypes) GetPublicId() string { return pl.PublicId }
+
+func (pl *privateCredentialLibraryAllTypes) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "vault.(privateCredentialLibraryAllTypes).decrypt"
+
+	if pl.CtToken != nil {
+		type ptk struct {
+			Token   []byte `wrapping:"pt,token_data"`
+			CtToken []byte `wrapping:"ct,token_data"`
+		}
+		ptkv := &ptk{
+			CtToken: pl.CtToken,
+		}
+		if err := structwrapping.UnwrapStruct(ctx, cipher, ptkv, nil); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("token"))
+		}
+		pl.Token = ptkv.Token
+	}
+
+	if pl.CtClientKey != nil && pl.ClientCert != nil {
+		type pck struct {
+			Key   []byte `wrapping:"pt,key_data"`
+			CtKey []byte `wrapping:"ct,key_data"`
+		}
+		pckv := &pck{
+			CtKey: pl.CtClientKey,
+		}
+		if err := structwrapping.UnwrapStruct(ctx, cipher, pckv, nil); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("client certificate"))
+		}
+		pl.ClientKey = pckv.Key
+	}
+	return nil
+}
+
+func (pl *privateCredentialLibraryAllTypes) clone() *privateCredentialLibraryAllTypes {
+	// The 'append(a[:0:0], a...)' comes from
+	// https://github.com/go101/go101/wiki/How-to-perfectly-clone-a-slice%3F
+	return &privateCredentialLibraryAllTypes{
+		PublicId:                      pl.PublicId,
+		StoreId:                       pl.StoreId,
+		CredType:                      pl.CredType,
+		UsernameAttribute:             pl.UsernameAttribute,
+		PasswordAttribute:             pl.PasswordAttribute,
+		PrivateKeyAttribute:           pl.PrivateKeyAttribute,
+		PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
+		Name:                          pl.Name,
+		Description:                   pl.Description,
+		CreateTime:                    proto.Clone(pl.CreateTime).(*timestamp.Timestamp),
+		UpdateTime:                    proto.Clone(pl.UpdateTime).(*timestamp.Timestamp),
+		Version:                       pl.Version,
+		ProjectId:                     pl.ProjectId,
+		VaultPath:                     pl.VaultPath,
+		HttpMethod:                    pl.HttpMethod,
+		HttpRequestBody:               append(pl.HttpRequestBody[:0:0], pl.HttpRequestBody...),
+		VaultAddress:                  pl.VaultAddress,
+		Namespace:                     pl.Namespace,
+		CaCert:                        append(pl.CaCert[:0:0], pl.CaCert...),
+		TlsServerName:                 pl.TlsServerName,
+		TlsSkipVerify:                 pl.TlsSkipVerify,
+		WorkerFilter:                  pl.WorkerFilter,
+		TokenHmac:                     append(pl.TokenHmac[:0:0], pl.TokenHmac...),
+		Token:                         append(pl.Token[:0:0], pl.Token...),
+		CtToken:                       append(pl.CtToken[:0:0], pl.CtToken...),
+		TokenKeyId:                    pl.TokenKeyId,
+		ClientCert:                    append(pl.ClientCert[:0:0], pl.ClientCert...),
+		ClientKey:                     append(pl.ClientKey[:0:0], pl.ClientKey...),
+		CtClientKey:                   append(pl.CtClientKey[:0:0], pl.CtClientKey...),
+		ClientKeyId:                   pl.ClientKeyId,
+		Purpose:                       pl.Purpose,
+	}
+}
+
+func (pl *privateCredentialLibraryAllTypes) toTypedIssuingCredentialLibrary() issuingCredentialLibrary {
+	return &genericIssuingCredentialLibrary{
+		PublicId:                      pl.PublicId,
+		StoreId:                       pl.StoreId,
+		CredType:                      pl.CredType,
+		UsernameAttribute:             pl.UsernameAttribute,
+		PasswordAttribute:             pl.PasswordAttribute,
+		PrivateKeyAttribute:           pl.PrivateKeyAttribute,
+		PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
+		Name:                          pl.Name,
+		Description:                   pl.Description,
+		CreateTime:                    pl.CreateTime,
+		UpdateTime:                    pl.UpdateTime,
+		Version:                       pl.Version,
+		ProjectId:                     pl.ProjectId,
+		VaultPath:                     pl.VaultPath,
+		HttpMethod:                    pl.HttpMethod,
+		HttpRequestBody:               pl.HttpRequestBody,
+		VaultAddress:                  pl.VaultAddress,
+		Namespace:                     pl.Namespace,
+		CaCert:                        pl.CaCert,
+		TlsServerName:                 pl.TlsServerName,
+		TlsSkipVerify:                 pl.TlsSkipVerify,
+		WorkerFilter:                  pl.WorkerFilter,
+		TokenHmac:                     pl.TokenHmac,
+		Token:                         pl.Token,
+		CtToken:                       pl.CtToken,
+		TokenKeyId:                    pl.TokenKeyId,
+		ClientCert:                    pl.ClientCert,
+		ClientKey:                     pl.ClientKey,
+		CtClientKey:                   pl.CtClientKey,
+		ClientKeyId:                   pl.ClientKeyId,
+		Purpose:                       pl.Purpose,
+	}
 }
 
 // requestMap takes a slice of credential requests and provides of list of
