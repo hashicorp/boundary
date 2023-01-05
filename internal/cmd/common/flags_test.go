@@ -236,7 +236,7 @@ func TestHandleAttributeFlags(t *testing.T) {
 			},
 			expectedMap: map[string]any{
 				"foo": "bar",
-				"bar": "baz",
+				"bar": "\"baz\"",
 			},
 		},
 		{

@@ -288,7 +288,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			if field.Value == nil {
 				return fmt.Errorf("string-%s flag requires a value", suffix)
 			}
-			val = strings.Trim(field.Value.GetValue(), `"`)
+			val = field.Value.GetValue()
 
 		case "bool-" + suffix:
 			if field.Value == nil {
