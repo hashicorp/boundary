@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix, CredentialLibraryPrefix, DynamicCredentialPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix, CredentialLibraryPrefix, DynamicCredentialPrefix, SSHCertificateCredentialLibraryPrefix); err != nil {
 		panic(err)
 	}
 }
