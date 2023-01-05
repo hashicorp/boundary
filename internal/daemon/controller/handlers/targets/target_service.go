@@ -113,6 +113,7 @@ type Service struct {
 	staticHostRepoFn        common.StaticRepoFactory
 	vaultCredRepoFn         common.VaultCredentialRepoFactory
 	staticCredRepoFn        common.StaticCredentialRepoFactory
+	downstreams             common.Downstreamers
 	kmsCache                *kms.Kms
 	workerStatusGracePeriod *atomic.Int64
 }
@@ -131,6 +132,7 @@ func NewService(
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
 	staticCredRepoFn common.StaticCredentialRepoFactory,
+	downstreams common.Downstreamers,
 	workerStatusGracePeriod *atomic.Int64,
 ) (Service, error) {
 	const op = "targets.NewService"
@@ -167,6 +169,7 @@ func NewService(
 		staticHostRepoFn:        staticHostRepoFn,
 		vaultCredRepoFn:         vaultCredRepoFn,
 		staticCredRepoFn:        staticCredRepoFn,
+		downstreams:             downstreams,
 		kmsCache:                kmsCache,
 		workerStatusGracePeriod: workerStatusGracePeriod,
 	}, nil
@@ -622,7 +625,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 
 // If set, use the worker_filter or egress_worker_filter to filtere the selected workers
 // and ensure we have workers available to service this request.
-func AuthorizeSessionWithWorkerFilter(t target.Target, selectedWorkers []*server.Worker) ([]*server.Worker, error) {
+func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, selectedWorkers []*server.Worker, _ common.Downstreamers) ([]*server.Worker, error) {
 	if len(selectedWorkers) > 0 {
 		var eval *bexpr.Evaluator
 		var err error
@@ -732,7 +735,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
-	selectedWorkers, err = AuthorizeSessionWorkerFilterFn(t, selectedWorkers)
+	selectedWorkers, err = AuthorizeSessionWorkerFilterFn(ctx, t, selectedWorkers, s.downstreams)
 	if err != nil {
 		return nil, err
 	}

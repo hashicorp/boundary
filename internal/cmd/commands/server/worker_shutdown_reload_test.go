@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -21,8 +23,6 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
-
-	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
 
 const shutdownReloadWorkerProvidedConfiguration = `
@@ -91,6 +91,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	require.NotNil(tgtR)
 
 	// Authorize and connect
+	tg.SetupSuiteTargetFilters(t)
 	sess := helper.NewTestSession(ctx, t, tcl, tgt.Id)
 	sConn := sess.Connect(ctx, t)
 

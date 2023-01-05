@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/tests/helper"
@@ -19,6 +20,9 @@ import (
 func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	const op = "cluster.TestWorkerSessionMultipleConnections"
 	t.Parallel()
+
+	tg.SetupSuiteTargetFilters(t)
+
 	require := require.New(t)
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  t.Name(),

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/daemon/common"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
@@ -40,6 +39,8 @@ func TestWorkerList_Addresses(t *testing.T) {
 
 func TestWorkerList_EgressFilter(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
+	SetupSuiteTargetFilters(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
@@ -113,7 +114,7 @@ func TestWorkerList_EgressFilter(t *testing.T) {
 			if len(tc.filter) > 0 {
 				target.EgressWorkerFilter = tc.filter
 			}
-			out, err := AuthorizeSessionWithWorkerFilter(target, tc.in)
+			out, err := AuthorizeSessionWithWorkerFilter(ctx, target, tc.in, nil)
 			if tc.errContains != "" {
 				assert.Contains(err.Error(), tc.errContains)
 				assert.Nil(out)

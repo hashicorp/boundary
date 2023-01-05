@@ -2,6 +2,7 @@ package credentials_test
 
 import (
 	"fmt"
+	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"net/http"
 	"testing"
 	"time"
@@ -405,6 +406,9 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
+
+	tg.SetupSuiteTargetFilters(t)
+
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{SchedulerRunJobInterval: 100 * time.Millisecond})
 	ctx := tc.Context()
 	t.Cleanup(tc.Shutdown)
