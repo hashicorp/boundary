@@ -15,9 +15,10 @@ func init() {
 
 // PublicId prefixes for the resources in the vault package.
 const (
-	CredentialStorePrefix   = "csvlt"
-	CredentialLibraryPrefix = "clvlt"
-	DynamicCredentialPrefix = "cdvlt"
+	CredentialStorePrefix                 = "csvlt"
+	CredentialLibraryPrefix               = "clvlt"
+	DynamicCredentialPrefix               = "cdvlt"
+	SSHCertificateCredentialLibraryPrefix = "clvsclt"
 
 	Subtype = subtypes.Subtype("vault")
 )
@@ -42,6 +43,14 @@ func newCredentialLibraryId() (string, error) {
 	id, err := db.NewPublicId(CredentialLibraryPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "vault.newCredentialLibraryId")
+	}
+	return id, nil
+}
+
+func newSSHCertificateCredentialLibraryId() (string, error) {
+	id, err := db.NewPublicId(SSHCertificateCredentialLibraryPrefix)
+	if err != nil {
+		return "", errors.WrapDeprecated(err, "vault.newSSHCertificateCredentialLibraryPrefix")
 	}
 	return id, nil
 }

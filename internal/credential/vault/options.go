@@ -34,6 +34,13 @@ type options struct {
 	withOverridePrivateKeyAttribute           string
 	withOverridePrivateKeyPassphraseAttribute string
 	withMappingOverride                       MappingOverride
+
+	withKeyType         string
+	withKeyBits         uint32
+	withTtl             string
+	withKeyId           string
+	withCriticalOptions string
+	withExtensions      string
 }
 
 func getDefaultOptions() options {
@@ -172,5 +179,47 @@ func WithOverridePrivateKeyPassphraseAttribute(s string) Option {
 func WithMappingOverride(m MappingOverride) Option {
 	return func(o *options) {
 		o.withMappingOverride = m
+	}
+}
+
+// WithKeyType provides an optional description.
+func withKeyType(t string) Option {
+	return func(o *options) {
+		o.withKeyType = t
+	}
+}
+
+// WithKeyBits provides an optional description.
+func WithKeyBits(b uint32) Option {
+	return func(o *options) {
+		o.withKeyBits = b
+	}
+}
+
+// WithTtl provides an optional description.
+func WithTtl(t string) Option {
+	return func(o *options) {
+		o.withKeyId = t
+	}
+}
+
+// WithKeyId provides an optional description.
+func WithKeyId(i string) Option {
+	return func(o *options) {
+		o.withKeyId = i
+	}
+}
+
+// WithCriticalOptions provides an optional description.
+func WithCriticalOptions(s string) Option {
+	return func(o *options) {
+		o.withCriticalOptions = s
+	}
+}
+
+// WithExtensions provides a map of the extensions that the certificate should be signed for.
+func WithExtensions(s string) Option {
+	return func(o *options) {
+		o.withExtensions = s
 	}
 }
