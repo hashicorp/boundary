@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -46,6 +47,10 @@ func (r *Repository) CreateSSHCertificateCredentialLibrary(ctx context.Context, 
 
 	if l.KeyType == "" {
 		l.KeyType = KeyTypeEd25519
+	}
+
+	if l.GetCredentialType() != string(credential.SshCertificateType) {
+		l.SSHCertificateCredentialLibrary.CredentialType = string(credential.SshCertificateType)
 	}
 
 	id, err := newSSHCertificateCredentialLibraryId()

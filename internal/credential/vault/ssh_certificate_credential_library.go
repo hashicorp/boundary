@@ -44,6 +44,7 @@ func NewSSHCertificateCredentialLibrary(storeId string, vaultPath string, userna
 			KeyId:           opts.withKeyId,
 			CriticalOptions: opts.withCriticalOptions,
 			Extensions:      opts.withExtensions,
+			CredentialType:  string(credential.SshCertificateType),
 		},
 	}
 
