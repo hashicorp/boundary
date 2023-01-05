@@ -1020,9 +1020,8 @@ func (c *combinedSliceValue) Set(val string) error {
 		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return fmt.Errorf("error checking if value is a path: %w", err)
 		}
-		if pathParsedValue != "" {
-			ret.Value = wrapperspb.String(pathParsedValue)
-		}
+		// This will either be the round-tripped value or the substituted value
+		ret.Value = wrapperspb.String(pathParsedValue)
 	}
 
 	*c.target = append(*c.target, ret)

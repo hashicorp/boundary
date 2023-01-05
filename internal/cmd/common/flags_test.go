@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -20,12 +21,14 @@ func TestPopulateAttrFlags(t *testing.T) {
 	tests := []struct {
 		name        string
 		args        []string
+		envs        [][]string
 		expected    []base.CombinedSliceFlagValue
 		expectedErr string
 	}{
 		{
 			name: "strings-only",
-			args: []string{"-string-attr", "foo=bar", "-string-attr", `bar="baz"`},
+			args: []string{"-string-attr", "foo=bar", "-string-attr", `bar="baz"`, "-string-attr", "zip=env://zip"},
+			envs: [][]string{{"zip", "zap"}},
 			expected: []base.CombinedSliceFlagValue{
 				{
 					Name:  "string-attr",
@@ -37,11 +40,17 @@ func TestPopulateAttrFlags(t *testing.T) {
 					Keys:  []string{"bar"},
 					Value: wrapperspb.String(`"baz"`),
 				},
+				{
+					Name:  "string-attr",
+					Keys:  []string{"zip"},
+					Value: wrapperspb.String("zap"),
+				},
 			},
 		},
 		{
 			name: "nums-only",
-			args: []string{"-num-attr", "foo=-1.2", "-num-attr", "bar=5"},
+			args: []string{"-num-attr", "foo=-1.2", "-num-attr", "bar=5", "-num-attr", "zip=env://zip"},
+			envs: [][]string{{"zip", "5"}},
 			expected: []base.CombinedSliceFlagValue{
 				{
 					Name:  "num-attr",
@@ -53,11 +62,17 @@ func TestPopulateAttrFlags(t *testing.T) {
 					Keys:  []string{"bar"},
 					Value: wrapperspb.String("5"),
 				},
+				{
+					Name:  "num-attr",
+					Keys:  []string{"zip"},
+					Value: wrapperspb.String("5"),
+				},
 			},
 		},
 		{
 			name: "bools-only",
-			args: []string{"-bool-attr", "foo=true", "-bool-attr", "bar=false"},
+			args: []string{"-bool-attr", "foo=true", "-bool-attr", "bar=false", "-bool-attr", "zip=env://zip"},
+			envs: [][]string{{"zip", "true"}},
 			expected: []base.CombinedSliceFlagValue{
 				{
 					Name:  "bool-attr",
@@ -68,6 +83,11 @@ func TestPopulateAttrFlags(t *testing.T) {
 					Name:  "bool-attr",
 					Keys:  []string{"bar"},
 					Value: wrapperspb.String("false"),
+				},
+				{
+					Name:  "bool-attr",
+					Keys:  []string{"zip"},
+					Value: wrapperspb.String("true"),
 				},
 			},
 		},
@@ -124,7 +144,8 @@ func TestPopulateAttrFlags(t *testing.T) {
 		},
 		{
 			name: "mixed-segments",
-			args: []string{"-num-attr", "foo.bar.baz=9820", "-string-attr", "bar.baz.foo=9820", "-attr", "baz.foo.bar=9820"},
+			args: []string{"-num-attr", "foo.bar.baz=9820", "-string-attr", "bar.baz.foo=9820", "-attr", "baz.foo.bar=9820", "-attr", "zip=env://zip"},
+			envs: [][]string{{"zip", "zap"}},
 			expected: []base.CombinedSliceFlagValue{
 				{
 					Name:  "num-attr",
@@ -140,6 +161,11 @@ func TestPopulateAttrFlags(t *testing.T) {
 					Name:  "attr",
 					Keys:  []string{"baz", "foo", "bar"},
 					Value: wrapperspb.String("9820"),
+				},
+				{
+					Name:  "attr",
+					Keys:  []string{"zip"},
+					Value: wrapperspb.String("zap"),
 				},
 			},
 		},
@@ -197,6 +223,9 @@ func TestPopulateAttrFlags(t *testing.T) {
 			}
 			PopulateCombinedSliceFlagValue(attrsInput)
 
+			for _, env := range tt.envs {
+				require.NoError(os.Setenv(env[0], env[1]))
+			}
 			err := flagSet.Parse(tt.args)
 			if tt.expectedErr != "" {
 				require.Error(err)
