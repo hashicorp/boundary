@@ -227,7 +227,6 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			wantErrContains: `name "myname" already exists`,
 		},
 		{
-
 			name: "get-oplog-wrapper-err",
 			repo: func() *Repository {
 				testKms := &mockGetWrapperer{
@@ -490,7 +489,6 @@ func TestRepository_DeleteManagedGroup(t *testing.T) {
 			wantErrContains: "managed group not found",
 		},
 		{
-
 			name: "get-oplog-wrapper-err",
 			repo: func() *Repository {
 				testKms := &mockGetWrapperer{
