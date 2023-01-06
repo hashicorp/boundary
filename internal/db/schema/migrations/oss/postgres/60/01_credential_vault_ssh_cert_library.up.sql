@@ -67,9 +67,7 @@ begin;
     key_id text,
     critical_options bytea,
     extensions bytea,
-    credential_type text default 'ssh_certificate'
-      constraint credential_type_must_be_ssh_cert
-      check(credential_type = 'ssh_certificate'),
+    credential_type text,
     project_id wt_public_id not null,
     constraint credential_vault_ssh_cert_library_store_id_name_uq
       unique(store_id, name),
@@ -84,9 +82,18 @@ begin;
   comment on table credential_vault_ssh_cert_library is
     'credential_vault_ssh_cert_library a credential library that issues credentials from a vault ssh secret backend.';
 
-  insert into oplog_ticket (name, version)
-  values
-    ('credential_vault_ssh_cert_library', 1);
+  create function default_ssh_certificate_credential_type() returns trigger
+  as $$
+  begin
+    if new.credential_type is distinct from 'ssh_certificate' then
+      raise warning 'credential_vault_ssh_cert_library only supports ssh_certificate credentials';
+      new.credential_type = 'ssh_certificate';
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+  comment on function default_ssh_certificate_credential_type is
+    'default_ssh_certificate_credential_type ensures the credential_type is set to ssh_certificate';
 
   create trigger default_ssh_certificate_credential_type before insert on credential_vault_ssh_cert_library
     for each row execute procedure default_ssh_certificate_credential_type();
@@ -104,5 +111,9 @@ begin;
     for each row execute procedure update_version_column();
   create trigger before_insert_credential_vault_library before insert on credential_vault_ssh_cert_library
     for each row execute procedure before_insert_credential_vault_library();
+
+  insert into oplog_ticket (name, version)
+  values
+    ('credential_vault_ssh_cert_library', 1);
 
 commit;
