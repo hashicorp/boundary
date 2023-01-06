@@ -40,6 +40,60 @@ begin;
     ('ecdsa'),
     ('rsa');
 
+  create table credential_vault_ssh_cert_key_bits_enm (
+    bits int primary key
+      constraint only_predefined_key_bits_allowed
+      check (
+        bits in (
+          0,
+          2048,
+          3072,
+          4096,
+          224,
+          256,
+          384,
+          521
+        )
+      )
+  );
+  comment on table credential_vault_ssh_cert_key_bits_enm is
+    'credential_vault_ssh_cert_key_bits_enm is an enumeration table for the ssh key bits. ';
+
+  insert into credential_vault_ssh_cert_key_bits_enm (bits)
+  values
+    (0),
+    (2048),
+    (3072),
+    (4096),
+    (224),
+    (256),
+    (384),
+    (521);
+
+  create table credential_vault_ssh_cert_valid_key_type_key_bits (
+    key_type text not null
+      constraint credential_vault_ssh_cert_key_type_enm_fkey
+        references credential_vault_ssh_cert_key_type_enm (name),
+    key_bits int not null
+      constraint credential_vault_ssh_cert_key_bits_enm_fkey
+        references credential_vault_ssh_cert_key_bits_enm (bits),
+    constraint credential_vault_ssh_cert_valid_key_type_key_bits_uq
+      unique(key_type, key_bits)
+  );
+
+  insert into credential_vault_ssh_cert_valid_key_type_key_bits (key_type, key_bits)
+  values
+    ('ed25519', 0),
+    ('ecdsa', 0),
+    ('ecdsa', 224),
+    ('ecdsa', 256),
+    ('ecdsa', 384),
+    ('ecdsa', 521),
+    ('rsa', 0),
+    ('rsa', 2048),
+    ('rsa', 3072),
+    ('rsa', 4096);
+
   create table credential_vault_ssh_cert_library (
     public_id wt_public_id primary key,
     store_id wt_public_id not null
@@ -62,7 +116,10 @@ begin;
       default 'ed25519'
       constraint credential_vault_ssh_cert_key_type_enm_fkey
         references credential_vault_ssh_cert_key_type_enm (name),
-    key_bits int,
+    key_bits int not null
+      default 0
+      constraint credential_vault_ssh_cert_key_bits_enm_fkey
+        references credential_vault_ssh_cert_key_bits_enm (bits),
     ttl text,
     key_id text,
     critical_options bytea,
@@ -71,13 +128,16 @@ begin;
     project_id wt_public_id not null,
     constraint credential_vault_ssh_cert_library_store_id_name_uq
       unique(store_id, name),
+    constraint credential_vault_ssh_cert_library_store_id_public_id_uq
+      unique(store_id, public_id),
     constraint credential_library_fkey
       foreign key (project_id, store_id, public_id, credential_type)
       references credential_library (project_id, store_id, public_id, credential_type)
       on delete cascade
       on update cascade,
-    constraint credential_vault_ssh_cert_library_store_id_public_id_uq
-      unique(store_id, public_id)
+    constraint credential_vault_ssh_cert_valid_key_type_key_bits_fkey
+      foreign key (key_type, key_bits)
+      references credential_vault_ssh_cert_valid_key_type_key_bits(key_type, key_bits)
   );
   comment on table credential_vault_ssh_cert_library is
     'credential_vault_ssh_cert_library a credential library that issues credentials from a vault ssh secret backend.';
