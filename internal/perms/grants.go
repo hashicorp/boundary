@@ -105,7 +105,7 @@ func (g Grant) clone() *Grant {
 			ret.actions[action] = true
 		}
 	}
-	if outFields := g.OutputFields.Fields(); outFields != nil {
+	if outFields, hasSetFields := g.OutputFields.Fields(); hasSetFields {
 		fieldsToAdd := make([]string, 0, len(outFields))
 		for _, v := range outFields {
 			fieldsToAdd = append(fieldsToAdd, v)
@@ -136,7 +136,7 @@ func (g Grant) CanonicalString() string {
 		builder = append(builder, fmt.Sprintf("actions=%s", strings.Join(actions, ",")))
 	}
 
-	if outFields := g.OutputFields.Fields(); outFields != nil {
+	if outFields, hasSetFields := g.OutputFields.Fields(); hasSetFields {
 		builder = append(builder, fmt.Sprintf("output_fields=%s", strings.Join(outFields, ",")))
 	}
 
@@ -161,7 +161,7 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 		sort.Strings(actions)
 		res["actions"] = actions
 	}
-	if outFields := g.OutputFields.Fields(); outFields != nil {
+	if outFields, hasSetFields := g.OutputFields.Fields(); hasSetFields {
 		res["output_fields"] = outFields
 	}
 	b, err := json.Marshal(res)
@@ -400,7 +400,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				switch len(grant.actions) {
 				case 0:
 					// It's okay to have no actions if only output fields are being defined
-					if grant.OutputFields.Fields() == nil {
+					if _, hasSetFields := grant.OutputFields.Fields(); !hasSetFields {
 						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no actions or output fields")
 					}
 				case 1:
@@ -466,7 +466,7 @@ func (g *Grant) parseAndValidateActions() error {
 		g.actionsBeingParsed = nil
 		// If there are no actions it's fine if the grant is just used to
 		// specify output fields
-		if g.OutputFields.Fields() != nil {
+		if _, hasSetFields := g.OutputFields.Fields(); hasSetFields {
 			return nil
 		}
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing actions")

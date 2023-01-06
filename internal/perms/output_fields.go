@@ -63,22 +63,24 @@ func (o *OutputFields) AddFields(input []string) *OutputFields {
 }
 
 // Fields returns an alphabetical string slice of the fields in the map. The
-// return value will be nil if fields are unset (e.g. we'd use the defaults in
-// SelfOrDefaults), and non-nil but empty if no fields are allowed. It is safe
-// to call this on a nil object; it will return a nil slice.
-func (o *OutputFields) Fields() (ret []string) {
+// return value will be nil with hasSetFields false if fields are unset (e.g.
+// we'd use the defaults in SelfOrDefaults), and non-nil (but empty if no fields
+// are allowed) with hasSetFields true if fields have been configured. It is
+// safe to call this on a nil object; it will return a nil slice and false for
+// hasSetFields.
+func (o *OutputFields) Fields() (fields []string, hasSetFields bool) {
 	if o == nil || o.fields == nil {
-		return nil
+		return nil, false
 	}
 	if len(o.fields) == 0 {
-		return []string{}
+		return []string{}, true
 	}
-	ret = make([]string, 0, len(o.fields))
+	ret := make([]string, 0, len(o.fields))
 	for f := range o.fields {
 		ret = append(ret, f)
 	}
 	sort.Strings(ret)
-	return
+	return ret, true
 }
 
 // SelfOrDefaults returns either the output fields itself or the defaults for

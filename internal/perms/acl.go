@@ -96,7 +96,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			// Continue with the next grant, unless we have output fields
 			// specified in which case we continue to be able to apply the
 			// output fields depending on ID and type.
-			if grant.OutputFields.Fields() != nil {
+			if _, hasSetFields := grant.OutputFields.Fields(); hasSetFields {
 				outputFieldsOnly = true
 			} else {
 				continue
@@ -219,7 +219,8 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			if !outputFieldsOnly {
 				results.Authorized = true
 			}
-			results.OutputFields = results.OutputFields.AddFields(grant.OutputFields.Fields())
+			fields, _ := grant.OutputFields.Fields()
+			results.OutputFields = results.OutputFields.AddFields(fields)
 			if results.OutputFields.Has("*") && results.Authorized {
 				return
 			}

@@ -279,7 +279,8 @@ func Test_ACLOutputFields(t *testing.T) {
 			}
 			acl := NewACL(grants...)
 			results := acl.Allowed(test.resource, test.action, globals.AnonymousUserId, WithSkipAnonymousUserRestrictions(true))
-			assert.ElementsMatch(t, results.OutputFields.Fields(), test.fields)
+			fields, _ := results.OutputFields.Fields()
+			assert.ElementsMatch(t, fields, test.fields)
 			assert.True(t, test.authorized == results.Authorized)
 		})
 	}
