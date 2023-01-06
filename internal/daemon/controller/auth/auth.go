@@ -720,17 +720,18 @@ func (r *VerifyResults) fetchActions(id string, typ resource.Type, availableActi
 	return ret
 }
 
-func (r *VerifyResults) FetchOutputFields(res perms.Resource, act action.Type) perms.OutputFieldsMap {
+func (r *VerifyResults) FetchOutputFields(res perms.Resource, act action.Type) *perms.OutputFields {
+	var ret *perms.OutputFields
 	switch {
 	case r.v.requestInfo.TokenFormat == uint32(AuthTokenTypeRecoveryKms):
-		return perms.OutputFieldsMap{"*": true}
+		return ret.AddFields([]string{"*"})
 	case r.v.requestInfo.DisableAuthEntirely:
-		return nil
+		return ret
 	case r.UserData.User.Id == nil:
 		// If there is no user ID set by definition there are no actions to fetch.
 		// This shouldn't happen because we should always fall back to at least the
 		// anonymous user so it's defense in depth.
-		return nil
+		return ret
 	}
 
 	return r.v.acl.Allowed(res, act, *r.UserData.User.Id).OutputFields

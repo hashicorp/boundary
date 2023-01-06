@@ -79,7 +79,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 		return nil, err
 	}
 
-	var outputFields perms.OutputFieldsMap
+	var outputFields *perms.OutputFields
 	authorizedActions := authResults.FetchActionSetForId(ctx, ses.GetPublicId(), IdActions)
 
 	// Check to see if we need to verify Read vs. just ReadSelf
@@ -101,7 +101,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -184,7 +184,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
 		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 		if outputFields.Has(globals.ScopeField) {
 			outputOpts = append(outputOpts, handlers.WithScope(scopeIds[item.ProjectId]))
 		}
@@ -236,7 +236,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 		return nil, handlers.NotFoundErrorf("Session %q doesn't exist.", req.GetId())
 	}
 
-	var outputFields perms.OutputFieldsMap
+	var outputFields *perms.OutputFields
 	authorizedActions := authResults.FetchActionSetForId(ctx, ses.GetPublicId(), IdActions)
 
 	// Check to see if we need to verify Cancel vs. just CancelSelf
@@ -274,7 +274,7 @@ func (s Service) CancelSession(ctx context.Context, req *pbs.CancelSessionReques
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
