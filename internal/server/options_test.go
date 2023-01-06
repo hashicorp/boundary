@@ -217,4 +217,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withNewIdFunc = nil
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithDirectlyConnected", func(t *testing.T) {
+		opts := GetOpts(WithDirectlyConnected(true))
+		testOpts := getDefaultOptions()
+		testOpts.withDirectlyConnected = true
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
 }
