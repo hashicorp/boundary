@@ -326,15 +326,15 @@ func TestList(t *testing.T) {
 	_, err = repo.DeleteScope(context.Background(), p2.GetPublicId())
 	require.NoError(t, err)
 
-	outputFields := perms.OutputFieldsMap(nil).SelfOrDefaults(globals.AnyAuthenticatedUserId)
+	outputFields := new(perms.OutputFields).SelfOrDefaults(globals.AnyAuthenticatedUserId)
 	var initialOrgs []*pb.Scope
 	globalScope := &pb.ScopeInfo{Id: "global", Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
-	oNoProjectsProto, err := scopes.ToProto(context.Background(), oNoProjects, handlers.WithOutputFields(&outputFields))
+	oNoProjectsProto, err := scopes.ToProto(context.Background(), oNoProjects, handlers.WithOutputFields(outputFields))
 	require.NoError(t, err)
 	oNoProjectsProto.Scope = globalScope
 	oNoProjectsProto.AuthorizedActions = testAuthorizedActions
 	oNoProjectsProto.AuthorizedCollectionActions = orgAuthorizedCollectionActions
-	oWithProjectsProto, err := scopes.ToProto(context.Background(), oWithProjects, handlers.WithOutputFields(&outputFields))
+	oWithProjectsProto, err := scopes.ToProto(context.Background(), oWithProjects, handlers.WithOutputFields(outputFields))
 	require.NoError(t, err)
 	oWithProjectsProto.Scope = globalScope
 	oWithProjectsProto.AuthorizedActions = testAuthorizedActions

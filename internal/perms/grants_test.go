@@ -37,13 +37,17 @@ func Test_ActionParsingValidation(t *testing.T) {
 		{
 			name: "empty action with output fields",
 			input: Grant{
-				OutputFields: OutputFieldsMap{
-					"id": true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"id": true,
+					},
 				},
 			},
 			result: Grant{
-				OutputFields: OutputFieldsMap{
-					"id": true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"id": true,
+					},
 				},
 			},
 		},
@@ -159,10 +163,12 @@ func Test_MarshalingAndCloning(t *testing.T) {
 					Type: scope.Project,
 				},
 				typ: resource.Group,
-				OutputFields: OutputFieldsMap{
-					"name":    true,
-					"version": true,
-					"id":      true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"id":      true,
+					},
 				},
 			},
 			jsonOutput:      `{"id":"baz","output_fields":["id","name","version"],"type":"group"}`,
@@ -181,10 +187,12 @@ func Test_MarshalingAndCloning(t *testing.T) {
 					action.Read:   true,
 				},
 				actionsBeingParsed: []string{"create", "read"},
-				OutputFields: OutputFieldsMap{
-					"name":    true,
-					"version": true,
-					"id":      true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"id":      true,
+					},
 				},
 			},
 			jsonOutput:      `{"actions":["create","read"],"id":"baz","output_fields":["id","name","version"],"type":"group"}`,
@@ -268,10 +276,12 @@ func Test_Unmarshaling(t *testing.T) {
 		{
 			name: "good output fields",
 			expected: Grant{
-				OutputFields: OutputFieldsMap{
-					"name":    true,
-					"version": true,
-					"id":      true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"id":      true,
+					},
 				},
 			},
 			jsonInput: `{"output_fields":["id","name","version"]}`,
@@ -435,7 +445,9 @@ func Test_Parse(t *testing.T) {
 					action.Read: true,
 					action.List: true,
 				},
-				OutputFields: OutputFieldsMap{"": true},
+				OutputFields: &OutputFields{
+					fields: make(map[string]bool),
+				},
 			},
 		},
 		{
@@ -452,7 +464,9 @@ func Test_Parse(t *testing.T) {
 					action.Read: true,
 					action.List: true,
 				},
-				OutputFields: OutputFieldsMap{"": true},
+				OutputFields: &OutputFields{
+					fields: make(map[string]bool),
+				},
 			},
 		},
 		{
@@ -513,10 +527,12 @@ func Test_Parse(t *testing.T) {
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
-				OutputFields: OutputFieldsMap{
-					"version": true,
-					"id":      true,
-					"name":    true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"id":      true,
+						"name":    true,
+					},
 				},
 			},
 		},
@@ -530,10 +546,12 @@ func Test_Parse(t *testing.T) {
 				},
 				id:  "foobar",
 				typ: resource.Unknown,
-				OutputFields: OutputFieldsMap{
-					"version": true,
-					"id":      true,
-					"name":    true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"id":      true,
+						"name":    true,
+					},
 				},
 			},
 		},
@@ -579,10 +597,12 @@ func Test_Parse(t *testing.T) {
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
-				OutputFields: OutputFieldsMap{
-					"version": true,
-					"id":      true,
-					"name":    true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"id":      true,
+						"name":    true,
+					},
 				},
 			},
 		},

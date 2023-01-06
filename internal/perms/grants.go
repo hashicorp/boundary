@@ -47,7 +47,7 @@ type Grant struct {
 	actions map[action.Type]bool
 
 	// The set of output fields granted
-	OutputFields OutputFieldsMap
+	OutputFields *OutputFields
 
 	// This is used as a temporary staging area before validating permissions to
 	// allow the same validation code across grant string formats
@@ -105,11 +105,12 @@ func (g Grant) clone() *Grant {
 			ret.actions[action] = true
 		}
 	}
-	if g.OutputFields != nil {
-		ret.OutputFields = make(OutputFieldsMap, len(g.OutputFields))
-		for k, v := range g.OutputFields {
-			ret.OutputFields[k] = v
+	if outFields := g.OutputFields.Fields(); outFields != nil {
+		fieldsToAdd := make([]string, 0, len(outFields))
+		for _, v := range outFields {
+			fieldsToAdd = append(fieldsToAdd, v)
 		}
+		ret.OutputFields = ret.OutputFields.AddFields(fieldsToAdd)
 	}
 	return ret
 }
@@ -135,8 +136,8 @@ func (g Grant) CanonicalString() string {
 		builder = append(builder, fmt.Sprintf("actions=%s", strings.Join(actions, ",")))
 	}
 
-	if len(g.OutputFields) > 0 {
-		builder = append(builder, fmt.Sprintf("output_fields=%s", strings.Join(g.OutputFields.Fields(), ",")))
+	if outFields := g.OutputFields.Fields(); outFields != nil {
+		builder = append(builder, fmt.Sprintf("output_fields=%s", strings.Join(outFields, ",")))
 	}
 
 	return strings.Join(builder, ";")
@@ -160,8 +161,8 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 		sort.Strings(actions)
 		res["actions"] = actions
 	}
-	if len(g.OutputFields) > 0 {
-		res["output_fields"] = g.OutputFields.Fields()
+	if outFields := g.OutputFields.Fields(); outFields != nil {
+		res["output_fields"] = outFields
 	}
 	b, err := json.Marshal(res)
 	if err != nil {
@@ -223,17 +224,22 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 		}
 		// We do the make here because we detect later if the field was set but
 		// no values given
-		g.OutputFields = make(OutputFieldsMap, len(interfaceOutputFields))
-		if len(interfaceOutputFields) > 0 {
+		switch len(interfaceOutputFields) {
+		case 0:
+			// JSON was set but no fields defined, add an empty array
+			g.OutputFields = g.OutputFields.AddFields([]string{})
+		default:
+			fields := make([]string, 0, len(interfaceOutputFields))
 			for _, v := range interfaceOutputFields {
 				field, ok := v.(string)
 				switch {
 				case !ok:
 					return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
 				default:
-					g.OutputFields[field] = true
+					fields = append(fields, field)
 				}
 			}
+			g.OutputFields = g.OutputFields.AddFields(fields)
 		}
 	}
 	return nil
@@ -279,7 +285,12 @@ func (g *Grant) unmarshalText(grantString string) error {
 			}
 
 		case "output_fields":
-			g.OutputFields = g.OutputFields.AddFields(strings.Split(kv[1], ","))
+			switch len(kv[1]) {
+			case 0:
+				g.OutputFields = g.OutputFields.AddFields([]string{})
+			default:
+				g.OutputFields = g.OutputFields.AddFields(strings.Split(kv[1], ","))
+			}
 		}
 	}
 
@@ -378,7 +389,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				// get to this point because original parsing should error)
 				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no id or type")
 			case resource.All:
-				// "type=*;actions=..." is not supported -- we reqiure you to
+				// "type=*;actions=..." is not supported -- we require you to
 				// explicitly set a pin or set the ID to *
 				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains wildcard type with no id value")
 			default:
@@ -389,7 +400,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				switch len(grant.actions) {
 				case 0:
 					// It's okay to have no actions if only output fields are being defined
-					if len(grant.OutputFields) == 0 {
+					if grant.OutputFields.Fields() == nil {
 						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no actions or output fields")
 					}
 				case 1:
@@ -405,10 +416,6 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 					return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
 				}
 			}
-		}
-		// Set but empty output fields...
-		if grant.OutputFields != nil && len(grant.OutputFields) == 0 {
-			grant.OutputFields = OutputFieldsMap{"": true}
 		}
 		// This might be zero if output fields is populated
 		if len(grant.actions) > 0 {
@@ -459,7 +466,7 @@ func (g *Grant) parseAndValidateActions() error {
 		g.actionsBeingParsed = nil
 		// If there are no actions it's fine if the grant is just used to
 		// specify output fields
-		if len(g.OutputFields) > 0 {
+		if g.OutputFields.Fields() != nil {
 			return nil
 		}
 		return errors.NewDeprecated(errors.InvalidParameter, op, "missing actions")

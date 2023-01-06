@@ -16,49 +16,106 @@ func Test_OutputFields(t *testing.T) {
 	type input struct {
 		name     string
 		fields   []string
-		startMap OutputFieldsMap
-		resMap   OutputFieldsMap
+		startMap *OutputFields
+		resMap   *OutputFields
 		resStar  bool
 	}
 	tests := []input{
 		{
-			name: "nil map, add nil",
+			name:   "nil map, add nil",
+			resMap: &OutputFields{},
+		},
+		{
+			name:   "nil map, add empty fields",
+			fields: []string{},
+			resMap: &OutputFields{
+				fields: map[string]bool{},
+			},
 		},
 		{
 			name:   "nil map, add fields",
 			fields: []string{"id", "version"},
-			resMap: OutputFieldsMap{"id": true, "version": true},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"id":      true,
+					"version": true,
+				},
+			},
 		},
 		{
-			name:     "existing map, add nil",
-			startMap: OutputFieldsMap{"id": true, "version": true},
-			resMap:   OutputFieldsMap{"id": true, "version": true},
+			name: "existing map, add nil",
+			startMap: &OutputFields{
+				fields: map[string]bool{
+					"id":      true,
+					"version": true,
+				},
+			},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"id":      true,
+					"version": true,
+				},
+			},
 		},
 		{
-			name:     "existing with star, add nil",
-			startMap: OutputFieldsMap{"*": true},
-			resMap:   OutputFieldsMap{"*": true},
-			resStar:  true,
+			name: "existing with star, add nil",
+			startMap: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
+			resStar: true,
 		},
 		{
-			name:     "existing with star, add new",
-			fields:   []string{"id", "version"},
-			startMap: OutputFieldsMap{"*": true},
-			resMap:   OutputFieldsMap{"*": true},
-			resStar:  true,
+			name:   "existing with star, add new",
+			fields: []string{"id", "version"},
+			startMap: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
+			resStar: true,
 		},
 		{
-			name:     "existing without star, add new",
-			fields:   []string{"id", "version"},
-			startMap: OutputFieldsMap{"name": true},
-			resMap:   OutputFieldsMap{"id": true, "version": true, "name": true},
+			name:   "existing without star, add new",
+			fields: []string{"id", "version"},
+			startMap: &OutputFields{
+				fields: map[string]bool{
+					"name": true,
+				},
+			},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"id":      true,
+					"version": true,
+					"name":    true,
+				},
+			},
 		},
 		{
-			name:     "existing without star, add star",
-			fields:   []string{"id", "*"},
-			startMap: OutputFieldsMap{"name": true},
-			resMap:   OutputFieldsMap{"*": true},
-			resStar:  true,
+			name:   "existing without star, add star",
+			fields: []string{"id", "*"},
+			startMap: &OutputFields{
+				fields: map[string]bool{
+					"name": true,
+				},
+			},
+			resMap: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
+			resStar: true,
 		},
 	}
 
@@ -66,7 +123,7 @@ func Test_OutputFields(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
 			out := test.startMap.AddFields(test.fields)
-			assert.True(out.HasAll() == test.resStar)
+			assert.True(out.Has("*") == test.resStar)
 			assert.Equal(test.resMap, out)
 		})
 	}
@@ -233,42 +290,58 @@ func Test_ACLSelfOrDefault(t *testing.T) {
 
 	type input struct {
 		name   string
-		input  OutputFieldsMap
-		output OutputFieldsMap
+		input  *OutputFields
+		output *OutputFields
 		userId string
 	}
 	tests := []input{
 		{
-			name:   "nil, no user ID",
-			output: OutputFieldsMap{},
+			name: "nil, no user ID, set but empty",
+			output: &OutputFields{
+				fields: map[string]bool{},
+			},
 		},
 		{
-			name:   "nil, non anon id",
-			output: OutputFieldsMap{"*": true},
+			name: "nil, non anon id",
+			output: &OutputFields{
+				fields: map[string]bool{
+					"*": true,
+				},
+			},
 			userId: "u_abc123",
 		},
 		{
 			name: "nil, anon id",
-			output: OutputFieldsMap{
-				globals.IdField:                          true,
-				globals.ScopeField:                       true,
-				globals.ScopeIdField:                     true,
-				globals.PluginField:                      true,
-				globals.PluginIdField:                    true,
-				globals.NameField:                        true,
-				globals.DescriptionField:                 true,
-				globals.TypeField:                        true,
-				globals.IsPrimaryField:                   true,
-				globals.PrimaryAuthMethodIdField:         true,
-				globals.AuthorizedActionsField:           true,
-				globals.AuthorizedCollectionActionsField: true,
+			output: &OutputFields{
+				fields: map[string]bool{
+					globals.IdField:                          true,
+					globals.ScopeField:                       true,
+					globals.ScopeIdField:                     true,
+					globals.PluginField:                      true,
+					globals.PluginIdField:                    true,
+					globals.NameField:                        true,
+					globals.DescriptionField:                 true,
+					globals.TypeField:                        true,
+					globals.IsPrimaryField:                   true,
+					globals.PrimaryAuthMethodIdField:         true,
+					globals.AuthorizedActionsField:           true,
+					globals.AuthorizedCollectionActionsField: true,
+				},
 			},
 			userId: globals.AnonymousUserId,
 		},
 		{
-			name:   "not nil",
-			input:  OutputFieldsMap{"foo": true},
-			output: OutputFieldsMap{"foo": true},
+			name: "not nil",
+			input: &OutputFields{
+				fields: map[string]bool{
+					"foo": true,
+				},
+			},
+			output: &OutputFields{
+				fields: map[string]bool{
+					"foo": true,
+				},
+			},
 		},
 	}
 	for _, test := range tests {

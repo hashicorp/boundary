@@ -33,7 +33,7 @@ type RequestContext struct {
 
 	// OutputFields is the set of fields authorized for output for the
 	// authorized action, if not the default
-	OutputFields perms.OutputFieldsMap
+	OutputFields *perms.OutputFields
 }
 
 // NewRequestContext returns a derived context with a new RequestContext value
@@ -64,7 +64,7 @@ func RequestContextFromCtx(ctx context.Context) (*RequestContext, bool) {
 // OutputFields returns output fields from the given context and calls
 // SelfOrDefaults on it. If the context does not contain a RequestContext,
 // this will return nil, false.
-func OutputFields(ctx context.Context) (perms.OutputFieldsMap, bool) {
+func OutputFields(ctx context.Context) (*perms.OutputFields, bool) {
 	reqCtx, ok := RequestContextFromCtx(ctx)
 	if !ok {
 		return nil, false
