@@ -54,6 +54,8 @@ if [ "${CI_BUILD}x" != "x" ]; then
     exit
 fi
 
+PRODUCT_VERSION=${PRODUCT_VERSION:=$(cat version/VERSION)}
+
 # Declare binary paths!
 BINARY_NAME="boundary${BINARY_SUFFIX}"
 BIN_PATH=${BIN_PATH:=bin/${BINARY_NAME}}
