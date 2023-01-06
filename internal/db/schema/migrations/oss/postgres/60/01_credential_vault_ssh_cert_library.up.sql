@@ -79,12 +79,28 @@ begin;
     constraint credential_vault_ssh_cert_library_store_id_public_id_uq
       unique(store_id, public_id)
   );
+  comment on table credential_vault_ssh_cert_library is
+    'credential_vault_ssh_cert_library a credential library that issues credentials from a vault ssh secret backend.';
 
   insert into oplog_ticket (name, version)
   values
     ('credential_vault_ssh_cert_library', 1);
 
+  create trigger default_ssh_certificate_credential_type before insert on credential_vault_ssh_cert_library
+    for each row execute procedure default_ssh_certificate_credential_type();
   create trigger insert_credential_library_subtype before insert on credential_vault_ssh_cert_library
     for each row execute procedure insert_credential_library_subtype();
+  create trigger default_create_time_column before insert on credential_vault_ssh_cert_library
+    for each row execute procedure default_create_time();
+  create trigger delete_credential_library_subtype after delete on credential_vault_ssh_cert_library
+    for each row execute procedure delete_credential_library_subtype();
+  create trigger immutable_columns before update on credential_vault_ssh_cert_library
+    for each row execute procedure immutable_columns('public_id', 'store_id', 'project_id', 'credential_type', 'create_time');
+  create trigger update_time_column before update on credential_vault_ssh_cert_library
+    for each row execute procedure update_time_column();
+  create trigger update_version_column after update on credential_vault_ssh_cert_library
+    for each row execute procedure update_version_column();
+  create trigger before_insert_credential_vault_library before insert on credential_vault_ssh_cert_library
+    for each row execute procedure before_insert_credential_vault_library();
 
 commit;
