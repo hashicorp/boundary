@@ -67,6 +67,11 @@ message ManagedGroup {
       (custom_options.v1.generate_sdk_option) = true,
       (custom_options.v1.subtype) = "oidc"
     ];
+    LdapManagedGroupAttributes ldap_managed_group_attributes = 102 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "ldap"
+    ];
   }
 
   // Output only. The IDs of the current set of members (accounts) that are associated with this ManagedGroup.
@@ -85,6 +90,19 @@ message OidcManagedGroupAttributes {
     (custom_options.v1.mask_mapping) = {
       this: "attributes.filter"
       that: "Filter"
+    }
+  ]; // @gotags: `class:"public"`
+}
+
+// Attributes associated only with ManagedGroups with type "ldap".
+message LdapManagedGroupAttributes {
+  // The list of groups that make up the ManagedGroup
+  repeated string group_names = 100 [
+    json_name = "group_names",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.group_names"
+      that: "GroupNames"
     }
   ]; // @gotags: `class:"public"`
 }
