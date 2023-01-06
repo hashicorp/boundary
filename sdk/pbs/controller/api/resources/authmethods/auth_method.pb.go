@@ -815,10 +815,10 @@ type LdapAuthMethodAttributes struct {
 	InsecureTls bool `protobuf:"varint,30,opt,name=insecure_tls,proto3" json:"insecure_tls,omitempty" class:"public"` // @gotags: `class:"public"`
 	// discover_dn if true, use anon bind to discover the bind DN of a user.
 	// Defaults to false.
-	DiscoverDn bool `protobuf:"varint,40,opt,name=discover_dn,proto3" json:"discover_dn,omitempty"`
+	DiscoverDn bool `protobuf:"varint,40,opt,name=discover_dn,proto3" json:"discover_dn,omitempty" class:"public"` // @gotags: `class:"public"`
 	// anon_group_search if true, use anon bind when performing LDAP group
 	// searches. Defaults to false.
-	AnonGroupSearch bool `protobuf:"varint,50,opt,name=anon_group_search,proto3" json:"anon_group_search,omitempty"`
+	AnonGroupSearch bool `protobuf:"varint,50,opt,name=anon_group_search,proto3" json:"anon_group_search,omitempty" class:"public"` // @gotags: `class:"public"`
 	// upn_domain is the userPrincipalDomain used to construct the UPN string for
 	// the authenticating user. The constructed UPN will appear as
 	// [username]@UPNDomain  Example: example.com, which will cause Boundary to
