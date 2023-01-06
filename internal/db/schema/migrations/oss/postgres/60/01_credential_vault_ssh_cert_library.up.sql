@@ -55,7 +55,9 @@ begin;
     vault_path text not null
       constraint vault_path_must_not_be_empty
         check(length(trim(vault_path)) > 0),
-    username text not null,
+    username text not null
+      constraint username_must_not_be_empty
+        check(length(trim(username)) > 0),
     key_type text not null
       default 'ed25519'
       constraint credential_vault_ssh_cert_key_type_enm_fkey
