@@ -343,7 +343,7 @@ message LdapAuthMethodAttributes {
       this: "attributes.discover_dn"
       that: "DiscoverDn"
     }
-  ];
+  ]; // @gotags: `class:"public"`
 
   // anon_group_search if true, use anon bind when performing LDAP group
   // searches. Defaults to false.
@@ -354,7 +354,7 @@ message LdapAuthMethodAttributes {
       this: "attributes.anon_group_search"
       that: "AnonGroupSearch"
     }
-  ];
+  ]; // @gotags: `class:"public"`
 
   // upn_domain is the userPrincipalDomain used to construct the UPN string for
   // the authenticating user. The constructed UPN will appear as
