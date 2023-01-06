@@ -324,11 +324,11 @@ message LdapAuthMethodAttributes {
   ]; // @gotags: `class:"public"`
 
   // insecure_tls if true, skips LDAP server SSL certificate validation -
-  // insecure and use with caution. Defaults to false.  
+  // insecure and use with caution. Defaults to false.
   bool insecure_tls = 30 [
     json_name = "insecure_tls",
     (custom_options.v1.generate_sdk_option) = true,
-    (custom_options.v1.mask_mapping) = { 
+    (custom_options.v1.mask_mapping) = {
       this: "attributes.insecure_tls"
       that: "InsecureTls"
     }
@@ -339,22 +339,22 @@ message LdapAuthMethodAttributes {
   bool discover_dn = 40 [
     json_name = "discover_dn",
     (custom_options.v1.generate_sdk_option) = true,
-    (custom_options.v1.mask_mapping) = { 
+    (custom_options.v1.mask_mapping) = {
       this: "attributes.discover_dn"
       that: "DiscoverDn"
     }
-  ]; 
+  ];
 
   // anon_group_search if true, use anon bind when performing LDAP group
   // searches. Defaults to false.
   bool anon_group_search = 50 [
     json_name = "anon_group_search",
     (custom_options.v1.generate_sdk_option) = true,
-    (custom_options.v1.mask_mapping) = { 
+    (custom_options.v1.mask_mapping) = {
       this: "attributes.anon_group_search"
       that: "AnonGroupSearch"
     }
-  ]; 
+  ];
 
   // upn_domain is the userPrincipalDomain used to construct the UPN string for
   // the authenticating user. The constructed UPN will appear as
@@ -382,7 +382,7 @@ message LdapAuthMethodAttributes {
       that: "Urls"
     }
   ]; // @gotags: `class:"public"`
-  
+
   // user_dn (optional) is the base DN under which to perform user search.
   // Example: ou=Users,dc=example,dc=com
   google.protobuf.StringValue user_dn = 80 [
@@ -421,7 +421,7 @@ message LdapAuthMethodAttributes {
   bool enable_groups = 110 [
     json_name = "enable_groups",
     (custom_options.v1.generate_sdk_option) = true,
-    (custom_options.v1.mask_mapping) = { 
+    (custom_options.v1.mask_mapping) = {
       this: "attributes.enable_groups"
       that: "EnableGroups"
     }
@@ -482,7 +482,7 @@ message LdapAuthMethodAttributes {
   ]; // @gotags: `class:"public"`
 
   // client_certificate is the optional certificate encoded as PEM. It must be
-  // set if an optional client_certificate_key specified 
+  // set if an optional client_certificate_key specified
   google.protobuf.StringValue client_certificate = 160 [
     json_name = "client_certificate",
     (custom_options.v1.generate_sdk_option) = true,
@@ -505,9 +505,7 @@ message LdapAuthMethodAttributes {
 
   // Output only. The HMAC'd value of the client certificate key to indicate
   // whether the certificate key has changed.
-  string client_certificate_key_hmac = 180 [
-    json_name = "client_certificate_key_hmac"
-    ]; // @gotags: `class:"public"` 
+  string client_certificate_key_hmac = 180 [json_name = "client_certificate_key_hmac"]; // @gotags: `class:"public"`
 
   // bind_dn (optional) is the distinguished name of entry to bind when
   // performing user and group search. Example:
@@ -522,7 +520,7 @@ message LdapAuthMethodAttributes {
   ]; // @gotags: `class:"public"`
 
   // Input only. The bind_password (optional) is the password to use along with
-  // binddn when performing user search. 
+  // binddn when performing user search.
   google.protobuf.StringValue bind_password = 200 [
     json_name = "bind_password",
     (custom_options.v1.generate_sdk_option) = true,
@@ -534,18 +532,16 @@ message LdapAuthMethodAttributes {
 
   // Output only. The HMAC'd value of the bind password to indicate
   // whether the password has changed.
-  string bind_password_hmac = 210 [
-    json_name = "bind_password_hmac"
-    ]; // @gotags: `class:"public"` 
+  string bind_password_hmac = 210 [json_name = "bind_password_hmac"]; // @gotags: `class:"public"`
 
   bool use_token_groups = 220 [
     json_name = "use_token_groups",
     (custom_options.v1.generate_sdk_option) = true,
-    (custom_options.v1.mask_mapping) = { 
+    (custom_options.v1.mask_mapping) = {
       this: "attributes.use_token_groups"
       that: "UseTokenGroups"
     }
-  ]; // @gotags: `class:"public"`    
+  ]; // @gotags: `class:"public"`
 
   // account_attribute_maps are optional attribute maps from custom attributes
   // to the standard attributes of fullname and email.  These maps are

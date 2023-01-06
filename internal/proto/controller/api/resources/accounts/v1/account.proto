@@ -133,7 +133,7 @@ message OidcAccountAttributes {
 
 // Attributes associated only with Accounts with type "ldap".
 message LdapAccountAttributes {
-  // login_name of the authenticated user.  This is the login_name (or username) 
+  // login_name of the authenticated user.  This is the login_name (or username)
   // entered by the user when authenticating (typically the uid or cn
   // attribute).  Account login names must be lower case.
   string login_name = 100 [
@@ -148,13 +148,11 @@ message LdapAccountAttributes {
   // Output only.  full_name is a string that maps to the name attribute for the
   // authenticated user.  This attribute is updated every time a user
   // successfully authenticates.
-  string full_name = 110 [
-    json_name = "full_name"
-  ]; // @gotags: `class:"sensitive"`
+  string full_name = 110 [json_name = "full_name"]; // @gotags: `class:"sensitive"`
 
   // Output only. email is a string that maps to the email address attribute for
   // the authenticated user.  This attribute is updated every time a user
-  // successfully authenticates. 
+  // successfully authenticates.
   string email = 120; // @gotags: `class:"sensitive"`
 
   // Output only. dn is the distinguished name authenticated user's entry.  Will
@@ -165,6 +163,6 @@ message LdapAccountAttributes {
   // Output only. member_of_groups are the json marshalled groups the
   // authenticated user is a member of. Will be null until the user's first
   // successful authentication. This attribute is updated every time a user
-  // successfully authenticates. 
+  // successfully authenticates.
   repeated string member_of_groups = 140; // @gotags: `class:"public"`
 }
