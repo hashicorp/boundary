@@ -436,7 +436,8 @@ create trigger update_version_column after update on auth_ldap_account
 insert into oplog_ticket (name, version)
 values
   ('auth_ldap_method', 1), -- auth_ldap_method is the root aggregate itself and all of its value objects.
-  ('auth_ldap_account', 1);
+  ('auth_ldap_account', 1),
+  ('auth_ldap_managed_group', 1);
   
 
 -- ldap_auth_method_with_value_obj is useful for reading an ldap auth method 
@@ -505,5 +506,114 @@ from
 group by am.public_id, is_primary_auth_method; -- there can be only one public_id + is_primary_auth_method, so group by isn't a problem.
 comment on view ldap_auth_method_with_value_obj is
   'ldap auth method with its associated value objects (urls, certs, search config, etc)';
+
+create table auth_ldap_managed_group (
+  public_id wt_public_id primary key,
+  auth_method_id wt_public_id not null,
+  name wt_name,
+  description wt_description,
+  create_time wt_timestamp,
+  update_time wt_timestamp,
+  version wt_version,
+  group_names jsonb not null 
+    constraint group_names_must_not_be_empty
+      check(length(trim(group_names::text)) > 0),
+  constraint auth_ldap_method_fkey
+    foreign key (auth_method_id) -- fk1
+      references auth_ldap_method (public_id)
+      on delete cascade
+      on update cascade,
+  -- Ensure it relates to an abstract managed group
+  constraint auth_managed_group_fkey
+    foreign key (auth_method_id, public_id) -- fk2
+      references auth_managed_group (auth_method_id, public_id)
+      on delete cascade
+      on update cascade,
+  constraint auth_ldap_managed_group_auth_method_id_name_uq
+    unique(auth_method_id, name)
+);
+comment on table auth_ldap_managed_group is
+'auth_ldap_managed_group entries are subtypes of auth_managed_group and represent an ldap managed group.';
+
+-- Define the immutable fields of auth_ldap_managed_group
+create trigger immutable_columns before update on auth_ldap_managed_group
+  for each row execute procedure immutable_columns('public_id', 'auth_method_id', 'create_time');
+
+-- Populate create time on insert
+create trigger default_create_time_column before insert on auth_ldap_managed_group
+  for each row execute procedure default_create_time();
+
+-- Generate update time on update
+create trigger update_time_column before update on auth_ldap_managed_group
+  for each row execute procedure update_time_column();
+
+-- Update version when something changes
+create trigger update_version_column after update on auth_ldap_managed_group
+  for each row execute procedure update_version_column();
+
+-- Add into the base table when inserting into the concrete table
+create trigger insert_managed_group_subtype before insert on auth_ldap_managed_group
+  for each row execute procedure insert_managed_group_subtype();
+
+-- Ensure that deletions in the ldap subtype result in deletions to the base
+-- table.
+create trigger delete_managed_group_subtype after delete on auth_ldap_managed_group
+  for each row execute procedure delete_managed_group_subtype();
+
+
+-- auth_ldap_managed_group_member_account uses CTEs to expand and "normalize" the jsonb column
+-- containing groups in both the accounts and managed groups, then it joins these
+-- "normalized" expressions into a join table of mangagd group member account entries
+create view auth_ldap_managed_group_member_account as
+with
+account(id, group_name) as (
+	select 
+    	a.public_id, ag.group_name
+	from 
+  		auth_ldap_account a
+	left join jsonb_array_elements(a.member_of_groups) as ag(group_name) on true
+),
+groups (create_time, id, group_name) as (
+	select 
+    g.create_time,
+		g.public_id,
+    mg.group_name
+	from 
+		auth_ldap_managed_group g
+	left join jsonb_array_elements(g.group_names) as mg(group_name) on true
+)
+select distinct 
+  groups.create_time, 
+  account.id as member_id, 
+  groups.id as managed_group_id
+from account, groups
+where account.group_name = groups.group_name;
+comment on view auth_ldap_managed_group_member_account is 
+'auth_ldap_managed_group_member_account is the join view for '
+'managed ldap groups and accounts';
+
+
+-- recreate view defined in postgres/9/03_oidc_managed_group_member.up.sql 
+-- so the new view can include both oidc and ldap managed groups
+drop view auth_managed_group_member_account;
+
+-- create view with both oidc and ldap managed groups; we can replace this view
+-- to union with other subtype tables as needed in the future. 
+create view auth_managed_group_member_account as
+select
+  oidc.create_time,
+  oidc.managed_group_id,
+  oidc.member_id
+from
+  auth_oidc_managed_group_member_account oidc
+union
+select 
+  ldap.create_time,
+  ldap.managed_group_id,
+  ldap.member_id
+from 
+  auth_ldap_managed_group_member_account ldap;
+comment on view auth_managed_group_member_account is 
+'';
 
 commit;
