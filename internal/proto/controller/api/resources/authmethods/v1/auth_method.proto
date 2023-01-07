@@ -70,6 +70,11 @@ message AuthMethod {
       (custom_options.v1.subtype) = "oidc",
       (google.api.field_visibility).restriction = "INTERNAL"
     ];
+    LdapAuthMethodAttributes ldap_auth_methods_attributes = 103 [
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "ldap",
+      (google.api.field_visibility).restriction = "INTERNAL"
+    ];
   }
 
   // Output only. Whether this auth method is the primary auth method for it's scope.
@@ -299,4 +304,256 @@ message OidcAuthMethodAuthenticateTokenResponse {
   // The status. This will always be "unknown". It will never be forwarded to
   // the consumer.
   string status = 10; // @gotags: `class:"public"`
+}
+
+// The attributes of an LDAP typed auth method.
+message LdapAuthMethodAttributes {
+  // Output only. The state of the auth method. Will be "inactive",
+  // "active-private", or "active-public".
+  string state = 10 [json_name = "state"]; // @gotags: `class:"public"`
+
+  // start_tls if true, issues a StartTLS command after establishing an
+  // unencrypted connection. Defaults to false.
+  bool start_tls = 20 [
+    json_name = "start_tls",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.start_tls"
+      that: "StartTls"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // insecure_tls if true, skips LDAP server SSL certificate validation -
+  // insecure and use with caution. Defaults to false.
+  bool insecure_tls = 30 [
+    json_name = "insecure_tls",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.insecure_tls"
+      that: "InsecureTls"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // discover_dn if true, use anon bind to discover the bind DN of a user.
+  // Defaults to false.
+  bool discover_dn = 40 [
+    json_name = "discover_dn",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.discover_dn"
+      that: "DiscoverDn"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // anon_group_search if true, use anon bind when performing LDAP group
+  // searches. Defaults to false.
+  bool anon_group_search = 50 [
+    json_name = "anon_group_search",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.anon_group_search"
+      that: "AnonGroupSearch"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // upn_domain is the userPrincipalDomain used to construct the UPN string for
+  // the authenticating user. The constructed UPN will appear as
+  // [username]@UPNDomain  Example: example.com, which will cause Boundary to
+  // bind as username@example.com when authenticating the user.
+  google.protobuf.StringValue upn_domain = 60 [
+    json_name = "upn_domain",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.upn_domain"
+      that: "UpnDomain"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // urls are the LDAP URLS that specify LDAP servers to connection to.  There
+  // must be at lease on URL for each LDAP auth method. When attempting to
+  // connect, the URLs are tried in the order specified. These are Value Objects
+  // that will be stored as Url messages, and are operated on as a complete set
+  // (not individually).
+  repeated string urls = 70 [
+    json_name = "urls",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.urls"
+      that: "Urls"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // user_dn (optional) is the base DN under which to perform user search.
+  // Example: ou=Users,dc=example,dc=com
+  google.protobuf.StringValue user_dn = 80 [
+    json_name = "user_dn",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.user_dn"
+      that: "UserDn"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // user_attr (optional) is the attribute on user attribute entry matching the
+  // username passed when authenticating.  Examples: cn, uid
+  google.protobuf.StringValue user_attr = 90 [
+    json_name = "user_attr",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.user_attr"
+      that: "UserAttr"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // user_attr (optional) is the attribute on user attribute entry matching the
+  // username passed when authenticating.  Examples: cn, uid
+  google.protobuf.StringValue user_filter = 100 [
+    json_name = "user_filter",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.user_filter",
+      that: "UserFilter"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // enable_groups if true, an authenticated user's groups will be found during
+  // authentication. Defaults to false.
+  bool enable_groups = 110 [
+    json_name = "enable_groups",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.enable_groups"
+      that: "EnableGroups"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // group_dn (optional) is the base DN under which to perform user search.
+  // Example: ou=Groups,dc=example,dc=com
+  //
+  // Note: there is no default, so no base dn will be used for group searches if
+  // it's not specified.
+  google.protobuf.StringValue group_dn = 120 [
+    json_name = "group_dn",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.group_dn"
+      that: "GroupDn"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // group_attr (optional) is the LDAP attribute to follow on objects returned
+  // by GroupFilter in order to enumerate user group membership. Examples: for
+  // GroupFilter queries returning group objects, use: cn. For queries returning
+  // user objects, use: memberOf. The default is cn.
+  google.protobuf.StringValue group_attr = 130 [
+    json_name = "group_attr",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.group_attr"
+      that: "GroupAttr"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // group_filter (optional) is a Go template used when constructing the group
+  // membership query. The template can access the following context variables:
+  // [UserDN, Username]. The default is
+  // (|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}})),
+  // which is compatible with several common directory schemas.
+  google.protobuf.StringValue group_filter = 140 [
+    json_name = "group_filter",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.group_filter",
+      that: "GroupFilter"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // certificates are optional PEM encoded x509 certificates in ASN.1 DER form
+  // that can be used as trust anchors when connecting to an LDAP provider.
+  // These are Value Objects that will be stored as Certificate messages, and
+  // are operatated on as a complete set (not individually).
+  repeated string certificates = 150 [
+    json_name = "certificates",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.certificates"
+      that: "Certificates"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // client_certificate is the optional certificate encoded as PEM. It must be
+  // set if an optional client_certificate_key specified
+  google.protobuf.StringValue client_certificate = 160 [
+    json_name = "client_certificate",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.client_certificate",
+      that: "ClientCertificate"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Input only. The client_certificate_key (optional) is the plain-text of the
+  // certificate key data encoded as PEM.
+  google.protobuf.StringValue client_certificate_key = 170 [
+    json_name = "client_certificate_key",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.client_certificate_key",
+      that: "ClientCertificateKey"
+    }
+  ]; // @gotags: `class:"secret"`
+
+  // Output only. The HMAC'd value of the client certificate key to indicate
+  // whether the certificate key has changed.
+  string client_certificate_key_hmac = 180 [json_name = "client_certificate_key_hmac"]; // @gotags: `class:"public"`
+
+  // bind_dn (optional) is the distinguished name of entry to bind when
+  // performing user and group search. Example:
+  // cn=vault,ou=Users,dc=example,dc=com
+  google.protobuf.StringValue bind_dn = 190 [
+    json_name = "bind_dn",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.bind_dn",
+      that: "BindDn"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Input only. The bind_password (optional) is the password to use along with
+  // binddn when performing user search.
+  google.protobuf.StringValue bind_password = 200 [
+    json_name = "bind_password",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.bind_password",
+      that: "BindPassword"
+    }
+  ]; // @gotags: `class:"secret"`
+
+  // Output only. The HMAC'd value of the bind password to indicate
+  // whether the password has changed.
+  string bind_password_hmac = 210 [json_name = "bind_password_hmac"]; // @gotags: `class:"public"`
+
+  bool use_token_groups = 220 [
+    json_name = "use_token_groups",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.use_token_groups"
+      that: "UseTokenGroups"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // account_attribute_maps are optional attribute maps from custom attributes
+  // to the standard attributes of fullname and email.  These maps are
+  // represented as key=value where the key equals the from_attribute and the
+  // value equals the to_attribute.  For example "preferredName=fullName".  All
+  // attribute names are case insensitive.
+  repeated string account_attribute_maps = 113 [
+    json_name = "account_attribute_maps",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.account_attribute_maps"
+      that: "AccountClaimMaps"
+    }
+  ]; // @gotags: `class:"public"`
 }
