@@ -3,6 +3,7 @@ package ldap
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -38,6 +39,7 @@ type options struct {
 	ascending                bool
 	withOperationalState     AuthMethodState
 	withAccountAttributeMap  map[string]AccountToAttribute
+	withMemberOfGroups       string
 }
 
 // Option - how options are passed as args
@@ -323,6 +325,19 @@ func WithOperationalState(_ context.Context, state AuthMethodState) Option {
 func WithAccountAttributeMap(_ context.Context, aam map[string]AccountToAttribute) Option {
 	return func(o *options) error {
 		o.withAccountAttributeMap = aam
+		return nil
+	}
+}
+
+// WithMemberOfGroups provides an option for specifying a list of group names
+func WithMemberOfGroups(ctx context.Context, groupName ...string) Option {
+	const op = "ldap.WithMemberOfGroups"
+	return func(o *options) error {
+		mg, err := json.Marshal(groupName)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		o.withMemberOfGroups = string(mg)
 		return nil
 	}
 }
