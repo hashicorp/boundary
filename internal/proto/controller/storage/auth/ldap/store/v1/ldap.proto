@@ -134,7 +134,7 @@ message AuthMethod {
   // certificates are optional PEM encoded x509 certificates in ASN.1 DER form
   // that can be used as trust anchors when connecting to an LDAP provider.
   // These are Value Objects that will be stored as Certificate messages, and
-  // are operatated on as a complete set (not individually).
+  // are operated on as a complete set (not individually).
   // @inject_tag: `gorm:"-"`
   repeated string certificates = 210 [(custom_options.v1.mask_mapping) = {
     this: "Certificates"
