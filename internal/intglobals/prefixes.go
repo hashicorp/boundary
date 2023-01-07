@@ -10,6 +10,10 @@ const (
 	// from the OIDC auth method.
 	OidcManagedGroupPrefix = "mgoidc"
 
+	// LdapManagedGroupPrefix defines the prefix for ManagedGroup public ids
+	// from the LDAP auth method.
+	LdapManagedGroupPrefix = "mgldap"
+
 	// OldPasswordAccountPrefix is the previously-used account prefix
 	OldPasswordAccountPrefix = "apw"
 
