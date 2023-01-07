@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"math/big"
 	"net"
@@ -23,6 +24,15 @@ import (
 const testInvalidPem = `-----BEGIN CERTIFICATE-----
 MIICUTCCAfugAwIBAgIBADANBgkqhkiG9w0BAQQFADBXMQswCQYDVQQGEwJDTjEL
 -----END CERTIFICATE-----`
+
+var testGrpNames = []string{"test-admin", "test-users"}
+
+// TestEncodeGrpNames will json marshal group names
+func TestEncodedGrpNames(t *testing.T, names ...string) string {
+	encoded, err := json.Marshal(names)
+	require.NoError(t, err)
+	return string(encoded)
+}
 
 // TestAuthMethod creates a new auth method and it's persisted in the database.
 // See NewAuthMethod for list of supported options.
@@ -148,6 +158,24 @@ func TestAccount(t testing.TB, conn *db.DB, am *AuthMethod, loginName string, op
 
 	require.NoError(rw.Create(ctx, a))
 	return a
+}
+
+// TestManagedGroup creates a test ldap managed group.
+func TestManagedGroup(t testing.TB, conn *db.DB, am *AuthMethod, grpNames []string, opt ...Option) *ManagedGroup {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	ctx := context.Background()
+
+	mg, err := NewManagedGroup(ctx, am.PublicId, grpNames, opt...)
+	require.NoError(err)
+
+	id, err := newManagedGroupId(ctx)
+	require.NoError(err)
+	mg.PublicId = id
+
+	require.NoError(rw.Create(ctx, mg, db.WithLookup(true)))
+	return mg
 }
 
 // testGenerateCA will generate a test x509 CA cert, along with it encoded in a

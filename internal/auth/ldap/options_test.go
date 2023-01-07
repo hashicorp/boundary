@@ -294,4 +294,13 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withEmail = "test"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithMemberOfGroups", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithMemberOfGroups(testCtx, "test"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withMemberOfGroups = "[\"test\"]"
+		assert.Equal(opts, testOpts)
+	})
 }

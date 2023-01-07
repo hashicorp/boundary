@@ -582,7 +582,6 @@ func TestRepository_DeleteAccount(t *testing.T) {
 				mock.ExpectQuery(`INSERT`).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("1"))               // oplog: metadata
 				mock.ExpectExec(`UPDATE`).WillReturnResult(sqlmock.NewResult(0, 1))                                  // oplog: update ticket version
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"id", "version"}).AddRow("1", 1)) // oplog: get ticket
-
 				mock.ExpectRollback()
 				rw := db.New(conn)
 				r, err := NewRepository(testCtx, rw, rw, testKms)
@@ -592,6 +591,24 @@ func TestRepository_DeleteAccount(t *testing.T) {
 			publicId:        account.GetPublicId(),
 			wantErrMatch:    errors.T(errors.Unknown),
 			wantErrContains: "more than 1 resource would have been deleted",
+		},
+		{
+			name: "delete-err",
+			repo: func() *Repository {
+				conn, mock := db.TestSetupWithMock(t)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"id", "scope_id", "auth_method_id"}).AddRow("1", "global", "1")) // get account
+				mock.ExpectBegin()
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"id", "version"}).AddRow("1", 1)) // oplog: get ticket
+				mock.ExpectExec(`DELETE`).WillReturnError(fmt.Errorf("delete-err"))
+				mock.ExpectRollback()
+				rw := db.New(conn)
+				r, err := NewRepository(testCtx, rw, rw, testKms)
+				require.NoError(t, err)
+				return r
+			}(),
+			publicId:        account.GetPublicId(),
+			wantErrMatch:    errors.T(errors.Unknown),
+			wantErrContains: "delete-err",
 		},
 		{
 			name:     "success",
