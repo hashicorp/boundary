@@ -3,6 +3,7 @@ package ldap
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -37,6 +38,15 @@ func newAccountId(ctx context.Context, authMethodId, loginName string) (string, 
 	const op = "ldap.newAccountId"
 	// there's a unique index on: auth method id + login name
 	id, err := db.NewPublicId(AccountPrefix, db.WithPrngValues([]string{authMethodId, loginName}))
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op)
+	}
+	return id, nil
+}
+
+func newManagedGroupId(ctx context.Context) (string, error) {
+	const op = "ldap.newManagedGroupId"
+	id, err := db.NewPublicId(globals.LdapManagedGroupPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

@@ -29,6 +29,10 @@ const (
 	// ids
 	OidcManagedGroupPrefix = "mgoidc"
 
+	// LdapManagedGroupPrefix defines the prefix for ManagedGroup public ids
+	// from the LDAP auth method.
+	LdapManagedGroupPrefix = "mgldap"
+
 	// ProjectPrefix is the prefix for project scopes
 	ProjectPrefix = "p"
 	// OrgPrefix is the prefix for org scopes

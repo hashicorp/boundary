@@ -40,6 +40,7 @@ const (
 	BindDnField               = "BindDn"
 	BindPasswordField         = "BindPassword"
 	AccountAttributeMapsField = "AccountAttributeMaps"
+	GroupNamesField           = "GroupNames"
 )
 
 // UpdateAuthMethod will retrieve the auth method from the repository,
