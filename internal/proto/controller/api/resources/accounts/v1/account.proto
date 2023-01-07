@@ -72,6 +72,11 @@ message Account {
       (custom_options.v1.generate_sdk_option) = true,
       (custom_options.v1.subtype) = "oidc"
     ];
+    LdapAccountAttributes ldap_account_attributes = 103 [
+      (google.api.field_visibility).restriction = "INTERNAL",
+      (custom_options.v1.generate_sdk_option) = true,
+      (custom_options.v1.subtype) = "ldap"
+    ];
   }
 
   // Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account
@@ -124,4 +129,40 @@ message OidcAccountAttributes {
 
   // Output only. userinfo_claims are the marshaled claims from userinfo.
   google.protobuf.Struct userinfo_claims = 130;
+}
+
+// Attributes associated only with Accounts with type "ldap".
+message LdapAccountAttributes {
+  // login_name of the authenticated user.  This is the login_name (or username)
+  // entered by the user when authenticating (typically the uid or cn
+  // attribute).  Account login names must be lower case.
+  string login_name = 100 [
+    json_name = "login_name",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.login_name"
+      that: "LoginName"
+    }
+  ]; // @gotags: `class:"sensitive"`
+
+  // Output only.  full_name is a string that maps to the name attribute for the
+  // authenticated user.  This attribute is updated every time a user
+  // successfully authenticates.
+  string full_name = 110 [json_name = "full_name"]; // @gotags: `class:"sensitive"`
+
+  // Output only. email is a string that maps to the email address attribute for
+  // the authenticated user.  This attribute is updated every time a user
+  // successfully authenticates.
+  string email = 120; // @gotags: `class:"sensitive"`
+
+  // Output only. dn is the distinguished name authenticated user's entry.  Will
+  // be null until the user's first successful authentication.  This attribute
+  // is updated every time a user successfully authenticates.
+  string dn = 130; // @gotags: `class:"public"`
+
+  // Output only. member_of_groups are the json marshalled groups the
+  // authenticated user is a member of. Will be null until the user's first
+  // successful authentication. This attribute is updated every time a user
+  // successfully authenticates.
+  repeated string member_of_groups = 140; // @gotags: `class:"public"`
 }
