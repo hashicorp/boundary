@@ -31,6 +31,7 @@ create trigger default_create_time_column before insert on auth_oidc_managed_gro
 create trigger auth_immutable_managed_oidc_group_member_account before update on auth_oidc_managed_group_member_account
   for each row execute procedure auth_immutable_managed_oidc_group_member_account();
 
+-- Updated in 60/01_ldap.up.sql
 -- Initially create the view with just oidc; eventually we can replace this view
 -- to union with other subtype tables.
 create view auth_managed_group_member_account as
