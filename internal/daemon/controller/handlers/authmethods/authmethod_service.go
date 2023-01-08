@@ -545,6 +545,15 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
 		}
 		out = am
+	case ldap.Subtype:
+		am, err := s.createLdapInRepo(ctx, scopeId, item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if am == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
+		}
+		out = am
 	}
 	return out, nil
 }
@@ -1004,6 +1013,8 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 					}
 				}
 			}
+		case ldap.Subtype:
+			validateLdapAttributes(ctx, req.GetItem().GetLdapAuthMethodsAttributes(), badFields)
 		default:
 			badFields[typeField] = fmt.Sprintf("This is a required field and must be %q.", password.Subtype.String())
 		}
