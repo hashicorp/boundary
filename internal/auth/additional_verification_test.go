@@ -216,7 +216,9 @@ func TestSelfReadingDifferentOutputFields(t *testing.T) {
 		tc.Controller().PasswordAuthRepoFn,
 		tc.Controller().OidcRepoFn,
 		tc.Controller().IamRepoFn,
-		tc.Controller().AuthTokenRepoFn)
+		tc.Controller().AuthTokenRepoFn,
+		tc.Controller().LdapRepoFn,
+	)
 	require.NoError(t, err)
 
 	// Create two auth tokens belonging to different users in the org. Each will

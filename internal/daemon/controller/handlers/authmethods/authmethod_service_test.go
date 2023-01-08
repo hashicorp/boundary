@@ -195,7 +195,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.GetAuthMethod(requestauth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
@@ -224,6 +224,9 @@ func TestList(t *testing.T) {
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
@@ -366,7 +369,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			// First check with non-anonymous user
@@ -411,6 +414,9 @@ func TestDelete(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
@@ -427,7 +433,7 @@ func TestDelete(t *testing.T) {
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "my-dogs-name",
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 
-	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	cases := []struct {
@@ -491,6 +497,9 @@ func TestDelete_twice(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -502,7 +511,7 @@ func TestDelete_twice(t *testing.T) {
 	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(err, "Error when getting new auth_method service.")
 
 	req := &pbs.DeleteAuthMethodRequest{
@@ -529,6 +538,9 @@ func TestCreate(t *testing.T) {
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
@@ -957,7 +969,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 			require.NoError(err, "Error when getting new auth_method service.")
 
 			got, gErr := s.CreateAuthMethod(requestauth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)

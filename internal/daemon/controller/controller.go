@@ -115,6 +115,7 @@ type Controller struct {
 	StaticCredentialRepoFn  common.StaticCredentialRepoFactory
 	IamRepoFn               common.IamRepoFactory
 	OidcRepoFn              common.OidcAuthRepoFactory
+	LdapRepoFn              common.LdapAuthRepoFactory
 	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
 	ServersRepoFn           common.ServersRepoFactory
 	SessionRepoFn           session.RepositoryFactory

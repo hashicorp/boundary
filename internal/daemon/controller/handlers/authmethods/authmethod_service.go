@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -83,12 +84,13 @@ type Service struct {
 	oidcRepoFn common.OidcAuthRepoFactory
 	iamRepoFn  common.IamRepoFactory
 	atRepoFn   common.AuthTokenRepoFactory
+	ldapRepoFn common.LdapAuthRepoFactory
 }
 
 var _ pbs.AuthMethodServiceServer = (*Service)(nil)
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
-func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, opt ...handlers.Option) (Service, error) {
+func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, ldapRepoFn common.LdapAuthRepoFactory, opt ...handlers.Option) (Service, error) {
 	const op = "authmethods.NewService"
 	if kms == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
@@ -99,13 +101,16 @@ func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoF
 	if oidcRepoFn == nil {
 		return Service{}, fmt.Errorf("nil oidc repository provided")
 	}
+	if ldapRepoFn == nil {
+		return Service{}, fmt.Errorf("nil ldap repository provided")
+	}
 	if iamRepoFn == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if atRepoFn == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
-	s := Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn}
+	s := Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn, ldapRepoFn: ldapRepoFn}
 
 	return s, nil
 }
