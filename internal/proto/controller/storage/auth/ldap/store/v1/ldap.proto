@@ -52,29 +52,44 @@ message AuthMethod {
   // start_tls if true, issues a StartTLS command after establishing an
   // unencrypted connection. Defaults to false.
   // @inject_tag: `gorm:"not_null"`
-  bool start_tls = 90;
+  bool start_tls = 90 [(custom_options.v1.mask_mapping) = {
+    this: "StartTls"
+    that: "attributes.start_tls"
+  }];
 
   // insecure_tls if true, skips LDAP server SSL certificate validation -
   // insecure and use with caution. Defaults to false.
   // @inject_tag: `gorm:"not_null;default:false"`
-  bool insecure_tls = 100;
+  bool insecure_tls = 100 [(custom_options.v1.mask_mapping) = {
+    this: "InsecureTls"
+    that: "attributes.insecure_tls"
+  }];
 
   // discover_dn if true, use anon bind to discover the bind DN of a user.
   // Defaults to false.
   // @inject_tag: `gorm:"not_null;default:false"`
-  bool discover_dn = 110;
+  bool discover_dn = 110 [(custom_options.v1.mask_mapping) = {
+    this: "DiscoverDn"
+    that: "attributes.discover_dn"
+  }];
 
   // anon_group_search if true, use anon bind when performing LDAP group
   // searches. Defaults to false.
   // @inject_tag: `gorm:"not_null;default:false"`
-  bool anon_group_search = 120;
+  bool anon_group_search = 120 [(custom_options.v1.mask_mapping) = {
+    this: "AnonGroupSearch"
+    that: "attributes.anon_group_search"
+  }];
 
   // upn_domain is the userPrincipalDomain used to construct the UPN string for
   // the authenticating user. The constructed UPN will appear as
   // [username]@UPNDomain  Example: example.com, which will cause Boundary to
   // bind as username@example.com when authenticating the user.
   // @inject_tag: `gorm:"default:null"`
-  string upn_domain = 130;
+  string upn_domain = 130 [(custom_options.v1.mask_mapping) = {
+    this: "UpnDomain"
+    that: "attributes.upn_domain"
+  }];
 
   // urls are the LDAP URLS that specify LDAP servers to connection to.  There
   // must be at lease on URL for each LDAP auth method. When attempting to
@@ -82,17 +97,26 @@ message AuthMethod {
   // that will be stored as Url messages, and are operated on as a complete set
   // (not individually).
   // @inject_tag: `gorm:"-"`
-  repeated string urls = 140;
+  repeated string urls = 140 [(custom_options.v1.mask_mapping) = {
+    this: "Urls"
+    that: "attributes.urls"
+  }];
 
   // user_dn (optional) is the base DN under which to perform user search.
   // Example: ou=Users,dc=example,dc=com
   // @inject_tag: `gorm:"-"`
-  string user_dn = 150;
+  string user_dn = 150 [(custom_options.v1.mask_mapping) = {
+    this: "UserDn"
+    that: "attributes.user_dn"
+  }];
 
   // user_attr (optional) is the attribute on user attribute entry matching the
   // username passed when authenticating.  Examples: cn, uid
   // @inject_tag: `gorm:"-"`
-  string user_attr = 160;
+  string user_attr = 160 [(custom_options.v1.mask_mapping) = {
+    this: "UserAttr"
+    that: "attributes.user_attr"
+  }];
 
   // user_filter (optional) is a go template used to construct a LDAP user
   // search filter. The template can access the following context variables:
@@ -101,12 +125,19 @@ message AuthMethod {
   // (userPrincipalName={{.Username}}@UPNDomain) if the upndomain parameter is
   // set.
   // @inject_tag: `gorm:"-"`
-  string user_filter = 170;
+  string user_filter = 170 [(custom_options.v1.mask_mapping) = {
+    this: "UserFilter"
+    that: "attributes.user_filter"
+  }];
+
 
   // enable_groups if true, an authenticated user's groups will be found during
   // authentication. Defaults to false.
   // @inject_tag: `gorm:"not_null;default:false"`
-  bool enable_groups = 175;
+  bool enable_groups = 175 [(custom_options.v1.mask_mapping) = {
+    this: "EnableGroups"
+    that: "attributes.enable_groups"
+  }];
 
   // group_dn (optional) is the base DN under which to perform user search.
   // Example: ou=Groups,dc=example,dc=com
@@ -114,14 +145,20 @@ message AuthMethod {
   // Note: there is no default, so no base dn will be used for group searches if
   // it's not specified.
   // @inject_tag: `gorm:"-"`
-  string group_dn = 180;
+  string group_dn = 180 [(custom_options.v1.mask_mapping) = {
+    this: "GroupDn"
+    that: "attributes.group_dn"
+  }];
 
   // group_attr (optional) is the LDAP attribute to follow on objects returned
   // by GroupFilter in order to enumerate user group membership. Examples: for
   // GroupFilter queries returning group objects, use: cn. For queries returning
   // user objects, use: memberOf. The default is cn.
   // @inject_tag: `gorm:"-"`
-  string group_attr = 190;
+  string group_attr = 190 [(custom_options.v1.mask_mapping) = {
+    this: "GroupAttr"
+    that: "attributes.group_attr"
+  }];
 
   // group_filter (optional) is a Go template used when constructing the group
   // membership query. The template can access the following context variables:
@@ -129,7 +166,10 @@ message AuthMethod {
   // (|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}})),
   // which is compatible with several common directory schemas.
   // @inject_tag: `gorm:"-"`
-  string group_filter = 200;
+  string group_filter = 200 [(custom_options.v1.mask_mapping) = {
+    this: "GroupFilter"
+    that: "attributes.group_filter"
+  }];
 
   // certificates are optional PEM encoded x509 certificates in ASN.1 DER form
   // that can be used as trust anchors when connecting to an LDAP provider.
@@ -138,20 +178,23 @@ message AuthMethod {
   // @inject_tag: `gorm:"-"`
   repeated string certificates = 210 [(custom_options.v1.mask_mapping) = {
     this: "Certificates"
-    that: "attributes.ldap_ca_certs"
+    that: "attributes.certificates"
   }];
 
   // client_certificate is the certificate in ASN.1 DER form encoded as PEM. It
   // must be set.
   // @inject_tag: `gorm:"-"`
-  string client_certificate = 220;
+  string client_certificate = 220 [(custom_options.v1.mask_mapping) = {
+    this: "ClientCertificate"
+    that: "attributes.client_certificate"
+  }];
 
   // client_certificate_key (optional) is the plain-text of the certificate key
   // data in PKCS #8, ASN.1 DER form. We are not storing this plain-text key in
   // the database.
   // @inject_tag: `gorm:"-"`
   bytes client_certificate_key = 230 [(custom_options.v1.mask_mapping) = {
-    this: "CertificateKey"
+    this: "ClientCertificateKey"
     that: "attributes.client_certificate_key"
   }];
 
@@ -166,12 +209,18 @@ message AuthMethod {
   // performing user and group search. Example:
   // cn=vault,ou=Users,dc=example,dc=com
   // @inject_tag: `gorm:"-"`
-  string bind_dn = 250;
+  string bind_dn = 250 [(custom_options.v1.mask_mapping) = {
+    this: "BindDn"
+    that: "attributes.bind_dn"
+  }];
 
   // bind_password (optional) is the password to use along with binddn when
   // performing user search. (This plaintext is not stored in the database)
   // @inject_tag: `gorm:"-"`
-  string bind_password = 260;
+  string bind_password = 260 [(custom_options.v1.mask_mapping) = {
+    this: "BindPassword"
+    that: "attributes.bind_password"
+  }];
 
   // bind_password_hmac is a sha256-hmac of the unencrypted bind_password that
   // is returned from the API for read.  It is recalculated everytime the raw
@@ -187,7 +236,10 @@ message AuthMethod {
   // use_token_groups if true, use the Active Directory tokenGroups constructed
   // attribute of the user to find the group memberships. This will find all
   // security groups including nested ones.
-  bool use_token_groups = 290;
+  bool use_token_groups = 290 [(custom_options.v1.mask_mapping) = {
+    this: "UseTokenGroups"
+    that: "attributes.use_token_groups"
+  }];
 
   // account_attribute_maps are optional attribute maps from custom attributes
   // to the standard attributes of fullname and email.  These maps are
