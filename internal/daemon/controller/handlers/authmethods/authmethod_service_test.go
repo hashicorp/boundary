@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -55,6 +56,14 @@ var (
 		action.ChangeState.String(),
 		action.Authenticate.String(),
 	}
+	ldapAuthorizedActions = []string{
+		action.NoOp.String(),
+		action.Read.String(),
+		action.Update.String(),
+		action.Delete.String(),
+		action.ChangeState.String(),
+		action.Authenticate.String(),
+	}
 )
 
 var authorizedCollectionActions = map[string]*structpb.ListValue{
@@ -83,6 +92,9 @@ func TestGet(t *testing.T) {
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
@@ -150,6 +162,32 @@ func TestGet(t *testing.T) {
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldaps://ldap1"}, ldap.WithAccountAttributeMap(ctx, map[string]ldap.AccountToAttribute{
+		"mail": ldap.ToEmailAttribute,
+	}))
+	wantLdap := &pb.AuthMethod{
+		Id:          ldapAm.GetPublicId(),
+		ScopeId:     ldapAm.GetScopeId(),
+		CreatedTime: ldapAm.CreateTime.GetTimestamp(),
+		UpdatedTime: ldapAm.UpdateTime.GetTimestamp(),
+		Type:        ldap.Subtype.String(),
+		Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+			LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+				State:                string(ldap.InactiveState),
+				Urls:                 []string{"ldaps://ldap1"},
+				AccountAttributeMaps: []string{"mail=email"},
+			},
+		},
+		Version: 1,
+		Scope: &scopepb.ScopeInfo{
+			Id:            o.GetPublicId(),
+			Type:          o.GetType(),
+			ParentScopeId: scope.Global.String(),
+		},
+		AuthorizedActions:           ldapAuthorizedActions,
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	}
+
 	cases := []struct {
 		name    string
 		scopeId string
@@ -168,6 +206,12 @@ func TestGet(t *testing.T) {
 			scopeId: o.GetPublicId(),
 			req:     &pbs.GetAuthMethodRequest{Id: oidcam.GetPublicId()},
 			res:     &pbs.GetAuthMethodResponse{Item: wantOidc},
+		},
+		{
+			name:    "Get an Existing LDAP AuthMethod",
+			scopeId: o.GetPublicId(),
+			req:     &pbs.GetAuthMethodRequest{Id: ldapAm.GetPublicId()},
+			res:     &pbs.GetAuthMethodResponse{Item: wantLdap},
 		},
 		{
 			name:    "Get a non existant AuthMethod",

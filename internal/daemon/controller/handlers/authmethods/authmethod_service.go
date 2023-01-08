@@ -464,6 +464,13 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, e
 		}
 		am, lookupErr = repo.LookupAuthMethod(ctx, id)
 
+	case ldap.Subtype:
+		repo, err := s.ldapRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		am, lookupErr = repo.LookupAuthMethod(ctx, id)
+
 	default:
 		return nil, handlers.NotFoundErrorf("Unrecognized id.")
 	}
@@ -699,6 +706,22 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) reque
 				return res
 			}
 			authMeth = am
+		case ldap.Subtype:
+			repo, err := s.ldapRepoFn()
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			am, err := repo.LookupAuthMethod(ctx, id)
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			if am == nil {
+				res.Error = handlers.NotFoundError()
+				return res
+			}
+			authMeth = am
 		default:
 			res.Error = errors.New(ctx, errors.InvalidPublicId, op, "unrecognized auth method type")
 			return res
@@ -803,6 +826,60 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 		out.Attrs = &pb.AuthMethod_OidcAuthMethodsAttributes{
 			OidcAuthMethodsAttributes: attrs,
 		}
+	case *ldap.AuthMethod:
+		if outputFields.Has(globals.TypeField) {
+			out.Type = ldap.Subtype.String()
+		}
+		if !outputFields.Has(globals.AttributesField) {
+			break
+		}
+		attrs := &pb.LdapAuthMethodAttributes{
+			State:                    i.GetOperationalState(),
+			StartTls:                 i.GetStartTls(),
+			InsecureTls:              i.GetInsecureTls(),
+			DiscoverDn:               i.GetDiscoverDn(),
+			AnonGroupSearch:          i.GetAnonGroupSearch(),
+			Urls:                     i.GetUrls(),
+			EnableGroups:             i.GetEnableGroups(),
+			Certificates:             i.GetCertificates(),
+			ClientCertificateKeyHmac: string(i.GetClientCertificateKeyHmac()),
+			BindPasswordHmac:         string(i.GetBindPasswordHmac()),
+			UseTokenGroups:           i.GetUseTokenGroups(),
+		}
+		if i.GetUpnDomain() != "" {
+			attrs.UpnDomain = wrapperspb.String(i.GetUpnDomain())
+		}
+		if i.GetUserDn() != "" {
+			attrs.UserDn = wrapperspb.String(i.GetUserDn())
+		}
+		if i.GetUserAttr() != "" {
+			attrs.UserAttr = wrapperspb.String(i.GetUserAttr())
+		}
+		if i.GetUserFilter() != "" {
+			attrs.UserFilter = wrapperspb.String(i.GetUserFilter())
+		}
+		if i.GetGroupDn() != "" {
+			attrs.GroupDn = wrapperspb.String(i.GetGroupDn())
+		}
+		if i.GetGroupAttr() != "" {
+			attrs.GroupAttr = wrapperspb.String(i.GetGroupAttr())
+		}
+		if i.GetGroupFilter() != "" {
+			attrs.GroupFilter = wrapperspb.String(i.GetGroupFilter())
+		}
+		if i.GetClientCertificate() != "" {
+			attrs.ClientCertificate = wrapperspb.String(i.GetClientCertificate())
+		}
+		if i.GetBindDn() != "" {
+			attrs.BindDn = wrapperspb.String(i.GetBindDn())
+		}
+		if len(i.GetAccountAttributeMaps()) > 0 {
+			attrs.AccountAttributeMaps = i.GetAccountAttributeMaps()
+		}
+
+		out.Attrs = &pb.AuthMethod_LdapAuthMethodsAttributes{
+			LdapAuthMethodsAttributes: attrs,
+		}
 	}
 	return &out, nil
 }
@@ -831,7 +908,7 @@ func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix, ldap.AuthMethodPrefix)
 }
 
 func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest) error {
