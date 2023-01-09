@@ -32,7 +32,7 @@ begin;
         on update cascade;
 
   -- Replaces trigger from 44/04_session.up.sql
-  -- Replaced in 70/02_sessions.up.sql
+  -- Replaced in 60/02_sessions.up.sql
   -- Adding a foreign key reference to the kms key means we have
   -- to set the key_id to null when the scope_id is set to null,
   -- otherwise we can't delete scopes with sessions, since deleting
