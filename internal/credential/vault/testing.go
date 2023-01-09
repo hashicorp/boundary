@@ -168,7 +168,7 @@ func TestCredentials(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, librar
 
 	var credentials []*Credential
 	for i := 0; i < count; i++ {
-		credential, err := newCredential(lib.GetPublicId(), sessionId, fmt.Sprintf("vault/credential/%d", i), token.GetTokenHmac(), 5*time.Minute)
+		credential, err := newCredential(lib.GetPublicId(), fmt.Sprintf("vault/credential/%d", i), token.GetTokenHmac(), 5*time.Minute)
 		assert.NoError(err)
 		require.NotNil(credential)
 
@@ -177,7 +177,7 @@ func TestCredentials(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, librar
 		require.NotNil(id)
 		credential.PublicId = id
 
-		query, queryValues := credential.insertQuery()
+		query, queryValues := insertQuery(credential, sessionId)
 		rows, err2 := rw.Exec(ctx, query, queryValues)
 		assert.Equal(1, rows)
 		assert.NoError(err2)
