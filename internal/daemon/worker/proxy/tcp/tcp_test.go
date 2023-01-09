@@ -72,7 +72,7 @@ func TestHandleProxy_Errors(t *testing.T) {
 			wantError:   true,
 		},
 		{
-			name:   "specified protocol context",
+			name:   "specified protocol context passed on without validation",
 			conn:   c,
 			dialer: dialer,
 			connId: "someconnectionid",
@@ -80,7 +80,7 @@ func TestHandleProxy_Errors(t *testing.T) {
 				TypeUrl: "some.type.information",
 				Value:   []byte("this is just for this test"),
 			},
-			wantError: true,
+			wantError: false,
 		},
 	}
 	for _, tc := range cases {

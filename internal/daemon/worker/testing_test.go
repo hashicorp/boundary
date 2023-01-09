@@ -126,6 +126,28 @@ func TestTestWorker_WorkerAuthStorageKms(t *testing.T) {
 	}
 }
 
+func TestNewAuthorizedPkiTestWorker(t *testing.T) {
+	logger := hclog.New(&hclog.LoggerOptions{
+		Level: hclog.Trace,
+	})
+	conf, err := config.DevController()
+	require.NoError(t, err)
+	c := controller.NewTestController(t, &controller.TestControllerOpts{
+		Config: conf,
+		Logger: logger.Named("controller"),
+	})
+	t.Cleanup(c.Shutdown)
+	tw, id := NewAuthorizedPkiTestWorker(t, c.ServersRepo(), "test", c.ClusterAddrs())
+	assert.NotNil(t, tw)
+	assert.NotEmpty(t, id)
+
+	w, err := c.ServersRepo().LookupWorker(context.Background(), id)
+	assert.NoError(t, err)
+	assert.NotNil(t, w)
+	assert.Equal(t, "pki", w.GetType())
+	assert.Equal(t, "test", w.GetName())
+}
+
 func TestNewTestMultihopWorkers(t *testing.T) {
 	ctx := context.Background()
 	logger := hclog.New(&hclog.LoggerOptions{
