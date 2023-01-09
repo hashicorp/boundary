@@ -34,6 +34,7 @@ type workerServiceServer struct {
 	workerAuthRepoFn    common.WorkerAuthRepoStorageFactory
 	sessionRepoFn       session.RepositoryFactory
 	connectionRepoFn    common.ConnectionRepoFactory
+	downstreams         common.Downstreamers
 	updateTimes         *sync.Map
 	kms                 *kms.Kms
 	livenessTimeToStale *atomic.Int64
@@ -44,6 +45,7 @@ var (
 	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
 
 	workerFilterSelectionFn = workerFilterSelector
+	connectionRouteFn       = singleHopConnectionRoute
 
 	// getProtocolContext populates the protocol specific context fields
 	// depending on the protocol used to for the boundary connection. Defaults
@@ -53,11 +55,17 @@ var (
 	getProtocolContext = noProtocolContext
 )
 
+// singleHopConnectionRoute returns a route consisting of the singlehop worker (the root worker id)
+func singleHopConnectionRoute(_ context.Context, rootInfo server.RootInfo, _ *session.AuthzSummary, _ *server.Repository, _ common.Downstreamers) ([]string, error) {
+	return []string{rootInfo.RootId}, nil
+}
+
 func NewWorkerServiceServer(
 	serversRepoFn common.ServersRepoFactory,
 	workerAuthRepoFn common.WorkerAuthRepoStorageFactory,
 	sessionRepoFn session.RepositoryFactory,
 	connectionRepoFn common.ConnectionRepoFactory,
+	downstreams common.Downstreamers,
 	updateTimes *sync.Map,
 	kms *kms.Kms,
 	livenessTimeToStale *atomic.Int64,
@@ -67,6 +75,7 @@ func NewWorkerServiceServer(
 		workerAuthRepoFn:    workerAuthRepoFn,
 		sessionRepoFn:       sessionRepoFn,
 		connectionRepoFn:    connectionRepoFn,
+		downstreams:         downstreams,
 		updateTimes:         updateTimes,
 		kms:                 kms,
 		livenessTimeToStale: livenessTimeToStale,
@@ -502,10 +511,21 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		return nil, status.Error(codes.Internal, "Invalid connection state in authorize response.")
 	}
 
+	rootInfo := server.RootInfo{
+		RootId:  req.GetWorkerId(),
+		RootVer: w.ReleaseVersion,
+	}
+
+	route, err := connectionRouteFn(ctx, rootInfo, authzSummary, serversRepo, ws.downstreams)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error getting route to egress worker: %v", err)
+	}
+
 	ret := &pbs.AuthorizeConnectionResponse{
 		ConnectionId:    connectionInfo.GetPublicId(),
 		Status:          connStates[0].Status.ProtoVal(),
 		ConnectionsLeft: authzSummary.ConnectionLimit,
+		Route:           route,
 	}
 	if pc, err := getProtocolContext(ctx, sessionRepo, req); err != nil {
 		return nil, err

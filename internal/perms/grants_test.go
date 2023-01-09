@@ -37,13 +37,17 @@ func Test_ActionParsingValidation(t *testing.T) {
 		{
 			name: "empty action with output fields",
 			input: Grant{
-				OutputFields: OutputFieldsMap{
-					"id": true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"id": true,
+					},
 				},
 			},
 			result: Grant{
-				OutputFields: OutputFieldsMap{
-					"id": true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"id": true,
+					},
 				},
 			},
 		},
@@ -159,10 +163,12 @@ func Test_MarshalingAndCloning(t *testing.T) {
 					Type: scope.Project,
 				},
 				typ: resource.Group,
-				OutputFields: OutputFieldsMap{
-					"name":    true,
-					"version": true,
-					"id":      true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"id":      true,
+					},
 				},
 			},
 			jsonOutput:      `{"id":"baz","output_fields":["id","name","version"],"type":"group"}`,
@@ -181,10 +187,12 @@ func Test_MarshalingAndCloning(t *testing.T) {
 					action.Read:   true,
 				},
 				actionsBeingParsed: []string{"create", "read"},
-				OutputFields: OutputFieldsMap{
-					"name":    true,
-					"version": true,
-					"id":      true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"id":      true,
+					},
 				},
 			},
 			jsonOutput:      `{"actions":["create","read"],"id":"baz","output_fields":["id","name","version"],"type":"group"}`,
@@ -268,10 +276,12 @@ func Test_Unmarshaling(t *testing.T) {
 		{
 			name: "good output fields",
 			expected: Grant{
-				OutputFields: OutputFieldsMap{
-					"name":    true,
-					"version": true,
-					"id":      true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"name":    true,
+						"version": true,
+						"id":      true,
+					},
 				},
 			},
 			jsonInput: `{"output_fields":["id","name","version"]}`,
@@ -424,12 +434,40 @@ func Test_Parse(t *testing.T) {
 		{
 			name:  "empty output fields",
 			input: "id=*;type=*;actions=read,list;output_fields=",
-			err:   `perms.Parse: unable to parse grant string: perms.(Grant).unmarshalText: segment "output_fields=" not formatted correctly, missing value: parameter violation: error #100`,
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id:  "*",
+				typ: resource.All,
+				actions: map[action.Type]bool{
+					action.Read: true,
+					action.List: true,
+				},
+				OutputFields: &OutputFields{
+					fields: make(map[string]bool),
+				},
+			},
 		},
 		{
 			name:  "empty output fields json",
 			input: `{"id": "*", "type": "*", "actions": ["read", "list"], "output_fields": []}`,
-			err:   "perms.Parse: parsed grant string has output_fields set but empty: parameter violation: error #100",
+			expected: Grant{
+				scope: Scope{
+					Id:   "o_scope",
+					Type: scope.Org,
+				},
+				id:  "*",
+				typ: resource.All,
+				actions: map[action.Type]bool{
+					action.Read: true,
+					action.List: true,
+				},
+				OutputFields: &OutputFields{
+					fields: make(map[string]bool),
+				},
+			},
 		},
 		{
 			name:  "wildcard id and type and actions with list",
@@ -489,10 +527,12 @@ func Test_Parse(t *testing.T) {
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
-				OutputFields: OutputFieldsMap{
-					"version": true,
-					"id":      true,
-					"name":    true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"id":      true,
+						"name":    true,
+					},
 				},
 			},
 		},
@@ -506,10 +546,12 @@ func Test_Parse(t *testing.T) {
 				},
 				id:  "foobar",
 				typ: resource.Unknown,
-				OutputFields: OutputFieldsMap{
-					"version": true,
-					"id":      true,
-					"name":    true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"id":      true,
+						"name":    true,
+					},
 				},
 			},
 		},
@@ -555,10 +597,12 @@ func Test_Parse(t *testing.T) {
 				actions: map[action.Type]bool{
 					action.Read: true,
 				},
-				OutputFields: OutputFieldsMap{
-					"version": true,
-					"id":      true,
-					"name":    true,
+				OutputFields: &OutputFields{
+					fields: map[string]bool{
+						"version": true,
+						"id":      true,
+						"name":    true,
+					},
 				},
 			},
 		},
@@ -753,4 +797,39 @@ func TestHasActionOrSubaction(t *testing.T) {
 			assert.Equal(t, tt.want, g.hasActionOrSubaction(tt.act))
 		})
 	}
+}
+
+func FuzzParse(f *testing.F) {
+	f.Add("type=host-catalog;actions=create")
+	f.Add("type=*;actions=*")
+	f.Add("id=*;type=*;actions=*")
+	f.Add("id=*;type=*;actions=read,list")
+	f.Add("id=foobar;actions=read;output_fields=version,id,name")
+	f.Add("id={{account.id}};actions=update,read")
+	f.Add(`{id:"foobar","type":"host-catalog","actions":["create"]}`)
+
+	f.Fuzz(func(t *testing.T, grant string) {
+		g, err := Parse("global", grant, WithSkipFinalValidation(true))
+		if err != nil {
+			return
+		}
+		g2, err := Parse("global", g.CanonicalString(), WithSkipFinalValidation(true))
+		if err != nil {
+			t.Fatal("Failed to parse canonical string:", err)
+		}
+		if g.CanonicalString() != g2.CanonicalString() {
+			t.Errorf("grant roundtrip failed, input %q, output %q", g.CanonicalString(), g2.CanonicalString())
+		}
+		jsonBytes, err := g.MarshalJSON()
+		if err != nil {
+			t.Error("Failed to marshal JSON:", err)
+		}
+		g3, err := Parse("global", string(jsonBytes), WithSkipFinalValidation(true))
+		if err != nil {
+			t.Fatal("Failed to parse json string:", err)
+		}
+		if g.CanonicalString() != g3.CanonicalString() {
+			t.Errorf("grant JSON roundtrip failed, input %q, output %q", g.CanonicalString(), g3.CanonicalString())
+		}
+	})
 }

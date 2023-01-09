@@ -876,7 +876,7 @@ func (r *WorkerAuthRepositoryStorage) validateWorkerAuths(ctx context.Context, w
 	workerAuthsFound := len(workerAuths)
 	switch {
 	case workerAuthsFound == 0:
-		return nil, errors.New(ctx, errors.RecordNotFound, op, "did not find worker auth records for worker")
+		return nil, errors.New(ctx, errors.RecordNotFound, op, "did not find worker auth records for worker", errors.WithoutEvent())
 	case workerAuthsFound == 1:
 		if workerAuths[0].State != currentWorkerAuthState {
 			return nil, errors.New(ctx, errors.NotSpecificIntegrity, op,

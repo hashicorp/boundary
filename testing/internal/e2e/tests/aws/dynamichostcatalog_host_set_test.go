@@ -16,37 +16,14 @@ import (
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
-	"github.com/kelseyhightower/envconfig"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-type config struct {
-	AwsAccessKeyId     string `envconfig:"E2E_AWS_ACCESS_KEY_ID" required:"true"`
-	AwsSecretAccessKey string `envconfig:"E2E_AWS_SECRET_ACCESS_KEY" required:"true"`
-	AwsHostSetFilter1  string `envconfig:"E2E_AWS_HOST_SET_FILTER" required:"true"`  // e.g. "tag:testtag=true"
-	AwsHostSetIps1     string `envconfig:"E2E_AWS_HOST_SET_IPS" required:"true"`     // e.g. "[\"1.2.3.4\", \"2.3.4.5\"]"
-	AwsHostSetFilter2  string `envconfig:"E2E_AWS_HOST_SET_FILTER2" required:"true"` // e.g. "tag:testtagtwo=test"
-	AwsHostSetIps2     string `envconfig:"E2E_AWS_HOST_SET_IPS2" required:"true"`    // e.g. "[\"1.2.3.4\"]"
-	TargetSshKeyPath   string `envconfig:"E2E_SSH_KEY_PATH" required:"true"`         // e.g. "/Users/username/key.pem"
-	TargetSshUser      string `envconfig:"E2E_SSH_USER" required:"true"`             // e.g. "ubuntu"
-	TargetPort         string `envconfig:"E2E_SSH_PORT" default:"22"`
-}
-
-func loadConfig() (*config, error) {
-	var c config
-	err := envconfig.Process("", &c)
-	if err != nil {
-		return nil, err
-	}
-
-	return &c, err
-}
-
-// TestCliCreateAwsDynamicHostCatalog uses the boundary cli to create a host catalog with the AWS
+// TestCliCreateAwsDynamicHostCatalogWithHostSet uses the boundary cli to create a host catalog with the AWS
 // plugin. The test sets up an AWS dynamic host catalog, creates some host sets, sets up a target to
 // one of the host sets, and attempts to connect to the target.
-func TestCliCreateAwsDynamicHostCatalog(t *testing.T) {
+func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)

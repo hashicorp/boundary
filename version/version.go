@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const BoundaryPrefix = "Boundary v"
+
 // Info
 type Info struct {
 	Revision          string `json:"revision,omitempty"`
@@ -59,7 +61,7 @@ func (c *Info) FullVersionNumber(rev bool) string {
 		return "Boundary (version unknown)"
 	}
 
-	fmt.Fprintf(&versionString, "Boundary v%s", c.Version)
+	fmt.Fprintf(&versionString, "%s%s", BoundaryPrefix, c.Version)
 	if c.VersionPrerelease != "" {
 		fmt.Fprintf(&versionString, "-%s", c.VersionPrerelease)
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -405,6 +406,9 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 	logger := hclog.New(&hclog.LoggerOptions{
 		Level: hclog.Trace,
 	})
+
+	tg.SetupSuiteTargetFilters(t)
+
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{SchedulerRunJobInterval: 100 * time.Millisecond})
 	ctx := tc.Context()
 	t.Cleanup(tc.Shutdown)

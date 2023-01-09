@@ -97,6 +97,9 @@ message AuthorizeConnectionResponse {
   // protocol_context contains information specific to the protocol being
   // proxied.  This is not needed to be set for tcp sessions.
   google.protobuf.Any protocol_context = 40; // @gotags: `class:"public"`
+
+  // route specifies the workers the connection will be sent through
+  repeated string route = 50;
 }
 
 message ConnectConnectionRequest {

@@ -19,7 +19,3 @@ steps:
     when: always
     command: |
       make -C testing/dbtest/docker clean
-- slack/status:
-    fail_only: true
-    only_for_branches: master
-    webhook: webhook

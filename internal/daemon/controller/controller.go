@@ -67,19 +67,11 @@ type downstreamWorkersTicker interface {
 	StartDownstreamWorkersTicking(context.Context, int) error
 }
 
-// downstreamers provides at least a minimum interface that must be met by a
-// Controller.downstreamWorkers field which is far better than allowing any (empty
-// interface)
-type downstreamers interface {
-	// RootId returns the root ID of the downstreamers' graph
-	RootId() string
-}
-
 var (
 	downstreamRouterFactory func() downstreamRouter
 
-	downstreamersFactory           func(context.Context, string) (downstreamers, error)
-	downstreamWorkersTickerFactory func(context.Context, string, downstreamers, downstreamRouter) (downstreamWorkersTicker, error)
+	downstreamersFactory           func(context.Context, string) (common.Downstreamers, error)
+	downstreamWorkersTickerFactory func(context.Context, string, common.Downstreamers, downstreamRouter) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
 )
 
@@ -97,7 +89,7 @@ type Controller struct {
 	workerAuthCache *sync.Map
 
 	// downstream workers and routes to those workers
-	downstreamWorkers downstreamers
+	downstreamWorkers common.Downstreamers
 	downstreamRoutes  downstreamRouter
 
 	apiListeners    []*base.ServerListener
