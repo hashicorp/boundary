@@ -6,10 +6,13 @@ import (
 	"net"
 	"sync"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
 var (
+	TcpHandlerName = "tcp"
+
 	// handlers is the map of registered handlers
 	handlers sync.Map
 
@@ -18,11 +21,16 @@ var (
 
 	// ErrProtocolAlreadyRegistered specifies the provided protocol has already been registered
 	ErrProtocolAlreadyRegistered = errors.New("proxy: protocol already registered")
+
+	// GetHandler returns the handler registered for the provided worker and
+	// protocolContext. If a protocol cannot be determined or the protocol is
+	// not registered nil, ErrUnknownProtocol is returned.
+	GetHandler = tcpOnly
 )
 
 // ProxyConnFn is called after the call to ConnectConnection on the cluster.
 // ProxyConnFn blocks until the specific request that is being proxied is finished
-type ProxyConnFn func()
+type ProxyConnFn func(ctx context.Context)
 
 // Handler is the type that all proxies need to implement to be called by the worker
 // when a new client connection is created.  If there is an error ProxyConnFn must
@@ -39,10 +47,9 @@ func RegisterHandler(protocol string, handler Handler) error {
 	return nil
 }
 
-// GetHandler returns the handler registered for the provided protocol. If the protocol
-// is not registered nil and ErrUnknownProtocol is returned.
-func GetHandler(protocol string) (Handler, error) {
-	handler, ok := handlers.Load(protocol)
+// tcpOnly returns only the TCP protocol.
+func tcpOnly(string, proto.Message) (Handler, error) {
+	handler, ok := handlers.Load(TcpHandlerName)
 	if !ok {
 		return nil, ErrUnknownProtocol
 	}
