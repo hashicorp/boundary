@@ -33,13 +33,13 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 	databaseWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
-	testCert, testCertEncoded := testGenerateCA(t, "localhost")
+	testCert, testCertEncoded := TestGenerateCA(t, "localhost")
 	_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	derPrivKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)
 	require.NoError(t, err)
 
-	_, testCertEncoded2 := testGenerateCA(t, "localhost")
+	_, testCertEncoded2 := TestGenerateCA(t, "localhost")
 	_, testPrivKey2, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	derPrivKey2, err := x509.MarshalPKCS8PrivateKey(testPrivKey2)
@@ -860,9 +860,9 @@ func Test_validateFieldMask(t *testing.T) {
 func Test_valueObjectChanges(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	_, pem1 := testGenerateCA(t, "localhost")
-	_, pem2 := testGenerateCA(t, "127.0.0.1")
-	_, pem3 := testGenerateCA(t, "www.example.com")
+	_, pem1 := TestGenerateCA(t, "localhost")
+	_, pem2 := TestGenerateCA(t, "127.0.0.1")
+	_, pem3 := TestGenerateCA(t, "www.example.com")
 
 	tests := []struct {
 		name            string

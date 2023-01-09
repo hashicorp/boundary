@@ -22,8 +22,8 @@ func TestEncodeCertificates(t *testing.T) {
 		{
 			name: "valid",
 			setup: func() ([]*x509.Certificate, []string) {
-				c1, p1 := testGenerateCA(t, "localhost")
-				c2, p2 := testGenerateCA(t, "alice.com")
+				c1, p1 := TestGenerateCA(t, "localhost")
+				c2, p2 := TestGenerateCA(t, "alice.com")
 
 				return []*x509.Certificate{c1, c2}, []string{p1, p2}
 			},
@@ -32,8 +32,8 @@ func TestEncodeCertificates(t *testing.T) {
 		{
 			name: "empty-cert",
 			setup: func() ([]*x509.Certificate, []string) {
-				_, p1 := testGenerateCA(t, "localhost")
-				c2, p2 := testGenerateCA(t, "alice.com")
+				_, p1 := TestGenerateCA(t, "localhost")
+				c2, p2 := TestGenerateCA(t, "alice.com")
 
 				return []*x509.Certificate{nil, c2}, []string{p1, p2}
 			},
@@ -44,8 +44,8 @@ func TestEncodeCertificates(t *testing.T) {
 		{
 			name: "nil-certs",
 			setup: func() ([]*x509.Certificate, []string) {
-				_, p1 := testGenerateCA(t, "localhost")
-				_, p2 := testGenerateCA(t, "alice.com")
+				_, p1 := TestGenerateCA(t, "localhost")
+				_, p2 := TestGenerateCA(t, "alice.com")
 
 				return nil, []string{p1, p2}
 			},
@@ -85,8 +85,8 @@ func TestParseCertificates(t *testing.T) {
 		{
 			name: "valid",
 			setup: func() ([]*x509.Certificate, []string) {
-				c1, p1 := testGenerateCA(t, "localhost")
-				c2, p2 := testGenerateCA(t, "alice.com")
+				c1, p1 := TestGenerateCA(t, "localhost")
+				c2, p2 := TestGenerateCA(t, "alice.com")
 
 				return []*x509.Certificate{c1, c2}, []string{p1, p2}
 			},
@@ -95,8 +95,8 @@ func TestParseCertificates(t *testing.T) {
 		{
 			name: "empty-pem",
 			setup: func() ([]*x509.Certificate, []string) {
-				c1, _ := testGenerateCA(t, "localhost")
-				c2, p2 := testGenerateCA(t, "alice.com")
+				c1, _ := TestGenerateCA(t, "localhost")
+				c2, p2 := TestGenerateCA(t, "alice.com")
 
 				return []*x509.Certificate{c1, c2}, []string{"", p2}
 			},
@@ -106,8 +106,8 @@ func TestParseCertificates(t *testing.T) {
 		{
 			name: "nil-pem",
 			setup: func() ([]*x509.Certificate, []string) {
-				c1, _ := testGenerateCA(t, "localhost")
-				c2, _ := testGenerateCA(t, "alice.com")
+				c1, _ := TestGenerateCA(t, "localhost")
+				c2, _ := TestGenerateCA(t, "alice.com")
 
 				return []*x509.Certificate{c1, c2}, nil
 			},
@@ -117,7 +117,7 @@ func TestParseCertificates(t *testing.T) {
 		{
 			name: "invalid-block",
 			setup: func() ([]*x509.Certificate, []string) {
-				c1, _ := testGenerateCA(t, "localhost")
+				c1, _ := TestGenerateCA(t, "localhost")
 				return []*x509.Certificate{c1}, []string{testInvalidPem}
 			},
 			wantErr:         true,
@@ -127,7 +127,7 @@ func TestParseCertificates(t *testing.T) {
 		{
 			name: "invalid-pem",
 			setup: func() ([]*x509.Certificate, []string) {
-				c1, _ := testGenerateCA(t, "localhost")
+				c1, _ := TestGenerateCA(t, "localhost")
 				return []*x509.Certificate{c1}, []string{"not-encoded"}
 			},
 			wantErr:         true,

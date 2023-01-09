@@ -20,7 +20,7 @@ import (
 func TestNewAuthMethod(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	testCert, testCertEncoded := testGenerateCA(t, "localhost")
+	testCert, testCertEncoded := TestGenerateCA(t, "localhost")
 	_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	derPrivKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)
@@ -199,7 +199,7 @@ func TestAuthMethod_clone(t *testing.T) {
 	testCtx := context.Background()
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		testCert, _ := testGenerateCA(t, "localhost")
+		testCert, _ := TestGenerateCA(t, "localhost")
 		_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 		require.NoError(err)
 		derPrivKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)
@@ -340,7 +340,7 @@ func Test_convertValueObjects(t *testing.T) {
 	testCtx := context.TODO()
 	testPublicId := "test-id"
 	testLdapServers := []string{"ldaps://ldap1.alice.com", "ldaps://ldap2.alice.com"}
-	_, pem := testGenerateCA(t, "localhost")
+	_, pem := TestGenerateCA(t, "localhost")
 	testCerts := []string{pem}
 	c, err := NewCertificate(testCtx, testPublicId, pem)
 	require.NoError(t, err)
@@ -371,7 +371,7 @@ func Test_convertValueObjects(t *testing.T) {
 	testGroupSearchConf, err := NewGroupEntrySearchConf(testCtx, testPublicId, WithGroupDn(testCtx, "group-dn"), WithGroupAttr(testCtx, "group-attr"))
 	require.NoError(t, err)
 
-	_, testClientCertEncoded := testGenerateCA(t, "client-cert-host")
+	_, testClientCertEncoded := TestGenerateCA(t, "client-cert-host")
 	_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 

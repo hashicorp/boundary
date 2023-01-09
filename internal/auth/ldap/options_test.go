@@ -194,8 +194,8 @@ func Test_getOpts(t *testing.T) {
 	})
 	t.Run("WithCertificates", func(t *testing.T) {
 		assert := assert.New(t)
-		testCert, _ := testGenerateCA(t, "localhost")
-		testCert2, _ := testGenerateCA(t, "127.0.0.1")
+		testCert, _ := TestGenerateCA(t, "localhost")
+		testCert2, _ := TestGenerateCA(t, "127.0.0.1")
 
 		opts, err := getOpts(WithCertificates(testCtx, testCert, testCert2))
 		require.NoError(t, err)
@@ -207,7 +207,7 @@ func Test_getOpts(t *testing.T) {
 	})
 	t.Run("WithClientCertificate", func(t *testing.T) {
 		assert := assert.New(t)
-		testCert, testCertEncoded := testGenerateCA(t, "localhost")
+		testCert, testCertEncoded := TestGenerateCA(t, "localhost")
 		_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 		require.NoError(t, err)
 		derPrivKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)

@@ -14,7 +14,7 @@ import (
 func TestNewCertificate(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	_, testCertEncoded := testGenerateCA(t, "localhost")
+	_, testCertEncoded := TestGenerateCA(t, "localhost")
 	tests := []struct {
 		name            string
 		ctx             context.Context
@@ -127,7 +127,7 @@ func TestCertificate_clone(t *testing.T) {
 	testCtx := context.Background()
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		_, testCertEncoded := testGenerateCA(t, "localhost")
+		_, testCertEncoded := TestGenerateCA(t, "localhost")
 		c, err := NewCertificate(testCtx, "test-id", testCertEncoded)
 		require.NoError(err)
 		cp := c.clone()
@@ -135,11 +135,11 @@ func TestCertificate_clone(t *testing.T) {
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		_, testCertEncoded := testGenerateCA(t, "localhost")
+		_, testCertEncoded := TestGenerateCA(t, "localhost")
 		c, err := NewCertificate(testCtx, "test-id", testCertEncoded)
 		require.NoError(err)
 
-		_, testCertEncoded2 := testGenerateCA(t, "alice.com")
+		_, testCertEncoded2 := TestGenerateCA(t, "alice.com")
 		c2, err := NewCertificate(testCtx, "test-id", testCertEncoded2)
 		require.NoError(err)
 

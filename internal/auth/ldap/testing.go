@@ -178,9 +178,9 @@ func TestManagedGroup(t testing.TB, conn *db.DB, am *AuthMethod, grpNames []stri
 	return mg
 }
 
-// testGenerateCA will generate a test x509 CA cert, along with it encoded in a
+// TestGenerateCA will generate a test x509 CA cert, along with it encoded in a
 // PEM format.
-func testGenerateCA(t testing.TB, hosts ...string) (*x509.Certificate, string) {
+func TestGenerateCA(t testing.TB, hosts ...string) (*x509.Certificate, string) {
 	t.Helper()
 	require := require.New(t)
 

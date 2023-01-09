@@ -21,7 +21,7 @@ import (
 func TestNewClientCertificate(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	_, testCertEncoded := testGenerateCA(t, "localhost")
+	_, testCertEncoded := TestGenerateCA(t, "localhost")
 	_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	derPrivKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)
@@ -167,7 +167,7 @@ func TestClientCertificate_clone(t *testing.T) {
 	testCtx := context.Background()
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		_, pem := testGenerateCA(t, "localhost")
+		_, pem := TestGenerateCA(t, "localhost")
 		_, privKey, err := ed25519.GenerateKey(rand.Reader)
 		require.NoError(err)
 		derEncodedKey, err := x509.MarshalPKCS8PrivateKey(privKey)
@@ -180,7 +180,7 @@ func TestClientCertificate_clone(t *testing.T) {
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		_, pem := testGenerateCA(t, "localhost")
+		_, pem := TestGenerateCA(t, "localhost")
 		_, privKey, err := ed25519.GenerateKey(rand.Reader)
 		require.NoError(err)
 		derEncodedKey, err := x509.MarshalPKCS8PrivateKey(privKey)
@@ -188,7 +188,7 @@ func TestClientCertificate_clone(t *testing.T) {
 		cc, err := NewClientCertificate(testCtx, "test-id", derEncodedKey, pem)
 		require.NoError(err)
 
-		_, pem2 := testGenerateCA(t, "localhost")
+		_, pem2 := TestGenerateCA(t, "localhost")
 		_, privKey2, err := ed25519.GenerateKey(rand.Reader)
 		require.NoError(err)
 		derEncodedKey2, err := x509.MarshalPKCS8PrivateKey(privKey2)
@@ -205,7 +205,7 @@ func TestClientCertificate_encrypt_decrypt(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
 	testWrapper := db.TestWrapper(t)
-	_, testCertEncoded := testGenerateCA(t, "localhost")
+	_, testCertEncoded := TestGenerateCA(t, "localhost")
 	_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	derPrivKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)
