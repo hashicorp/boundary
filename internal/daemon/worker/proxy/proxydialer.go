@@ -3,11 +3,10 @@ package proxy
 import (
 	"context"
 	"net"
-	"net/url"
 	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"google.golang.org/protobuf/proto"
 )
 
 // GetEndpointDialer returns a ProxyDialer which, when Dial() is called
@@ -16,13 +15,13 @@ var GetEndpointDialer = directDialer
 
 // directDialer returns a ProxyDialer which tcp dials directly to the provided
 // endpoint.
-func directDialer(ctx context.Context, endpoint *url.URL, _ *pbs.AuthorizeConnectionResponse) (*ProxyDialer, error) {
+func directDialer(ctx context.Context, endpoint string, _ string, _ proto.Message, _ interface{}) (*ProxyDialer, error) {
 	const op = "proxy.directDialer"
-	if endpoint == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "endpoint is nil")
+	if len(endpoint) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "endpoint is empty")
 	}
-	d, err := NewProxyDialer(ctx, func(...Option) (net.Conn, error) {
-		remoteConn, err := net.Dial("tcp", endpoint.Host)
+	d, err := NewProxyDialer(ctx, func() (net.Conn, error) {
+		remoteConn, err := net.Dial("tcp", endpoint)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -36,19 +35,19 @@ func directDialer(ctx context.Context, endpoint *url.URL, _ *pbs.AuthorizeConnec
 
 // proxyAddr is a net.Addr with IP and port information for the endpoint being
 // proxied to.
-// TODO: Support returning the IP and port information that gets sent back up through grpc.
 type proxyAddr struct {
-	wrapped *net.TCPAddr
+	ip   string
+	port uint32
 }
 
 // Ip returns the ip address of the dialed endpoint
 func (p *proxyAddr) Ip() string {
-	return p.wrapped.IP.String()
+	return p.ip
 }
 
 // Port returns the tcp port of the endpoint connected to
 func (p *proxyAddr) Port() uint32 {
-	return uint32(p.wrapped.Port)
+	return p.port
 }
 
 // ProxyDialer dials downstream to eventually get to the target host.
@@ -75,6 +74,15 @@ func (d *ProxyDialer) LastConnectionAddr() *proxyAddr {
 	return d.latestAddr.Load()
 }
 
+// portAndIpGetter allows a dialing function to return a connection that can
+// provide it's ip address and port through the GetIp and GetPort methods
+// instead of providing directly a *net.TCPConn.  This might be helpful if the
+// net.Conn embeds a protobuf message with Ip and Port fields for example.
+type portAndIpGetter interface {
+	GetIp() string
+	GetPort() uint32
+}
+
 // Dial uses the provided dial function to get a net.Conn and record its
 // net.Addr information.  The returned net.Addr should contain the information
 // for the endpoint that is being proxied to.
@@ -86,7 +94,11 @@ func (d *ProxyDialer) Dial(ctx context.Context, opt ...Option) (net.Conn, error)
 	}
 	switch v := c.RemoteAddr().(type) {
 	case *net.TCPAddr:
-		d.latestAddr.Store(&proxyAddr{v})
+		ip := v.IP.String()
+		port := uint32(v.Port)
+		d.latestAddr.Store(&proxyAddr{ip: ip, port: port})
+	case portAndIpGetter:
+		d.latestAddr.Store(&proxyAddr{ip: v.GetIp(), port: v.GetPort()})
 	default:
 		c.Close()
 		return nil, errors.New(ctx, errors.Internal, op, "connection type unexpected")

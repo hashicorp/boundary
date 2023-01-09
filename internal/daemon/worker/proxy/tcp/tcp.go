@@ -24,7 +24,7 @@ func init() {
 // handleProxy returns a ProxyConnFn which starts the copy between the
 // connections and blocks until an error (EOF on happy path) is received on
 // either connection.
-func handleProxy(ctx context.Context, conn net.Conn, out *proxy.ProxyDialer, connId string, pi *anypb.Any) (proxy.ProxyConnFn, error) {
+func handleProxy(ctx context.Context, conn net.Conn, out *proxy.ProxyDialer, connId string, _ *anypb.Any) (proxy.ProxyConnFn, error) {
 	const op = "tcp.HandleProxy"
 	switch {
 	case conn == nil:
@@ -33,8 +33,6 @@ func handleProxy(ctx context.Context, conn net.Conn, out *proxy.ProxyDialer, con
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "proxy dialer is nil")
 	case len(connId) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "connection id is empty")
-	case pi != nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "protocol context Any proto is not nil")
 	}
 	remoteConn, err := out.Dial(ctx)
 	if err != nil {

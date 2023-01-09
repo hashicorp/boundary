@@ -34,7 +34,9 @@ type ProxyConnFn func(ctx context.Context)
 
 // Handler is the type that all proxies need to implement to be called by the worker
 // when a new client connection is created.  If there is an error ProxyConnFn must
-// be nil. If there is no error ProxyConnFn must be set.
+// be nil. If there is no error ProxyConnFn must be set.  When Handler has
+// returned, it is expected that the initial connection to the endpoint has been
+// established.
 type Handler func(context.Context, net.Conn, *ProxyDialer, string, *anypb.Any) (ProxyConnFn, error)
 
 func RegisterHandler(protocol string, handler Handler) error {
