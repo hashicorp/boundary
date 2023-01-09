@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -20,6 +21,58 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// since we're not using gorm tags to retrieve this, it's faster and easier to just make a new struct than import usrPassCred from the vault package
+type userPassCred struct {
+	PublicId        string
+	LibraryId       string
+	SessionId       string
+	TokenHmac       []byte
+	ExternalId      string
+	IsRenewable     bool
+	Status          string
+	LastRenewalTime *timestamp.Timestamp
+	ExpirationTime  *timestamp.Timestamp
+}
+
+func lookupDbCred(t *testing.T, ctx context.Context, rw *db.Db, upc credential.UsernamePassword) userPassCred {
+	rows, err := rw.Query(ctx, `
+	select
+		public_id,
+		library_id,
+		session_id,
+		token_hmac,
+		external_id,
+		is_renewable,
+		status,
+		last_renewal_time,
+		expiration_time
+	from credential_vault_credential
+	where public_id = ?;
+	`, []any{upc.GetPublicId()})
+	require.NoError(t, err)
+	rowCount := 0
+
+	got := userPassCred{}
+
+	for rows.Next() {
+		rowCount++
+		require.NoError(t, rows.Scan(
+			&got.PublicId,
+			&got.LibraryId,
+			&got.SessionId,
+			&got.TokenHmac,
+			&got.ExternalId,
+			&got.IsRenewable,
+			&got.Status,
+			&got.LastRenewalTime,
+			&got.ExpirationTime,
+		))
+	}
+	assert.Equal(t, 1, rowCount)
+
+	return got
+}
 
 func TestRepository_IssueCredentials(t *testing.T) {
 	t.Parallel()
@@ -398,6 +451,11 @@ func TestRepository_IssueCredentials(t *testing.T) {
 					if upc, ok := dc.(credential.UsernamePassword); ok {
 						assert.NotEmpty(upc.Username())
 						assert.NotEmpty(upc.Password())
+						// we also want to retrieve the cred from the db and make sure it's the same as the one returned by Issue
+						retrieved := lookupDbCred(t, ctx, rw, upc)
+						require.Equal(retrieved.SessionId, sess.GetPublicId())
+						require.Equal(retrieved.PublicId, upc.GetPublicId())
+						// these asserts are super basic because the main check we want is that lookupDbCred succeeded
 						break
 					}
 					assert.Fail("want UsernamePassword credential from library with credential type UsernamePassword")
