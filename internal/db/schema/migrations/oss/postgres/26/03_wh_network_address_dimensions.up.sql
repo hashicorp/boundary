@@ -70,7 +70,7 @@ begin;
 
 
   -- replaces function from 15/02_wh_rename_key_columns.up.sql
-  -- replaced function in 70/03_wh_sessions.up.sql
+  -- replaced function in 60/03_wh_sessions.up.sql
   -- adds the network address key to the host dimension table.
   drop function wh_upsert_host;
   create function wh_upsert_host(p_host_id wt_public_id, p_host_set_id wt_public_id, p_target_id wt_public_id) returns wh_dim_key
