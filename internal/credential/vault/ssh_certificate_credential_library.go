@@ -18,8 +18,6 @@ const (
 type SSHCertificateCredentialLibrary struct {
 	*store.SSHCertificateCredentialLibrary
 	tableName string `gorm:"-"`
-
-	MappingOverride MappingOverride `gorm:"-"`
 }
 
 // NewSSHCertificateCredentialLibrary creates a new in memory CredentialLibrary
@@ -31,7 +29,6 @@ func NewSSHCertificateCredentialLibrary(storeId string, vaultPath string, userna
 	opts := getOpts(opt...)
 
 	l := &SSHCertificateCredentialLibrary{
-		MappingOverride: opts.withMappingOverride,
 		SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 			StoreId:         storeId,
 			Name:            opts.withName,
@@ -58,14 +55,8 @@ func allocSSHCertificateCredentialLibrary() *SSHCertificateCredentialLibrary {
 }
 
 func (l *SSHCertificateCredentialLibrary) clone() *SSHCertificateCredentialLibrary {
-	var m MappingOverride
-	if l.MappingOverride != nil {
-		m = l.MappingOverride.clone()
-	}
-
 	cp := proto.Clone(l.SSHCertificateCredentialLibrary)
 	return &SSHCertificateCredentialLibrary{
-		MappingOverride:                 m,
 		SSHCertificateCredentialLibrary: cp.(*store.SSHCertificateCredentialLibrary),
 	}
 }
@@ -101,7 +92,7 @@ func (l *SSHCertificateCredentialLibrary) oplog(op oplog.OpType) oplog.Metadata 
 
 // CredentialType returns the type of credential the library retrieves.
 func (l *SSHCertificateCredentialLibrary) CredentialType() credential.Type {
-	return credential.SshCertificateType
+	return credential.Type(l.SSHCertificateCredentialLibrary.CredentialType)
 }
 
 var _ credential.Library = (*SSHCertificateCredentialLibrary)(nil)

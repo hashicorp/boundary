@@ -65,9 +65,9 @@ begin;
     key_id text,
     critical_options bytea,
     extensions bytea,
-    credential_type text default 'ssh_certificate',
-      -- constraint credential_type_must_be_ssh_cert
-      -- check (type is only 'ssh_certificate' )
+    credential_type text default 'ssh_certificate'
+      constraint credential_type_must_be_ssh_cert
+      check(credential_type = 'ssh_certificate'),
     project_id wt_public_id not null,
     constraint credential_vault_ssh_cert_library_store_id_name_uq
       unique(store_id, name),
