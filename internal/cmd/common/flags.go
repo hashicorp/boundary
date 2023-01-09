@@ -164,9 +164,11 @@ func PopulateCombinedSliceFlagValue(input CombinedSliceFlagValuePopulationInput)
 				KvSplit:        true,
 				KeyDelimiter:   &keyDelimiter,
 				ProtoCompatKey: true,
+				KeyOnlyAllowed: true,
 				Usage: fmt.Sprintf(
 					"A key=value pair to add to the request's %s map. "+
-						"The type is automatically inferred. Use -string-%s, -bool-%s, or -num-%s if the type needs to be overridden. "+
+						"This can also be a key value only which will set a JSON null as the value. "+
+						"If a value is provided, the type is automatically inferred. Use -string-%s, -bool-%s, or -num-%s if the type needs to be overridden. "+
 						"Can be specified multiple times. "+
 						"Supports sourcing values from files via \"file://\" and env vars via \"env://\".",
 					input.FullPopulationInputName,
@@ -263,26 +265,36 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 		// First, perform any needed parsing if we are given the type
 		switch field.Name {
 		case "num-" + suffix:
-			// JSON treats all numbers equally, however, we will try to be a
-			// little better so that we don't include decimals if we don't need
-			// to (and don't have to worry about precision if not necessary)
-			if strings.Contains(field.Value, ".") {
-				val, err = strconv.ParseFloat(field.Value, 64)
+			if field.Value == nil {
+				return fmt.Errorf("num-%s flag requires a value", suffix)
+			}
+			switch {
+			case strings.Contains(field.Value.GetValue(), "."):
+				// JSON treats all numbers equally, however, we will try to be a
+				// little better so that we don't include decimals if we don't need
+				// to (and don't have to worry about precision if not necessary)
+				val, err = strconv.ParseFloat(field.Value.GetValue(), 64)
 				if err != nil {
 					return fmt.Errorf("error parsing value %q as a float: %w", field.Value, err)
 				}
-			} else {
-				val, err = strconv.ParseInt(field.Value, 10, 64)
+			default:
+				val, err = strconv.ParseInt(field.Value.GetValue(), 10, 64)
 				if err != nil {
 					return fmt.Errorf("error parsing value %q as an integer: %w", field.Value, err)
 				}
 			}
 
 		case "string-" + suffix:
-			val = strings.Trim(field.Value, `"`)
+			if field.Value == nil {
+				return fmt.Errorf("string-%s flag requires a value", suffix)
+			}
+			val = field.Value.GetValue()
 
 		case "bool-" + suffix:
-			switch field.Value {
+			if field.Value == nil {
+				return fmt.Errorf("bool-%s flag requires a value", suffix)
+			}
+			switch field.Value.GetValue() {
 			case "true":
 				val = true
 			case "false":
@@ -295,44 +307,43 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 			// In this case, use heuristics to just do the right thing the vast
 			// majority of the time
 			switch {
-			case field.Value == "null": // Explicit null, we want to set to a null value to clear it
+			case field.Value == nil: // Key-only, set to null
+
+			case field.Value.GetValue() == "null": // Explicit null, we want to set to a null value to clear it
 				val = nil
 
-			case field.Value == "true": // bool true
+			case field.Value.GetValue() == "true": // bool true
 				val = true
 
-			case field.Value == "false": // bool false
+			case field.Value.GetValue() == "false": // bool false
 				val = false
 
-			case strings.HasPrefix(field.Value, `"`): // explicitly quoted string
-				val = strings.Trim(field.Value, `"`)
-
-			case jsonNumberRegex.MatchString(strings.Trim(field.Value, `"`)): // number
+			case jsonNumberRegex.MatchString(strings.Trim(field.Value.GetValue(), `"`)): // number
 				// Same logic as above
-				if strings.Contains(field.Value, ".") {
-					val, err = strconv.ParseFloat(field.Value, 64)
+				if strings.Contains(field.Value.GetValue(), ".") {
+					val, err = strconv.ParseFloat(field.Value.GetValue(), 64)
 					if err != nil {
 						return fmt.Errorf("error parsing value %q as a float: %w", field.Value, err)
 					}
 				} else {
-					val, err = strconv.ParseInt(field.Value, 10, 64)
+					val, err = strconv.ParseInt(field.Value.GetValue(), 10, 64)
 					if err != nil {
 						return fmt.Errorf("error parsing value %q as an integer: %w", field.Value, err)
 					}
 				}
 
-			case strings.HasPrefix(field.Value, "["): // serialized JSON array
+			case strings.HasPrefix(field.Value.GetValue(), "["): // serialized JSON array
 				var s []any
-				u := json.NewDecoder(bytes.NewBufferString(field.Value))
+				u := json.NewDecoder(bytes.NewBufferString(field.Value.GetValue()))
 				u.UseNumber()
 				if err := u.Decode(&s); err != nil {
 					return fmt.Errorf("error parsing value %q as a json array: %w", field.Value, err)
 				}
 				val = s
 
-			case strings.HasPrefix(field.Value, "{"): // serialized JSON map
+			case strings.HasPrefix(field.Value.GetValue(), "{"): // serialized JSON map
 				var m map[string]any
-				u := json.NewDecoder(bytes.NewBufferString(field.Value))
+				u := json.NewDecoder(bytes.NewBufferString(field.Value.GetValue()))
 				u.UseNumber()
 				if err := u.Decode(&m); err != nil {
 					return fmt.Errorf("error parsing value %q as a json map: %w", field.Value, err)
@@ -341,8 +352,9 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 
 			default:
 				// Default is to treat as a string value
-				val = field.Value
+				val = field.Value.GetValue()
 			}
+
 		default:
 			return fmt.Errorf("unknown flag %q", field.Name)
 		}
@@ -374,7 +386,7 @@ func HandleAttributeFlags(c *base.Command, suffix, fullField string, sepFields [
 
 				default:
 					// It's not a slice, so create a new slice with the
-					// exisitng and new values
+					// existing and new values
 					currMap[segment] = []any{t, val}
 				}
 

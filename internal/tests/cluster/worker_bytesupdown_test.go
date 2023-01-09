@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/dawdle"
@@ -19,6 +20,8 @@ import (
 func TestWorkerBytesUpDown(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
+
+	tg.SetupSuiteTargetFilters(t)
 
 	logger := hclog.New(&hclog.LoggerOptions{
 		Name:  t.Name(),

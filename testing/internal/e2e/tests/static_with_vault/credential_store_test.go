@@ -3,7 +3,6 @@ package static_with_vault_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 
@@ -159,8 +158,10 @@ func TestCliVaultCredentialStore(t *testing.T) {
 
 	for _, v := range newSessionAuthorization.Credentials {
 		if v.CredentialSource.CredentialType == "ssh_private_key" {
-			retrievedUser := v.Credential["username"].(string)
-			retrievedKey := v.Credential["private_key"].(string)
+			retrievedUser, ok := v.Credential["username"].(string)
+			require.True(t, ok)
+			retrievedKey, ok := v.Credential["private_key"].(string)
+			require.True(t, ok)
 			assert.Equal(t, c.TargetSshUser, retrievedUser)
 
 			keyData, err := os.ReadFile(c.TargetSshKeyPath)
@@ -168,8 +169,10 @@ func TestCliVaultCredentialStore(t *testing.T) {
 			require.Equal(t, string(keyData), retrievedKey)
 			t.Log("Successfully retrieved private key credentials for target")
 		} else if v.CredentialSource.CredentialType == "username_password" {
-			retrievedUser := v.Credential["username"].(string)
-			retrievedPassword := v.Credential["password"].(string)
+			retrievedUser, ok := v.Credential["username"].(string)
+			require.True(t, ok)
+			retrievedPassword, ok := v.Credential["password"].(string)
+			require.True(t, ok)
 			assert.Equal(t, c.TargetSshUser, retrievedUser)
 			assert.Equal(t, password, retrievedPassword)
 			t.Log("Successfully retrieved password credentials for target")
@@ -305,8 +308,10 @@ func TestApiVaultCredentialStore(t *testing.T) {
 			require.True(t, keysMatch, "Key retrieved from vault does not match expected value")
 			t.Log("Successfully retrieved credentials for target")
 		} else if v.CredentialSource.CredentialType == "username_password" {
-			retrievedUser := fmt.Sprintf("%s", v.Credential["username"])
-			retrievedPassword := fmt.Sprintf("%s", v.Credential["password"])
+			retrievedUser, ok := v.Credential["username"].(string)
+			require.True(t, ok)
+			retrievedPassword, ok := v.Credential["password"].(string)
+			require.True(t, ok)
 			assert.Equal(t, c.TargetSshUser, retrievedUser)
 			assert.Equal(t, password, retrievedPassword)
 			t.Log("Successfully retrieved password credentials for target")

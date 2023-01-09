@@ -105,7 +105,7 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	staticCredRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
-	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
+	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod)
 }
 
 func TestGet(t *testing.T) {
@@ -2290,6 +2290,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 
 func TestAuthorizeSession(t *testing.T) {
 	ctx := context.Background()
+	targets.SetupSuiteTargetFilters(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -2469,7 +2470,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod)
 	require.NoError(t, err)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2584,6 +2585,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	targets.SetupSuiteTargetFilters(t)
+
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
 	require.NoError(t, err)
@@ -2636,7 +2639,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod)
 	require.NoError(t, err)
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -3160,6 +3163,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 func TestAuthorizeSession_Errors(t *testing.T) {
 	ctx := context.Background()
+	targets.SetupSuiteTargetFilters(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -3201,7 +3205,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, statusGracePeriod)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod)
 	require.NoError(t, err)
 
 	// Authorized user gets full permissions

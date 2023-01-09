@@ -21,7 +21,7 @@ type ACL struct {
 type ACLResults struct {
 	AuthenticationFinished bool
 	Authorized             bool
-	OutputFields           OutputFieldsMap
+	OutputFields           *OutputFields
 
 	// This is included but unexported for testing/debugging
 	scopeMap map[string][]Grant
@@ -96,7 +96,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			// Continue with the next grant, unless we have output fields
 			// specified in which case we continue to be able to apply the
 			// output fields depending on ID and type.
-			if len(grant.OutputFields) > 0 {
+			if _, hasSetFields := grant.OutputFields.Fields(); hasSetFields {
 				outputFieldsOnly = true
 			} else {
 				continue
@@ -219,7 +219,9 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			if !outputFieldsOnly {
 				results.Authorized = true
 			}
-			if results.OutputFields = results.OutputFields.AddFields(grant.OutputFields.Fields()); results.OutputFields.HasAll() && results.Authorized {
+			fields, _ := grant.OutputFields.Fields()
+			results.OutputFields = results.OutputFields.AddFields(fields)
+			if results.OutputFields.Has("*") && results.Authorized {
 				return
 			}
 		}

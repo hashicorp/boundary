@@ -421,6 +421,7 @@ type AuthzSummary struct {
 	ExpirationTime         *timestamp.Timestamp
 	ConnectionLimit        int32
 	CurrentConnectionCount uint32
+	EgressWorkerFilter     string
 }
 
 func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*AuthzSummary, error) {

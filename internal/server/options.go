@@ -47,6 +47,7 @@ type options struct {
 	withOperationalState                   string
 	withActiveWorkers                      bool
 	withFeature                            version.Feature
+	withDirectlyConnected                  bool
 }
 
 func getDefaultOptions() options {
@@ -228,5 +229,12 @@ func WithActiveWorkers(withActive bool) Option {
 func WithFeature(feature version.Feature) Option {
 	return func(o *options) {
 		o.withFeature = feature
+	}
+}
+
+// WithDirectlyConnected provides an option to limit graph search to only directly connected workers
+func WithDirectlyConnected(conn bool) Option {
+	return func(o *options) {
+		o.withDirectlyConnected = conn
 	}
 }

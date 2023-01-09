@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
+	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -38,7 +39,6 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/mitchellh/pointerstructure"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -113,6 +113,7 @@ type Service struct {
 	staticHostRepoFn        common.StaticRepoFactory
 	vaultCredRepoFn         common.VaultCredentialRepoFactory
 	staticCredRepoFn        common.StaticCredentialRepoFactory
+	downstreams             common.Downstreamers
 	kmsCache                *kms.Kms
 	workerStatusGracePeriod *atomic.Int64
 }
@@ -131,6 +132,7 @@ func NewService(
 	staticHostRepoFn common.StaticRepoFactory,
 	vaultCredRepoFn common.VaultCredentialRepoFactory,
 	staticCredRepoFn common.StaticCredentialRepoFactory,
+	downstreams common.Downstreamers,
 	workerStatusGracePeriod *atomic.Int64,
 ) (Service, error) {
 	const op = "targets.NewService"
@@ -167,6 +169,7 @@ func NewService(
 		staticHostRepoFn:        staticHostRepoFn,
 		vaultCredRepoFn:         vaultCredRepoFn,
 		staticCredRepoFn:        staticCredRepoFn,
+		downstreams:             downstreams,
 		kmsCache:                kmsCache,
 		workerStatusGracePeriod: workerStatusGracePeriod,
 	}, nil
@@ -229,7 +232,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserId)
 
 		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 
 		if outputFields.Has(globals.ScopeField) {
 			outputOpts = append(outputOpts, handlers.WithScope(authzScopes[item.GetProjectId()]))
@@ -278,7 +281,7 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -316,7 +319,7 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -354,7 +357,7 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -408,7 +411,7 @@ func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHos
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -446,7 +449,7 @@ func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHos
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -484,7 +487,7 @@ func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTar
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -524,7 +527,7 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -564,7 +567,7 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -604,7 +607,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	}
 
 	outputOpts := make([]handlers.Option, 0, 3)
-	outputOpts = append(outputOpts, handlers.WithOutputFields(&outputFields))
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
 	if outputFields.Has(globals.ScopeField) {
 		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
 	}
@@ -622,7 +625,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 
 // If set, use the worker_filter or egress_worker_filter to filtere the selected workers
 // and ensure we have workers available to service this request.
-func AuthorizeSessionWithWorkerFilter(t target.Target, selectedWorkers []*server.Worker) ([]*server.Worker, error) {
+func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, selectedWorkers []*server.Worker, _ common.Downstreamers) ([]*server.Worker, error) {
 	if len(selectedWorkers) > 0 {
 		var eval *bexpr.Evaluator
 		var err error
@@ -638,7 +641,7 @@ func AuthorizeSessionWithWorkerFilter(t target.Target, selectedWorkers []*server
 			return nil, err
 		}
 
-		selectedWorkers, err = workerList(selectedWorkers).filtered(eval)
+		selectedWorkers, err = wl.WorkerList(selectedWorkers).Filtered(eval)
 		if err != nil {
 			return nil, err
 		}
@@ -732,7 +735,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
-	selectedWorkers, err = AuthorizeSessionWorkerFilterFn(t, selectedWorkers)
+	selectedWorkers, err = AuthorizeSessionWorkerFilterFn(ctx, t, selectedWorkers, s.downstreams)
 	if err != nil {
 		return nil, err
 	}
@@ -877,7 +880,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, workerList(selectedWorkers).addresses())
+	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, wl.WorkerList(selectedWorkers).Addresses())
 	if err != nil {
 		return nil, err
 	}
@@ -976,7 +979,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		PrivateKey:      sess.CertificatePrivateKey,
 		HostId:          chosenEndpoint.HostId,
 		Endpoint:        endpointUrl.String(),
-		WorkerInfo:      workerList(selectedWorkers).workerInfos(),
+		WorkerInfo:      wl.WorkerList(selectedWorkers).WorkerInfos(),
 		ConnectionLimit: t.GetSessionConnectionLimit(),
 	}
 	marshaledSad, err := proto.Marshal(sad)
@@ -1881,47 +1884,4 @@ func validateAuthorizeSessionRequest(req *pbs.AuthorizeSessionRequest) error {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
 	}
 	return nil
-}
-
-// workerList is a helper type to make the selection of workers clearer and more declarative.
-type workerList []*server.Worker
-
-// addresses converts the slice of workers to a slice of their addresses
-func (w workerList) addresses() []string {
-	ret := make([]string, 0, len(w))
-	for _, worker := range w {
-		ret = append(ret, worker.GetAddress())
-	}
-	return ret
-}
-
-// workerInfos converts the slice of workers to a slice of their workerInfo protos
-func (w workerList) workerInfos() []*pb.WorkerInfo {
-	ret := make([]*pb.WorkerInfo, 0, len(w))
-	for _, worker := range w {
-		ret = append(ret, &pb.WorkerInfo{Address: worker.GetAddress()})
-	}
-	return ret
-}
-
-// filtered returns a new workerList where all elements contained in it are the
-// ones which from the original workerList that pass the evaluator's evaluation.
-func (w workerList) filtered(eval *bexpr.Evaluator) (workerList, error) {
-	var ret []*server.Worker
-	for _, worker := range w {
-		filterInput := map[string]any{
-			"name": worker.GetName(),
-			"tags": worker.CanonicalTags(),
-		}
-		ok, err := eval.Evaluate(filterInput)
-		if err != nil && !stderrors.Is(err, pointerstructure.ErrNotFound) {
-			return nil, handlers.ApiErrorWithCodeAndMessage(
-				codes.FailedPrecondition,
-				fmt.Sprintf("Worker filter expression evaluation resulted in error: %s", err))
-		}
-		if ok {
-			ret = append(ret, worker)
-		}
-	}
-	return ret, nil
 }

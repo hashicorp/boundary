@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/kr/pretty"
 	"github.com/posener/complete"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // FlagExample is an interface which declares an example value.
@@ -909,6 +910,9 @@ func (f *FlagSet) Var(value flag.Value, name, usage string) {
 // Value parts so that validation can happen at parsing time. If you don't want
 // this kind of behavior, simply combine them, or set KvSplit to false.
 //
+// If KeyOnlyAllowed is true then it is valid to parse an input with only a key
+// segment and no value.
+//
 // If KeyDelimiter is non-nil (along with KvSplit being true), the string will
 // be used to split the key. Otherwise, the Keys will be a single-element slice
 // containing the full value.
@@ -924,6 +928,7 @@ type CombinationSliceVar struct {
 	Target         *[]CombinedSliceFlagValue
 	Completion     complete.Predictor
 	KvSplit        bool
+	KeyOnlyAllowed bool
 	KeyDelimiter   *string
 	ProtoCompatKey bool
 }
@@ -933,7 +938,7 @@ func (f *FlagSet) CombinationSliceVar(i *CombinationSliceVar) {
 		Name:       i.Name,
 		Aliases:    i.Aliases,
 		Usage:      i.Usage,
-		Value:      newCombinedSliceValue(i.Name, i.Target, i.Hidden, i.KvSplit, i.KeyDelimiter, i.ProtoCompatKey),
+		Value:      newCombinedSliceValue(i.Name, i.Target, i.Hidden, i.KvSplit, i.KeyOnlyAllowed, i.KeyDelimiter, i.ProtoCompatKey),
 		Completion: i.Completion,
 	})
 }
@@ -943,24 +948,26 @@ func (f *FlagSet) CombinationSliceVar(i *CombinationSliceVar) {
 type CombinedSliceFlagValue struct {
 	Name  string
 	Keys  []string
-	Value string
+	Value *wrapperspb.StringValue
 }
 
 type combinedSliceValue struct {
 	name           string
 	hidden         bool
 	kvSplit        bool
+	keyOnlyAllowed bool
 	keyDelimiter   *string
 	protoCompatKey bool
 	target         *[]CombinedSliceFlagValue
 }
 
-func newCombinedSliceValue(name string, target *[]CombinedSliceFlagValue, hidden, kvSplit bool, keyDelimiter *string, protoCompatKey bool) *combinedSliceValue {
+func newCombinedSliceValue(name string, target *[]CombinedSliceFlagValue, hidden, kvSplit, keyOnlyAllowed bool, keyDelimiter *string, protoCompatKey bool) *combinedSliceValue {
 	return &combinedSliceValue{
 		name:           name,
 		hidden:         hidden,
 		kvSplit:        kvSplit,
 		keyDelimiter:   keyDelimiter,
+		keyOnlyAllowed: keyOnlyAllowed,
 		protoCompatKey: protoCompatKey,
 		target:         target,
 	}
@@ -971,21 +978,27 @@ var protoIdentifierRegex = regexp.MustCompile("^[a-zA-Z][A-Za-z0-9_]*$")
 func (c *combinedSliceValue) Set(val string) error {
 	ret := CombinedSliceFlagValue{
 		Name:  c.name,
-		Value: strings.TrimSpace(val),
+		Value: wrapperspb.String(strings.TrimSpace(val)),
 	}
 
 	if c.kvSplit {
-		kv := strings.SplitN(ret.Value, "=", 2)
+		kv := strings.SplitN(ret.Value.GetValue(), "=", 2)
 		switch len(kv) {
 		case 0:
+			// This shouldn't happen
+			return fmt.Errorf("unexpected length of string after splitting")
 		case 1:
-			ret.Value = strings.TrimSpace(kv[0])
+			if !c.keyOnlyAllowed {
+				return fmt.Errorf("key-only value provided but not supported for this flag")
+			}
+			ret.Keys = []string{kv[0]}
+			ret.Value = nil
 		default:
 			ret.Keys = []string{kv[0]}
 			if c.keyDelimiter != nil {
 				ret.Keys = strings.Split(kv[0], *c.keyDelimiter)
 			}
-			ret.Value = strings.TrimSpace(kv[1])
+			ret.Value = wrapperspb.String(strings.TrimSpace(kv[1]))
 		}
 	}
 
@@ -1002,9 +1015,13 @@ func (c *combinedSliceValue) Set(val string) error {
 		}
 	}
 
-	var err error
-	if ret.Value, err = parseutil.ParsePath(ret.Value); err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
-		return fmt.Errorf("error checking if value is a path: %w", err)
+	if ret.Value != nil {
+		pathParsedValue, err := parseutil.ParsePath(ret.Value.GetValue())
+		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+			return fmt.Errorf("error checking if value is a path: %w", err)
+		}
+		// This will either be the round-tripped value or the substituted value
+		ret.Value = wrapperspb.String(pathParsedValue)
 	}
 
 	*c.target = append(*c.target, ret)

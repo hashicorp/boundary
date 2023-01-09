@@ -1,4 +1,4 @@
-package handlers_test
+package handlers
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/db"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -96,7 +95,7 @@ func TestStatus(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -300,7 +299,7 @@ func TestStatusSessionClosed(t *testing.T) {
 	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -484,7 +483,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -642,7 +641,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -783,7 +782,7 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 	_ = server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w1KeyId))
 	_ = server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w2KeyId))
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kmsCache, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kmsCache, new(atomic.Int64))
 	require.NotNil(t, s)
 
 	cases := []struct {
@@ -924,7 +923,7 @@ func TestWorkerOperationalStatus(t *testing.T) {
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 
-	s := handlers.NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
 	require.NotNil(t, s)
 
 	cases := []struct {
