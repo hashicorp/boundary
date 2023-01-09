@@ -8,15 +8,31 @@ description: |-
 ## Connect to Your First Target
 
 The default target is a `tcp` target with a default port of `22` (which
-corresponds to the default SSH port using TCP). The host sets for this target
-contain the default host, which has the address `127.0.0.1`. When `boundary
-connect` is executed against this target, the single available host will be
-selected and a local authenticated proxy to the host is established on the
+corresponds to the default SSH port using TCP). This target is set up with
+`127.0.0.1` as its address. When you execute `boundary connect` against this
+target, a local authenticated proxy to the address is established on the
 target's default port (`127.0.0.1:22`).
 
 ```shell-session
 $ boundary connect -target-id ttcp_1234567890
 ```
+
+There is also a secondary `tcp` target with (`ttcp_0987654321`) which uses host
+sets instead of an address. The host sets for this target contain the default
+host, which has the address 127.0.0.1. When you execute `boundary connect`
+against this target, the single available host will be selected and a local
+authenticated proxy to the host is also established on the target's default port
+(127.0.0.1:22).
+
+```shell-session
+boundary connect -target-id ttcp_0987654321
+```
+
+For the purpose of this guide, both of these targets accomplish the same goal,
+however they have different purposes. Refer to the
+[domain](/docs/concepts/domain-model/index) documentation for more information.
+
+For the rest of this guide, assume the default is used.
 
 The output displays the address and port that your SSH client must utilize. In
 the next section the `ssh` connect helper is used to make it easier to connect
@@ -130,6 +146,7 @@ of `:22` to `:443`:
 $ boundary targets update tcp -default-port 443 -id ttcp_1234567890
 
 Target information:
+  Address:                    127.0.0.1
   Created Time:               Fri, 25 Sep 2020 18:35:47 PDT
   Description:                Provides an initial target in Boundary
   ID:                         ttcp_1234567890
@@ -145,10 +162,6 @@ Target information:
     Name:                     Generated project scope
     Parent Scope ID:          o_1234567890
     Type:                     project
-
-  Host Sets:
-    Host Catalog ID:          hcst_1234567890
-    ID:                       hsst_1234567890
 
   Attributes:
     Default Port:             443

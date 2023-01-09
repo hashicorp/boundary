@@ -5,8 +5,9 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/target/tcp"
-	"github.com/hashicorp/boundary/internal/target/tcp/store"
+	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 )
 
@@ -78,7 +79,7 @@ func init() {
 	var err error
 
 	if maskManager, err = handlers.NewMaskManager(
-		handlers.MaskDestination{&store.Target{}},
+		handlers.MaskDestination{&tcpStore.Target{}, &store.TargetAddress{}},
 		handlers.MaskSource{&pb.Target{}, &pb.TcpTargetAttributes{}},
 	); err != nil {
 		panic(err)

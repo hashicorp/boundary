@@ -82,6 +82,7 @@ begin;
   -- warehouse
 
   -- Replaces whx_host_dimension_source defined in 26/02_wh_network_address_dimensions.up.sql.
+  -- Replaced view in 70/03_wh_sessions.up.sql
   drop view whx_host_dimension_source;
   create view whx_host_dimension_source as
   select -- id is the first column in the target view

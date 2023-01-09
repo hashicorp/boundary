@@ -51,7 +51,29 @@ The highest-level in Boundary utilizes the concepts of [Roles](/docs/concepts/do
 
 ## Target and Host Resources
 
-Boundary exposes endpoints to users as [Targets](/docs/concepts/domain-model/targets). A target is a resource representing a networked service, with an associated set of permissions, that allows a user to connect and interact with Boundary within a single  session. A target may contain references to [Host](/docs/concepts/domain-model/hosts) sources and [Credential](/docs/concepts/domain-model/credentials) sources. Users who access a target create an authorized session to one of its host sources with returned credentials from the target’s credential source.
+Boundary exposes endpoints to users as [Targets](/docs/concepts/domain-model/targets). A target is a resource representing a networked service, with an associated set of permissions, that allows a user to connect and interact with Boundary within a single session. A target may contain references to [Host](/docs/concepts/domain-model/hosts) sources or an address, and [Credential](/docs/concepts/domain-model/credentials) sources. Users who access a target create an authorized session to its address or one of its host sources with returned credentials from the target’s credential source.
+
+A target exposes two distinct and mutually exclusive configuration paths for its
+representation of a networked service:
+
+- Target with an address
+- Target with host sources
+
+A target with an address represents a target that is set up with a single IP
+address or DNS name directly on the target resource. This mechanism provides
+benefits for new Boundary users and users who do not need the flexibility
+provided by Hosts, Host Sets, and Host Catalogs. It is well suited for cases
+where there are stand-alone hosts that should not be grouped together and
+treated as equal from an access control point of view. Because of its
+simplicity, using targets with an address is not recommended when there are a
+either a large number of hosts and/or dynamic hosts.
+
+A target with host sources represents a target that has one or more [host
+sets][] associated with it. It trades off the simplicity of directly setting an
+address on a target with the flexibility and scalability of Hosts, Host Sets and
+Host Catalogs for discovering and categorizing networked resources. We recommend
+using targets with host sources for setting up Boundary in environments where a
+significant number of resources exist.
 
 ### Summary of Resources
 

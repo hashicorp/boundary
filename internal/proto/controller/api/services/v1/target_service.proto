@@ -102,8 +102,9 @@ service TargetService {
   // Host Sources added to the provided Target must be a child of a Catalog that
   // is a child of the same scope as this Target. If the scope or Target IDs are
   // missing, malformed, or reference non-existing resources, an error is
-  // returned. An error is returned if a Host Source is attempted to be added to a
-  // target that is already present on the Target.
+  // returned. An error is returned if a Host Source is attempted to be added to
+  // a target that is already present on the Target. If the given target already
+  // has its address field set, a Bad Request error is returned.
   rpc AddTargetHostSources(AddTargetHostSourcesRequest) returns (AddTargetHostSourcesResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id}:add-host-sources"
@@ -111,7 +112,7 @@ service TargetService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds existing Host Sources to a Target."
+      summary: "Adds existing Host Sources to a Target. Cannot be used on targets that have their address field set."
     };
   }
 
@@ -121,7 +122,8 @@ service TargetService {
   // Host Sources will be set. All Host Sources in the request must be a child
   // of a Catalog that is in the same scope as the provided Target. If any IDs
   // are missing, malformed, or references a non-existing resource, an error is
-  // returned.
+  // returned. If the given target already has its address field set, a Bad
+  // Request error is returned.
   rpc SetTargetHostSources(SetTargetHostSourcesRequest) returns (SetTargetHostSourcesResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id}:set-host-sources"
@@ -129,7 +131,7 @@ service TargetService {
       response_body: "item"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Sources the Host Sources on the Target."
+      summary: "Sources the Host Sources on the Target. Cannot be used on targets that have their address field set."
     };
   }
 

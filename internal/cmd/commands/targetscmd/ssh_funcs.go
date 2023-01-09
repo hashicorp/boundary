@@ -19,8 +19,8 @@ func init() {
 
 func extraSshActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {"default-port", "session-max-seconds", "session-connection-limit", "egress-worker-filter", "ingress-worker-filter"},
-		"update": {"default-port", "session-max-seconds", "session-connection-limit", "worker-filter", "egress-worker-filter", "ingress-worker-filter"},
+		"create": {"address", "default-port", "session-max-seconds", "session-connection-limit", "egress-worker-filter", "ingress-worker-filter"},
+		"update": {"address", "default-port", "session-max-seconds", "session-connection-limit", "worker-filter", "egress-worker-filter", "ingress-worker-filter"},
 	}
 }
 
@@ -31,6 +31,7 @@ type extraSshCmdVars struct {
 	flagWorkerFilter           string
 	flagEgressWorkerFilter     string
 	flagIngressWorkerFilter    string
+	flagAddress                string
 }
 
 func (c *SshCommand) extraSshHelpFunc(helpMap map[string]func() string) string {
@@ -66,6 +67,12 @@ func extraSshFlagsFuncImpl(c *SshCommand, set *base.FlagSets, f *base.FlagSet) {
 
 	for _, name := range flagsSshMap[c.Func] {
 		switch name {
+		case "address":
+			fs.StringVar(&base.StringVar{
+				Name:   "address",
+				Target: &c.flagAddress,
+				Usage:  "Optionally, a valid network address to connect to for this target. Can not be used alongside host sources.",
+			})
 		case "default-port":
 			fs.StringVar(&base.StringVar{
 				Name:   "default-port",
@@ -186,6 +193,14 @@ func extraSshFlagsHandlingFuncImpl(c *SshCommand, _ *base.FlagSets, opts *[]targ
 			return false
 		}
 		*opts = append(*opts, targets.WithIngressWorkerFilter(c.flagIngressWorkerFilter))
+	}
+
+	switch c.flagAddress {
+	case "":
+	case "null":
+		*opts = append(*opts, targets.DefaultAddress())
+	default:
+		*opts = append(*opts, targets.WithAddress(c.flagAddress))
 	}
 
 	return true

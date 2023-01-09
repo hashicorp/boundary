@@ -721,6 +721,7 @@ func TestCancel(t *testing.T) {
 			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
 			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			got, gErr := s.CancelSession(ctx, tc.req)
+
 			if tc.err != nil {
 				require.Error(gErr)
 				// It's hard to mix and match api/error package errors right now
@@ -764,6 +765,8 @@ func TestCancel(t *testing.T) {
 				tc.res.GetItem().ExpirationTime = got.GetItem().GetExpirationTime()
 			}
 
+			assert.Equal(got.GetItem().HostId, tc.res.GetItem().HostId)
+			assert.Equal(got.GetItem().HostSetId, tc.res.GetItem().HostSetId)
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CancelSession(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 
 			if tc.req != nil {

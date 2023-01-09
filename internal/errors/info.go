@@ -152,6 +152,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "unauthorized",
 		Kind:    Other,
 	},
+	Conflict: {
+		Message: "conflict",
+		Kind:    Integrity,
+	},
 	CheckConstraint: {
 		Message: "constraint check failed",
 		Kind:    Integrity,

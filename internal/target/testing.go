@@ -23,6 +23,17 @@ func TestNewCredentialLibrary(targetId, credentialLibraryId string, purpose cred
 	}
 }
 
+// TestNewTargetAddress creates a new in memory TargetAddress
+// representing the association between a Target and network address.
+func TestNewTargetAddress(targetId, address string) *Address {
+	return &Address{
+		TargetAddress: &store.TargetAddress{
+			TargetId: targetId,
+			Address:  address,
+		},
+	}
+}
+
 // TestNewStaticCredential creates a new in memory StaticCredential
 // representing the relationship between targetId and credentialId with
 // the given purpose.
@@ -46,4 +57,16 @@ func TestCredentialLibrary(t testing.TB, conn *db.DB, targetId, libraryId string
 	err := rw.Create(context.Background(), lib)
 	require.NoError(err)
 	return lib
+}
+
+// TestTargetAddress creates am association for targetId and
+// a given address value.
+func TestTargetAddress(t testing.TB, conn *db.DB, targetId, address string) *Address {
+	t.Helper()
+	require := require.New(t)
+	rw := db.New(conn)
+	staticAddress := TestNewTargetAddress(targetId, address)
+	err := rw.Create(context.Background(), staticAddress)
+	require.NoError(err)
+	return staticAddress
 }

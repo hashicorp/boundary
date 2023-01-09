@@ -415,114 +415,132 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 	return hc, hs, h, nil
 }
 
-func (b *Server) CreateInitialTarget(ctx context.Context) (target.Target, error) {
+func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Target, error) {
 	rw := db.New(b.Database)
 
 	kmsCache, err := kms.New(ctx, rw, rw)
 	if err != nil {
-		return nil, fmt.Errorf("error creating kms cache: %w", err)
+		return nil, fmt.Errorf("failed to create kms cache: %w", err)
 	}
-	if err := kmsCache.AddExternalWrappers(
-		b.Context,
-		kms.WithRootWrapper(b.RootKms),
-	); err != nil {
-		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	if err := kmsCache.AddExternalWrappers(ctx, kms.WithRootWrapper(b.RootKms)); err != nil {
+		return nil, fmt.Errorf("failed to add config keys to kms: %w", err)
 	}
 
 	targetRepo, err := target.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
-		return nil, fmt.Errorf("error creating target repository: %w", err)
+		return nil, fmt.Errorf("failed to create target repository: %w", err)
 	}
 
-	// Host Catalog
-	if b.DevTargetId == "" {
+	// When this function is not called as part of boundary dev (eg: as part of
+	// boundary database init or tests), generate random target ids.
+	if len(b.DevTargetId) == 0 {
 		b.DevTargetId, err = db.NewPublicId(tcp.TargetPrefix)
 		if err != nil {
-			return nil, fmt.Errorf("error generating initial target id: %w", err)
+			return nil, fmt.Errorf("failed to generate initial target id: %w", err)
 		}
 	}
 	if b.DevTargetDefaultPort == 0 {
 		b.DevTargetDefaultPort = 22
 	}
+	if len(b.DevTargetAddress) == 0 {
+		b.DevTargetAddress = "127.0.0.1"
+	}
 	opts := []target.Option{
-		target.WithName("Generated target"),
-		target.WithDescription("Provides an initial target in Boundary"),
+		target.WithName("Generated target with a direct address"),
+		target.WithDescription("Provides an initial target using an address in Boundary"),
 		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
 		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevTargetId),
+		target.WithAddress(b.DevTargetAddress),
 	}
 	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("error creating in memory target: %w", err)
+		return nil, fmt.Errorf("failed to create target object: %w", err)
 	}
 	tt, _, _, err := targetRepo.CreateTarget(ctx, t, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("error saving target to the db: %w", err)
+		return nil, fmt.Errorf("failed to save target to the db: %w", err)
 	}
-	tt, _, _, err = targetRepo.AddTargetHostSources(ctx, tt.GetPublicId(), tt.GetVersion(), []string{b.DevHostSetId})
-	if err != nil {
-		return nil, fmt.Errorf("error saving target to the db: %w", err)
-	}
-	b.InfoKeys = append(b.InfoKeys, "generated target id")
-	b.Info["generated target id"] = b.DevTargetId
+	b.InfoKeys = append(b.InfoKeys, "generated target with address id")
+	b.Info["generated target with address id"] = b.DevTargetId
 
-	// If we have an unprivileged dev user, add user to the role that grants
-	// list/read:self/cancel:self on sessions, read:self/delete:self/list on
-	// tokens, and an authorize-session role
 	if b.DevUnprivilegedUserId != "" {
 		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 		if err != nil {
-			return nil, fmt.Errorf("unable to create repo for unprivileged user target connection role: %w", err)
+			return nil, fmt.Errorf("failed to create iam repository: %w", err)
 		}
+		err = unprivilegedDevUserRoleSetup(ctx, iamRepo, b.DevUnprivilegedUserId, b.DevProjectId, b.DevTargetId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set up unprivileged dev user: %w", err)
+		}
+	}
 
-		roles, err := iamRepo.ListRoles(ctx, []string{b.DevProjectId})
-		if err != nil {
-			return nil, fmt.Errorf("unable to list existing roles in project: %w", err)
-		}
-		if len(roles) != 2 {
-			return nil, fmt.Errorf("unexpected number of roles in default project, expected 2, got %d", len(roles))
-		}
-		var idx int = -1
-		for i, r := range roles {
-			// Hacky, I know, but saves a DB trip to look up other
-			// characteristics like "if any principals are currently attached".
-			// No matter what we pick here it's a bit heuristical.
-			if r.Name == "Default Grants" {
-				idx = i
-				break
-			}
-		}
-		if idx == -1 {
-			return nil, fmt.Errorf("couldn't find default grants role in default project")
-		}
-		if _, err := iamRepo.AddPrincipalRoles(ctx,
-			roles[idx].PublicId,
-			roles[idx].Version,
-			[]string{b.DevUnprivilegedUserId}); err != nil {
-			return nil, fmt.Errorf("error adding unpriv user ID to project default role: %w", err)
-		}
+	return tt, nil
+}
 
-		pr, err := iam.NewRole(b.DevProjectId,
-			iam.WithName("Unprivileged User Session Authorization"),
-			iam.WithDescription(`Provides grants within the dev project scope to allow the initial unprivileged user to authorize sessions against the dev target`),
-		)
+func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target.Target, error) {
+	rw := db.New(b.Database)
+
+	kmsCache, err := kms.New(ctx, rw, rw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		b.Context,
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return nil, fmt.Errorf("failed to add config keys to kms: %w", err)
+	}
+
+	targetRepo, err := target.NewRepository(ctx, rw, rw, kmsCache)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create target repository: %w", err)
+	}
+
+	// When this function is not called as part of boundary dev (eg: as part of
+	// boundary database init or tests), generate random target ids.
+	if len(b.DevSecondaryTargetId) == 0 {
+		b.DevSecondaryTargetId, err = db.NewPublicId(tcp.TargetPrefix)
 		if err != nil {
-			return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
+			return nil, fmt.Errorf("failed to generate initial secondary target id: %w", err)
 		}
-		sessionRole, err := iamRepo.CreateRole(ctx, pr)
+	}
+	if b.DevTargetDefaultPort == 0 {
+		b.DevTargetDefaultPort = 22
+	}
+
+	opts := []target.Option{
+		target.WithName("Generated target using host sources"),
+		target.WithDescription("Provides a target using host sources in Boundary"),
+		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
+		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
+		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
+		target.WithPublicId(b.DevSecondaryTargetId),
+	}
+	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create target object: %w", err)
+	}
+	tt, _, _, err := targetRepo.CreateTarget(ctx, t, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save target to the db: %w", err)
+	}
+	tt, _, _, err = targetRepo.AddTargetHostSources(ctx, tt.GetPublicId(), tt.GetVersion(), []string{b.DevHostSetId})
+	if err != nil {
+		return nil, fmt.Errorf("failed to add host source %q to target: %w", b.DevHostSetId, err)
+	}
+	b.InfoKeys = append(b.InfoKeys, "generated target with host source id")
+	b.Info["generated target with host source id"] = b.DevSecondaryTargetId
+
+	if b.DevUnprivilegedUserId != "" {
+		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 		if err != nil {
-			return nil, fmt.Errorf("error creating role for unprivileged user generated grants: %w", err)
+			return nil, fmt.Errorf("failed to create iam repository: %w", err)
 		}
-		if _, err := iamRepo.AddRoleGrants(ctx,
-			sessionRole.PublicId,
-			sessionRole.Version,
-			[]string{fmt.Sprintf("id=%s;actions=authorize-session", b.DevTargetId)},
-		); err != nil {
-			return nil, fmt.Errorf("error creating grant for unprivileged user generated grants: %w", err)
-		}
-		if _, err := iamRepo.AddPrincipalRoles(ctx, sessionRole.PublicId, sessionRole.Version+1, []string{b.DevUnprivilegedUserId}, nil); err != nil {
-			return nil, fmt.Errorf("error adding principal to role for unprivileged user generated grants: %w", err)
+		err = unprivilegedDevUserRoleSetup(ctx, iamRepo, b.DevUnprivilegedUserId, b.DevProjectId, b.DevSecondaryTargetId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set up unprivileged dev user: %w", err)
 		}
 	}
 
@@ -575,4 +593,80 @@ func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.
 	b.HostPlugins[plugin.GetPublicId()] = plg
 
 	return plugin, nil
+}
+
+// unprivilegedDevUserRoleSetup adds dev user to the role that grants
+// list/read:self/cancel:self on sessions and read:self/delete:self/list on
+// tokens. It also creates a role with an `authorize-session` grant for the
+// provided targetId.
+func unprivilegedDevUserRoleSetup(ctx context.Context, repo *iam.Repository, userId, projectId, targetId string) error {
+	roles, err := repo.ListRoles(ctx, []string{projectId})
+	if err != nil {
+		return fmt.Errorf("failed to list existing roles for project id %q: %w", projectId, err)
+	}
+
+	// Look for default grants role to set unprivileged user as a principal.
+	defaultRoleIdx := -1
+	for i, r := range roles {
+		// Hacky, I know, but saves a DB trip to look up other
+		// characteristics like "if any principals are currently attached".
+		// No matter what we pick here it's a bit heuristical.
+		if r.Name == "Default Grants" {
+			defaultRoleIdx = i
+			break
+		}
+	}
+	if defaultRoleIdx == -1 {
+		return fmt.Errorf("couldn't find default grants role for project id %q", projectId)
+	}
+	defaultRole := roles[defaultRoleIdx]
+
+	// This function may be called more than once for the same boundary
+	// deployment (eg: if we're creating more than one target), so we need to
+	// check if the unprivileged user is not already a principal for the default
+	// role in this project, as attempting to add an existing principal is an
+	// error.
+	principals, err := repo.ListPrincipalRoles(ctx, defaultRole.GetPublicId())
+	if err != nil {
+		return fmt.Errorf("failed to list principals for default project role: %w", err)
+	}
+	found := false
+	for _, p := range principals {
+		if p.PrincipalId == userId {
+			found = true
+		}
+	}
+	if !found {
+		_, err = repo.AddPrincipalRoles(ctx, defaultRole.GetPublicId(), defaultRole.GetVersion(), []string{userId})
+		if err != nil {
+			return fmt.Errorf("failed to add %q as principal for role id %q", userId, defaultRole.GetPublicId())
+		}
+		defaultRole.Version++ // The above call increments the role version in the database, so we must also track that with our state.
+	}
+
+	// Create a new role for the "authorize-session" grant and add the
+	// unprivileged user as a principal.
+	asRole, err := iam.NewRole(projectId,
+		iam.WithName(fmt.Sprintf("Session authorization for %s", targetId)),
+		iam.WithDescription(fmt.Sprintf("Provides grants within the dev project scope to allow the initial unprivileged user to authorize sessions against %s", targetId)),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create role object: %w", err)
+	}
+
+	asRole, err = repo.CreateRole(ctx, asRole)
+	if err != nil {
+		return fmt.Errorf("failed to create role for unprivileged user: %w", err)
+	}
+	if _, err := repo.AddPrincipalRoles(ctx, asRole.GetPublicId(), asRole.GetVersion(), []string{userId}, nil); err != nil {
+		return fmt.Errorf("failed to add unprivileged user as principal to new role: %w", err)
+	}
+	asRole.Version++
+
+	_, err = repo.AddRoleGrants(ctx, asRole.GetPublicId(), asRole.GetVersion(), []string{fmt.Sprintf("id=%s;actions=authorize-session", targetId)})
+	if err != nil {
+		return fmt.Errorf("failed to add authorize-session grant for unprivileged user: %w", err)
+	}
+
+	return nil
 }

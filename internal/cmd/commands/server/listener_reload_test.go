@@ -99,7 +99,7 @@ func TestServer_ReloadListener(t *testing.T) {
 		CreateDevDatabase: true,
 		ControllerKey:     controllerKey,
 		UseDevAuthMethod:  true,
-		UseDevTarget:      true,
+		UseDevTargets:     true,
 	})
 	// Unset auto-created KMSes that are overwritten by config on startup
 	cmd.RootKms = nil

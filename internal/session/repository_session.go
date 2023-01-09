@@ -34,20 +34,17 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 	if newSession.TargetId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
-	if newSession.HostId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host id")
-	}
 	if newSession.UserId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
-	}
-	if newSession.HostSetId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host set id")
 	}
 	if newSession.AuthTokenId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
 	}
 	if newSession.ProjectId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+	}
+	if newSession.HostId == "" && newSession.HostSetId == "" && newSession.Endpoint == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host source and endpoint")
 	}
 	if newSession.CtTofuToken != nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "ct is not empty")
@@ -89,6 +86,26 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 			returnedSession.StaticCredentials = nil
 			if err = w.Create(ctx, returnedSession); err != nil {
 				return errors.Wrap(ctx, err, op)
+			}
+
+			if newSession.HostSetId != "" && newSession.HostId != "" {
+				hs, err := NewSessionHostSetHost(newSession.PublicId, newSession.HostSetId, newSession.HostId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if err = w.Create(ctx, hs); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				returnedSession.HostSetId = hs.HostSetId
+				returnedSession.HostId = hs.HostId
+			} else if newSession.Endpoint != "" {
+				ta, err := NewSessionTargetAddress(newSession.PublicId, newSession.TargetId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if err = w.Create(ctx, ta); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
 			}
 
 			for _, cred := range newSession.DynamicCredentials {
@@ -196,6 +213,13 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 			if len(staticCreds) > 0 {
 				session.StaticCredentials = staticCreds
 			}
+
+			sessionHostSetHost := AllocSessionHostSetHost()
+			if err := read.LookupWhere(ctx, sessionHostSetHost, "session_id = ?", []any{sessionId}); err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			session.HostSetId = sessionHostSetHost.HostSetId
+			session.HostId = sessionHostSetHost.HostId
 
 			connections, err := fetchConnections(ctx, read, sessionId, db.WithOrder("create_time desc"))
 			if err != nil {
@@ -583,6 +607,12 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 			if len(returnedStates) < 1 && returnedStates[0].Status != s {
 				return errors.New(ctx, errors.InvalidSessionState, op, fmt.Sprintf("failed to update %s to a state of %s", sessionId, s.String()))
 			}
+			hostSetHost, err := fetchHostSetHost(ctx, reader, sessionId)
+			if err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			updatedSession.HostId = hostSetHost.HostId
+			updatedSession.HostSetId = hostSetHost.HostSetId
 			return nil
 		},
 	)
@@ -681,6 +711,15 @@ func fetchConnections(ctx context.Context, r db.Reader, sessionId string, opt ..
 		return nil, nil
 	}
 	return connections, nil
+}
+
+func fetchHostSetHost(ctx context.Context, r db.Reader, sessionId string, opt ...db.Option) (*SessionHostSetHost, error) {
+	const op = "session.fetchHostSetHost"
+	var hostSetHost *SessionHostSetHost
+	if err := r.SearchWhere(ctx, &hostSetHost, "session_id = ?", []any{sessionId}, opt...); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return hostSetHost, nil
 }
 
 // decryptAndMaybeUpdateSession switches between the database key and session key based on whether

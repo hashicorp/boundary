@@ -1,6 +1,9 @@
 package tcp
 
-import "github.com/hashicorp/boundary/internal/target"
+import (
+	"github.com/hashicorp/boundary/internal/target"
+	"github.com/hashicorp/boundary/internal/target/store"
+)
 
 // Expose functions and variables for tests.
 var (
@@ -16,4 +19,13 @@ func NewTestTarget(projectId string, opt ...target.Option) target.Target {
 	t, _ := targetHooks{}.NewTarget("testScope", opt...)
 	t.SetProjectId(projectId)
 	return t
+}
+
+// NewTestAddress is a test helper that bypasses the targetId & address checks
+// performed by NewAddress, allowing tests to create a target Address with
+// nil fields for more robust testing.
+func NewTestAddress() *target.Address {
+	return &target.Address{
+		TargetAddress: &store.TargetAddress{},
+	}
 }

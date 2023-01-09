@@ -139,6 +139,8 @@ func TestGet(t *testing.T) {
 	ctx := context.Background()
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
 
+	tarAddr := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test address", target.WithAddress("8.8.8.8"))
+
 	pTar := &pb.Target{
 		Id:                     tar.GetPublicId(),
 		ScopeId:                proj.GetPublicId(),
@@ -152,9 +154,25 @@ func TestGet(t *testing.T) {
 		SessionMaxSeconds:      wrapperspb.UInt32(28800),
 		SessionConnectionLimit: wrapperspb.Int32(-1),
 		AuthorizedActions:      testAuthorizedActions,
+		Address:                &wrapperspb.StringValue{},
 	}
 	for _, ihs := range hs {
 		pTar.HostSources = append(pTar.HostSources, &pb.HostSource{Id: ihs.GetPublicId(), HostCatalogId: ihs.GetCatalogId()})
+	}
+
+	pTarAddr := &pb.Target{
+		Id:                     tarAddr.GetPublicId(),
+		ScopeId:                proj.GetPublicId(),
+		Name:                   wrapperspb.String("test address"),
+		CreatedTime:            tarAddr.GetCreateTime().GetTimestamp(),
+		UpdatedTime:            tarAddr.GetUpdateTime().GetTimestamp(),
+		Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
+		Type:                   tcp.Subtype.String(),
+		Attrs:                  &pb.Target_TcpTargetAttributes{},
+		SessionMaxSeconds:      wrapperspb.UInt32(28800),
+		SessionConnectionLimit: wrapperspb.Int32(-1),
+		AuthorizedActions:      testAuthorizedActions,
+		Address:                &wrapperspb.StringValue{Value: "8.8.8.8"},
 	}
 
 	cases := []struct {
@@ -167,6 +185,11 @@ func TestGet(t *testing.T) {
 			name: "Get an Existing Target",
 			req:  &pbs.GetTargetRequest{Id: tar.GetPublicId()},
 			res:  &pbs.GetTargetResponse{Item: pTar},
+		},
+		{
+			name: "Get an Existing Target w/ address",
+			req:  &pbs.GetTargetRequest{Id: tarAddr.GetPublicId()},
+			res:  &pbs.GetTargetResponse{Item: pTarAddr},
 		},
 		{
 			name: "Get a non existing Target",
@@ -272,6 +295,7 @@ func TestList(t *testing.T) {
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(-1),
 			AuthorizedActions:      testAuthorizedActions,
+			Address:                &wrapperspb.StringValue{},
 		})
 		totalTars = append(totalTars, wantTars[i])
 		tar = tcp.TestTarget(ctx, t, conn, otherProj.GetPublicId(), name, target.WithHostSources([]string{otherHss[0].GetPublicId(), otherHss[1].GetPublicId()}))
@@ -288,6 +312,7 @@ func TestList(t *testing.T) {
 			SessionMaxSeconds:      wrapperspb.UInt32(28800),
 			SessionConnectionLimit: wrapperspb.Int32(-1),
 			AuthorizedActions:      testAuthorizedActions,
+			Address:                &wrapperspb.StringValue{},
 		})
 	}
 
@@ -575,6 +600,7 @@ func TestCreate(t *testing.T) {
 					SessionConnectionLimit: wrapperspb.Int32(-1),
 					AuthorizedActions:      testAuthorizedActions,
 					EgressWorkerFilter:     wrapperspb.String(`type == "bar"`),
+					Address:                &wrapperspb.StringValue{},
 				},
 			},
 		},
@@ -664,6 +690,30 @@ func TestCreate(t *testing.T) {
 			name: "Ingress filter unsupported on OSS",
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
 				IngressWorkerFilter: wrapperspb.String(`"/name" matches "test-worker"`),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid address length",
+			req: &pbs.CreateTargetRequest{Item: &pb.Target{
+				Address: wrapperspb.String("ab"),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid address w/ port",
+			req: &pbs.CreateTargetRequest{Item: &pb.Target{
+				Address: wrapperspb.String("8.8.8.8:80"),
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid address not parsable",
+			req: &pbs.CreateTargetRequest{Item: &pb.Target{
+				Address: wrapperspb.String("aaa.8bc.8.8:80:abc"),
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -824,6 +874,7 @@ func TestUpdate(t *testing.T) {
 					SessionMaxSeconds:      wrapperspb.UInt32(3600),
 					SessionConnectionLimit: wrapperspb.Int32(5),
 					AuthorizedActions:      testAuthorizedActions,
+					Address:                &wrapperspb.StringValue{},
 				},
 			},
 		},
@@ -858,6 +909,7 @@ func TestUpdate(t *testing.T) {
 					SessionMaxSeconds:      wrapperspb.UInt32(tar.GetSessionMaxSeconds()),
 					SessionConnectionLimit: wrapperspb.Int32(tar.GetSessionConnectionLimit()),
 					AuthorizedActions:      testAuthorizedActions,
+					Address:                &wrapperspb.StringValue{},
 				},
 			},
 		},
@@ -955,6 +1007,7 @@ func TestUpdate(t *testing.T) {
 					SessionMaxSeconds:      wrapperspb.UInt32(tar.GetSessionMaxSeconds()),
 					SessionConnectionLimit: wrapperspb.Int32(tar.GetSessionConnectionLimit()),
 					AuthorizedActions:      testAuthorizedActions,
+					Address:                &wrapperspb.StringValue{},
 				},
 			},
 		},
@@ -988,6 +1041,7 @@ func TestUpdate(t *testing.T) {
 					SessionMaxSeconds:      wrapperspb.UInt32(tar.GetSessionMaxSeconds()),
 					SessionConnectionLimit: wrapperspb.Int32(tar.GetSessionConnectionLimit()),
 					AuthorizedActions:      testAuthorizedActions,
+					Address:                &wrapperspb.StringValue{},
 				},
 			},
 		},
@@ -1021,6 +1075,7 @@ func TestUpdate(t *testing.T) {
 					SessionMaxSeconds:      wrapperspb.UInt32(tar.GetSessionMaxSeconds()),
 					SessionConnectionLimit: wrapperspb.Int32(tar.GetSessionConnectionLimit()),
 					AuthorizedActions:      testAuthorizedActions,
+					Address:                &wrapperspb.StringValue{},
 				},
 			},
 		},
@@ -1104,6 +1159,45 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Target{
 					WorkerFilter:       wrapperspb.String(`type == "bar"`),
 					EgressWorkerFilter: wrapperspb.String(`type == "bar"`),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid address length",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"address"},
+				},
+				Item: &pb.Target{
+					Address: wrapperspb.String("ab"),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid address w/ port",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"address"},
+				},
+				Item: &pb.Target{
+					Address: wrapperspb.String("8.8.8.8:80"),
+				},
+			},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "Invalid address not parsable",
+			req: &pbs.UpdateTargetRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"address"},
+				},
+				Item: &pb.Target{
+					Address: wrapperspb.String("aaa.8bc.8.8:80:abc"),
 				},
 			},
 			res: nil,

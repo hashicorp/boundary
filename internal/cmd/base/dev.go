@@ -160,7 +160,10 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		return nil
 	}
 
-	if _, err := b.CreateInitialTarget(ctx); err != nil {
+	if _, err := b.CreateInitialTargetWithAddress(ctx); err != nil {
+		return err
+	}
+	if _, err := b.CreateInitialTargetWithHostSources(ctx); err != nil {
 		return err
 	}
 
