@@ -20,7 +20,7 @@ func directDialer(ctx context.Context, endpoint string, _ string, _ proto.Messag
 	if len(endpoint) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "endpoint is empty")
 	}
-	d, err := NewProxyDialer(ctx, func() (net.Conn, error) {
+	d, err := NewProxyDialer(ctx, func(...Option) (net.Conn, error) {
 		remoteConn, err := net.Dial("tcp", endpoint)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
