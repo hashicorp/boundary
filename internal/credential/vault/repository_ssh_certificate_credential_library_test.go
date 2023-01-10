@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
@@ -46,7 +47,10 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		{
 			name: "invalid-no-store-id",
 			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{},
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath: "/some/path",
+					Username:  "name",
+				},
 			},
 			wantErr: errors.InvalidParameter,
 		},
@@ -54,8 +58,20 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 			name: "invalid-public-id-set",
 			in: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					PublicId:  "abcd_OOOOOOOOOO",
+					VaultPath: "/some/path",
+					Username:  "name",
+				},
+			},
+			wantErr: errors.InvalidParameter,
+		},
+		{
+			name: "invalid-no-vault-path",
+			in: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:  cs.GetPublicId(),
-					PublicId: "abcd_OOOOOOOOOO",
+					Username: "name",
 				},
 			},
 			wantErr: errors.InvalidParameter,
@@ -71,31 +87,21 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 			wantErr: errors.InvalidParameter,
 		},
 		{
-			name: "invalid-no-vault-path",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:   cs.GetPublicId(),
-					VaultPath: "/some/path",
-				},
-			},
-			wantErr: errors.InvalidParameter,
-		},
-		{
 			name: "valid-no-options",
 			in: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
-					KeyType:   "ed25519",
 					VaultPath: "/some/path",
-					Username:  "admin",
+					Username:  "name",
 				},
 			},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
-					KeyType:   "ed25519",
 					VaultPath: "/some/path",
-					Username:  "admin",
+					Username:  "name",
+					KeyType:   KeyTypeEd25519,
+					KeyBits:   wrapperspb.UInt32(0),
 				},
 			},
 		},
@@ -104,19 +110,18 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 			in: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
-					KeyType:   "ed25519",
 					Name:      "test-name-repo",
 					VaultPath: "/some/path",
-					Username:  "admin",
+					Username:  "name",
+					KeyBits:   wrapperspb.UInt32(0),
 				},
 			},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
-					KeyType:   "ed25519",
 					Name:      "test-name-repo",
 					VaultPath: "/some/path",
-					Username:  "admin",
+					Username:  "name",
 				},
 			},
 		},
@@ -128,7 +133,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 					KeyType:     "ed25519",
 					Description: "test-description-repo",
 					VaultPath:   "/some/path",
-					Username:    "admin",
+					Username:    "name",
 				},
 			},
 			want: &SSHCertificateCredentialLibrary{
@@ -137,7 +142,79 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 					KeyType:     "ed25519",
 					Description: "test-description-repo",
 					VaultPath:   "/some/path",
-					Username:    "admin",
+					Username:    "name",
+				},
+			},
+		},
+		{
+			name: "valid-key-type-key-bits-combination",
+			in: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					KeyType:   "ecdsa",
+					KeyBits:   wrapperspb.UInt32(224),
+					VaultPath: "/some/path",
+					Username:  "name",
+				},
+			},
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					KeyType:   "ecdsa",
+					KeyBits:   wrapperspb.UInt32(224),
+					VaultPath: "/some/path",
+					Username:  "name",
+				},
+			},
+		},
+		{
+			name: "invalid-key-type-key-bits-combination",
+			in: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					KeyType:   "ecdsa",
+					KeyBits:   wrapperspb.UInt32(2408),
+					VaultPath: "/some/path",
+					Username:  "name",
+				},
+			},
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "valid-critical-options",
+			in: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:         cs.GetPublicId(),
+					VaultPath:       "/some/path",
+					Username:        "name",
+					CriticalOptions: "*",
+				},
+			},
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:         cs.GetPublicId(),
+					VaultPath:       "/some/path",
+					Username:        "name",
+					CriticalOptions: "*",
+				},
+			},
+		},
+		{
+			name: "valid-extensions",
+			in: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:    cs.GetPublicId(),
+					VaultPath:  "/some/path",
+					Username:   "name",
+					Extensions: "permit-agent-forwarding, permit-pty",
+				},
+			},
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:    cs.GetPublicId(),
+					VaultPath:  "/some/path",
+					Username:   "name",
+					Extensions: "permit-agent-forwarding, permit-pty",
 				},
 			},
 		},
@@ -166,7 +243,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
-			assert.Equal(tt.want.CredentialType(), got.CredentialType())
+			assert.Equal(got.CredentialType(), credential.SshCertificateType)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 
 			assert.NoError(db.TestVerifyOplog(t, rw, got.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
@@ -189,7 +266,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 				KeyType:   "ed25519",
 				VaultPath: "/some/path",
 				Name:      "test-name-repo",
-				Username:  "admin",
+				Username:  "name",
 			},
 		}
 
@@ -226,7 +303,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 				KeyType:   "ed25519",
 				VaultPath: "/some/path",
 				Name:      "test-name-repo",
-				Username:  "admin",
+				Username:  "name",
 			},
 		}
 		in2 := in.clone()
@@ -486,7 +563,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 
 	changeKeyBits := func(b uint32) func(*SSHCertificateCredentialLibrary) *SSHCertificateCredentialLibrary {
 		return func(l *SSHCertificateCredentialLibrary) *SSHCertificateCredentialLibrary {
-			l.KeyBits = b
+			l.KeyBits = wrapperspb.UInt32(b)
 			return l
 		}
 	}
@@ -754,16 +831,18 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 			name: "change-keybits",
 			orig: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					KeyBits:   32,
+					KeyType:   KeyTypeEcdsa,
+					KeyBits:   wrapperspb.UInt32(224),
 					VaultPath: "/some/path",
 					Username:  "name",
 				},
 			},
-			chgFn: changeKeyBits(16),
+			chgFn: changeKeyBits(256),
 			masks: []string{keyBitsField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					KeyBits:   16,
+					KeyType:   KeyTypeEcdsa,
+					KeyBits:   wrapperspb.UInt32(256),
 					VaultPath: "/some/path",
 					Username:  "name",
 				},
@@ -966,6 +1045,41 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 			masks:   []string{vaultPathField},
 			wantErr: errors.NotNull,
 		},
+		{
+			name: "change-key-type-invalid",
+			orig: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					Username:  "name",
+					VaultPath: "/some/path",
+					KeyType:   KeyTypeEcdsa,
+					KeyBits:   wrapperspb.UInt32(256),
+				},
+			},
+			chgFn:   changeKeyType(KeyTypeEd25519),
+			masks:   []string{keyTypeField},
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "change-key-type-bits-invalid",
+			orig: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					Username:  "name",
+					VaultPath: "/some/path",
+					KeyType:   KeyTypeEcdsa,
+					KeyBits:   wrapperspb.UInt32(256),
+				},
+			},
+			chgFn: combine(changeKeyType(KeyTypeRsa), changeKeyBits(2048)),
+			masks: []string{keyTypeField, keyBitsField},
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					Username:  "name",
+					VaultPath: "/some/path",
+					KeyType:   KeyTypeRsa,
+					KeyBits:   wrapperspb.UInt32(2048),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1037,8 +1151,8 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 			}
 
 			switch tt.want.KeyBits {
-			case 0:
-				dbassert.IsNull(got, "KeyBits")
+			case wrapperspb.UInt32(0):
+				assert.Zero(got.KeyBits)
 			default:
 				assert.Equal(tt.want.KeyBits, got.KeyBits)
 			}
@@ -1230,6 +1344,67 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		assert.Equal(orig.StoreId, got1.StoreId)
 		assert.Equal(1, gotCount1, "row count")
 		assert.NoError(db.TestVerifyOplog(t, rw, lA.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
+	})
+
+	t.Run("change-key-type-bits-consecutive", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		ctx := context.Background()
+		kms := kms.TestKms(t, conn, wrapper)
+		sche := scheduler.TestScheduler(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms, sche)
+		assert.NoError(err)
+		require.NotNil(repo)
+
+		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+
+		in := &SSHCertificateCredentialLibrary{
+			SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+				Username:  "name",
+				VaultPath: "/some/path",
+				KeyType:   KeyTypeEcdsa,
+				KeyBits:   wrapperspb.UInt32(571),
+			},
+		}
+		in.StoreId = cs.GetPublicId()
+
+		orig, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), in)
+		assert.NoError(err)
+		require.NotNil(orig)
+
+		orig.KeyBits = wrapperspb.UInt32(0)
+
+		got, gotCount, err := repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 1, []string{keyBitsField})
+		require.NoError(err)
+		assert.Empty(in.PublicId)
+		require.NotNil(got)
+		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+		assert.Equal(1, gotCount, "row count")
+		assert.NotSame(orig, got)
+		assert.Equal(orig.StoreId, got.StoreId)
+
+		orig.KeyType = KeyTypeRsa
+
+		got, gotCount, err = repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 2, []string{keyTypeField})
+		require.NoError(err)
+		require.NotNil(got)
+		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+		assert.Equal(1, gotCount, "row count")
+		assert.NotSame(orig, got)
+		assert.Equal(orig.StoreId, got.StoreId)
+
+		orig.KeyBits = wrapperspb.UInt32(3072)
+
+		got, gotCount, err = repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 3, []string{keyTypeField})
+		require.NoError(err)
+		require.NotNil(got)
+		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+		assert.Equal(1, gotCount, "row count")
+		assert.NotSame(orig, got)
+		assert.Equal(orig.StoreId, got.StoreId)
+
+		assert.Equal(KeyTypeRsa, orig.KeyType)
+		assert.Equal(wrapperspb.UInt32(3072), orig.KeyBits)
 	})
 }
 

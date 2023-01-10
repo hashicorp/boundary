@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -13,17 +14,18 @@ const (
 	KeyTypeRsa     = "rsa"
 )
 
-// A CredentialLibrary contains a Vault path and is owned by a credential
-// store.
+// SSHCertificateCredentialLibrary is a credential library that issues
+// ssh certificate using the vault ssh secret engine.
+// See: https://developer.hashicorp.com/vault/api-docs/secret/ssh#sign-ssh-key
 type SSHCertificateCredentialLibrary struct {
 	*store.SSHCertificateCredentialLibrary
 	tableName string `gorm:"-"`
 }
 
-// NewSSHCertificateCredentialLibrary creates a new in memory CredentialLibrary
-// for a Vault backend at vaultPath assigned to storeId.
-// Name, description, method, request body, credential type, and mapping
-// override are the only valid options. All other options are ignored.
+// NewSSHCertificateCredentialLibrary creates a new in memory SSHCertificateCredentialLibrary
+// for a Vault backend at vaultPath assigned to storeId. The SSH username field must be set.
+// Name, description, key type, key bits, ttl, key id, critical options, and extensions
+// are the only valid options. All other options are ignored.
 func NewSSHCertificateCredentialLibrary(storeId string, vaultPath string, username string, opt ...Option) (*SSHCertificateCredentialLibrary, error) {
 	const op = "vault.NewSSHCertificateCredentialLibrary"
 	opts := getOpts(opt...)
@@ -36,7 +38,7 @@ func NewSSHCertificateCredentialLibrary(storeId string, vaultPath string, userna
 			VaultPath:       vaultPath,
 			Username:        username,
 			KeyType:         opts.withKeyType,
-			KeyBits:         opts.withKeyBits,
+			KeyBits:         wrapperspb.UInt32(opts.withKeyBits),
 			Ttl:             opts.withTtl,
 			KeyId:           opts.withKeyId,
 			CriticalOptions: opts.withCriticalOptions,

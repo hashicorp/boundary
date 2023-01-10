@@ -108,15 +108,12 @@ func (r *Repository) CreateSSHCertificateCredentialLibrary(ctx context.Context, 
 // new SSHCertificateCredentialLibrary containing the updated values and a count of the
 // number of records updated. l is not changed.
 //
-// l must contain a valid PublicId. Only Name, Description, VaultPath,
-// HttpMethod, HttpRequestBody, and MappingOverride can be updated. If
+// l must contain a valid PublicId. Name, Description, VaultPath, Username,
+// KeyType, KeyBits, Ttl, KeyId, CriticalOptions, and Extensions can be updated. If
 // l.Name is set to a non-empty string, it must be unique within l.StoreId.
 //
 // An attribute of l will be set to NULL in the database if the attribute
-// in l is the zero value and it is included in fieldMaskPaths except for
-// HttpMethod.  If HttpMethod is in the fieldMaskPath but l.HttpMethod
-// is not set it will be set to the value "GET".  If storage has a value
-// for HttpRequestBody when l.HttpMethod is set to GET the update will fail.
+// in l is the zero value and it is included in fieldMaskPaths.
 func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, projectId string, l *SSHCertificateCredentialLibrary, version uint32, fieldMaskPaths []string, _ ...Option) (*SSHCertificateCredentialLibrary, int, error) {
 	const op = "vault.(Repository).UpdateSSHCertificateCredentialLibrary"
 	if l == nil {
