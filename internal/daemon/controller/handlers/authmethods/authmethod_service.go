@@ -608,6 +608,14 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 			return false, errors.Wrap(ctx, err, op)
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, id)
+	case ldap.Subtype:
+		repo, err := s.ldapRepoFn()
+		if err != nil {
+			return false, errors.Wrap(ctx, err, op)
+		}
+		rows, dErr = repo.DeleteAuthMethod(ctx, id)
+	default:
+		return false, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid auth method subtype: %q", subtypes.SubtypeFromId(domain, id)))
 	}
 
 	if dErr != nil {
@@ -1153,7 +1161,7 @@ func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix, ldap.AuthMethodPrefix)
 }
 
 func validateListRequest(req *pbs.ListAuthMethodsRequest) error {

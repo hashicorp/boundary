@@ -481,6 +481,8 @@ func TestDelete(t *testing.T) {
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "my-dogs-name",
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldaps://ldap1"})
+
 	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
@@ -501,6 +503,13 @@ func TestDelete(t *testing.T) {
 			name: "Delete an Existing OIDC AuthMethod",
 			req: &pbs.DeleteAuthMethodRequest{
 				Id: oidcam.GetPublicId(),
+			},
+			res: &pbs.DeleteAuthMethodResponse{},
+		},
+		{
+			name: "Delete an Existing LDAP AuthMethod",
+			req: &pbs.DeleteAuthMethodRequest{
+				Id: ldapAm.GetPublicId(),
 			},
 			res: &pbs.DeleteAuthMethodResponse{},
 		},
