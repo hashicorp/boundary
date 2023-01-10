@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
@@ -101,7 +100,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 					VaultPath: "/some/path",
 					Username:  "name",
 					KeyType:   KeyTypeEd25519,
-					KeyBits:   wrapperspb.UInt32(0),
+					KeyBits:   0,
 				},
 			},
 		},
@@ -113,7 +112,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 					Name:      "test-name-repo",
 					VaultPath: "/some/path",
 					Username:  "name",
-					KeyBits:   wrapperspb.UInt32(0),
+					KeyBits:   0,
 				},
 			},
 			want: &SSHCertificateCredentialLibrary{
@@ -152,7 +151,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
 					KeyType:   "ecdsa",
-					KeyBits:   wrapperspb.UInt32(224),
+					KeyBits:   224,
 					VaultPath: "/some/path",
 					Username:  "name",
 				},
@@ -161,7 +160,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
 					KeyType:   "ecdsa",
-					KeyBits:   wrapperspb.UInt32(224),
+					KeyBits:   224,
 					VaultPath: "/some/path",
 					Username:  "name",
 				},
@@ -173,7 +172,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
 					KeyType:   "ecdsa",
-					KeyBits:   wrapperspb.UInt32(2408),
+					KeyBits:   2408,
 					VaultPath: "/some/path",
 					Username:  "name",
 				},
@@ -563,7 +562,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 
 	changeKeyBits := func(b uint32) func(*SSHCertificateCredentialLibrary) *SSHCertificateCredentialLibrary {
 		return func(l *SSHCertificateCredentialLibrary) *SSHCertificateCredentialLibrary {
-			l.KeyBits = wrapperspb.UInt32(b)
+			l.KeyBits = b
 			return l
 		}
 	}
@@ -832,7 +831,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 			orig: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					KeyType:   KeyTypeEcdsa,
-					KeyBits:   wrapperspb.UInt32(224),
+					KeyBits:   224,
 					VaultPath: "/some/path",
 					Username:  "name",
 				},
@@ -842,7 +841,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					KeyType:   KeyTypeEcdsa,
-					KeyBits:   wrapperspb.UInt32(256),
+					KeyBits:   256,
 					VaultPath: "/some/path",
 					Username:  "name",
 				},
@@ -1052,7 +1051,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 					Username:  "name",
 					VaultPath: "/some/path",
 					KeyType:   KeyTypeEcdsa,
-					KeyBits:   wrapperspb.UInt32(256),
+					KeyBits:   256,
 				},
 			},
 			chgFn:   changeKeyType(KeyTypeEd25519),
@@ -1066,7 +1065,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 					Username:  "name",
 					VaultPath: "/some/path",
 					KeyType:   KeyTypeEcdsa,
-					KeyBits:   wrapperspb.UInt32(256),
+					KeyBits:   256,
 				},
 			},
 			chgFn: combine(changeKeyType(KeyTypeRsa), changeKeyBits(2048)),
@@ -1076,9 +1075,10 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 					Username:  "name",
 					VaultPath: "/some/path",
 					KeyType:   KeyTypeRsa,
-					KeyBits:   wrapperspb.UInt32(2048),
+					KeyBits:   2048,
 				},
 			},
+			wantCount: 1,
 		},
 	}
 
@@ -1151,7 +1151,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 			}
 
 			switch tt.want.KeyBits {
-			case wrapperspb.UInt32(0):
+			case (0):
 				assert.Zero(got.KeyBits)
 			default:
 				assert.Equal(tt.want.KeyBits, got.KeyBits)
@@ -1363,7 +1363,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 				Username:  "name",
 				VaultPath: "/some/path",
 				KeyType:   KeyTypeEcdsa,
-				KeyBits:   wrapperspb.UInt32(571),
+				KeyBits:   521,
 			},
 		}
 		in.StoreId = cs.GetPublicId()
@@ -1372,7 +1372,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(orig)
 
-		orig.KeyBits = wrapperspb.UInt32(0)
+		orig.KeyBits = 0
 
 		got, gotCount, err := repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 1, []string{keyBitsField})
 		require.NoError(err)
@@ -1393,7 +1393,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		assert.NotSame(orig, got)
 		assert.Equal(orig.StoreId, got.StoreId)
 
-		orig.KeyBits = wrapperspb.UInt32(3072)
+		orig.KeyBits = 3072
 
 		got, gotCount, err = repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 3, []string{keyTypeField})
 		require.NoError(err)
@@ -1404,7 +1404,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		assert.Equal(orig.StoreId, got.StoreId)
 
 		assert.Equal(KeyTypeRsa, orig.KeyType)
-		assert.Equal(wrapperspb.UInt32(3072), orig.KeyBits)
+		assert.Equal(uint32(3072), orig.KeyBits)
 	})
 }
 

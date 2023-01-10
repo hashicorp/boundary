@@ -5,7 +5,6 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -38,7 +37,7 @@ func NewSSHCertificateCredentialLibrary(storeId string, vaultPath string, userna
 			VaultPath:       vaultPath,
 			Username:        username,
 			KeyType:         opts.withKeyType,
-			KeyBits:         wrapperspb.UInt32(opts.withKeyBits),
+			KeyBits:         opts.withKeyBits,
 			Ttl:             opts.withTtl,
 			KeyId:           opts.withKeyId,
 			CriticalOptions: opts.withCriticalOptions,

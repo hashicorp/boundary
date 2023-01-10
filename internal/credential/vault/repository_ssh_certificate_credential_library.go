@@ -165,7 +165,7 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 			extensionsField:      l.Extensions,
 		},
 		fieldMaskPaths,
-		nil,
+		[]string{keyBitsField},
 	)
 
 	if len(dbMask) == 0 && len(nullFields) == 0 {
