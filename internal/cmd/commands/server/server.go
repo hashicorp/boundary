@@ -208,6 +208,12 @@ func (c *Command) Run(args []string) int {
 				return base.CommandUserError
 			}
 		}
+		if c.Config.Controller != nil {
+			if c.Config.Worker.Name == c.Config.Controller.Name {
+				c.UI.Error("Controller and worker cannot be configured with the same name.")
+				return base.CommandUserError
+			}
+		}
 	}
 
 	if c.Config.DefaultMaxRequestDuration != 0 {
