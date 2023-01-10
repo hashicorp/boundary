@@ -1461,6 +1461,10 @@ func TestRepository_DeleteSSHCertificateCredentialLibrary(t *testing.T) {
 				}
 				assert.NoError(err)
 				assert.Equal(tt.want, got, "row count")
+
+				cl, err := repo.LookupSSHCertificateCredentialLibrary(ctx, tt.in)
+				assert.Empty(err)
+				assert.Empty(cl)
 			})
 		}
 	}
