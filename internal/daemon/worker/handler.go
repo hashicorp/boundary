@@ -196,9 +196,9 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 		workerId := w.LastStatusSuccess().WorkerId
 
-		var ci *pbs.AuthorizeConnectionResponse
+		var acResp *pbs.AuthorizeConnectionResponse
 		var connsLeft int32
-		ci, connsLeft, err = sess.RequestAuthorizeConnection(ctx, workerId, connCancel)
+		acResp, connsLeft, err = sess.RequestAuthorizeConnection(ctx, workerId, connCancel)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to authorize connection"))
 			if err = conn.Close(websocket.StatusInternalError, "unable to authorize connection"); err != nil {
@@ -206,12 +206,12 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 			return
 		}
-		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", ci.GetConnectionId())
+		event.WriteSysEvent(ctx, op, "connection successfully authorized", "session_id", sessionId, "connection_id", acResp.GetConnectionId())
 
 		// Wrapping the client websocket with a `net.Conn` implementation that
 		// records the bytes that go across Read() and Write().
 		cc := &countingConn{Conn: websocket.NetConn(connCtx, conn, websocket.MessageBinary)}
-		err = sess.ApplyConnectionCounterCallbacks(ci.GetConnectionId(), cc.BytesRead, cc.BytesWritten)
+		err = sess.ApplyConnectionCounterCallbacks(acResp.GetConnectionId(), cc.BytesRead, cc.BytesWritten)
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("unable to set counter callbacks for session connection"))
 			err = conn.Close(websocket.StatusInternalError, "unable to set counter callbacks for session connection")
@@ -223,14 +223,14 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 
 		defer func() {
 			ccd := map[string]*session.ConnectionCloseData{
-				ci.GetConnectionId(): {
+				acResp.GetConnectionId(): {
 					SessionId: sess.GetId(),
 					BytesUp:   cc.BytesRead(),
 					BytesDown: cc.BytesWritten(),
 				},
 			}
 			if sessionManager.RequestCloseConnections(ctx, ccd) {
-				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", ci.GetConnectionId())
+				event.WriteSysEvent(ctx, op, "connection closed", "session_id", sessionId, "connection_id", acResp.GetConnectionId())
 			}
 		}()
 
@@ -255,7 +255,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 			return
 		}
-		protocolCtx := ci.GetProtocolContext()
+		protocolCtx := acResp.GetProtocolContext()
 		if protocolCtx == nil {
 			// TODO: Remove this if block once pre v0.12.0 controllers are no longer supported.
 			if protocolCtx, err = GetProtocolContext(ctx, workerId, sess, endpointUrl.Scheme); err != nil {
@@ -265,7 +265,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 		}
 
-		pDialer, err := proxyHandlers.GetEndpointDialer(ctx, endpointUrl.Host, workerId, ci, w.downstreamRoutes)
+		pDialer, err := proxyHandlers.GetEndpointDialer(ctx, endpointUrl.Host, workerId, acResp, w.downstreamRoutes)
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to get endpoint dialer")
 			event.WriteError(ctx, op, err)
@@ -273,13 +273,13 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 
 		// Verify the protocol has a supported proxy before calling RequestAuthorizeConnection
-		handleProxyFn, err := proxyHandlers.GetHandler(workerId, ci.GetProtocolContext())
+		handleProxyFn, err := proxyHandlers.GetHandler(workerId, acResp.GetProtocolContext())
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to get proxy handler")
 			event.WriteError(ctx, op, err)
 			return
 		}
-		runProxy, err := handleProxyFn(ctx, cc, pDialer, ci.GetConnectionId(), protocolCtx)
+		runProxy, err := handleProxyFn(ctx, cc, pDialer, acResp.GetConnectionId(), protocolCtx)
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to setup proxying")
 			event.WriteError(ctx, op, err)
@@ -290,7 +290,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		// that we can establish the proxy.
 		endpointAddr := pDialer.LastConnectionAddr()
 		connectionInfo := &pbs.ConnectConnectionRequest{
-			ConnectionId:       ci.GetConnectionId(),
+			ConnectionId:       acResp.GetConnectionId(),
 			ClientTcpAddress:   clientAddr.IP.String(),
 			ClientTcpPort:      uint32(clientAddr.Port),
 			EndpointTcpAddress: endpointAddr.Ip(),
@@ -299,7 +299,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			UserClientIp:       userClientIp,
 		}
 		if err = sess.RequestConnectConnection(ctx, connectionInfo); err != nil {
-			event.WriteError(ctx, op, err, event.WithInfoMsg("error requesting connect connection", "session_id", sess.GetId(), "connection_id", ci.GetConnectionId()))
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error requesting connect connection", "session_id", sess.GetId(), "connection_id", acResp.GetConnectionId()))
 			if err = conn.Close(websocket.StatusInternalError, "unable to establish proxy"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}

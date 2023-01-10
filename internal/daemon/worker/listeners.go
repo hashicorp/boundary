@@ -30,11 +30,16 @@ import (
 )
 
 // the function that handles a secondary connection over a provided listener
-var handleSecondaryConnection = closeListener
+var handleSecondaryConnection = closeListeners
 
-func closeListener(_ context.Context, l net.Listener, _ any, _ int) error {
+// closeListeners handles the secondary connection listeners by closing them.
+// l is the grpc listener and l2 is the data plane listener.
+func closeListeners(_ context.Context, l, l2 net.Listener, _ any) error {
 	if l != nil {
-		return l.Close()
+		l.Close()
+	}
+	if l2 != nil {
+		l2.Close()
 	}
 	return nil
 }
@@ -168,9 +173,9 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	// Connections coming in here are authed by nodeenrollment and are for the
 	// reverse grpc purpose
-	reverseGrpcListener, err := w.workerAuthSplitListener.GetListener(common.ReverseGrpcConnectionAlpnValue)
+	reverseGrpcListener, err := w.workerAuthSplitListener.GetListener(common.ReverseGrpcConnectionAlpnValue, nodee.WithNativeConns(true))
 	if err != nil {
-		return nil, fmt.Errorf("error instantiating non-worker split listener: %w", err)
+		return nil, fmt.Errorf("error instantiating reverse grpc split listener: %w", err)
 	}
 
 	// This wraps the reverse grpc pki worker connections with a listener which
@@ -178,6 +183,20 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	revPkiWorkerTrackingListener, err := cluster.NewTrackingListener(w.baseContext, reverseGrpcListener, w.pkiConnManager)
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating reverse grpc pki worker tracking listener: %w", op, err)
+	}
+
+	// Connections coming in here are authed by nodeenrollment and are for the
+	// multi-hop session-proxying
+	dataPlaneProxyListener, err := w.workerAuthSplitListener.GetListener(common.DataPlaneProxyAlpnValue, nodee.WithNativeConns(true))
+	if err != nil {
+		return nil, fmt.Errorf("error instantiating websocket proxying split listener: %w", err)
+	}
+
+	// This wraps the web socket proxying worker connections with a listener which
+	// adds the worker key id of the connections to the worker's pkiConnManager.
+	dataPlaneProxyTrackingListener, err := cluster.NewTrackingListener(w.baseContext, dataPlaneProxyListener, w.pkiConnManager)
+	if err != nil {
+		return nil, fmt.Errorf("%s: error creating web socket proxying tracking listener: %w", op, err)
 	}
 
 	statsHandler, err := metric.InstrumentClusterStatsHandler(w.baseContext)
@@ -214,10 +233,11 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	}
 
 	return func() {
+		handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(revPkiWorkerTrackingListener, "reverse-grpc"),
+			metric.InstrumentWorkerClusterTrackingListener(dataPlaneProxyTrackingListener, "multihop-proxy-dataplane"), w.downstreamRoutes)
 		go w.workerAuthSplitListener.Start()
 		go httpServer.Serve(proxyListener)
 		go ln.GrpcServer.Serve(metric.InstrumentWorkerClusterTrackingListener(pkiWorkerTrackingListener, "grpc"))
-		go handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(revPkiWorkerTrackingListener, "reverse-grpc"), w.downstreamRoutes, -1)
 	}, nil
 }
 
