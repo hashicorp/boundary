@@ -523,8 +523,6 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
-	// TODO: add more field tests
-
 	changeVaultPath := func(p string) func(*SSHCertificateCredentialLibrary) *SSHCertificateCredentialLibrary {
 		return func(l *SSHCertificateCredentialLibrary) *SSHCertificateCredentialLibrary {
 			l.VaultPath = p
@@ -1059,7 +1057,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 			wantErr: errors.NotSpecificIntegrity,
 		},
 		{
-			name: "change-key-type-bits-invalid",
+			name: "change-key-type-bits-valid",
 			orig: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					Username:  "name",
