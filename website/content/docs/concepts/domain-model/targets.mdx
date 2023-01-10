@@ -50,11 +50,11 @@ TCP targets have the following additional attributes:
   and the session is terminated
   when a session reaches the maximum duration.
   The default is 8 hours (28800 seconds).
-  Must be greater than 0.
+  This value must be greater than 0.
 
 - `session_connection_limit` - (required)
   The cumulative number of TCP connections allowed during a session.
-  -1 means no limit.
+  A -1 value means no limit.
   The default is -1.
   The value must be greater than 0 or exactly -1.
 
@@ -69,8 +69,8 @@ TCP targets have the following additional attributes:
 ### SSH Target Attributes <sup>HCP Only</sup>
 
 SSH targets can source username/password or SSH private key credentials from Vault [credential libraries][] or static
-[credentials][]. Credentials are then injected into the SSH session between a client and end host. This allows users to
-securely SSH to remote hosts while never being in possession of a valid credential for that target host.
+[credentials][]. Boundary then injects credentials into the SSH session between a client and end host. This allows users to
+securely connect to remote hosts using SSH, while never being in possession of a valid credential for that target host.
 
 SSH targets have the following additional attributes:
 
@@ -80,11 +80,11 @@ SSH targets have the following additional attributes:
   and the session is terminated
   when a session reaches the maximum duration.
   The default is 8 hours (28800 seconds).
-  Must be greater than 0.
+  This value must be greater than 0.
 
 - `session_connection_limit` - (required)
   The cumulative number of TCP connections allowed during a session.
-  -1 means no limit.
+  A -1 value means no limit.
   The default is -1.
   The value must be greater than 0 or exactly -1.
 
