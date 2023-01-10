@@ -137,8 +137,14 @@ Following are some examples of using these values in filters:
 # Target Worker Filtering
 
 Once workers have tags, these tags may be used to control which
-workers are allowed to manage a given session by specifying a `worker_filter`
-attribute when configuring [targets](/docs/concepts/domain-model/targets).
+workers are allowed to manage a given session by specifying optional worker filter attributes
+when configuring [targets](/docs/concepts/domain-model/targets).
+
+The `egress_worker_filter` attribute controls which workers will be used for egress to a target. This is the worker
+that will access the target.
+
+The `ingress_worker_filter`<sup>HCP Only</sup> attribute controls which workers will be used for ingress to a target.
+This is the worker a client will connect to when initiating a connection.
 
 
 # Vault Worker Filtering <sup>HCP Only</sup>

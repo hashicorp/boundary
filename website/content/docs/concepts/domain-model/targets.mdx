@@ -58,13 +58,53 @@ TCP targets have the following additional attributes:
   The default is -1.
   The value must be greater than 0 or exactly -1.
 
+- `egress_worker_filter` - (optional)
+  A boolean expression to [filter][] which egress workers can handle sessions
+  for this target.
+
+- `ingress_worker_filter` - (optional) <sup>HCP Only</sup>
+  A boolean expression to [filter][] which ingress workers can handle sessions
+  for this target.
+
+### SSH Target Attributes <sup>HCP Only</sup>
+
+SSH targets can source username/password or SSH private key credentials from Vault [credential libraries][] or static
+[credentials][]. Credentials are then injected into the SSH session between a client and end host. This allows users to
+securely SSH to remote hosts while never being in possession of a valid credential for that target host.
+
+SSH targets have the following additional attributes:
+
+- `session_max_seconds` - (required)
+  The maximum duration of an individual session between the user and the target.
+  All connections for a session are closed
+  and the session is terminated
+  when a session reaches the maximum duration.
+  The default is 8 hours (28800 seconds).
+  Must be greater than 0.
+
+- `session_connection_limit` - (required)
+  The cumulative number of TCP connections allowed during a session.
+  -1 means no limit.
+  The default is -1.
+  The value must be greater than 0 or exactly -1.
+
+- `egress_worker_filter` - (optional)
+  A boolean expression to [filter][] which egress workers can handle sessions
+  for this target.
+
+- `ingress_worker_filter` - (optional) <sup>HCP Only</sup>
+  A boolean expression to [filter][] which ingress workers can handle sessions
+  for this target.
+
 ## Referenced By
 
 - [Credential Library][]
 - [Host Set][]
 - [Project][]
 - [Session][]
+- [Worker Filtering][]
 
+[credentials]: /docs/concepts/domain-model/credentials
 [credential library]: /docs/concepts/domain-model/credential-libraries
 [credential libraries]: /docs/concepts/domain-model/credential-libraries
 [credential store]: /docs/concepts/domain-model/credential-stores
@@ -83,6 +123,8 @@ TCP targets have the following additional attributes:
 [roles]: /docs/concepts/domain-model/roles
 [session]: /docs/concepts/domain-model/sessions
 [sessions]: /docs/concepts/domain-model/sessions
+[filter]: /docs/concepts/filtering/worker-tags
+[worker filtering]: /docs/concepts/filtering/worker-tags
 [user]: /docs/concepts/domain-model/users
 [users]: /docs/concepts/domain-model/users
 
