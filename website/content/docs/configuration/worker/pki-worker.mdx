@@ -78,6 +78,27 @@ kms "aead" {
 workers. These fields are only valid for [KMS Workers][]. `name` and
 `description` can only be set for PKI workers through the API.
 
+# Multi-Hop Workers
+
+PKI workers can be configured via the `initial_upstreams field` to either connect directly to the control plane or,
+when set to the `public_addr` of a worker, to other workers.
+
+Multi-hop is when two or more workers are connected, as there are multiple “hops” from a worker to the controller.
+
+Multi-hop introduces the concept of “upstream” and “downstream” workers. Viewing controllers as the “top” of a
+multi-hop chain, downstream workers are those below a worker in the chain, while upstreams are those above a worker
+in the chain. For example, using the diagram below, Worker2’s upstream is Worker1, and its downstream is Worker3.
+
+![multi-hop workers](/img/multihop-workers.png)
+
+Multi-hop workers can be deployed in scenarios where inbound network traffic is not allowed. A worker in a private
+network will send outbound communication to its upstream worker, and can create reverse proxies for session establishment.
+
+[Target worker filters][] can be used with multi-hop workers to allow for fine grained control on which workers handle
+ingress and egress for session traffic to a [target][]. Ingress worker filters<sup>HCP Only</sup> determine which
+workers users will connect with to initiate a session, and egress worker filters determine which workers will be
+used to access targets.
+
 # Complete Configuration Example
 
 ```hcl
@@ -118,6 +139,8 @@ kms "aead" {
 
 ```
 [kms workers]: /docs/configuration/worker/kms-worker
+[target]: /docs/concepts/domain-model/targets
+[Target worker filters]: /docs/concepts/filtering/worker-tags
 
 ## Tutorial
 
