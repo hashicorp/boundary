@@ -18,7 +18,7 @@ terraform {
 locals {
   enterprise_repositories = ["boundary-enterprise", "boundary-hcp"]
   is_ent                  = contains(local.enterprise_repositories, var.repository)
-  service_user            = "github_actions-boundary_ci"
+  service_user            = "github_actions-boundary_ci" # convert to a data source to lookup the service user
   oss_aws_account_id      = "271311691044"
 }
 
@@ -158,6 +158,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "iam:CreatePolicy",
       "iam:CreateRole",
       "iam:CreateRole",
+      "iam:CreateServiceLinkedRole",
       "iam:CreateUser",
       "iam:CreateUserPolicy",
       "iam:CreateUserTag",
