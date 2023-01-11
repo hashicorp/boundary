@@ -86,6 +86,8 @@ type portAndIpGetter interface {
 // Dial uses the provided dial function to get a net.Conn and record its
 // net.Addr information.  The returned net.Addr should contain the information
 // for the endpoint that is being proxied to.
+// All provided options (for example WithPostConnectionHook) are passed into the
+// dial function associated with this ProxyDialer.
 func (d *ProxyDialer) Dial(ctx context.Context, opt ...Option) (net.Conn, error) {
 	const op = "proxy.(*ProxyDialer).Dial"
 	c, err := d.dialFn(opt...)
