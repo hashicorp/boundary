@@ -30,6 +30,7 @@ const (
 	UnspecifiedType      Type = "unspecified"
 	UsernamePasswordType Type = "username_password"
 	SshPrivateKeyType    Type = "ssh_private_key"
+	SshCertificateType   Type = "ssh_certificate"
 	JsonType             Type = "json"
 )
 

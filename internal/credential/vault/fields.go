@@ -9,6 +9,18 @@ const (
 	httpMethodField      = "HttpMethod"
 	httpRequestBodyField = "HttpRequestBody"
 
+	usernameField = "Username"
+	keyTypeField  = "KeyType"
+	keyBitsField  = "KeyBits"
+	ttlField      = "Ttl"
+	keyIdField    = "KeyId"
+	// CriticalOptionsField represents the field mask indicating a critical option
+	// update has been requested.
+	CriticalOptionsField = "CriticalOptions"
+	// ExtensionsField represents the field mask indicating an extension
+	// update has been requested.
+	ExtensionsField = "Extensions"
+
 	certificateField    = "Certificate"
 	certificateKeyField = "CertificateKey"
 	vaultAddressField   = "VaultAddress"
