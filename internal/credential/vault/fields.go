@@ -9,6 +9,14 @@ const (
 	httpMethodField      = "HttpMethod"
 	httpRequestBodyField = "HttpRequestBody"
 
+	usernameField        = "Username"
+	keyTypeField         = "KeyType"
+	keyBitsField         = "KeyBits"
+	ttlField             = "Ttl"
+	keyIdField           = "KeyId"
+	criticalOptionsField = "CriticalOptions"
+	extensionsField      = "Extensions"
+
 	certificateField    = "Certificate"
 	certificateKeyField = "CertificateKey"
 	vaultAddressField   = "VaultAddress"
