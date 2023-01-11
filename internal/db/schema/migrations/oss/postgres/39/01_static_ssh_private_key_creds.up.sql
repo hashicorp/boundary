@@ -6,6 +6,7 @@ begin;
 
   -- Add new constraint that only allows known types
   -- This replaces the constraint defined in 36/01_credential_type_up
+  -- Replaced in 63/01_credential_vault_ssh_cert_library
   alter table credential_type_enm
     add constraint only_predefined_credential_types_allowed
       check (
