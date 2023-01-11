@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
@@ -29,6 +30,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -218,7 +220,7 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetAuthMethodResponse{Item: wantLdap},
 		},
 		{
-			name:    "Get a non existant AuthMethod",
+			name:    "Get a non existent AuthMethod",
 			scopeId: o.GetPublicId(),
 			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_DoesntExis"},
 			res:     nil,
@@ -341,6 +343,42 @@ func TestList(t *testing.T) {
 		})
 	}
 
+	sorterFn := func(a *pb.AuthMethod, b *pb.AuthMethod) bool {
+		switch {
+		case a.GetId() > b.GetId():
+			return true
+		default:
+			return false
+		}
+	}
+	cpSorted := func(ams []*pb.AuthMethod) []*pb.AuthMethod {
+		cp := make([]*pb.AuthMethod, 0, len(ams))
+		for _, a := range ams {
+			cp = append(cp, proto.Clone(a).(*pb.AuthMethod))
+		}
+		slices.SortFunc(cp, sorterFn)
+		return cp
+	}
+
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), []string{"ldaps://ldap1"})
+	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
+		Id:          ldapAm.GetPublicId(),
+		ScopeId:     oWithAuthMethods.GetPublicId(),
+		CreatedTime: ldapAm.GetCreateTime().GetTimestamp(),
+		UpdatedTime: ldapAm.GetUpdateTime().GetTimestamp(),
+		Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:     1,
+		Type:        ldap.Subtype.String(),
+		Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+			LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+				State: string(ldap.InactiveState),
+				Urls:  []string{"ldaps://ldap1"},
+			},
+		},
+		AuthorizedActions:           ldapAuthorizedActions,
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	})
+
 	var wantOtherAuthMethods []*pb.AuthMethod
 	for _, aa := range password.TestAuthMethods(t, conn, oWithOtherAuthMethods.GetPublicId(), 3) {
 		wantOtherAuthMethods = append(wantOtherAuthMethods, &pb.AuthMethod{
@@ -371,12 +409,12 @@ func TestList(t *testing.T) {
 		{
 			name: "List Some Auth Methods",
 			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithAuthMethods.GetPublicId()},
-			res:  &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
+			res:  &pbs.ListAuthMethodsResponse{Items: cpSorted(wantSomeAuthMethods)},
 		},
 		{
 			name: "List Other Auth Methods",
 			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithOtherAuthMethods.GetPublicId()},
-			res:  &pbs.ListAuthMethodsResponse{Items: wantOtherAuthMethods},
+			res:  &pbs.ListAuthMethodsResponse{Items: cpSorted(wantOtherAuthMethods)},
 		},
 		{
 			name: "List No Auth Methods",
@@ -392,7 +430,9 @@ func TestList(t *testing.T) {
 			name: "List All Auth Methods Recursively",
 			req:  &pbs.ListAuthMethodsRequest{ScopeId: "global", Recursive: true},
 			res: &pbs.ListAuthMethodsResponse{
-				Items: append(wantSomeAuthMethods, wantOtherAuthMethods...),
+				Items: func() []*pb.AuthMethod {
+					return cpSorted(append(wantSomeAuthMethods, wantOtherAuthMethods...))
+				}(),
 			},
 		},
 		{
@@ -401,7 +441,7 @@ func TestList(t *testing.T) {
 				ScopeId: "global", Recursive: true,
 				Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithAuthMethods.GetPublicId()),
 			},
-			res: &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
+			res: &pbs.ListAuthMethodsResponse{Items: cpSorted(wantSomeAuthMethods)},
 		},
 		{
 			name: "Filter All Auth Methods",
@@ -433,7 +473,11 @@ func TestList(t *testing.T) {
 					assert.NotEqual("secret", oidcAttrs.ClientSecretHmac)
 				}
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac")),
+
+			slices.SortFunc(got.Items, sorterFn)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(),
+				protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+				protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac")),
 				"ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check with anonymous user

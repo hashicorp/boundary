@@ -520,6 +520,19 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 	for _, item := range pl {
 		outUl = append(outUl, item)
 	}
+
+	ldapRepo, err := s.ldapRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	ll, err := ldapRepo.ListAuthMethods(ctx, scopeIds)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	for _, item := range ll {
+		outUl = append(outUl, item)
+	}
+
 	return outUl, nil
 }
 
