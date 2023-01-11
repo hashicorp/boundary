@@ -21,7 +21,7 @@ var ldapMaskManager handlers.MaskManager
 
 func init() {
 	var err error
-	if oidcMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&ldapstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.LdapAuthMethodAttributes{}}); err != nil {
+	if ldapMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&ldapstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.LdapAuthMethodAttributes{}}); err != nil {
 		panic(err)
 	}
 
@@ -63,6 +63,34 @@ func (s Service) createLdapInRepo(ctx context.Context, scopeId string, item *pb.
 	return out, nil
 }
 
+func (s Service) updateLdapInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*ldap.AuthMethod, error) {
+	u, err := toStorageLdapAuthMethod(ctx, scopeId, item)
+	if err != nil {
+		return nil, err
+	}
+
+	version := item.GetVersion()
+	u.PublicId = id
+
+	dbMask := ldapMaskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	}
+
+	repo, err := s.ldapRepoFn()
+	if err != nil {
+		return nil, err
+	}
+	out, rowsUpdated, err := repo.UpdateAuthMethod(ctx, u, version, dbMask)
+	if err != nil {
+		return nil, fmt.Errorf("unable to update auth method: %w", err)
+	}
+	if rowsUpdated == 0 {
+		return nil, handlers.NotFoundErrorf("AuthMethod %q doesn't exist or incorrect version provided or no changes were made to the existing AuthMethod.", id)
+	}
+	return out, nil
+}
+
 func toStorageLdapAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMethod) (out *ldap.AuthMethod, err error) {
 	const op = "authmethod_service.toStorageLdapAuthMethod"
 	if in == nil {
@@ -77,93 +105,107 @@ func toStorageLdapAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 	if in.GetDescription() != nil {
 		opts = append(opts, ldap.WithDescription(ctx, in.GetDescription().GetValue()))
 	}
-	if attrs.StartTls {
-		opts = append(opts, ldap.WithStartTLS(ctx))
-	}
-	if attrs.InsecureTls {
-		opts = append(opts, ldap.WithInsecureTLS(ctx))
-	}
-	if attrs.DiscoverDn {
-		opts = append(opts, ldap.WithDiscoverDn(ctx))
-	}
-	if attrs.AnonGroupSearch {
-		opts = append(opts, ldap.WithAnonGroupSearch(ctx))
-	}
-	if attrs.UpnDomain.GetValue() != "" {
-		opts = append(opts, ldap.WithUpnDomain(ctx, attrs.UpnDomain.GetValue()))
-	}
-	if attrs.UserDn.GetValue() != "" {
-		opts = append(opts, ldap.WithUserDn(ctx, attrs.UserDn.GetValue()))
-	}
-	if attrs.UserAttr.GetValue() != "" {
-		opts = append(opts, ldap.WithUserAttr(ctx, attrs.UserAttr.GetValue()))
-	}
-	if attrs.UserFilter.GetValue() != "" {
-		opts = append(opts, ldap.WithUserFilter(ctx, attrs.UserFilter.GetValue()))
-	}
-	if attrs.EnableGroups {
-		opts = append(opts, ldap.WithEnableGroups(ctx))
-	}
-	if attrs.GroupDn.GetValue() != "" {
-		opts = append(opts, ldap.WithGroupDn(ctx, attrs.GroupDn.GetValue()))
-	}
-	if attrs.GroupAttr.GetValue() != "" {
-		opts = append(opts, ldap.WithGroupAttr(ctx, attrs.GroupAttr.GetValue()))
-	}
-	if attrs.GroupFilter.GetValue() != "" {
-		opts = append(opts, ldap.WithGroupFilter(ctx, attrs.GroupFilter.GetValue()))
-	}
-	if len(attrs.Certificates) > 0 {
-		certs, err := ldap.ParseCertificates(ctx, attrs.Certificates...)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
+	var urls []*url.URL
+	if attrs != nil {
+		if attrs.GetState() != "" {
+			opts = append(opts, ldap.WithOperationalState(ctx, ldap.AuthMethodState(attrs.GetState())))
 		}
-		opts = append(opts, ldap.WithCertificates(ctx, certs...))
-	}
-	if attrs.ClientCertificate != nil || attrs.ClientCertificateKey != nil {
-		keyBlk, _ := pem.Decode([]byte(attrs.ClientCertificateKey.GetValue()))
-		if keyBlk == nil {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to parse %s PEM", clientCertificateKeyField))
+		if attrs.StartTls {
+			opts = append(opts, ldap.WithStartTLS(ctx))
 		}
-		certBlk, _ := pem.Decode([]byte(attrs.ClientCertificate.GetValue()))
-		if certBlk == nil {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to parse %s PEM", clientCertificateField))
+		if attrs.InsecureTls {
+			opts = append(opts, ldap.WithInsecureTLS(ctx))
 		}
-		cc, err := x509.ParseCertificate(certBlk.Bytes)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse %s ASN.1 DER", clientCertificateField))
+		if attrs.DiscoverDn {
+			opts = append(opts, ldap.WithDiscoverDn(ctx))
 		}
-		opts = append(opts, ldap.WithClientCertificate(ctx, keyBlk.Bytes, cc))
-	}
-	if attrs.BindDn.GetValue() != "" || attrs.BindPassword.GetValue() != "" {
-		opts = append(opts, ldap.WithBindCredential(ctx, attrs.BindDn.GetValue(), attrs.BindPassword.GetValue()))
-	}
-	if attrs.UseTokenGroups {
-		opts = append(opts, ldap.WithUseTokenGroups(ctx))
-	}
-	if len(attrs.AccountAttributeMaps) > 0 {
-		attribMaps, err := ldap.ParseAccountAttributeMaps(ctx, attrs.AccountAttributeMaps...)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse %s", accountAttributesMapField))
+		if attrs.AnonGroupSearch {
+			opts = append(opts, ldap.WithAnonGroupSearch(ctx))
 		}
-		fromToMap := map[string]ldap.AccountToAttribute{}
-		for _, m := range attribMaps {
-			fromToMap[m.From] = ldap.AccountToAttribute(m.To)
+		if attrs.UpnDomain.GetValue() != "" {
+			opts = append(opts, ldap.WithUpnDomain(ctx, attrs.UpnDomain.GetValue()))
 		}
-		opts = append(opts, ldap.WithAccountAttributeMap(ctx, fromToMap))
-	}
+		if attrs.UserDn.GetValue() != "" {
+			opts = append(opts, ldap.WithUserDn(ctx, attrs.UserDn.GetValue()))
+		}
+		if attrs.UserAttr.GetValue() != "" {
+			opts = append(opts, ldap.WithUserAttr(ctx, attrs.UserAttr.GetValue()))
+		}
+		if attrs.UserFilter.GetValue() != "" {
+			opts = append(opts, ldap.WithUserFilter(ctx, attrs.UserFilter.GetValue()))
+		}
+		if attrs.EnableGroups {
+			opts = append(opts, ldap.WithEnableGroups(ctx))
+		}
+		if attrs.GroupDn.GetValue() != "" {
+			opts = append(opts, ldap.WithGroupDn(ctx, attrs.GroupDn.GetValue()))
+		}
+		if attrs.GroupAttr.GetValue() != "" {
+			opts = append(opts, ldap.WithGroupAttr(ctx, attrs.GroupAttr.GetValue()))
+		}
+		if attrs.GroupFilter.GetValue() != "" {
+			opts = append(opts, ldap.WithGroupFilter(ctx, attrs.GroupFilter.GetValue()))
+		}
+		if len(attrs.Certificates) > 0 {
+			certs, err := ldap.ParseCertificates(ctx, attrs.Certificates...)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+			opts = append(opts, ldap.WithCertificates(ctx, certs...))
+		}
+		if attrs.ClientCertificate != nil || attrs.ClientCertificateKey != nil {
+			keyBlk, _ := pem.Decode([]byte(attrs.ClientCertificateKey.GetValue()))
+			if keyBlk == nil {
+				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to parse %s PEM", clientCertificateKeyField))
+			}
+			certBlk, _ := pem.Decode([]byte(attrs.ClientCertificate.GetValue()))
+			if certBlk == nil {
+				return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to parse %s PEM", clientCertificateField))
+			}
+			cc, err := x509.ParseCertificate(certBlk.Bytes)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse %s ASN.1 DER", clientCertificateField))
+			}
+			opts = append(opts, ldap.WithClientCertificate(ctx, keyBlk.Bytes, cc))
+		}
+		if attrs.BindDn.GetValue() != "" || attrs.BindPassword.GetValue() != "" {
+			opts = append(opts, ldap.WithBindCredential(ctx, attrs.BindDn.GetValue(), attrs.BindPassword.GetValue()))
+		}
+		if attrs.UseTokenGroups {
+			opts = append(opts, ldap.WithUseTokenGroups(ctx))
+		}
+		if len(attrs.AccountAttributeMaps) > 0 {
+			attribMaps, err := ldap.ParseAccountAttributeMaps(ctx, attrs.AccountAttributeMaps...)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse %s", accountAttributesMapField))
+			}
+			fromToMap := map[string]ldap.AccountToAttribute{}
+			for _, m := range attribMaps {
+				fromToMap[m.From] = ldap.AccountToAttribute(m.To)
+			}
+			opts = append(opts, ldap.WithAccountAttributeMap(ctx, fromToMap))
+		}
 
-	urls := make([]*url.URL, 0, len(attrs.GetUrls()))
-	for _, urlStr := range attrs.GetUrls() {
-		u, err := url.Parse(urlStr)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse %q into a url", urlStr))
+		if len(attrs.GetUrls()) > 0 {
+			urls = make([]*url.URL, 0, len(attrs.GetUrls()))
+			for _, urlStr := range attrs.GetUrls() {
+				u, err := url.Parse(urlStr)
+				if err != nil {
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse %q into a url", urlStr))
+				}
+				urls = append(urls, u)
+			}
+			opts = append(opts, ldap.WithUrls(ctx, urls...))
 		}
-		urls = append(urls, u)
 	}
-	u, err := ldap.NewAuthMethod(ctx, scopeId, urls, opts...)
+	u, err := ldap.NewAuthMethod(ctx, scopeId, opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
+		switch {
+		case errors.Match(errors.T(errors.InvalidParameter), err):
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
+		default:
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method: %v.", err)
+		}
 	}
 	return u, nil
 }
@@ -173,11 +215,8 @@ func toStorageLdapAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttributes, badFields map[string]string) {
 	if attrs == nil {
 		// LDAP attributes are required when creating an LDAP auth method.
-		badFields[attributesField] = "Attributes are required for creating an LDAP auth method."
+		// badFields[attributesField] = "Attributes are required for creating an LDAP auth method."
 		return
-	}
-	if len(attrs.Urls) == 0 {
-		badFields[urlsField] = "At least one URL is required"
 	}
 	if len(attrs.GetUrls()) > 0 {
 		badUrlMsgs := []string{}
@@ -185,6 +224,7 @@ func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttribu
 			u, err := url.Parse(rawUrl)
 			if err != nil {
 				badUrlMsgs = append(badUrlMsgs, fmt.Sprintf("%q is not a valid url", rawUrl))
+				continue
 			}
 			if u.Scheme != "ldap" && u.Scheme != "ldaps" {
 				badUrlMsgs = append(badUrlMsgs, fmt.Sprintf("%s scheme in url %q is not either ldap or ldaps", u.Scheme, u.String()))

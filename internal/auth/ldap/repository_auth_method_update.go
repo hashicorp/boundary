@@ -125,7 +125,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 
 	origAm, err := r.LookupAuthMethod(ctx, am.PublicId)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("%q auth method not found", am.PublicId))
 	}
 	if origAm == nil {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("auth method %q", am.PublicId))
@@ -141,21 +141,21 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 	addUrls, deleteUrls, err := valueObjectChanges(ctx, origAm.PublicId, UrlVO, am.Urls, origAm.Urls, dbMask, nullFields)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update urls"))
 	}
 	addCerts, deleteCerts, err := valueObjectChanges(ctx, origAm.PublicId, CertificateVO, am.Certificates, origAm.Certificates, dbMask, nullFields)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update certificates"))
 	}
 	addMaps, deleteMaps, err := valueObjectChanges(ctx, origAm.PublicId, AccountAttributeMapsVO, am.AccountAttributeMaps, origAm.AccountAttributeMaps, dbMask, nullFields)
 	if err != nil {
-		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update account attribute maps"))
 	}
 	var addUserSearchConf, deleteUserSearchConf any
 	if strListContainsOneOf(dbMask, UserDnField, UserAttrField, UserAttrField) {
 		addUserSearchConf, err = NewUserEntrySearchConf(ctx, am.PublicId, WithUserDn(ctx, am.UserDn), WithUserAttr(ctx, am.UserAttr), WithUserFilter(ctx, am.UserFilter))
 		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update user search configuration"))
 		}
 	}
 	combinedMasks := append(dbMask, nullFields...)
@@ -169,7 +169,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	if strListContainsOneOf(dbMask, GroupDnField, GroupAttrField, GroupAttrField) {
 		addGroupSearchConf, err = NewGroupEntrySearchConf(ctx, am.PublicId, WithGroupDn(ctx, am.GroupDn), WithGroupAttr(ctx, am.GroupAttr), WithGroupFilter(ctx, am.GroupFilter))
 		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update group search configuration"))
 		}
 	}
 	if strListContainsOneOf(combinedMasks, GroupDnField, GroupAttrField, GroupAttrField) &&

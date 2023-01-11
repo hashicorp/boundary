@@ -1281,6 +1281,22 @@ func TestCreate(t *testing.T) {
 			errContains: "attributes.client_certificate_key is not encoded as a valid pem",
 		},
 		{
+			name: "ldap-auth-method-client-cert-key-not-a-key",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:                 []string{"ldap://ldap1"},
+						ClientCertificate:    wrapperspb.String(testEncodedCert),
+						ClientCertificateKey: wrapperspb.String(testEncodedCert),
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "attributes.client_certificate_key is not a valid private key",
+		},
+		{
 			name: "ldap-auth-method-missing-client-cert-key",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),

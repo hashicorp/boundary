@@ -598,6 +598,24 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 		}
 		am = oam
 		dryRun = dr
+
+	case ldap.Subtype:
+		lam, err := s.updateLdapInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+		if err != nil {
+			_, apiErr := err.(*handlers.ApiError)
+			switch {
+			case apiErr:
+				return nil, false, err
+			case errors.Match(errors.T(errors.InvalidParameter), err):
+				return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
+			default:
+				return nil, false, errors.Wrap(ctx, err, op)
+			}
+		}
+		if lam == nil {
+			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
+		}
+		am = lam
 	}
 
 	return am, dryRun, nil
@@ -1035,6 +1053,9 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 				}
 			}
 		case ldap.Subtype:
+			if len(req.GetItem().GetLdapAuthMethodsAttributes().GetUrls()) == 0 {
+				badFields[urlsField] = "At least one URL is required"
+			}
 			validateLdapAttributes(ctx, req.GetItem().GetLdapAuthMethodsAttributes(), badFields)
 		default:
 			badFields[typeField] = fmt.Sprintf("This is a required field and must be %q.", password.Subtype.String())
@@ -1162,11 +1183,16 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 					}
 				}
 			}
+		case ldap.Subtype:
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != ldap.Subtype {
+				badFields[typeField] = "Cannot modify the resource type."
+			}
+			validateLdapAttributes(ctx, req.GetItem().GetLdapAuthMethodsAttributes(), badFields)
 		default:
 			badFields["id"] = "Incorrectly formatted identifier."
 		}
 		return badFields
-	}, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
+	}, password.AuthMethodPrefix, oidc.AuthMethodPrefix, ldap.AuthMethodPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
