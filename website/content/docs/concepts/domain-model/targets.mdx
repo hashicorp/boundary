@@ -44,19 +44,12 @@ A target has the following configurable attributes:
 
 TCP targets have the following additional attributes:
 
-- `session_max_seconds` - (required)
-  The maximum duration of an individual session between the user and the target.
-  All connections for a session are closed
-  and the session is terminated
-  when a session reaches the maximum duration.
-  The default is 8 hours (28800 seconds).
-  This value must be greater than 0.
+- `address` - (optional)
+  A valid network address to connect to for this target. Can
+  not be used alongside host sources.
 
-- `session_connection_limit` - (required)
-  The cumulative number of TCP connections allowed during a session.
-  A -1 value means no limit.
-  The default is -1.
-  The value must be greater than 0 or exactly -1.
+- `default_port` - (optional)
+  The default port to set on this target.
 
 - `egress_worker_filter` - (optional)
   A boolean expression to [filter][] which egress workers can handle sessions
@@ -65,6 +58,20 @@ TCP targets have the following additional attributes:
 - `ingress_worker_filter` - (optional) <sup>HCP Only</sup>
   A boolean expression to [filter][] which ingress workers can handle sessions
   for this target.
+
+- `session_connection_limit` - (required)
+  The cumulative number of TCP connections allowed during a session.
+  A -1 value means no limit.
+  The default is -1.
+  The value must be greater than 0 or exactly -1.
+
+- `session_max_seconds` - (required)
+  The maximum duration of an individual session between the user and the target.
+  All connections for a session are closed
+  and the session is terminated
+  when a session reaches the maximum duration.
+  The default is 8 hours (28800 seconds).
+  This value must be greater than 0.
 
 ### SSH Target Attributes <sup>HCP Only</sup>
 
@@ -74,19 +81,12 @@ securely connect to remote hosts using SSH, while never being in possession of a
 
 SSH targets have the following additional attributes:
 
-- `session_max_seconds` - (required)
-  The maximum duration of an individual session between the user and the target.
-  All connections for a session are closed
-  and the session is terminated
-  when a session reaches the maximum duration.
-  The default is 8 hours (28800 seconds).
-  This value must be greater than 0.
+- `address` - (optional)
+  A valid network address to connect to for this target. Can
+  not be used alongside host sources.
 
-- `session_connection_limit` - (required)
-  The cumulative number of TCP connections allowed during a session.
-  A -1 value means no limit.
-  The default is -1.
-  The value must be greater than 0 or exactly -1.
+- `default_port` - (optional)
+  The default port to set on this target.
 
 - `egress_worker_filter` - (optional)
   A boolean expression to [filter][] which egress workers can handle sessions
@@ -95,6 +95,20 @@ SSH targets have the following additional attributes:
 - `ingress_worker_filter` - (optional) <sup>HCP Only</sup>
   A boolean expression to [filter][] which ingress workers can handle sessions
   for this target.
+
+- `session_connection_limit` - (required)
+  The cumulative number of TCP connections allowed during a session.
+  A -1 value means no limit.
+  The default is -1.
+  The value must be greater than 0 or exactly -1.
+
+- `session_max_seconds` - (required)
+  The maximum duration of an individual session between the user and the target.
+  All connections for a session are closed
+  and the session is terminated
+  when a session reaches the maximum duration.
+  The default is 8 hours (28800 seconds).
+  This value must be greater than 0.
 
 ## Referenced By
 
