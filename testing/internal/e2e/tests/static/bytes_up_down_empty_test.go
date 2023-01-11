@@ -66,11 +66,33 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 	// Confirm that bytesUp and bytesDown do not change
 	bytesUp := 0
 	bytesDown := 0
+
+	// Wait until bytes up and down is greater than 0
+	t.Log("Waiting for bytes_up/bytes_down to be greater than 0...")
+	for i := 0; i < 3; i++ {
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
+		var newSessionReadResult sessions.SessionReadResult
+		err = json.Unmarshal(output.Stdout, &newSessionReadResult)
+		require.NoError(t, err)
+		bytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
+		bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
+		t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
+
+		if bytesUp > 0 && bytesDown > 0 {
+			break
+		}
+
+		time.Sleep(2 * time.Second)
+	}
+	require.Greater(t, bytesUp, 0)
+	require.Greater(t, bytesDown, 0)
+
 	t.Log("Reading bytes_up/bytes_down values...")
 	for i := 0; i < 3; i++ {
-		if i != 0 {
-			time.Sleep(2 * time.Second)
-		}
+		time.Sleep(2 * time.Second)
 
 		output := e2e.RunCommand(ctx, "boundary",
 			e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
