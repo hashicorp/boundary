@@ -28,6 +28,9 @@ var (
 	GetHandler = tcpOnly
 )
 
+// DecryptFn decrypts the provided bytes into a proto.Message
+type DecryptFn func(ctx context.Context, from []byte, to proto.Message) error
+
 // ProxyConnFn is called after the call to ConnectConnection on the cluster.
 // ProxyConnFn blocks until the specific request that is being proxied is finished
 type ProxyConnFn func(ctx context.Context)
@@ -37,7 +40,7 @@ type ProxyConnFn func(ctx context.Context)
 // be nil. If there is no error ProxyConnFn must be set.  When Handler has
 // returned, it is expected that the initial connection to the endpoint has been
 // established.
-type Handler func(context.Context, net.Conn, *ProxyDialer, string, *anypb.Any) (ProxyConnFn, error)
+type Handler func(context.Context, DecryptFn, net.Conn, *ProxyDialer, string, *anypb.Any) (ProxyConnFn, error)
 
 func RegisterHandler(protocol string, handler Handler) error {
 	_, loaded := handlers.LoadOrStore(protocol, handler)
