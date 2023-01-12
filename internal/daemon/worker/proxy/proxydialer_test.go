@@ -60,6 +60,3 @@ func TestProxyDialer(t *testing.T) {
 		assert.EqualValues(t, tcpAddr.Port, d.LastConnectionAddr().Port())
 	})
 }
-
-func TestProxyDialer_Dial(t *testing.T) {
-}
