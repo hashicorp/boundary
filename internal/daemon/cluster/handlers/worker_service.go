@@ -45,7 +45,10 @@ var (
 	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
 
 	workerFilterSelectionFn = workerFilterSelector
-	connectionRouteFn       = singleHopConnectionRoute
+	// connectionRouteFn returns a route to the egress worker.  If the requester
+	// is the egress worker a route of length 1 is returned. A route of
+	// length 0 is never returned unless there is an error.
+	connectionRouteFn = singleHopConnectionRoute
 
 	// getProtocolContext populates the protocol specific context fields
 	// depending on the protocol used to for the boundary connection. Defaults
@@ -304,7 +307,7 @@ func workerFilterSelector(sessionInfo *session.Session) string {
 }
 
 // noProtocolContext doesn't provide any protocol context since tcp doesn't need any
-func noProtocolContext(context.Context, *session.Repository, *pbs.AuthorizeConnectionRequest) (*anypb.Any, error) {
+func noProtocolContext(context.Context, *session.Repository, *server.Repository, common.WorkerAuthRepoStorageFactory, *pbs.AuthorizeConnectionRequest, []string) (*anypb.Any, error) {
 	return nil, nil
 }
 
@@ -527,7 +530,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		ConnectionsLeft: authzSummary.ConnectionLimit,
 		Route:           route,
 	}
-	if pc, err := getProtocolContext(ctx, sessionRepo, req); err != nil {
+	if pc, err := getProtocolContext(ctx, sessionRepo, serversRepo, ws.workerAuthRepoFn, req, route); err != nil {
 		return nil, err
 	} else {
 		ret.ProtocolContext = pc

@@ -2,7 +2,7 @@ package worker
 
 import (
 	"context"
-	"errors"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"net"
@@ -16,10 +16,15 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	proxyHandlers "github.com/hashicorp/boundary/internal/daemon/worker/proxy"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
+	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/proxy"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
+	"github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/types"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"nhooyr.io/websocket"
@@ -62,7 +67,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 	return func(wr http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		if r.TLS == nil {
-			event.WriteError(ctx, op, errors.New("no request tls information found"))
+			event.WriteError(ctx, op, stderrors.New("no request tls information found"))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -78,7 +83,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 		}
 		if sessionId == "" {
-			event.WriteError(ctx, op, errors.New("no session id could be found in peer certificates"))
+			event.WriteError(ctx, op, stderrors.New("no session id could be found in peer certificates"))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -108,7 +113,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 
 		sess := sessionManager.Get(sessionId)
 		if sess == nil {
-			event.WriteError(ctx, op, errors.New("session not found locally"), event.WithInfo("session_id", sessionId))
+			event.WriteError(ctx, op, stderrors.New("session not found locally"), event.WithInfo("session_id", sessionId))
 			wr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -137,7 +142,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			return
 		}
 		if len(handshake.GetTofuToken()) < 20 {
-			event.WriteError(ctx, op, errors.New("invalid tofu token"))
+			event.WriteError(ctx, op, stderrors.New("invalid tofu token"))
 			if err = conn.Close(websocket.StatusUnsupportedData, "invalid tofu token"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
@@ -147,12 +152,12 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL {
 			if err := sess.RequestCancel(ctx); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to cancel session"))
-				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil && !errors.Is(err, io.EOF) {
+				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil && !stderrors.Is(err, io.EOF) {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 				}
 				return
 			}
-			if err = conn.Close(websocket.StatusNormalClosure, "session canceled"); err != nil && !errors.Is(err, io.EOF) {
+			if err = conn.Close(websocket.StatusNormalClosure, "session canceled"); err != nil && !stderrors.Is(err, io.EOF) {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
 			return
@@ -160,7 +165,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 
 		if sess.GetTofuToken() != "" {
 			if sess.GetTofuToken() != handshake.GetTofuToken() {
-				event.WriteError(ctx, op, errors.New("WARNING: mismatched tofu token"), event.WithInfo("session_id", sessionId))
+				event.WriteError(ctx, op, stderrors.New("WARNING: mismatched tofu token"), event.WithInfo("session_id", sessionId))
 				if err = conn.Close(websocket.StatusPolicyViolation, "tofu token not allowed"); err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 				}
@@ -168,7 +173,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 		} else {
 			if sess.GetStatus() != pbs.SESSIONSTATUS_SESSIONSTATUS_PENDING {
-				event.WriteError(ctx, op, errors.New("no tofu token but not in correct session state"), event.WithInfo("session_id", sessionId))
+				event.WriteError(ctx, op, stderrors.New("no tofu token but not in correct session state"), event.WithInfo("session_id", sessionId))
 				if err = conn.Close(websocket.StatusInternalError, "refusing to activate session"); err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 				}
@@ -188,7 +193,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 
 		if w.LastStatusSuccess() == nil || w.LastStatusSuccess().WorkerId == "" {
-			event.WriteError(ctx, op, errors.New("worker id is empty"))
+			event.WriteError(ctx, op, stderrors.New("worker id is empty"))
 			if err = conn.Close(websocket.StatusInternalError, "worker id is empty"); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
 			}
@@ -279,7 +284,12 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			event.WriteError(ctx, op, err)
 			return
 		}
-		runProxy, err := handleProxyFn(ctx, cc, pDialer, acResp.GetConnectionId(), protocolCtx)
+		decryptFn, err := w.credDecryptFn(ctx)
+		if err != nil {
+			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "error getting decryption function")
+			event.WriteError(ctx, op, err)
+		}
+		runProxy, err := handleProxyFn(ctx, decryptFn, cc, pDialer, acResp.GetConnectionId(), protocolCtx)
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to setup proxying")
 			event.WriteError(ctx, op, err)
@@ -307,6 +317,32 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		}
 
 		runProxy(ctx)
+	}, nil
+}
+
+// credDecryptFn returns a DecryptFn if the worker is a pki worker with
+// WorkerAuthStorage defined. An error is returned if there is an error
+// loading the node credentials.
+func (w *Worker) credDecryptFn(ctx context.Context) (proxyHandlers.DecryptFn, error) {
+	const op = "worker.(*Worker).credDecryptFn"
+	if w.WorkerAuthStorage == nil {
+		return nil, nil
+	}
+	was := w.WorkerAuthStorage
+	var opts []nodeenrollment.Option
+	if !util.IsNil(w.conf.WorkerAuthStorageKms) {
+		opts = append(opts, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+	}
+	nodeCreds, err := types.LoadNodeCredentials(ctx, was, nodeenrollment.CurrentId, opts...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return func(ctx context.Context, from []byte, to proto.Message) error {
+		if err := nodeenrollment.DecryptMessage(ctx, from, nodeCreds, to); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		return nil
 	}, nil
 }
 
