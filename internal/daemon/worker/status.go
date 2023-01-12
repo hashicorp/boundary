@@ -211,25 +211,27 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			// append initial upstreams/ cluster addr to the resolver to try
 			if w.GrpcClientConn.GetState() == connectivity.TransientFailure {
 				lastStatus := w.lastStatusSuccess.Load().(*LastStatusInformation)
-				addrs := lastStatus.LastCalculatedUpstreams
+				if lastStatus != nil && lastStatus.LastCalculatedUpstreams != nil {
+					addrs := lastStatus.LastCalculatedUpstreams
 
-				if len(w.conf.RawConfig.Worker.InitialUpstreams) > 0 {
-					addrs = append(addrs, w.conf.RawConfig.Worker.InitialUpstreams...)
-				}
-				if len(w.conf.RawConfig.HcpbClusterId) > 0 {
-					clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HcpbClusterId, hcpbUrlSuffix)
-					addrs = append(addrs, clusterAddress)
-				}
+					if len(w.conf.RawConfig.Worker.InitialUpstreams) > 0 {
+						addrs = append(addrs, w.conf.RawConfig.Worker.InitialUpstreams...)
+					}
+					if len(w.conf.RawConfig.HcpbClusterId) > 0 {
+						clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HcpbClusterId, hcpbUrlSuffix)
+						addrs = append(addrs, clusterAddress)
+					}
 
-				addrs = strutil.RemoveDuplicates(addrs, false)
-				if strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
-					// Nothing to update
-					return
-				}
+					addrs = strutil.RemoveDuplicates(addrs, false)
+					if strutil.EquivalentSlices(lastStatus.LastCalculatedUpstreams, addrs) {
+						// Nothing to update
+						return
+					}
 
-				w.updateAddresses(cancelCtx, addrs, addressReceivers)
-				lastStatus.LastCalculatedUpstreams = addrs
-				w.lastStatusSuccess.Store(lastStatus)
+					w.updateAddresses(cancelCtx, addrs, addressReceivers)
+					lastStatus.LastCalculatedUpstreams = addrs
+					w.lastStatusSuccess.Store(lastStatus)
+				}
 			}
 
 			// Exit out of status function; our work here is done and we don't need to create closeConnection requests
