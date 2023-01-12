@@ -84,7 +84,7 @@ You can use the `initial_upstreams` field to configure PKI workers to either con
 or to other workers, when set to the worker's `public_addr`.
 
 A multi-hop configuration is when two or more workers are connected, and there are multiple “hops” from a worker to
-the controller.
+the controller. There are no limits on the amount of workers allowed in a multi-hop configuration.
 
 The multi-hop configuration introduces the concepts of “upstream” and “downstream” workers. If you view controllers
 as the “top” of a multi-hop chain, downstream workers reside below a worker in the chain, while upstream workers reside
