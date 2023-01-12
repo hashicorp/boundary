@@ -78,7 +78,7 @@ kms "aead" {
 workers. These fields are only valid for [KMS Workers][]. `name` and
 `description` can only be set for PKI workers through the API.
 
-# Multi-Hop Workers
+# Multi-Hop Workers<sup>HCP Only</sup>
 
 You can use the `initial_upstreams` field to configure PKI workers to either connect directly to the control plane
 or to other workers, when set to the worker's `public_addr`.
