@@ -32,6 +32,15 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withDescription = "test"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithUrls", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithUrls(testCtx, TestConvertToUrls(t, "ldaps://ldap1")...))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withUrls = []string{"ldaps://ldap1"}
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithAccountAttributeMap", func(t *testing.T) {
 		assert := assert.New(t)
 		opts, err := getOpts(WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{

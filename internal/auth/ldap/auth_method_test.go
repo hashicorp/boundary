@@ -41,7 +41,7 @@ func TestNewAuthMethod(t *testing.T) {
 			name:    "valid-all-opts",
 			ctx:     testCtx,
 			scopeId: "global",
-			urls:    TestConvertToUrls(t, "ldaps://alice.com"),
+			urls:    TestConvertToUrls(t, "ldaps://alice.com"), // converted to an option
 			opts: []Option{
 				WithName(testCtx, "test-name"),
 				WithDescription(testCtx, "test-description"),
@@ -112,14 +112,6 @@ func TestNewAuthMethod(t *testing.T) {
 			wantErrContains: "missing scope id",
 		},
 		{
-			name:            "missing-urls",
-			ctx:             testCtx,
-			scopeId:         "global",
-			wantErr:         true,
-			wantErrCode:     errors.InvalidParameter,
-			wantErrContains: "missing urls",
-		},
-		{
 			name:    "invalid-urls",
 			ctx:     testCtx,
 			scopeId: "global",
@@ -146,7 +138,8 @@ func TestNewAuthMethod(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			am, err := NewAuthMethod(tc.ctx, tc.scopeId, tc.urls, tc.opts...)
+			tc.opts = append(tc.opts, WithUrls(tc.ctx, tc.urls...))
+			am, err := NewAuthMethod(tc.ctx, tc.scopeId, tc.opts...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrCode != errors.Unknown {
@@ -207,7 +200,7 @@ func TestAuthMethod_clone(t *testing.T) {
 		am, err := NewAuthMethod(
 			testCtx,
 			"global",
-			TestConvertToUrls(t, "ldaps://alice.com"),
+			WithUrls(testCtx, TestConvertToUrls(t, "ldaps://alice.com")...),
 			WithStartTLS(testCtx),
 			WithInsecureTLS(testCtx),
 			WithDiscoverDn(testCtx),
@@ -229,9 +222,9 @@ func TestAuthMethod_clone(t *testing.T) {
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		am, err := NewAuthMethod(testCtx, "global", TestConvertToUrls(t, "ldaps://alice.com"))
+		am, err := NewAuthMethod(testCtx, "global", WithUrls(testCtx, TestConvertToUrls(t, "ldaps://alice.com")...))
 		require.NoError(err)
-		am2, err := NewAuthMethod(testCtx, "global", TestConvertToUrls(t, "ldaps://bob.com"))
+		am2, err := NewAuthMethod(testCtx, "global", WithUrls(testCtx, TestConvertToUrls(t, "ldaps://bob.com")...))
 		require.NoError(err)
 
 		cp := am.clone()
@@ -242,7 +235,7 @@ func TestAuthMethod_clone(t *testing.T) {
 func TestAuthMethod_oplog(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	testAm, err := NewAuthMethod(testCtx, "global", TestConvertToUrls(t, "ldap://ldap1"))
+	testAm, err := NewAuthMethod(testCtx, "global", WithUrls(testCtx, TestConvertToUrls(t, "ldap://ldap1")...))
 	testAm.PublicId = "test-public-id"
 	require.NoError(t, err)
 	tests := []struct {

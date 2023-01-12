@@ -49,9 +49,11 @@ func TestAuthMethod(t testing.TB,
 	require := require.New(t)
 	rw := db.New(conn)
 
+	opt = append(opt, WithUrls(testCtx, TestConvertToUrls(t, urls...)...))
+
 	opts, err := getOpts(opt...)
 	require.NoError(err)
-	am, err := NewAuthMethod(testCtx, scopeId, TestConvertToUrls(t, urls...), opt...)
+	am, err := NewAuthMethod(testCtx, scopeId, opt...)
 	require.NoError(err)
 	id, err := newAuthMethodId(testCtx)
 	require.NoError(err)
