@@ -627,6 +627,9 @@ func (c *Command) Run(args []string) int {
 		// These must be unset for PKI
 		c.Config.Worker.Name = ""
 		c.Config.Worker.Description = ""
+	} else {
+		// This must be unset for KMS
+		c.WorkerAuthStorageKms = nil
 	}
 	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
 	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
