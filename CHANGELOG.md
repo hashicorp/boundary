@@ -21,6 +21,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * plugins: Ignore `SIGHUP` sent to parent process; some init systems, notably
   `dumb-init`, would pass them along to the child processes and cause the
   plugin to exit ([PR](https://github.com/hashicorp/boundary/pull/2677))
+* data warehouse: Fix bug that caused credential dimensions to not get
+    associated with session facts ([PR](https://github.com/hashicorp/boundary/pull/2787)).
 
 ## 0.11.2 (2022/12/09)
 

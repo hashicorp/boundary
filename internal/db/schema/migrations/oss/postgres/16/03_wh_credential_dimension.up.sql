@@ -90,6 +90,7 @@ begin;
   -- wh_upsert_credentail_group determines if a new wh_credential_group needs to be
   -- created due to changes to the coresponding wh_credential_dimensions. It then
   -- updates the wh_session_accumulating_fact to associate it with the correct wh_credential_group.
+  -- Replaced in 61/01_fix_wh_upsert_credential_group
   create function wh_upsert_credentail_group() returns trigger
   as $$
   declare
