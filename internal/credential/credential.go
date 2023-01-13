@@ -144,3 +144,10 @@ type SshPrivateKey interface {
 	PrivateKey() PrivateKey
 	PrivateKeyPassphrase() []byte
 }
+
+// SshCertificate is a credential containing a client certificate, username,
+// and SSH private key.
+type SshCertificate interface {
+	SshPrivateKey
+	Certificate() []byte
+}
