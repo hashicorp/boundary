@@ -48,10 +48,12 @@ func (w *Worker) handler(props HandlerProperties, sm session.Manager) (http.Hand
 	// Create the muxer to handle the actual endpoints
 	mux := http.NewServeMux()
 
+	var h http.Handler
 	h, err := w.handleProxy(props.ListenerConfig, sm)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+	h = proxyHandlers.ProxyHandlerCounter(h)
 	mux.Handle("/v1/proxy", metric.InstrumentWebsocketWrapper(h))
 
 	genericWrappedHandler := w.wrapGenericHandler(mux, props)

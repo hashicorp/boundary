@@ -1,17 +1,9 @@
 package worker
 
 import (
-	"context"
-
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 )
-
-var extraAddressReceivers = noopAddressReceivers
-
-func noopAddressReceivers(context.Context, *Worker) ([]addressReceiver, error) {
-	return nil, nil
-}
 
 type receiverType uint
 
