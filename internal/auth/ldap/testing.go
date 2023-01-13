@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testInvalidPem = `-----BEGIN CERTIFICATE-----
+const TestInvalidPem = `-----BEGIN CERTIFICATE-----
 MIICUTCCAfugAwIBAgIBADANBgkqhkiG9w0BAQQFADBXMQswCQYDVQQGEwJDTjEL
 -----END CERTIFICATE-----`
 

@@ -118,7 +118,7 @@ func TestParseCertificates(t *testing.T) {
 			name: "invalid-block",
 			setup: func() ([]*x509.Certificate, []string) {
 				c1, _ := TestGenerateCA(t, "localhost")
-				return []*x509.Certificate{c1}, []string{testInvalidPem}
+				return []*x509.Certificate{c1}, []string{TestInvalidPem}
 			},
 			wantErr:         true,
 			wantErrCode:     errors.InvalidParameter,

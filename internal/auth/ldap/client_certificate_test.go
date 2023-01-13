@@ -93,7 +93,7 @@ func TestNewClientCertificate(t *testing.T) {
 			name:            "invalid-block",
 			ctx:             testCtx,
 			authMethodId:    "test-id",
-			cert:            testInvalidPem,
+			cert:            TestInvalidPem,
 			certKey:         derPrivKey,
 			wantErr:         true,
 			wantErrCode:     errors.InvalidParameter,

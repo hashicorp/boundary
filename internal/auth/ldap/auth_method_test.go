@@ -457,7 +457,7 @@ func Test_convertValueObjects(t *testing.T) {
 			am: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
 					PublicId:     testPublicId,
-					Certificates: []string{testInvalidPem},
+					Certificates: []string{TestInvalidPem},
 				},
 			},
 			wantErrMatch:    errors.T(errors.InvalidParameter),
@@ -491,7 +491,7 @@ func Test_convertValueObjects(t *testing.T) {
 				AuthMethod: &store.AuthMethod{
 					PublicId:             testPublicId,
 					ClientCertificateKey: testClientCertKey,
-					ClientCertificate:    testInvalidPem,
+					ClientCertificate:    TestInvalidPem,
 				},
 			},
 			wantErrMatch:    errors.T(errors.InvalidParameter),

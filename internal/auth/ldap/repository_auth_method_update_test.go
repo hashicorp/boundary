@@ -675,7 +675,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			fieldMasks: []string{"Certificates"},
 			setup: func() *AuthMethod {
 				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
-				am.Certificates = []string{testInvalidPem}
+				am.Certificates = []string{TestInvalidPem}
 				return am
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {

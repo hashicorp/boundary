@@ -66,7 +66,7 @@ func TestNewCertificate(t *testing.T) {
 			name:            "invalid-block",
 			ctx:             testCtx,
 			authMethodId:    "test-id",
-			certPem:         testInvalidPem,
+			certPem:         TestInvalidPem,
 			wantErr:         true,
 			wantErrCode:     errors.InvalidParameter,
 			wantErrContains: "failed to parse certificate: invalid block",
