@@ -17,7 +17,7 @@ While Vault isn't a *required* secrets backend for Boundary sessions, the potent
 value proposition for identity-based access.There are three primary points of integration with Vault:
 1. Vault can be used as a secrets backend for Boundary, offering single signon to end target systems via credential brokering. This was covered in Boundary's 
 [0.4 announcement](https://www.hashicorp.com/blog/announcing-hashicorp-boundary-0-4) and there are ample 
-[tutorials](https://learn.hashicorp.com/tutorials/boundary/vault-cred-brokering-quickstart) of this scenario. 
+[tutorials](/boundary/tutorials/access-management/oss-vault-cred-brokering-quickstart) of this scenario. 
 2. Boundary can use Vault as an OIDC provider to enable sign-in with Vault's supported auth methods (even non-OIDC auth methods like Active Directory kerberos/LDAP). 
 This scenario is walked through in this [tutorial](https://learn.hashicorp.com/tutorials/vault/oidc-identity-provider).
 3. OSS Boundary can use Vault as the external KMS that serves as Boundary's root of trust. More information on this use case can be found 
