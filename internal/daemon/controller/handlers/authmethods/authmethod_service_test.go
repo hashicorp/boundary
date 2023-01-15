@@ -893,6 +893,7 @@ func TestCreate(t *testing.T) {
 					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
 						Urls:         []string{"ldap://ldap1", "ldaps://ldap1"},
 						EnableGroups: true,
+						GroupDn:      wrapperspb.String("group-dn"),
 					},
 				},
 			}},
@@ -911,6 +912,7 @@ func TestCreate(t *testing.T) {
 							State:        string(ldap.InactiveState),
 							Urls:         []string{"ldap://ldap1", "ldaps://ldap1"},
 							EnableGroups: true,
+							GroupDn:      wrapperspb.String("group-dn"),
 						},
 					},
 					AuthorizedActions:           ldapAuthorizedActions,

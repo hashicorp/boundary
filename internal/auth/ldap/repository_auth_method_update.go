@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"reflect"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -42,6 +43,24 @@ const (
 	AccountAttributeMapsField = "AccountAttributeMaps"
 	GroupNamesField           = "GroupNames"
 )
+
+// isEmpty returns true if all the args are empty.  Only supports checking
+// strings and pointers, all other types are assumed to be empty.
+func isEmpty(args ...any) bool {
+	for _, i := range args {
+		switch v := reflect.ValueOf(i); v.Kind() {
+		case reflect.Pointer:
+			if !v.IsNil() {
+				return false
+			}
+		case reflect.String:
+			if v.String() != "" {
+				return false
+			}
+		}
+	}
+	return true
+}
 
 // UpdateAuthMethod will retrieve the auth method from the repository,
 // and update it based on the field masks provided.
@@ -140,11 +159,11 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		}
 	}
 	combinedMasks := append(dbMask, nullFields...)
-	if strListContainsOneOf(combinedMasks, UserDnField, UserAttrField, UserAttrField) {
-		deleteUserSearchConf, err = NewUserEntrySearchConf(ctx, am.PublicId, WithUserDn(ctx, origAm.UserDn), WithUserAttr(ctx, origAm.UserAttr), WithUserFilter(ctx, origAm.UserFilter))
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-		}
+	if strListContainsOneOf(combinedMasks, UserDnField, UserAttrField, UserAttrField) &&
+		!isEmpty(origAm.UserDn, origAm.UserAttr, origAm.UserFilter) {
+		usc := allocUserEntrySearchConf()
+		usc.LdapMethodId = am.PublicId
+		deleteUserSearchConf = usc
 	}
 	var addGroupSearchConf, deleteGroupSearchConf any
 	if strListContainsOneOf(dbMask, GroupDnField, GroupAttrField, GroupAttrField) {
@@ -153,11 +172,11 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 	}
-	if strListContainsOneOf(combinedMasks, GroupDnField, GroupAttrField, GroupAttrField) {
-		deleteGroupSearchConf, err = NewGroupEntrySearchConf(ctx, am.PublicId, WithGroupDn(ctx, origAm.GroupDn), WithGroupAttr(ctx, origAm.GroupAttr), WithGroupFilter(ctx, origAm.GroupFilter))
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-		}
+	if strListContainsOneOf(combinedMasks, GroupDnField, GroupAttrField, GroupAttrField) &&
+		!isEmpty(origAm.GroupDn, origAm.GroupAttr, origAm.GroupFilter) {
+		gsc := allocGroupEntrySearchConf()
+		gsc.LdapMethodId = am.PublicId
+		deleteGroupSearchConf = gsc
 	}
 	var addClientCert, deleteClientCert any
 	if strListContainsOneOf(dbMask, ClientCertificateField, ClientCertificateKeyField) {
@@ -170,11 +189,11 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		}
 		addClientCert = cc
 	}
-	if strListContainsOneOf(combinedMasks, ClientCertificateField, ClientCertificateKeyField) {
-		deleteClientCert, err = NewClientCertificate(ctx, am.PublicId, origAm.ClientCertificateKey, origAm.ClientCertificate)
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-		}
+	if strListContainsOneOf(combinedMasks, ClientCertificateField, ClientCertificateKeyField) &&
+		!isEmpty(origAm.ClientCertificate, origAm.ClientCertificateKey) {
+		cc := allocClientCertificate()
+		cc.LdapMethodId = am.PublicId
+		deleteClientCert = cc
 	}
 	var addBindCred, deleteBindCred any
 	if strListContainsOneOf(dbMask, BindDnField, BindPasswordField) {
@@ -187,11 +206,11 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 		}
 		addBindCred = bc
 	}
-	if strListContainsOneOf(combinedMasks, BindDnField, BindPasswordField) {
-		deleteBindCred, err = NewBindCredential(ctx, am.PublicId, origAm.BindDn, []byte(origAm.BindPassword))
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-		}
+	if strListContainsOneOf(combinedMasks, BindDnField, BindPasswordField) &&
+		!isEmpty(origAm.BindDn, origAm.BindPassword) {
+		bc := allocBindCredential()
+		bc.LdapMethodId = am.PublicId
+		deleteBindCred = bc
 	}
 
 	var filteredDbMask, filteredNullFields []string

@@ -702,7 +702,130 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			wantErrContains: "ldap.ParseAccountAttributeMaps: error parsing attribute",
 		},
 		{
-			name:       "user-entry-search-conversion-err",
+			name:       "use-token-groups-update",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{"UseTokenGroups"},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.UseTokenGroups = true
+				return am
+			},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.UseTokenGroups = true
+				return am
+			},
+		},
+		{
+			name:       "user-dn-update",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{"UserDn"},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithUserDn(testCtx, "orig-user-dn"))
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.UserDn = "updated-user-dn"
+				return am
+			},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.UserDn = "updated-user-dn"
+				return am
+			},
+		},
+		{
+			name:       "user-attr-update",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{"UserAttr"},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithUserAttr(testCtx, "orig-user-attr"))
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.UserAttr = "updated-user-attr"
+				return am
+			},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.UserAttr = "updated-user-attr"
+				return am
+			},
+		},
+		{
+			name:       "enable-groups-err",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{"EnableGroups"},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.EnableGroups = true
+				return am
+			},
+			wantErrMatch:    errors.T(errors.Integrity),
+			wantErrContains: "must have a configure group_dn when enable_groups = true and use_token_groups = false",
+		},
+		{
+			name:       "group-dn-update",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{"GroupDn"},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithUserDn(testCtx, "orig-group-dn"))
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.GroupDn = "updated-group-dn"
+				return am
+			},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.GroupDn = "updated-group-dn"
+				return am
+			},
+		},
+		{
+			name:       "group-attr-update",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{"GroupAttr"},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithGroupDn(testCtx, "orig-group-dn"), WithGroupAttr(testCtx, "orig-group-attr"))
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.GroupAttr = "updated-group-attr"
+				return am
+			},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.GroupAttr = "updated-group-attr"
+				return am
+			},
+		},
+		{
+			name:       "user-entry-search-conversion-no-update",
 			ctx:        testCtx,
 			repo:       testRepo,
 			version:    1,
@@ -714,11 +837,13 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				return orig
 			},
-			wantErrMatch:    errors.T(errors.Unknown),
-			wantErrContains: "ldap.NewUserEntrySearchConf: you must supply either dn, attr, or filter",
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				return orig.clone()
+			},
+			wantNoRowsUpdated: true,
 		},
 		{
-			name:       "group-entry-search-conversion-err",
+			name:       "group-entry-search-conversion-no-update",
 			ctx:        testCtx,
 			repo:       testRepo,
 			version:    1,
@@ -730,11 +855,13 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				return orig
 			},
-			wantErrMatch:    errors.T(errors.Unknown),
-			wantErrContains: "ldap.NewGroupEntrySearchConf: you must supply either dn, attr, or filter",
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				return orig.clone()
+			},
+			wantNoRowsUpdated: true,
 		},
 		{
-			name:       "client-search-conversion-err",
+			name:       "client-search-conversion-no-update",
 			ctx:        testCtx,
 			repo:       testRepo,
 			version:    1,
@@ -746,11 +873,13 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				return orig
 			},
-			wantErrMatch:    errors.T(errors.Unknown),
-			wantErrContains: "ldap.NewClientCertificate: missing key",
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				return orig.clone()
+			},
+			wantNoRowsUpdated: true,
 		},
 		{
-			name:       "bind-credential-conversion-err",
+			name:       "bind-credential-conversion-no-update",
 			ctx:        testCtx,
 			repo:       testRepo,
 			version:    1,
@@ -762,8 +891,10 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			updateWith: func(orig *AuthMethod) *AuthMethod {
 				return orig
 			},
-			wantErrMatch:    errors.T(errors.Unknown),
-			wantErrContains: "ldap.NewBindCredential: missing dn",
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				return orig.clone()
+			},
+			wantNoRowsUpdated: true,
 		},
 	}
 	for _, tc := range tests {
@@ -784,6 +915,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			}
 			require.NoError(err)
 			require.NotNil(updated)
+			require.NotNil(tc.want)
 			want := tc.want(orig, updateWith)
 			want.CreateTime = updated.CreateTime
 			want.UpdateTime = updated.UpdateTime
