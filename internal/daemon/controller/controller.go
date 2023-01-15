@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	_ "github.com/hashicorp/boundary/internal/auth/ldap" // TODO (jimlambrt 12/22): can be removed once there's a service for the controller that imports auth/ldap
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -360,6 +361,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.OidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.LdapRepoFn = func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(dbase, dbase, c.kms)
