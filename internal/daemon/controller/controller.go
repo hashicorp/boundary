@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/auth/ldap"
-	_ "github.com/hashicorp/boundary/internal/auth/ldap" // TODO (jimlambrt 12/22): can be removed once there's a service for the controller that imports auth/ldap
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
