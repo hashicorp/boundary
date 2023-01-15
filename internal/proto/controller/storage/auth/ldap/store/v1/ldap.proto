@@ -130,7 +130,6 @@ message AuthMethod {
     that: "attributes.user_filter"
   }];
 
-
   // enable_groups if true, an authenticated user's groups will be found during
   // authentication. Defaults to false.
   // @inject_tag: `gorm:"not_null;default:false"`
