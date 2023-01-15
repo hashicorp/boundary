@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
@@ -32,6 +31,7 @@ import (
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
