@@ -321,10 +321,11 @@ func (c *Controller) stopApiGrpcServerAndListener() error {
 	if c.apiGrpcServer == nil {
 		return nil
 	}
-
 	c.apiGrpcServer.GracefulStop()
-	err := c.apiGrpcServerListener.Close()
-	return listenerCloseErrorCheck("ch", err) // apiGrpcServerListener is just a channel, so the type here is not important.
+	if c.apiGrpcServerListener != nil {
+		return listenerCloseErrorCheck("ch", c.apiGrpcServerListener.Close()) // apiGrpcServerListener is just a channel, so the type here is not important.
+	}
+	return nil
 }
 
 // stopAnyListeners does a final once over the known
