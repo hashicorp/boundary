@@ -429,6 +429,10 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		if err := validateAuthenticateOidcRequest(req); err != nil {
 			return nil, err
 		}
+	case ldap.Subtype:
+		if err := validateAuthenticateLdapRequest(req); err != nil {
+			return nil, err
+		}
 	}
 
 	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate)
@@ -442,6 +446,8 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 
 	case oidc.Subtype:
 		return s.authenticateOidc(ctx, req, &authResults)
+	case ldap.Subtype:
+		return s.authenticateLdap(ctx, req, &authResults)
 	}
 	return nil, errors.New(ctx, errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
 }
@@ -1264,7 +1270,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	} else {
 		st := subtypes.SubtypeFromId(domain, req.GetAuthMethodId())
 		switch st {
-		case password.Subtype, oidc.Subtype:
+		case password.Subtype, oidc.Subtype, ldap.Subtype:
 		default:
 			badFields[authMethodIdField] = "Unknown auth method type."
 		}

@@ -10,8 +10,10 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	ldapstore "github.com/hashicorp/boundary/internal/auth/ldap/store"
+	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
+	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	"google.golang.org/grpc/codes"
@@ -44,6 +46,56 @@ const (
 	certificatesField         = "attributes.certificates"
 	accountAttributesMapField = "attributes.account_attribute_maps"
 )
+
+func (s Service) authenticateLdap(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
+	const op = "authmethod_service.(Service).authenticateLdap"
+	if req == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil request.")
+	}
+	if authResults == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "Nil auth results.")
+	}
+	reqAttrs := req.GetLdapLoginAttributes()
+
+	ldapRepo, err := s.ldapRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	ldapFn := func() (ldap.Authenticator, error) {
+		return ldapRepo, nil
+	}
+
+	iamRepo, err := s.iamRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	iamFn := func() (ldap.LookupUser, error) {
+		return iamRepo, nil
+	}
+
+	atRepo, err := s.atRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	atFn := func() (ldap.AuthTokenCreator, error) {
+		return atRepo, nil
+	}
+
+	rawTk, err := ldap.Authenticate(ctx, ldapFn, iamFn, atFn, req.GetAuthMethodId(), reqAttrs.GetLoginName(), reqAttrs.GetPassword())
+	if err != nil {
+		// let's not send back too much info about the error
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Unauthenticated, "Unable to authenticate.")
+	}
+	tk, err := s.ConvertInternalAuthTokenToApiAuthToken(
+		ctx,
+		rawTk,
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return s.convertToAuthenticateResponse(ctx, req, authResults, tk)
+}
 
 // createLdapInRepo creates an ldap auth method in a repo and returns the result.
 // This method should never return a nil AuthMethod without returning an error.
@@ -271,4 +323,42 @@ func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttribu
 			badFields[accountAttributesMapField] = fmt.Sprintf("invalid %s (unable to parse)", accountAttributesMapField)
 		}
 	}
+}
+
+func validateAuthenticateLdapRequest(req *pbs.AuthenticateRequest) error {
+	badFields := make(map[string]string)
+
+	attrs := req.GetLdapLoginAttributes()
+	switch {
+	case attrs == nil:
+		badFields["attributes"] = "This is a required field."
+	default:
+		if attrs.LoginName == "" {
+			badFields["attributes.login_name"] = "This is a required field."
+		}
+		if attrs.Password == "" {
+			badFields["attributes.password"] = "This is a required field."
+		}
+		if req.GetCommand() == "" {
+			// TODO: Eventually, require a command. For now, fall back to "login" for backwards compat.
+			req.Command = loginCommand
+		}
+		if req.Command != loginCommand {
+			badFields[commandField] = "Invalid command for this auth method type."
+		}
+		tokenType := req.GetType()
+		if tokenType == "" {
+			// Fall back to deprecated field if type is not set
+			tokenType = req.GetTokenType()
+		}
+		tType := strings.ToLower(strings.TrimSpace(tokenType))
+		if tType != "" && tType != "token" && tType != "cookie" {
+			badFields[tokenTypeField] = `The only accepted types are "token" and "cookie".`
+		}
+	}
+
+	if len(badFields) > 0 {
+		return handlers.InvalidArgumentErrorf("Invalid fields provided in request.", badFields)
+	}
+	return nil
 }

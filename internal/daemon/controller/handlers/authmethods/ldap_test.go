@@ -2,6 +2,8 @@ package authmethods_test
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -20,6 +22,9 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/go-hclog"
+	"github.com/jimlambrt/gldap"
+	"github.com/jimlambrt/gldap/testdirectory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/genproto/protobuf/field_mask"
@@ -696,6 +701,246 @@ func Test_UpdateLdap(t *testing.T) {
 				assert.NotEqual("client_certificate_key", got.Item.GetLdapAuthMethodsAttributes().GetClientCertificateKeyHmac())
 			}
 			assert.Empty(cmp.Diff(got, tc.res, cmpOptions...), "UpdateAuthMethod(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
+func TestAuthenticate_Ldap(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testRootWrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, testConn, testRootWrapper)
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testRootWrapper))
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, testConn, testRootWrapper), nil
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(testCtx, testRw, testRw, testKms)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(testCtx, testRw, testRw, testKms)
+	}
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(testRw, testRw, testKms)
+	}
+	atRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(testRw, testRw, testKms)
+	}
+
+	orgDbWrapper, err := testKms.GetWrapper(testCtx, o.GetPublicId(), kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	logger := hclog.New(&hclog.LoggerOptions{
+		Name:  "test-logger",
+		Level: hclog.Error,
+	})
+	td := testdirectory.Start(t,
+		testdirectory.WithDefaults(t, &testdirectory.Defaults{AllowAnonymousBind: true}),
+		testdirectory.WithLogger(t, logger),
+	)
+	groups := []*gldap.Entry{
+		testdirectory.NewGroup(t, "admin", []string{"alice"}),
+		testdirectory.NewGroup(t, "users", []string{"alice"}),
+	}
+	users := testdirectory.NewUsers(t, []string{"alice"}, testdirectory.WithMembersOf(t, "admin", "users"))
+	users2 := testdirectory.NewUsers(t, []string{"bob"})
+	td.SetUsers(append(users, users2...)...)
+	td.SetGroups(groups...)
+
+	tdCerts, err := ldap.ParseCertificates(testCtx, td.Cert())
+	require.NoError(t, err)
+
+	testAm := ldap.TestAuthMethod(t, testConn, orgDbWrapper, o.PublicId,
+		[]string{fmt.Sprintf("ldaps://127.0.0.1:%d", td.Port())},
+		ldap.WithCertificates(testCtx, tdCerts...),
+		ldap.WithDiscoverDn(testCtx),
+		ldap.WithEnableGroups(testCtx),
+		ldap.WithUserDn(testCtx, testdirectory.DefaultUserDN),
+		ldap.WithGroupDn(testCtx, testdirectory.DefaultGroupDN),
+	)
+
+	iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, testConn, testRootWrapper), o, testAm.PublicId)
+
+	testManagedGrp := ldap.TestManagedGroup(t, testConn, testAm, []string{"cn=admin,ou=groups,dc=example,dc=org"})
+
+	const (
+		testLoginName  = "alice"
+		testPassword   = "password"
+		testLoginName2 = "bob"
+	)
+
+	testAcct := ldap.TestAccount(t, testConn, testAm, testLoginName)
+
+	tests := []struct {
+		name            string
+		acctId          string
+		request         *pbs.AuthenticateRequest
+		wantType        string
+		wantGroups      []string
+		wantErr         error
+		wantErrContains string
+	}{
+		{
+			name:   "basic-with-groups",
+			acctId: testAcct.PublicId,
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: testAm.GetPublicId(),
+				TokenType:    "token",
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
+			},
+			wantGroups: []string{testManagedGrp.PublicId},
+			wantType:   "token",
+		},
+		{
+			name: "basic-without-groups",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: testAm.GetPublicId(),
+				TokenType:    "token",
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: testLoginName2,
+						Password:  testPassword,
+					},
+				},
+			},
+			wantType: "token",
+		},
+		{
+			name:   "cookie-type",
+			acctId: testAcct.PublicId,
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: testAm.GetPublicId(),
+				TokenType:    "cookie",
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
+			},
+			wantType: "cookie",
+		},
+		{
+			name:   "no-token-type",
+			acctId: testAcct.PublicId,
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: testAm.GetPublicId(),
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
+			},
+		},
+		{
+			name: "bad-token-type",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: testAm.GetPublicId(),
+				TokenType:    "email",
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "no-authmethod",
+			request: &pbs.AuthenticateRequest{
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: testLoginName,
+						Password:  testPassword,
+					},
+				},
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name: "wrong-password",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: testAm.GetPublicId(),
+				TokenType:    "token",
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: testLoginName,
+						Password:  "wrong",
+					},
+				},
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
+		},
+		{
+			name: "wrong-login-name",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: testAm.GetPublicId(),
+				TokenType:    "token",
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: "wrong",
+						Password:  testPassword,
+					},
+				},
+			},
+			wantErr: handlers.ApiErrorWithCode(codes.Unauthenticated),
+		},
+		{
+			name: "no-attributes",
+			request: &pbs.AuthenticateRequest{
+				AuthMethodId: testAm.GetPublicId(),
+				TokenType:    "token",
+				Attrs:        &pbs.AuthenticateRequest_LdapLoginAttributes{},
+			},
+			wantErr:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: `Details: {{name: "attributes", desc: "This is a required field."}}`,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := authmethods.NewService(testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+			require.NoError(err)
+
+			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
+			if tc.wantErr != nil {
+				assert.Error(err)
+				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+
+			aToken := resp.GetAuthTokenResponse()
+			assert.NotEmpty(aToken.GetId())
+			assert.NotEmpty(aToken.GetToken())
+			assert.True(strings.HasPrefix(aToken.GetToken(), aToken.GetId()))
+			assert.Equal(testAm.GetPublicId(), aToken.GetAuthMethodId())
+			assert.Equal(aToken.GetCreatedTime(), aToken.GetUpdatedTime())
+			assert.Equal(aToken.GetCreatedTime(), aToken.GetApproximateLastUsedTime())
+			assert.Equal(testAm.GetPublicId(), aToken.GetAuthMethodId())
+			assert.Equal(tc.wantType, resp.GetType())
+
+			// support testing for pre-provisioned accounts
+			if tc.acctId != "" {
+				assert.Equal(tc.acctId, aToken.GetAccountId())
+			}
+
+			names := ldap.TestGetAcctManagedGroups(t, testConn, aToken.GetAccountId())
+			if len(tc.wantGroups) > 0 {
+				assert.Equal(tc.wantGroups, names)
+			}
 		})
 	}
 }

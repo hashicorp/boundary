@@ -271,3 +271,28 @@ func TestSortAuthMethods(t testing.TB, methods []*AuthMethod) {
 		})
 	}
 }
+
+// TestGetAcctManagedGroups will retrieve the managed groups associated with an account.
+func TestGetAcctManagedGroups(t testing.TB, conn *db.DB, acctId string) []string {
+	t.Helper()
+	testCtx := context.Background()
+	rw := db.New(conn)
+	var memberAccts []*grpMemberAccts
+	require.NoError(t, rw.SearchWhere(testCtx, &memberAccts, "member_id = ?", []any{acctId}))
+	grpIds := make([]string, 0, len(memberAccts))
+	for _, mbrAcct := range memberAccts {
+		grpIds = append(grpIds, mbrAcct.ManagedGroupId)
+	}
+	return grpIds
+}
+
+type grpMemberAccts struct {
+	CreateTime       time.Time
+	MemberId         string
+	ManagedGroupId   string
+	ManagedGroupName string
+}
+
+func (*grpMemberAccts) TableName() string {
+	return "auth_ldap_managed_group_member_account"
+}
