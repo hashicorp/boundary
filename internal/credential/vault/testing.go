@@ -151,7 +151,7 @@ func TestSSHCertificateCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping
 	var libs []*SSHCertificateCredentialLibrary
 
 	for i := 0; i < count; i++ {
-		lib, err := NewSSHCertificateCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), "username", withKeyType(KeyTypeEd25519))
+		lib, err := NewSSHCertificateCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), "username", WithKeyType(KeyTypeEd25519))
 		assert.NoError(err)
 		require.NotNil(lib)
 		id, err := newSSHCertificateCredentialLibraryId()
@@ -509,17 +509,19 @@ type TestOption func(testing.TB, *testOptions)
 
 // options = how options are represented
 type testOptions struct {
-	orphan        bool
-	periodic      bool
-	renewable     bool
-	policies      []string
-	mountPath     string
-	roleName      string
-	vaultTLS      TestVaultTLS
-	dockerNetwork bool
-	skipCleanup   bool
-	tokenPeriod   time.Duration
-	clientKey     *ecdsa.PrivateKey
+	orphan            bool
+	periodic          bool
+	renewable         bool
+	policies          []string
+	allowedExtensions []string
+	mountPath         string
+	roleName          string
+	vaultTLS          TestVaultTLS
+	dockerNetwork     bool
+	skipCleanup       bool
+	tokenPeriod       time.Duration
+	clientKey         *ecdsa.PrivateKey
+	vaultVersion      string
 }
 
 func getDefaultTestOptions(t testing.TB) testOptions {
@@ -622,6 +624,24 @@ func WithDontCleanUp() TestOption {
 	return func(t testing.TB, o *testOptions) {
 		t.Helper()
 		o.skipCleanup = true
+	}
+}
+
+// WithVaultVersion sets the version of vault that will be started.
+// defaults to the value stored in vault.supported.DefaultVaultVersion
+func WithVaultVersion(s string) TestOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.vaultVersion = s
+	}
+}
+
+// WithAllowedExtension tells vault to allow a specific SSH extension
+// to be used by vault's ssh secrets engine
+func WithAllowedExtension(e string) TestOption {
+	return func(t testing.TB, o *testOptions) {
+		t.Helper()
+		o.allowedExtensions = append(o.allowedExtensions, e)
 	}
 }
 
@@ -782,6 +802,95 @@ func (v *TestVaultServer) addPolicy(t testing.TB, name string, pc pathCapabiliti
 	require.NotEmpty(policy)
 	vc := v.client(t).cl
 	require.NoError(vc.Sys().PutPolicy(name, policy))
+}
+
+// MountSSH mounts the Vault SSH secret engine and initializes it by
+// generating a root certificate authority and creating a default role on
+// the mount. The root CA is returned.
+//
+// The default mount path is ssh and the default role name is boundary.
+// WithTestMountPath, WithTestRoleName, and WithAllowedExtension are the
+// test options supported. extensions are combined into allowed_extensions.
+// allowed_extensions defaults to "*" (allow all)
+// The role is defined as:
+//
+//	{
+//		"key_type": "ca",
+//		"allowed_users": "*",
+//		"allowed_extensions": "*",
+//		"allow_user_certificates": true,
+//		"ttl": "12h0m0s"
+//	}
+//
+// MountSSH also adds a Vault policy named 'ssh' to v and adds it to the
+// standard set of polices attached to tokens created with v.CreateToken.
+// The policy is defined as:
+//
+//	path "mountPath/*" {
+//	  capabilities = ["create", "read", "update", "delete", "list"]
+//	}
+func (v *TestVaultServer) MountSSH(t testing.TB, opt ...TestOption) *vault.Secret {
+	require := require.New(t)
+	opts := getTestOpts(t, opt...)
+	vc := v.client(t).cl
+
+	// Mount SSH
+	maxTTL := 24 * time.Hour
+	if t, ok := t.(*testing.T); ok {
+		if deadline, ok := t.Deadline(); ok {
+			maxTTL = time.Until(deadline) * 2
+		}
+	}
+
+	defaultTTL := maxTTL / 2
+	t.Logf("maxTTL: %s, defaultTTL: %s", maxTTL, defaultTTL)
+	mountInput := &vault.MountInput{
+		Type:        "ssh",
+		Description: t.Name(),
+		Config: vault.MountConfigInput{
+			DefaultLeaseTTL: defaultTTL.String(),
+			MaxLeaseTTL:     maxTTL.String(),
+		},
+	}
+	mountPath := opts.mountPath
+	if mountPath == "" {
+		mountPath = "ssh/"
+	}
+	// this is the call that actually enables the secrets engine
+	require.NoError(vc.Sys().Mount(mountPath, mountInput))
+
+	policyPath := fmt.Sprintf("%s*", mountPath)
+	pc := pathCapabilities{
+		policyPath: createCapability | readCapability | updateCapability | deleteCapability | listCapability,
+	}
+	v.addPolicy(t, "ssh", pc)
+
+	// Generate a root CA
+	caPath := path.Join(mountPath, "config/ca")
+	caOptions := map[string]any{
+		"generate_signing_key": true,
+	}
+	s, err := vc.Logical().Write(caPath, caOptions)
+	require.NoError(err)
+	require.NotEmpty(s)
+
+	// Create default role
+	rolePath := path.Join(mountPath, "roles", opts.roleName)
+	allowExtensions := "*"
+	if len(opts.allowedExtensions) > 0 {
+		allowExtensions = strings.Join(opts.allowedExtensions, ",")
+	}
+	roleOptions := map[string]any{
+		"key_type":                "ca",
+		"allowed_users":           "*",
+		"allowed_extensions":      allowExtensions,
+		"allow_user_certificates": true,
+		"ttl":                     defaultTTL.String(),
+	}
+	_, err = vc.Logical().Write(rolePath, roleOptions)
+	require.NoError(err)
+
+	return s
 }
 
 // MountPKI mounts the Vault PKI secret engine and initializes it by
