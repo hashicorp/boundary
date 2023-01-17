@@ -182,13 +182,19 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
 				err = sess.RequestActivate(ctx, handshake.GetTofuToken())
 				if err != nil {
-					event.WriteError(ctx, op, err, event.WithInfoMsg("unable to validate session"))
-					if err = conn.Close(websocket.StatusInternalError, "unable to activate session"); err != nil {
-						event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+					// If this is a duplicate session activation, ignore it
+					if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+						event.WriteSysEvent(ctx, op, fmt.Sprintf("Ignoring duplicate session activation attempt for session %v", sess.GetId()))
+					} else {
+						event.WriteError(ctx, op, err, event.WithInfoMsg("unable to validate session"))
+						if err = conn.Close(websocket.StatusInternalError, "unable to activate session"); err != nil {
+							event.WriteError(ctx, op, err, event.WithInfoMsg("error closing client connection"))
+						}
+						return
 					}
-					return
+				} else {
+					event.WriteSysEvent(ctx, op, "session successfully activated", "session_id", sessionId)
 				}
-				event.WriteSysEvent(ctx, op, "session successfully activated", "session_id", sessionId)
 			}
 		}
 

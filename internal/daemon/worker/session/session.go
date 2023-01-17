@@ -128,6 +128,7 @@ type sess struct {
 	status      pbs.SESSIONSTATUS
 	cert        *x509.Certificate
 	sessionId   string
+	tofuToken   string
 }
 
 func newSess(client pbs.SessionServiceClient, resp *pbs.LookupSessionResponse) (*sess, error) {
@@ -187,6 +188,12 @@ func (s *sess) ApplyLocalStatus(st pbs.SESSIONSTATUS) {
 	s.status = st
 }
 
+func (s *sess) ApplyLocalTofuToken(tt string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.tofuToken = tt
+}
+
 func (s *sess) GetLocalConnections() map[string]ConnInfo {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -207,7 +214,7 @@ func (s *sess) GetLocalConnections() map[string]ConnInfo {
 func (s *sess) GetTofuToken() string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return s.resp.GetTofuToken()
+	return s.tofuToken
 }
 
 func (s *sess) GetConnectionLimit() int32 {
@@ -288,11 +295,15 @@ func (s *sess) RequestCancel(ctx context.Context) error {
 }
 
 func (s *sess) RequestActivate(ctx context.Context, tofu string) error {
+	if s.GetStatus() == pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE {
+		return nil
+	}
 	st, err := activate(ctx, s.client, s.GetId(), tofu, s.resp.GetVersion())
 	if err != nil {
 		return err
 	}
 	s.ApplyLocalStatus(st)
+	s.ApplyLocalTofuToken(tofu)
 	return nil
 }
 
