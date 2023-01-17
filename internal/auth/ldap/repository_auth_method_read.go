@@ -136,10 +136,10 @@ func (r *Repository) getAuthMethods(ctx context.Context, authMethodId string, sc
 			Ct []byte `wrapping:"ct,certificate_key"`
 			Pt []byte `wrapping:"pt,certificate_key"`
 		}{Ct: agg.ClientCertificateKey}
-		if agg.ClientCertificateCert != nil {
+		if agg.ClientCertificateKey != nil {
 			ccWrapper, err := r.kms.GetWrapper(ctx, agg.ScopeId, kms.KeyPurposeDatabase, kms.WithKeyId(agg.ClientCertificateKeyId))
 			if err != nil {
-				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to get database wrapper for client certificate"))
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to get database wrapper for client certificate key"))
 			}
 			if err := structwrapping.UnwrapStruct(ctx, ccWrapper, &ccKey); err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt), errors.WithMsg("failed to decrypt client certificate key"))

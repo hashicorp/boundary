@@ -2,6 +2,7 @@ package authmethods
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/url"
 	"strings"
@@ -896,8 +897,8 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 			Urls:                     i.GetUrls(),
 			EnableGroups:             i.GetEnableGroups(),
 			Certificates:             i.GetCertificates(),
-			ClientCertificateKeyHmac: string(i.GetClientCertificateKeyHmac()),
-			BindPasswordHmac:         string(i.GetBindPasswordHmac()),
+			ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(i.GetClientCertificateKeyHmac()),
+			BindPasswordHmac:         base64.RawURLEncoding.EncodeToString(i.GetBindPasswordHmac()),
 			UseTokenGroups:           i.GetUseTokenGroups(),
 		}
 		if i.GetUpnDomain() != "" {

@@ -137,6 +137,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				BindPasswordField,
 				CertificatesField,
 				ClientCertificateField,
+				ClientCertificateKeyField,
 				AccountAttributeMapsField,
 			},
 			version: 1,
@@ -402,6 +403,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				BindPasswordField,
 				CertificatesField,
 				ClientCertificateField,
+				ClientCertificateKeyField,
 				AccountAttributeMapsField,
 			},
 			version: 1,
@@ -464,6 +466,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				BindPasswordField,
 				CertificatesField,
 				ClientCertificateField,
+				ClientCertificateKeyField,
 				AccountAttributeMapsField,
 			},
 			version: 1,
@@ -723,6 +726,48 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			},
 		},
 		{
+			name:       "use-token-groups-update-false",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{"UseTokenGroups"},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithUseTokenGroups(testCtx))
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.UseTokenGroups = false
+				return am
+			},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.UseTokenGroups = false
+				return am
+			},
+		},
+		{
+			name:       "start-tls-false",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{"StartTls"},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithStartTLS(testCtx))
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.StartTls = false
+				return am
+			},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.StartTls = false
+				return am
+			},
+		},
+		{
 			name:       "user-dn-update",
 			ctx:        testCtx,
 			repo:       testRepo,
@@ -750,7 +795,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			version:    1,
 			fieldMasks: []string{"UserAttr"},
 			setup: func() *AuthMethod {
-				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithUserAttr(testCtx, "orig-user-attr"))
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithUserDn(testCtx, "orig-user-dn"), WithUserAttr(testCtx, "orig-user-attr"))
 				return am
 			},
 			updateWith: func(orig *AuthMethod) *AuthMethod {
@@ -761,6 +806,28 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.clone()
 				am.UserAttr = "updated-user-attr"
+				am.UserDn = "orig-user-dn"
+				return am
+			},
+		},
+		{
+			name:       "user-filter-update",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{"UserFilter"},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithUserFilter(testCtx, "orig-user-filter"))
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.UserFilter = "updated-user-filter"
+				return am
+			},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.UserFilter = "updated-user-filter"
 				return am
 			},
 		},
@@ -821,6 +888,27 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.clone()
 				am.GroupAttr = "updated-group-attr"
+				return am
+			},
+		},
+		{
+			name:       "group-filter-update",
+			ctx:        testCtx,
+			repo:       testRepo,
+			version:    1,
+			fieldMasks: []string{"GroupAttr"},
+			setup: func() *AuthMethod {
+				am := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"}, WithGroupDn(testCtx, "orig-group-dn"), WithGroupFilter(testCtx, "orig-group-filter"))
+				return am
+			},
+			updateWith: func(orig *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.GroupAttr = "updated-group-filter"
+				return am
+			},
+			want: func(orig, updateWith *AuthMethod) *AuthMethod {
+				am := orig.clone()
+				am.GroupAttr = "updated-group-filter"
 				return am
 			},
 		},

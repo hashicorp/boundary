@@ -114,7 +114,14 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 			AccountAttributeMapsField: am.AccountAttributeMaps,
 		},
 		fieldMaskPaths,
-		nil,
+		[]string{
+			StartTlsField,
+			InsecureTlsField,
+			DiscoverDnField,
+			AnonGroupSearchField,
+			EnableGroupsField,
+			UseTokenGroupsField,
+		},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
@@ -151,66 +158,145 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update account attribute maps"))
 	}
-	var addUserSearchConf, deleteUserSearchConf any
-	if strListContainsOneOf(dbMask, UserDnField, UserAttrField, UserAttrField) {
-		addUserSearchConf, err = NewUserEntrySearchConf(ctx, am.PublicId, WithUserDn(ctx, am.UserDn), WithUserAttr(ctx, am.UserAttr), WithUserFilter(ctx, am.UserFilter))
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update user search configuration"))
-		}
-	}
+
 	combinedMasks := append(dbMask, nullFields...)
-	if strListContainsOneOf(combinedMasks, UserDnField, UserAttrField, UserAttrField) &&
-		!isEmpty(origAm.UserDn, origAm.UserAttr, origAm.UserFilter) {
-		usc := allocUserEntrySearchConf()
-		usc.LdapMethodId = am.PublicId
-		deleteUserSearchConf = usc
+
+	var addUserSearchConf, deleteUserSearchConf any
+	if strListContainsOneOf(combinedMasks, UserDnField, UserAttrField, UserFilterField) {
+		if !isEmpty(origAm.UserDn, origAm.UserAttr, origAm.UserFilter) {
+			usc := allocUserEntrySearchConf()
+			usc.LdapMethodId = am.PublicId
+			deleteUserSearchConf = usc
+		}
+		userDn := origAm.UserDn
+		switch {
+		case strutil.StrListContains(dbMask, UserDnField):
+			userDn = am.UserDn
+		case strutil.StrListContains(nullFields, UserDnField):
+			userDn = ""
+		}
+		userAttr := origAm.UserAttr
+		switch {
+		case strutil.StrListContains(dbMask, UserAttrField):
+			userAttr = am.UserAttr
+		case strutil.StrListContains(nullFields, UserAttrField):
+			userAttr = ""
+		}
+		userFilter := origAm.UserFilter
+		switch {
+		case strutil.StrListContains(dbMask, UserFilterField):
+			userFilter = am.UserFilter
+		case strutil.StrListContains(nullFields, UserFilterField):
+			userFilter = ""
+		}
+		if !isEmpty(userDn, userAttr, userFilter) {
+			addUserSearchConf, err = NewUserEntrySearchConf(ctx, am.PublicId, WithUserDn(ctx, userDn), WithUserAttr(ctx, userAttr), WithUserFilter(ctx, userFilter))
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update user search configuration"))
+			}
+		}
 	}
+
 	var addGroupSearchConf, deleteGroupSearchConf any
-	if strListContainsOneOf(dbMask, GroupDnField, GroupAttrField, GroupAttrField) {
-		addGroupSearchConf, err = NewGroupEntrySearchConf(ctx, am.PublicId, WithGroupDn(ctx, am.GroupDn), WithGroupAttr(ctx, am.GroupAttr), WithGroupFilter(ctx, am.GroupFilter))
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update group search configuration"))
+	if strListContainsOneOf(combinedMasks, GroupDnField, GroupAttrField, GroupFilterField) {
+		if !isEmpty(origAm.GroupDn, origAm.GroupAttr, origAm.GroupFilter) {
+			gsc := allocGroupEntrySearchConf()
+			gsc.LdapMethodId = am.PublicId
+			deleteGroupSearchConf = gsc
+		}
+		groupDn := origAm.GroupDn
+		switch {
+		case strutil.StrListContains(dbMask, GroupDnField):
+			groupDn = am.GroupDn
+		case strutil.StrListContains(nullFields, GroupDnField):
+			groupDn = ""
+		}
+		groupAttr := origAm.GroupAttr
+		switch {
+		case strutil.StrListContains(dbMask, GroupAttrField):
+			groupAttr = am.GroupAttr
+		case strutil.StrListContains(nullFields, GroupAttrField):
+			groupAttr = ""
+		}
+		groupFilter := origAm.GroupFilter
+		switch {
+		case strutil.StrListContains(dbMask, GroupFilterField):
+			groupFilter = am.GroupFilter
+		case strutil.StrListContains(nullFields, GroupFilterField):
+			groupFilter = ""
+		}
+		if !isEmpty(groupDn, groupAttr, groupFilter) {
+			addGroupSearchConf, err = NewGroupEntrySearchConf(ctx, am.PublicId, WithGroupDn(ctx, groupDn), WithGroupAttr(ctx, groupAttr), WithGroupFilter(ctx, groupFilter))
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update group search configuration"))
+			}
 		}
 	}
-	if strListContainsOneOf(combinedMasks, GroupDnField, GroupAttrField, GroupAttrField) &&
-		!isEmpty(origAm.GroupDn, origAm.GroupAttr, origAm.GroupFilter) {
-		gsc := allocGroupEntrySearchConf()
-		gsc.LdapMethodId = am.PublicId
-		deleteGroupSearchConf = gsc
-	}
+
 	var addClientCert, deleteClientCert any
-	if strListContainsOneOf(dbMask, ClientCertificateField, ClientCertificateKeyField) {
-		cc, err := NewClientCertificate(ctx, am.PublicId, am.ClientCertificateKey, am.ClientCertificate)
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	if strListContainsOneOf(combinedMasks, ClientCertificateField, ClientCertificateKeyField) {
+		if !isEmpty(origAm.ClientCertificate, origAm.ClientCertificateKey) {
+			cc := allocClientCertificate()
+			cc.LdapMethodId = am.PublicId
+			deleteClientCert = cc
 		}
-		if err := cc.encrypt(ctx, dbWrapper); err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		clientCertificate := origAm.ClientCertificate
+		switch {
+		case strutil.StrListContains(dbMask, ClientCertificateField):
+			clientCertificate = am.ClientCertificate
+		case strutil.StrListContains(nullFields, ClientCertificateField):
+			clientCertificate = ""
 		}
-		addClientCert = cc
+		clientCertificateKey := origAm.ClientCertificateKey
+		switch {
+		case strutil.StrListContains(dbMask, ClientCertificateKeyField):
+			clientCertificateKey = am.ClientCertificateKey
+		case strutil.StrListContains(nullFields, ClientCertificateKeyField):
+			clientCertificateKey = nil
+		}
+		if !isEmpty(clientCertificate, clientCertificateKey) {
+			cc, err := NewClientCertificate(ctx, am.PublicId, clientCertificateKey, clientCertificate)
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+			if err := cc.encrypt(ctx, dbWrapper); err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+			addClientCert = cc
+		}
 	}
-	if strListContainsOneOf(combinedMasks, ClientCertificateField, ClientCertificateKeyField) &&
-		!isEmpty(origAm.ClientCertificate, origAm.ClientCertificateKey) {
-		cc := allocClientCertificate()
-		cc.LdapMethodId = am.PublicId
-		deleteClientCert = cc
-	}
+
 	var addBindCred, deleteBindCred any
-	if strListContainsOneOf(dbMask, BindDnField, BindPasswordField) {
-		bc, err := NewBindCredential(ctx, am.PublicId, am.BindDn, []byte(am.BindPassword))
-		if err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	if strListContainsOneOf(combinedMasks, BindDnField, BindPasswordField) {
+		if !isEmpty(origAm.BindDn, origAm.BindPassword) {
+			bc := allocBindCredential()
+			bc.LdapMethodId = am.PublicId
+			deleteBindCred = bc
 		}
-		if err := bc.encrypt(ctx, dbWrapper); err != nil {
-			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+		bindDn := origAm.BindDn
+		switch {
+		case strutil.StrListContains(dbMask, BindDnField):
+			bindDn = am.BindDn
+		case strutil.StrListContains(nullFields, BindDnField):
+			bindDn = ""
 		}
-		addBindCred = bc
-	}
-	if strListContainsOneOf(combinedMasks, BindDnField, BindPasswordField) &&
-		!isEmpty(origAm.BindDn, origAm.BindPassword) {
-		bc := allocBindCredential()
-		bc.LdapMethodId = am.PublicId
-		deleteBindCred = bc
+		bindPassword := origAm.BindPassword
+		switch {
+		case strutil.StrListContains(dbMask, BindPasswordField):
+			bindPassword = am.BindPassword
+		case strutil.StrListContains(nullFields, BindPasswordField):
+			bindPassword = ""
+		}
+		if !isEmpty(bindDn, bindPassword) {
+			bc, err := NewBindCredential(ctx, am.PublicId, bindDn, []byte(bindPassword))
+			if err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+			if err := bc.encrypt(ctx, dbWrapper); err != nil {
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+			}
+			addBindCred = bc
+		}
 	}
 
 	var filteredDbMask, filteredNullFields []string
