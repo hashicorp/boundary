@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
+	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
 	pb "github.com/hashicorp/boundary/internal/gen/controller/servers"
@@ -469,31 +470,30 @@ func (w *Worker) Start() error {
 	return nil
 }
 
-func (w *Worker) hasActiveConnection() bool {
-	activeConnection := false
-	w.sessionManager.ForEachLocalSession(
-		func(s session.Session) bool {
-			conns := s.GetLocalConnections()
-			for _, v := range conns {
-				if v.Status == pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED {
-					activeConnection = true
-					return false
-				}
-			}
-			return true
-		})
-	return activeConnection
-}
-
-// Graceful shutdown sets the worker state to "shutdown" and will wait to return until there
+// GracefulShutdownm sets the worker state to "shutdown" and will wait to return until there
 // are no longer any active connections.
 func (w *Worker) GracefulShutdown() error {
 	const op = "worker.(Worker).GracefulShutdown"
 	event.WriteSysEvent(w.baseContext, op, "worker entering graceful shutdown")
 	w.operationalState.Store(server.ShutdownOperationalState)
 
-	// Wait for connections to drain
-	for w.hasActiveConnection() {
+	// As long as some status has been sent in the past, wait for 2 status
+	// updates to be sent since we've updated our operational state.
+	lastStatusTime := w.lastSuccessfulStatusTime()
+	if lastStatusTime != w.workerStartTime {
+		for i := 0; i < 2; i++ {
+			for {
+				if lastStatusTime != w.lastSuccessfulStatusTime() {
+					lastStatusTime = w.lastSuccessfulStatusTime()
+					break
+				}
+				time.Sleep(time.Millisecond * 250)
+			}
+		}
+	}
+
+	// Wait for running proxy connections to drain
+	for proxy.ProxyState.CurrentProxiedConnections() > 0 {
 		time.Sleep(time.Millisecond * 250)
 	}
 	event.WriteSysEvent(w.baseContext, op, "worker connections have drained")

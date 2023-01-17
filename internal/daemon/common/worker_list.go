@@ -24,6 +24,16 @@ func (w WorkerList) Addresses() []string {
 	return ret
 }
 
+// PublicIds converts the slice of workers to a slice of public ids of those
+// workers.
+func (w WorkerList) PublicIds() []string {
+	ret := make([]string, 0, len(w))
+	for _, worker := range w {
+		ret = append(ret, worker.GetPublicId())
+	}
+	return ret
+}
+
 // workerInfos converts the slice of workers to a slice of their workerInfo protos
 func (w WorkerList) WorkerInfos() []*pb.WorkerInfo {
 	ret := make([]*pb.WorkerInfo, 0, len(w))

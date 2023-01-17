@@ -225,4 +225,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withNewIdFunc = nil
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithWorkerPool", func(t *testing.T) {
+		opts := GetOpts(WithWorkerPool([]string{"1", "2", "3"}))
+		testOpts := getDefaultOptions()
+		testOpts.withWorkerPool = []string{"1", "2", "3"}
+		opts.withNewIdFunc = nil
+		testOpts.withNewIdFunc = nil
+		assert.Equal(t, opts, testOpts)
+	})
 }
