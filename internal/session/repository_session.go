@@ -5,7 +5,6 @@ import (
 	"crypto/subtle"
 	"database/sql"
 	"fmt"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"strings"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/util"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
