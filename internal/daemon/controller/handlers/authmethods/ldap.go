@@ -349,7 +349,8 @@ func validateAuthenticateLdapRequest(req *pbs.AuthenticateRequest) error {
 		tokenType := req.GetType()
 		if tokenType == "" {
 			// Fall back to deprecated field if type is not set
-			tokenType = req.GetTokenType()
+			tokenType = req.GetTokenType() //nolint:all
+
 		}
 		tType := strings.ToLower(strings.TrimSpace(tokenType))
 		if tType != "" && tType != "token" && tType != "cookie" {
