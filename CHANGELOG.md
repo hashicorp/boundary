@@ -15,7 +15,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * metrics: Adds accepted connections and closed connections counters to keep track
   downstream connections for worker and controller servers.
   ([PR](https://github.com/hashicorp/boundary/pull/2668))
-* ui: allow api to set CSP header for Admin UI
+* ui: Allow api to set CSP header for Admin UI
   ([PR](https://github.com/hashicorp/boundary-ui/pull/1560)).
 * ui: Upgrade Admin UI to Ember 4.4
   ([PR](https://github.com/hashicorp/boundary-ui/pull/1523)).
