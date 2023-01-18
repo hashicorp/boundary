@@ -239,9 +239,9 @@ declare
 begin
   if new.enable_groups = true and  new.use_token_groups = false then 
     select into n count(*) from auth_ldap_group_entry_search where ldap_method_id = new.public_id;
-     if n < 1 then 
-        raise exception 'During % of auth_ldap_method public_id=% must have a configure group_dn when enable_groups = true and use_token_groups = false',tg_op,new.public_id;
-      end if;
+    if n < 1 then
+      raise exception 'During % of auth_ldap_method public_id=% must have a configured group_dn when enable_groups = true and use_token_groups = false',tg_op,new.public_id;
+    end if;
   end if;
   return null;
 end;
