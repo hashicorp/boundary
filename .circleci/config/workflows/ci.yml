@@ -5,5 +5,5 @@ jobs:
   - test-sql:
       matrix:
         parameters:
-          postgres-version: ["latest", "11-alpine", "12-alpine", "13-alpine"]
+          postgres-version: ["latest", "11-alpine", "12-alpine", "13-alpine", "14-alpine"]
   - make-gen-deltas

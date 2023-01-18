@@ -170,6 +170,17 @@ jobs:
         command: |
           make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=latest
         name: Run SQL PgTap Tests
+  test-sql-14-alpine:
+    machine:
+      image: ubuntu-2004:202111-01
+    resource_class: medium
+    working_directory: ~/boundary
+    steps:
+    - checkout
+    - run:
+        command: |
+          make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=14-alpine
+        name: Run SQL PgTap Tests
 workflows:
   ci:
     jobs:
@@ -180,6 +191,7 @@ workflows:
     - test-sql-11-alpine
     - test-sql-12-alpine
     - test-sql-13-alpine
+    - test-sql-14-alpine
     - make-gen-deltas
   trigger-merge-to-downstream:
     jobs:
@@ -319,6 +331,7 @@ workflows:
 #                             - 11-alpine
 #                             - 12-alpine
 #                             - 13-alpine
+#                             - 14-alpine
 #             - make-gen-deltas
 #     trigger-merge-to-downstream:
 #         jobs:
