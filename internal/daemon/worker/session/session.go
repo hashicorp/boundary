@@ -295,15 +295,12 @@ func (s *sess) RequestCancel(ctx context.Context) error {
 }
 
 func (s *sess) RequestActivate(ctx context.Context, tofu string) error {
-	if s.GetStatus() == pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE {
-		return nil
-	}
 	st, err := activate(ctx, s.client, s.GetId(), tofu, s.resp.GetVersion())
 	if err != nil {
 		return err
 	}
-	s.ApplyLocalStatus(st)
 	s.ApplyLocalTofuToken(tofu)
+	s.ApplyLocalStatus(st)
 	return nil
 }
 
