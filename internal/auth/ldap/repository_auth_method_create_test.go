@@ -28,8 +28,8 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	testKms := kms.TestKms(t, testConn, testWrapper)
 	testCtx := context.Background()
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
-	testCert, _ := testGenerateCA(t, "localhost")
-	testCert2, _ := testGenerateCA(t, "localhost")
+	testCert, _ := TestGenerateCA(t, "localhost")
+	testCert2, _ := TestGenerateCA(t, "localhost")
 	_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	derPrivKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)
@@ -38,7 +38,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 	testAm, err := NewAuthMethod(
 		testCtx,
 		org.PublicId,
-		TestConvertToUrls(t, "ldaps://ldap1", "ldap://ldap2"),
+		WithUrls(testCtx, TestConvertToUrls(t, "ldaps://ldap1", "ldap://ldap2")...),
 		WithName(testCtx, "test-name"),
 		WithDescription(testCtx, "test-description"),
 		WithStartTLS(testCtx),
@@ -118,7 +118,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			name: "bad-state",
 			kms:  testKms,
 			setup: func(t *testing.T) *AuthMethod {
-				am, err := NewAuthMethod(testCtx, org.PublicId, TestConvertToUrls(t, "ldaps://ldap1"))
+				am, err := NewAuthMethod(testCtx, org.PublicId, WithUrls(testCtx, TestConvertToUrls(t, "ldaps://ldap1")...))
 				require.NoError(t, err)
 				am.OperationalState = "not-a-valid-state"
 				return am
@@ -139,7 +139,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			name: "missing-scope",
 			kms:  testKms,
 			setup: func(t *testing.T) *AuthMethod {
-				am, err := NewAuthMethod(testCtx, org.PublicId, TestConvertToUrls(t, "ldaps://ldap1"))
+				am, err := NewAuthMethod(testCtx, org.PublicId, WithUrls(testCtx, TestConvertToUrls(t, "ldaps://ldap1")...))
 				require.NoError(t, err)
 				am.ScopeId = ""
 				return am
@@ -151,7 +151,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			name: "convert-err",
 			kms:  testKms,
 			setup: func(t *testing.T) *AuthMethod {
-				am, err := NewAuthMethod(testCtx, org.PublicId, TestConvertToUrls(t, "ldaps://ldap1"))
+				am, err := NewAuthMethod(testCtx, org.PublicId, WithUrls(testCtx, TestConvertToUrls(t, "ldaps://ldap1")...))
 				require.NoError(t, err)
 				am.BindDn = "bind-dn"
 				return am
@@ -163,7 +163,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			name: "missing-urls",
 			kms:  testKms,
 			setup: func(t *testing.T) *AuthMethod {
-				am, err := NewAuthMethod(testCtx, org.PublicId, TestConvertToUrls(t, "ldaps://ldap1"))
+				am, err := NewAuthMethod(testCtx, org.PublicId, WithUrls(testCtx, TestConvertToUrls(t, "ldaps://ldap1")...))
 				require.NoError(t, err)
 				am.Urls = nil
 				return am

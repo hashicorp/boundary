@@ -318,7 +318,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 			setup: func() (string, string, *ClientCertificate, *AuthMethod) {
 				_, privKey, err := ed25519.GenerateKey(rand.Reader)
 				require.NoError(t, err)
-				cert, _ := testGenerateCA(t, "localhost")
+				cert, _ := TestGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
 				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
@@ -342,7 +342,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 			setup: func() (string, string, *ClientCertificate, *AuthMethod) {
 				_, privKey, err := ed25519.GenerateKey(rand.Reader)
 				require.NoError(t, err)
-				cert, _ := testGenerateCA(t, "localhost")
+				cert, _ := TestGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
 				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
@@ -369,7 +369,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 			setup: func() (string, string, *ClientCertificate, *AuthMethod) {
 				_, privKey, err := ed25519.GenerateKey(rand.Reader)
 				require.NoError(t, err)
-				cert, _ := testGenerateCA(t, "localhost")
+				cert, _ := TestGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
 				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
@@ -396,7 +396,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 			setup: func() (string, string, *ClientCertificate, *AuthMethod) {
 				_, privKey, err := ed25519.GenerateKey(rand.Reader)
 				require.NoError(t, err)
-				cert, _ := testGenerateCA(t, "localhost")
+				cert, _ := TestGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
 				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
@@ -423,7 +423,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 			setup: func() (string, string, *ClientCertificate, *AuthMethod) {
 				_, privKey, err := ed25519.GenerateKey(rand.Reader)
 				require.NoError(t, err)
-				cert, _ := testGenerateCA(t, "localhost")
+				cert, _ := TestGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
 				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
@@ -450,7 +450,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 			setup: func() (string, string, *ClientCertificate, *AuthMethod) {
 				_, privKey, err := ed25519.GenerateKey(rand.Reader)
 				require.NoError(t, err)
-				cert, _ := testGenerateCA(t, "localhost")
+				cert, _ := TestGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
 				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
@@ -477,7 +477,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 			setup: func() (string, string, *ClientCertificate, *AuthMethod) {
 				_, privKey, err := ed25519.GenerateKey(rand.Reader)
 				require.NoError(t, err)
-				cert, _ := testGenerateCA(t, "localhost")
+				cert, _ := TestGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
 				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
@@ -506,7 +506,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 			setup: func() (string, string, *ClientCertificate, *AuthMethod) {
 				_, privKey, err := ed25519.GenerateKey(rand.Reader)
 				require.NoError(t, err)
-				cert, _ := testGenerateCA(t, "localhost")
+				cert, _ := TestGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
 				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))
@@ -538,7 +538,7 @@ func TestRewrap_clientCertificateRewrapFn(t *testing.T) {
 			setup: func() (string, string, *ClientCertificate, *AuthMethod) {
 				_, privKey, err := ed25519.GenerateKey(rand.Reader)
 				require.NoError(t, err)
-				cert, _ := testGenerateCA(t, "localhost")
+				cert, _ := TestGenerateCA(t, "localhost")
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
 				require.NoError(t, err)
 				am := TestAuthMethod(t, conn, orgDBWrapper, org.PublicId, []string{"ldaps://alice.com"}, WithClientCertificate(testCtx, derPrivKey, cert))

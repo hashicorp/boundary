@@ -25,8 +25,8 @@ func Test_testAuthMethod(t *testing.T) {
 	require.NoError(err)
 
 	testCtx := context.Background()
-	c1, c1Pem := testGenerateCA(t, "localhost")
-	c2, c2Pem := testGenerateCA(t, "127.0.0.1")
+	c1, c1Pem := TestGenerateCA(t, "localhost")
+	c2, c2Pem := TestGenerateCA(t, "127.0.0.1")
 	_, privKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(err)
 	derPrivKey, err := x509.MarshalPKCS8PrivateKey(privKey)
