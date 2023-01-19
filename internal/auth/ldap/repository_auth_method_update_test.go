@@ -780,7 +780,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				return am
 			},
 			wantErrMatch:    errors.T(errors.Integrity),
-			wantErrContains: "must have a configure group_dn when enable_groups = true and use_token_groups = false",
+			wantErrContains: "must have a configured group_dn when enable_groups = true and use_token_groups = false",
 		},
 		{
 			name:       "group-dn-update",
