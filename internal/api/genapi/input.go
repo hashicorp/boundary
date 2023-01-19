@@ -321,6 +321,15 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:        &authmethods.LdapAuthMethodAttributes{},
+		outFile:        "authmethods/ldap_auth_method_attributes.gen.go",
+		subtypeName:    "LdapAuthMethod",
+		parentTypeName: "AuthMethod",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto:        &authmethods.OidcAuthMethodAttributes{},
 		outFile:        "authmethods/oidc_auth_method_attributes.gen.go",
 		subtypeName:    "OidcAuthMethod",
@@ -380,6 +389,15 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:        &accounts.LdapAccountAttributes{},
+		outFile:        "accounts/ldap_account_attributes.gen.go",
+		subtypeName:    "LdapAccount",
+		parentTypeName: "Account",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto:        &accounts.OidcAccountAttributes{},
 		outFile:        "accounts/oidc_account_attributes.gen.go",
 		subtypeName:    "OidcAccount",
@@ -409,6 +427,21 @@ var inputStructs = []*structInfo{
 		inProto:     &managedgroups.OidcManagedGroupAttributes{},
 		outFile:     "managedgroups/oidc_managed_group_attributes.gen.go",
 		subtypeName: "OidcManagedGroup",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Filter",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "ManagedGroup",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:     &managedgroups.LdapManagedGroupAttributes{},
+		outFile:     "managedgroups/ldap_managed_group_attributes.gen.go",
+		subtypeName: "LdapManagedGroup",
 		fieldOverrides: []fieldInfo{
 			{
 				Name:        "Filter",

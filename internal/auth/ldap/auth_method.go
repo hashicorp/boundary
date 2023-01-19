@@ -26,39 +26,32 @@ type AuthMethod struct {
 // NewAuthMethod creates a new in memory AuthMethod assigned to a scopeId.  The
 // new auth method will have an OperationalState of Inactive.
 //
-// Supports the options: WithName, WithDescription, WithStartTLS,
+// Supports the options: WithUrls, WithName, WithDescription, WithStartTLS,
 // WithInsecureTLS, WithDiscoverDN, WithAnonGroupSearch, WithUpnDomain,
 // WithUserSearchConf, WithGroupSearchConf, WithCertificates, WithBindCredential
 // are the only valid options and all other options are ignored.
-func NewAuthMethod(ctx context.Context, scopeId string, urls []*url.URL, opt ...Option) (*AuthMethod, error) {
+func NewAuthMethod(ctx context.Context, scopeId string, opt ...Option) (*AuthMethod, error) {
 	const op = "ldap.NewAuthMethod"
 	switch {
 	case scopeId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
-	case len(urls) == 0:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing urls (must have at least one URL)")
 	}
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	strUrls := make([]string, 0, len(urls))
-	for _, u := range urls {
-		switch u.Scheme {
-		case "ldap", "ldaps":
-		default:
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s scheme in url %q is not either ldap or ldaps", u.Scheme, u.String()))
-		}
-		strUrls = append(strUrls, u.String())
+	if opts.withEnableGroups && !opts.withUseTokenGroups && opts.withGroupDn == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "you must specify a group dn when enabling groups but not using token groups")
 	}
+
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
 			ScopeId:              scopeId,
 			Name:                 opts.withName,
 			Description:          opts.withDescription,
 			OperationalState:     string(opts.withOperationalState), // if no option is specified, a new auth method is initially inactive
-			Urls:                 strUrls,
+			Urls:                 opts.withUrls,
 			StartTls:             opts.withStartTls,
 			InsecureTls:          opts.withInsecureTls,
 			DiscoverDn:           opts.withDiscoverDn,

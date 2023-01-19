@@ -4,6 +4,7 @@
 package common
 
 import (
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
@@ -22,6 +23,7 @@ type (
 	StaticCredentialRepoFactory  = func() (*credstatic.Repository, error)
 	IamRepoFactory               = iam.IamRepoFactory
 	OidcAuthRepoFactory          = oidc.OidcRepoFactory
+	LdapAuthRepoFactory          = ldap.RepoFactory
 	PasswordAuthRepoFactory      func() (*password.Repository, error)
 	ServersRepoFactory           func() (*server.Repository, error)
 	StaticRepoFactory            func() (*static.Repository, error)
