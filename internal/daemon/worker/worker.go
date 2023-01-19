@@ -44,15 +44,15 @@ import (
 
 type randFn func(length int) (string, error)
 
-// downstreamRouter defines a min interface which must be met by a
-// Worker.downstreamRoutes field
-type downstreamRouter interface {
-	// StartRouteMgmtTicking starts a ticker which manages the router's
+// reverseConnReceiver defines a min interface which must be met by a
+// Worker.downstreamReceiver field
+type reverseConnReceiver interface {
+	// StartConnectionMgmtTicking starts a ticker which manages the receiver's
 	// connections.
-	StartRouteMgmtTicking(context.Context, func() string, int) error
+	StartConnectionMgmtTicking(context.Context, func() string, int) error
 
-	// ProcessPendingConnections starts a function that continually processes
-	// incoming client connections. This only returns when the provided context
+	// StartProcessingPendingConnections is a function that continually
+	// processes incoming connections. This only returns when the provided context
 	// is done.
 	StartProcessingPendingConnections(context.Context, func() string) error
 }
@@ -65,9 +65,9 @@ type downstreamers interface {
 	RootId() string
 }
 
-// downstreamRouterFactory provides a simple factory which a Worker can use to
-// create its downstreamRouter
-var downstreamRouterFactory func() downstreamRouter
+// reverseConnReceiverFactory provides a simple factory which a Worker can use to
+// create its reverseConnReceiver
+var reverseConnReceiverFactory func() reverseConnReceiver
 
 var initializeReverseGrpcClientCollectors = noopInitializePromCollectors
 
@@ -127,8 +127,8 @@ type Worker struct {
 	workerAuthSplitListener       *nodeenet.SplitListener
 
 	// downstream workers and routes to those workers
-	downstreamWorkers downstreamers
-	downstreamRoutes  downstreamRouter
+	downstreamWorkers  downstreamers
+	downstreamReceiver reverseConnReceiver
 
 	// Timing variables. These are atomics for SIGHUP support, and are int64
 	// because they are casted to time.Duration.
@@ -170,8 +170,8 @@ func New(conf *Config) (*Worker, error) {
 		statusCallTimeoutDuration:   new(atomic.Int64),
 	}
 
-	if downstreamRouterFactory != nil {
-		w.downstreamRoutes = downstreamRouterFactory()
+	if reverseConnReceiverFactory != nil {
+		w.downstreamReceiver = reverseConnReceiverFactory()
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
@@ -437,7 +437,7 @@ func (w *Worker) Start() error {
 		w.startAuthRotationTicking(w.baseContext)
 	}()
 
-	if w.downstreamRoutes != nil {
+	if w.downstreamReceiver != nil {
 		w.tickerWg.Add(2)
 		servNameFn := func() string {
 			if s := w.LastStatusSuccess(); s != nil {
@@ -447,13 +447,13 @@ func (w *Worker) Start() error {
 		}
 		go func() {
 			defer w.tickerWg.Done()
-			if err := w.downstreamRoutes.StartProcessingPendingConnections(w.baseContext, servNameFn); err != nil {
+			if err := w.downstreamReceiver.StartProcessingPendingConnections(w.baseContext, servNameFn); err != nil {
 				errors.Wrap(w.baseContext, err, op)
 			}
 		}()
 		go func() {
 			defer w.tickerWg.Done()
-			err := w.downstreamRoutes.StartRouteMgmtTicking(
+			err := w.downstreamReceiver.StartConnectionMgmtTicking(
 				w.baseContext,
 				servNameFn,
 				-1, // indicates the ticker should run until cancelled.

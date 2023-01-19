@@ -52,7 +52,7 @@ import (
 type downstreamRouter interface {
 	// StartRouteMgmtTicking starts a ticker which manages the router's
 	// connections.
-	StartRouteMgmtTicking(context.Context, func() string, int) error
+	StartConnectionMgmtTicking(context.Context, func() string, int) error
 
 	// ProcessPendingConnections starts a function that continually processes
 	// incoming client connections. This only returns when the provided context
@@ -468,7 +468,7 @@ func (c *Controller) Start() error {
 		}()
 		go func() {
 			defer c.tickerWg.Done()
-			err := c.downstreamRoutes.StartRouteMgmtTicking(
+			err := c.downstreamRoutes.StartConnectionMgmtTicking(
 				c.baseContext,
 				servNameFn,
 				-1,
