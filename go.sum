@@ -654,8 +654,8 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.2/go.mod h1:ZbS3MZTZq/apAfAEHGoB
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
 github.com/hashicorp/cap v0.1.1 h1:GjO4+9+H0wv/89YoEsxeVc2jIizL19r5v5l2lpaH8Kg=
 github.com/hashicorp/cap v0.1.1/go.mod h1:VfBvK2ULRyqsuqAnjgZl7HJ7/CGMC7ro4H5eXiZuun8=
-github.com/hashicorp/cap/ldap v0.0.0-20221228140330-8b51e1278543 h1:eI4af5eeEJfAF0LAKdIqg2FFFc6ihaVVeGLKP50smvQ=
-github.com/hashicorp/cap/ldap v0.0.0-20221228140330-8b51e1278543/go.mod h1:raCUTLtdFrAMx/rsQNeYoWDrsfFcqQuTK1vJ5tYd3qA=
+github.com/hashicorp/cap/ldap v0.0.0-20230105183602-369604a2722b h1:JSgD7uIhUTKgYvSn960q8z8zgQK4Yqneqyv7fpxC0+c=
+github.com/hashicorp/cap/ldap v0.0.0-20230105183602-369604a2722b/go.mod h1:raCUTLtdFrAMx/rsQNeYoWDrsfFcqQuTK1vJ5tYd3qA=
 github.com/hashicorp/dawdle v0.4.0 h1:nAE+aCoAmVulgCPPPrp6oGOykjPhxEe4VUNms/mTKeA=
 github.com/hashicorp/dawdle v0.4.0/go.mod h1:gOBY8rFXpW4Rw39up1FIacw/1pG/fO779LfchCY3KUw=
 github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8 h1:/3iubtqEdLgdXB6ue+WAKvbcpn313jjL5mQvU5ByymE=

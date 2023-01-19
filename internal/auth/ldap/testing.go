@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testInvalidPem = `-----BEGIN CERTIFICATE-----
+const TestInvalidPem = `-----BEGIN CERTIFICATE-----
 MIICUTCCAfugAwIBAgIBADANBgkqhkiG9w0BAQQFADBXMQswCQYDVQQGEwJDTjEL
 -----END CERTIFICATE-----`
 
@@ -49,9 +49,11 @@ func TestAuthMethod(t testing.TB,
 	require := require.New(t)
 	rw := db.New(conn)
 
+	opt = append(opt, WithUrls(testCtx, TestConvertToUrls(t, urls...)...))
+
 	opts, err := getOpts(opt...)
 	require.NoError(err)
-	am, err := NewAuthMethod(testCtx, scopeId, TestConvertToUrls(t, urls...), opt...)
+	am, err := NewAuthMethod(testCtx, scopeId, opt...)
 	require.NoError(err)
 	id, err := newAuthMethodId(testCtx)
 	require.NoError(err)
@@ -178,9 +180,9 @@ func TestManagedGroup(t testing.TB, conn *db.DB, am *AuthMethod, grpNames []stri
 	return mg
 }
 
-// testGenerateCA will generate a test x509 CA cert, along with it encoded in a
+// TestGenerateCA will generate a test x509 CA cert, along with it encoded in a
 // PEM format.
-func testGenerateCA(t testing.TB, hosts ...string) (*x509.Certificate, string) {
+func TestGenerateCA(t testing.TB, hosts ...string) (*x509.Certificate, string) {
 	t.Helper()
 	require := require.New(t)
 
@@ -268,4 +270,29 @@ func TestSortAuthMethods(t testing.TB, methods []*AuthMethod) {
 			return am.AccountAttributeMaps[a] < am.AccountAttributeMaps[b]
 		})
 	}
+}
+
+// TestGetAcctManagedGroups will retrieve the managed groups associated with an account.
+func TestGetAcctManagedGroups(t testing.TB, conn *db.DB, acctId string) []string {
+	t.Helper()
+	testCtx := context.Background()
+	rw := db.New(conn)
+	var memberAccts []*grpMemberAccts
+	require.NoError(t, rw.SearchWhere(testCtx, &memberAccts, "member_id = ?", []any{acctId}))
+	grpIds := make([]string, 0, len(memberAccts))
+	for _, mbrAcct := range memberAccts {
+		grpIds = append(grpIds, mbrAcct.ManagedGroupId)
+	}
+	return grpIds
+}
+
+type grpMemberAccts struct {
+	CreateTime       time.Time
+	MemberId         string
+	ManagedGroupId   string
+	ManagedGroupName string
+}
+
+func (*grpMemberAccts) TableName() string {
+	return "auth_ldap_managed_group_member_account"
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	"github.com/hashicorp/boundary/internal/errors"
 )
@@ -40,6 +41,7 @@ type options struct {
 	withOperationalState     AuthMethodState
 	withAccountAttributeMap  map[string]AccountToAttribute
 	withMemberOfGroups       string
+	withUrls                 []string
 }
 
 // Option - how options are passed as args
@@ -60,6 +62,23 @@ func getOpts(opt ...Option) (options, error) {
 		}
 	}
 	return opts, nil
+}
+
+// WithUrls provides optional urls for the auth method.
+func WithUrls(ctx context.Context, urls ...*url.URL) Option {
+	const op = "ldap.WithUrls"
+	return func(o *options) error {
+		o.withUrls = make([]string, 0, len(urls))
+		for _, u := range urls {
+			switch u.Scheme {
+			case "ldap", "ldaps":
+			default:
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s scheme in url %q is not either ldap or ldaps", u.Scheme, u.String()))
+			}
+			o.withUrls = append(o.withUrls, u.String())
+		}
+		return nil
+	}
 }
 
 // WithEmail provides an optional email address for the account.

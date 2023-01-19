@@ -20,7 +20,7 @@ import (
 func TestNewAuthMethod(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	testCert, testCertEncoded := testGenerateCA(t, "localhost")
+	testCert, testCertEncoded := TestGenerateCA(t, "localhost")
 	_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	derPrivKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)
@@ -41,7 +41,7 @@ func TestNewAuthMethod(t *testing.T) {
 			name:    "valid-all-opts",
 			ctx:     testCtx,
 			scopeId: "global",
-			urls:    TestConvertToUrls(t, "ldaps://alice.com"),
+			urls:    TestConvertToUrls(t, "ldaps://alice.com"), // converted to an option
 			opts: []Option{
 				WithName(testCtx, "test-name"),
 				WithDescription(testCtx, "test-description"),
@@ -112,14 +112,6 @@ func TestNewAuthMethod(t *testing.T) {
 			wantErrContains: "missing scope id",
 		},
 		{
-			name:            "missing-urls",
-			ctx:             testCtx,
-			scopeId:         "global",
-			wantErr:         true,
-			wantErrCode:     errors.InvalidParameter,
-			wantErrContains: "missing urls",
-		},
-		{
 			name:    "invalid-urls",
 			ctx:     testCtx,
 			scopeId: "global",
@@ -146,7 +138,8 @@ func TestNewAuthMethod(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			am, err := NewAuthMethod(tc.ctx, tc.scopeId, tc.urls, tc.opts...)
+			tc.opts = append(tc.opts, WithUrls(tc.ctx, tc.urls...))
+			am, err := NewAuthMethod(tc.ctx, tc.scopeId, tc.opts...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrCode != errors.Unknown {
@@ -199,7 +192,7 @@ func TestAuthMethod_clone(t *testing.T) {
 	testCtx := context.Background()
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		testCert, _ := testGenerateCA(t, "localhost")
+		testCert, _ := TestGenerateCA(t, "localhost")
 		_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 		require.NoError(err)
 		derPrivKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)
@@ -207,7 +200,7 @@ func TestAuthMethod_clone(t *testing.T) {
 		am, err := NewAuthMethod(
 			testCtx,
 			"global",
-			TestConvertToUrls(t, "ldaps://alice.com"),
+			WithUrls(testCtx, TestConvertToUrls(t, "ldaps://alice.com")...),
 			WithStartTLS(testCtx),
 			WithInsecureTLS(testCtx),
 			WithDiscoverDn(testCtx),
@@ -229,9 +222,9 @@ func TestAuthMethod_clone(t *testing.T) {
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		am, err := NewAuthMethod(testCtx, "global", TestConvertToUrls(t, "ldaps://alice.com"))
+		am, err := NewAuthMethod(testCtx, "global", WithUrls(testCtx, TestConvertToUrls(t, "ldaps://alice.com")...))
 		require.NoError(err)
-		am2, err := NewAuthMethod(testCtx, "global", TestConvertToUrls(t, "ldaps://bob.com"))
+		am2, err := NewAuthMethod(testCtx, "global", WithUrls(testCtx, TestConvertToUrls(t, "ldaps://bob.com")...))
 		require.NoError(err)
 
 		cp := am.clone()
@@ -242,7 +235,7 @@ func TestAuthMethod_clone(t *testing.T) {
 func TestAuthMethod_oplog(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	testAm, err := NewAuthMethod(testCtx, "global", TestConvertToUrls(t, "ldap://ldap1"))
+	testAm, err := NewAuthMethod(testCtx, "global", WithUrls(testCtx, TestConvertToUrls(t, "ldap://ldap1")...))
 	testAm.PublicId = "test-public-id"
 	require.NoError(t, err)
 	tests := []struct {
@@ -340,7 +333,7 @@ func Test_convertValueObjects(t *testing.T) {
 	testCtx := context.TODO()
 	testPublicId := "test-id"
 	testLdapServers := []string{"ldaps://ldap1.alice.com", "ldaps://ldap2.alice.com"}
-	_, pem := testGenerateCA(t, "localhost")
+	_, pem := TestGenerateCA(t, "localhost")
 	testCerts := []string{pem}
 	c, err := NewCertificate(testCtx, testPublicId, pem)
 	require.NoError(t, err)
@@ -371,7 +364,7 @@ func Test_convertValueObjects(t *testing.T) {
 	testGroupSearchConf, err := NewGroupEntrySearchConf(testCtx, testPublicId, WithGroupDn(testCtx, "group-dn"), WithGroupAttr(testCtx, "group-attr"))
 	require.NoError(t, err)
 
-	_, testClientCertEncoded := testGenerateCA(t, "client-cert-host")
+	_, testClientCertEncoded := TestGenerateCA(t, "client-cert-host")
 	_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
@@ -464,7 +457,7 @@ func Test_convertValueObjects(t *testing.T) {
 			am: &AuthMethod{
 				AuthMethod: &store.AuthMethod{
 					PublicId:     testPublicId,
-					Certificates: []string{testInvalidPem},
+					Certificates: []string{TestInvalidPem},
 				},
 			},
 			wantErrMatch:    errors.T(errors.InvalidParameter),
@@ -498,7 +491,7 @@ func Test_convertValueObjects(t *testing.T) {
 				AuthMethod: &store.AuthMethod{
 					PublicId:             testPublicId,
 					ClientCertificateKey: testClientCertKey,
-					ClientCertificate:    testInvalidPem,
+					ClientCertificate:    TestInvalidPem,
 				},
 			},
 			wantErrMatch:    errors.T(errors.InvalidParameter),

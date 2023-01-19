@@ -232,6 +232,28 @@ comment on table auth_ldap_group_entry_search is
 'auth_ldap_group_entry_search entries specify the required parameters to find '
 'the groups a user is a member of';
 
+create function auth_ldap_method_group_search() returns trigger 
+as $$
+declare
+  n integer;
+begin
+  if new.enable_groups = true and  new.use_token_groups = false then 
+    select into n count(*) from auth_ldap_group_entry_search where ldap_method_id = new.public_id;
+    if n < 1 then
+      raise exception 'During % of auth_ldap_method public_id=% must have a configured group_dn when enable_groups = true and use_token_groups = false',tg_op,new.public_id;
+    end if;
+  end if;
+  return null;
+end;
+$$ language plpgsql;
+comment on function auth_ldap_method_children() is 
+'function used on auth_ldap_method after insert/update initially deferred to ensure each '
+'groups search is properly configured when enable_groups is true and use_token_groups is false';
+
+create constraint trigger auth_ldap_method_group_search
+  after insert or update on auth_ldap_method deferrable initially deferred 
+  for each row execute procedure auth_ldap_method_group_search();
+
 -- auth_ldap_certificate entries are optional PEM encoded x509 certificates.
 -- Each entry is a single certificate.  An ldap auth method may have 0 or more
 -- of these optional x509s.  If an auth method has any cert entries, they are
