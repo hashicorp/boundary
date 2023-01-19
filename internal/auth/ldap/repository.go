@@ -9,6 +9,9 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
+// RepoFactory is a factory function that returns a repository and any error
+type RepoFactory func() (*Repository, error)
+
 // Repository is the ldap repository
 type Repository struct {
 	reader db.Reader

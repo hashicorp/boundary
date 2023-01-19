@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -86,12 +87,13 @@ type Service struct {
 	oidcRepoFn common.OidcAuthRepoFactory
 	iamRepoFn  common.IamRepoFactory
 	atRepoFn   common.AuthTokenRepoFactory
+	ldapRepoFn common.LdapAuthRepoFactory
 }
 
 var _ pbs.AuthMethodServiceServer = (*Service)(nil)
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
-func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, opt ...handlers.Option) (Service, error) {
+func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, ldapRepoFn common.LdapAuthRepoFactory, opt ...handlers.Option) (Service, error) {
 	const op = "authmethods.NewService"
 	if kms == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
@@ -102,13 +104,16 @@ func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoF
 	if oidcRepoFn == nil {
 		return Service{}, fmt.Errorf("nil oidc repository provided")
 	}
+	if ldapRepoFn == nil {
+		return Service{}, fmt.Errorf("nil ldap repository provided")
+	}
 	if iamRepoFn == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if atRepoFn == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
-	s := Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn}
+	s := Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn, ldapRepoFn: ldapRepoFn}
 
 	return s, nil
 }
@@ -427,6 +432,10 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 		if err := validateAuthenticateOidcRequest(req); err != nil {
 			return nil, err
 		}
+	case ldap.Subtype:
+		if err := validateAuthenticateLdapRequest(req); err != nil {
+			return nil, err
+		}
 	}
 
 	authResults := s.authResult(ctx, req.GetAuthMethodId(), action.Authenticate)
@@ -440,6 +449,8 @@ func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest)
 
 	case oidc.Subtype:
 		return s.authenticateOidc(ctx, req, &authResults)
+	case ldap.Subtype:
+		return s.authenticateLdap(ctx, req, &authResults)
 	}
 	return nil, errors.New(ctx, errors.Internal, op, "Invalid auth method subtype not caught in validation function.")
 }
@@ -457,6 +468,13 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, e
 
 	case oidc.Subtype:
 		repo, err := s.oidcRepoFn()
+		if err != nil {
+			return nil, err
+		}
+		am, lookupErr = repo.LookupAuthMethod(ctx, id)
+
+	case ldap.Subtype:
+		repo, err := s.ldapRepoFn()
 		if err != nil {
 			return nil, err
 		}
@@ -511,6 +529,19 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 	for _, item := range pl {
 		outUl = append(outUl, item)
 	}
+
+	ldapRepo, err := s.ldapRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	ll, err := ldapRepo.ListAuthMethods(ctx, scopeIds)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	for _, item := range ll {
+		outUl = append(outUl, item)
+	}
+
 	return outUl, nil
 }
 
@@ -529,6 +560,15 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Auth
 		out = am
 	case oidc.Subtype:
 		am, err := s.createOidcInRepo(ctx, scopeId, item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if am == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create auth method but no error returned from repository.")
+		}
+		out = am
+	case ldap.Subtype:
+		am, err := s.createLdapInRepo(ctx, scopeId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -567,6 +607,24 @@ func (s Service) updateInRepo(ctx context.Context, scopeId string, req *pbs.Upda
 		}
 		am = oam
 		dryRun = dr
+
+	case ldap.Subtype:
+		lam, err := s.updateLdapInRepo(ctx, scopeId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+		if err != nil {
+			_, apiErr := err.(*handlers.ApiError)
+			switch {
+			case apiErr:
+				return nil, false, err
+			case errors.Match(errors.T(errors.InvalidParameter), err):
+				return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.InvalidArgument, err.Error())
+			default:
+				return nil, false, errors.Wrap(ctx, err, op)
+			}
+		}
+		if lam == nil {
+			return nil, false, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update auth method but no error returned from repository.")
+		}
+		am = lam
 	}
 
 	return am, dryRun, nil
@@ -590,6 +648,14 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 			return false, errors.Wrap(ctx, err, op)
 		}
 		rows, dErr = repo.DeleteAuthMethod(ctx, id)
+	case ldap.Subtype:
+		repo, err := s.ldapRepoFn()
+		if err != nil {
+			return false, errors.Wrap(ctx, err, op)
+		}
+		rows, dErr = repo.DeleteAuthMethod(ctx, id)
+	default:
+		return false, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid auth method subtype: %q", subtypes.SubtypeFromId(domain, id)))
 	}
 
 	if dErr != nil {
@@ -683,6 +749,22 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) reque
 			authMeth = am
 		case oidc.Subtype:
 			repo, err := s.oidcRepoFn()
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			am, err := repo.LookupAuthMethod(ctx, id)
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			if am == nil {
+				res.Error = handlers.NotFoundError()
+				return res
+			}
+			authMeth = am
+		case ldap.Subtype:
+			repo, err := s.ldapRepoFn()
 			if err != nil {
 				res.Error = err
 				return res
@@ -801,6 +883,60 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 		out.Attrs = &pb.AuthMethod_OidcAuthMethodsAttributes{
 			OidcAuthMethodsAttributes: attrs,
 		}
+	case *ldap.AuthMethod:
+		if outputFields.Has(globals.TypeField) {
+			out.Type = ldap.Subtype.String()
+		}
+		if !outputFields.Has(globals.AttributesField) {
+			break
+		}
+		attrs := &pb.LdapAuthMethodAttributes{
+			State:                    i.GetOperationalState(),
+			StartTls:                 i.GetStartTls(),
+			InsecureTls:              i.GetInsecureTls(),
+			DiscoverDn:               i.GetDiscoverDn(),
+			AnonGroupSearch:          i.GetAnonGroupSearch(),
+			Urls:                     i.GetUrls(),
+			EnableGroups:             i.GetEnableGroups(),
+			Certificates:             i.GetCertificates(),
+			ClientCertificateKeyHmac: string(i.GetClientCertificateKeyHmac()),
+			BindPasswordHmac:         string(i.GetBindPasswordHmac()),
+			UseTokenGroups:           i.GetUseTokenGroups(),
+		}
+		if i.GetUpnDomain() != "" {
+			attrs.UpnDomain = wrapperspb.String(i.GetUpnDomain())
+		}
+		if i.GetUserDn() != "" {
+			attrs.UserDn = wrapperspb.String(i.GetUserDn())
+		}
+		if i.GetUserAttr() != "" {
+			attrs.UserAttr = wrapperspb.String(i.GetUserAttr())
+		}
+		if i.GetUserFilter() != "" {
+			attrs.UserFilter = wrapperspb.String(i.GetUserFilter())
+		}
+		if i.GetGroupDn() != "" {
+			attrs.GroupDn = wrapperspb.String(i.GetGroupDn())
+		}
+		if i.GetGroupAttr() != "" {
+			attrs.GroupAttr = wrapperspb.String(i.GetGroupAttr())
+		}
+		if i.GetGroupFilter() != "" {
+			attrs.GroupFilter = wrapperspb.String(i.GetGroupFilter())
+		}
+		if i.GetClientCertificate() != "" {
+			attrs.ClientCertificate = wrapperspb.String(i.GetClientCertificate())
+		}
+		if i.GetBindDn() != "" {
+			attrs.BindDn = wrapperspb.String(i.GetBindDn())
+		}
+		if len(i.GetAccountAttributeMaps()) > 0 {
+			attrs.AccountAttributeMaps = i.GetAccountAttributeMaps()
+		}
+
+		out.Attrs = &pb.AuthMethod_LdapAuthMethodsAttributes{
+			LdapAuthMethodsAttributes: attrs,
+		}
 	}
 	return &out, nil
 }
@@ -829,7 +965,7 @@ func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix, ldap.AuthMethodPrefix)
 }
 
 func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest) error {
@@ -925,6 +1061,11 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 					}
 				}
 			}
+		case ldap.Subtype:
+			if len(req.GetItem().GetLdapAuthMethodsAttributes().GetUrls()) == 0 {
+				badFields[urlsField] = "At least one URL is required"
+			}
+			validateLdapAttributes(ctx, req.GetItem().GetLdapAuthMethodsAttributes(), badFields)
 		default:
 			badFields[typeField] = fmt.Sprintf("This is a required field and must be %q.", password.Subtype.String())
 		}
@@ -1051,11 +1192,16 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 					}
 				}
 			}
+		case ldap.Subtype:
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != ldap.Subtype {
+				badFields[typeField] = "Cannot modify the resource type."
+			}
+			validateLdapAttributes(ctx, req.GetItem().GetLdapAuthMethodsAttributes(), badFields)
 		default:
 			badFields["id"] = "Incorrectly formatted identifier."
 		}
 		return badFields
-	}, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
+	}, password.AuthMethodPrefix, oidc.AuthMethodPrefix, ldap.AuthMethodPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
@@ -1063,7 +1209,7 @@ func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, oidc.AuthMethodPrefix, ldap.AuthMethodPrefix)
 }
 
 func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
@@ -1127,7 +1273,7 @@ func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
 	} else {
 		st := subtypes.SubtypeFromId(domain, req.GetAuthMethodId())
 		switch st {
-		case password.Subtype, oidc.Subtype:
+		case password.Subtype, oidc.Subtype, ldap.Subtype:
 		default:
 			badFields[authMethodIdField] = "Unknown auth method type."
 		}

@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -2430,6 +2431,9 @@ func TestAuthorizeSession(t *testing.T) {
 	oidcAuthRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapAuthRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 
 	plg := host.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
@@ -2477,6 +2481,7 @@ func TestAuthorizeSession(t *testing.T) {
 		serversRepoFn,
 		passwordAuthRepoFn,
 		oidcAuthRepoFn,
+		ldapAuthRepoFn,
 		kms,
 		&authpb.RequestInfo{
 			Token:       at.GetToken(),

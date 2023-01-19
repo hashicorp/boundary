@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/api/recovery"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -104,6 +105,7 @@ type verifier struct {
 	serversRepoFn      common.ServersRepoFactory
 	passwordAuthRepoFn common.PasswordAuthRepoFactory
 	oidcAuthRepoFn     common.OidcAuthRepoFactory
+	ldapAuthRepoFn     common.LdapAuthRepoFactory
 	kms                *kms.Kms
 	requestInfo        *authpb.RequestInfo
 	res                *perms.Resource
@@ -128,6 +130,7 @@ func NewVerifierContextWithAccounts(ctx context.Context,
 	serversRepoFn common.ServersRepoFactory,
 	passwordAuthRepoFn common.PasswordAuthRepoFactory,
 	oidcAuthRepoFn common.OidcAuthRepoFactory,
+	ldapAuthRepoFn common.LdapAuthRepoFactory,
 	kms *kms.Kms,
 	requestInfo *authpb.RequestInfo,
 ) context.Context {
@@ -137,6 +140,7 @@ func NewVerifierContextWithAccounts(ctx context.Context,
 		serversRepoFn:      serversRepoFn,
 		passwordAuthRepoFn: passwordAuthRepoFn,
 		oidcAuthRepoFn:     oidcAuthRepoFn,
+		ldapAuthRepoFn:     ldapAuthRepoFn,
 		kms:                kms,
 		requestInfo:        requestInfo,
 	})
@@ -153,7 +157,7 @@ func NewVerifierContext(ctx context.Context,
 	kms *kms.Kms,
 	requestInfo *authpb.RequestInfo,
 ) context.Context {
-	return NewVerifierContextWithAccounts(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, nil, nil, kms, requestInfo)
+	return NewVerifierContextWithAccounts(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, nil, nil, nil, kms, requestInfo)
 }
 
 // Verify takes in a context that has expected parameters as values and runs an
@@ -547,7 +551,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 	userData.User.Email = util.Pointer(u.Email)
 	userData.User.FullName = util.Pointer(u.FullName)
 
-	if userData.Account.Id != nil && *userData.Account.Id != "" && v.passwordAuthRepoFn != nil && v.oidcAuthRepoFn != nil {
+	if userData.Account.Id != nil && *userData.Account.Id != "" && v.passwordAuthRepoFn != nil && v.oidcAuthRepoFn != nil && v.ldapAuthRepoFn != nil {
 		const domain = "auth"
 		var acct auth.Account
 		var err error
@@ -563,6 +567,13 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			repo, repoErr := v.oidcAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get oidc auth repo"))
+				return
+			}
+			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
+		case ldap.Subtype:
+			repo, repoErr := v.ldapAuthRepoFn()
+			if repoErr != nil {
+				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get ldap auth repo"))
 				return
 			}
 			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
