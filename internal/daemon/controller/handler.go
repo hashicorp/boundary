@@ -158,7 +158,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterAccountServiceServer(s, accts)
 	}
 	if _, ok := currentServices[services.AuthMethodService_ServiceDesc.ServiceName]; !ok {
-		authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn)
+		authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn, c.LdapRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create auth method handler service: %w", err)
 		}

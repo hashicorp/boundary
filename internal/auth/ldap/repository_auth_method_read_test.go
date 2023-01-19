@@ -155,7 +155,7 @@ func TestRepository_getAuthMethods(t *testing.T) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 				orgDbWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
-				testCert, _ := testGenerateCA(t, "localhost")
+				testCert, _ := TestGenerateCA(t, "localhost")
 				_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 				require.NoError(t, err)
 				derPrivKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)

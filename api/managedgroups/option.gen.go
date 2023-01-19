@@ -110,6 +110,30 @@ func WithOidcManagedGroupFilter(inFilter string) Option {
 	}
 }
 
+func WithLdapManagedGroupGroupNames(inGroupNames []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["group_names"] = inGroupNames
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapManagedGroupGroupNames() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["group_names"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.postMap["name"] = inName
