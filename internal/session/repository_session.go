@@ -600,7 +600,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 	if err != nil {
 		// If this was a duplicate activation attempt, return existing session if the tofu token matches
 		if errors.IsUniqueError(err) {
-			event.WriteSysEvent(ctx, op, fmt.Sprintf("Ignoring duplicate session activation attempt for session %v", sessionId))
+			event.WriteSysEvent(ctx, op, fmt.Sprintf("ignoring duplicate session activation attempt for session %v", sessionId))
 			return r.getActivatedSession(ctx, sessionId, tofuToken)
 		}
 		return nil, nil, errors.Wrap(ctx, err, op)
