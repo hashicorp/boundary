@@ -446,6 +446,7 @@ type AuthzSummary struct {
 	ConnectionLimit        int32
 	CurrentConnectionCount uint32
 	EgressWorkerFilter     string
+	IngressWorkerFilter    string
 }
 
 func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) (*AuthzSummary, error) {
