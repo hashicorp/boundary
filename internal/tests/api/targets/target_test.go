@@ -546,6 +546,45 @@ func TestCreateTarget_DirectlyAttachedAddress(t *testing.T) {
 	}
 }
 
+func TestUpdateTarget_DeleteAddress(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	t.Cleanup(tc.Shutdown)
+
+	client := tc.Client()
+	at := tc.Token()
+	client.SetToken(at.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(at.UserId))
+	tClient := targets.NewClient(client)
+
+	assert, require := assert.New(t), require.New(t)
+
+	// Create Target with address
+	addr := "127.0.0.1"
+	createResp, err := tClient.Create(tc.Context(), "tcp", proj.PublicId,
+		targets.WithName("test_target_addr_delete"), targets.WithAddress(addr), targets.WithTcpTargetDefaultPort(22))
+	require.NoError(err)
+	require.NotNil(createResp)
+	assert.Equal(addr, createResp.GetItem().Address)
+
+	// Update to delete address (set to null)
+	updateResp, err := tClient.Update(tc.Context(), createResp.Item.Id, createResp.Item.Version, targets.DefaultAddress())
+	require.NoError(err)
+	require.NotNil(updateResp)
+	assert.Empty(updateResp.GetItem().Address)
+
+	// Do it again with same version, should error
+	_, err = tClient.Update(tc.Context(), createResp.Item.Id, createResp.Item.Version, targets.DefaultAddress())
+	require.Error(err)
+
+	// Do it again with the correct version, ensure this is not an error.
+	secondUpdateResp, err := tClient.Update(tc.Context(), createResp.Item.Id, updateResp.Item.Version, targets.DefaultAddress())
+	require.NoError(err)
+	require.NotNil(secondUpdateResp)
+	assert.Empty(secondUpdateResp.GetItem().Address)
+
+	assert.NotEqual(updateResp.Item.Version, secondUpdateResp.Item.Version)
+}
+
 func comparableSlice(in []*targets.Target) []targets.Target {
 	var filtered []targets.Target
 	for _, i := range in {
