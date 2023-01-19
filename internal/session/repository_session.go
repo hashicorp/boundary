@@ -471,7 +471,8 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 }
 
 func (r *Repository) lookupActivatedSessionTx(ctx context.Context, reader db.Reader, writer db.Writer, sessionId string,
-	tofuToken []byte, activatedSession *Session) error {
+	tofuToken []byte, activatedSession *Session,
+) error {
 	const op = "session.(Repository).lookupActivatedSessionTx"
 	var txErr error
 	if txErr = reader.LookupById(ctx, activatedSession); txErr != nil {
