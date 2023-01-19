@@ -122,6 +122,30 @@ func DefaultOidcAccountIssuer() Option {
 	}
 }
 
+func WithLdapAccountLoginName(inLoginName string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["login_name"] = inLoginName
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAccountLoginName() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["login_name"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithPasswordAccountLoginName(inLoginName string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]

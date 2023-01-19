@@ -87,6 +87,30 @@ func WithRecursive(recurse bool) Option {
 	}
 }
 
+func WithLdapAuthMethodAccountAttributeMaps(inAccountAttributeMaps []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["account_attribute_maps"] = inAccountAttributeMaps
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodAccountAttributeMaps() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["account_attribute_maps"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcAuthMethodAccountClaimMaps(inAccountClaimMaps []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -135,6 +159,30 @@ func DefaultOidcAuthMethodAllowedAudiences() Option {
 	}
 }
 
+func WithLdapAuthMethodAnonGroupSearch(inAnonGroupSearch bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["anon_group_search"] = inAnonGroupSearch
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodAnonGroupSearch() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["anon_group_search"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcAuthMethodApiUrlPrefix(inApiUrlPrefix string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -171,6 +219,78 @@ func DefaultAttributes() Option {
 	}
 }
 
+func WithLdapAuthMethodBindDn(inBindDn string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["bind_dn"] = inBindDn
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodBindDn() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["bind_dn"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodBindPassword(inBindPassword string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["bind_password"] = inBindPassword
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodBindPassword() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["bind_password"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodCertificates(inCertificates []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["certificates"] = inCertificates
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodCertificates() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["certificates"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcAuthMethodClaimsScopes(inClaimsScopes []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -191,6 +311,54 @@ func DefaultOidcAuthMethodClaimsScopes() Option {
 		}
 		val := raw.(map[string]interface{})
 		val["claims_scopes"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodClientCertificate(inClientCertificate string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["client_certificate"] = inClientCertificate
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodClientCertificate() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["client_certificate"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodClientCertificateKey(inClientCertificateKey string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["client_certificate_key"] = inClientCertificateKey
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodClientCertificateKey() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["client_certificate_key"] = nil
 		o.postMap["attributes"] = val
 	}
 }
@@ -279,6 +447,30 @@ func DefaultOidcAuthMethodDisableDiscoveredConfigValidation() Option {
 	}
 }
 
+func WithLdapAuthMethodDiscoverDn(inDiscoverDn bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["discover_dn"] = inDiscoverDn
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodDiscoverDn() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["discover_dn"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcAuthMethodDryRun(inDryRun bool) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -303,6 +495,102 @@ func DefaultOidcAuthMethodDryRun() Option {
 	}
 }
 
+func WithLdapAuthMethodEnableGroups(inEnableGroups bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["enable_groups"] = inEnableGroups
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodEnableGroups() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["enable_groups"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodGroupAttr(inGroupAttr string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["group_attr"] = inGroupAttr
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodGroupAttr() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["group_attr"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodGroupDn(inGroupDn string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["group_dn"] = inGroupDn
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodGroupDn() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["group_dn"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodGroupFilter(inGroupFilter string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["group_filter"] = inGroupFilter
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodGroupFilter() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["group_filter"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithOidcAuthMethodIdpCaCerts(inIdpCaCerts []string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
@@ -323,6 +611,30 @@ func DefaultOidcAuthMethodIdpCaCerts() Option {
 		}
 		val := raw.(map[string]interface{})
 		val["idp_ca_certs"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodInsecureTls(inInsecureTls bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["insecure_tls"] = inInsecureTls
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodInsecureTls() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["insecure_tls"] = nil
 		o.postMap["attributes"] = val
 	}
 }
@@ -455,6 +767,174 @@ func DefaultOidcAuthMethodSigningAlgorithms() Option {
 		}
 		val := raw.(map[string]interface{})
 		val["signing_algorithms"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodStartTls(inStartTls bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["start_tls"] = inStartTls
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodStartTls() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["start_tls"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodUpnDomain(inUpnDomain string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["upn_domain"] = inUpnDomain
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodUpnDomain() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["upn_domain"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodUrls(inUrls []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["urls"] = inUrls
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodUrls() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["urls"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodUseTokenGroups(inUseTokenGroups bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["use_token_groups"] = inUseTokenGroups
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodUseTokenGroups() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["use_token_groups"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodUserAttr(inUserAttr string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["user_attr"] = inUserAttr
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodUserAttr() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["user_attr"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodUserDn(inUserDn string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["user_dn"] = inUserDn
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodUserDn() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["user_dn"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodUserFilter(inUserFilter string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["user_filter"] = inUserFilter
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodUserFilter() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["user_filter"] = nil
 		o.postMap["attributes"] = val
 	}
 }

@@ -50,6 +50,7 @@ func requestCtxInterceptor(
 	serversRepoFn common.ServersRepoFactory,
 	passwordAuthRepoFn common.PasswordAuthRepoFactory,
 	oidcAuthRepoFn common.OidcAuthRepoFactory,
+	ldapAuthRepoFn common.LdapAuthRepoFactory,
 	kms *kms.Kms,
 	ticket string,
 	eventer *event.Eventer,
@@ -107,7 +108,7 @@ func requestCtxInterceptor(
 			return nil, errors.New(interceptorCtx, errors.Internal, op, "Invalid context (bad ticket)")
 		}
 
-		interceptorCtx = auth.NewVerifierContextWithAccounts(interceptorCtx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, kms, &requestInfo)
+		interceptorCtx = auth.NewVerifierContextWithAccounts(interceptorCtx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, ldapAuthRepoFn, kms, &requestInfo)
 
 		// Add general request information to the context. The information from
 		// the auth verifier context is pretty specifically curated to

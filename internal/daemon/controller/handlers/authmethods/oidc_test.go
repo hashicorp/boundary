@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -55,6 +56,7 @@ type setup struct {
 	iamRepo                     *iam.Repository
 	iamRepoFn                   common.IamRepoFactory
 	oidcRepoFn                  common.OidcAuthRepoFactory
+	ldapRepoFn                  common.LdapAuthRepoFactory
 	pwRepoFn                    common.PasswordAuthRepoFactory
 	atRepoFn                    common.AuthTokenRepoFactory
 	org                         *iam.Scope
@@ -89,6 +91,9 @@ func getSetup(t *testing.T) setup {
 	ret.oidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
 	}
+	ret.ldapRepoFn = func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, ret.rw, ret.rw, ret.kmsCache)
+	}
 	ret.pwRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(ret.rw, ret.rw, ret.kmsCache)
 	}
@@ -100,7 +105,7 @@ func getSetup(t *testing.T) setup {
 	ret.databaseWrapper, err = ret.kmsCache.GetWrapper(ret.ctx, ret.org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(err)
 
-	ret.authMethodService, err = authmethods.NewService(ret.kmsCache, ret.pwRepoFn, ret.oidcRepoFn, ret.iamRepoFn, ret.atRepoFn)
+	ret.authMethodService, err = authmethods.NewService(ret.kmsCache, ret.pwRepoFn, ret.oidcRepoFn, ret.iamRepoFn, ret.atRepoFn, ret.ldapRepoFn)
 	require.NoError(err)
 
 	ret.testProvider = capoidc.StartTestProvider(t)
@@ -146,6 +151,9 @@ func TestList_FilterNonPublic(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
@@ -182,7 +190,7 @@ func TestList_FilterNonPublic(t *testing.T) {
 			oidc.WithIssuer(oidc.TestConvertToUrls(t, fmt.Sprintf("https://alice%d.com", i))[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 	}
 
-	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Couldn't create new auth_method service.")
 
 	req := &pbs.ListAuthMethodsRequest{
@@ -248,6 +256,9 @@ func TestUpdate_OIDC(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -257,7 +268,7 @@ func TestUpdate_OIDC(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	tested, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -1056,6 +1067,9 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
@@ -1115,7 +1129,7 @@ func TestUpdate_OIDCDryRun(t *testing.T) {
 		},
 	}
 
-	tested, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	tested, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 	cases := []struct {
 		name    string
@@ -1232,6 +1246,9 @@ func TestChangeState_OIDC(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
@@ -1261,7 +1278,7 @@ func TestChangeState_OIDC(t *testing.T) {
 	mismatchedAM := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, "inactive", "different_client_id", oidc.ClientSecret(tpClientSecret),
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, tp.Addr())[0]), oidc.WithSigningAlgs(oidc.EdDSA), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://example.callback:58")[0]), oidc.WithCertificates(tpCert...))
 
-	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	wantTemplate := &pb.AuthMethod{
