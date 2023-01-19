@@ -470,6 +470,35 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 	return info, nil
 }
 
+func (r *Repository) lookupActivatedSessionTx(ctx context.Context, reader db.Reader, writer db.Writer, sessionId string,
+	tofuToken []byte, activatedSession *Session) error {
+	const op = "session.(Repository).lookupActivatedSessionTx"
+	var txErr error
+	if txErr = reader.LookupById(ctx, activatedSession); txErr != nil {
+		return errors.Wrap(ctx, txErr, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
+	}
+	if txErr = decryptAndMaybeUpdateSession(ctx, r.kms, activatedSession, writer); txErr != nil {
+		return errors.Wrap(ctx, txErr, op)
+	}
+	if len(activatedSession.TofuToken) > 0 && subtle.ConstantTimeCompare(activatedSession.TofuToken, tofuToken) != 1 {
+		return errors.New(ctx, errors.TokenMismatch, op, "tofu token mismatch")
+	}
+
+	return nil
+}
+
+func (r *Repository) fetchActivatedSessionStatesTx(ctx context.Context, reader db.Reader, sessionId string) ([]*State, error) {
+	const op = "session.(Repository).fetchActivatedSessionStatesTx"
+	var txErr error
+
+	var returnedStates []*State
+	returnedStates, txErr = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
+	if txErr != nil {
+		return nil, errors.Wrap(ctx, txErr, op)
+	}
+	return returnedStates, nil
+}
+
 // getActivatedSession is called if there was a duplicate attempt to activate a session
 // It validates the tofu token matches and returns the session
 func (r *Repository) getActivatedSession(ctx context.Context, sessionId string, tofuToken []byte) (*Session, []*State, error) {
@@ -483,20 +512,13 @@ func (r *Repository) getActivatedSession(ctx context.Context, sessionId string, 
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			var txErr error
-			if txErr = reader.LookupById(ctx, &activatedSession); txErr != nil {
-				return errors.Wrap(ctx, txErr, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
+			err := r.lookupActivatedSessionTx(ctx, reader, w, sessionId, tofuToken, &activatedSession)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
 			}
-			if txErr = decryptAndMaybeUpdateSession(ctx, r.kms, &activatedSession, w); txErr != nil {
-				return errors.Wrap(ctx, txErr, op)
-			}
-			if len(activatedSession.TofuToken) > 0 && subtle.ConstantTimeCompare(activatedSession.TofuToken, tofuToken) != 1 {
-				return errors.New(ctx, errors.TokenMismatch, op, "tofu token mismatch")
-			}
-
-			returnedStates, txErr = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
-			if txErr != nil {
-				return errors.Wrap(ctx, txErr, op)
+			returnedStates, err = r.fetchActivatedSessionStatesTx(ctx, reader, sessionId)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
 			}
 			return nil
 		},
@@ -546,14 +568,9 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 			}
 			foundSession := AllocSession()
 			foundSession.PublicId = sessionId
-			if err := reader.LookupById(ctx, &foundSession); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", sessionId)))
-			}
-			if err := decryptAndMaybeUpdateSession(ctx, r.kms, &foundSession, w); err != nil {
+			err = r.lookupActivatedSessionTx(ctx, reader, w, sessionId, tofuToken, &foundSession)
+			if err != nil {
 				return errors.Wrap(ctx, err, op)
-			}
-			if len(foundSession.TofuToken) > 0 && subtle.ConstantTimeCompare(foundSession.TofuToken, tofuToken) != 1 {
-				return errors.New(ctx, errors.TokenMismatch, op, "tofu token mismatch")
 			}
 
 			updatedSession.TofuToken = tofuToken
@@ -573,7 +590,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 
-			returnedStates, err = fetchStates(ctx, reader, sessionId, db.WithOrder("start_time desc"))
+			returnedStates, err = r.fetchActivatedSessionStatesTx(ctx, reader, sessionId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -582,7 +599,7 @@ func (r *Repository) ActivateSession(ctx context.Context, sessionId string, sess
 	)
 	if err != nil {
 		// If this was a duplicate activation attempt, return existing session if the tofu token matches
-		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+		if errors.IsUniqueError(err) {
 			event.WriteSysEvent(ctx, op, fmt.Sprintf("Ignoring duplicate session activation attempt for session %v", sessionId))
 			return r.getActivatedSession(ctx, sessionId, tofuToken)
 		}
