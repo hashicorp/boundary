@@ -71,6 +71,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
+		"authenticate ldap": func() (cli.Command, error) {
+			return &authenticate.LdapCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 
 		"accounts": func() (cli.Command, error) {
 			return &accountscmd.Command{

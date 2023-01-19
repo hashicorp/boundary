@@ -1411,6 +1411,14 @@ func transformAuthenticateRequestAttributes(msg proto.Message) error {
 		default:
 			return fmt.Errorf("%s: unknown command %q", op, authRequest.GetCommand())
 		}
+	case ldap.Subtype:
+		newAttrs := &pbs.LdapLoginAttributes{}
+		if err := handlers.StructToProto(attrs, newAttrs); err != nil {
+			return err
+		}
+		authRequest.Attrs = &pbs.AuthenticateRequest_LdapLoginAttributes{
+			LdapLoginAttributes: newAttrs,
+		}
 	default:
 		return &subtypes.UnknownSubtypeIDError{
 			ID: authRequest.GetAuthMethodId(),
