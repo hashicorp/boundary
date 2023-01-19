@@ -109,13 +109,14 @@ session_connection_limit(expiration_time, connection_limit) as (
 	select
 		s.expiration_time,
 		s.connection_limit,
-		s.egress_worker_filter
+		s.egress_worker_filter,
+		s.ingress_worker_filter
 	from
 		session s
 	where
 		s.public_id = @session_id
 )
-select expiration_time, connection_limit, egress_worker_filter, current_connection_count
+select expiration_time, connection_limit, egress_worker_filter, ingress_worker_filter, current_connection_count
 from
 	session_connection_limit, session_connection_count;
 `

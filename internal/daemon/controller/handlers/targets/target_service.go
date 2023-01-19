@@ -625,7 +625,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 
 // If set, use the worker_filter or egress_worker_filter to filtere the selected workers
 // and ensure we have workers available to service this request.
-func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, selectedWorkers []*server.Worker, _ common.Downstreamers) ([]*server.Worker, error) {
+func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, selectedWorkers wl.WorkerList, _ common.Downstreamers) (wl.WorkerList, error) {
 	if len(selectedWorkers) > 0 {
 		var eval *bexpr.Evaluator
 		var err error
@@ -641,7 +641,7 @@ func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, select
 			return nil, err
 		}
 
-		selectedWorkers, err = wl.WorkerList(selectedWorkers).Filtered(eval)
+		selectedWorkers, err = selectedWorkers.Filtered(eval)
 		if err != nil {
 			return nil, err
 		}
