@@ -9,14 +9,14 @@ description: |-
 
 Boundary has multiple mechanisms to ensure secure end-to-end behavior of the
 system. A key part of this is [support for various Key Management
-Systems](/docs/configuration/kms) that protect the base encryption keys used
+Systems](/boundary/docs/configuration/kms) that protect the base encryption keys used
 for various functions. This page describes the various KMS key purposes that
 Boundary supports and how they are used within the system.
 
 ## The `worker-auth-storage` KMS Key
 
 The `worker-auth-storage` KMS key is used by a [PKI
-Worker](/docs/configuration/worker/pki-worker) for storage of authentication
+Worker](/boundary/docs/configuration/worker/pki-worker) for storage of authentication
 keys. It is optional for PKI workers; if not specified the authentication keys
 will not be encrypted on disk. This is not used by KMS workers.
 
@@ -39,7 +39,7 @@ The current scoped DEKs and their purposes are detailed below:
 
 - `audit`: This is used to encrypt secret values in the event log. For more
   information about the event log, refer to
-  [the events config](/docs/configuration/events).
+  [the events config](/boundary/docs/configuration/events).
 
 - `database`: This is the general-purpose DEK used to encrypt values within the
   database. Values that are encrypted are those generally considered to be
@@ -116,9 +116,9 @@ rotate and rewrap the KEKs to complete the migration to the new root key.
 
 The `worker-auth` KMS key is a key shared by the Controller and Worker in order
 to authenticate a Worker to the Controller. Specifics of this mechanism can be
-found on the [Connections/TLS page](/docs/concepts/security/connections-tls). If
+found on the [Connections/TLS page](/boundary/docs/concepts/security/connections-tls). If
 a worker is used with [PKI
-authentication](/docs/configuration/worker/pki-worker) this is unnecessary.
+authentication](/boundary/docs/configuration/worker/pki-worker) this is unnecessary.
 
 ## The `recovery` KMS Key <sup>OSS Only</sup>
 

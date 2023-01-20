@@ -5,13 +5,13 @@ description: |-
   Boundary release notes for v0.5.0
 ---
 
-# [Boundary v0.5.0](https://www.boundaryproject.io/downloads)
+# [Boundary v0.5.0](/boundary/downloads)
 
 The release notes below contain information about new functionality available in Boundary v0.5.0.
 To see a granular record of when each item was merged into the Boundary project, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md).
-To learn about what Boundary consists of, we highly recommend you start at the [Getting Started Page](/docs/getting-started).
+To learn about what Boundary consists of, we highly recommend you start at the [Getting Started Page](/boundary/docs/getting-started).
 
-Lastly, for instructions on how to upgrade an existing Boundary deployment to v0.5.0, please review Boundary’s [general upgrade guide](https://learn.hashicorp.com/tutorials/boundary/upgrade-version).
+Lastly, for instructions on how to upgrade an existing Boundary deployment to v0.5.0, please review Boundary’s [general upgrade guide](/boundary/tutorials/oss-configuration/upgrade-version).
 
 ## Boundary v0.5.0 Highlights
 
@@ -19,7 +19,7 @@ Lastly, for instructions on how to upgrade an existing Boundary deployment to v0
 When enabled, event logs are the only type of logging Boundary performs, meaning standard system information and debug logs will no longer appear in stdout.
 The new structured event logs are filterable by event type and other expressions that users define. Legacy HCLog output is still supported through a user-configurable setting.
 
-For more about event logging usage, see our [documentation](/docs/configuration/events/overview).
+For more about event logging usage, see our [documentation](/boundary/docs/configuration/events/overview).
 
 **Credential CRUD operations for Administrative Console:** The 0.5.0 release enables administration to configure Vault credential libraries and Vault credential set resources through the administrative console.
 Vault credential resources allows users to create Boundary sessions with credentials brokered by a Vault deployment.

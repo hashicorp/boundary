@@ -7,14 +7,14 @@ description: Getting started with Boundary OSS in Dev mode
 # What is Dev Mode?
 
 Before getting started with Boundary OSS, it's important to understand a few key
-concepts. Please consult our [Boundary concepts](/docs/concepts) page to
+concepts. Please consult our [Boundary concepts](/boundary/docs/concepts) page to
 familiarize yourself with Boundary's architecture and terminology.
 
 Dev mode is a method for getting started with Boundary quickly for testing and
 learning purposes. As the name implies, dev mode is not a production
 installation method, and provides a way to get Boundary running with a Postgres
 database easily. Do not use dev mode in a production environment, see the
-[Production Installation](/docs/oss/installing/high-availability) section for
+[Production Installation](/boundary/docs/oss/installing/high-availability) section for
 production-ready deployment methods.
 
 Dev mode brings up a fully-functioning instance of Boundary, including:
@@ -28,22 +28,22 @@ across dev mode restarts. Along with these external components, dev mode also
 creates several resources within Boundary to make it easier and faster to
 connect to your first target:
 
-1. An org [scope](/docs/concepts/domain-model/scopes) and a project scope with a
+1. An org [scope](/boundary/docs/concepts/domain-model/scopes) and a project scope with a
    default ID of `o_1234567890` and `p_1234567890` respectively.
-1. A password [auth method](/docs/concepts/domain-model/auth-methods) with a
+1. A password [auth method](/boundary/docs/concepts/domain-model/auth-methods) with a
    default auth method ID of `ampw_1234567890`.
-1. An OIDC [auth method](/docs/concepts/domain-model/auth-methods) with a
+1. An OIDC [auth method](/boundary/docs/concepts/domain-model/auth-methods) with a
    default auth method ID of `amoidc_1234567890`.
 1. An admin user with login name `admin` and password `password`.
 1. An unprivileged user with login name `user` and password `password`.
-1. A static [host catalog](/docs/concepts/domain-model/host-catalogs) with a
+1. A static [host catalog](/boundary/docs/concepts/domain-model/host-catalogs) with a
    default ID of `hcst_1234567890`.
-1. A static [host](/docs/concepts/domain-model/hosts) and [host
-   set](/docs/concepts/domain-model/host-sets) with default ID's of
+1. A static [host](/boundary/docs/concepts/domain-model/hosts) and [host
+   set](/boundary/docs/concepts/domain-model/host-sets) with default ID's of
    `hst_1234567890` and `hsst_1234567890` respectively.
-1. A TCP [target](/docs/concepts/domain-model/targets) with a default ID of
+1. A TCP [target](/boundary/docs/concepts/domain-model/targets) with a default ID of
    `ttcp_1234567890`, directly set-up with an address and port.
-1. A TCP [target](/docs/concepts/domain-model/targets) with a default ID of
+1. A TCP [target](/boundary/docs/concepts/domain-model/targets) with a default ID of
    `ttcp_0987654321` using the previously mentioned static host set.
 
 The default ID suffixes can be overwritten or randomly generated, and there are
@@ -64,7 +64,7 @@ There are a few requirements for running dev mode:
 - A route to download the [Postgres Docker
    image](https://hub.docker.com/_/postgres) is available or a local image cache
    is available
-- A [Boundary binary](https://www.boundaryproject.io/downloads) in your `$PATH`
+- A [Boundary binary](/boundary/downloads) in your `$PATH`
 - _Optionally_, an [installation of Boundary
-   Desktop](https://learn.hashicorp.com/tutorials/boundary/oss-getting-started-desktop-app)
+   Desktop](/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app)
    if you want to use the desktop examples

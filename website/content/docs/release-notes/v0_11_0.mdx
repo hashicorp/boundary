@@ -5,14 +5,14 @@ description: |-
   Boundary release notes for v0.11.0
 ---
 
-# [Boundary v0.11.0](https://www.boundaryproject.io/downloads)
+# [Boundary v0.11.0](/boundary/downloads)
 
 The release notes below contain information about new functionality available in the Boundary v0.11.0 release. To see a granular record of when each item was 
 merged into the Boundary project, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md). To learn about what Boundary 
-consists of, we highly recommend you start at the [Getting Started Page](/docs/getting-started).
+consists of, we highly recommend you start at the [Getting Started Page](/boundary/docs/getting-started).
 
 Lastly, for instructions on how to upgrade an existing Boundary deployment to v0.11.0, please review Boundary's 
-[general upgrade guide](https://learn.hashicorp.com/tutorials/boundary/upgrade-version).
+[general upgrade guide](/boundary/tutorials/oss-configuration/upgrade-version).
 
 ## Boundary v0.11.0 Highlights
 
@@ -22,10 +22,10 @@ connect to hosts and critical systems across Kubernetes clusters, cloud service 
 
 **Private Vault Access:** HCP Boundary users are now able to integrate their on-premises instance of Vault without having to publicly expose Vault. This is 
 accomplished by deploying a Boundary worker binary within the same private network as the Vault instance and peering with the HCP Boundary control plane. 
-[Learn more here](https://learn.hashicorp.com/tutorials/boundary/hcp-vault-cred-brokering-quickstart).
+[Learn more here](/boundary/tutorials/access-management/hcp-vault-cred-brokering-quickstart).
 
 **SSH Credential Injection:** SSH Targets can now be set up through the Admin UI, making the Credential Injection workflow more seamless and easy to use. 
-[Learn more here](https://learn.hashicorp.com/tutorials/boundary/hcp-ssh-cred-injection?in=boundary/hcp-administration).
+[Learn more here](/boundary/tutorials/hcp-administration/hcp-ssh-cred-injection).
 
 **Improved Worker Management:** Administrators are now able to register and manage Boundary workers through the Admin UI. Admin users can view session counts, 
 IP addresses and release versions of all registered workers through the 'Workers' tab.
