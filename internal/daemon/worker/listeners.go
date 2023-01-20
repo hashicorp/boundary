@@ -234,7 +234,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	return func() {
 		handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(revPkiWorkerTrackingListener, "reverse-grpc"),
-			metric.InstrumentWorkerClusterTrackingListener(dataPlaneProxyTrackingListener, "multihop-proxy-dataplane"), w.downstreamRoutes)
+			metric.InstrumentWorkerClusterTrackingListener(dataPlaneProxyTrackingListener, "multihop-proxy-dataplane"), w.downstreamReceiver)
 		go w.workerAuthSplitListener.Start()
 		go httpServer.Serve(proxyListener)
 		go ln.GrpcServer.Serve(metric.InstrumentWorkerClusterTrackingListener(pkiWorkerTrackingListener, "grpc"))
