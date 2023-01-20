@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/server"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/mitchellh/pointerstructure"
 	"google.golang.org/grpc/codes"
@@ -39,6 +40,19 @@ func (w WorkerList) WorkerInfos() []*pb.WorkerInfo {
 	ret := make([]*pb.WorkerInfo, 0, len(w))
 	for _, worker := range w {
 		ret = append(ret, &pb.WorkerInfo{Address: worker.GetAddress()})
+	}
+	return ret
+}
+
+// SupportsFeature returns a new WorkerList composed of all workers in this
+// WorkerList which supports the provided feature.
+func (w WorkerList) SupportsFeature(f version.Feature) WorkerList {
+	var ret []*server.Worker
+	for _, worker := range w {
+		sv := version.FromVersionString(worker.GetReleaseVersion()).Semver()
+		if version.SupportsFeature(sv, f) {
+			ret = append(ret, worker)
+		}
 	}
 	return ret
 }

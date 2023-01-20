@@ -276,6 +276,9 @@ func TestAuthorizeConnection(t *testing.T) {
 	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
 	currentConnFn := connectionRouteFn
+	t.Cleanup(func() {
+		connectionRouteFn = currentConnFn
+	})
 	connectionRouteFn = singleHopConnectionRoute
 
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -422,7 +425,6 @@ func TestAuthorizeConnection(t *testing.T) {
 			assert.Empty(t, cmp.Diff(resp, tc.want, protocmp.Transform()))
 		})
 	}
-	connectionRouteFn = currentConnFn
 }
 
 func TestCancelSession(t *testing.T) {

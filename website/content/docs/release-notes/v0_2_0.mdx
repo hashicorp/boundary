@@ -5,18 +5,18 @@ description: |-
   Boundary release notes for v0.2.0
 ---
 
-# [Boundary v0.2.0](https://www.boundaryproject.io/downloads)
+# [Boundary v0.2.0](/boundary/downloads)
 
-The release notes below contain information about Boundary v0.2.0 as well as new features since Boundary's 0.1.0 that became available in 0.1.x releases. To see a granular record of when each item was merged into the Boundary project, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md). To learn about what Boundary consists of, we highly recommend you start at the [Getting Started Page](/docs/getting-started).
+The release notes below contain information about Boundary v0.2.0 as well as new features since Boundary's 0.1.0 that became available in 0.1.x releases. To see a granular record of when each item was merged into the Boundary project, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md). To learn about what Boundary consists of, we highly recommend you start at the [Getting Started Page](/boundary/docs/getting-started).
 
-Lastly, for instructions on how to upgrade an existing Boundary deployment to v0.2.0, please review Boundary’s [general upgrade guide](https://learn.hashicorp.com/tutorials/boundary/upgrade-version).
+Lastly, for instructions on how to upgrade an existing Boundary deployment to v0.2.0, please review Boundary’s [general upgrade guide](/boundary/tutorials/oss-configuration/upgrade-version).
 
 ## Boundary v0.2.0 Highlights
 
 **Open ID Connect (OIDC) Authentication**: Boundary 0.2 adds support for OIDC authentication methods, which allow users to delegate authentication to an OIDC provider.
 This feature enables Boundary to integrate with popular identity providers like Microsoft Azure Active Directory, Okta,
 cloud identity management systems such as AWS IAM, and others. To get started with creating OIDC auth methods to log into Boundary with common OIDC providers,
-get started with the new [Boundary OIDC learn tutorial](https://learn.hashicorp.com/boundary).
+get started with the new [Boundary OIDC learn tutorial](/boundary/tutorials).
 
 **Boundary Desktop for MacOS:** Boundary Desktop enables users to use Boundary to access resources through a convenient GUI application. Boundary Desktop enables users to
 
@@ -26,15 +26,15 @@ get started with the new [Boundary OIDC learn tutorial](https://learn.hashicorp.
 - **Manage sessions:** Users can manage all of their active sessions or drill down to sessions associated with a specific target.
 - **AutoUpdate:** AutoUpdate the Boundary Desktop app as new versions become available.
 
-**Worker tags & filters (0.1.5):** Enable target traffic to be effectively “tied” to a given set of workers with [worker tags](https://www.boundaryproject.io/docs/concepts/filtering/worker-tags), forcing the session to occur through specified workers for a specific target.
+**Worker tags & filters (0.1.5):** Enable target traffic to be effectively “tied” to a given set of workers with [worker tags](/boundary/docs/concepts/filtering/worker-tags), forcing the session to occur through specified workers for a specific target.
 
 Improvements to list actions:\*\* There have been numerous improvements to listing actions since Boundary 0.1.0.
 
-- **Resource filtering (0.1.8):** allows users to navigate their resources more easily by [filtering list actions based on resource information](https://www.boundaryproject.io/docs/concepts/filtering/resource-listing).
+- **Resource filtering (0.1.8):** allows users to navigate their resources more easily by [filtering list actions based on resource information](/boundary/docs/concepts/filtering/resource-listing).
 - **Recursive listing (0.1.5):** allows users to recursively list resources across a scope.
 - **List authorizations (0.1.5):** allows users to see what actions they’re authorized to perform against the resources returned in a list command.
 
-**Database migrations (0.1.5):** Boundary provides an [easy upgrade path](https://learn.hashicorp.com/tutorials/boundary/upgrade-version) with fail-safes in the event of migration issues.
+**Database migrations (0.1.5):** Boundary provides an [easy upgrade path](/boundary/tutorials/oss-configuration/upgrade-version) with fail-safes in the event of migration issues.
 This includes support for database upgrades in a single transaction.
 
 ## What's Changed

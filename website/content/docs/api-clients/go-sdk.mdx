@@ -13,7 +13,7 @@ Below, an example walks through using the SDK to authenticate against an auth me
 
 ## Authenticating to Boundary with the Go SDK
 
-Authenticating to Boundary starts with an [Auth Method](/docs/concepts/domain-model/auth-methods). An auth method provides
+Authenticating to Boundary starts with an [Auth Method](/boundary/docs/concepts/domain-model/auth-methods). An auth method provides
 the basic identity delegation needed for Boundary to generate a token for a client. There are two primary methods for
 authenticating to Boundary:
 
@@ -28,7 +28,7 @@ This is the most common way for a client to authenticate to Boundary. To demonst
 use the [authmethods](https://github.com/hashicorp/boundary/tree/main/api/authmethods) library to generate
 a valid token for a client in Go.
 
-For this example, we're going to use the [password auth method](/docs/concepts/domain-model/auth-methods#password-auth-method-attributes). This example
+For this example, we're going to use the [password auth method](/boundary/docs/concepts/domain-model/auth-methods#password-auth-method-attributes). This example
 assumes there's already a valid user and an associated account in Boundary
 against which the client can authenticate. To simplify this example, we're
 assuming you're running a Boundary instance in dev mode, where the default auth
@@ -132,7 +132,7 @@ client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
 ### Recovery KMS Workflow
 
 The recovery KMS workflow allows you to use a valid [KMS
-configuration](/docs/configuration/kms) to authenticate and authorize calls
+configuration](/boundary/docs/configuration/kms) to authenticate and authorize calls
 within the Boundary API. For this example, we're going to assume you've read the
 above and know how to get a base Boundary API client.
 

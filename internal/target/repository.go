@@ -615,12 +615,16 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 				var err error
 				address = allocTargetAddress()
 				address.TargetAddress.TargetId = t.GetPublicId()
-				rowsUpdated, err = w.Delete(ctx, address, db.WithOplog(oplogWrapper, address.oplog(oplog.OpType_OP_TYPE_DELETE)))
+				rowsDeleted, err := w.Delete(ctx, address, db.WithOplog(oplogWrapper, address.oplog(oplog.OpType_OP_TYPE_DELETE)))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target address"))
 				}
-				if rowsUpdated > 1 {
+				if rowsDeleted > 1 {
 					return errors.New(ctx, errors.MultipleRecords, op, "more than 1 target resource would have been deleted")
+				}
+				// If the only update was deleting an address, consider this as one "row" being updated.
+				if rowsUpdated == 0 && rowsDeleted == 1 {
+					rowsUpdated = 1
 				}
 			default:
 				address, err = fetchAddress(ctx, read, t.GetPublicId())

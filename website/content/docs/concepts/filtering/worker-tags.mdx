@@ -138,7 +138,7 @@ Following are some examples of using these values in filters:
 
 Once workers have tags, you can use these tags to control which
 workers are allowed to manage a given session by specifying optional worker filter attributes
-when you configure [targets](/docs/concepts/domain-model/targets).
+when you configure [targets](/boundary/docs/concepts/domain-model/targets).
 
 The `egress_worker_filter` attribute controls which workers are used for egress to a target. This is the worker
 that accesses the target.
@@ -158,5 +158,5 @@ Vault requests to Boundary controllers.
  ~> **Note:** A PKI worker that matches the worker filter must exist before defining the Vault credential store, as it
  will perform the Vault calls needed to set up the credential store with Boundary.
 
-[PKI workers]: /docs/configuration/worker/pki-worker
-[credential stores]: /docs/concepts/domain-model/credential-stores#vault-credential-store-attributes
+[PKI workers]: /boundary/docs/configuration/worker/pki-worker
+[credential stores]: /boundary/docs/concepts/domain-model/credential-stores#vault-credential-store-attributes
