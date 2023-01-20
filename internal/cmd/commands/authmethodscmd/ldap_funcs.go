@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
 func init() {
@@ -179,19 +180,19 @@ func extraLdapFlagsFuncImpl(c *LdapCommand, set *base.FlagSets, _ *base.FlagSet)
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   certificatesFlagName,
 				Target: &c.flagCertificates,
-				Usage:  "PEM-encoded X.509 CA certificate that can be used as trust anchors when connecting to an LDAP server (optional). May be specified multiple times.",
+				Usage:  "PEM-encoded X.509 CA certificate in ASN.1 DER form that can be used as as trust anchor when connecting to an LDAP server(optional).  This may be specified multiple times",
 			})
 		case clientCertificateFlagName:
 			f.StringVar(&base.StringVar{
 				Name:   clientCertificateFlagName,
 				Target: &c.flagClientCertificate,
-				Usage:  "A client certificate in ASN.1 DER form encoded as PEM (optional).",
+				Usage:  "PEM-encoded X.509 client certificate in ASN.1 DER form that can be used to authenticate against an LDAP server(optional).",
 			})
 		case clientCertificateKeyFlagName:
 			f.StringVar(&base.StringVar{
 				Name:   clientCertificateKeyFlagName,
 				Target: &c.flagClientCertificateKey,
-				Usage:  "A client certificate key in PKCS #8, ASN.1 DER form encoded as PEM (optional).",
+				Usage:  "PEM-encoded X.509 client certificate key in PKCS #8, ASN.1 DER form used with the client certificate (optional).",
 			})
 		case bindDnFlagName:
 			f.StringVar(&base.StringVar{
@@ -362,11 +363,25 @@ func extraLdapFlagHandlingFuncImpl(c *LdapCommand, _ *base.FlagSets, opts *[]aut
 	case len(c.flagCertificates) == 1 && c.flagCertificates[0] == "null":
 		*opts = append(*opts, authmethods.DefaultLdapAuthMethodCertificates())
 	default:
-		if err := validateCerts(c.flagCertificates...); err != nil {
-			c.UI.Error(fmt.Sprintf("invalid certificate: %s", err.Error()))
-			return false
+		pems := make([]string, 0, len(c.flagCertificates))
+		for _, certFlag := range c.flagCertificates {
+			p, err := parseutil.MustParsePath(certFlag)
+			switch {
+			case err == nil:
+				if validationErr := validateCerts(p); validationErr != nil {
+					c.UI.Error(fmt.Sprintf("invalid certificate in %q: %s", certFlag, validationErr.Error()))
+					return false
+				}
+				pems = append(pems, p)
+			case errors.Is(err, parseutil.ErrNotParsed):
+				c.UI.Error("Certificate flag must be used with env:// or file:// syntax")
+				return false
+			default:
+				c.UI.Error(fmt.Sprintf("Error parsing certificate flag: %v", err))
+				return false
+			}
 		}
-		*opts = append(*opts, authmethods.WithLdapAuthMethodCertificates(c.flagCertificates))
+		*opts = append(*opts, authmethods.WithLdapAuthMethodCertificates(pems))
 	}
 
 	switch c.flagClientCertificate {
@@ -374,7 +389,21 @@ func extraLdapFlagHandlingFuncImpl(c *LdapCommand, _ *base.FlagSets, opts *[]aut
 	case "null":
 		*opts = append(*opts, authmethods.DefaultLdapAuthMethodClientCertificate())
 	default:
-		*opts = append(*opts, authmethods.WithLdapAuthMethodClientCertificate(c.flagClientCertificate))
+		p, err := parseutil.MustParsePath(c.flagClientCertificate)
+		switch {
+		case err == nil:
+			if validationErr := validateCerts(p); validationErr != nil {
+				c.UI.Error(fmt.Sprintf("invalid client certificate in %q: %s", c.flagClientCertificate, validationErr.Error()))
+				return false
+			}
+			*opts = append(*opts, authmethods.WithLdapAuthMethodClientCertificate(p))
+		case errors.Is(err, parseutil.ErrNotParsed):
+			c.UI.Error("Client certificate flag must be used with env:// or file:// syntax")
+			return false
+		default:
+			c.UI.Error(fmt.Sprintf("Error parsing client certificate flag: %v", err))
+			return false
+		}
 	}
 
 	switch c.flagClientCertificateKey {
@@ -382,7 +411,17 @@ func extraLdapFlagHandlingFuncImpl(c *LdapCommand, _ *base.FlagSets, opts *[]aut
 	case "null":
 		*opts = append(*opts, authmethods.DefaultLdapAuthMethodClientCertificateKey())
 	default:
-		*opts = append(*opts, authmethods.WithLdapAuthMethodClientCertificateKey(c.flagClientCertificateKey))
+		key, err := parseutil.MustParsePath(c.flagClientCertificateKey)
+		switch {
+		case err == nil:
+			*opts = append(*opts, authmethods.WithLdapAuthMethodClientCertificateKey(key))
+		case errors.Is(err, parseutil.ErrNotParsed):
+			c.UI.Error("Client certificate key flag must be used with env:// or file:// syntax")
+			return false
+		default:
+			c.UI.Error(fmt.Sprintf("Error parsing client certificate key flag: %v", err))
+			return false
+		}
 	}
 
 	switch c.flagBindDn {
@@ -398,7 +437,17 @@ func extraLdapFlagHandlingFuncImpl(c *LdapCommand, _ *base.FlagSets, opts *[]aut
 	case "null":
 		*opts = append(*opts, authmethods.DefaultLdapAuthMethodBindPassword())
 	default:
-		*opts = append(*opts, authmethods.WithLdapAuthMethodBindPassword(c.flagBindPassword))
+		password, err := parseutil.MustParsePath(c.flagBindPassword)
+		switch {
+		case err == nil:
+			*opts = append(*opts, authmethods.WithLdapAuthMethodBindPassword(password))
+		case errors.Is(err, parseutil.ErrNotParsed):
+			c.UI.Error("Bind password flag must be used with env:// or file:// syntax")
+			return false
+		default:
+			c.UI.Error(fmt.Sprintf("Error parsing bind password flag: %v", err))
+			return false
+		}
 	}
 
 	switch c.flagUseTokenGroups {
