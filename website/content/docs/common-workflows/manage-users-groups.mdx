@@ -7,8 +7,8 @@ description: How to manage Boundary users and groups
 # Managing Principals (Users and Groups)
 
 Users and Groups in Boundary are collectively known as principals. Assigning
-[grants](/docs/concepts/security/permissions) on
-[Roles](/docs/concepts/domain-model/roles) is performed through principal IDs;
+[grants](/boundary/docs/concepts/security/permissions) on
+[Roles](/boundary/docs/concepts/domain-model/roles) is performed through principal IDs;
 that is, the unique IDs of either users, groups, or both.
 
 This page will walk you through managing users within Boundary. (Groups will be
@@ -18,8 +18,8 @@ added at a later time.)
 
 Users in Boundary represent an _internal_ notion of a particular entity (human,
 machine, etc.). Users can be correlated with one or more
-[Account](/docs/concepts/domain-model/accounts) resources via [Auth
-Methods](/docs/concepts/domain-model/auth-methods). Accounts represent
+[Account](/boundary/docs/concepts/domain-model/accounts) resources via [Auth
+Methods](/boundary/docs/concepts/domain-model/auth-methods). Accounts represent
 _external_ notions of a particular entity. Among other use-cases, this mechanism
 allows for an easy way to switch users to new IdPs within the organization
 deploying Boundary.

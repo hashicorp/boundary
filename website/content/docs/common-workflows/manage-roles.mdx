@@ -6,7 +6,7 @@ description: How to manage Roles and Permissions
 
 # Manage Roles and Permissions
 
-[Roles](/docs/concepts/domain-model/roles) in Boundary manage the permissions given to principals ([Users](/docs/concepts/domain-model/users)/[Groups](/docs/concepts/domain-model/groups)). Roles can be defined at the global, org, or project scopes.
+[Roles](/boundary/docs/concepts/domain-model/roles) in Boundary manage the permissions given to principals ([Users](/boundary/docs/concepts/domain-model/users)/[Groups](/boundary/docs/concepts/domain-model/groups)). Roles can be defined at the global, org, or project scopes.
 
 In this example, we're going to show you how to create a role in Boundary, assign that roles grants, and assign principals to the role.
 
@@ -132,7 +132,7 @@ resource "boundary_scope" "role" {
 
 # Assign Grants to a Role
 
-Grants describe the actions that the principals should be allowed to perform. For more information on how to format grants see [Permission Grant Formats](https://boundaryproject.io/docs/concepts/security/permissions#permission-grant-formats).
+Grants describe the actions that the principals should be allowed to perform. For more information on how to format grants see [Permission Grant Formats](/boundary/docs/concepts/security/permissions#permission-grant-formats).
 In this example we give a role read and list permissions to all resources.
 
 <Tabs>

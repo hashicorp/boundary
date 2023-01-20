@@ -11,17 +11,17 @@ description: |-
 
 ## Scopes
 
-When conducting threat modeling exercises, it is common practice to mitigate  identified risks by reducing their potential blast radius and attack surface. Boundary uses the concept of scopes to help security operators achieve this type of mitigation.  A [Scope](/docs/concepts/domain-model/scopes) can be considered as a container for resources and permissions. Each scope has a permissions boundary that is isolated from other scopes on the same level, creating a defined blast radius.
+When conducting threat modeling exercises, it is common practice to mitigate  identified risks by reducing their potential blast radius and attack surface. Boundary uses the concept of scopes to help security operators achieve this type of mitigation.  A [Scope](/boundary/docs/concepts/domain-model/scopes) can be considered as a container for resources and permissions. Each scope has a permissions boundary that is isolated from other scopes on the same level, creating a defined blast radius.
 The diagram below illustrates the relationship between the different levels of scopes.
 
 
 ![](/img/boundary-domain-model-overview.jpg)
 
-The highest-level  scope is the [Global Scope](/docs/concepts/domain-model/scopes#global). Boundary administrators operate on this level to configure and manage Boundary for the entire business. Boundary administrators  can also manage child scopes, auth methods, users, groups, roles, and grants.
+The highest-level  scope is the [Global Scope](/boundary/docs/concepts/domain-model/scopes#global). Boundary administrators operate on this level to configure and manage Boundary for the entire business. Boundary administrators  can also manage child scopes, auth methods, users, groups, roles, and grants.
 
-The intermediate scope level is  [Organizations](/docs/concepts/domain-model/scopes#organizations), also referred to as orgs, which are a child scope of global.  Though the implementation may be flexible for organization scopes, we recommend scoping by business units in this case. Scoping by business unit provides a clear separation of concerns for each business unit. Creating organizations for the development, operations, and support teams would be an example.
+The intermediate scope level is  [Organizations](/boundary/docs/concepts/domain-model/scopes#organizations), also referred to as orgs, which are a child scope of global.  Though the implementation may be flexible for organization scopes, we recommend scoping by business units in this case. Scoping by business unit provides a clear separation of concerns for each business unit. Creating organizations for the development, operations, and support teams would be an example.
 
-The lowest scope level is the [Project](/docs/concepts/domain-model/scopes#projects). An organization’s scope may have as many projects as required based on its business workflows. To expand on the example used earlier, the development team’s organization can also have project scopes for their different products.
+The lowest scope level is the [Project](/boundary/docs/concepts/domain-model/scopes#projects). An organization’s scope may have as many projects as required based on its business workflows. To expand on the example used earlier, the development team’s organization can also have project scopes for their different products.
 
 For example, they could have the following project scopes:
 
@@ -31,27 +31,27 @@ For example, they could have the following project scopes:
 
 ## Identity and Access Management
 
-As mentioned earlier, IAM  is handled at the organization and global scope levels. Here, operators can create and manage principals. Principals are entities in Boundary that are either [Users](/docs/concepts/domain-model/users) or [Groups](/docs/concepts/domain-model/groups) that may be assigned capabilities.
+As mentioned earlier, IAM  is handled at the organization and global scope levels. Here, operators can create and manage principals. Principals are entities in Boundary that are either [Users](/boundary/docs/concepts/domain-model/users) or [Groups](/boundary/docs/concepts/domain-model/groups) that may be assigned capabilities.
 
 Users are associated with either the global or an organization’s scope. For better access control management, users may be positioned into groups to ease access control demands. Groups can also contain users from different organizations or global scopes without creating multiple users for a single entity, making permissioning less complicated to implement.
 
-An [Auth Method](/docs/concepts/domain-model/auth-methods) is the mechanism in Boundary used for authentication. An organization may use numerous authentication methods. Boundary supports Open ID Connect (OIDC) auth methods to delegate authentication to an external identity provider (IDP) - such as Azure Active Directory, Okta, and other OIDC providers - as well as a Boundary-native password auth method. Within an auth method, [Accounts](/docs/concepts/domain-model/accounts) may be created and associated with users.  Once associated with a user, the principal may authenticate in Boundary using the method specified by their auth method. An account for the password auth method consists of a login name and password. A user may be associated with accounts from different auth methods, where they can have both an Azure Active Directory account and an Okta account, for example. In such cases, the user could authenticate with either provider.
+An [Auth Method](/boundary/docs/concepts/domain-model/auth-methods) is the mechanism in Boundary used for authentication. An organization may use numerous authentication methods. Boundary supports Open ID Connect (OIDC) auth methods to delegate authentication to an external identity provider (IDP) - such as Azure Active Directory, Okta, and other OIDC providers - as well as a Boundary-native password auth method. Within an auth method, [Accounts](/boundary/docs/concepts/domain-model/accounts) may be created and associated with users.  Once associated with a user, the principal may authenticate in Boundary using the method specified by their auth method. An account for the password auth method consists of a login name and password. A user may be associated with accounts from different auth methods, where they can have both an Azure Active Directory account and an Okta account, for example. In such cases, the user could authenticate with either provider.
 
 ## Access Management
 
 Boundary’s method of access management starts at the lowest level with Actions. Actions are capabilities that can be performed against Boundary resources. Boundary supports generic Actions such as, Create, Read, Update, Delete, and List. However, there are many more that are resource-type-specific actions that can be used in grants.
 
-The next level of access management is a [Grant](/docs/concepts/security/permissions#grant-strings). A grant in Boundary contains an action(s) and the resource(s) that the action(s) are permitted to be performed against. This can be thought of like a rule.
+The next level of access management is a [Grant](/boundary/docs/concepts/security/permissions#grant-strings). A grant in Boundary contains an action(s) and the resource(s) that the action(s) are permitted to be performed against. This can be thought of like a rule.
 
 For example, a grant can specify the List Action against a specific resource. Grants can specify resource types or resource IDs and may also be implemented as a rule.
 
-The highest-level in Boundary utilizes the concepts of [Roles](/docs/concepts/domain-model/roles). Roles are a collection of zero or more grants. Roles are assigned to principals (users and groups) and govern what actions they are authorized to perform.  Roles belong to a single scope and their lifecycle is dependent on the existence of that scope. Should the scope be deleted, the role would be deleted too. The diagram below illustrates the relationship between the different IAM components within Boundary.
+The highest-level in Boundary utilizes the concepts of [Roles](/boundary/docs/concepts/domain-model/roles). Roles are a collection of zero or more grants. Roles are assigned to principals (users and groups) and govern what actions they are authorized to perform.  Roles belong to a single scope and their lifecycle is dependent on the existence of that scope. Should the scope be deleted, the role would be deleted too. The diagram below illustrates the relationship between the different IAM components within Boundary.
 
 ![](/img/component-relationship.png)
 
 ## Target and Host Resources
 
-Boundary exposes endpoints to users as [Targets](/docs/concepts/domain-model/targets). A target is a resource representing a networked service, with an associated set of permissions, that allows a user to connect and interact with Boundary within a single session. A target may contain references to [Host](/docs/concepts/domain-model/hosts) sources or an address, and [Credential](/docs/concepts/domain-model/credentials) sources. Users who access a target create an authorized session to its address or one of its host sources with returned credentials from the target’s credential source.
+Boundary exposes endpoints to users as [Targets](/boundary/docs/concepts/domain-model/targets). A target is a resource representing a networked service, with an associated set of permissions, that allows a user to connect and interact with Boundary within a single session. A target may contain references to [Host](/boundary/docs/concepts/domain-model/hosts) sources or an address, and [Credential](/boundary/docs/concepts/domain-model/credentials) sources. Users who access a target create an authorized session to its address or one of its host sources with returned credentials from the target’s credential source.
 
 A target exposes two distinct and mutually exclusive configuration paths for its
 representation of a networked service:
@@ -169,35 +169,35 @@ that is itself contained within a scope.
 Refer to the [Scopes] section to help you understand the structure of resources within Boundary.
 
 [iam]: https://en.wikipedia.org/wiki/Identity_management
-[account]: /docs/concepts/domain-model/accounts
-[accounts]: /docs/concepts/domain-model/accounts
-[authentication method]: /docs/concepts/domain-model/auth-methods
-[authentication methods]: /docs/concepts/domain-model/auth-methods
-[credential library]: /docs/concepts/domain-model/credential-libraries
-[credential libraries]: /docs/concepts/domain-model/credential-libraries
-[credential store]: /docs/concepts/domain-model/credential-stores
-[credential stores]: /docs/concepts/domain-model/credential-stores
-[credential]: /docs/concepts/domain-model/credentials
-[credentials]: /docs/concepts/domain-model/credentials
-[group]: /docs/concepts/domain-model/groups
-[groups]: /docs/concepts/domain-model/groups
-[host catalog]: /docs/concepts/domain-model/host-catalogs
-[host catalogs]: /docs/concepts/domain-model/host-catalogs
-[host set]: /docs/concepts/domain-model/host-sets
-[host sets]: /docs/concepts/domain-model/host-sets
-[host]: /docs/concepts/domain-model/hosts
-[hosts]: /docs/concepts/domain-model/hosts
-[managed group]: /docs/concepts/domain-model/managed-groups
-[role]: /docs/concepts/domain-model/roles
-[roles]: /docs/concepts/domain-model/roles
-[scope]: /docs/concepts/domain-model/scopes
-[scopes]: /docs/concepts/domain-model/scopes
-[project]: /docs/concepts/domain-model/scopes#projects
-[session]: /docs/concepts/domain-model/sessions
-[sessions]: /docs/concepts/domain-model/sessions
-[target]: /docs/concepts/domain-model/targets
-[targets]: /docs/concepts/domain-model/targets
-[user]: /docs/concepts/domain-model/users
-[users]: /docs/concepts/domain-model/users
-[permission]: /docs/concepts/security/permissions
-[permissions]: /docs/concepts/security/permissions
+[account]: /boundary/docs/concepts/domain-model/accounts
+[accounts]: /boundary/docs/concepts/domain-model/accounts
+[authentication method]: /boundary/docs/concepts/domain-model/auth-methods
+[authentication methods]: /boundary/docs/concepts/domain-model/auth-methods
+[credential library]: /boundary/docs/concepts/domain-model/credential-libraries
+[credential libraries]: /boundary/docs/concepts/domain-model/credential-libraries
+[credential store]: /boundary/docs/concepts/domain-model/credential-stores
+[credential stores]: /boundary/docs/concepts/domain-model/credential-stores
+[credential]: /boundary/docs/concepts/domain-model/credentials
+[credentials]: /boundary/docs/concepts/domain-model/credentials
+[group]: /boundary/docs/concepts/domain-model/groups
+[groups]: /boundary/docs/concepts/domain-model/groups
+[host catalog]: /boundary/docs/concepts/domain-model/host-catalogs
+[host catalogs]: /boundary/docs/concepts/domain-model/host-catalogs
+[host set]: /boundary/docs/concepts/domain-model/host-sets
+[host sets]: /boundary/docs/concepts/domain-model/host-sets
+[host]: /boundary/docs/concepts/domain-model/hosts
+[hosts]: /boundary/docs/concepts/domain-model/hosts
+[managed group]: /boundary/docs/concepts/domain-model/managed-groups
+[role]: /boundary/docs/concepts/domain-model/roles
+[roles]: /boundary/docs/concepts/domain-model/roles
+[scope]: /boundary/docs/concepts/domain-model/scopes
+[scopes]: /boundary/docs/concepts/domain-model/scopes
+[project]: /boundary/docs/concepts/domain-model/scopes#projects
+[session]: /boundary/docs/concepts/domain-model/sessions
+[sessions]: /boundary/docs/concepts/domain-model/sessions
+[target]: /boundary/docs/concepts/domain-model/targets
+[targets]: /boundary/docs/concepts/domain-model/targets
+[user]: /boundary/docs/concepts/domain-model/users
+[users]: /boundary/docs/concepts/domain-model/users
+[permission]: /boundary/docs/concepts/security/permissions
+[permissions]: /boundary/docs/concepts/security/permissions

@@ -6,7 +6,7 @@ description: How to manage Boundary scopes
 
 # Manage Scopes
 
-[Scopes](/docs/concepts/domain-model/scopes) are a foundational part of Boundary. They allow users to partition resources and assign ownership of resources to principals. There are three types of scopes within Boundary:
+[Scopes](/boundary/docs/concepts/domain-model/scopes) are a foundational part of Boundary. They allow users to partition resources and assign ownership of resources to principals. There are three types of scopes within Boundary:
 
 1. Global (`global`)
 2. Org
@@ -18,7 +18,7 @@ These are in a hierarchy:
 - Under the `global` scope there can be many org scopes. These are used to hold IAM-related resources and project scopes.
 - Under each org scope can be many project scopes. These are used to hold infrastructure-related resources.
 
-Some resources can only be associated with a specific level of scope. As an example, [Targets](/docs/concepts/domain-model/targets) can only be contained within a project scope. Other resources can be contained by multiple scopes. For example, users can be created within the `global` scope or an org-level scope. See the [domain model](/docs/concepts/domain-model) for detailed resource specific information.
+Some resources can only be associated with a specific level of scope. As an example, [Targets](/boundary/docs/concepts/domain-model/targets) can only be contained within a project scope. Other resources can be contained by multiple scopes. For example, users can be created within the `global` scope or an org-level scope. See the [domain model](/boundary/docs/concepts/domain-model) for detailed resource specific information.
 
 In this example, we're going to create two scopes, an org and a project.
 

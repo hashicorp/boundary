@@ -56,10 +56,10 @@ worker {
   "192.168.0.1", "10.0.0.1"]`
 
 - `tags` - A map of key-value pairs where values are an array of strings. Most
-  commonly used for [filtering](/docs/concepts/filtering) targets a worker can
-  proxy via [worker tags](/docs/concepts/filtering/worker-tags). On `SIGHUP`, the
+  commonly used for [filtering](/boundary/docs/concepts/filtering) targets a worker can
+  proxy via [worker tags](/boundary/docs/concepts/filtering/worker-tags). On `SIGHUP`, the
   tags set here will be re-parsed and new values used. It can also be a string
   referring to a file on disk (`file://`) or an env var (`env://`).
 
-[kms workers]: /docs/configuration/worker/kms-worker
-[pki workers]: /docs/configuration/worker/pki-worker
+[kms workers]: /boundary/docs/configuration/worker/kms-worker
+[pki workers]: /boundary/docs/configuration/worker/pki-worker

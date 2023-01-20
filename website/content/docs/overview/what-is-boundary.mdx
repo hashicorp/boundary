@@ -53,45 +53,45 @@ The key features and concepts of Boundary include:
 Identity is a core concept in Boundary. Identity is represented by two types of
 resources, mapping to common security principals:
 
-- [Users](/docs/concepts/domain-model/users), which represent distinct entities
+- [Users](/boundary/docs/concepts/domain-model/users), which represent distinct entities
   that can be tied to authentication accounts
-- [Groups](/docs/concepts/domain-model/groups), which are collections of users
+- [Groups](/boundary/docs/concepts/domain-model/groups), which are collections of users
   that allow for easier access management
 
-[Roles](/docs/concepts/domain-model/roles) map users and groups to a set of
-[grants](/docs/concepts/security/permissions), which provides the ability to
+[Roles](/boundary/docs/concepts/domain-model/roles) map users and groups to a set of
+[grants](/boundary/docs/concepts/security/permissions), which provides the ability to
 perform actions within the system.
 
 ### Resource Management
 
 Boundary enables flexible management of the hosts and services to
 broker access. Boundary administrators define [host
-catalogs](/docs/concepts/domain-model/host-catalogs) containing information
-about [hosts](/docs/concepts/domain-model/hosts). The cataloged hosts are collected
-into [host sets](/docs/concepts/domain-model/host-sets) that represent sets of
-equivalent hosts. Finally, [targets](/docs/concepts/domain-model/targets) tie
+catalogs](/boundary/docs/concepts/domain-model/host-catalogs) containing information
+about [hosts](/boundary/docs/concepts/domain-model/hosts). The cataloged hosts are collected
+into [host sets](/boundary/docs/concepts/domain-model/host-sets) that represent sets of
+equivalent hosts. Finally, [targets](/boundary/docs/concepts/domain-model/targets) tie
 together host sets with connection information. Access to a resource is
-granted via [roles](/docs/concepts/domain-model/roles) that provide
+granted via [roles](/boundary/docs/concepts/domain-model/roles) that provide
 authorization to create sessions against these targets.
 
 ### Filtering
 
 Parts of Boundary support filters for various purposes. For a description
-of the filter syntax, see the [filtering](/docs/concepts/filtering) page. See
+of the filter syntax, see the [filtering](/boundary/docs/concepts/filtering) page. See
 the docs pages for the individual resources or capabilities where filters are
 supported for the specific inputs and examples with those inputs.
 
--> **Tip**: Learn more about Boundary [use cases](/docs/overview/use-cases).
+-> **Tip**: Learn more about Boundary [use cases](/boundary/docs/overview/use-cases).
 
 ## What is HCP Boundary?
 
-Boundary offers two types of deployment options. A first option is an *OSS self-managed* deployment solution as discussed above. A self-managed approach enables organizations to proxy all session data through their own network while still providing the convenience of a managed service. A second option is an *HCP-managed* deployment solution where both the control plan and worker nodes are managed by HashiCorp. With this managed solution, an option of private workers is offered. **HCP Boundary** is a fully-managed, cloud-based workflow that enables secure connections to remote hosts and critical systems across cloud and on-premise environments. Refer to the [HCP Boundary](https://cloud.hashicorp.com/docs/boundary) documentation to learn more.
+Boundary offers two types of deployment options. A first option is an *OSS self-managed* deployment solution as discussed above. A self-managed approach enables organizations to proxy all session data through their own network while still providing the convenience of a managed service. A second option is an *HCP-managed* deployment solution where both the control plan and worker nodes are managed by HashiCorp. With this managed solution, an option of private workers is offered. **HCP Boundary** is a fully-managed, cloud-based workflow that enables secure connections to remote hosts and critical systems across cloud and on-premise environments. Refer to the [HCP Boundary](/hcp/docs/boundary) documentation to learn more.
 
--> **Hands On:** Try the [Create a Boundary Instance on HCP](https://learn.hashicorp.com/tutorials/boundary/hcp-getting-started-create?in=boundary/hcp-getting-started) tutorial to deploy an HCP Boundary instance.
+-> **Hands On:** Try the [Create a Boundary Instance on HCP](/boundary/tutorials/hcp-getting-started/hcp-getting-started-create) tutorial to deploy an HCP Boundary instance.
 
 ## Tutorial
 
-Refer to the [Boundary tutorials](https://learn.hashicorp.com/boundary) to learn how to set up, configure, and administer Boundary.
+Refer to the [Boundary tutorials](/boundary/tutorials) to learn how to set up, configure, and administer Boundary.
 
 ## Community
 

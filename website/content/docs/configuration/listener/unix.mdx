@@ -90,7 +90,7 @@ allowed.
 ~> `tls` parameters are valid for `api` and `ops` listeners. `cluster`
 and `proxy` connections use their own ephemeral TLS stacks. For more
 information, see [the connections security concepts
-page](https://www.boundaryproject.io/docs/concepts/security/connections-tls).
+page](/boundary/docs/concepts/security/connections-tls).
 
 - `tls_disable` `(string: "false")` – Specifies if TLS will be disabled. Boundary
   assumes TLS by default, so you must explicitly disable TLS to opt-in to
@@ -196,5 +196,5 @@ listener "tcp" {
 ```
 
 [golang-tls]: https://golang.org/src/crypto/tls/cipher_suites.go
-[api-addr]: /docs/configuration#api_addr
-[cluster-addr]: /docs/configuration#cluster_addr
+[api-addr]: /boundary/docs/configuration#api_addr
+[cluster-addr]: /boundary/docs/configuration#cluster_addr

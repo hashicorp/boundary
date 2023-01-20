@@ -6,12 +6,12 @@ description: Boundary configuration reference.
 
 # Configuration
 
-[listener]: /docs/configuration/listener
-[controller]: /docs/configuration/controller
-[worker]: /docs/configuration/worker
-[kms]: /docs/configuration/kms
-[plugins]: /docs/configuration/plugins
-[events]: /docs/configuration/events
+[listener]: /boundary/docs/configuration/listener
+[controller]: /boundary/docs/configuration/controller
+[worker]: /boundary/docs/configuration/worker
+[kms]: /boundary/docs/configuration/kms
+[plugins]: /boundary/docs/configuration/plugins
+[events]: /boundary/docs/configuration/events
 
 Outside of development mode, Boundary controllers and workers are configured
 using a file. The format of this file is
@@ -29,10 +29,10 @@ path to the file.
 
 ## Shared OSS and HCP Boundary Parameters
 
-- [`worker`](/docs/configuration/worker): Worker specific configuration. If
+- [`worker`](/boundary/docs/configuration/worker): Worker specific configuration. If
   present, `boundary server` will start a Worker subprocess.
 
-- [`listener`](/docs/configuration/listener): Configures the listeners on which
+- [`listener`](/boundary/docs/configuration/listener): Configures the listeners on which
   Boundary serves traffic (API, cluster, and proxy).
 
   Controllers must have at least two listener blocks defined: one marked for
@@ -43,10 +43,10 @@ path to the file.
   Optionally, the `ops` purpose listener block serves as a higher-level listener
   where Boundary's operational endpoints live (eg: /health).
 
-- [`kms`](/docs/configuration/kms): Configures KMS blocks [for various
-  purposes](/docs/concepts/security/data-encryption).
+- [`kms`](/boundary/docs/configuration/kms): Configures KMS blocks [for various
+  purposes](/boundary/docs/concepts/security/data-encryption).
 
-- [`events`](/docs/configuration/events): Configures event (observability,
+- [`events`](/boundary/docs/configuration/events): Configures event (observability,
   audit, error) handling.
 
 - `disable_mlock` `(bool: false)` – Disables the server from executing the
@@ -82,13 +82,13 @@ path to the file.
 
 ## OSS-Only Parameters
 
-- [`controller`](/docs/configuration/controller): Controller specific
+- [`controller`](/boundary/docs/configuration/controller): Controller specific
   configuration. If present, `boundary server` will start a Controller subprocess.
 
-- [`plugins`](/docs/configuration/plugins): Configures options for plugins.
+- [`plugins`](/boundary/docs/configuration/plugins): Configures options for plugins.
 
 ## Example Configurations
 
 For complete example configurations see the sections for
-[controller](/docs/configuration/controller) and
-[worker](/docs/configuration/worker).
+[controller](/boundary/docs/configuration/controller) and
+[worker](/boundary/docs/configuration/worker).
