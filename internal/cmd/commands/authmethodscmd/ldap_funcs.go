@@ -180,7 +180,7 @@ func extraLdapFlagsFuncImpl(c *LdapCommand, set *base.FlagSets, _ *base.FlagSet)
 			f.StringSliceVar(&base.StringSliceVar{
 				Name:   certificatesFlagName,
 				Target: &c.flagCertificates,
-				Usage:  "PEM-encoded X.509 CA certificate in ASN.1 DER form that can be used as as trust anchor when connecting to an LDAP server(optional).  This may be specified multiple times",
+				Usage:  "PEM-encoded X.509 CA certificate in ASN.1 DER form that can be used as a trust anchor when connecting to an LDAP server(optional).  This may be specified multiple times",
 			})
 		case clientCertificateFlagName:
 			f.StringVar(&base.StringVar{
