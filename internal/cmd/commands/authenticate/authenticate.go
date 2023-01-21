@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
@@ -47,7 +48,21 @@ func (c *Command) Help() string {
 		"      $ boundary authenticate oidc -auth-method-id amoidc_1234567890",
 		"",
 		"  Please see the auth method subcommand help for detailed usage information.",
+	}) + c.Flags().Help()
+}
+
+func (c *Command) Flags() *base.FlagSets {
+	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
+	f := set.NewFlagSet("Command Options")
+
+	f.StringVar(&base.StringVar{
+		Name:   "scope-id",
+		EnvVar: "BOUNDARY_SCOPE_ID",
+		Target: &c.FlagScopeId,
+		Usage:  "The scope to use for the operation",
 	})
+
+	return set
 }
 
 func (c *Command) Run(args []string) int {
@@ -64,6 +79,13 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
+	f := c.Flags()
+
+	if err := f.Parse(args); err != nil {
+		c.PrintCliError(err)
+		return base.CommandUserError
+	}
+
 	// Lookup the primary auth method ID in the global scope
 	aClient := authmethods.NewClient(client)
 	pri, err := getPrimaryAuthMethodId(c.Context, aClient, scope.Global.String(), "")
@@ -76,15 +98,15 @@ func (c *Command) Run(args []string) int {
 
 	switch {
 	case strings.HasPrefix(c.FlagAuthMethodId, password.AuthMethodPrefix):
-		cmd := PasswordCommand{Command: c.Command}
+		cmd := PasswordCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
 		cmd.Run([]string{})
 
 	case strings.HasPrefix(c.FlagAuthMethodId, oidc.AuthMethodPrefix):
-		cmd := OidcCommand{Command: c.Command}
+		cmd := OidcCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
 		cmd.Run([]string{})
 
 	default:
-		c.PrintCliError(fmt.Errorf("The primary auth method was of an unsupported type. Only 'ampw' (password) and 'amoidc' (OIDC) auth method prefixes are supported.", c.FlagAuthMethodId))
+		c.PrintCliError(fmt.Errorf("The primary auth method was of an unsupported type. The given ID was %s; only 'ampw' (password) and 'amoidc' (OIDC) auth method prefixes are supported.", c.FlagAuthMethodId))
 		return cli.RunResultHelp
 	}
 
