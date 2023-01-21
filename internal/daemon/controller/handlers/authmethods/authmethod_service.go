@@ -532,7 +532,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	ll, err := ldapRepo.ListAuthMethods(ctx, scopeIds)
+	ll, err := ldapRepo.ListAuthMethods(ctx, scopeIds, ldap.WithUnauthenticatedUser(ctx, reqCtx.UserId == globals.AnonymousUserId))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
