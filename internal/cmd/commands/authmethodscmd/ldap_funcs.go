@@ -260,7 +260,7 @@ func extraLdapFlagHandlingFuncImpl(c *LdapCommand, _ *base.FlagSets, opts *[]aut
 			switch u.Scheme {
 			case "ldap", "ldaps":
 			default:
-				c.UI.Error(fmt.Sprintf("scheme in url %q is not either ldap or ldaps", urlString))
+				c.UI.Error(fmt.Sprintf("scheme in url %q is neither ldap nor ldaps", urlString))
 				return false
 			}
 		}
