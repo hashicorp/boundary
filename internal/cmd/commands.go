@@ -74,6 +74,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
+		"authenticate ldap": func() (cli.Command, error) {
+			return &authenticate.LdapCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 
 		"accounts": func() (cli.Command, error) {
 			return &accountscmd.Command{
@@ -188,6 +193,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"auth-methods create ldap": func() (cli.Command, error) {
+			return &authmethodscmd.LdapCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"auth-methods update": func() (cli.Command, error) {
 			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui),
@@ -202,6 +213,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"auth-methods update oidc": func() (cli.Command, error) {
 			return &authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"auth-methods update ldap": func() (cli.Command, error) {
+			return &authmethodscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

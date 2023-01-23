@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -315,7 +316,7 @@ func Test_UpdateLdap(t *testing.T) {
 		{
 			name: "update-a-non-existent-auth-method",
 			req: &pbs.UpdateAuthMethodRequest{
-				Id: ldap.AuthMethodPrefix + "_DoesNotExist",
+				Id: globals.LdapAuthMethodPrefix + "_DoesNotExist",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -334,7 +335,7 @@ func Test_UpdateLdap(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.AuthMethod{
-					Id:          ldap.AuthMethodPrefix + "_something",
+					Id:          globals.LdapAuthMethodPrefix + "_something",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -594,8 +595,8 @@ func Test_UpdateLdap(t *testing.T) {
 				},
 			},
 			res:         nil,
-			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
-			errContains: "must specify a group dn when enabling groups but not using token groups",
+			wantErr:     true,
+			errContains: "have a configured group_dn when enable_groups = true and use_token_groups = false",
 		},
 		{
 			name: "update-group-search-config",

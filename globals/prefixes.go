@@ -34,6 +34,8 @@ const (
 	LdapManagedGroupPrefix = "mgldap"
 	// AuthMethodPrefix defines the prefix for AuthMethod public ids.
 	LdapAuthMethodPrefix = "amldap"
+	// AccountPrefix defines the prefix for Account public ids.
+	LdapAccountPrefix = "acctldap"
 
 	// ProjectPrefix is the prefix for project scopes
 	ProjectPrefix = "p"

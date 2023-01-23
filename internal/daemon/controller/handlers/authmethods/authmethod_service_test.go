@@ -363,7 +363,7 @@ func TestList(t *testing.T) {
 		return cp
 	}
 
-	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), []string{"ldaps://ldap1"})
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), []string{"ldaps://ldap1"}, ldap.WithOperationalState(ctx, ldap.ActivePublicState))
 	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 		Id:          ldapAm.GetPublicId(),
 		ScopeId:     oWithAuthMethods.GetPublicId(),
@@ -374,7 +374,7 @@ func TestList(t *testing.T) {
 		Type:        ldap.Subtype.String(),
 		Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 			LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-				State: string(ldap.InactiveState),
+				State: string(ldap.ActivePublicState),
 				Urls:  []string{"ldaps://ldap1"},
 			},
 		},
@@ -778,9 +778,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: ldap.AuthMethodPrefix + "_",
+			idPrefix: globals.LdapAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", ldap.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.LdapAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					ScopeId:     o.GetPublicId(),
 					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
@@ -900,9 +900,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: ldap.AuthMethodPrefix + "_",
+			idPrefix: globals.LdapAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", ldap.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.LdapAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					ScopeId:     scope.Global.String(),
 					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -19,7 +20,7 @@ import (
 func TestNewAccount(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	testAuthMethodId := fmt.Sprintf("%s_1", AuthMethodPrefix)
+	testAuthMethodId := fmt.Sprintf("%s_1", globals.LdapAuthMethodPrefix)
 	tests := []struct {
 		name            string
 		ctx             context.Context

@@ -11,23 +11,18 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, AccountPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, Subtype, globals.LdapAuthMethodPrefix, globals.LdapAccountPrefix); err != nil {
 		panic(err)
 	}
 }
 
 const (
-	// AuthMethodPrefix defines the prefix for AuthMethod public ids.
-	AuthMethodPrefix = "amldap"
-	// AccountPrefix defines the prefix for Account public ids.
-	AccountPrefix = "acctldap"
-
 	Subtype = subtypes.Subtype("ldap")
 )
 
 func newAuthMethodId(ctx context.Context) (string, error) {
 	const op = "ldap.newAuthMethodId"
-	id, err := db.NewPublicId(AuthMethodPrefix)
+	id, err := db.NewPublicId(globals.LdapAuthMethodPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
@@ -37,7 +32,7 @@ func newAuthMethodId(ctx context.Context) (string, error) {
 func newAccountId(ctx context.Context, authMethodId, loginName string) (string, error) {
 	const op = "ldap.newAccountId"
 	// there's a unique index on: auth method id + login name
-	id, err := db.NewPublicId(AccountPrefix, db.WithPrngValues([]string{authMethodId, loginName}))
+	id, err := db.NewPublicId(globals.LdapAccountPrefix, db.WithPrngValues([]string{authMethodId, loginName}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
