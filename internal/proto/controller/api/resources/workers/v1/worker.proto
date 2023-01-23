@@ -89,6 +89,9 @@ message Worker {
   // Output only. The version of the Boundary binary the worker is running.
   string release_version = 190 [json_name = "release_version"]; // @gotags: `class:"public"`
 
+  // Output only. The ids of the workers directly connected to this worker.
+  repeated string directly_connected_downstream_workers = 200 [json_name = "directly_connected_downstream_workers"]; // @gotags: `class:"public"`
+
   // Output only. The available actions on this resource for the requester.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }

@@ -61,6 +61,9 @@ var (
 		action.ReadCertificateAuthority,
 		action.ReinitializeCertificateAuthority,
 	}
+	// downstreamWorkers returns a list of worker ids which are directly
+	// connected downstream of the provided worker.
+	downstreamWorkers = emptyDownstreamWorkers
 )
 
 func init() {
@@ -70,6 +73,10 @@ func init() {
 	}
 }
 
+func emptyDownstreamWorkers(context.Context, string, common.Downstreamers) []string {
+	return nil
+}
+
 // Service handles request as described by the pbs.WorkerServiceServer interface.
 type Service struct {
 	pbs.UnsafeWorkerServiceServer
@@ -77,13 +84,14 @@ type Service struct {
 	repoFn       common.ServersRepoFactory
 	workerAuthFn common.WorkerAuthRepoStorageFactory
 	iamRepoFn    common.IamRepoFactory
+	downstreams  common.Downstreamers
 }
 
 var _ pbs.WorkerServiceServer = (*Service)(nil)
 
 // NewService returns a worker service which handles worker related requests to boundary.
 func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory,
-	workerAuthFn common.WorkerAuthRepoStorageFactory,
+	workerAuthFn common.WorkerAuthRepoStorageFactory, ds common.Downstreamers,
 ) (Service, error) {
 	const op = "workers.NewService"
 	if repo == nil {
@@ -95,7 +103,7 @@ func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn c
 	if workerAuthFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing worker auth repository")
 	}
-	return Service{repoFn: repo, iamRepoFn: iamRepoFn, workerAuthFn: workerAuthFn}, nil
+	return Service{repoFn: repo, iamRepoFn: iamRepoFn, workerAuthFn: workerAuthFn, downstreams: ds}, nil
 }
 
 // ListWorkers implements the interface pbs.WorkerServiceServer.
@@ -161,7 +169,7 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
-		item, err := toProto(ctx, item, outputOpts...)
+		item, err := s.toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +211,7 @@ func (s Service) GetWorker(ctx context.Context, req *pbs.GetWorkerRequest) (*pbs
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, w, outputOpts...)
+	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +296,7 @@ func (s Service) createCommon(ctx context.Context, in *pb.Worker, act action.Typ
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, created.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, created, outputOpts...)
+	item, err := s.toProto(ctx, created, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +350,7 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, w, outputOpts...)
+	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +386,7 @@ func (s Service) AddWorkerTags(ctx context.Context, req *pbs.AddWorkerTagsReques
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
-	item, err := toProto(ctx, w, outputOpts...)
+	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -414,7 +422,7 @@ func (s Service) SetWorkerTags(ctx context.Context, req *pbs.SetWorkerTagsReques
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
-	item, err := toProto(ctx, w, outputOpts...)
+	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +458,7 @@ func (s Service) RemoveWorkerTags(ctx context.Context, req *pbs.RemoveWorkerTags
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
-	item, err := toProto(ctx, w, outputOpts...)
+	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -751,7 +759,7 @@ func certificateAuthorityToProto(in *types.RootCertificates) *pb.CertificateAuth
 	return &pb.CertificateAuthority{Certs: certs}
 }
 
-func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*pb.Worker, error) {
+func (s Service) toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*pb.Worker, error) {
 	const op = "workers.toProto"
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
@@ -765,6 +773,9 @@ func toProto(ctx context.Context, in *server.Worker, opt ...handlers.Option) (*p
 	}
 	if outputFields.Has(globals.ScopeIdField) {
 		out.ScopeId = in.GetScopeId()
+	}
+	if outputFields.Has(globals.DirectlyConnectedDownstreamWorkers) {
+		out.DirectlyConnectedDownstreamWorkers = downstreamWorkers(ctx, in.GetPublicId(), s.downstreams)
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
 		out.Description = wrapperspb.String(in.GetDescription())
