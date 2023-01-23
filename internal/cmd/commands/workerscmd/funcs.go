@@ -225,6 +225,11 @@ func (c *Command) printListTable(items []*workers.Worker) string {
 				fmt.Sprintf("    Last Status Time:        %s", item.LastStatusTime.Format(time.RFC1123)),
 			)
 		}
+		if len(item.DirectlyConnectedDownstreamWorkers) > 0 {
+			output = append(output,
+				"    Directly Connected Downstream Workers:",
+				base.WrapSlice(6, item.DirectlyConnectedDownstreamWorkers))
+		}
 
 		if len(item.AuthorizedActions) > 0 {
 			output = append(output,
@@ -329,6 +334,14 @@ func printItemTable(item *workers.Worker, resp *api.Response) string {
 				base.WrapMap(6, 2, tagMap),
 			)
 		}
+	}
+
+	if len(item.DirectlyConnectedDownstreamWorkers) > 0 {
+		ret = append(ret,
+			"",
+			"  Directly Connected Downstream Workers:",
+			base.WrapSlice(4, item.DirectlyConnectedDownstreamWorkers),
+		)
 	}
 
 	if len(item.AuthorizedActions) > 0 {

@@ -31,6 +31,7 @@ type Worker struct {
 	Type                               string              `json:"type,omitempty"`
 	ApiTags                            map[string][]string `json:"api_tags,omitempty"`
 	ReleaseVersion                     string              `json:"release_version,omitempty"`
+	DirectlyConnectedDownstreamWorkers []string            `json:"directly_connected_downstream_workers,omitempty"`
 	AuthorizedActions                  []string            `json:"authorized_actions,omitempty"`
 
 	response *api.Response

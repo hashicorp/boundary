@@ -5971,6 +5971,14 @@
           "description": "Output only. The version of the Boundary binary the worker is running.",
           "readOnly": true
         },
+        "directly_connected_downstream_workers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The ids of the workers directly connected to this worker.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

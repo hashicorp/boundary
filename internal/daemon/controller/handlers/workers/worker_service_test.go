@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -87,6 +88,14 @@ func TestGet(t *testing.T) {
 	repoFn := func() (*server.Repository, error) {
 		return repo, nil
 	}
+	oldDownstramFn := downstreamWorkers
+	t.Cleanup(func() {
+		downstreamWorkers = oldDownstramFn
+	})
+	connectedDownstreams := []string{"first", "second", "third"}
+	downstreamWorkers = func(_ context.Context, id string, _ common.Downstreamers) []string {
+		return connectedDownstreams
+	}
 
 	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kms)
 	require.NoError(t, err)
@@ -123,7 +132,8 @@ func TestGet(t *testing.T) {
 		ConfigTags: map[string]*structpb.ListValue{
 			"key": structListValue(t, "val"),
 		},
-		Type: KmsWorkerType,
+		Type:                               KmsWorkerType,
+		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 	}
 
 	var pkiWorkerKeyId string
@@ -164,7 +174,8 @@ func TestGet(t *testing.T) {
 		ConfigTags: map[string]*structpb.ListValue{
 			"config": structListValue(t, "test"),
 		},
-		Type: PkiWorkerType,
+		Type:                               PkiWorkerType,
+		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 	}
 
 	cases := []struct {
@@ -207,7 +218,7 @@ func TestGet(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn)
+			s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
 			require.NoError(t, err, "Couldn't create new worker service.")
 
 			got, err := s.GetWorker(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
@@ -235,6 +246,14 @@ func TestList(t *testing.T) {
 	repoFn := func() (*server.Repository, error) {
 		return server.NewRepository(rw, rw, kms)
 	}
+	oldDownstramFn := downstreamWorkers
+	t.Cleanup(func() {
+		downstreamWorkers = oldDownstramFn
+	})
+	connectedDownstreams := []string{"first", "second", "third"}
+	downstreamWorkers = func(_ context.Context, id string, _ common.Downstreamers) []string {
+		return connectedDownstreams
+	}
 
 	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kms)
 	require.NoError(t, err)
@@ -248,19 +267,20 @@ func TestList(t *testing.T) {
 		kmsAuthzActions := make([]string, len(testAuthorizedActions))
 		copy(kmsAuthzActions, testAuthorizedActions)
 		wantKmsWorkers = append(wantKmsWorkers, &pb.Worker{
-			Id:                    w.GetPublicId(),
-			ScopeId:               w.GetScopeId(),
-			Scope:                 &scopes.ScopeInfo{Id: w.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
-			CreatedTime:           w.CreateTime.GetTimestamp(),
-			UpdatedTime:           w.UpdateTime.GetTimestamp(),
-			Version:               w.GetVersion(),
-			Name:                  wrapperspb.String(w.GetName()),
-			AuthorizedActions:     strutil.StrListDelete(kmsAuthzActions, action.Update.String()),
-			ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
-			Address:               w.GetAddress(),
-			Type:                  KmsWorkerType,
-			LastStatusTime:        w.GetLastStatusTime().GetTimestamp(),
-			ReleaseVersion:        w.ReleaseVersion,
+			Id:                                 w.GetPublicId(),
+			ScopeId:                            w.GetScopeId(),
+			Scope:                              &scopes.ScopeInfo{Id: w.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+			CreatedTime:                        w.CreateTime.GetTimestamp(),
+			UpdatedTime:                        w.UpdateTime.GetTimestamp(),
+			Version:                            w.GetVersion(),
+			Name:                               wrapperspb.String(w.GetName()),
+			AuthorizedActions:                  strutil.StrListDelete(kmsAuthzActions, action.Update.String()),
+			ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+			Address:                            w.GetAddress(),
+			Type:                               KmsWorkerType,
+			LastStatusTime:                     w.GetLastStatusTime().GetTimestamp(),
+			ReleaseVersion:                     w.ReleaseVersion,
+			DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 		})
 	}
 
@@ -268,19 +288,20 @@ func TestList(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		w := server.TestPkiWorker(t, conn, wrap, server.WithName(fmt.Sprintf("pki-worker%d", i)))
 		wantPkiWorkers = append(wantPkiWorkers, &pb.Worker{
-			Id:                    w.GetPublicId(),
-			ScopeId:               w.GetScopeId(),
-			Scope:                 &scopes.ScopeInfo{Id: w.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
-			CreatedTime:           w.CreateTime.GetTimestamp(),
-			UpdatedTime:           w.UpdateTime.GetTimestamp(),
-			Version:               w.GetVersion(),
-			Name:                  wrapperspb.String(w.GetName()),
-			ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
-			AuthorizedActions:     testAuthorizedActions,
-			Address:               w.GetAddress(),
-			Type:                  PkiWorkerType,
-			LastStatusTime:        w.GetLastStatusTime().GetTimestamp(),
-			ReleaseVersion:        w.ReleaseVersion,
+			Id:                                 w.GetPublicId(),
+			ScopeId:                            w.GetScopeId(),
+			Scope:                              &scopes.ScopeInfo{Id: w.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+			CreatedTime:                        w.CreateTime.GetTimestamp(),
+			UpdatedTime:                        w.UpdateTime.GetTimestamp(),
+			Version:                            w.GetVersion(),
+			Name:                               wrapperspb.String(w.GetName()),
+			ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+			AuthorizedActions:                  testAuthorizedActions,
+			Address:                            w.GetAddress(),
+			Type:                               PkiWorkerType,
+			LastStatusTime:                     w.GetLastStatusTime().GetTimestamp(),
+			ReleaseVersion:                     w.ReleaseVersion,
+			DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 		})
 	}
 
@@ -330,7 +351,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn)
+			s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
 			require.NoError(err, "Couldn't create new worker service.")
 
 			// Test with a non-anon user
@@ -383,7 +404,7 @@ func TestDelete(t *testing.T) {
 		return workerAuthRepo, nil
 	}
 
-	s, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
+	s, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(t, err, "Error when getting new worker service.")
 
 	w := server.TestKmsWorker(t, conn, wrap)
@@ -433,7 +454,6 @@ func TestDelete(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -455,6 +475,14 @@ func TestUpdate(t *testing.T) {
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return workerAuthRepo, nil
 	}
+	oldDownstramFn := downstreamWorkers
+	t.Cleanup(func() {
+		downstreamWorkers = oldDownstramFn
+	})
+	connectedDownstreams := []string{"first", "second", "third"}
+	downstreamWorkers = func(_ context.Context, id string, _ common.Downstreamers) []string {
+		return connectedDownstreams
+	}
 
 	wkr := server.TestPkiWorker(t, conn, wrapper,
 		server.WithName("default"),
@@ -473,7 +501,7 @@ func TestUpdate(t *testing.T) {
 	toMerge := &pbs.UpdateWorkerRequest{
 		Id: wkr.GetPublicId(),
 	}
-	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
+	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(t, err)
 	expectedScope := &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
 
@@ -496,16 +524,17 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                    wkr.GetPublicId(),
-					ScopeId:               wkr.GetScopeId(),
-					Scope:                 expectedScope,
-					Name:                  wrapperspb.String("name"),
-					Description:           wrapperspb.String("desc"),
-					CreatedTime:           wkr.GetCreateTime().GetTimestamp(),
-					ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
-					LastStatusTime:        wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:     testAuthorizedActions,
-					Type:                  PkiWorkerType,
+					Id:                                 wkr.GetPublicId(),
+					ScopeId:                            wkr.GetScopeId(),
+					Scope:                              expectedScope,
+					Name:                               wrapperspb.String("name"),
+					Description:                        wrapperspb.String("desc"),
+					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions:                  testAuthorizedActions,
+					Type:                               PkiWorkerType,
+					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 				},
 			},
 		},
@@ -522,16 +551,17 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                    wkr.GetPublicId(),
-					ScopeId:               wkr.GetScopeId(),
-					Scope:                 expectedScope,
-					Name:                  wrapperspb.String("name"),
-					Description:           wrapperspb.String("desc"),
-					ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
-					CreatedTime:           wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:        wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:     testAuthorizedActions,
-					Type:                  PkiWorkerType,
+					Id:                                 wkr.GetPublicId(),
+					ScopeId:                            wkr.GetScopeId(),
+					Scope:                              expectedScope,
+					Name:                               wrapperspb.String("name"),
+					Description:                        wrapperspb.String("desc"),
+					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions:                  testAuthorizedActions,
+					Type:                               PkiWorkerType,
+					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 				},
 			},
 		},
@@ -591,15 +621,16 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                    wkr.GetPublicId(),
-					ScopeId:               wkr.GetScopeId(),
-					Scope:                 expectedScope,
-					Description:           wrapperspb.String("default"),
-					ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
-					CreatedTime:           wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:        wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:     testAuthorizedActions,
-					Type:                  PkiWorkerType,
+					Id:                                 wkr.GetPublicId(),
+					ScopeId:                            wkr.GetScopeId(),
+					Scope:                              expectedScope,
+					Description:                        wrapperspb.String("default"),
+					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions:                  testAuthorizedActions,
+					Type:                               PkiWorkerType,
+					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 				},
 			},
 		},
@@ -615,15 +646,16 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                    wkr.GetPublicId(),
-					ScopeId:               wkr.GetScopeId(),
-					Scope:                 expectedScope,
-					Name:                  wrapperspb.String("default"),
-					CreatedTime:           wkr.GetCreateTime().GetTimestamp(),
-					ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
-					LastStatusTime:        wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:     testAuthorizedActions,
-					Type:                  PkiWorkerType,
+					Id:                                 wkr.GetPublicId(),
+					ScopeId:                            wkr.GetScopeId(),
+					Scope:                              expectedScope,
+					Name:                               wrapperspb.String("default"),
+					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions:                  testAuthorizedActions,
+					Type:                               PkiWorkerType,
+					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 				},
 			},
 		},
@@ -640,16 +672,17 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                    wkr.GetPublicId(),
-					ScopeId:               wkr.GetScopeId(),
-					Scope:                 expectedScope,
-					Name:                  wrapperspb.String("updated"),
-					Description:           wrapperspb.String("default"),
-					CreatedTime:           wkr.GetCreateTime().GetTimestamp(),
-					ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
-					LastStatusTime:        wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:     testAuthorizedActions,
-					Type:                  PkiWorkerType,
+					Id:                                 wkr.GetPublicId(),
+					ScopeId:                            wkr.GetScopeId(),
+					Scope:                              expectedScope,
+					Name:                               wrapperspb.String("updated"),
+					Description:                        wrapperspb.String("default"),
+					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions:                  testAuthorizedActions,
+					Type:                               PkiWorkerType,
+					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 				},
 			},
 		},
@@ -666,16 +699,17 @@ func TestUpdate(t *testing.T) {
 			},
 			res: &pbs.UpdateWorkerResponse{
 				Item: &pb.Worker{
-					Id:                    wkr.GetPublicId(),
-					ScopeId:               wkr.GetScopeId(),
-					Scope:                 expectedScope,
-					Name:                  wrapperspb.String("default"),
-					ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
-					Description:           wrapperspb.String("notignored"),
-					CreatedTime:           wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:        wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:     testAuthorizedActions,
-					Type:                  PkiWorkerType,
+					Id:                                 wkr.GetPublicId(),
+					ScopeId:                            wkr.GetScopeId(),
+					Scope:                              expectedScope,
+					Name:                               wrapperspb.String("default"),
+					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+					Description:                        wrapperspb.String("notignored"),
+					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+					AuthorizedActions:                  testAuthorizedActions,
+					Type:                               PkiWorkerType,
+					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 				},
 			},
 		},
@@ -850,7 +884,6 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestUpdate_KMS(t *testing.T) {
-	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -880,7 +913,7 @@ func TestUpdate_KMS(t *testing.T) {
 	toMerge := &pbs.UpdateWorkerRequest{
 		Id: wkr.GetPublicId(),
 	}
-	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
+	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -936,7 +969,6 @@ func TestUpdate_KMS(t *testing.T) {
 }
 
 func TestUpdate_BadVersion(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -961,7 +993,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 		return repo, nil
 	}
 
-	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
+	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	wkr := server.TestPkiWorker(t, conn, wrapper)
@@ -980,7 +1012,6 @@ func TestUpdate_BadVersion(t *testing.T) {
 }
 
 func TestCreateWorkerLed(t *testing.T) {
-	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	testRootWrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, testRootWrapper)
@@ -1000,7 +1031,7 @@ func TestCreateWorkerLed(t *testing.T) {
 		return workerAuthRepo, nil
 	}
 
-	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn)
+	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(t, err, "Error when getting new worker service.")
 
 	// Get an initial set of authorized node credentials
@@ -1252,7 +1283,7 @@ func TestCreateWorkerLed(t *testing.T) {
 				repoFn := func() (*server.Repository, error) {
 					return server.NewRepository(rw, &db.Db{}, testKms)
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1285,7 +1316,7 @@ func TestCreateWorkerLed(t *testing.T) {
 						return server.NewRepository(rw, rw, testKms)
 					}
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1366,7 +1397,6 @@ func TestCreateWorkerLed(t *testing.T) {
 }
 
 func TestCreateControllerLed(t *testing.T) {
-	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	testRootWrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, testRootWrapper)
@@ -1386,7 +1416,7 @@ func TestCreateControllerLed(t *testing.T) {
 		return rootStorage, nil
 	}
 
-	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn)
+	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil)
 	require.NoError(t, err, "Error when getting new worker service.")
 
 	// Get an initial set of authorized node credentials
@@ -1600,7 +1630,7 @@ func TestCreateControllerLed(t *testing.T) {
 				repoFn := func() (*server.Repository, error) {
 					return server.NewRepository(rw, &db.Db{}, testKms)
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1632,7 +1662,7 @@ func TestCreateControllerLed(t *testing.T) {
 						return server.NewRepository(rw, rw, testKms)
 					}
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1714,7 +1744,6 @@ func TestCreateControllerLed(t *testing.T) {
 }
 
 func TestService_AddWorkerTags(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
@@ -1735,7 +1764,7 @@ func TestService_AddWorkerTags(t *testing.T) {
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return workerAuthRepo, nil
 	}
-	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn)
+	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(err)
 	worker := server.TestKmsWorker(t, conn, wrapper)
 
@@ -1864,7 +1893,6 @@ func TestService_AddWorkerTags(t *testing.T) {
 }
 
 func TestService_SetWorkerTags(t *testing.T) {
-	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -1884,7 +1912,7 @@ func TestService_SetWorkerTags(t *testing.T) {
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return workerAuthRepo, nil
 	}
-	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn)
+	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(err)
 	worker := server.TestKmsWorker(t, conn, wrapper)
 
@@ -2016,7 +2044,6 @@ func TestService_SetWorkerTags(t *testing.T) {
 }
 
 func TestService_RemoveWorkerTags(t *testing.T) {
-	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -2036,7 +2063,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return workerAuthRepo, nil
 	}
-	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn)
+	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(err)
 	worker := server.TestKmsWorker(t, conn, wrapper)
 
@@ -2209,7 +2236,6 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 }
 
 func TestReadCertificateAuthority(t *testing.T) {
-	t.Parallel()
 	require, assert := require.New(t), assert.New(t)
 	ctx := context.Background()
 	wrapper := db.TestWrapper(t)
@@ -2236,7 +2262,7 @@ func TestReadCertificateAuthority(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(err)
 
-	testSrv, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
+	testSrv, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(err, "Error when getting new worker service.")
 
 	tests := []struct {
@@ -2286,7 +2312,6 @@ func TestReadCertificateAuthority(t *testing.T) {
 }
 
 func TestReinitializeCertificateAuthority(t *testing.T) {
-	t.Parallel()
 	require, assert := require.New(t), assert.New(t)
 	ctx := context.Background()
 	wrapper := db.TestWrapper(t)
@@ -2313,7 +2338,7 @@ func TestReinitializeCertificateAuthority(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(err)
 
-	testSrv, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn)
+	testSrv, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(err, "Error when getting new worker service.")
 
 	tests := []struct {

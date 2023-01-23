@@ -93,4 +93,5 @@ const (
 	KeyVersionIdField                           = "key_version_id"
 	CompletedCountField                         = "completed_count"
 	TotalCountField                             = "total_count"
+	DirectlyConnectedDownstreamWorkers          = "directly_connected_downstream_workers"
 )
