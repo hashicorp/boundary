@@ -55,14 +55,14 @@ TCP targets have the following additional attributes:
   A boolean expression to [filter][] which egress workers can handle sessions
   for this target.
   Egress worker filters determine which workers are used to access targets.
-  You can configure an egress filter to enable [multi-hop](/docs/configuration/worker/pki-worker#multi-hop-workershcp-only) connections.
+  You can configure an egress filter to enable [multi-hop](/boundary/docs/configuration/worker/pki-worker#multi-hop-workershcp-only) connections.
   If you do not configure an egress filter, then Boundary uses a single worker to connect to the controller.
 
 - `ingress_worker_filter` - (optional) <sup>HCP Only</sup>
   A boolean expression to [filter][] which ingress workers can handle sessions
   for this target.
   Ingress worker filters determine which workers you connect with to initiate a session.
-  If you do not configure an ingress filter, Boundary selects an HCP worker for the session.
+  If you do not configure an ingress filter, Boundary selects a frontline worker for the session. A frontline worker is any worker directly connected to the control plane; for HCP Boundary this will be an HCP worker.
 
 - `session_connection_limit` - (required)
   The cumulative number of TCP connections allowed during a session.
@@ -97,14 +97,14 @@ SSH targets have the following additional attributes:
   A boolean expression to [filter][] which egress workers can handle sessions
   for this target.
   Egress worker filters determine which workers are used to access targets.
-  You can configure an egress filter to enable [multi-hop](/docs/configuration/worker/pki-worker#multi-hop-workershcp-only) connections.
+  You can configure an egress filter to enable [multi-hop](/boundary/docs/configuration/worker/pki-worker#multi-hop-workershcp-only) connections.
   If you do not configure an egress filter, then Boundary uses a single worker to connect to the controller.
 
 - `ingress_worker_filter` - (optional) <sup>HCP Only</sup>
   A boolean expression to [filter][] which ingress workers can handle sessions
   for this target.
   Ingress worker filters determine which workers you connect with to initiate a session.
-  If you do not configure an ingress filter, Boundary selects an HCP worker for the session.
+  If you do not configure an ingress filter, Boundary selects a frontline worker for the session. A frontline worker is any worker directly connected to the control plane; for HCP Boundary this will be an HCP worker.
 
 - `session_connection_limit` - (required)
   The cumulative number of TCP connections allowed during a session.
