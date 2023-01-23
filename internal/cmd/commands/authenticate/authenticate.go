@@ -47,6 +47,10 @@ func (c *Command) Help() string {
 		"",
 		"      $ boundary authenticate oidc -auth-method-id amoidc_1234567890",
 		"",
+		"    Authenticate with an LDAP auth method:",
+		"",
+		"      $ boundary authenticate ldap -auth-method-id amldap_1234567890",
+		"",
 		"  Please see the auth method subcommand help for detailed usage information.",
 	}) + c.Flags().Help()
 }

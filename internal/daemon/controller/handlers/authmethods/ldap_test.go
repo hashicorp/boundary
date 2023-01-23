@@ -594,8 +594,8 @@ func Test_UpdateLdap(t *testing.T) {
 				},
 			},
 			res:         nil,
-			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
-			errContains: "must specify a group dn when enabling groups but not using token groups",
+			wantErr:     true,
+			errContains: "have a configured group_dn when enable_groups = true and use_token_groups = false",
 		},
 		{
 			name: "update-group-search-config",

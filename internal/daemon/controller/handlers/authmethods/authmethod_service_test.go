@@ -360,7 +360,7 @@ func TestList(t *testing.T) {
 		return cp
 	}
 
-	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), []string{"ldaps://ldap1"})
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), []string{"ldaps://ldap1"}, ldap.WithOperationalState(ctx, ldap.ActivePublicState))
 	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 		Id:          ldapAm.GetPublicId(),
 		ScopeId:     oWithAuthMethods.GetPublicId(),
@@ -371,7 +371,7 @@ func TestList(t *testing.T) {
 		Type:        ldap.Subtype.String(),
 		Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 			LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-				State: string(ldap.InactiveState),
+				State: string(ldap.ActivePublicState),
 				Urls:  []string{"ldaps://ldap1"},
 			},
 		},
