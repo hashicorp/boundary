@@ -41,10 +41,6 @@ func NewAuthMethod(ctx context.Context, scopeId string, opt ...Option) (*AuthMet
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	if opts.withEnableGroups && !opts.withUseTokenGroups && opts.withGroupDn == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "you must specify a group dn when enabling groups but not using token groups")
-	}
-
 	a := &AuthMethod{
 		AuthMethod: &store.AuthMethod{
 			ScopeId:              scopeId,
