@@ -62,7 +62,8 @@ TCP targets have the following additional attributes:
   A boolean expression to [filter][] which ingress workers can handle sessions
   for this target.
   Ingress worker filters determine which workers you connect with to initiate a session.
-  If you do not configure an ingress filter, Boundary selects a frontline worker for the session. A frontline worker is any worker directly connected to the control plane; for HCP Boundary this will be an HCP worker.
+  If you do not configure an ingress filter, Boundary selects a front line worker for the session.
+  A front line worker is any worker directly connected to the control plane; for HCP Boundary this will be an HCP worker.
 
 - `session_connection_limit` - (required)
   The cumulative number of TCP connections allowed during a session.
@@ -104,7 +105,8 @@ SSH targets have the following additional attributes:
   A boolean expression to [filter][] which ingress workers can handle sessions
   for this target.
   Ingress worker filters determine which workers you connect with to initiate a session.
-  If you do not configure an ingress filter, Boundary selects a frontline worker for the session. A frontline worker is any worker directly connected to the control plane; for HCP Boundary this will be an HCP worker.
+  If you do not configure an ingress filter, Boundary selects a front line worker for the session.
+  A front line worker is any worker directly connected to the control plane; for HCP Boundary this will be an HCP worker.
 
 - `session_connection_limit` - (required)
   The cumulative number of TCP connections allowed during a session.
