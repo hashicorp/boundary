@@ -16,6 +16,7 @@ import (
 const (
 	DefaultEmailAttribute    = "email"
 	DefaultFullNameAttribute = "fullName"
+	DefaultRequestTimeout    = 5 // seconds
 )
 
 // Authenticate authenticates loginName and password via the auth method's
@@ -72,6 +73,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 		ClientTLSCert:         am.ClientCertificate,
 		BindDN:                am.BindDn,
 		BindPassword:          am.BindPassword,
+		RequestTimeout:        DefaultRequestTimeout,
 	})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to initialize ldap client with auth method retrieved from database"))

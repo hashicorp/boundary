@@ -5,6 +5,7 @@ package authmethods
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/url"
 	"strings"
@@ -534,7 +535,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResult
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	ll, err := ldapRepo.ListAuthMethods(ctx, scopeIds)
+	ll, err := ldapRepo.ListAuthMethods(ctx, scopeIds, ldap.WithUnauthenticatedUser(ctx, reqCtx.UserId == globals.AnonymousUserId))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -899,8 +900,8 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 			Urls:                     i.GetUrls(),
 			EnableGroups:             i.GetEnableGroups(),
 			Certificates:             i.GetCertificates(),
-			ClientCertificateKeyHmac: string(i.GetClientCertificateKeyHmac()),
-			BindPasswordHmac:         string(i.GetBindPasswordHmac()),
+			ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(i.GetClientCertificateKeyHmac()),
+			BindPasswordHmac:         base64.RawURLEncoding.EncodeToString(i.GetBindPasswordHmac()),
 			UseTokenGroups:           i.GetUseTokenGroups(),
 		}
 		if i.GetUpnDomain() != "" {
@@ -1412,6 +1413,14 @@ func transformAuthenticateRequestAttributes(msg proto.Message) error {
 			}
 		default:
 			return fmt.Errorf("%s: unknown command %q", op, authRequest.GetCommand())
+		}
+	case ldap.Subtype:
+		newAttrs := &pbs.LdapLoginAttributes{}
+		if err := handlers.StructToProto(attrs, newAttrs); err != nil {
+			return err
+		}
+		authRequest.Attrs = &pbs.AuthenticateRequest_LdapLoginAttributes{
+			LdapLoginAttributes: newAttrs,
 		}
 	default:
 		return &subtypes.UnknownSubtypeIDError{

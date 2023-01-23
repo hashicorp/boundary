@@ -170,6 +170,21 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:     []string{"update", "change-state"},
 			NeedsSubtypeInCreate: true,
 		},
+		{
+			ResourceType:         resource.AuthMethod.String(),
+			Pkg:                  "authmethods",
+			StdActions:           []string{"create", "update"},
+			SubActionPrefix:      "ldap",
+			HasExtraCommandVars:  true,
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+		},
 	},
 	"authtokens": {
 		{

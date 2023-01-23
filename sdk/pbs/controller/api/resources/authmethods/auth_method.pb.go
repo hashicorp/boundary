@@ -839,8 +839,12 @@ type LdapAuthMethodAttributes struct {
 	// user_attr (optional) is the attribute on user attribute entry matching the
 	// username passed when authenticating.  Examples: cn, uid
 	UserAttr *wrapperspb.StringValue `protobuf:"bytes,90,opt,name=user_attr,proto3" json:"user_attr,omitempty" class:"public"` // @gotags: `class:"public"`
-	// user_attr (optional) is the attribute on user attribute entry matching the
-	// username passed when authenticating.  Examples: cn, uid
+	// user_filter (optional) is a go template used to construct a LDAP user
+	// search filter. The template can access the following context variables:
+	// [UserAttr, Username]. The default userfilter is
+	// ({{.UserAttr}}={{.Username}}) or
+	// (userPrincipalName={{.Username}}@UPNDomain) if the upndomain parameter is
+	// set.
 	UserFilter *wrapperspb.StringValue `protobuf:"bytes,100,opt,name=user_filter,proto3" json:"user_filter,omitempty" class:"public"` // @gotags: `class:"public"`
 	// enable_groups if true, an authenticated user's groups will be found during
 	// authentication. Defaults to false.

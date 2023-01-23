@@ -110,8 +110,8 @@ message AuthMethod {
     that: "attributes.user_dn"
   }];
 
-  // user_attr (optional) is the attribute on user attribute entry matching the
-  // username passed when authenticating.  Examples: cn, uid
+  // user_attr (optional) is the attribute on user's entry matching the username
+  // passed when authenticating.  Examples: cn, uid
   // @inject_tag: `gorm:"-"`
   string user_attr = 160 [(custom_options.v1.mask_mapping) = {
     this: "UserAttr"
@@ -138,7 +138,7 @@ message AuthMethod {
     that: "attributes.enable_groups"
   }];
 
-  // group_dn (optional) is the base DN under which to perform user search.
+  // group_dn (optional) is the base DN under which to perform group search.
   // Example: ou=Groups,dc=example,dc=com
   //
   // Note: there is no default, so no base dn will be used for group searches if
@@ -235,6 +235,7 @@ message AuthMethod {
   // use_token_groups if true, use the Active Directory tokenGroups constructed
   // attribute of the user to find the group memberships. This will find all
   // security groups including nested ones.
+  // @inject_tag: `gorm:"not_null;default:false"`
   bool use_token_groups = 290 [(custom_options.v1.mask_mapping) = {
     this: "UseTokenGroups"
     that: "attributes.use_token_groups"
