@@ -49,6 +49,29 @@ func TestTransformAuthenticateRequestAttributes(t *testing.T) {
 			},
 		},
 		{
+			name: "ldap-attributes",
+			input: &pbs.AuthenticateRequest{
+				AuthMethodId: "amldap_test",
+				Attrs: &pbs.AuthenticateRequest_Attributes{
+					Attributes: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"login_name": structpb.NewStringValue("login-name"),
+							"password":   structpb.NewStringValue("password"),
+						},
+					},
+				},
+			},
+			expected: &pbs.AuthenticateRequest{
+				AuthMethodId: "amldap_test",
+				Attrs: &pbs.AuthenticateRequest_LdapLoginAttributes{
+					LdapLoginAttributes: &pbs.LdapLoginAttributes{
+						LoginName: "login-name",
+						Password:  "password",
+					},
+				},
+			},
+		},
+		{
 			name: "oidc-start-attributes",
 			input: &pbs.AuthenticateRequest{
 				AuthMethodId: "amoidc_test",
@@ -205,6 +228,20 @@ func TestTransformAuthenticateRequestAttributesErrors(t *testing.T) {
 		t.Parallel()
 		require.Error(t, transformAuthenticateRequestAttributes(&pbs.AuthenticateRequest{
 			AuthMethodId: "apw_test",
+			Attrs: &pbs.AuthenticateRequest_Attributes{
+				Attributes: &structpb.Struct{
+					Fields: map[string]*structpb.Value{
+						"field1": structpb.NewBoolValue(true),
+						"field2": structpb.NewStringValue("value2"),
+					},
+				},
+			},
+		}))
+	})
+	t.Run("invalid-ldap-attributes", func(t *testing.T) {
+		t.Parallel()
+		require.Error(t, transformAuthenticateRequestAttributes(&pbs.AuthenticateRequest{
+			AuthMethodId: "amldap_test",
 			Attrs: &pbs.AuthenticateRequest_Attributes{
 				Attributes: &structpb.Struct{
 					Fields: map[string]*structpb.Value{

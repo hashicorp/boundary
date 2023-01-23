@@ -88,8 +88,8 @@ type AuthMethod struct {
 	// Example: ou=Users,dc=example,dc=com
 	// @inject_tag: `gorm:"-"`
 	UserDn string `protobuf:"bytes,150,opt,name=user_dn,json=userDn,proto3" json:"user_dn,omitempty" gorm:"-"`
-	// user_attr (optional) is the attribute on user attribute entry matching the
-	// username passed when authenticating.  Examples: cn, uid
+	// user_attr (optional) is the attribute on user's entry matching the username
+	// passed when authenticating.  Examples: cn, uid
 	// @inject_tag: `gorm:"-"`
 	UserAttr string `protobuf:"bytes,160,opt,name=user_attr,json=userAttr,proto3" json:"user_attr,omitempty" gorm:"-"`
 	// user_filter (optional) is a go template used to construct a LDAP user
@@ -104,7 +104,7 @@ type AuthMethod struct {
 	// authentication. Defaults to false.
 	// @inject_tag: `gorm:"not_null;default:false"`
 	EnableGroups bool `protobuf:"varint,175,opt,name=enable_groups,json=enableGroups,proto3" json:"enable_groups,omitempty" gorm:"not_null;default:false"`
-	// group_dn (optional) is the base DN under which to perform user search.
+	// group_dn (optional) is the base DN under which to perform group search.
 	// Example: ou=Groups,dc=example,dc=com
 	//
 	// Note: there is no default, so no base dn will be used for group searches if
@@ -166,7 +166,8 @@ type AuthMethod struct {
 	// use_token_groups if true, use the Active Directory tokenGroups constructed
 	// attribute of the user to find the group memberships. This will find all
 	// security groups including nested ones.
-	UseTokenGroups bool `protobuf:"varint,290,opt,name=use_token_groups,json=useTokenGroups,proto3" json:"use_token_groups,omitempty"`
+	// @inject_tag: `gorm:"not_null;default:false"`
+	UseTokenGroups bool `protobuf:"varint,290,opt,name=use_token_groups,json=useTokenGroups,proto3" json:"use_token_groups,omitempty" gorm:"not_null;default:false"`
 	// account_attribute_maps are optional attribute maps from custom attributes
 	// to the standard attributes of fullname and email.  These maps are
 	// represented as key=value where the key equals the from_attribute and the

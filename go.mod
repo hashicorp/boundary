@@ -92,7 +92,7 @@ require github.com/hashicorp/go-dbw v0.0.0-20220910135738-ed4505749995
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/cenkalti/backoff/v4 v4.1.3
-	github.com/hashicorp/cap/ldap v0.0.0-20230105183602-369604a2722b
+	github.com/hashicorp/cap/ldap v0.0.0-20230123181313-9c0fb924b0d9
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c893099f13
 	github.com/hashicorp/go-version v1.3.0
 	github.com/hashicorp/nodeenrollment v0.1.18
