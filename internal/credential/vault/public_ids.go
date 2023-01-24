@@ -28,7 +28,7 @@ const (
 
 	Subtype                      = subtypes.Subtype("vault")
 	GenericLibrarySubtype        = subtypes.Subtype("vault-generic")
-	SSHCertificateLibrarySubtype = subtypes.Subtype("vault-ssh-cert")
+	SSHCertificateLibrarySubtype = subtypes.Subtype("vault-ssh-certificate")
 )
 
 func newCredentialStoreId() (string, error) {
