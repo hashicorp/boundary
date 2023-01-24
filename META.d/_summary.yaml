@@ -1,0 +1,8 @@
+---
+schema: 1.1
+partition: secure
+category: product
+summary:
+  owner: team-boundary
+  description: The repository holding the Boundary OSS backend code and releases
+  visibility: external
