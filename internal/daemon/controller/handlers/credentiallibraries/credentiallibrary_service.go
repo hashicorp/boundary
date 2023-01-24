@@ -25,6 +25,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 const (
@@ -708,10 +709,14 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 				attrs.KeyId = wrapperspb.String(vaultIn.GetKeyId())
 			}
 			if vaultIn.GetCriticalOptions() != "" {
-				attrs.CriticalOptions = wrapperspb.String(vaultIn.GetCriticalOptions())
+				co := make(map[string]string)
+				json.Unmarshal([]byte(vaultIn.GetCriticalOptions()), &co)
+				attrs.CriticalOptions = co
 			}
 			if vaultIn.GetExtensions() != "" {
-				attrs.Extensions = wrapperspb.String(vaultIn.GetExtensions())
+				e := make(map[string]string)
+				json.Unmarshal([]byte(vaultIn.GetExtensions()), &e)
+				attrs.Extensions = e
 			}
 			out.Attrs = &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 				VaultSshCertificateCredentialLibraryAttributes: attrs,
