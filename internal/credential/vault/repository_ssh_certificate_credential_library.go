@@ -143,8 +143,8 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 		case strings.EqualFold(keyBitsField, f):
 		case strings.EqualFold(ttlField, f):
 		case strings.EqualFold(keyIdField, f):
-		case strings.EqualFold(criticalOptionsField, f):
-		case strings.EqualFold(extensionsField, f):
+		case strings.EqualFold(CriticalOptionsField, f):
+		case strings.EqualFold(ExtensionsField, f):
 
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
@@ -161,8 +161,8 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 			keyBitsField:         l.KeyBits,
 			ttlField:             l.Ttl,
 			keyIdField:           l.KeyId,
-			criticalOptionsField: l.CriticalOptions,
-			extensionsField:      l.Extensions,
+			CriticalOptionsField: l.CriticalOptions,
+			ExtensionsField:      l.Extensions,
 		},
 		fieldMaskPaths,
 		[]string{keyBitsField},

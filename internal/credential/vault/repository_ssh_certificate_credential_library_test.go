@@ -435,7 +435,7 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
-		badId, err := newCredentialLibraryId()
+		badId, err := newSSHCertificateCredentialLibraryId()
 		assert.NoError(err)
 		require.NotNil(badId)
 		// test
@@ -896,7 +896,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeCriticalOptions("update-options"),
-			masks: []string{criticalOptionsField},
+			masks: []string{CriticalOptionsField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					CriticalOptions: "update-options",
@@ -916,7 +916,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 				},
 			},
 			chgFn: changeExtensions("update-extensions"),
-			masks: []string{extensionsField},
+			masks: []string{ExtensionsField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					Extensions: "update-extensions",

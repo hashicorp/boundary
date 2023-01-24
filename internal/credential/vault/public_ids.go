@@ -8,7 +8,13 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix, CredentialLibraryPrefix, DynamicCredentialPrefix, SSHCertificateCredentialLibraryPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix, DynamicCredentialPrefix); err != nil {
+		panic(err)
+	}
+	if err := subtypes.Register(credential.Domain, GenericLibrarySubtype, CredentialLibraryPrefix); err != nil {
+		panic(err)
+	}
+	if err := subtypes.Register(credential.Domain, SSHCertificateLibrarySubtype, SSHCertificateCredentialLibraryPrefix); err != nil {
 		panic(err)
 	}
 }
@@ -20,7 +26,9 @@ const (
 	DynamicCredentialPrefix               = "cdvlt"
 	SSHCertificateCredentialLibraryPrefix = "clvsclt"
 
-	Subtype = subtypes.Subtype("vault")
+	Subtype                      = subtypes.Subtype("vault")
+	GenericLibrarySubtype        = subtypes.Subtype("vault-generic")
+	SSHCertificateLibrarySubtype = subtypes.Subtype("vault-ssh-certificate")
 )
 
 func newCredentialStoreId() (string, error) {
