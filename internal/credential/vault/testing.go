@@ -140,10 +140,10 @@ func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, stor
 	return libs
 }
 
-// TestSSHCertificateCredentialLibraries creates count number of vault credential
-// libraries in the provided DB with the provided store id. If any errors
-// are encountered during the creation of the credential libraries, the
-// test will fail.
+// TestSSHCertificateCredentialLibraries creates count number of vault ssh
+// certificate credential libraries in the provided DB with the provided store
+// id. If any errors are encountered during the creation of the credential
+// libraries, the test will fail.
 func TestSSHCertificateCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*SSHCertificateCredentialLibrary {
 	t.Helper()
 	assert, require := assert.New(t), require.New(t)
@@ -151,7 +151,7 @@ func TestSSHCertificateCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping
 	var libs []*SSHCertificateCredentialLibrary
 
 	for i := 0; i < count; i++ {
-		lib, err := NewSSHCertificateCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), "username", withKeyType(KeyTypeEd25519))
+		lib, err := NewSSHCertificateCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), "username", WithKeyType(KeyTypeEd25519))
 		assert.NoError(err)
 		require.NotNil(lib)
 		id, err := newSSHCertificateCredentialLibraryId()

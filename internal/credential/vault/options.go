@@ -182,42 +182,45 @@ func WithMappingOverride(m MappingOverride) Option {
 	}
 }
 
-// WithKeyType provides an optional description.
-func withKeyType(t string) Option {
+// WithKeyType provides an optional ssh private key type to use
+// with a ssh certificate credential library. Must be rsa, ed25519, or ecdsa.
+func WithKeyType(t string) Option {
 	return func(o *options) {
 		o.withKeyType = t
 	}
 }
 
-// WithKeyBits provides an optional description.
+// WithKeyBits provides an optional number of bits used to generate an ssh private key.
 func WithKeyBits(b uint32) Option {
 	return func(o *options) {
 		o.withKeyBits = b
 	}
 }
 
-// WithTtl provides an optional description.
+// WithTtl provides an optional requested time to live for a generated ssh certificate.
 func WithTtl(t string) Option {
 	return func(o *options) {
-		o.withKeyId = t
+		o.withTtl = t
 	}
 }
 
-// WithKeyId provides an optional description.
+// WithKeyId provides an optional key id for a created certificate.
 func WithKeyId(i string) Option {
 	return func(o *options) {
 		o.withKeyId = i
 	}
 }
 
-// WithCriticalOptions provides an optional description.
+// WithCriticalOptions provides an optional map of the critical options
+// that the certificate should be signed for.
 func WithCriticalOptions(s string) Option {
 	return func(o *options) {
 		o.withCriticalOptions = s
 	}
 }
 
-// WithExtensions provides a map of the extensions that the certificate should be signed for.
+// WithExtensions provides a optional map of the extensions
+// that the certificate should be signed for.
 func WithExtensions(s string) Option {
 	return func(o *options) {
 		o.withExtensions = s

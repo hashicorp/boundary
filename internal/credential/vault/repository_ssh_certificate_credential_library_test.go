@@ -435,7 +435,7 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
-		badId, err := newCredentialLibraryId()
+		badId, err := newSSHCertificateCredentialLibraryId()
 		assert.NoError(err)
 		require.NotNil(badId)
 		// test
