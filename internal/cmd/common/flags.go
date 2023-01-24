@@ -139,6 +139,11 @@ type CombinedSliceFlagValuePopulationInput struct {
 	// combination method, e.g. "attr" will be used to build "string-attr"; also
 	// used for generating help texts
 	PiecewisePopulationInputBaseName string
+
+	// If ProtoCompat is true, the key will be validated against proto3 syntax
+	// requirements for identifiers. If the string is split via KeyDelimiter, each
+	// segment will be evaluated independently.
+	PiecewiseNoProtoCompat bool
 }
 
 func PopulateCombinedSliceFlagValue(input CombinedSliceFlagValuePopulationInput) {
@@ -163,7 +168,7 @@ func PopulateCombinedSliceFlagValue(input CombinedSliceFlagValuePopulationInput)
 				Target:         input.PiecewisePopulationFlag,
 				KvSplit:        true,
 				KeyDelimiter:   &keyDelimiter,
-				ProtoCompatKey: true,
+				ProtoCompatKey: !input.PiecewiseNoProtoCompat,
 				KeyOnlyAllowed: true,
 				Usage: fmt.Sprintf(
 					"A key=value pair to add to the request's %s map. "+
