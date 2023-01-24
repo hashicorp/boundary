@@ -2,6 +2,7 @@ package credentiallibraries
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -33,6 +34,11 @@ const (
 	httpMethodField            = "attributes.http_method"
 	httpRequestBodyField       = "attributes.http_request_body"
 	credentialMappingPathField = "credential_mapping_overrides"
+	sshCertUsernameField       = "attributes.username"
+	keyTypeField               = "attributes.key_type"
+	keyBitsField               = "attributes.key_bits"
+	criticalOptionsField       = "attributes.critical_options"
+	extensionsField            = "attributes.extensions"
 	domain                     = "credential"
 )
 
@@ -45,7 +51,8 @@ const (
 )
 
 var (
-	maskManager handlers.MaskManager
+	maskManager        handlers.MaskManager
+	sshCertMaskManager handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -62,12 +69,28 @@ var (
 		action.Create,
 		action.List,
 	}
+
+	validCredentialTypesVaultGeneric = []credential.Type{
+		credential.UsernamePasswordType,
+		credential.SshPrivateKeyType,
+		credential.UnspecifiedType,
+	}
+
+	validKeyTypes = []string{
+		vault.KeyTypeEcdsa,
+		vault.KeyTypeEd25519,
+		vault.KeyTypeRsa,
+	}
 )
 
 func init() {
 	var err error
 	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.CredentialLibrary{}},
 		handlers.MaskSource{&pb.CredentialLibrary{}, &pb.VaultCredentialLibraryAttributes{}}); err != nil {
+		panic(err)
+	}
+	if sshCertMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.SSHCertificateCredentialLibrary{}},
+		handlers.MaskSource{&pb.CredentialLibrary{}, &pb.VaultSSHCertificateCredentialLibraryAttributes{}}); err != nil {
 		panic(err)
 	}
 }
@@ -242,11 +265,23 @@ func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCre
 	if err != nil {
 		return nil, err
 	}
-	cur, err := repo.LookupCredentialLibrary(ctx, req.Id)
-	if err != nil {
-		return nil, err
+	var currentCredentialType credential.Type
+	var mo vault.MappingOverride
+	switch subtypes.SubtypeFromId(domain, req.GetId()) {
+	case vault.SSHCertificateLibrarySubtype:
+		cur, err := repo.LookupSSHCertificateCredentialLibrary(ctx, req.Id)
+		if err != nil {
+			return nil, err
+		}
+		currentCredentialType = credential.Type(cur.GetCredentialType())
+	default:
+		cur, err := repo.LookupCredentialLibrary(ctx, req.Id)
+		if err != nil {
+			return nil, err
+		}
+		currentCredentialType = credential.Type(cur.GetCredentialType())
+		mo = cur.MappingOverride
 	}
-	currentCredentialType := credential.Type(cur.GetCredentialType())
 
 	if err := validateUpdateRequest(req, currentCredentialType); err != nil {
 		return nil, err
@@ -255,7 +290,7 @@ func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCre
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	cl, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem(), currentCredentialType, cur.MappingOverride)
+	cl, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem(), currentCredentialType, mo)
 	if err != nil {
 		return nil, err
 	}
@@ -298,15 +333,27 @@ func (s Service) DeleteCredentialLibrary(ctx context.Context, req *pbs.DeleteCre
 	return nil, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, storeId string) ([]*vault.CredentialLibrary, error) {
+func (s Service) listFromRepo(ctx context.Context, storeId string) ([]credential.Library, error) {
 	const op = "credentiallibraries.(Service).listFromRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	csl, err := repo.ListCredentialLibraries(ctx, storeId)
+	genCsl, err := repo.ListCredentialLibraries(ctx, storeId)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	certCsl, err := repo.ListSSHCertificateCredentialLibraries(ctx, storeId)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	csl := make([]credential.Library, 0, len(genCsl)+len(certCsl))
+	for _, s := range genCsl {
+		csl = append(csl, s)
+	}
+	for _, s := range certCsl {
+		csl = append(csl, s)
 	}
 	return csl, nil
 }
@@ -317,32 +364,67 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Library
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	cs, err := repo.LookupCredentialLibrary(ctx, id)
-	if err != nil && !errors.IsNotFoundError(err) {
-		return nil, errors.Wrap(ctx, err, op)
+	switch subtypes.SubtypeFromId(domain, id) {
+	case vault.GenericLibrarySubtype:
+		cs, err := repo.LookupCredentialLibrary(ctx, id)
+		if err != nil && !errors.IsNotFoundError(err) {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if cs == nil {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("credential library %q not found", id))
+		}
+		return cs, err
+	case vault.SSHCertificateLibrarySubtype:
+		cs, err := repo.LookupSSHCertificateCredentialLibrary(ctx, id)
+		if err != nil && !errors.IsNotFoundError(err) {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if cs == nil {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("ssh certificate credential library %q not found", id))
+		}
+		return cs, err
 	}
-	if cs == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("credential library %q not found", id))
-	}
-	return cs, err
+	return nil, errors.New(ctx, errors.InvalidParameter, op, "unrecognized credential library subtype")
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.CredentialLibrary) (credential.Library, error) {
 	const op = "credentiallibraries.(Service).createInRepo"
-	cl, err := toStorageVaultLibrary(item.GetCredentialStoreId(), item)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	out, err := repo.CreateCredentialLibrary(ctx, scopeId, cl)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential library"))
-	}
-	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential library but no error returned from repository.")
+	var out credential.Library
+	switch subtypes.SubtypeFromType(domain, item.GetType()) {
+	case vault.SSHCertificateLibrarySubtype:
+		cl, err := toStorageVaultSSHCertificateLibrary(item.GetCredentialStoreId(), item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		rl, err := repo.CreateSSHCertificateCredentialLibrary(ctx, scopeId, cl)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create ssh certificate credential library"))
+		}
+		if rl == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create ssh certificate credential library but no error returned from repository.")
+		}
+		out = rl
+	default:
+		cl, err := toStorageVaultLibrary(item.GetCredentialStoreId(), item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		repo, err := s.repoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		rl, err := repo.CreateCredentialLibrary(ctx, scopeId, cl)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create credential library"))
+		}
+		if rl == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential library but no error returned from repository.")
+		}
+		out = rl
 	}
 	return out, nil
 }
@@ -372,26 +454,53 @@ func (s Service) updateInRepo(
 		item.CredentialMappingOverrides = mappingStruct
 	}
 
-	cl, err := toStorageVaultLibrary(item.GetCredentialStoreId(), item)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	cl.PublicId = id
-
-	dbMasks = append(dbMasks, maskManager.Translate(masks)...)
-	if len(dbMasks) == 0 {
-		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
-	}
+	var out credential.Library
+	rowsUpdated := 0
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	out, rowsUpdated, err := repo.UpdateCredentialLibrary(ctx, projId, cl, item.GetVersion(), dbMasks)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential library"))
-	}
-	if rowsUpdated == 0 {
-		return nil, handlers.NotFoundErrorf("Credential Library %q doesn't exist or incorrect version provided.", id)
+	switch subtypes.SubtypeFromId(domain, id) {
+	case vault.SSHCertificateLibrarySubtype:
+		dbMasks = append(dbMasks, sshCertMaskManager.Translate(masks)...)
+		if getMapUpdate(criticalOptionsField, masks) {
+			dbMasks = append(dbMasks, vault.CriticalOptionsField)
+		}
+		if getMapUpdate(extensionsField, masks) {
+			dbMasks = append(dbMasks, vault.ExtensionsField)
+		}
+		if len(dbMasks) == 0 {
+			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+		}
+		cl, err := toStorageVaultSSHCertificateLibrary(item.GetCredentialStoreId(), item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		cl.PublicId = id
+		out, rowsUpdated, err = repo.UpdateSSHCertificateCredentialLibrary(ctx, projId, cl, item.GetVersion(), dbMasks)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential library"))
+		}
+		if rowsUpdated == 0 {
+			return nil, handlers.NotFoundErrorf("Credential Library %q doesn't exist or incorrect version provided.", id)
+		}
+	default:
+		dbMasks = append(dbMasks, maskManager.Translate(masks)...)
+		if len(dbMasks) == 0 {
+			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+		}
+		cl, err := toStorageVaultLibrary(item.GetCredentialStoreId(), item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		cl.PublicId = id
+		out, rowsUpdated, err = repo.UpdateCredentialLibrary(ctx, projId, cl, item.GetVersion(), dbMasks)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential library"))
+		}
+		if rowsUpdated == 0 {
+			return nil, handlers.NotFoundErrorf("Credential Library %q doesn't exist or incorrect version provided.", id)
+		}
 	}
 	return out, nil
 }
@@ -402,7 +511,13 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	if err != nil {
 		return false, err
 	}
-	rows, err := repo.DeleteCredentialLibrary(ctx, scopeId, id)
+	rows := 0
+	switch subtypes.SubtypeFromId(domain, id) {
+	case vault.SSHCertificateLibrarySubtype:
+		rows, err = repo.DeleteSSHCertificateCredentialLibrary(ctx, scopeId, id)
+	default:
+		rows, err = repo.DeleteCredentialLibrary(ctx, scopeId, id)
+	}
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return false, nil
@@ -428,10 +543,21 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		parentId = id
 	default:
 		opts = append(opts, auth.WithId(id))
-
+		parentId = id
 		switch subtypes.SubtypeFromId(domain, id) {
-		case vault.Subtype:
+		case vault.GenericLibrarySubtype:
 			cl, err := repo.LookupCredentialLibrary(ctx, id)
+			if err != nil {
+				res.Error = err
+				return res
+			}
+			if cl == nil {
+				res.Error = handlers.NotFoundError()
+				return res
+			}
+			parentId = cl.GetStoreId()
+		case vault.SSHCertificateLibrarySubtype:
+			cl, err := repo.LookupSSHCertificateCredentialLibrary(ctx, id)
 			if err != nil {
 				res.Error = err
 				return res
@@ -515,7 +641,7 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
 	switch subtypes.SubtypeFromId(domain, in.GetPublicId()) {
-	case vault.Subtype:
+	case vault.GenericLibrarySubtype:
 		vaultIn, ok := in.(*vault.CredentialLibrary)
 		if !ok {
 			return nil, errors.NewDeprecated(errors.Internal, op, "unable to cast to vault credential library")
@@ -568,6 +694,47 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 				VaultCredentialLibraryAttributes: attrs,
 			}
 		}
+	case vault.SSHCertificateLibrarySubtype:
+		vaultIn, ok := in.(*vault.SSHCertificateCredentialLibrary)
+		if !ok {
+			return nil, errors.NewDeprecated(errors.Internal, op, "unable to cast to vault ssh certificate credential library")
+		}
+		// We don't check for mapping overrides here -- this subtype does not currently support them.
+		out.CredentialType = vaultIn.GetCredentialType()
+		if outputFields.Has(globals.AttributesField) {
+			attrs := &pb.VaultSSHCertificateCredentialLibraryAttributes{
+				Path: wrapperspb.String(vaultIn.GetVaultPath()),
+			}
+			if vaultIn.GetUsername() != "" {
+				attrs.Username = wrapperspb.String(vaultIn.GetUsername())
+			}
+			if vaultIn.GetKeyType() != "" {
+				attrs.KeyType = wrapperspb.String(vaultIn.GetKeyType())
+			}
+			if vaultIn.GetKeyBits() != 0 {
+				attrs.KeyBits = &wrapperspb.UInt32Value{Value: vaultIn.GetKeyBits()}
+			}
+			if vaultIn.GetTtl() != "" {
+				attrs.Ttl = wrapperspb.String(vaultIn.GetTtl())
+			}
+			if vaultIn.GetKeyId() != "" {
+				attrs.KeyId = wrapperspb.String(vaultIn.GetKeyId())
+			}
+			if vaultIn.GetCriticalOptions() != "" {
+				co := make(map[string]string)
+				json.Unmarshal([]byte(vaultIn.GetCriticalOptions()), &co)
+				attrs.CriticalOptions = co
+			}
+			if vaultIn.GetExtensions() != "" {
+				e := make(map[string]string)
+				json.Unmarshal([]byte(vaultIn.GetExtensions()), &e)
+				attrs.Extensions = e
+			}
+			out.Attrs = &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
+				VaultSshCertificateCredentialLibraryAttributes: attrs,
+			}
+		}
+
 	}
 	return &out, nil
 }
@@ -582,7 +749,11 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 		opts = append(opts, vault.WithDescription(in.GetDescription().GetValue()))
 	}
 
-	attrs := in.GetVaultCredentialLibraryAttributes()
+	attrs := in.GetVaultGenericCredentialLibraryAttributes()
+	if attrs == nil {
+		// fallback to attributes for older subtype
+		attrs = in.GetVaultCredentialLibraryAttributes()
+	}
 	if attrs.GetHttpMethod() != nil {
 		opts = append(opts, vault.WithMethod(vault.Method(strings.ToUpper(attrs.GetHttpMethod().GetValue()))))
 	}
@@ -631,13 +802,66 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 	return cs, err
 }
 
+func toStorageVaultSSHCertificateLibrary(storeId string, in *pb.CredentialLibrary) (out *vault.SSHCertificateCredentialLibrary, err error) {
+	const op = "credentiallibraries.toStorageVaultSSHCertificateLibrary"
+	var opts []vault.Option
+	if in.GetName() != nil {
+		opts = append(opts, vault.WithName(in.GetName().GetValue()))
+	}
+	if in.GetDescription() != nil {
+		opts = append(opts, vault.WithDescription(in.GetDescription().GetValue()))
+	}
+	opts = append(opts, vault.WithCredentialType(credential.Type(in.GetCredentialType())))
+
+	attrs := in.GetVaultSshCertificateCredentialLibraryAttributes()
+	if attrs.GetKeyType() != nil {
+		opts = append(opts, vault.WithKeyType(attrs.GetKeyType().GetValue()))
+	}
+	if attrs.GetKeyBits() != nil {
+		opts = append(opts, vault.WithKeyBits(attrs.GetKeyBits().GetValue()))
+	}
+	if attrs.GetTtl() != nil {
+		opts = append(opts, vault.WithTtl(attrs.GetTtl().GetValue()))
+	}
+	if attrs.GetKeyId() != nil {
+		opts = append(opts, vault.WithKeyId(attrs.GetKeyId().GetValue()))
+	}
+	if attrs.GetCriticalOptions() != nil {
+		co, err := json.Marshal(attrs.GetCriticalOptions())
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, vault.WithCriticalOptions(string(co)))
+	}
+	if attrs.GetExtensions() != nil {
+		e, err := json.Marshal(attrs.GetExtensions())
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, vault.WithExtensions(string(e)))
+	}
+
+	cs, err := vault.NewSSHCertificateCredentialLibrary(storeId, attrs.GetPath().GetValue(), attrs.GetUsername().GetValue(), opts...)
+	if err != nil {
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to build credential library"))
+	}
+	return cs, err
+}
+
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
 // requirements on the structure of the request.  They verify that:
 //   - The path passed in is correctly formatted
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetCredentialLibraryRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, vault.CredentialLibraryPrefix)
+	prefix := ""
+	switch subtypes.SubtypeFromId(domain, req.GetId()) {
+	case vault.SSHCertificateLibrarySubtype:
+		prefix = vault.SSHCertificateCredentialLibraryPrefix
+	default:
+		prefix = vault.CredentialLibraryPrefix
+	}
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, prefix)
 }
 
 func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
@@ -645,23 +869,82 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetItem().GetCredentialStoreId()) {
 		case vault.Subtype:
-			if t := req.GetItem().GetType(); t != "" && subtypes.SubtypeFromType(domain, t) != vault.Subtype {
+			t := req.GetItem().GetType()
+			if t == "" {
+				badFields[globals.TypeField] = "This is a required field."
+			}
+
+			// support older vault generic libraries with 'vault.Subtype'.
+			if subtypes.SubtypeFromType(domain, t) == vault.Subtype {
+				req.GetItem().Type = vault.GenericLibrarySubtype.String()
+				t = vault.GenericLibrarySubtype.String()
+			}
+
+			if subtypes.SubtypeFromType(domain, t) != vault.GenericLibrarySubtype &&
+				subtypes.SubtypeFromType(domain, t) != vault.SSHCertificateLibrarySubtype {
 				badFields[globals.CredentialStoreIdField] = "If included, type must match that of the credential store."
 			}
-			attrs := req.GetItem().GetVaultCredentialLibraryAttributes()
-			if attrs == nil {
-				badFields[attributesPathField] = "This is a required field."
+
+			switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
+			case vault.GenericLibrarySubtype:
+				isValidCred := false
+				ct := req.GetItem().GetCredentialType()
+				for _, t := range validCredentialTypesVaultGeneric {
+					if ct == "" || ct == string(t) {
+						isValidCred = true
+						break
+					}
+				}
+				if !isValidCred {
+					badFields[globals.CredentialTypeField] = fmt.Sprintf("Unknown credential type %q", ct)
+				}
+
+				attrs := req.GetItem().GetVaultGenericCredentialLibraryAttributes()
+				if attrs == nil {
+					// fallback to attributes for older subtype
+					attrs = req.GetItem().GetVaultCredentialLibraryAttributes()
+					if attrs == nil {
+						badFields[attributesPathField] = "This is a required field."
+					}
+				}
+				if attrs.GetPath().GetValue() == "" {
+					badFields[vaultPathField] = "This is a required field."
+				}
+				if m := attrs.GetHttpMethod(); m != nil && !strutil.StrListContains([]string{"GET", "POST"}, strings.ToUpper(m.GetValue())) {
+					badFields[httpMethodField] = "If set, value must be 'GET' or 'POST'."
+				}
+				if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) != "POST" {
+					badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
+				}
+				validateMapping(badFields, credential.Type(req.GetItem().GetCredentialType()), req.GetItem().CredentialMappingOverrides.AsMap())
+			case vault.SSHCertificateLibrarySubtype:
+				if req.GetItem().GetCredentialType() != "" {
+					badFields[globals.CredentialTypeField] = fmt.Sprintf("This field is read only and cannot be set.")
+				}
+
+				attrs := req.GetItem().GetVaultSshCertificateCredentialLibraryAttributes()
+				if attrs == nil {
+					badFields[attributesPathField] = "This is a required field."
+				}
+				if attrs.GetPath().GetValue() == "" {
+					badFields[vaultPathField] = "This is a required field."
+				}
+				if attrs.GetUsername().GetValue() == "" {
+					badFields[sshCertUsernameField] = "This is a required field."
+				}
+				if (attrs.GetKeyType() == nil) != (attrs.GetKeyBits() == nil) {
+					if attrs.GetKeyType() != nil && attrs.GetKeyType().GetValue() != vault.KeyTypeEd25519 {
+						badFields[keyTypeField] = fmt.Sprintf("If set, %q must also be set.", keyBitsField)
+					}
+					if attrs.GetKeyBits() != nil {
+						badFields[keyBitsField] = fmt.Sprintf("If set, %q must also be set.", keyTypeField)
+					}
+				}
+				if t := attrs.GetKeyType(); t != nil && !strutil.StrListContains(validKeyTypes, strings.ToLower(t.GetValue())) {
+					badFields[keyTypeField] = "If set, value must be 'ed25519', 'ecdsa', or 'rsa'."
+				}
+				validateKeyBits(badFields, attrs.GetKeyBits().GetValue(), attrs.GetKeyType().GetValue())
 			}
-			if attrs.GetPath().GetValue() == "" {
-				badFields[vaultPathField] = "This is a required field."
-			}
-			if m := attrs.GetHttpMethod(); m != nil && !strutil.StrListContains([]string{"GET", "POST"}, strings.ToUpper(m.GetValue())) {
-				badFields[httpMethodField] = "If set, value must be 'GET' or 'POST'."
-			}
-			if b := attrs.GetHttpRequestBody(); b != nil && strings.ToUpper(attrs.GetHttpMethod().GetValue()) != "POST" {
-				badFields[httpRequestBodyField] = fmt.Sprintf("Field can only be set if %q is set to the value 'POST'.", httpMethodField)
-			}
-			validateMapping(badFields, credential.Type(req.GetItem().GetCredentialType()), req.GetItem().CredentialMappingOverrides.AsMap())
 		default:
 			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 		}
@@ -670,17 +953,29 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCredentialType credential.Type) error {
+	prefix := ""
+	st := subtypes.SubtypeFromId(domain, req.GetId())
+	switch st {
+	case vault.GenericLibrarySubtype:
+		prefix = vault.CredentialLibraryPrefix
+	case vault.SSHCertificateLibrarySubtype:
+		prefix = vault.SSHCertificateCredentialLibraryPrefix
+	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		switch subtypes.SubtypeFromId(domain, req.GetId()) {
-		case vault.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.Subtype {
+		switch st {
+		case vault.GenericLibrarySubtype:
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.GenericLibrarySubtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetCredentialType() != "" && req.GetItem().GetCredentialType() != string(currentCredentialType) {
 				badFields[globals.CredentialTypeField] = "Cannot modify credential type."
 			}
-			attrs := req.GetItem().GetVaultCredentialLibraryAttributes()
+			attrs := req.GetItem().GetVaultGenericCredentialLibraryAttributes()
+			if attrs == nil {
+				// fallback to attributes for older subtype
+				attrs = req.GetItem().GetVaultCredentialLibraryAttributes()
+			}
 			if attrs != nil {
 				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultPathField) && attrs.GetPath().GetValue() == "" {
 					badFields[vaultPathField] = "This is a required field and cannot be set to empty."
@@ -693,13 +988,33 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 				}
 				validateMapping(badFields, currentCredentialType, req.GetItem().CredentialMappingOverrides.AsMap())
 			}
+		case vault.SSHCertificateLibrarySubtype:
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.SSHCertificateLibrarySubtype {
+				badFields[globals.TypeField] = "Cannot modify resource type."
+			}
+			if req.GetItem().GetCredentialType() != "" && req.GetItem().GetCredentialType() != string(currentCredentialType) {
+				badFields[globals.CredentialTypeField] = "Cannot modify credential type."
+			}
+			attrs := req.GetItem().GetVaultSshCertificateCredentialLibraryAttributes()
+			if attrs != nil {
+				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultPathField) && attrs.GetPath().GetValue() == "" {
+					badFields[vaultPathField] = "This is a required field and cannot be set to empty."
+				}
+				if u := attrs.GetUsername().GetValue(); handlers.MaskContains(req.GetUpdateMask().GetPaths(), sshCertUsernameField) && u == "" {
+					badFields[sshCertUsernameField] = "This is a required field and cannot be set to empty."
+				}
+				if t := attrs.GetKeyType(); t != nil && !strutil.StrListContains(validKeyTypes, strings.ToLower(t.GetValue())) {
+					badFields[keyTypeField] = "If set, value must be 'ed25519', 'ecdsa', or 'rsa'."
+				}
+				validateKeyBits(badFields, attrs.GetKeyBits().GetValue(), attrs.GetKeyType().GetValue())
+			}
 		}
 		return badFields
-	}, vault.CredentialLibraryPrefix)
+	}, prefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteCredentialLibraryRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, vault.CredentialLibraryPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, vault.CredentialLibraryPrefix, vault.SSHCertificateCredentialLibraryPrefix)
 }
 
 func validateListRequest(req *pbs.ListCredentialLibrariesRequest) error {
@@ -745,6 +1060,38 @@ func validateMapping(badFields map[string]string, credentialType credential.Type
 			badFields[globals.CredentialMappingOverridesField+"."+k] = fmt.Sprintf("Mapping value must be a string or a null to clear, got %T", v)
 		}
 	}
+}
+
+// validateKeyBits appends to badFields if keyBits and keyType aren't accepted combinations for an SSHCertificateCredentialLibrary.
+// If keyType is an empty string, validateKeyBits only validates keyBits.
+func validateKeyBits(badFields map[string]string, keyBits uint32, keyType string) {
+	switch keyBits {
+	case 0:
+	case 256, 384, 521:
+		if keyType != "" && keyType != "ecdsa" {
+			badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %d for key type %s", keyBits, keyType)
+		}
+	case 2048, 3072, 4096:
+		if keyType != "" && keyType != "rsa" {
+			badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %d for key type %s", keyBits, keyType)
+		}
+	default:
+		badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %d", keyBits)
+	}
+}
+
+func getMapUpdate(field string, apiMasks []string) bool {
+	for _, m := range apiMasks {
+		if m == field {
+			return true
+		}
+
+		fieldPrefix := fmt.Sprintf("%v.", field)
+		if s := strings.SplitN(m, fieldPrefix, 2); len(s) == 2 {
+			return true
+		}
+	}
+	return false
 }
 
 func getMappingUpdates(credentialType credential.Type, current vault.MappingOverride, new map[string]any, apiMasks []string) (map[string]any, bool) {
