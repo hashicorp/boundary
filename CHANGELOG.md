@@ -15,6 +15,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * metrics: Adds accepted connections and closed connections counters to keep track
   downstream connections for worker and controller servers.
   ([PR](https://github.com/hashicorp/boundary/pull/2668))
+* Egress and Ingress worker filters: The target `worker_filter` field has been deprecated and 
+ replaced with egress and ingress worker filters. Egress worker filters determine which workers are
+ used to access targets. Ingress worker filters (HCP Boundary only) determine which workers are 
+ used to connect with a client to initiate a session. ([PR](https://github.com/hashicorp/boundary/pull/2654))
+* Multi-Hop Sessions (HCP Boundary only): Multi-hop PKI workers can communicate with each other to serve 
+ 2 primary purposes: authentication and session proxying. This results in the ability to chain 
+ multiple workers together to access services hidden under layers of network security. Multi-hop 
+ workers can also establish a TCP session through multiple workers, with the ability to reverse 
+ proxy and establish a connection.
 
 ### Bug Fixes
 
