@@ -110,7 +110,7 @@ func DefaultCredentialType() Option {
 	}
 }
 
-func WithVaultCredentialLibraryCriticalOptions(inCriticalOptions string) Option {
+func WithVaultSSHCertificateCredentialLibraryCriticalOptions(inCriticalOptions map[string]string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -122,7 +122,7 @@ func WithVaultCredentialLibraryCriticalOptions(inCriticalOptions string) Option 
 	}
 }
 
-func DefaultVaultCredentialLibraryCriticalOptions() Option {
+func DefaultVaultSSHCertificateCredentialLibraryCriticalOptions() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -146,7 +146,7 @@ func DefaultDescription() Option {
 	}
 }
 
-func WithVaultCredentialLibraryExtensions(inExtensions string) Option {
+func WithVaultSSHCertificateCredentialLibraryExtensions(inExtensions map[string]string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -158,7 +158,7 @@ func WithVaultCredentialLibraryExtensions(inExtensions string) Option {
 	}
 }
 
-func DefaultVaultCredentialLibraryExtensions() Option {
+func DefaultVaultSSHCertificateCredentialLibraryExtensions() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -218,7 +218,7 @@ func DefaultVaultCredentialLibraryHttpRequestBody() Option {
 	}
 }
 
-func WithVaultCredentialLibraryKeyBits(inKeyBits uint32) Option {
+func WithVaultSSHCertificateCredentialLibraryKeyBits(inKeyBits uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -230,7 +230,7 @@ func WithVaultCredentialLibraryKeyBits(inKeyBits uint32) Option {
 	}
 }
 
-func DefaultVaultCredentialLibraryKeyBits() Option {
+func DefaultVaultSSHCertificateCredentialLibraryKeyBits() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -242,7 +242,7 @@ func DefaultVaultCredentialLibraryKeyBits() Option {
 	}
 }
 
-func WithVaultCredentialLibraryKeyId(inKeyId string) Option {
+func WithVaultSSHCertificateCredentialLibraryKeyId(inKeyId string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -254,7 +254,7 @@ func WithVaultCredentialLibraryKeyId(inKeyId string) Option {
 	}
 }
 
-func DefaultVaultCredentialLibraryKeyId() Option {
+func DefaultVaultSSHCertificateCredentialLibraryKeyId() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -266,7 +266,7 @@ func DefaultVaultCredentialLibraryKeyId() Option {
 	}
 }
 
-func WithVaultCredentialLibraryKeyType(inKeyType string) Option {
+func WithVaultSSHCertificateCredentialLibraryKeyType(inKeyType string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -278,7 +278,7 @@ func WithVaultCredentialLibraryKeyType(inKeyType string) Option {
 	}
 }
 
-func DefaultVaultCredentialLibraryKeyType() Option {
+func DefaultVaultSSHCertificateCredentialLibraryKeyType() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -314,7 +314,19 @@ func WithVaultCredentialLibraryPath(inPath string) Option {
 	}
 }
 
-func WithVaultCredentialLibraryTtl(inTtl string) Option {
+func WithVaultSSHCertificateCredentialLibraryPath(inPath string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["path"] = inPath
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultSSHCertificateCredentialLibraryTtl(inTtl string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -326,7 +338,7 @@ func WithVaultCredentialLibraryTtl(inTtl string) Option {
 	}
 }
 
-func DefaultVaultCredentialLibraryTtl() Option {
+func DefaultVaultSSHCertificateCredentialLibraryTtl() Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {
@@ -338,7 +350,7 @@ func DefaultVaultCredentialLibraryTtl() Option {
 	}
 }
 
-func WithVaultCredentialLibraryUsername(inUsername string) Option {
+func WithVaultSSHCertificateCredentialLibraryUsername(inUsername string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
 		if !ok {

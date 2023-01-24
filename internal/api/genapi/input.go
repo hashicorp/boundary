@@ -521,7 +521,7 @@ var inputStructs = []*structInfo{
 	{
 		inProto:     &credentiallibraries.VaultSSHCertificateCredentialLibraryAttributes{},
 		outFile:     "credentiallibraries/vault_ssh_certificate_credential_library_attributes.gen.go",
-		subtypeName: "VaultCredentialLibrary",
+		subtypeName: "VaultSSHCertificateCredentialLibrary",
 		fieldOverrides: []fieldInfo{
 			{
 				Name:        "Path",
@@ -530,6 +530,14 @@ var inputStructs = []*structInfo{
 			{
 				Name:        "Username",
 				SkipDefault: true,
+			},
+			{
+				Name:      "CriticalOptions",
+				FieldType: "map[string]string",
+			},
+			{
+				Name:      "Extensions",
+				FieldType: "map[string]string",
 			},
 		},
 		parentTypeName: "CredentialLibrary",
@@ -542,7 +550,26 @@ var inputStructs = []*structInfo{
 		outFile: "credentiallibraries/credential_library.gen.go",
 		templates: []*template.Template{
 			clientTemplate,
-			commonCreateTemplate,
+			template.Must(template.New("").Funcs(
+				template.FuncMap{
+					"snakeCase": snakeCase,
+					"funcName": func() string {
+						return "Create"
+					},
+					"apiAction": func() string {
+						return ""
+					},
+					"extraRequiredParams": func() []requiredParam {
+						return []requiredParam{
+							{
+								Name:     "resourceType",
+								Typ:      "string",
+								PostType: "type",
+							},
+						}
+					},
+				},
+			).Parse(createTemplateStr)),
 			readTemplate,
 			updateTemplate,
 			deleteTemplate,
