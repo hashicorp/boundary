@@ -470,6 +470,7 @@ func (r *Repository) sessionAuthzSummary(ctx context.Context, sessionId string) 
 	return info, nil
 }
 
+// Lookup an activated session. Must run in a transaction.
 func (r *Repository) lookupActivatedSessionTx(ctx context.Context, reader db.Reader, writer db.Writer, sessionId string,
 	tofuToken []byte, activatedSession *Session,
 ) error {
@@ -488,6 +489,7 @@ func (r *Repository) lookupActivatedSessionTx(ctx context.Context, reader db.Rea
 	return nil
 }
 
+// Return states for an activated session. Must run in a transaction.
 func (r *Repository) fetchActivatedSessionStatesTx(ctx context.Context, reader db.Reader, sessionId string) ([]*State, error) {
 	const op = "session.(Repository).fetchActivatedSessionStatesTx"
 	var txErr error

@@ -23,6 +23,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   plugin to exit ([PR](https://github.com/hashicorp/boundary/pull/2677))
 * data warehouse: Fix bug that caused credential dimensions to not get
     associated with session facts ([PR](https://github.com/hashicorp/boundary/pull/2787)).
+* sessions: Fix two authorizeSession race conditions in handleProxy. ([PR](https://github.com/hashicorp/boundary/pull/2795))
 
 ## 0.11.2 (2022/12/09)
 
