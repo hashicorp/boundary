@@ -519,6 +519,25 @@ var inputStructs = []*structInfo{
 		},
 	},
 	{
+		inProto:     &credentiallibraries.VaultSSHCertificateCredentialLibraryAttributes{},
+		outFile:     "credentiallibraries/vault_ssh_certificate_credential_library_attributes.gen.go",
+		subtypeName: "VaultCredentialLibrary",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "Path",
+				SkipDefault: true,
+			},
+			{
+				Name:        "Username",
+				SkipDefault: true,
+			},
+		},
+		parentTypeName: "CredentialLibrary",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &credentiallibraries.CredentialLibrary{},
 		outFile: "credentiallibraries/credential_library.gen.go",
 		templates: []*template.Template{

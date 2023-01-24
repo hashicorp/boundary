@@ -110,6 +110,30 @@ func DefaultCredentialType() Option {
 	}
 }
 
+func WithVaultCredentialLibraryCriticalOptions(inCriticalOptions string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["critical_options"] = inCriticalOptions
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialLibraryCriticalOptions() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["critical_options"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription
@@ -119,6 +143,30 @@ func WithDescription(inDescription string) Option {
 func DefaultDescription() Option {
 	return func(o *options) {
 		o.postMap["description"] = nil
+	}
+}
+
+func WithVaultCredentialLibraryExtensions(inExtensions string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["extensions"] = inExtensions
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialLibraryExtensions() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["extensions"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 
@@ -170,6 +218,78 @@ func DefaultVaultCredentialLibraryHttpRequestBody() Option {
 	}
 }
 
+func WithVaultCredentialLibraryKeyBits(inKeyBits uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_bits"] = inKeyBits
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialLibraryKeyBits() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_bits"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultCredentialLibraryKeyId(inKeyId string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_id"] = inKeyId
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialLibraryKeyId() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_id"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultCredentialLibraryKeyType(inKeyType string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_type"] = inKeyType
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialLibraryKeyType() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_type"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.postMap["name"] = inName
@@ -190,6 +310,42 @@ func WithVaultCredentialLibraryPath(inPath string) Option {
 		}
 		val := raw.(map[string]interface{})
 		val["path"] = inPath
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultCredentialLibraryTtl(inTtl string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["ttl"] = inTtl
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultCredentialLibraryTtl() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["ttl"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultCredentialLibraryUsername(inUsername string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["username"] = inUsername
 		o.postMap["attributes"] = val
 	}
 }
