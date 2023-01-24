@@ -2233,8 +2233,8 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 							KeyId:           wrapperspb.String("id"),
-							CriticalOptions: wrapperspb.String("*"),
-							Extensions:      wrapperspb.String("permit-pty"),
+							CriticalOptions: map[string]string{"some": "option"},
+							Extensions:      map[string]string{"permit-pty": ""},
 							Ttl:             wrapperspb.String("2m"),
 						},
 					},
@@ -2244,8 +2244,8 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
 				out.GetVaultSshCertificateCredentialLibraryAttributes().Ttl = wrapperspb.String("2m")
 				out.GetVaultSshCertificateCredentialLibraryAttributes().KeyId = wrapperspb.String("id")
-				out.GetVaultSshCertificateCredentialLibraryAttributes().CriticalOptions = wrapperspb.String("*")
-				out.GetVaultSshCertificateCredentialLibraryAttributes().Extensions = wrapperspb.String("permit-pty")
+				out.GetVaultSshCertificateCredentialLibraryAttributes().CriticalOptions = map[string]string{"some": "option"}
+				out.GetVaultSshCertificateCredentialLibraryAttributes().Extensions = map[string]string{"permit-pty": ""}
 				return out
 			},
 		},

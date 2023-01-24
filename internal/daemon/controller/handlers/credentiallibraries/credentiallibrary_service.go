@@ -811,10 +811,18 @@ func toStorageVaultSSHCertificateLibrary(storeId string, in *pb.CredentialLibrar
 		opts = append(opts, vault.WithKeyId(attrs.GetKeyId().GetValue()))
 	}
 	if attrs.GetCriticalOptions() != nil {
-		opts = append(opts, vault.WithCriticalOptions(attrs.GetCriticalOptions().GetValue()))
+		co, err := json.Marshal(attrs.GetCriticalOptions())
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, vault.WithCriticalOptions(string(co)))
 	}
 	if attrs.GetExtensions() != nil {
-		opts = append(opts, vault.WithExtensions(attrs.GetExtensions().GetValue()))
+		e, err := json.Marshal(attrs.GetExtensions())
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, vault.WithExtensions(string(e)))
 	}
 
 	cs, err := vault.NewSSHCertificateCredentialLibrary(storeId, attrs.GetPath().GetValue(), attrs.GetUsername().GetValue(), opts...)
