@@ -857,6 +857,13 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 			if t == "" {
 				badFields[globals.TypeField] = "This is a required field."
 			}
+
+			// support older vault generic libraries with 'vault.Subtype'.
+			if subtypes.SubtypeFromType(domain, t) == vault.Subtype {
+				req.GetItem().Type = vault.GenericLibrarySubtype.String()
+				t = vault.GenericLibrarySubtype.String()
+			}
+
 			if subtypes.SubtypeFromType(domain, t) != vault.GenericLibrarySubtype &&
 				subtypes.SubtypeFromType(domain, t) != vault.SSHCertificateLibrarySubtype {
 				badFields[globals.CredentialStoreIdField] = "If included, type must match that of the credential store."
