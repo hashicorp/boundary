@@ -918,19 +918,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 				if t := attrs.GetKeyType(); t != nil && !strutil.StrListContains([]string{"ed25519", "ecdsa", "rsa"}, strings.ToLower(t.GetValue())) {
 					badFields[keyTypeField] = "If set, value must be 'ed25519', 'ecdsa', or 'rsa'."
 				}
-				switch attrs.GetKeyBits().GetValue() {
-				case 0:
-				case 224, 256, 384, 521:
-					if attrs.GetKeyType().GetValue() != "ecdsa" {
-						badFields[keyBitsField] = fmt.Sprintf("%d is not an allowed bit size for key type %q.", attrs.KeyBits.GetValue(), keyTypeField)
-					}
-				case 2048, 3072, 4096:
-					if attrs.GetKeyType().GetValue() != "rsa" {
-						badFields[keyBitsField] = fmt.Sprintf("%d is not an allowed bit size for key type %q.", attrs.KeyBits.GetValue(), keyTypeField)
-					}
-				default:
-					badFields[keyBitsField] = "Not a recognized bit size."
-				}
+				validateKeyBits(badFields, attrs.GetKeyBits().GetValue(), attrs.GetKeyType().GetValue())
 			}
 		default:
 			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
@@ -989,19 +977,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 				if t := attrs.GetKeyType(); t != nil && !strutil.StrListContains([]string{"ed25519", "ecdsa", "rsa"}, strings.ToLower(t.GetValue())) {
 					badFields[keyTypeField] = "If set, value must be 'ed25519', 'ecdsa', or 'rsa'."
 				}
-				switch attrs.GetKeyBits().GetValue() {
-				case 0:
-				case 224, 256, 384, 521:
-					if attrs.GetKeyType().GetValue() != "ecdsa" {
-						badFields[keyBitsField] = fmt.Sprintf("Invalid bit size for key type %q.", keyTypeField)
-					}
-				case 2048, 3072, 4096:
-					if attrs.GetKeyType().GetValue() != "rsa" {
-						badFields[keyBitsField] = fmt.Sprintf("Invalid bit size for key type %q.", keyTypeField)
-					}
-				default:
-					badFields[keyBitsField] = "Not a recognized bit size."
-				}
+				validateKeyBits(badFields, attrs.GetKeyBits().GetValue(), "")
 			}
 		}
 		return badFields
@@ -1054,6 +1030,24 @@ func validateMapping(badFields map[string]string, credentialType credential.Type
 		if _, ok := v.(string); v != nil && !ok {
 			badFields[globals.CredentialMappingOverridesField+"."+k] = fmt.Sprintf("Mapping value must be a string or a null to clear, got %T", v)
 		}
+	}
+}
+
+// validateKeyBits appends to badFields if keyBits and keyType aren't accepted combinations for an SSHCertificateCredentialLibrary.
+// If keyType is an empty string, validateKeyBits only validates keyBits.
+func validateKeyBits(badFields map[string]string, keyBits uint32, keyType string) {
+	switch keyBits {
+	case 0:
+	case 256, 384, 521:
+		if keyType != "" && keyType != "ecdsa" {
+			badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %q for key type %q", keyBits, keyType)
+		}
+	case 2048, 3072, 4096:
+		if keyType != "" && keyType != "rsa" {
+			badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %q for key type %q", keyBits, keyType)
+		}
+	default:
+		badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %q", keyBits)
 	}
 }
 
