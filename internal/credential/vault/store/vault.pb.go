@@ -670,8 +670,8 @@ type SSHCertificateCredentialLibrary struct {
 	KeyType string `protobuf:"bytes,10,opt,name=key_type,json=keyType,proto3" json:"key_type,omitempty" gorm:"not_null"`
 	// key_bits specifies the number of bits to use to generate an SSH private key.
 	// Not used if key_type is ed25519.
-	// @inject_tag: `gorm:"default:null"`
-	KeyBits uint32 `protobuf:"varint,11,opt,name=key_bits,json=keyBits,proto3" json:"key_bits,omitempty" gorm:"default:null"`
+	// @inject_tag: `gorm:"not_null"`
+	KeyBits uint32 `protobuf:"varint,11,opt,name=key_bits,json=keyBits,proto3" json:"key_bits,omitempty" gorm:"not_null"`
 	// ttl specifies the requested time to live for the certificate.
 	// @inject_tag: `gorm:"default:null"`
 	Ttl string `protobuf:"bytes,12,opt,name=ttl,proto3" json:"ttl,omitempty" gorm:"default:null"`

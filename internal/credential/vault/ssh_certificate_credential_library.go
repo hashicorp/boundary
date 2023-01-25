@@ -11,6 +11,16 @@ const (
 	KeyTypeEcdsa   = "ecdsa"
 	KeyTypeEd25519 = "ed25519"
 	KeyTypeRsa     = "rsa"
+
+	KeyBitsDefault = 0
+
+	KeyBitsEcdsa256 = 256
+	KeyBitsEcdsa384 = 384
+	KeyBitsEcdsa521 = 521
+
+	KeyBitsRsa2048 = 2048
+	KeyBitsRsa3072 = 3072
+	KeyBitsRsa4096 = 4096
 )
 
 // SSHCertificateCredentialLibrary is a credential library that issues
@@ -89,6 +99,17 @@ func (l *SSHCertificateCredentialLibrary) oplog(op oplog.OpType) oplog.Metadata 
 		metadata["store-id"] = []string{l.StoreId}
 	}
 	return metadata
+}
+
+func (l *SSHCertificateCredentialLibrary) getDefaultKeyBits() uint32 {
+	switch l.KeyType {
+	case KeyTypeEcdsa:
+		return KeyBitsEcdsa256
+	case KeyTypeRsa:
+		return KeyBitsRsa2048
+	default:
+		return KeyBitsDefault
+	}
 }
 
 // CredentialType returns the type of credential the library retrieves.

@@ -1333,15 +1333,6 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 			vaulthPath: "ssh/issue/boundary",
 			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(384), WithExtensions("{ \"permit-port-forwarding\": \"\" }")},
 		},
-		{
-			name:     "vault sign boundary ec(224) invalid key",
-			username: "username-11-lucky-number",
-			expected: map[string]string{
-				"error": "invalid KeyBits. when KeyType=ecdsa, KeyBits must be one of: 256, 384, or 521",
-			},
-			vaulthPath: "ssh/sign/boundary",
-			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(224)},
-		},
 	}
 
 	for _, tt := range tests {

@@ -45,10 +45,15 @@ func (r *Repository) CreateSSHCertificateCredentialLibrary(ctx context.Context, 
 	if l.Username == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no username")
 	}
+
 	l = l.clone()
 
 	if l.KeyType == "" {
 		l.KeyType = KeyTypeEd25519
+	}
+
+	if l.KeyBits == KeyBitsDefault {
+		l.KeyBits = l.getDefaultKeyBits()
 	}
 
 	if l.GetCredentialType() == "" {
@@ -133,6 +138,8 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 	}
 	l = l.clone()
 
+	var keyTypeChange, keyBitChangeDefault bool
+
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold(nameField, f):
@@ -140,7 +147,9 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 		case strings.EqualFold(vaultPathField, f):
 		case strings.EqualFold(usernameField, f):
 		case strings.EqualFold(keyTypeField, f):
+			keyTypeChange = true
 		case strings.EqualFold(keyBitsField, f):
+			keyBitChangeDefault = l.KeyBits == KeyBitsDefault
 		case strings.EqualFold(ttlField, f):
 		case strings.EqualFold(keyIdField, f):
 		case strings.EqualFold(CriticalOptionsField, f):
@@ -150,6 +159,27 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
 	}
+
+	if keyTypeChange && l.KeyType == "" {
+		l.KeyType = KeyTypeEd25519
+	}
+
+	if keyTypeChange && keyBitChangeDefault {
+		l.KeyBits = l.getDefaultKeyBits()
+	}
+
+	origLib, err := r.LookupSSHCertificateCredentialLibrary(ctx, l.PublicId)
+	switch {
+	case err != nil:
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	case origLib == nil:
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("credential library %s", l.PublicId))
+	}
+
+	if keyBitChangeDefault && !keyTypeChange {
+		l.KeyBits = origLib.getDefaultKeyBits()
+	}
+
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]any{
@@ -170,14 +200,6 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "missing field mask")
-	}
-
-	origLib, err := r.LookupSSHCertificateCredentialLibrary(ctx, l.PublicId)
-	switch {
-	case err != nil:
-		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
-	case origLib == nil:
-		return nil, db.NoRowsAffected, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("credential library %s", l.PublicId))
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, projectId, kms.KeyPurposeOplog)

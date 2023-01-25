@@ -151,7 +151,7 @@ func TestSSHCertificateCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping
 	var libs []*SSHCertificateCredentialLibrary
 
 	for i := 0; i < count; i++ {
-		lib, err := NewSSHCertificateCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), "username", WithKeyType(KeyTypeEd25519))
+		lib, err := NewSSHCertificateCredentialLibrary(storeId, fmt.Sprintf("ssh/sign/role-%d", i), "username", WithKeyType(KeyTypeEd25519))
 		assert.NoError(err)
 		require.NotNil(lib)
 		id, err := newSSHCertificateCredentialLibraryId()

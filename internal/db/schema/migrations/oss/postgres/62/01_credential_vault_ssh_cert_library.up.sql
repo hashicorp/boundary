@@ -49,7 +49,6 @@ begin;
           2048,
           3072,
           4096,
-          224,
           256,
           384,
           521
@@ -65,7 +64,6 @@ begin;
     (2048),
     (3072),
     (4096),
-    (224),
     (256),
     (384),
     (521);
@@ -84,12 +82,9 @@ begin;
   insert into credential_vault_ssh_cert_valid_key_type_key_bits (key_type, key_bits)
   values
     ('ed25519', 0),
-    ('ecdsa', 0),
-    ('ecdsa', 224),
     ('ecdsa', 256),
     ('ecdsa', 384),
     ('ecdsa', 521),
-    ('rsa', 0),
     ('rsa', 2048),
     ('rsa', 3072),
     ('rsa', 4096);
@@ -108,18 +103,14 @@ begin;
     version wt_version,
     vault_path text not null
       constraint vault_path_must_not_be_empty
-        check(length(trim(vault_path)) > 0),
+        check(length(trim(vault_path)) > 0)
+      constraint vault_path_must_be_sign_or_issue
+        check(vault_path ~ '^.+\/(sign|issue)\/[^\/\\\s]+$'),
     username text not null
       constraint username_must_not_be_empty
         check(length(trim(username)) > 0),
-    key_type text not null
-      default 'ed25519'
-      constraint credential_vault_ssh_cert_key_type_enm_fkey
-        references credential_vault_ssh_cert_key_type_enm (name),
-    key_bits int not null
-      default 0
-      constraint credential_vault_ssh_cert_key_bits_enm_fkey
-        references credential_vault_ssh_cert_key_bits_enm (bits),
+    key_type text not null,
+    key_bits int not null,
     ttl text,
     key_id text,
     critical_options bytea,

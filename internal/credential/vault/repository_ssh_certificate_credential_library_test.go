@@ -45,59 +45,75 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "invalid-no-store-id",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					VaultPath: "/some/path",
-					Username:  "name",
-				},
-			},
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary("", "/ssh/sign/foo", "name")
+				return s
+			}(),
 			wantErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-public-id-set",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:   cs.GetPublicId(),
-					PublicId:  "abcd_OOOOOOOOOO",
-					VaultPath: "/some/path",
-					Username:  "name",
-				},
-			},
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+				)
+				s.PublicId = "abcd_OOOOOOOOOO"
+				return s
+			}(),
 			wantErr: errors.InvalidParameter,
 		},
 		{
 			name: "invalid-no-vault-path",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:  cs.GetPublicId(),
-					Username: "name",
-				},
-			},
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"",
+					"name",
+				)
+				return s
+			}(),
 			wantErr: errors.InvalidParameter,
 		},
 		{
+			name: "invalid-vault-path-invalid-endpoint",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/not-sign/foo",
+					"name",
+				)
+				return s
+			}(),
+			wantErr: errors.CheckConstraint,
+		},
+		{
 			name: "invalid-no-username",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:   cs.GetPublicId(),
-					VaultPath: "/some/path",
-				},
-			},
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"",
+				)
+				return s
+			}(),
 			wantErr: errors.InvalidParameter,
 		},
 		{
 			name: "valid-no-options",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:   cs.GetPublicId(),
-					VaultPath: "/some/path",
-					Username:  "name",
-				},
-			},
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+				)
+				return s
+			}(),
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
-					VaultPath: "/some/path",
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
 					KeyType:   KeyTypeEd25519,
 					KeyBits:   0,
@@ -106,114 +122,455 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "valid-with-name",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:   cs.GetPublicId(),
-					Name:      "test-name-repo",
-					VaultPath: "/some/path",
-					Username:  "name",
-					KeyBits:   0,
-				},
-			},
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+				)
+				return s
+			}(),
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
 					Name:      "test-name-repo",
-					VaultPath: "/some/path",
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
+					KeyType:   KeyTypeEd25519,
+					KeyBits:   0,
 				},
 			},
 		},
 		{
 			name: "valid-with-description",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:     cs.GetPublicId(),
-					KeyType:     "ed25519",
-					Description: "test-description-repo",
-					VaultPath:   "/some/path",
-					Username:    "name",
-				},
-			},
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithDescription("test-description-repo"),
+				)
+				return s
+			}(),
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:     cs.GetPublicId(),
-					KeyType:     "ed25519",
 					Description: "test-description-repo",
-					VaultPath:   "/some/path",
+					VaultPath:   "/ssh/sign/foo",
 					Username:    "name",
+					KeyType:     KeyTypeEd25519,
+					KeyBits:     0,
 				},
 			},
 		},
 		{
-			name: "valid-key-type-key-bits-combination",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:   cs.GetPublicId(),
-					KeyType:   "ecdsa",
-					KeyBits:   224,
-					VaultPath: "/some/path",
-					Username:  "name",
-				},
-			},
+			name: "valid-key-type-ed25519",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEd25519),
+					WithKeyBits(KeyBitsDefault),
+				)
+				return s
+			}(),
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
-					KeyType:   "ecdsa",
-					KeyBits:   224,
-					VaultPath: "/some/path",
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
+					KeyType:   KeyTypeEd25519,
+					KeyBits:   KeyBitsDefault,
 				},
 			},
 		},
 		{
-			name: "invalid-key-type-key-bits-combination",
-			in: &SSHCertificateCredentialLibrary{
+			name: "valid-key-type-ecdsa-0",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsDefault),
+				)
+				return s
+			}(),
+			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:   cs.GetPublicId(),
-					KeyType:   "ecdsa",
-					KeyBits:   2408,
-					VaultPath: "/some/path",
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
+					KeyType:   KeyTypeEcdsa,
+					KeyBits:   KeyBitsEcdsa256,
 				},
 			},
+		},
+		{
+			name: "valid-key-type-ecdsa-256",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsEcdsa256),
+				)
+				return s
+			}(),
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					VaultPath: "/ssh/sign/foo",
+					Username:  "name",
+					KeyType:   KeyTypeEcdsa,
+					KeyBits:   KeyBitsEcdsa256,
+				},
+			},
+		},
+		{
+			name: "valid-key-type-ecdsa-384",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsEcdsa384),
+				)
+				return s
+			}(),
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					VaultPath: "/ssh/sign/foo",
+					Username:  "name",
+					KeyType:   KeyTypeEcdsa,
+					KeyBits:   KeyBitsEcdsa384,
+				},
+			},
+		},
+		{
+			name: "valid-key-type-ecdsa-521",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsEcdsa521),
+				)
+				return s
+			}(),
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					VaultPath: "/ssh/sign/foo",
+					Username:  "name",
+					KeyType:   KeyTypeEcdsa,
+					KeyBits:   KeyBitsEcdsa521,
+				},
+			},
+		},
+		{
+			name: "valid-key-type-rsa-0",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeRsa),
+					WithKeyBits(KeyBitsDefault),
+				)
+				return s
+			}(),
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					VaultPath: "/ssh/sign/foo",
+					Username:  "name",
+					KeyType:   KeyTypeRsa,
+					KeyBits:   KeyBitsRsa2048,
+				},
+			},
+		},
+		{
+			name: "valid-key-type-rsa-2048",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeRsa),
+					WithKeyBits(KeyBitsRsa2048),
+				)
+				return s
+			}(),
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					VaultPath: "/ssh/sign/foo",
+					Username:  "name",
+					KeyType:   KeyTypeRsa,
+					KeyBits:   KeyBitsRsa2048,
+				},
+			},
+		},
+		{
+			name: "valid-key-type-rsa-3072",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeRsa),
+					WithKeyBits(KeyBitsRsa3072),
+				)
+				return s
+			}(),
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					VaultPath: "/ssh/sign/foo",
+					Username:  "name",
+					KeyType:   KeyTypeRsa,
+					KeyBits:   KeyBitsRsa3072,
+				},
+			},
+		},
+		{
+			name: "valid-key-type-rsa-4096",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeRsa),
+					WithKeyBits(KeyBitsRsa4096),
+				)
+				return s
+			}(),
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					StoreId:   cs.GetPublicId(),
+					VaultPath: "/ssh/sign/foo",
+					Username:  "name",
+					KeyType:   KeyTypeRsa,
+					KeyBits:   KeyBitsRsa4096,
+				},
+			},
+		},
+		{
+			name: "invalid-key-type-key-bits-ecdsa-2048",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsRsa2048),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-ecdsa-3072",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsRsa3072),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-ecdsa-4096",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsRsa4096),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-rsa-256",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeRsa),
+					WithKeyBits(KeyBitsEcdsa256),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-rsa-384",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeRsa),
+					WithKeyBits(KeyBitsEcdsa384),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-rsa-521",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeRsa),
+					WithKeyBits(KeyBitsEcdsa521),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-ed25519-256",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEd25519),
+					WithKeyBits(KeyBitsEcdsa256),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-ed25519-384",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEd25519),
+					WithKeyBits(KeyBitsEcdsa384),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-ed25519-521",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEd25519),
+					WithKeyBits(KeyBitsEcdsa521),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-ed25519-2048",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEd25519),
+					WithKeyBits(KeyBitsRsa2048),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-ed25519-3072",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEd25519),
+					WithKeyBits(KeyBitsRsa3072),
+				)
+				return s
+			}(),
+			wantErr: errors.NotSpecificIntegrity,
+		},
+		{
+			name: "invalid-key-type-key-bits-ed25519-4096",
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEd25519),
+					WithKeyBits(KeyBitsRsa4096),
+				)
+				return s
+			}(),
 			wantErr: errors.NotSpecificIntegrity,
 		},
 		{
 			name: "valid-critical-options",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:         cs.GetPublicId(),
-					VaultPath:       "/some/path",
-					Username:        "name",
-					CriticalOptions: "*",
-				},
-			},
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithCriticalOptions(`{"force-command": "/bin/foo"}`),
+				)
+				return s
+			}(),
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:         cs.GetPublicId(),
-					VaultPath:       "/some/path",
+					VaultPath:       "/ssh/sign/foo",
 					Username:        "name",
-					CriticalOptions: "*",
+					KeyType:         KeyTypeEd25519,
+					KeyBits:         0,
+					CriticalOptions: `{"force-command": "/bin/foo"}`,
 				},
 			},
 		},
 		{
 			name: "valid-extensions",
-			in: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					StoreId:    cs.GetPublicId(),
-					VaultPath:  "/some/path",
-					Username:   "name",
-					Extensions: "permit-agent-forwarding, permit-pty",
-				},
-			},
+			in: func() *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					cs.GetPublicId(),
+					"/ssh/sign/foo",
+					"name",
+					WithExtensions(`{"permit-X11-forwarding": "", "permit-pty": ""}`),
+				)
+				return s
+			}(),
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					StoreId:    cs.GetPublicId(),
-					VaultPath:  "/some/path",
+					VaultPath:  "/ssh/sign/foo",
 					Username:   "name",
-					Extensions: "permit-agent-forwarding, permit-pty",
+					KeyType:    KeyTypeEd25519,
+					KeyBits:    0,
+					Extensions: `{"permit-X11-forwarding": "", "permit-pty": ""}`,
 				},
 			},
 		},
@@ -242,6 +599,12 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
+			assert.Equal(tt.want.KeyType, got.KeyType)
+			assert.Equal(tt.want.KeyBits, got.KeyBits)
+			assert.Equal(tt.want.KeyId, got.KeyId)
+			assert.Equal(tt.want.Ttl, got.Ttl)
+			assert.Equal(tt.want.CriticalOptions, got.CriticalOptions)
+			assert.Equal(tt.want.Extensions, got.Extensions)
 			assert.Equal(got.CredentialType(), credential.SshCertificateType)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 
@@ -262,8 +625,8 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		in := &SSHCertificateCredentialLibrary{
 			SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 				StoreId:   cs.GetPublicId(),
-				KeyType:   "ed25519",
-				VaultPath: "/some/path",
+				KeyType:   KeyTypeEd25519,
+				VaultPath: "/ssh/sign/foo",
 				Name:      "test-name-repo",
 				Username:  "name",
 			},
@@ -299,8 +662,8 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 
 		in := &SSHCertificateCredentialLibrary{
 			SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-				KeyType:   "ed25519",
-				VaultPath: "/some/path",
+				KeyType:   KeyTypeEd25519,
+				VaultPath: "/ssh/sign/foo",
 				Name:      "test-name-repo",
 				Username:  "name",
 			},
@@ -356,7 +719,7 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 				in: &SSHCertificateCredentialLibrary{
 					SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 						StoreId:   cs.GetPublicId(),
-						VaultPath: "/some/path",
+						VaultPath: "/ssh/sign/foo",
 						Username:  "name",
 					},
 				},
@@ -367,7 +730,7 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 				in: &SSHCertificateCredentialLibrary{
 					SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 						StoreId:   csWithExpiredToken.GetPublicId(),
-						VaultPath: "/some/path",
+						VaultPath: "/ssh/sign/foo",
 						Username:  "name",
 					},
 				},
@@ -377,7 +740,7 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 				in: &SSHCertificateCredentialLibrary{
 					SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 						StoreId:        cs.GetPublicId(),
-						VaultPath:      "/some/path",
+						VaultPath:      "/ssh/sign/foo",
 						Username:       "name",
 						CredentialType: string(credential.SshCertificateType),
 					},
@@ -630,7 +993,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		orig      *SSHCertificateCredentialLibrary
+		origFn    func(string) *SSHCertificateCredentialLibrary
 		chgFn     func(*SSHCertificateCredentialLibrary) *SSHCertificateCredentialLibrary
 		masks     []string
 		want      *SSHCertificateCredentialLibrary
@@ -639,11 +1002,13 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 	}{
 		{
 			name: "nil-credential-library",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+				)
+				return s
 			},
 			chgFn:   makeNil(),
 			masks:   []string{nameField, descriptionField},
@@ -651,11 +1016,13 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "nil-embedded-credential-library",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+				)
+				return s
 			},
 			chgFn:   makeEmbeddedNil(),
 			masks:   []string{nameField, descriptionField},
@@ -663,11 +1030,13 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "no-public-id",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+				)
+				return s
 			},
 			chgFn:   deletePublicId(),
 			masks:   []string{nameField, descriptionField},
@@ -675,12 +1044,14 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "updating-non-existent-credential-library",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-					Name:      "test-name-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+				)
+				return s
 			},
 			chgFn:   combine(nonExistentPublicId(), changeName("test-update-name-repo")),
 			masks:   []string{nameField},
@@ -688,24 +1059,28 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "empty-field-mask",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-					Name:      "test-name-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+				)
+				return s
 			},
 			chgFn:   changeName("test-update-name-repo"),
 			wantErr: errors.EmptyFieldMask,
 		},
 		{
 			name: "read-only-fields-in-field-mask",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-					Name:      "test-name-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+				)
+				return s
 			},
 			chgFn:   changeName("test-update-name-repo"),
 			masks:   []string{"PublicId", "CreateTime", "UpdateTime", "StoreId"},
@@ -713,12 +1088,14 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "unknown-field-in-field-mask",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-					Name:      "test-name-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+				)
+				return s
 			},
 			chgFn:   changeName("test-update-name-repo"),
 			masks:   []string{"Bilbo"},
@@ -726,19 +1103,21 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-name",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-					Name:      "test-name-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+				)
+				return s
 			},
 			chgFn: changeName("test-update-name-repo"),
 			masks: []string{nameField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
-					VaultPath: "/some/path",
 					Name:      "test-update-name-repo",
 				},
 			},
@@ -746,19 +1125,21 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-description",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:    "name",
-					VaultPath:   "/some/path",
-					Description: "test-description-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithDescription("test-description-repo"),
+				)
+				return s
 			},
 			chgFn: changeDescription("test-update-description-repo"),
 			masks: []string{descriptionField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath:   "/ssh/sign/foo",
 					Username:    "name",
-					VaultPath:   "/some/path",
 					Description: "test-update-description-repo",
 				},
 			},
@@ -766,20 +1147,22 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-name-and-description",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:    "name",
-					VaultPath:   "/some/path",
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+					WithDescription("test-description-repo"),
+				)
+				return s
 			},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("test-update-name-repo")),
 			masks: []string{nameField, descriptionField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath:   "/ssh/sign/foo",
 					Username:    "name",
-					VaultPath:   "/some/path",
 					Name:        "test-update-name-repo",
 					Description: "test-update-description-repo",
 				},
@@ -788,37 +1171,42 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-username",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+				)
+				return s
 			},
 			chgFn: changeUsername("update-name"),
 			masks: []string{usernameField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath: "/ssh/sign/foo",
 					Username:  "update-name",
-					VaultPath: "/some/path",
 				},
 			},
 			wantCount: 1,
 		},
 		{
 			name: "change-keytype",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					KeyType:   KeyTypeEd25519,
-					VaultPath: "/some/path",
-					Username:  "name",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEd25519),
+				)
+				return s
 			},
-			chgFn: changeKeyType(KeyTypeEcdsa),
-			masks: []string{keyTypeField},
+			chgFn: combine(changeKeyType(KeyTypeEcdsa), changeKeyBits(KeyBitsDefault)),
+			masks: []string{keyTypeField, keyBitsField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					KeyType:   KeyTypeEcdsa,
-					VaultPath: "/some/path",
+					KeyBits:   KeyBitsEcdsa256,
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
 				},
 			},
@@ -826,21 +1214,71 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-keybits",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					KeyType:   KeyTypeEcdsa,
-					KeyBits:   224,
-					VaultPath: "/some/path",
-					Username:  "name",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsEcdsa256),
+				)
+				return s
 			},
-			chgFn: changeKeyBits(256),
+			chgFn: changeKeyBits(KeyBitsEcdsa384),
 			masks: []string{keyBitsField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					KeyType:   KeyTypeEcdsa,
-					KeyBits:   256,
-					VaultPath: "/some/path",
+					KeyBits:   KeyBitsEcdsa384,
+					VaultPath: "/ssh/sign/foo",
+					Username:  "name",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-keybits-to-default-ecdsa",
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsEcdsa384),
+				)
+				return s
+			},
+			chgFn: changeKeyBits(KeyBitsDefault),
+			masks: []string{keyBitsField},
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					KeyType:   KeyTypeEcdsa,
+					KeyBits:   KeyBitsEcdsa256,
+					VaultPath: "/ssh/sign/foo",
+					Username:  "name",
+				},
+			},
+			wantCount: 1,
+		},
+		{
+			name: "change-keybits-to-default-rsa",
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeRsa),
+					WithKeyBits(KeyBitsRsa3072),
+				)
+				return s
+			},
+			chgFn: changeKeyBits(KeyBitsDefault),
+			masks: []string{keyBitsField},
+			want: &SSHCertificateCredentialLibrary{
+				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					KeyType:   KeyTypeRsa,
+					KeyBits:   KeyBitsRsa2048,
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
 				},
 			},
@@ -848,19 +1286,21 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-ttl",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Ttl:       "10s",
-					VaultPath: "/some/path",
-					Username:  "name",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithTtl("10s"),
+				)
+				return s
 			},
 			chgFn: changeTtl("1h"),
 			masks: []string{ttlField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					Ttl:       "1h",
-					VaultPath: "/some/path",
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
 				},
 			},
@@ -868,19 +1308,21 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-keyid",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					KeyId:     "id",
-					VaultPath: "/some/path",
-					Username:  "name",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithKeyId("id"),
+				)
+				return s
 			},
 			chgFn: changeKeyId("update-id"),
 			masks: []string{keyIdField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					KeyId:     "update-id",
-					VaultPath: "/some/path",
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
 				},
 			},
@@ -888,19 +1330,21 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-critical-options",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					CriticalOptions: "options",
-					VaultPath:       "/some/path",
-					Username:        "name",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithCriticalOptions("options"),
+				)
+				return s
 			},
 			chgFn: changeCriticalOptions("update-options"),
 			masks: []string{CriticalOptionsField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					CriticalOptions: "update-options",
-					VaultPath:       "/some/path",
+					VaultPath:       "/ssh/sign/foo",
 					Username:        "name",
 				},
 			},
@@ -908,19 +1352,21 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-extensions",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Extensions: "extensions",
-					VaultPath:  "/some/path",
-					Username:   "name",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithExtensions("extensions"),
+				)
+				return s
 			},
 			chgFn: changeExtensions("update-extensions"),
 			masks: []string{ExtensionsField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 					Extensions: "update-extensions",
-					VaultPath:  "/some/path",
+					VaultPath:  "/ssh/sign/foo",
 					Username:   "name",
 				},
 			},
@@ -928,20 +1374,22 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "delete-name",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:    "name",
-					VaultPath:   "/some/path",
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+					WithDescription("test-description-repo"),
+				)
+				return s
 			},
 			masks: []string{nameField},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath:   "/ssh/sign/foo",
 					Username:    "name",
-					VaultPath:   "/some/path",
 					Description: "test-description-repo",
 				},
 			},
@@ -949,20 +1397,22 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "delete-description",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:    "name",
-					VaultPath:   "/some/path",
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+					WithDescription("test-description-repo"),
+				)
+				return s
 			},
 			masks: []string{descriptionField},
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
-					VaultPath: "/some/path",
 					Name:      "test-name-repo",
 				},
 			},
@@ -970,20 +1420,22 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "do-not-delete-name",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:    "name",
-					VaultPath:   "/some/path",
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+					WithDescription("test-description-repo"),
+				)
+				return s
 			},
 			masks: []string{descriptionField},
 			chgFn: combine(changeDescription("test-update-description-repo"), changeName("")),
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath:   "/ssh/sign/foo",
 					Username:    "name",
-					VaultPath:   "/some/path",
 					Name:        "test-name-repo",
 					Description: "test-update-description-repo",
 				},
@@ -992,20 +1444,22 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "do-not-delete-description",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:    "name",
-					VaultPath:   "/some/path",
-					Name:        "test-name-repo",
-					Description: "test-description-repo",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithName("test-name-repo"),
+					WithDescription("test-description-repo"),
+				)
+				return s
 			},
 			masks: []string{nameField},
 			chgFn: combine(changeDescription(""), changeName("test-update-name-repo")),
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath:   "/ssh/sign/foo",
 					Username:    "name",
-					VaultPath:   "/some/path",
 					Name:        "test-update-name-repo",
 					Description: "test-description-repo",
 				},
@@ -1014,29 +1468,47 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-vault-path",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/old/path",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+				)
+				return s
 			},
-			chgFn: changeVaultPath("/new/path"),
+			chgFn: changeVaultPath("/ssh/issue/foo"),
 			masks: []string{vaultPathField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath: "/ssh/issue/foo",
 					Username:  "name",
-					VaultPath: "/new/path",
 				},
 			},
 			wantCount: 1,
 		},
 		{
+			name: "change-vault-path-invalid",
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+				)
+				return s
+			},
+			chgFn:   changeVaultPath("/ssh/not-sign/foo"),
+			masks:   []string{vaultPathField},
+			wantErr: errors.CheckConstraint,
+		},
+		{
 			name: "delete-vault-path",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+				)
+				return s
 			},
 			chgFn:   changeVaultPath(""),
 			masks:   []string{vaultPathField},
@@ -1044,13 +1516,15 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-key-type-invalid",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-					KeyType:   KeyTypeEcdsa,
-					KeyBits:   256,
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsEcdsa256),
+				)
+				return s
 			},
 			chgFn:   changeKeyType(KeyTypeEd25519),
 			masks:   []string{keyTypeField},
@@ -1058,22 +1532,24 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		},
 		{
 			name: "change-key-type-bits-valid",
-			orig: &SSHCertificateCredentialLibrary{
-				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
-					Username:  "name",
-					VaultPath: "/some/path",
-					KeyType:   KeyTypeEcdsa,
-					KeyBits:   256,
-				},
+			origFn: func(csId string) *SSHCertificateCredentialLibrary {
+				s, _ := NewSSHCertificateCredentialLibrary(
+					csId,
+					"/ssh/sign/foo",
+					"name",
+					WithKeyType(KeyTypeEcdsa),
+					WithKeyBits(KeyBitsEcdsa256),
+				)
+				return s
 			},
-			chgFn: combine(changeKeyType(KeyTypeRsa), changeKeyBits(2048)),
+			chgFn: combine(changeKeyType(KeyTypeRsa), changeKeyBits(KeyBitsRsa2048)),
 			masks: []string{keyTypeField, keyBitsField},
 			want: &SSHCertificateCredentialLibrary{
 				SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
+					VaultPath: "/ssh/sign/foo",
 					Username:  "name",
-					VaultPath: "/some/path",
 					KeyType:   KeyTypeRsa,
-					KeyBits:   2048,
+					KeyBits:   KeyBitsRsa2048,
 				},
 			},
 			wantCount: 1,
@@ -1094,8 +1570,8 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 
-			tt.orig.StoreId = cs.GetPublicId()
-			orig, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), tt.orig)
+			ttOrig := tt.origFn(cs.GetPublicId())
+			orig, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), ttOrig)
 			assert.NoError(err)
 			require.NotNil(orig)
 
@@ -1110,12 +1586,12 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.Empty(tt.orig.PublicId)
+			assert.Empty(ttOrig.PublicId)
 			require.NotNil(got)
 			assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
 			assert.Equal(tt.wantCount, gotCount, "row count")
-			assert.NotSame(tt.orig, got)
-			assert.Equal(tt.orig.StoreId, got.StoreId)
+			assert.NotSame(ttOrig, got)
+			assert.Equal(ttOrig.StoreId, got.StoreId)
 			underlyingDB, err := conn.SqlDB(ctx)
 			require.NoError(err)
 			dbassert := dbassert.New(t, underlyingDB)
@@ -1240,7 +1716,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		in := &SSHCertificateCredentialLibrary{
 			SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 				Username:  "name",
-				VaultPath: "/some/path",
+				VaultPath: "/ssh/sign/foo",
 				Name:      "test-name-repo",
 			},
 		}
@@ -1287,7 +1763,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		in := &SSHCertificateCredentialLibrary{
 			SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 				Username:  "name",
-				VaultPath: "/some/path",
+				VaultPath: "/ssh/sign/foo",
 				Name:      "test-name-repo",
 			},
 		}
@@ -1359,9 +1835,9 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		in := &SSHCertificateCredentialLibrary{
 			SSHCertificateCredentialLibrary: &store.SSHCertificateCredentialLibrary{
 				Username:  "name",
-				VaultPath: "/some/path",
+				VaultPath: "/ssh/sign/foo",
 				KeyType:   KeyTypeEcdsa,
-				KeyBits:   521,
+				KeyBits:   KeyBitsEcdsa521,
 			},
 		}
 		in.StoreId = cs.GetPublicId()
@@ -1370,7 +1846,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(orig)
 
-		orig.KeyBits = 0
+		orig.KeyBits = KeyBitsEcdsa256
 
 		got, gotCount, err := repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 1, []string{keyBitsField})
 		require.NoError(err)
@@ -1382,8 +1858,9 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		assert.Equal(orig.StoreId, got.StoreId)
 
 		orig.KeyType = KeyTypeRsa
+		orig.KeyBits = KeyBitsDefault
 
-		got, gotCount, err = repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 2, []string{keyTypeField})
+		got, gotCount, err = repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 2, []string{keyTypeField, keyBitsField})
 		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
@@ -1391,7 +1868,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		assert.NotSame(orig, got)
 		assert.Equal(orig.StoreId, got.StoreId)
 
-		orig.KeyBits = 3072
+		orig.KeyBits = KeyBitsRsa3072
 
 		got, gotCount, err = repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 3, []string{keyTypeField})
 		require.NoError(err)
@@ -1402,7 +1879,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		assert.Equal(orig.StoreId, got.StoreId)
 
 		assert.Equal(KeyTypeRsa, orig.KeyType)
-		assert.Equal(uint32(3072), orig.KeyBits)
+		assert.Equal(uint32(KeyBitsRsa3072), orig.KeyBits)
 	})
 }
 
