@@ -98,12 +98,6 @@ variable "tfc_api_token" {
   type        = string
 }
 
-variable "skip_failing_bats_tests" {
-  description = "Skip known Bats test failures"
-  type        = string
-  default     = "false"
-}
-
 variable "vault_instance_type" {
   description = "Instance type for test target nodes"
   type        = string
