@@ -4,6 +4,21 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.12.0 (2023/01/24)
 
+### Deprecations/Changes
+
+* In Boundary 0.9.0, targets were updated to require a default port value. This
+  had been the original intention; it was a mistake that it was optional.
+  Unfortunately, due to a separate defect in the update verification logic for
+  static hosts, it was possible for a host to be updated (but not created) with
+  a port. This meant that targets could use ports attached to host addresses,
+  which was not the intention and leads to confusing behavior across different
+  installations. In this version, updating static hosts will no longer allow
+  ports to be part of the address; when authorizing a session, any port on such
+  a host will be ignored in favor of the default port on the target. In Boundary
+  0.14.0, this will become an error instead. As a consequence, it means that the
+  fallback logic for targets that did not have a default port defined is no
+  longer in service; all targets must now have default port defined.
+
 ### New and Improved
 
 * Direct Address Targets: You can now set an address directly on a target,
