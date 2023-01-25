@@ -104,7 +104,6 @@ scenario "integration" {
       local_boundary_dir    = local.local_boundary_dir
       project_scope_id      = step.create_boundary_cluster.project_scope_id
       org_scope_id          = step.create_boundary_cluster.org_scope_id
-      skip_failing_tests    = var.skip_failing_bats_tests
       target_id             = step.create_boundary_cluster.target_id
     }
   }

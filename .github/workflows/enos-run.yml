@@ -149,7 +149,6 @@ jobs:
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          ENOS_VAR_skip_failing_bats_tests: "true"
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
@@ -167,8 +166,6 @@ jobs:
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          # Skip a few known failing bats tests
-          ENOS_VAR_skip_failing_bats_tests: "true"
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
@@ -184,8 +181,6 @@ jobs:
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          # Skip a few known failing bats tests
-          ENOS_VAR_skip_failing_bats_tests: "true"
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
@@ -198,8 +193,6 @@ jobs:
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          # Skip a few known failing bats tests
-          ENOS_VAR_skip_failing_bats_tests: "true"
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}

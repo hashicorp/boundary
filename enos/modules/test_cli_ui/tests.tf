@@ -19,9 +19,6 @@ variable "host_set_id" {}
 variable "local_boundary_dir" {}
 variable "org_scope_id" {}
 variable "project_scope_id" {}
-variable "skip_failing_tests" {
-  default = "false"
-}
 variable "target_id" {}
 
 resource "enos_local_exec" "local_boundary_version" {
@@ -119,7 +116,6 @@ resource "enos_local_exec" "run_bats" {
     DEFAULT_AMPW               = var.auth_method_id
     DEFAULT_USER               = var.auth_user_id
     DEFAULT_UNPRIVILEGED_USER  = local.user_id
-    SKIP_FAILING_TESTS_IN_CI   = var.skip_failing_tests
   }
   // TERM isn't set automatically in CI so we need to make sure it's always there.
   inline = ["TERM=\"$${TERM:=dumb}\" PATH=\"${var.local_boundary_dir}:$PATH\" bats -p ../../../internal/tests/cli/boundary"]
