@@ -2257,7 +2257,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 		{
 			name: "update other attr fields",
 			req: &pbs.UpdateCredentialLibraryRequest{
-				UpdateMask: fieldmask("attributes.ttl", "attributes.key_id", "attributes.critical_options", "attributes.extensions"),
+				UpdateMask: fieldmask("attributes.ttl", "attributes.key_id", "attributes.critical_options.some", "attributes.extensions.permity-pty"),
 				Item: &pb.CredentialLibrary{
 					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
