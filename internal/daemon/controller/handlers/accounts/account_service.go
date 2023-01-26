@@ -100,18 +100,21 @@ type Service struct {
 
 	pwRepoFn   common.PasswordAuthRepoFactory
 	oidcRepoFn common.OidcAuthRepoFactory
+	ldapRepoFn common.LdapAuthRepoFactory
 }
 
 var _ pbs.AccountServiceServer = (*Service)(nil)
 
 // NewService returns a account service which handles account related requests to boundary.
-func NewService(pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory) (Service, error) {
+func NewService(ctx context.Context, pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory, ldapRepo common.LdapAuthRepoFactory) (Service, error) {
 	const op = "accounts.NewService"
-	if pwRepo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing password repository")
-	}
-	if oidcRepo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing oidc repository provided")
+	switch {
+	case pwRepo == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing password repository")
+	case oidcRepo == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing oidc repository")
+	case ldapRepo == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing ldap repository")
 	}
 	return Service{pwRepoFn: pwRepo, oidcRepoFn: oidcRepo}, nil
 }
