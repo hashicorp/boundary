@@ -17,7 +17,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   a host will be ignored in favor of the default port on the target. In Boundary
   0.14.0, this will become an error instead. As a consequence, it means that the
   fallback logic for targets that did not have a default port defined is no
-  longer in service; all targets must now have default port defined.
+  longer in service; all targets must now have a default port defined.
 
 ### New and Improved
 
