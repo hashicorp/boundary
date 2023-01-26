@@ -183,7 +183,7 @@ func WithMappingOverride(m MappingOverride) Option {
 }
 
 // WithKeyType provides an optional description.
-func withKeyType(t string) Option {
+func WithKeyType(t string) Option {
 	return func(o *options) {
 		o.withKeyType = t
 	}
@@ -196,10 +196,10 @@ func WithKeyBits(b uint32) Option {
 	}
 }
 
-// WithTtl provides an optional description.
+// WithTtl provides an optional vault token ttl.
 func WithTtl(t string) Option {
 	return func(o *options) {
-		o.withKeyId = t
+		o.withTtl = t
 	}
 }
 

@@ -163,6 +163,7 @@ func (r *ConnectionRepository) AuthorizeConnection(ctx context.Context, sessionI
 			if err := reader.LookupById(ctx, &connection); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for session %s", sessionId)))
 			}
+			// insert into session_connection_credential_dynamic here
 			connectionStates, err = fetchConnectionStates(ctx, reader, connectionId, db.WithOrder("start_time desc"))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)

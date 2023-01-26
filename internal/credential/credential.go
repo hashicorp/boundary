@@ -98,6 +98,13 @@ type Request struct {
 	Purpose  Purpose
 }
 
+// SshCertificate is a credential containing a client certificate, username,
+// and SSH private key.
+type SshCertificate interface {
+	SshPrivateKey
+	Certificate() []byte
+}
+
 // Issuer issues dynamic credentials.
 type Issuer interface {
 	// Issue issues dynamic credentials for a session from the requested

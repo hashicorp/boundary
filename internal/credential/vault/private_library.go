@@ -2,8 +2,18 @@ package vault
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -17,6 +27,8 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	vault "github.com/hashicorp/vault/api"
+	"github.com/mikesmitty/edkey"
+	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -25,13 +37,13 @@ var _ credential.Dynamic = (*baseCred)(nil)
 type baseCred struct {
 	*Credential
 
-	lib        *genericIssuingCredentialLibrary
+	lib        issuingCredentialLibrary
 	secretData map[string]any
 }
 
 func (bc *baseCred) Secret() credential.SecretData { return bc.secretData }
 func (bc *baseCred) Library() credential.Library   { return bc.lib }
-func (bc *baseCred) Purpose() credential.Purpose   { return bc.lib.Purpose }
+func (bc *baseCred) Purpose() credential.Purpose   { return bc.lib.GetPurpose() }
 func (bc *baseCred) getExpiration() time.Duration  { return bc.expiration }
 func (bc *baseCred) getCredential() *Credential    { return bc.Credential }
 
@@ -68,7 +80,12 @@ func baseToUsrPass(ctx context.Context, bc *baseCred) (*usrPassCred, error) {
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
 	}
 
-	uAttr, pAttr := bc.lib.UsernameAttribute, bc.lib.PasswordAttribute
+	lib, ok := bc.lib.(*genericIssuingCredentialLibrary)
+	if !ok {
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("baseCred.lib is not of type genericIssuingCredentialLibrary"))
+	}
+
+	uAttr, pAttr := lib.UsernameAttribute, lib.PasswordAttribute
 	if uAttr == "" {
 		uAttr = "username"
 	}
@@ -110,7 +127,12 @@ func baseToSshPriKey(ctx context.Context, bc *baseCred) (*sshPrivateKeyCred, err
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
 	}
 
-	uAttr, pkAttr, pAttr := bc.lib.UsernameAttribute, bc.lib.PrivateKeyAttribute, bc.lib.PrivateKeyPassphraseAttribute
+	lib, ok := bc.lib.(*genericIssuingCredentialLibrary)
+	if !ok {
+		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("baseCred.lib is not of type genericIssuingCredentialLibrary"))
+	}
+
+	uAttr, pkAttr, pAttr := lib.UsernameAttribute, lib.PrivateKeyAttribute, lib.PrivateKeyPassphraseAttribute
 	if uAttr == "" {
 		uAttr = "username"
 	}
@@ -133,10 +155,18 @@ func baseToSshPriKey(ctx context.Context, bc *baseCred) (*sshPrivateKeyCred, err
 	}, nil
 }
 
+type sshCertCred struct {
+	*sshPrivateKeyCred
+	certificate []byte
+}
+
+func (c *sshCertCred) Certificate() []byte { return c.certificate }
+
 var _ credential.Library = (*genericIssuingCredentialLibrary)(nil)
 
 type issuingCredentialLibrary interface {
-	GetPublicId() string
+	credential.Library
+	GetPurpose() credential.Purpose
 	retrieveCredential(context.Context, errors.Op, ...credential.Option) (dynamicCred, error)
 }
 
@@ -221,6 +251,7 @@ func (pl *genericIssuingCredentialLibrary) GetDescription() string              
 func (pl *genericIssuingCredentialLibrary) GetVersion() uint32                  { return pl.Version }
 func (pl *genericIssuingCredentialLibrary) GetCreateTime() *timestamp.Timestamp { return pl.CreateTime }
 func (pl *genericIssuingCredentialLibrary) GetUpdateTime() *timestamp.Timestamp { return pl.UpdateTime }
+func (pl *genericIssuingCredentialLibrary) GetPurpose() credential.Purpose      { return pl.Purpose }
 
 func (pl *genericIssuingCredentialLibrary) CredentialType() credential.Type {
 	switch ct := pl.CredType; ct {
@@ -444,6 +475,14 @@ type privateCredentialLibraryAllTypes struct {
 	PrivateKeyAttribute           string
 	PrivateKeyPassphraseAttribute string
 	Purpose                       credential.Purpose `gorm:"-"`
+	KeyType                       string
+	KeyBits                       int
+	Username                      string
+	Ttl                           string
+	KeyId                         string
+	CriticalOptions               []byte
+	Extensions                    []byte
+	CredLibType                   string
 }
 
 func (pl *privateCredentialLibraryAllTypes) GetPublicId() string { return pl.PublicId }
@@ -516,42 +555,88 @@ func (pl *privateCredentialLibraryAllTypes) clone() *privateCredentialLibraryAll
 		CtClientKey:                   append(pl.CtClientKey[:0:0], pl.CtClientKey...),
 		ClientKeyId:                   pl.ClientKeyId,
 		Purpose:                       pl.Purpose,
+		KeyType:                       pl.KeyType,
+		KeyBits:                       pl.KeyBits,
+		Username:                      pl.Username,
+		Ttl:                           pl.Ttl,
+		KeyId:                         pl.KeyId,
+		CriticalOptions:               pl.CriticalOptions,
+		Extensions:                    pl.Extensions,
+		CredLibType:                   pl.CredLibType,
 	}
 }
 
 func (pl *privateCredentialLibraryAllTypes) toTypedIssuingCredentialLibrary() issuingCredentialLibrary {
-	return &genericIssuingCredentialLibrary{
-		PublicId:                      pl.PublicId,
-		StoreId:                       pl.StoreId,
-		CredType:                      pl.CredType,
-		UsernameAttribute:             pl.UsernameAttribute,
-		PasswordAttribute:             pl.PasswordAttribute,
-		PrivateKeyAttribute:           pl.PrivateKeyAttribute,
-		PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
-		Name:                          pl.Name,
-		Description:                   pl.Description,
-		CreateTime:                    pl.CreateTime,
-		UpdateTime:                    pl.UpdateTime,
-		Version:                       pl.Version,
-		ProjectId:                     pl.ProjectId,
-		VaultPath:                     pl.VaultPath,
-		HttpMethod:                    pl.HttpMethod,
-		HttpRequestBody:               pl.HttpRequestBody,
-		VaultAddress:                  pl.VaultAddress,
-		Namespace:                     pl.Namespace,
-		CaCert:                        pl.CaCert,
-		TlsServerName:                 pl.TlsServerName,
-		TlsSkipVerify:                 pl.TlsSkipVerify,
-		WorkerFilter:                  pl.WorkerFilter,
-		TokenHmac:                     pl.TokenHmac,
-		Token:                         pl.Token,
-		CtToken:                       pl.CtToken,
-		TokenKeyId:                    pl.TokenKeyId,
-		ClientCert:                    pl.ClientCert,
-		ClientKey:                     pl.ClientKey,
-		CtClientKey:                   pl.CtClientKey,
-		ClientKeyId:                   pl.ClientKeyId,
-		Purpose:                       pl.Purpose,
+	switch pl.CredLibType {
+	case "ssh-signed-cert":
+		return &sshCertIssuingCredentialLibrary{
+			PublicId:        pl.PublicId,
+			StoreId:         pl.StoreId,
+			CredType:        pl.CredType,
+			Username:        pl.Username,
+			Name:            pl.Name,
+			Description:     pl.Description,
+			CreateTime:      pl.CreateTime,
+			UpdateTime:      pl.UpdateTime,
+			Version:         pl.Version,
+			ProjectId:       pl.ProjectId,
+			VaultPath:       pl.VaultPath,
+			VaultAddress:    pl.VaultAddress,
+			Namespace:       pl.Namespace,
+			CaCert:          pl.CaCert,
+			TlsServerName:   pl.TlsServerName,
+			TlsSkipVerify:   pl.TlsSkipVerify,
+			WorkerFilter:    pl.WorkerFilter,
+			TokenHmac:       pl.TokenHmac,
+			Token:           pl.Token,
+			CtToken:         pl.CtToken,
+			TokenKeyId:      pl.TokenKeyId,
+			ClientCert:      pl.ClientCert,
+			ClientKey:       pl.ClientKey,
+			CtClientKey:     pl.CtClientKey,
+			ClientKeyId:     pl.ClientKeyId,
+			Purpose:         pl.Purpose,
+			KeyType:         pl.KeyType,
+			KeyBits:         pl.KeyBits,
+			Ttl:             pl.Ttl,
+			KeyId:           pl.KeyId,
+			CriticalOptions: pl.CriticalOptions,
+			Extensions:      pl.Extensions,
+		}
+	default:
+		return &genericIssuingCredentialLibrary{
+			PublicId:                      pl.PublicId,
+			StoreId:                       pl.StoreId,
+			CredType:                      pl.CredType,
+			UsernameAttribute:             pl.UsernameAttribute,
+			PasswordAttribute:             pl.PasswordAttribute,
+			PrivateKeyAttribute:           pl.PrivateKeyAttribute,
+			PrivateKeyPassphraseAttribute: pl.PrivateKeyPassphraseAttribute,
+			Name:                          pl.Name,
+			Description:                   pl.Description,
+			CreateTime:                    pl.CreateTime,
+			UpdateTime:                    pl.UpdateTime,
+			Version:                       pl.Version,
+			ProjectId:                     pl.ProjectId,
+			VaultPath:                     pl.VaultPath,
+			HttpMethod:                    pl.HttpMethod,
+			HttpRequestBody:               pl.HttpRequestBody,
+			VaultAddress:                  pl.VaultAddress,
+			Namespace:                     pl.Namespace,
+			CaCert:                        pl.CaCert,
+			TlsServerName:                 pl.TlsServerName,
+			TlsSkipVerify:                 pl.TlsSkipVerify,
+			WorkerFilter:                  pl.WorkerFilter,
+			TokenHmac:                     pl.TokenHmac,
+			Token:                         pl.Token,
+			CtToken:                       pl.CtToken,
+			TokenKeyId:                    pl.TokenKeyId,
+			ClientCert:                    pl.ClientCert,
+			ClientKey:                     pl.ClientKey,
+			CtClientKey:                   pl.CtClientKey,
+			ClientKeyId:                   pl.ClientKeyId,
+			Purpose:                       pl.Purpose,
+		}
 	}
 }
 
@@ -596,4 +681,318 @@ func (m *requestMap) libIds() []string {
 
 func (m *requestMap) get(libraryId string) []credential.Purpose {
 	return m.ids[libraryId]
+}
+
+type sshCertIssuingCredentialLibrary struct {
+	PublicId        string
+	StoreId         string
+	Name            string
+	Description     string
+	CreateTime      *timestamp.Timestamp
+	UpdateTime      *timestamp.Timestamp
+	Version         uint32
+	VaultPath       string
+	CredType        string
+	ProjectId       string
+	VaultAddress    string
+	Namespace       string
+	CaCert          []byte
+	TlsServerName   string
+	TlsSkipVerify   bool
+	WorkerFilter    string
+	Token           TokenSecret
+	CtToken         []byte
+	TokenHmac       []byte
+	TokenKeyId      string
+	ClientCert      []byte
+	ClientKey       KeySecret
+	CtClientKey     []byte
+	ClientKeyId     string
+	Username        string
+	KeyType         string
+	KeyBits         int
+	KeyId           string
+	Ttl             string
+	CriticalOptions []byte
+	Extensions      []byte
+	Purpose         credential.Purpose
+}
+
+func (lib *sshCertIssuingCredentialLibrary) GetPublicId() string            { return lib.PublicId }
+func (lib *sshCertIssuingCredentialLibrary) GetStoreId() string             { return lib.StoreId }
+func (lib *sshCertIssuingCredentialLibrary) GetName() string                { return lib.Name }
+func (lib *sshCertIssuingCredentialLibrary) GetDescription() string         { return lib.Description }
+func (lib *sshCertIssuingCredentialLibrary) GetVersion() uint32             { return lib.Version }
+func (lib *sshCertIssuingCredentialLibrary) GetPurpose() credential.Purpose { return lib.Purpose }
+func (lib *sshCertIssuingCredentialLibrary) GetCreateTime() *timestamp.Timestamp {
+	return lib.CreateTime
+}
+
+func (lib *sshCertIssuingCredentialLibrary) GetUpdateTime() *timestamp.Timestamp {
+	return lib.UpdateTime
+}
+
+func (lib *sshCertIssuingCredentialLibrary) CredentialType() credential.Type {
+	switch ct := lib.CredType; ct {
+	case "":
+		return credential.UnspecifiedType
+	default:
+		return credential.Type(ct)
+	}
+}
+
+func (lib *sshCertIssuingCredentialLibrary) client(ctx context.Context) (vaultClient, error) {
+	const op = "vault.(genericIssuingCredentialLibrary).client"
+	clientConfig := &clientConfig{
+		Addr:          lib.VaultAddress,
+		Token:         lib.Token,
+		CaCert:        lib.CaCert,
+		TlsServerName: lib.TlsServerName,
+		TlsSkipVerify: lib.TlsSkipVerify,
+		Namespace:     lib.Namespace,
+	}
+
+	if lib.ClientKey != nil {
+		clientConfig.ClientCert = lib.ClientCert
+		clientConfig.ClientKey = lib.ClientKey
+	}
+
+	client, err := vaultClientFactoryFn(ctx, clientConfig, WithWorkerFilter(lib.WorkerFilter))
+	if err != nil {
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
+	}
+	return client, nil
+}
+
+func generatePublicPrivateKeys(ctx context.Context, keyType string, keyBits int) (string, []byte, error) {
+	const op = "vault.generatePublicPrivateKeys"
+	pemBlock := pem.Block{}
+	var sshKey ssh.PublicKey
+
+	switch keyType {
+	case KeyTypeRsa:
+		pemBlock.Type = "RSA PRIVATE KEY" // these values are copied from the crypto ssh library in ssh/keys.go
+
+		key, err := rsa.GenerateKey(rand.Reader, keyBits)
+		if err != nil {
+			return "", nil, errors.Wrap(ctx, err, op)
+		}
+		if sshKey, err = ssh.NewPublicKey(&key.PublicKey); err != nil {
+			return "", nil, errors.Wrap(ctx, err, op)
+		}
+
+		pemBlock.Bytes = x509.MarshalPKCS1PrivateKey(key)
+
+	case KeyTypeEd25519:
+		pemBlock.Type = "OPENSSH PRIVATE KEY" // these values are copied from the crypto ssh library in ssh/keys.go
+
+		pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			return "", nil, errors.Wrap(ctx, err, op)
+		}
+		if sshKey, err = ssh.NewPublicKey(pubKey); err != nil {
+			return "", nil, errors.Wrap(ctx, err, op)
+		}
+
+		if pemBlock.Bytes = edkey.MarshalED25519PrivateKey(privKey); pemBlock.Bytes == nil {
+			return "", nil, errors.New(ctx, errors.Encode, op, "failed to marshal ed25519 private key")
+		}
+
+	case KeyTypeEcdsa:
+		pemBlock.Type = "EC PRIVATE KEY" // these values are copied from the crypto ssh library in ssh/keys.go
+
+		var curve elliptic.Curve
+		switch keyBits {
+		case 256:
+			curve = elliptic.P256()
+		case 384:
+			curve = elliptic.P384()
+		case 521:
+			curve = elliptic.P521()
+		default:
+			return "", nil, errors.New(ctx, errors.InvalidParameter, op, "invalid KeyBits. when KeyType=ecdsa, KeyBits must be one of: 256, 384, or 521")
+		}
+
+		key, err := ecdsa.GenerateKey(curve, rand.Reader)
+		if err != nil {
+			return "", nil, errors.Wrap(ctx, err, op)
+		}
+
+		if sshKey, err = ssh.NewPublicKey(&key.PublicKey); err != nil {
+			return "", nil, errors.Wrap(ctx, err, op)
+		}
+
+		if pemBlock.Bytes, err = x509.MarshalECPrivateKey(key); err != nil {
+			return "", nil, errors.Wrap(ctx, err, op)
+		}
+
+	default:
+		return "", nil, errors.New(ctx, errors.InvalidParameter, op, "invalid KeyType, must be one of: \"rsa\", \"ed25519\", or \"ecdsa\"")
+	}
+
+	publicKey := base64.StdEncoding.EncodeToString(sshKey.Marshal())
+	privateKey := pem.EncodeToMemory(&pemBlock)
+	if privateKey == nil {
+		return "", nil, errors.New(ctx, errors.Encode, op, "failed to encode private key to PEM format")
+	}
+	return publicKey, privateKey, nil
+}
+
+type sshCertVaultBody struct {
+	KeyType         string            `json:"key_type,omitempty"` // must be "rsa", "ed25519", or "ecdsa"
+	KeyBits         int               `json:"key_bits,omitempty"` // with key_type=rsa, allowed values are: 2048 (default), 3072, or 4096; with key_type=ecdsa, allowed values are: 256 (default), 384, or 521; ignored with key_type=ed25519
+	PublicKey       string            `json:"public_key,omitempty"`
+	TTL             string            `json:"ttl,omitempty"`
+	ValidPrincipals string            `json:"valid_principals,omitempty"` // this needs to be "generated" off of the username provided in config
+	CertType        string            `json:"cert_type,omitempty"`        // this should always be "user"
+	KeyId           string            `json:"key_id,omitempty"`           // this will be loaded directly from lib
+	CriticalOptions map[string]string `json:"critical_options,omitempty"` // this will be loaded directly from lib
+	Extensions      map[string]string `json:"extensions,omitempty"`       // this will be loaded directly from lib
+}
+
+var vaultPathRegexp = regexp.MustCompile(`^.+\/(sign|issue)\/[^\/\\\s]+$`)
+
+// retrieveCredential retrieves a dynamic connection credential from Vault
+// for a specific session and connection.
+//
+// Supported options: credential.WithTemplateData
+func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Context, op errors.Op, opt ...credential.Option) (dynamicCred, error) {
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	// Get the credential ID early. No need to get a secret from Vault
+	// if there is no way to save it in the database.
+	credId, err := newCredentialId()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	client, err := lib.client(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	// build as much of the payload as we can, since sign/issue share many attributes
+	// Template the username
+	tplate, err := template.New(ctx, lib.Username)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	username, err := tplate.Generate(ctx, opts.WithTemplateData)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	var criticalOptions map[string]string
+	if lib.CriticalOptions != nil {
+		if json.Unmarshal(lib.CriticalOptions, &criticalOptions) != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	var extensions map[string]string
+	if lib.Extensions != nil {
+		if json.Unmarshal(lib.Extensions, &extensions) != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	payload := sshCertVaultBody{
+		ValidPrincipals: username,
+		CertType:        "user",
+		CriticalOptions: criticalOptions,
+		Extensions:      extensions,
+		TTL:             lib.Ttl,
+		KeyId:           lib.KeyId,
+	}
+
+	var privateKey credential.PrivateKey
+	var secret *vault.Secret
+
+	switch match := vaultPathRegexp.FindStringSubmatch(lib.VaultPath); match[1] {
+	case "sign":
+		payload.PublicKey, privateKey, err = generatePublicPrivateKeys(ctx, lib.KeyType, lib.KeyBits)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		secret, err = client.post(ctx, lib.VaultPath, body)
+		if err != nil {
+			// TODO(mgaffney) 05/2021: detect if the error is because of an
+			// expired or invalid token
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if secret == nil {
+			return nil, errors.E(ctx, errors.WithCode(errors.VaultEmptySecret), errors.WithOp(op))
+		}
+
+	case "issue":
+		payload.KeyBits = lib.KeyBits
+		if lib.KeyType == KeyTypeEcdsa {
+			// this is a special case where internal to boundary, we refer to the crypto
+			// library name, but vault refers to it simply as "ec" for "Elliptic Curve"
+			payload.KeyType = "ec"
+		} else {
+			payload.KeyType = lib.KeyType
+		}
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		secret, err = client.post(ctx, lib.VaultPath, body)
+		if err != nil {
+			// TODO(mgaffney) 05/2021: detect if the error is because of an
+			// expired or invalid token
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if secret == nil {
+			return nil, errors.E(ctx, errors.WithCode(errors.VaultEmptySecret), errors.WithOp(op))
+		}
+
+		pk, ok := secret.Data["private_key"].(string)
+		if !ok {
+			return nil, errors.New(ctx, errors.VaultInvalidCredentialMapping, op, "vault secret did not contain a private key or response was not in the expected format")
+		}
+
+		privateKey = []byte(pk)
+
+	default:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "vault path was not in an expected format. expected path containing \"sign\" or \"issue\"")
+	}
+
+	leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
+	cred, err := newCredential(lib.GetPublicId(), secret.LeaseID, lib.TokenHmac, leaseDuration)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	cred.PublicId = credId
+	cred.IsRenewable = secret.Renewable // possibly set to just false
+
+	// same location for both
+	cert, ok := secret.Data["signed_key"].(string)
+	if !ok {
+		return nil, errors.New(ctx, errors.VaultInvalidCredentialMapping, op, "vault secret did not contain a signed key or response was not in the expected format")
+	}
+
+	return &sshCertCred{
+		sshPrivateKeyCred: &sshPrivateKeyCred{
+			baseCred: &baseCred{
+				Credential: cred,
+				lib:        lib,
+				secretData: secret.Data,
+			},
+			username:   username,
+			privateKey: privateKey,
+		},
+		certificate: []byte(cert),
+	}, nil
 }
