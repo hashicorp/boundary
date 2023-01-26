@@ -834,7 +834,6 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	switch {
 	case err != nil && strings.Contains(err.Error(), globals.MissingPortErrStr):
 		// This is what we expect
-		_ = hostWithoutPort
 	case err != nil:
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error when parsing the chosen endpoint host address"))
 	case err == nil:
