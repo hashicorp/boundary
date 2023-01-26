@@ -35,8 +35,10 @@ const (
 	httpRequestBodyField       = "attributes.http_request_body"
 	credentialMappingPathField = "credential_mapping_overrides"
 	sshCertUsernameField       = "attributes.username"
-	keyTypeField               = "attributs.key_type"
+	keyTypeField               = "attributes.key_type"
 	keyBitsField               = "attributes.key_bits"
+	criticalOptionsField       = "attributes.critical_options"
+	extensionsField            = "attributes.extensions"
 	domain                     = "credential"
 )
 
@@ -463,6 +465,12 @@ func (s Service) updateInRepo(
 	switch subtypes.SubtypeFromId(domain, id) {
 	case vault.SSHCertificateLibrarySubtype:
 		dbMasks = append(dbMasks, sshCertMaskManager.Translate(masks)...)
+		if getMapUpdate(criticalOptionsField, masks) {
+			dbMasks = append(dbMasks, vault.CriticalOptionsField)
+		}
+		if getMapUpdate(extensionsField, masks) {
+			dbMasks = append(dbMasks, vault.ExtensionsField)
+		}
 		if len(dbMasks) == 0 {
 			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 		}
@@ -1055,6 +1063,20 @@ func validateKeyBits(badFields map[string]string, keyBits uint32, keyType string
 	default:
 		badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %d", keyBits)
 	}
+}
+
+func getMapUpdate(field string, apiMasks []string) bool {
+	for _, m := range apiMasks {
+		if m == field {
+			return true
+		}
+
+		fieldPrefix := fmt.Sprintf("%v.", field)
+		if s := strings.SplitN(m, fieldPrefix, 2); len(s) == 2 {
+			return true
+		}
+	}
+	return false
 }
 
 func getMappingUpdates(credentialType credential.Type, current vault.MappingOverride, new map[string]any, apiMasks []string) (map[string]any, bool) {
