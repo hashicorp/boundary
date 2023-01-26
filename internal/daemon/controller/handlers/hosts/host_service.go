@@ -674,7 +674,7 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 				attrs := req.GetItem().GetStaticHostAttributes()
 				switch {
 				case attrs == nil:
-					badFields["attributes"] = "Attributes field not supplied request"
+					badFields["attributes"] = "Attributes field not supplied in request"
 				default:
 					if attrs.GetAddress() == nil ||
 						len(strings.TrimSpace(attrs.GetAddress().GetValue())) < static.MinHostAddressLength ||
