@@ -32,6 +32,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
@@ -2173,6 +2174,9 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 	_, token := v.CreateToken(t)
 	_ = token
 
+	testExtensionBytes, _ := json.Marshal(map[string]string{"permit-pty": ""})
+	testCriticalOptionsBytes, _ := json.Marshal(map[string]string{"option-a": "set-a"})
+
 	successCases := []struct {
 		name string
 		opts []vault.Option
@@ -2279,12 +2283,78 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 				return out
 			},
 		},
+		{
+			name: "clear critical options, extensions fields",
+			opts: []vault.Option{vault.WithExtensions(string(testExtensionBytes)), vault.WithCriticalOptions(string(testCriticalOptionsBytes))},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask("attributes.critical_options", "attributes.extensions.permit-pty"),
+				Item: &pb.CredentialLibrary{
+					Type: vault.SSHCertificateLibrarySubtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
+						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
+							CriticalOptions: nil,
+							Extensions:      nil,
+						},
+					},
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.GetVaultSshCertificateCredentialLibraryAttributes().CriticalOptions = nil
+				out.GetVaultSshCertificateCredentialLibraryAttributes().Extensions = nil
+				return out
+			},
+		},
+		{
+			name: "set critical options while clearing extensions",
+			opts: []vault.Option{vault.WithExtensions(string(testExtensionBytes)), vault.WithCriticalOptions(string(testCriticalOptionsBytes))},
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask("attributes.critical_options.option-b", "attributes.extensions"),
+				Item: &pb.CredentialLibrary{
+					Type: vault.SSHCertificateLibrarySubtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
+						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
+							CriticalOptions: map[string]string{"option-b": "set-b"},
+							Extensions:      nil,
+						},
+					},
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.GetVaultSshCertificateCredentialLibraryAttributes().CriticalOptions = map[string]string{"option-b": "set-b"}
+				out.GetVaultSshCertificateCredentialLibraryAttributes().Extensions = nil
+				return out
+			},
+		},
+		{
+			name: "set multiple critical options, extensions",
+			req: &pbs.UpdateCredentialLibraryRequest{
+				UpdateMask: fieldmask("attributes.critical_options.option-a", "attributes.critical_options.option-b", "attributes.critical_options.option-c",
+					"attributes.extensions.permit-pty", "attributes.extensions.permit-port-forwarding", "attributes.extensions.permit-X11-forwarding"),
+				Item: &pb.CredentialLibrary{
+					Type: vault.SSHCertificateLibrarySubtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
+						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
+							CriticalOptions: map[string]string{"option-a": "set-a", "option-b": "set-b", "option-c": "set-c"},
+							Extensions:      map[string]string{"permit-pty": "", "permit-port-forwarding": "", "permit-X11-forwarding": ""},
+						},
+					},
+				},
+			},
+			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
+				out := proto.Clone(in).(*pb.CredentialLibrary)
+				out.GetVaultSshCertificateCredentialLibraryAttributes().CriticalOptions = map[string]string{"option-a": "set-a", "option-b": "set-b", "option-c": "set-c"}
+				out.GetVaultSshCertificateCredentialLibraryAttributes().Extensions = map[string]string{"permit-pty": "", "permit-port-forwarding": "", "permit-X11-forwarding": ""}
+				return out
+			},
+		},
 	}
 
 	for _, tc := range successCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			st, cleanup := freshLibrary()
+			st, cleanup := freshLibrary(tc.opts...)
 			defer cleanup()
 
 			if tc.req.Item.GetVersion() == 0 {
