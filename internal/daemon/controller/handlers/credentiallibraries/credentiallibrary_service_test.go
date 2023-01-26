@@ -2087,7 +2087,6 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 				},
 			},
 		},
-		// TODO: more testcases
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2187,7 +2186,6 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 				Item: &pb.CredentialLibrary{
 					Name:        wrapperspb.String("basic"),
 					Description: wrapperspb.String("basic"),
-					Type:        vault.SSHCertificateLibrarySubtype.String(),
 				},
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
@@ -2216,7 +2214,6 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 				return out
 			},
 		},
-
 		{
 			name: "update key type and key bits",
 			req: &pbs.UpdateCredentialLibraryRequest{
@@ -2287,7 +2284,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 	for _, tc := range successCases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			st, cleanup := freshLibrary(tc.opts...)
+			st, cleanup := freshLibrary()
 			defer cleanup()
 
 			if tc.req.Item.GetVersion() == 0 {
@@ -2371,7 +2368,6 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			assert.Nil(t, got)
 		})
 	}
-	// TODO: add
 	vErrs := []struct {
 		name        string
 		req         *pbs.UpdateCredentialLibraryRequest
@@ -2391,7 +2387,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 					},
 				},
 			},
-			errContains: "Invalid bit size for key type",
+			errContains: "Invalid bit size 2048 for key type ecdsa",
 		},
 		{
 			name: "invalid key type",
@@ -2421,7 +2417,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 					},
 				},
 			},
-			errContains: "Not a recognized bit size.",
+			errContains: "Invalid bit size 1234",
 		},
 	}
 	for _, tc := range vErrs {

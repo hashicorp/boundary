@@ -74,6 +74,12 @@ var (
 		credential.SshCertificateType,
 		credential.UnspecifiedType,
 	}
+
+	validKeyTypes = []string{
+		vault.KeyTypeEcdsa,
+		vault.KeyTypeEd25519,
+		vault.KeyTypeRsa,
+	}
 )
 
 func init() {
@@ -454,7 +460,7 @@ func (s Service) updateInRepo(
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	switch subtypes.SubtypeFromId(domain, item.GetId()) {
+	switch subtypes.SubtypeFromId(domain, id) {
 	case vault.SSHCertificateLibrarySubtype:
 		dbMasks = append(dbMasks, sshCertMaskManager.Translate(masks)...)
 		if len(dbMasks) == 0 {
@@ -915,7 +921,7 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 						badFields[keyBitsField] = fmt.Sprintf("If set, %q must also be set.", keyTypeField)
 					}
 				}
-				if t := attrs.GetKeyType(); t != nil && !strutil.StrListContains([]string{"ed25519", "ecdsa", "rsa"}, strings.ToLower(t.GetValue())) {
+				if t := attrs.GetKeyType(); t != nil && !strutil.StrListContains(validKeyTypes, strings.ToLower(t.GetValue())) {
 					badFields[keyTypeField] = "If set, value must be 'ed25519', 'ecdsa', or 'rsa'."
 				}
 				validateKeyBits(badFields, attrs.GetKeyBits().GetValue(), attrs.GetKeyType().GetValue())
@@ -974,10 +980,10 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 				if u := attrs.GetUsername().GetValue(); handlers.MaskContains(req.GetUpdateMask().GetPaths(), sshCertUsernameField) && u == "" {
 					badFields[sshCertUsernameField] = "This is a required field and cannot be set to empty."
 				}
-				if t := attrs.GetKeyType(); t != nil && !strutil.StrListContains([]string{"ed25519", "ecdsa", "rsa"}, strings.ToLower(t.GetValue())) {
+				if t := attrs.GetKeyType(); t != nil && !strutil.StrListContains(validKeyTypes, strings.ToLower(t.GetValue())) {
 					badFields[keyTypeField] = "If set, value must be 'ed25519', 'ecdsa', or 'rsa'."
 				}
-				validateKeyBits(badFields, attrs.GetKeyBits().GetValue(), "")
+				validateKeyBits(badFields, attrs.GetKeyBits().GetValue(), attrs.GetKeyType().GetValue())
 			}
 		}
 		return badFields
@@ -1040,14 +1046,14 @@ func validateKeyBits(badFields map[string]string, keyBits uint32, keyType string
 	case 0:
 	case 256, 384, 521:
 		if keyType != "" && keyType != "ecdsa" {
-			badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %q for key type %q", keyBits, keyType)
+			badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %d for key type %s", keyBits, keyType)
 		}
 	case 2048, 3072, 4096:
 		if keyType != "" && keyType != "rsa" {
-			badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %q for key type %q", keyBits, keyType)
+			badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %d for key type %s", keyBits, keyType)
 		}
 	default:
-		badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %q", keyBits)
+		badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %d", keyBits)
 	}
 }
 
