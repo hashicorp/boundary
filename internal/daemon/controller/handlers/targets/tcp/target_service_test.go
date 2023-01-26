@@ -2494,6 +2494,7 @@ func TestAuthorizeSession(t *testing.T) {
 	hWithPort := static.TestHosts(t, conn, hcWithPort.GetPublicId(), 1)[0]
 	shsWithPort := static.TestSets(t, conn, hcWithPort.GetPublicId(), 1)[0]
 	_ = static.TestSetMembers(t, conn, shsWithPort.GetPublicId(), []*static.Host{hWithPort})
+	hWithPortBareAddress := hWithPort.GetAddress()
 	hWithPort.Address = fmt.Sprintf("%s:54321", hWithPort.GetAddress())
 	hWithPort, _, err = staticRepo.UpdateHost(ctx, hcWithPort.GetProjectId(), hWithPort, hWithPort.GetVersion(), []string{"address"})
 	require.NoError(t, err)
@@ -2551,7 +2552,7 @@ func TestAuthorizeSession(t *testing.T) {
 			hostSourceId:   shsWithPort.GetPublicId(),
 			credSourceId:   clsResp.GetItem().GetId(),
 			wantedHostId:   hWithPort.GetPublicId(),
-			wantedEndpoint: hWithPort.GetAddress(),
+			wantedEndpoint: fmt.Sprintf("%s:%d", hWithPortBareAddress, defaultPort),
 		},
 		{
 			name:           "plugin host",
@@ -3473,9 +3474,8 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
 		},
 		{
-			name:  "no port",
+			name:  "no host port",
 			setup: []func(tcpTarget target.Target) uint32{workerExists, hostWithoutPort, libraryExists},
-			err:   true,
 		},
 		{
 			name:  "no hosts",
@@ -3495,7 +3495,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), fmt.Sprintf("test-%d", i))
+			tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), fmt.Sprintf("test-%d", i), target.WithDefaultPort(22))
 
 			for _, fn := range tc.setup {
 				ver := fn(tar)
