@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
@@ -50,6 +51,14 @@ func TestValidateCreateRequest(t *testing.T) {
 			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
 		},
 		{
+			name: "mismatched pw authmethod ldap type",
+			item: &pb.Account{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
+			},
+			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
+		},
+		{
 			name: "missing oidc attributes",
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
@@ -91,6 +100,69 @@ func TestValidateCreateRequest(t *testing.T) {
 			errContains: fieldError(emailClaimField, "This is a read only field."),
 		},
 		{
+			name: "missing ldap attributes",
+			item: &pb.Account{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: ldap.AuthMethodPrefix + "_1234567890",
+			},
+			errContains: fieldError(attributesField, "This is a required field."),
+		},
+		{
+			name: "missing login name for ldap type",
+			item: &pb.Account{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: ldap.AuthMethodPrefix + "_1234567890",
+				Attrs: &pb.Account_LdapAccountAttributes{
+					LdapAccountAttributes: &pb.LdapAccountAttributes{},
+				},
+			},
+			errContains: fieldError(loginAttrField, "This is a required field for this type."),
+		},
+		{
+			name: "read only full name attr field",
+			item: &pb.Account{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: ldap.AuthMethodPrefix + "_1234567890",
+				Attrs: &pb.Account_LdapAccountAttributes{
+					LdapAccountAttributes: &pb.LdapAccountAttributes{FullName: "something"},
+				},
+			},
+			errContains: fieldError(nameAttrField, "This is a read only field."),
+		},
+		{
+			name: "read only email attr field",
+			item: &pb.Account{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: ldap.AuthMethodPrefix + "_1234567890",
+				Attrs: &pb.Account_LdapAccountAttributes{
+					LdapAccountAttributes: &pb.LdapAccountAttributes{Email: "something"},
+				},
+			},
+			errContains: fieldError(emailAttrField, "This is a read only field."),
+		},
+		{
+			name: "read only dn attr field",
+			item: &pb.Account{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: ldap.AuthMethodPrefix + "_1234567890",
+				Attrs: &pb.Account_LdapAccountAttributes{
+					LdapAccountAttributes: &pb.LdapAccountAttributes{Dn: "something"},
+				},
+			},
+			errContains: fieldError(dnAttrField, "This is a read only field."),
+		},
+		{
+			name: "read only member of attr field",
+			item: &pb.Account{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: ldap.AuthMethodPrefix + "_1234567890",
+				Attrs: &pb.Account_LdapAccountAttributes{
+					LdapAccountAttributes: &pb.LdapAccountAttributes{MemberOfGroups: []string{"something"}},
+				},
+			},
+			errContains: fieldError(memberOfAttrField, "This is a read only field."),
+		},
+		{
 			name: "missing password attributes",
 			item: &pb.Account{
 				Type:         password.Subtype.String(),
@@ -128,6 +200,16 @@ func TestValidateCreateRequest(t *testing.T) {
 				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_OidcAccountAttributes{
 					OidcAccountAttributes: &pb.OidcAccountAttributes{Subject: "no oidc errors"},
+				},
+			},
+		},
+		{
+			name: "no ldap errors",
+			item: &pb.Account{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: ldap.AuthMethodPrefix + "_1234567890",
+				Attrs: &pb.Account_LdapAccountAttributes{
+					LdapAccountAttributes: &pb.LdapAccountAttributes{LoginName: "no oidc errors"},
 				},
 			},
 		},
