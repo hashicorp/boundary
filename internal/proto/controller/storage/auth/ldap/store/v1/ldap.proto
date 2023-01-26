@@ -565,3 +565,19 @@ message ManagedGroup {
   // @inject_tag: `gorm:"not_null"`
   string group_names = 80;
 }
+
+// ManagedGroupMemberAccount contains a mapping between a managed group and a
+// member account.
+message ManagedGroupMemberAccount {
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 10;
+
+  // managed_group_id is the fk to the oidc managed group public id
+  // @inject_tag: `gorm:"primary_key"`
+  string managed_group_id = 20;
+
+  // member_id is the fk to the oidc account public id
+  // @inject_tag: `gorm:"primary_key"`
+  string member_id = 30;
+}
