@@ -1303,7 +1303,7 @@ func TestUpdate_Static(t *testing.T) {
 			gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 			// Verify it is a set updated after it was created
 			// TODO: This is currently failing.
-			assert.True(gotUpdateTime.After(hCreated), "Updated set should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)
+			assert.True(gotUpdateTime.After(hCreated), "Updated set should have been updated after its creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)
 
 			// Clear all values which are hard to compare against.
 			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
