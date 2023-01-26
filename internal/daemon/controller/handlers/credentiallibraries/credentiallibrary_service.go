@@ -751,7 +751,11 @@ func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault
 		opts = append(opts, vault.WithDescription(in.GetDescription().GetValue()))
 	}
 
-	attrs := in.GetVaultCredentialLibraryAttributes()
+	attrs := in.GetVaultGenericCredentialLibraryAttributes()
+	if attrs == nil {
+		// fallback to attributes for older subtype
+		attrs = in.GetVaultCredentialLibraryAttributes()
+	}
 	if attrs.GetHttpMethod() != nil {
 		opts = append(opts, vault.WithMethod(vault.Method(strings.ToUpper(attrs.GetHttpMethod().GetValue()))))
 	}
@@ -896,9 +900,13 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 
 			switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
 			case vault.GenericLibrarySubtype:
-				attrs := req.GetItem().GetVaultCredentialLibraryAttributes()
+				attrs := req.GetItem().GetVaultGenericCredentialLibraryAttributes()
 				if attrs == nil {
-					badFields[attributesPathField] = "This is a required field."
+					// fallback to attributes for older subtype
+					attrs = req.GetItem().GetVaultCredentialLibraryAttributes()
+					if attrs == nil {
+						badFields[attributesPathField] = "This is a required field."
+					}
 				}
 				if attrs.GetPath().GetValue() == "" {
 					badFields[vaultPathField] = "This is a required field."
@@ -960,7 +968,11 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 			if req.GetItem().GetCredentialType() != "" && req.GetItem().GetCredentialType() != string(currentCredentialType) {
 				badFields[globals.CredentialTypeField] = "Cannot modify credential type."
 			}
-			attrs := req.GetItem().GetVaultCredentialLibraryAttributes()
+			attrs := req.GetItem().GetVaultGenericCredentialLibraryAttributes()
+			if attrs == nil {
+				// fallback to attributes for older subtype
+				attrs = req.GetItem().GetVaultCredentialLibraryAttributes()
+			}
 			if attrs != nil {
 				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), vaultPathField) && attrs.GetPath().GetValue() == "" {
 					badFields[vaultPathField] = "This is a required field and cannot be set to empty."
