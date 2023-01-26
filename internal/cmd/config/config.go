@@ -1103,7 +1103,7 @@ func (c *Config) SetupWorkerInitialUpstreams() error {
 		}
 		// Best effort see if it's a domain name and if not assume it must match
 		host, _, err := net.SplitHostPort(c.Worker.InitialUpstreams[0])
-		if err != nil && strings.Contains(err.Error(), "missing port in address") {
+		if err != nil && strings.Contains(err.Error(), globals.MissingPortErrStr) {
 			err = nil
 			host = c.Worker.InitialUpstreams[0]
 		}

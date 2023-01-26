@@ -637,21 +637,22 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 			attrs := req.GetItem().GetStaticHostAttributes()
 			switch {
 			case attrs == nil:
-				badFields["attributes"] = "This is a required field."
+				badFields[globals.AttributesField] = "This is a required field."
 			default:
 				if attrs.GetAddress() == nil ||
 					len(attrs.GetAddress().GetValue()) < static.MinHostAddressLength ||
 					len(attrs.GetAddress().GetValue()) > static.MaxHostAddressLength {
-					badFields["attributes.address"] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
-				}
-				_, _, err := net.SplitHostPort(attrs.GetAddress().GetValue())
-				switch {
-				case err == nil:
-					badFields["attributes.address"] = "Address for static hosts does not support a port."
-				case strings.Contains(err.Error(), "missing port in address"):
-					// Bare hostname, which we want
-				default:
-					badFields["attributes.address"] = fmt.Sprintf("Error parsing address: %v.", err)
+					badFields[globals.AttributesAddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+				} else {
+					_, _, err := net.SplitHostPort(attrs.GetAddress().GetValue())
+					switch {
+					case err == nil:
+						badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
+					case strings.Contains(err.Error(), globals.MissingPortErrStr):
+						// Bare hostname, which we want
+					default:
+						badFields[globals.AttributesAddressField] = fmt.Sprintf("Error parsing address: %v.", err)
+					}
 				}
 			}
 		case plugin.Subtype:
@@ -668,17 +669,26 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 		case static.Subtype:
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
+			}
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), globals.AttributesAddressField) {
 				attrs := req.GetItem().GetStaticHostAttributes()
-
-				if handlers.MaskContains(req.GetUpdateMask().GetPaths(), "attributes.address") {
-					switch {
-					case attrs == nil:
-						badFields["attributes"] = "Attributes field not supplied request"
-					default:
-						if attrs.GetAddress() == nil ||
-							len(strings.TrimSpace(attrs.GetAddress().GetValue())) < static.MinHostAddressLength ||
-							len(strings.TrimSpace(attrs.GetAddress().GetValue())) > static.MaxHostAddressLength {
-							badFields["attributes.address"] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+				switch {
+				case attrs == nil:
+					badFields[globals.AttributesField] = "Attributes field not supplied in request"
+				default:
+					if attrs.GetAddress() == nil ||
+						len(strings.TrimSpace(attrs.GetAddress().GetValue())) < static.MinHostAddressLength ||
+						len(strings.TrimSpace(attrs.GetAddress().GetValue())) > static.MaxHostAddressLength {
+						badFields[globals.AttributesAddressField] = fmt.Sprintf("Address length must be between %d and %d characters.", static.MinHostAddressLength, static.MaxHostAddressLength)
+					} else {
+						_, _, err := net.SplitHostPort(attrs.GetAddress().GetValue())
+						switch {
+						case err == nil:
+							badFields[globals.AttributesAddressField] = "Address for static hosts does not support a port."
+						case strings.Contains(err.Error(), globals.MissingPortErrStr):
+							// Bare hostname, which we want
+						default:
+							badFields[globals.AttributesAddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 						}
 					}
 				}

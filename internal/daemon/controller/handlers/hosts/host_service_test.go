@@ -772,6 +772,21 @@ func TestCreate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
+			name: "Can't specify port",
+			req: &pbs.CreateHostRequest{Item: &pb.Host{
+				HostCatalogId: hc.GetPublicId(),
+				Name:          &wrappers.StringValue{Value: "port name"},
+				Description:   &wrappers.StringValue{Value: "port desc"},
+				Attrs: &pb.Host_StaticHostAttributes{
+					StaticHostAttributes: &pb.StaticHostAttributes{
+						Address: wrapperspb.String("123.456.789:12345"),
+					},
+				},
+			}},
+			res: nil,
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name: "Can't specify Created Time",
 			req: &pbs.CreateHostRequest{Item: &pb.Host{
 				HostCatalogId: hc.GetPublicId(),
@@ -798,11 +813,16 @@ func TestCreate(t *testing.T) {
 			got, gErr := s.CreateHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
+				assert.Nil(got)
 				assert.True(errors.Is(gErr, tc.err), "CreateHost(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 				if tc.wantErrContains != "" {
 					assert.Contains(gErr.Error(), tc.wantErrContains)
 				}
+				return
 			}
+			require.NoError(gErr)
+			require.NotNil(got)
+
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
 				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostPrefix))
@@ -868,22 +888,21 @@ func TestUpdate_Static(t *testing.T) {
 	}
 
 	hCreated := h.GetCreateTime().GetTimestamp().AsTime()
-	toMerge := &pbs.UpdateHostRequest{
-		Id: h.GetPublicId(),
-	}
 
 	tested, err := hosts.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	cases := []struct {
-		name string
-		req  *pbs.UpdateHostRequest
-		res  *pbs.UpdateHostResponse
-		err  error
+		name            string
+		req             *pbs.UpdateHostRequest
+		res             *pbs.UpdateHostResponse
+		err             error
+		wantErrContains string
 	}{
 		{
 			name: "Update an Existing Host",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name", "description", "type"},
 				},
@@ -915,6 +934,7 @@ func TestUpdate_Static(t *testing.T) {
 		{
 			name: "Multiple Paths in single string",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name,description,type"},
 				},
@@ -946,16 +966,19 @@ func TestUpdate_Static(t *testing.T) {
 		{
 			name: "No Update Mask",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				Item: &pb.Host{
 					Name:        &wrappers.StringValue{Value: "updated name"},
 					Description: &wrappers.StringValue{Value: "updated desc"},
 				},
 			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "UpdateMask not provided",
 		},
 		{
-			name: "No Update Mask",
+			name: "Changing Type",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name,type"},
 				},
@@ -964,33 +987,39 @@ func TestUpdate_Static(t *testing.T) {
 					Type: "ec2",
 				},
 			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "Cannot modify the resource type",
 		},
 		{
 			name: "Empty Path",
 			req: &pbs.UpdateHostRequest{
+				Id:         h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
 				Item: &pb.Host{
 					Name:        &wrappers.StringValue{Value: "updated name"},
 					Description: &wrappers.StringValue{Value: "updated desc"},
 				},
 			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "No valid fields provided",
 		},
 		{
-			name: "Only non-existant paths in Mask",
+			name: "Only non-existent paths in Mask",
 			req: &pbs.UpdateHostRequest{
+				Id:         h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
 				Item: &pb.Host{
 					Name:        &wrappers.StringValue{Value: "updated name"},
 					Description: &wrappers.StringValue{Value: "updated desc"},
 				},
 			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "No valid fields provided",
 		},
 		{
 			name: "Unset Name",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
@@ -1019,6 +1048,7 @@ func TestUpdate_Static(t *testing.T) {
 		{
 			name: "Unset Description",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -1047,6 +1077,7 @@ func TestUpdate_Static(t *testing.T) {
 		{
 			name: "Update Only Name",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
@@ -1077,6 +1108,7 @@ func TestUpdate_Static(t *testing.T) {
 		{
 			name: "Update Only Description",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -1117,12 +1149,13 @@ func TestUpdate_Static(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "desc"},
 				},
 			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
+			err:             handlers.ApiErrorWithCode(codes.NotFound),
+			wantErrContains: "Resource not found",
 		},
 		{
 			name: "Cant change Id",
 			req: &pbs.UpdateHostRequest{
-				Id: hc.GetPublicId(),
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
@@ -1133,15 +1166,15 @@ func TestUpdate_Static(t *testing.T) {
 					Description: &wrappers.StringValue{Value: "new desc"},
 				},
 			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "This is a read only field",
 		},
 		{
 			name: "Cant unset address",
 			req: &pbs.UpdateHostRequest{
-				Id: hc.GetPublicId(),
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.address"},
+					Paths: []string{globals.AttributesAddressField},
 				},
 				Item: &pb.Host{
 					Attrs: &pb.Host_StaticHostAttributes{
@@ -1151,15 +1184,15 @@ func TestUpdate_Static(t *testing.T) {
 					},
 				},
 			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "Address length must be",
 		},
 		{
 			name: "Cant set address to empty string",
 			req: &pbs.UpdateHostRequest{
-				Id: hc.GetPublicId(),
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.address"},
+					Paths: []string{globals.AttributesAddressField},
 				},
 				Item: &pb.Host{
 					Attrs: &pb.Host_StaticHostAttributes{
@@ -1169,12 +1202,33 @@ func TestUpdate_Static(t *testing.T) {
 					},
 				},
 			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "Address length must be",
+		},
+		{
+			name: "Cant specify port in address",
+			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{globals.AttributesAddressField},
+				},
+				Item: &pb.Host{
+					Name:        &wrappers.StringValue{Value: "port name"},
+					Description: &wrappers.StringValue{Value: "port desc"},
+					Attrs: &pb.Host_StaticHostAttributes{
+						StaticHostAttributes: &pb.StaticHostAttributes{
+							Address: wrapperspb.String("123.456.789:12345"),
+						},
+					},
+				},
+			},
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "does not support a port",
 		},
 		{
 			name: "Cant specify Created Time",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"created_time"},
 				},
@@ -1182,12 +1236,13 @@ func TestUpdate_Static(t *testing.T) {
 					CreatedTime: timestamppb.Now(),
 				},
 			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "This is a read only field",
 		},
 		{
 			name: "Cant specify Updated Time",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"updated_time"},
 				},
@@ -1195,12 +1250,13 @@ func TestUpdate_Static(t *testing.T) {
 					UpdatedTime: timestamppb.Now(),
 				},
 			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "This is a read only field",
 		},
 		{
 			name: "Valid mask, cant specify type",
 			req: &pbs.UpdateHostRequest{
+				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"name"},
 				},
@@ -1208,8 +1264,8 @@ func TestUpdate_Static(t *testing.T) {
 					Type: "Unknown",
 				},
 			},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:             handlers.ApiErrorWithCode(codes.InvalidArgument),
+			wantErrContains: "Cannot modify the resource type",
 		},
 	}
 	for _, tc := range cases {
@@ -1217,8 +1273,7 @@ func TestUpdate_Static(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			tc.req.Item.Version = version
 
-			req := proto.Clone(toMerge).(*pbs.UpdateHostRequest)
-			proto.Merge(req, tc.req)
+			req := tc.req
 
 			// Test some bad versions
 			req.Item.Version = version + 2
@@ -1232,26 +1287,26 @@ func TestUpdate_Static(t *testing.T) {
 			got, gErr := tested.UpdateHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
 			if tc.err != nil {
 				require.Error(gErr)
+				assert.Nil(got)
 				assert.True(errors.Is(gErr, tc.err), "UpdateHost(%+v) got error %v, wanted %v", req, gErr, tc.err)
+				if tc.wantErrContains != "" {
+					assert.Contains(gErr.Error(), tc.wantErrContains)
+				}
+				return
 			}
 
-			if tc.err == nil {
-				defer resetHost()
-			}
+			defer resetHost()
+			require.NoError(gErr)
+			require.NotNil(got)
 
-			if got != nil {
-				assert.NotNilf(tc.res, "Expected UpdateHost response to be nil, but was %v", got)
-				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
-				// Verify it is a set updated after it was created
-				// TODO: This is currently failing.
-				assert.True(gotUpdateTime.After(hCreated), "Updated set should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)
+			require.NotNilf(tc.res, "Expected UpdateHost response to be nil, but was %v", got)
+			gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
+			// Verify it is a set updated after it was created
+			assert.True(gotUpdateTime.After(hCreated), "Updated set should have been updated after its creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)
 
-				// Clear all values which are hard to compare against.
-				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
-			}
-			if tc.res != nil {
-				tc.res.Item.Version = version + 1
-			}
+			// Clear all values which are hard to compare against.
+			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+			tc.res.Item.Version = version + 1
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHost(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}

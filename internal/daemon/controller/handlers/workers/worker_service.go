@@ -774,7 +774,7 @@ func (s Service) toProto(ctx context.Context, in *server.Worker, opt ...handlers
 	if outputFields.Has(globals.ScopeIdField) {
 		out.ScopeId = in.GetScopeId()
 	}
-	if outputFields.Has(globals.DirectlyConnectedDownstreamWorkers) {
+	if outputFields.Has(globals.DirectlyConnectedDownstreamWorkersField) {
 		out.DirectlyConnectedDownstreamWorkers = downstreamWorkers(ctx, in.GetPublicId(), s.downstreams)
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
