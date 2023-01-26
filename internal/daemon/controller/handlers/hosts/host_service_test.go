@@ -1174,7 +1174,7 @@ func TestUpdate_Static(t *testing.T) {
 			req: &pbs.UpdateHostRequest{
 				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.address"},
+					Paths: []string{globals.AttributesAddressField},
 				},
 				Item: &pb.Host{
 					Attrs: &pb.Host_StaticHostAttributes{
@@ -1192,7 +1192,7 @@ func TestUpdate_Static(t *testing.T) {
 			req: &pbs.UpdateHostRequest{
 				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.address"},
+					Paths: []string{globals.AttributesAddressField},
 				},
 				Item: &pb.Host{
 					Attrs: &pb.Host_StaticHostAttributes{
@@ -1210,7 +1210,7 @@ func TestUpdate_Static(t *testing.T) {
 			req: &pbs.UpdateHostRequest{
 				Id: h.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.address"},
+					Paths: []string{globals.AttributesAddressField},
 				},
 				Item: &pb.Host{
 					Name:        &wrappers.StringValue{Value: "port name"},
@@ -1299,18 +1299,14 @@ func TestUpdate_Static(t *testing.T) {
 			require.NoError(gErr)
 			require.NotNil(got)
 
-			assert.NotNilf(tc.res, "Expected UpdateHost response to be nil, but was %v", got)
+			require.NotNilf(tc.res, "Expected UpdateHost response to be nil, but was %v", got)
 			gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 			// Verify it is a set updated after it was created
-			// TODO: This is currently failing.
 			assert.True(gotUpdateTime.After(hCreated), "Updated set should have been updated after its creation. Was updated %v, which is after %v", gotUpdateTime, hCreated)
 
 			// Clear all values which are hard to compare against.
 			got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
-
-			if tc.res != nil {
-				tc.res.Item.Version = version + 1
-			}
+			tc.res.Item.Version = version + 1
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateHost(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}

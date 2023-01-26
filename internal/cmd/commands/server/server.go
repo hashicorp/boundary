@@ -311,7 +311,7 @@ func (c *Command) Run(args []string) int {
 		for _, upstream := range c.Config.Worker.InitialUpstreams {
 			host, _, err := net.SplitHostPort(upstream)
 			if err != nil {
-				if strings.Contains(err.Error(), "missing port in address") {
+				if strings.Contains(err.Error(), globals.MissingPortErrStr) {
 					host = upstream
 				} else {
 					c.UI.Error(fmt.Errorf("Invalid worker upstream address %q: %w", upstream, err).Error())
@@ -355,7 +355,7 @@ func (c *Command) Run(args []string) int {
 				}
 				host, _, err := net.SplitHostPort(ln.Address)
 				if err != nil {
-					if strings.Contains(err.Error(), "missing port in address") {
+					if strings.Contains(err.Error(), globals.MissingPortErrStr) {
 						host = ln.Address
 					} else {
 						c.UI.Error(fmt.Errorf("Invalid cluster listener address %q: %w", ln.Address, err).Error())

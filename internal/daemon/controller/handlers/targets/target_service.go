@@ -47,9 +47,8 @@ import (
 )
 
 const (
-	credentialDomain  = "credential"
-	hostDomain        = "host"
-	missingPortErrStr = "missing port in address"
+	credentialDomain = "credential"
+	hostDomain       = "host"
 )
 
 // extraWorkerFilterFunc takes in a set of workers and returns another set,
@@ -833,7 +832,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	// the meantime, ignore any port coming from the host address.
 	hostWithoutPort, _, err := net.SplitHostPort(h)
 	switch {
-	case err != nil && strings.Contains(err.Error(), missingPortErrStr):
+	case err != nil && strings.Contains(err.Error(), globals.MissingPortErrStr):
 		// This is what we expect
 		_ = hostWithoutPort
 	case err != nil:
@@ -1586,7 +1585,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			switch {
 			case err == nil:
 				badFields[globals.AddressField] = "Address does not support a port."
-			case strings.Contains(err.Error(), missingPortErrStr):
+			case strings.Contains(err.Error(), globals.MissingPortErrStr):
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}
@@ -1662,7 +1661,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 			switch {
 			case err == nil:
 				badFields[globals.AddressField] = "Address does not support a port."
-			case strings.Contains(err.Error(), missingPortErrStr):
+			case strings.Contains(err.Error(), globals.MissingPortErrStr):
 			default:
 				badFields[globals.AddressField] = fmt.Sprintf("Error parsing address: %v.", err)
 			}

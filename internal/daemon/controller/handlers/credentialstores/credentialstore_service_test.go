@@ -1035,7 +1035,7 @@ func TestUpdateVault(t *testing.T) {
 		{
 			name: "update connection info",
 			req: &pbs.UpdateCredentialStoreRequest{
-				UpdateMask: fieldmask("attributes.address", "attributes.client_certificate", "attributes.client_certificate_key", "attributes.ca_cert", "attributes.token"),
+				UpdateMask: fieldmask(globals.AttributesAddressField, "attributes.client_certificate", "attributes.client_certificate_key", "attributes.ca_cert", "attributes.token"),
 				Item: &pb.CredentialStore{
 					Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 						VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
