@@ -5,10 +5,13 @@ package managed_groups
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
+	ldapstore "github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
 	requestauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -30,18 +33,26 @@ import (
 
 const (
 	// oidc field names
-	attrFilterField = "attributes.filter"
+	attrFilterField     = "attributes.filter"
+	attrGroupNamesField = "attributes.group_names"
 
 	domain = "auth"
 )
 
 var (
 	oidcMaskManager handlers.MaskManager
+	ldapMaskManager handlers.MaskManager
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = map[subtypes.Subtype]action.ActionSet{
 		oidc.Subtype: {
+			action.NoOp,
+			action.Read,
+			action.Update,
+			action.Delete,
+		},
+		ldap.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
@@ -62,6 +73,9 @@ func init() {
 	if oidcMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&oidcstore.ManagedGroup{}}, handlers.MaskSource{&pb.ManagedGroup{}, &pb.OidcManagedGroupAttributes{}}); err != nil {
 		panic(err)
 	}
+	if ldapMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&ldapstore.ManagedGroup{}}, handlers.MaskSource{&pb.ManagedGroup{}, &pb.LdapManagedGroupAttributes{}}); err != nil {
+		panic(err)
+	}
 }
 
 // Service handles request as described by the pbs.ManagedGroupServiceServer interface.
@@ -69,17 +83,21 @@ type Service struct {
 	pbs.UnsafeManagedGroupServiceServer
 
 	oidcRepoFn common.OidcAuthRepoFactory
+	ldapRepoFn common.LdapAuthRepoFactory
 }
 
 var _ pbs.ManagedGroupServiceServer = (*Service)(nil)
 
 // NewService returns a managed group service which handles managed group related requests to boundary.
-func NewService(oidcRepo common.OidcAuthRepoFactory) (Service, error) {
+func NewService(ctx context.Context, oidcRepo common.OidcAuthRepoFactory, ldapRepo common.LdapAuthRepoFactory) (Service, error) {
 	const op = "managed_groups.NewService"
-	if oidcRepo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing oidc repository provided")
+	switch {
+	case oidcRepo == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing oidc repository provided")
+	case ldapRepo == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing ldap repository provided")
 	}
-	return Service{oidcRepoFn: oidcRepo}, nil
+	return Service{oidcRepoFn: oidcRepo, ldapRepoFn: ldapRepo}, nil
 }
 
 // ListManagedGroups implements the interface pbs.ManagedGroupsServiceServer.
@@ -308,6 +326,29 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.ManagedGroup,
 			}
 		}
 		out = mg
+	case ldap.Subtype:
+		repo, err := s.ldapRepoFn()
+		if err != nil {
+			return nil, nil, err
+		}
+		mg, err := repo.LookupManagedGroup(ctx, id)
+		if err != nil {
+			if errors.IsNotFoundError(err) {
+				return nil, nil, handlers.NotFoundErrorf("LDAP ManagedGroup %q doesn't exist.", id)
+			}
+			return nil, nil, err
+		}
+		ids, err := repo.ListManagedGroupMembershipsByGroup(ctx, mg.GetPublicId())
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(ids) > 0 {
+			memberIds = make([]string, len(ids))
+			for i, v := range ids {
+				memberIds[i] = v.MemberId
+			}
+		}
+		out = mg
 	default:
 		return nil, nil, handlers.NotFoundErrorf("Unrecognized id.")
 	}
@@ -329,9 +370,41 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	attrs := item.GetOidcManagedGroupAttributes()
 	mg, err := oidc.NewManagedGroup(ctx, am.GetPublicId(), attrs.GetFilter(), opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build managed group for creation: %v.", err)
 	}
 	repo, err := s.oidcRepoFn()
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := repo.CreateManagedGroup(ctx, am.GetScopeId(), mg)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create managed group"))
+	}
+	if out == nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create managed group but no error returned from repository.")
+	}
+	return out, nil
+}
+
+func (s Service) createLdapInRepo(ctx context.Context, am auth.AuthMethod, item *pb.ManagedGroup) (*ldap.ManagedGroup, error) {
+	const op = "managed_groups.(Service).createLdapInRepo"
+	if item == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing item")
+	}
+	var opts []ldap.Option
+	if item.GetName() != nil {
+		opts = append(opts, ldap.WithName(ctx, item.GetName().GetValue()))
+	}
+	if item.GetDescription() != nil {
+		opts = append(opts, ldap.WithDescription(ctx, item.GetDescription().GetValue()))
+	}
+	attrs := item.GetLdapManagedGroupAttributes()
+	mg, err := ldap.NewManagedGroup(ctx, am.GetPublicId(), attrs.GetGroupNames(), opts...)
+	if err != nil {
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build managed group for creation: %v.", err)
+	}
+	repo, err := s.ldapRepoFn()
 	if err != nil {
 		return nil, err
 	}
@@ -360,6 +433,15 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 		}
 		if am == nil {
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create managed group but no error returned from repository.")
+		}
+		out = am
+	case ldap.Subtype:
+		am, err := s.createLdapInRepo(ctx, am, item)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if am == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create ldap managed group but no error returned from repository.")
 		}
 		out = am
 	}
@@ -402,12 +484,61 @@ func (s Service) updateOidcInRepo(ctx context.Context, scopeId, amId, id string,
 	return out, nil
 }
 
+func (s Service) updateLdapInRepo(ctx context.Context, scopeId, amId, id string, mask []string, item *pb.ManagedGroup) (*ldap.ManagedGroup, error) {
+	const op = "managed_groups.(Service).updateLdapInRepo"
+	if item == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil managed group.")
+	}
+	mg := ldap.AllocManagedGroup()
+	mg.PublicId = id
+	if item.GetName() != nil {
+		mg.Name = item.GetName().GetValue()
+	}
+	if item.GetDescription() != nil {
+		mg.Description = item.GetDescription().GetValue()
+	}
+	// Set this regardless; it'll only take effect if the masks contain the value
+	encodedGroupNames, err := json.Marshal(item.GetLdapManagedGroupAttributes().GetGroupNames())
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to encode group names"))
+	}
+	mg.GroupNames = string(encodedGroupNames)
+
+	version := item.GetVersion()
+
+	dbMask := ldapMaskManager.Translate(mask)
+	if len(dbMask) == 0 {
+		return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
+	}
+	repo, err := s.ldapRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	out, rowsUpdated, err := repo.UpdateManagedGroup(ctx, scopeId, mg, version, dbMask)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update managed group"))
+	}
+	if rowsUpdated == 0 {
+		return nil, handlers.NotFoundErrorf("Managed Group %q doesn't exist or incorrect version provided.", id)
+	}
+	return out, nil
+}
+
 func (s Service) updateInRepo(ctx context.Context, scopeId, authMethodId string, req *pbs.UpdateManagedGroupRequest) (auth.ManagedGroup, error) {
 	const op = "managed_groups.(Service).updateInRepo"
 	var out auth.ManagedGroup
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
 	case oidc.Subtype:
 		mg, err := s.updateOidcInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if mg == nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to update managed group but no error returned from repository.")
+		}
+		out = mg
+	case ldap.Subtype:
+		mg, err := s.updateLdapInRepo(ctx, scopeId, authMethodId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -426,6 +557,12 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	switch subtypes.SubtypeFromId(domain, id) {
 	case oidc.Subtype:
 		repo, iErr := s.oidcRepoFn()
+		if iErr != nil {
+			return false, iErr
+		}
+		rows, err = repo.DeleteManagedGroup(ctx, scopeId, id)
+	case ldap.Subtype:
+		repo, iErr := s.ldapRepoFn()
 		if iErr != nil {
 			return false, iErr
 		}
@@ -457,6 +594,18 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		for _, a := range oidcl {
 			outUl = append(outUl, a)
 		}
+	case ldap.Subtype:
+		ldapRepo, err := s.ldapRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		oidcl, err := ldapRepo.ListManagedGroups(ctx, authMethodId)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		for _, a := range oidcl {
+			outUl = append(outUl, a)
+		}
 	}
 	return outUl, nil
 }
@@ -465,6 +614,11 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	const op = "managed_groups.(Service)."
 	res := requestauth.VerifyResults{}
 	oidcRepo, err := s.oidcRepoFn()
+	if err != nil {
+		res.Error = err
+		return nil, res
+	}
+	ldapRepo, err := s.ldapRepoFn()
 	if err != nil {
 		res.Error = err
 		return nil, res
@@ -478,16 +632,27 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	default:
 		switch subtypes.SubtypeFromId(domain, id) {
 		case oidc.Subtype:
-			acct, err := oidcRepo.LookupManagedGroup(ctx, id)
+			grp, err := oidcRepo.LookupManagedGroup(ctx, id)
 			if err != nil {
 				res.Error = err
 				return nil, res
 			}
-			if acct == nil {
+			if grp == nil {
 				res.Error = handlers.NotFoundError()
 				return nil, res
 			}
-			parentId = acct.GetAuthMethodId()
+			parentId = grp.GetAuthMethodId()
+		case ldap.Subtype:
+			grp, err := ldapRepo.LookupManagedGroup(ctx, id)
+			if err != nil {
+				res.Error = err
+				return nil, res
+			}
+			if grp == nil {
+				res.Error = handlers.NotFoundError()
+				return nil, res
+			}
+			parentId = grp.GetAuthMethodId()
 		default:
 			res.Error = errors.New(ctx, errors.InvalidPublicId, op, "unrecognized managed group subtype")
 			return nil, res
@@ -499,6 +664,18 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	switch subtypes.SubtypeFromId(domain, parentId) {
 	case oidc.Subtype:
 		am, err := oidcRepo.LookupAuthMethod(ctx, parentId)
+		if err != nil {
+			res.Error = err
+			return nil, res
+		}
+		if am == nil {
+			res.Error = handlers.NotFoundError()
+			return nil, res
+		}
+		authMeth = am
+		opts = append(opts, requestauth.WithScopeId(am.GetScopeId()))
+	case ldap.Subtype:
+		am, err := ldapRepo.LookupAuthMethod(ctx, parentId)
 		if err != nil {
 			res.Error = err
 			return nil, res
@@ -569,6 +746,25 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 		out.Attrs = &pb.ManagedGroup_OidcManagedGroupAttributes{
 			OidcManagedGroupAttributes: attrs,
 		}
+	case *ldap.ManagedGroup:
+		if outputFields.Has(globals.TypeField) {
+			out.Type = ldap.Subtype.String()
+		}
+		if !outputFields.Has(globals.AttributesField) {
+			break
+		}
+
+		var grpNames []string
+		if err := json.Unmarshal([]byte(i.GetGroupNames()), &grpNames); err != nil {
+			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "unable to unmarshal group names")
+		}
+
+		attrs := &pb.LdapManagedGroupAttributes{
+			GroupNames: grpNames,
+		}
+		out.Attrs = &pb.ManagedGroup_LdapManagedGroupAttributes{
+			LdapManagedGroupAttributes: attrs,
+		}
 	}
 	return &out, nil
 }
@@ -583,7 +779,7 @@ func validateGetRequest(req *pbs.GetManagedGroupRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix, intglobals.LdapManagedGroupPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
@@ -611,6 +807,18 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 					if _, err := bexpr.CreateEvaluator(attrs.Filter); err != nil {
 						badFields[attrFilterField] = fmt.Sprintf("Error evaluating submitted filter expression: %v.", err)
 					}
+				}
+			}
+		case ldap.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != ldap.Subtype.String() {
+				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
+			}
+			attrs := req.GetItem().GetLdapManagedGroupAttributes()
+			if attrs == nil {
+				badFields[globals.AttributesField] = "Attribute fields is required."
+			} else {
+				if len(attrs.GroupNames) == 0 {
+					badFields[attrGroupNamesField] = "This field is required."
 				}
 			}
 		default:
@@ -647,11 +855,21 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 					}
 				}
 			}
+		case ldap.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != ldap.Subtype.String() {
+				badFields[globals.TypeField] = "Cannot modify the resource type."
+			}
+			attrs := req.GetItem().GetLdapManagedGroupAttributes()
+			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), attrGroupNamesField) {
+				if len(attrs.GroupNames) == 0 {
+					badFields[attrFilterField] = "Field cannot be empty."
+				}
+			}
 		default:
 			badFields[globals.IdField] = "Unrecognized resource type."
 		}
 		return badFields
-	}, intglobals.OidcManagedGroupPrefix)
+	}, intglobals.OidcManagedGroupPrefix, intglobals.LdapManagedGroupPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
@@ -659,7 +877,7 @@ func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix, intglobals.LdapManagedGroupPrefix)
 }
 
 func validateListRequest(req *pbs.ListManagedGroupsRequest) error {
@@ -668,7 +886,7 @@ func validateListRequest(req *pbs.ListManagedGroupsRequest) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), oidc.AuthMethodPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), oidc.AuthMethodPrefix, ldap.AuthMethodPrefix) {
 		badFields[globals.AuthMethodIdField] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

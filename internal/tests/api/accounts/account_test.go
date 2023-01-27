@@ -143,6 +143,60 @@ func comparableSlice(in []*accounts.Account) []accounts.Account {
 	return filtered
 }
 
+func TestListLdap(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	require.NotNil(client)
+	token := tc.Token()
+	require.NotNil(token)
+	client.SetToken(token.Token)
+	org := iam.TestOrg(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+	amClient := authmethods.NewClient(client)
+
+	amResult, err := amClient.Create(tc.Context(), "ldap", org.PublicId,
+		authmethods.WithName("foo"),
+		authmethods.WithLdapAuthMethodUrls([]string{"ldaps://ldap1"}))
+	require.NoError(err)
+	require.NotNil(amResult)
+	am := amResult.Item
+
+	accountClient := accounts.NewClient(client)
+
+	lr, err := accountClient.List(tc.Context(), am.Id)
+	require.NoError(err)
+	expected := lr.Items
+	assert.Len(expected, 0)
+
+	cr, err := accountClient.Create(tc.Context(), am.Id,
+		accounts.WithLdapAccountLoginName("login-name0"))
+	require.NoError(err)
+	expected = append(expected, cr.Item)
+
+	ulResult, err := accountClient.List(tc.Context(), am.Id)
+	require.NoError(err)
+	assert.ElementsMatch(comparableSlice(expected[:1]), comparableSlice(ulResult.Items))
+
+	for i := 1; i < 10; i++ {
+		newAcctResult, err := accountClient.Create(tc.Context(), am.Id,
+			accounts.WithLdapAccountLoginName(fmt.Sprintf("login-name-%d", i)))
+		require.NoError(err)
+		expected = append(expected, newAcctResult.Item)
+	}
+	ulResult, err = accountClient.List(tc.Context(), am.Id)
+	require.NoError(err)
+	assert.ElementsMatch(comparableSlice(expected), comparableSlice(ulResult.Items))
+
+	filterItem := expected[3]
+	ulResult, err = accountClient.List(tc.Context(), am.Id,
+		accounts.WithFilter(fmt.Sprintf(`"/item/attributes/login_name"==%q`, filterItem.Attributes["login_name"])))
+	require.NoError(err)
+	require.Len(ulResult.Items, 1)
+	assert.Equal(filterItem.Id, ulResult.Items[0].Id)
+}
+
 func TestCrudPassword(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	tc := controller.NewTestController(t, nil)
@@ -224,6 +278,61 @@ func TestCrudOidc(t *testing.T) {
 	checkAccount("update", u.Item, err, "bar", 2)
 
 	u, err = accountClient.Update(tc.Context(), u.Item.Id, u.Item.Version, accounts.DefaultName())
+	checkAccount("update", u.Item, err, "", 3)
+
+	_, err = accountClient.Delete(tc.Context(), u.Item.Id)
+	require.NoError(err)
+}
+
+func TestCrudLdap(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	amClient := authmethods.NewClient(client)
+	amResult, err := amClient.Create(tc.Context(), "ldap", "global",
+		authmethods.WithName("foo"),
+		authmethods.WithLdapAuthMethodUrls([]string{"ldaps://ldap1"}))
+
+	require.NoError(err)
+	require.NotNil(amResult)
+	amId := amResult.Item.Id
+
+	accountClient := accounts.NewClient(client)
+
+	checkAccount := func(step string, u *accounts.Account, err error, wantedName string, wantedVersion uint32) {
+		assert.NoError(err, step)
+		require.NotNil(u, "returned no resource", step)
+		gotName := ""
+		if u.Name != "" {
+			gotName = u.Name
+		}
+		assert.Equal(wantedName, gotName, step)
+		assert.EqualValues(wantedVersion, u.Version)
+	}
+
+	u, err := accountClient.Create(tc.Context(), amId, accounts.WithName("foo"),
+		accounts.WithLdapAccountLoginName("login-name"))
+	require.NoError(err)
+	require.NotEmpty(u)
+	checkAccount("create", u.Item, err, "foo", 1)
+
+	u, err = accountClient.Read(tc.Context(), u.Item.Id)
+	require.NoError(err)
+	require.NotEmpty(u)
+	checkAccount("read", u.Item, err, "foo", 1)
+
+	u, err = accountClient.Update(tc.Context(), u.Item.Id, u.Item.Version, accounts.WithName("bar"))
+	require.NoError(err)
+	require.NotEmpty(u)
+	checkAccount("update", u.Item, err, "bar", 2)
+
+	u, err = accountClient.Update(tc.Context(), u.Item.Id, u.Item.Version, accounts.DefaultName())
+	require.NoError(err)
+	require.NotEmpty(u)
 	checkAccount("update", u.Item, err, "", 3)
 
 	_, err = accountClient.Delete(tc.Context(), u.Item.Id)
