@@ -151,7 +151,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterHostServiceServer(s, hs)
 	}
 	if _, ok := currentServices[services.AccountService_ServiceDesc.ServiceName]; !ok {
-		accts, err := accounts.NewService(c.PasswordAuthRepoFn, c.OidcRepoFn)
+		accts, err := accounts.NewService(c.baseContext, c.PasswordAuthRepoFn, c.OidcRepoFn, c.LdapRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create account handler service: %w", err)
 		}
@@ -226,7 +226,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterSessionServiceServer(s, ss)
 	}
 	if _, ok := currentServices[services.ManagedGroupService_ServiceDesc.ServiceName]; !ok {
-		mgs, err := managed_groups.NewService(c.OidcRepoFn)
+		mgs, err := managed_groups.NewService(c.baseContext, c.OidcRepoFn, c.LdapRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create managed groups handler service: %w", err)
 		}
