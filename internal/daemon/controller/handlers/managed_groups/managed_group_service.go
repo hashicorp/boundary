@@ -367,7 +367,7 @@ func (s Service) createOidcInRepo(ctx context.Context, am auth.AuthMethod, item 
 	attrs := item.GetOidcManagedGroupAttributes()
 	mg, err := oidc.NewManagedGroup(ctx, am.GetPublicId(), attrs.GetFilter(), opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build managed for creation: %v.", err)
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build managed group for creation: %v.", err)
 	}
 	repo, err := s.oidcRepoFn()
 	if err != nil {
