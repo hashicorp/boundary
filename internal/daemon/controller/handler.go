@@ -226,7 +226,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterSessionServiceServer(s, ss)
 	}
 	if _, ok := currentServices[services.ManagedGroupService_ServiceDesc.ServiceName]; !ok {
-		mgs, err := managed_groups.NewService(c.OidcRepoFn)
+		mgs, err := managed_groups.NewService(c.baseContext, c.OidcRepoFn, c.LdapRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create managed groups handler service: %w", err)
 		}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	oidcstore "github.com/hashicorp/boundary/internal/auth/oidc/store"
 	requestauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -44,6 +45,12 @@ var (
 			action.Update,
 			action.Delete,
 		},
+		ldap.Subtype: {
+			action.NoOp,
+			action.Read,
+			action.Update,
+			action.Delete,
+		},
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
@@ -66,17 +73,21 @@ type Service struct {
 	pbs.UnsafeManagedGroupServiceServer
 
 	oidcRepoFn common.OidcAuthRepoFactory
+	ldapRepoFn common.LdapAuthRepoFactory
 }
 
 var _ pbs.ManagedGroupServiceServer = (*Service)(nil)
 
 // NewService returns a managed group service which handles managed group related requests to boundary.
-func NewService(oidcRepo common.OidcAuthRepoFactory) (Service, error) {
+func NewService(ctx context.Context, oidcRepo common.OidcAuthRepoFactory, ldapRepo common.LdapAuthRepoFactory) (Service, error) {
 	const op = "managed_groups.NewService"
-	if oidcRepo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing oidc repository provided")
+	switch {
+	case oidcRepo == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing oidc repository provided")
+	case ldapRepo == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing ldap repository provided")
 	}
-	return Service{oidcRepoFn: oidcRepo}, nil
+	return Service{oidcRepoFn: oidcRepo, ldapRepoFn: ldapRepo}, nil
 }
 
 // ListManagedGroups implements the interface pbs.ManagedGroupsServiceServer.

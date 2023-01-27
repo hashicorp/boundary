@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -52,26 +53,41 @@ func TestNewService(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
 	cases := []struct {
-		name     string
-		oidcRepo common.OidcAuthRepoFactory
-		wantErr  bool
+		name            string
+		oidcRepo        common.OidcAuthRepoFactory
+		ldapRepo        common.LdapAuthRepoFactory
+		wantErr         bool
+		wantErrContains string
 	}{
 		{
-			name:    "nil-oidc-repo",
-			wantErr: true,
+			name:            "nil-oidc-repo",
+			ldapRepo:        ldapRepoFn,
+			wantErr:         true,
+			wantErrContains: "missing oidc repository",
+		},
+		{
+			name:            "missing-ldap-repo",
+			oidcRepo:        oidcRepoFn,
+			wantErr:         true,
+			wantErrContains: "missing ldap repository",
 		},
 		{
 			name:     "success",
 			oidcRepo: oidcRepoFn,
+			ldapRepo: ldapRepoFn,
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := managed_groups.NewService(tc.oidcRepo)
+			_, err := managed_groups.NewService(ctx, tc.oidcRepo, tc.ldapRepo)
 			if tc.wantErr {
 				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErrContains)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -91,8 +107,11 @@ func TestGet(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
-	s, err := managed_groups.NewService(oidcRepoFn)
+	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Couldn't create new managed groups service.")
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -195,6 +214,9 @@ func TestListOidc(t *testing.T) {
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -302,7 +324,7 @@ func TestListOidc(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := managed_groups.NewService(oidcRepoFn)
+			s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
 			require.NoError(err, "Couldn't create new managed group service.")
 
 			got, gErr := s.ListManagedGroups(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
@@ -348,6 +370,9 @@ func TestDelete(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 
@@ -362,7 +387,7 @@ func TestDelete(t *testing.T) {
 	)
 	oidcMg := oidc.TestManagedGroup(t, conn, oidcAm, oidc.TestFakeManagedGroupFilter)
 
-	s, err := managed_groups.NewService(oidcRepoFn)
+	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -420,6 +445,9 @@ func TestDelete_twice(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 
@@ -435,7 +463,7 @@ func TestDelete_twice(t *testing.T) {
 	)
 	oidcMg := oidc.TestManagedGroup(t, conn, oidcAm, oidc.TestFakeManagedGroupFilter)
 
-	s, err := managed_groups.NewService(oidcRepoFn)
+	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteManagedGroupRequest{
 		Id: oidcMg.GetPublicId(),
@@ -459,8 +487,11 @@ func TestCreateOidc(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
-	s, err := managed_groups.NewService(oidcRepoFn)
+	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new managed group service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -661,6 +692,9 @@ func TestUpdateOidc(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 
@@ -673,7 +707,7 @@ func TestUpdateOidc(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 
-	tested, err := managed_groups.NewService(oidcRepoFn)
+	tested, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new managed_groups service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
