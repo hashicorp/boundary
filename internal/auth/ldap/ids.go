@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, globals.LdapAuthMethodPrefix, globals.LdapAccountPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, Subtype, globals.LdapAuthMethodPrefix, globals.LdapAccountPrefix, globals.LdapManagedGroupPrefix); err != nil {
 		panic(err)
 	}
 }

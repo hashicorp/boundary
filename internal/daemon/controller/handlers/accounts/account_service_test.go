@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	requestauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -54,6 +55,12 @@ var (
 		action.Update.String(),
 		action.Delete.String(),
 	}
+	ldapAuthorizedActions = []string{
+		action.NoOp.String(),
+		action.Read.String(),
+		action.Update.String(),
+		action.Delete.String(),
+	}
 )
 
 func TestNewService(t *testing.T) {
@@ -67,6 +74,9 @@ func TestNewService(t *testing.T) {
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	cases := []struct {
@@ -97,7 +107,7 @@ func TestNewService(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := accounts.NewService(tc.pwRepo, tc.oidcRepo)
+			_, err := accounts.NewService(ctx, tc.pwRepo, tc.oidcRepo, ldapRepoFn)
 			if tc.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -122,8 +132,11 @@ func TestGet(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
-	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -176,12 +189,46 @@ func TestGet(t *testing.T) {
 		ManagedGroupIds:   []string{mg.GetPublicId()},
 	}
 
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	ldapAcct := ldap.TestAccount(t, conn, ldapAm, "test-acct",
+		ldap.WithMemberOfGroups(ctx, "admin"),
+		ldap.WithFullName(ctx, "test-name"),
+		ldap.WithEmail(ctx, "test-email"),
+		ldap.WithDn(ctx, "test-dn"),
+	)
+	ldapMg := ldap.TestManagedGroup(t, conn, ldapAm, []string{"admin"})
+	ldapWireAccount := pb.Account{
+		Id:           ldapAcct.GetPublicId(),
+		AuthMethodId: ldapAm.GetPublicId(),
+		CreatedTime:  ldapAcct.GetCreateTime().GetTimestamp(),
+		UpdatedTime:  ldapAcct.GetUpdateTime().GetTimestamp(),
+		Scope:        &scopepb.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:      1,
+		Attrs: &pb.Account_LdapAccountAttributes{
+			LdapAccountAttributes: &pb.LdapAccountAttributes{
+				LoginName:      ldapAcct.GetLoginName(),
+				FullName:       ldapAcct.GetFullName(),
+				Email:          ldapAcct.GetEmail(),
+				Dn:             ldapAcct.GetDn(),
+				MemberOfGroups: []string{"admin"},
+			},
+		},
+		Type:              ldap.Subtype.String(),
+		AuthorizedActions: ldapAuthorizedActions,
+		ManagedGroupIds:   []string{ldapMg.GetPublicId()},
+	}
+
 	cases := []struct {
 		name string
 		req  *pbs.GetAccountRequest
 		res  *pbs.GetAccountResponse
 		err  error
 	}{
+		{
+			name: "Get an ldap account",
+			req:  &pbs.GetAccountRequest{Id: ldapWireAccount.GetId()},
+			res:  &pbs.GetAccountResponse{Item: &ldapWireAccount},
+		},
 		{
 			name: "Get a password account",
 			req:  &pbs.GetAccountRequest{Id: pwWireAccount.GetId()},
@@ -207,6 +254,12 @@ func TestGet(t *testing.T) {
 		{
 			name: "Get a non existing oidc account",
 			req:  &pbs.GetAccountRequest{Id: globals.OidcAccountPrefix + "_DoesntExis"},
+			res:  nil,
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Get a non existing ldap account",
+			req:  &pbs.GetAccountRequest{Id: ldap.AccountPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -264,6 +317,9 @@ func TestListPassword(t *testing.T) {
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -357,7 +413,7 @@ func TestListPassword(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
 			// Test non-anon first
@@ -402,6 +458,9 @@ func TestListOidc(t *testing.T) {
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -511,7 +570,7 @@ func TestListOidc(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
@@ -525,6 +584,161 @@ func TestListOidc(t *testing.T) {
 			sort.Slice(got.Items, func(i, j int) bool {
 				return strings.Compare(got.Items[i].GetOidcAccountAttributes().Subject,
 					got.Items[j].GetOidcAccountAttributes().Subject) < 0
+			})
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+
+			// Now test with anon
+			if tc.skipAnon {
+				return
+			}
+			got, gErr = s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId(), requestauth.WithUserId(globals.AnonymousUserId)), tc.req)
+			require.NoError(gErr)
+			assert.Len(got.Items, len(tc.res.Items))
+			for _, g := range got.GetItems() {
+				assert.Nil(g.Attrs)
+				assert.Nil(g.CreatedTime)
+				assert.Nil(g.UpdatedTime)
+				assert.Empty(g.Version)
+			}
+		})
+	}
+}
+
+func TestListLdap(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
+
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	amNoAccounts := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://no-accounts"})
+	amSomeAccounts := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://some-accounts"})
+	amOtherAccounts := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://other-accounts"})
+
+	var wantSomeAccounts []*pb.Account
+	for i := 0; i < 3; i++ {
+		loginName := fmt.Sprintf("test-login-name%d", i)
+		aa := ldap.TestAccount(t, conn, amSomeAccounts, loginName)
+		wantSomeAccounts = append(wantSomeAccounts, &pb.Account{
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         ldap.Subtype.String(),
+			Attrs: &pb.Account_LdapAccountAttributes{
+				LdapAccountAttributes: &pb.LdapAccountAttributes{
+					LoginName: loginName,
+				},
+			},
+			AuthorizedActions: ldapAuthorizedActions,
+		})
+	}
+
+	var wantOtherAccounts []*pb.Account
+	for i := 0; i < 3; i++ {
+		loginName := fmt.Sprintf("test-login-name%d", i)
+		aa := ldap.TestAccount(t, conn, amOtherAccounts, loginName)
+		wantOtherAccounts = append(wantOtherAccounts, &pb.Account{
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         ldap.Subtype.String(),
+			Attrs: &pb.Account_LdapAccountAttributes{
+				LdapAccountAttributes: &pb.LdapAccountAttributes{
+					LoginName: loginName,
+				},
+			},
+			AuthorizedActions: ldapAuthorizedActions,
+		})
+	}
+
+	cases := []struct {
+		name     string
+		req      *pbs.ListAccountsRequest
+		res      *pbs.ListAccountsResponse
+		err      error
+		skipAnon bool
+	}{
+		{
+			name: "List Some Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{Items: wantSomeAccounts},
+		},
+		{
+			name: "List Other Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amOtherAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{Items: wantOtherAccounts},
+		},
+		{
+			name: "List No Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amNoAccounts.GetPublicId()},
+			res:  &pbs.ListAccountsResponse{},
+		},
+		{
+			name: "Unfound Auth Method",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: oidc.AuthMethodPrefix + "_DoesntExis"},
+			err:  handlers.ApiErrorWithCode(codes.NotFound),
+		},
+		{
+			name: "Filter Some Accounts",
+			req: &pbs.ListAccountsRequest{
+				AuthMethodId: amSomeAccounts.GetPublicId(),
+				Filter:       fmt.Sprintf(`"/item/attributes/login_name"==%q`, wantSomeAccounts[1].GetLdapAccountAttributes().LoginName),
+			},
+			res:      &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			skipAnon: true,
+		},
+		{
+			name: "Filter All Accounts",
+			req: &pbs.ListAccountsRequest{
+				AuthMethodId: amSomeAccounts.GetPublicId(),
+				Filter:       `"/item/id"=="noaccountmatchesthis"`,
+			},
+			res: &pbs.ListAccountsResponse{},
+		},
+		{
+			name: "Filter Bad Format",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId(), Filter: `"//id/"=="bad"`},
+			err:  handlers.InvalidArgumentErrorf("bad format", nil),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+			require.NoError(err, "Couldn't create new user service.")
+
+			got, gErr := s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "ListAccounts() with auth method %q got error %v, wanted %v", tc.req, gErr, tc.err)
+				return
+			} else {
+				require.NoError(gErr)
+			}
+			sort.Slice(got.Items, func(i, j int) bool {
+				return strings.Compare(got.Items[i].GetLdapAccountAttributes().LoginName,
+					got.Items[j].GetLdapAccountAttributes().LoginName) < 0
 			})
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 
@@ -560,6 +774,9 @@ func TestDelete(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am1 := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
@@ -576,15 +793,19 @@ func TestDelete(t *testing.T) {
 	)
 	oidcA := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 
-	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+	ldapAcct := ldap.TestAccount(t, conn, ldapAm, "test-account")
+
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
-		name  string
-		scope string
-		req   *pbs.DeleteAccountRequest
-		res   *pbs.DeleteAccountResponse
-		err   error
+		name        string
+		scope       string
+		req         *pbs.DeleteAccountRequest
+		res         *pbs.DeleteAccountResponse
+		err         error
+		errContains string
 	}{
 		{
 			name: "Delete an existing pw account",
@@ -599,32 +820,50 @@ func TestDelete(t *testing.T) {
 			},
 		},
 		{
+			name: "Delete an existing ldap account",
+			req: &pbs.DeleteAccountRequest{
+				Id: ldapAcct.GetPublicId(),
+			},
+		},
+		{
 			name: "Delete bad old pw account id",
 			req: &pbs.DeleteAccountRequest{
 				Id: globals.PasswordAccountPreviousPrefix + "_doesntexis",
 			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
+			err:         handlers.ApiErrorWithCode(codes.NotFound),
+			errContains: "Resource not found.",
 		},
 		{
 			name: "Delete bad new pw account id",
 			req: &pbs.DeleteAccountRequest{
 				Id: globals.PasswordAccountPrefix + "_doesntexis",
 			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
+			err:         handlers.ApiErrorWithCode(codes.NotFound),
+			errContains: "Resource not found.",
 		},
 		{
 			name: "Delete bad oidc account id",
 			req: &pbs.DeleteAccountRequest{
 				Id: globals.OidcAccountPrefix + "_doesntexis",
 			},
-			err: handlers.ApiErrorWithCode(codes.NotFound),
+			err:         handlers.ApiErrorWithCode(codes.NotFound),
+			errContains: "Resource not found.",
+		},
+		{
+			name: "Delete bad ldap account id",
+			req: &pbs.DeleteAccountRequest{
+				Id: ldap.AccountPrefix + "_doesntexis",
+			},
+			err:         handlers.ApiErrorWithCode(codes.NotFound),
+			errContains: "Resource not found.",
 		},
 		{
 			name: "Bad account id formatting",
 			req: &pbs.DeleteAccountRequest{
 				Id: "bad_format",
 			},
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "Incorrectly formatted identifier.",
 		},
 	}
 	for _, tc := range cases {
@@ -634,6 +873,8 @@ func TestDelete(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				require.NotEmpty(tc.errContains)
+				assert.Contains(gErr.Error(), tc.errContains)
 			}
 			assert.EqualValuesf(tc.res, got, "DeleteAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -656,12 +897,15 @@ func TestDelete_twice(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	ac := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 
-	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteAccountRequest{
 		Id: ac.GetPublicId(),
@@ -688,8 +932,11 @@ func TestCreatePassword(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 
-	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new account service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -932,8 +1179,11 @@ func TestCreateOidc(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
-	s, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new account service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -1151,6 +1401,285 @@ func TestCreateOidc(t *testing.T) {
 	}
 }
 
+func TestCreateLdap(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
+
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	require.NoError(t, err, "Error when getting new account service.")
+
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	am := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+
+	cases := []struct {
+		name        string
+		req         *pbs.CreateAccountRequest
+		res         *pbs.CreateAccountResponse
+		err         error
+		errContains string
+	}{
+		{
+			name: "Create a valid Account",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					Type:         ldap.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "valid-account",
+						},
+					},
+				},
+			},
+			res: &pbs.CreateAccountResponse{
+				Uri: fmt.Sprintf("accounts/%s_", ldap.AccountPrefix),
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Name:         &wrapperspb.StringValue{Value: "name"},
+					Description:  &wrapperspb.StringValue{Value: "desc"},
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:      1,
+					Type:         ldap.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "valid-account",
+						},
+					},
+					AuthorizedActions: ldapAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Create a valid Account without type defined",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "no type defined",
+						},
+					},
+				},
+			},
+			res: &pbs.CreateAccountResponse{
+				Uri: fmt.Sprintf("accounts/%s_", ldap.AccountPrefix),
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+					Version:      1,
+					Type:         ldap.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "no type defined",
+						},
+					},
+					AuthorizedActions: ldapAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Cant specify mismatching type",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Type:         password.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "cant-specify-mismatching-type",
+						},
+					},
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "Doesn't match the parent resource's type",
+		},
+		{
+			name: "Can't specify Id",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Id:           ldap.AccountPrefix + "_notallowed",
+					Type:         ldap.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "cant-specify-mismatching-type",
+						},
+					},
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"id\", desc: \"This is a read only field.\"",
+		},
+		{
+			name: "Can't specify Created Time",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					CreatedTime:  timestamppb.Now(),
+					Type:         oidc.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "cant-specify-mismatching-type",
+						},
+					},
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"created_time\", desc: \"This is a read only field.\"",
+		},
+		{
+			name: "Can't specify Update Time",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					UpdatedTime:  timestamppb.Now(),
+					Type:         ldap.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "cant-specify-mismatching-type",
+						},
+					},
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"updated_time\", desc: \"This is a read only field.\"",
+		},
+		{
+			name: "Must specify login name",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Type:         ldap.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{},
+					},
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"attributes.login_name\", desc: \"This is a required field for this type.",
+		},
+		{
+			name: "Can't specify full name",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Type:         ldap.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "cant-specify-full-name",
+							FullName:  "something",
+						},
+					},
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"attributes.full_name\", desc: \"This is a read only field.\"",
+		},
+		{
+			name: "Can't specify email",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Type:         ldap.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "cant-specify-email",
+							Email:     "something",
+						},
+					},
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"attributes.email\", desc: \"This is a read only field.\"",
+		},
+		{
+			name: "Can't specify dn",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Type:         ldap.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName: "cant-specify-dn",
+							Dn:        "something",
+						},
+					},
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"attributes.dn\", desc: \"This is a read only field.\"",
+		},
+		{
+			name: "Can't specify member of groups",
+			req: &pbs.CreateAccountRequest{
+				Item: &pb.Account{
+					AuthMethodId: am.GetPublicId(),
+					Type:         ldap.Subtype.String(),
+					Attrs: &pb.Account_LdapAccountAttributes{
+						LdapAccountAttributes: &pb.LdapAccountAttributes{
+							LoginName:      "cant-specify-member-of",
+							MemberOfGroups: []string{"something"},
+						},
+					},
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"attributes.member_of_groups\", desc: \"This is a read only field.\"",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			got, gErr := s.CreateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "CreateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				require.NotEmpty(tc.errContains)
+				assert.Contains(gErr.Error(), tc.errContains)
+				return
+			}
+			require.NoError(gErr)
+			if got != nil {
+				assert.Contains(got.GetUri(), tc.res.Uri)
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), ldap.AccountPrefix+"_"))
+				// Clear all values which are hard to compare against.
+				got.Uri, tc.res.Uri = "", ""
+				got.Item.Id, tc.res.Item.Id = "", ""
+				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
+			}
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
 func TestUpdatePassword(t *testing.T) {
 	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -1166,10 +1695,13 @@ func TestUpdatePassword(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new accounts service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -1553,6 +2085,9 @@ func TestUpdateOidc(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 
@@ -1565,7 +2100,7 @@ func TestUpdateOidc(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 
-	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -1925,6 +2460,380 @@ func TestUpdateOidc(t *testing.T) {
 	}
 }
 
+func TestUpdateLdap(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(rw, rw, kmsCache)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
+
+	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+	am := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap"})
+
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	require.NoError(t, err, "Error when getting new auth_method service.")
+
+	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
+	defaultAttributes := &pb.Account_LdapAccountAttributes{
+		LdapAccountAttributes: &pb.LdapAccountAttributes{
+			LoginName: "test-login",
+		},
+	}
+
+	freshAccount := func(t *testing.T) (*ldap.Account, func()) {
+		t.Helper()
+		acc := ldap.TestAccount(t, conn, am, "test-login", ldap.WithName(ctx, "default"), ldap.WithDescription(ctx, "default"))
+
+		clean := func() {
+			_, err := tested.DeleteAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+				&pbs.DeleteAccountRequest{Id: acc.GetPublicId()})
+			require.NoError(t, err)
+		}
+
+		return acc, clean
+	}
+
+	cases := []struct {
+		name        string
+		req         *pbs.UpdateAccountRequest
+		res         *pbs.UpdateAccountResponse
+		err         error
+		errContains string
+	}{
+		{
+			name: "update-existing",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{globals.NameField, globals.DescriptionField},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        ldap.Subtype.String(),
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Type:              ldap.Subtype.String(),
+					Attrs:             defaultAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: ldapAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Multiple Paths in single string",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name,description"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        ldap.Subtype.String(),
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "new"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Type:              ldap.Subtype.String(),
+					Attrs:             defaultAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: ldapAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "No Update Mask",
+			req: &pbs.UpdateAccountRequest{
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "UpdateMask not provided but is required to update this resource",
+		},
+		{
+			name: "Cant change type",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{globals.NameField},
+				},
+				Item: &pb.Account{
+					Name: &wrapperspb.StringValue{Value: ""},
+					Type: "oidc",
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "Cannot modify the resource type",
+		},
+		{
+			name: "No Paths in Mask",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "missing mask",
+		},
+		{
+			name: "Only non-existent paths in Mask",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{Paths: []string{"nonexistant_field"}},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "No valid fields included in the update mask",
+		},
+		{
+			name: "Unset Name",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{globals.NameField},
+				},
+				Item: &pb.Account{
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Description:       &wrapperspb.StringValue{Value: "default"},
+					Type:              ldap.Subtype.String(),
+					Attrs:             defaultAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: ldapAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Update Only Name",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{globals.NameField},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "updated"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "updated"},
+					Description:       &wrapperspb.StringValue{Value: "default"},
+					Type:              ldap.Subtype.String(),
+					Attrs:             defaultAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: ldapAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Update Only Description",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{globals.DescriptionField},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "notignored"},
+				},
+			},
+			res: &pbs.UpdateAccountResponse{
+				Item: &pb.Account{
+					AuthMethodId:      am.GetPublicId(),
+					Name:              &wrapperspb.StringValue{Value: "default"},
+					Description:       &wrapperspb.StringValue{Value: "notignored"},
+					Type:              ldap.Subtype.String(),
+					Attrs:             defaultAttributes,
+					Scope:             defaultScopeInfo,
+					AuthorizedActions: ldapAuthorizedActions,
+				},
+			},
+		},
+		{
+			name: "Update LoginName",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.login_name"},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "ignored"},
+					Description: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "Field cannot be updated.",
+		},
+		{
+			name: "Update a Non Existing Account",
+			req: &pbs.UpdateAccountRequest{
+				Id: ldap.AccountPrefix + "_DoesntExis",
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{globals.DescriptionField},
+				},
+				Item: &pb.Account{
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "desc"},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.NotFound),
+			errContains: "Resource not found.",
+		},
+		{
+			name: "Cant change Id",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"id"},
+				},
+				Item: &pb.Account{
+					Id:          ldap.AccountPrefix + "_somethinge",
+					Name:        &wrapperspb.StringValue{Value: "new"},
+					Description: &wrapperspb.StringValue{Value: "new desc"},
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"id\", desc: \"This is a read only field and cannot be specified in an update request.",
+		},
+		{
+			name: "Cant specify Created Time",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"created_time"},
+				},
+				Item: &pb.Account{
+					CreatedTime: timestamppb.Now(),
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"created_time\", desc: \"This is a read only field and cannot be specified in an update request.",
+		},
+		{
+			name: "Cant specify Updated Time",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"updated_time"},
+				},
+				Item: &pb.Account{
+					UpdatedTime: timestamppb.Now(),
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"updated_time\", desc: \"This is a read only field and cannot be specified in an update request.",
+		},
+		{
+			name: "Cant specify Type",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"type"},
+				},
+				Item: &pb.Account{
+					Type: "oidc",
+				},
+			},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"type\", desc: \"Cannot modify the resource type.",
+		},
+		{
+			name: "Update Login name",
+			req: &pbs.UpdateAccountRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.login_name"},
+				},
+				Item: &pb.Account{
+					Name: &wrapperspb.StringValue{Value: "ignored"},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "name: \"attributes.login_name\", desc: \"Field cannot be updated.",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			acc, cleanup := freshAccount(t)
+			defer cleanup()
+
+			tc.req.Item.Version = 1
+
+			if tc.req.GetId() == "" {
+				tc.req.Id = acc.GetPublicId()
+			}
+
+			if tc.res != nil && tc.res.Item != nil {
+				tc.res.Item.Id = acc.GetPublicId()
+				tc.res.Item.CreatedTime = acc.GetCreateTime().GetTimestamp()
+			}
+
+			got, gErr := tested.UpdateAccount(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			if tc.err != nil {
+				require.Error(gErr)
+				assert.True(errors.Is(gErr, tc.err), "UpdateAccount(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				require.NotEmpty(tc.errContains)
+				assert.Contains(gErr.Error(), tc.errContains)
+				return
+			}
+
+			require.NoError(gErr)
+
+			if tc.res == nil {
+				require.Nil(got)
+			}
+
+			if got != nil {
+				assert.NotNilf(tc.res, "Expected UpdateAccount response to be nil, but was %v", got)
+				gotUpdateTime := got.GetItem().GetUpdatedTime()
+				require.NoError(err, "Error converting proto to timestamp")
+
+				created := acc.GetCreateTime().GetTimestamp()
+				require.NoError(err, "Error converting proto to timestamp")
+
+				// Verify it is a auth_method updated after it was created
+				assert.True(gotUpdateTime.AsTime().After(created.AsTime()), "Updated account should have been updated after it's creation. Was updated %v, which is after %v", gotUpdateTime, created)
+
+				// Clear all values which are hard to compare against.
+				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
+
+				assert.EqualValues(2, got.Item.Version)
+				tc.res.Item.Version = 2
+			}
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateAccount(%q) got response %q, wanted %q", tc.req, got, tc.res)
+		})
+	}
+}
+
 func TestSetPassword(t *testing.T) {
 	ctx := context.TODO()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -1940,9 +2849,12 @@ func TestSetPassword(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {
@@ -2079,9 +2991,12 @@ func TestChangePassword(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.NewRepository(rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	tested, err := accounts.NewService(pwRepoFn, oidcRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {
