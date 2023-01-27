@@ -567,7 +567,6 @@ message ManagedGroup {
     this: "GroupNames"
     that: "attributes.group_names"
   }];
-
 }
 
 // ManagedGroupMemberAccount contains a mapping between a managed group and a
