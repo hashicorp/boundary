@@ -11,13 +11,11 @@ The [Quick setup
 wizard](/boundary/docs/getting-started/deploy-and-login#login-to-hcp-boundary)
 is the fastest way to onboard a target to HCP Boundary.
 
-![Setup Wizard](/img/setup-wizard-target.png)
+![Setup Wizard](/img/setup-wizard-address-target.png)
 
-A `tcp` target with a default port of `22` (the default SSH port using TCP) is
-recommended for an initial target. If using the Quick setup, a sample host set
-called **Prod-EC2** will contain the **Instance-1** host, with the Address
-provided during setup. When `boundary connect` is executed against the **EC2 Instances** target, the single available host will be selected and a local
-authenticated proxy to the host is established on the target's default port.
+The Quick setup wizard creates a default `tcp` target with the port `22` (the default SSH port using TCP).
+The target is created with the address `127.0.0.1`.
+When you execute `boundary connect` against this target, Boundary establishes a local, authenticated proxy to the address on the target's default port (`127.0.0.1:22`.)
 
 ![Setup Wizard](/img/quick-start-targets.png)
 
@@ -30,19 +28,18 @@ To connect to the initial EC2 Instances target:
 1. Open a terminal session. Export the Boundary **Cluster URL** as an environment
    variable.
 
-```shell-session
-$ export BOUNDARY_ADDR=<boundary-cluster-url>
-```
+    ```shell-session
+    $ export BOUNDARY_ADDR=<boundary-cluster-url>
+    ```
 
 1. Connect to the target.
 
-```shell-session
-$ boundary connect -target-id ttcp_eTcZMueUYv
-```
+    ```shell-session
+    $ boundary connect -target-id ttcp_eTcZMueUYv
+    ```
 
-The output displays the address and port that your SSH client must utilize. In
-the next section the `ssh` connect helper is used to make it easier to connect
-to the target with a client.
+    The output displays the address and port that your SSH client must use.
+    In the next section the `ssh` connect helper is used to make it easier to connect to the target with a client.
 
 The `boundary connect` command has a number of notable options, such as
 `-listen-port` to choose the port on which the connect command will listen for
@@ -82,7 +79,7 @@ different style expected by different SSH clients. Besides the default `ssh`,
 the `boundary connect ssh` command supports `-style putty` to support passing
 connection information to PuTTY.
 
-One advantage to styles is that Boundary will provide information to the client
+One advantage to styles is that Boundary provides information to the client
 in the format that makes sense. For example, the `-username` flag is used to
 specify a username other than your currently logged-in user. This ensures that
 regardless of your `-style` choice, the username is properly passed to the
@@ -98,7 +95,7 @@ single explicit value, however other flags are supported:
 - `target-scope-id`: The ID of the scope in which the target lives
 - `target-scope-name`: The name of the scope in which the target lives
 
-Note however that these are not uniquely identifying, as names can be re-used
+Note however that these are not uniquely identifying, as names can be reused
 across scopes. As a result, when not using the target ID, you must use the
 target's name in conjunction with the scope name or scope ID so that Boundary
 can correctly identify the desired target.
