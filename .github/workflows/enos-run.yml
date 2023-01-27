@@ -173,6 +173,11 @@ jobs:
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Upload e2e tests output
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-e2e-output.zip
+          path: enos/test*.out
       - name: Retry Enos scenario
         id: run_retry
         if: steps.run.outcome == 'failure'
