@@ -24,6 +24,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
  multiple workers together to access services hidden under layers of network security. Multi-hop 
  workers can also establish a TCP session through multiple workers, with the ability to reverse 
  proxy and establish a connection.
+* ui: Upgrade Admin UI to Ember 4.4.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1523))
+* ui: Add support for JSON credentials in Admin UI.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1498))
 
 ### Bug Fixes
 
