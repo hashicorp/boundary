@@ -563,7 +563,11 @@ message ManagedGroup {
 
   // groups is json marshalled list of groups that make up the ManagedGroup
   // @inject_tag: `gorm:"not_null"`
-  string group_names = 80;
+  string group_names = 80 [(custom_options.v1.mask_mapping) = {
+    this: "GroupNames"
+    that: "attributes.group_names"
+  }];
+
 }
 
 // ManagedGroupMemberAccount contains a mapping between a managed group and a
