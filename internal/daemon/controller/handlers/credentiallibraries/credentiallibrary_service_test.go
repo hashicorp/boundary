@@ -892,7 +892,7 @@ func TestGet(t *testing.T) {
 	sshPkLib, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), lib1)
 	require.NoError(t, err)
 
-	lib2, err := vault.NewSSHCertificateCredentialLibrary(store.GetPublicId(), "vault/path/cert", "username")
+	lib2, err := vault.NewSSHCertificateCredentialLibrary(store.GetPublicId(), "/ssh/sign/foo", "username")
 	require.NoError(t, err)
 	sshCertLib, err := repo.CreateSSHCertificateCredentialLibrary(context.Background(), prj.GetPublicId(), lib2)
 	require.NoError(t, err)
@@ -2058,7 +2058,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 				Description:       &wrapperspb.StringValue{Value: "desc"},
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
-						Path:     wrapperspb.String("something"),
+						Path:     wrapperspb.String("/ssh/sign/foo"),
 						Username: wrapperspb.String("username"),
 					},
 				},
@@ -2078,7 +2078,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 					Type:              vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
-							Path:     wrapperspb.String("something"),
+							Path:     wrapperspb.String("/ssh/sign/foo"),
 							Username: wrapperspb.String("username"),
 							KeyType:  wrapperspb.String(vault.KeyTypeEd25519),
 						},
@@ -2096,7 +2096,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 				Name:              &wrapperspb.StringValue{Value: "name2"},
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
-						Path:     wrapperspb.String("something"),
+						Path:     wrapperspb.String("/ssh/sign/foo"),
 						Username: wrapperspb.String("username"),
 						KeyType:  wrapperspb.String(vault.KeyTypeEd25519),
 					},
@@ -2116,7 +2116,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 					Type:              vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
-							Path:     wrapperspb.String("something"),
+							Path:     wrapperspb.String("/ssh/sign/foo"),
 							Username: wrapperspb.String("username"),
 							KeyType:  wrapperspb.String(vault.KeyTypeEd25519),
 						},
@@ -2192,7 +2192,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 	freshLibrary := func(opt ...vault.Option) (*vault.SSHCertificateCredentialLibrary, func()) {
 		repo, err := repoFn()
 		require.NoError(t, err)
-		lib, err := vault.NewSSHCertificateCredentialLibrary(store.GetPublicId(), "vault/path", "username", opt...)
+		lib, err := vault.NewSSHCertificateCredentialLibrary(store.GetPublicId(), "/ssh/sign/foo", "username", opt...)
 		require.NoError(t, err)
 
 		vl, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), lib)
@@ -2285,14 +2285,14 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 					Type: vault.SSHCertificateLibrarySubtype.String(),
 					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
-							Path: wrapperspb.String("something"),
+							Path: wrapperspb.String("/ssh/issue/foo"),
 						},
 					},
 				},
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				out.GetVaultSshCertificateCredentialLibraryAttributes().Path = wrapperspb.String("something")
+				out.GetVaultSshCertificateCredentialLibraryAttributes().Path = wrapperspb.String("/ssh/issue/foo")
 				return out
 			},
 		},
