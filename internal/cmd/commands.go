@@ -819,6 +819,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"managed-groups create ldap": func() (cli.Command, error) {
+			return &managedgroupscmd.LdapCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"managed-groups update": func() (cli.Command, error) {
 			return &managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
@@ -827,6 +833,12 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"managed-groups update oidc": func() (cli.Command, error) {
 			return &managedgroupscmd.OidcCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"managed-groups update ldap": func() (cli.Command, error) {
+			return &managedgroupscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil
