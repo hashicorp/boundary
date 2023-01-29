@@ -41,6 +41,17 @@ OIDC managed groups have the following additional attributes:
 [filtering concepts]: /boundary/docs/concepts/filtering
 [oidc managed groups filtering]: /boundary/docs/concepts/filtering/oidc-managed-groups
 
+### LDAP Managed Group Information and Attributes
+
+Membership in LDAP managed groups is evaluated when the auth method is used for
+authentication, based on information contained within the LDAP server. Every
+authentication will result in a new evaluation of managed group membership.
+
+LDAP managed groups have the following additional attributes:
+
+- `group-names` - (required)
+  A list of group names.
+
 ## Referenced By
 
 - [Accounts][]
