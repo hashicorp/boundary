@@ -127,6 +127,20 @@ var inputStructs = map[string][]*cmdInfo{
 			HasDescription:      true,
 			VersionedActions:    []string{"update"},
 		},
+		{
+			ResourceType:        resource.Account.String(),
+			Pkg:                 "accounts",
+			StdActions:          []string{"create", "update"},
+			SubActionPrefix:     "ldap",
+			HasExtraCommandVars: true,
+			SkipNormalHelp:      true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+			HasName:             true,
+			Container:           "AuthMethod",
+			HasDescription:      true,
+			VersionedActions:    []string{"update"},
+		},
 	},
 	"authmethods": {
 		{
