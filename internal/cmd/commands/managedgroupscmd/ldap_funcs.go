@@ -46,7 +46,7 @@ func (c *LdapCommand) extraLdapHelpFunc(helpMap map[string]func() string) string
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary managed-groups update ldap [options] [args]",
 			"",
-			"  Update a ldap-type managed group given its ID. Example:",
+			"  Update an ldap-type managed group given its ID. Example:",
 			"",
 			`    $ boundary managed-groups update ldap -id acctldap_1234567890 -name "devops" -description "Ldap managed group for DevOps"`,
 			"",
