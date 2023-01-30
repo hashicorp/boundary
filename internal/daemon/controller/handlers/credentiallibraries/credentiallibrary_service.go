@@ -1066,13 +1066,13 @@ func validateMapping(badFields map[string]string, credentialType credential.Type
 // If keyType is an empty string, validateKeyBits only validates keyBits.
 func validateKeyBits(badFields map[string]string, keyBits uint32, keyType string) {
 	switch keyBits {
-	case 0:
-	case 256, 384, 521:
-		if keyType != "" && keyType != "ecdsa" {
+	case vault.KeyBitsDefault:
+	case vault.KeyBitsEcdsa256, vault.KeyBitsEcdsa384, vault.KeyBitsEcdsa521:
+		if keyType != "" && keyType != vault.KeyTypeEcdsa {
 			badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %d for key type %s", keyBits, keyType)
 		}
-	case 2048, 3072, 4096:
-		if keyType != "" && keyType != "rsa" {
+	case vault.KeyBitsRsa2048, vault.KeyBitsRsa3072, vault.KeyBitsRsa4096:
+		if keyType != "" && keyType != vault.KeyTypeRsa {
 			badFields[keyBitsField] = fmt.Sprintf("Invalid bit size %d for key type %s", keyBits, keyType)
 		}
 	default:
