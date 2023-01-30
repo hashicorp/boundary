@@ -67,8 +67,9 @@ create trigger insert_tcp_target_filter_validate before insert on target_tcp
 -- Update views
 
 -- Replaces target_all_subtypes defined in 44/03_targets.up.sql
-drop view target_all_subtypes;
-create view target_all_subtypes as
+-- Using create or replace instead of delete/create, as views whx_credential_dimension_source and
+-- whx_host_dimension_source depend on this view and are unaffected by the worker_filter changes
+create or replace view target_all_subtypes as
 select public_id,
    project_id,
    name,
