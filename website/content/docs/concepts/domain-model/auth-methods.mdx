@@ -36,13 +36,13 @@ The password auth method has the following additional attributes:
 The ldap auth method has the following additional attributes:
 
 - `state` - The state of the auth method; either inactive, active-private or
-  active-public
+  active-public.
 
 - `start_tls` - (optional) If true, issues a StartTLS command after establishing
   an unencrypted connection. Defaults to false.
 
 - `insecure_tls` - (optional) If true, skips LDAP server SSL certificate
-  validation - which is insecure and should be used with caution. Defaults to
+  validation, which is insecure and should be used with caution. Defaults to
   false. 
 
 - `discover_dn` - (optional) If true, use anon bind to discover the bind DN
@@ -66,9 +66,9 @@ The ldap auth method has the following additional attributes:
 - `user_attr` - (optional) If set, defines the attribute on a user's entry 
   matching the login-name passed when the user authenticates.  Examples: cn, uid  
 
-- `user_filter` - (optional) If set, the go template used to construct a LDAP
+- `user_filter` - (optional) If set, the go template used to construct an LDAP
   user search filter. The template can access the following context variables:
-  [UserAttr, Username]. The default userfilter is ({{.UserAttr}}={{.Username}})
+  [UserAttr, Username]. The default user_filter is ({{.UserAttr}}={{.Username}})
   or (userPrincipalName={{.Username}}@UPNDomain) if the upn-domain parameter is
   set.
 
@@ -98,10 +98,10 @@ The ldap auth method has the following additional attributes:
 
 - `client_certificate` - (optional) If set, a PEM encoded x509 certificate in
   ASN.1 DER form to be used as a client certificate. It must be set if the
-  optional client_certificate_key is specified
+  optional client_certificate_key is specified.
 
-- `client_certificate_key` - (optional) If set, a certificate key in PKCS #8,
-  ASN.1 DER form. It must be set if the optional client_certificate is
+- `client_certificate_key` - (optional) If set, a PEM encoded certificate key in
+  PKCS #8, ASN.1 DER form. It must be set if the optional client_certificate is 
   specified.
   
 - `bind_dn` - (optional) If set, the distinguished name of entry to bind when 
