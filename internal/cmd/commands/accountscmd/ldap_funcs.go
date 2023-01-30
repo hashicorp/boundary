@@ -32,7 +32,7 @@ func (c *LdapCommand) extraLdapHelpFunc(helpMap map[string]func() string) string
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary accounts create ldap [options] [args]",
 			"",
-			"  Create a ldap-type account. Example:",
+			"  Create an ldap-type account. Example:",
 			"",
 			`    $ boundary accounts create ldap -login-name prodops -description "ldap account for ProdOps"`,
 			"",
@@ -43,7 +43,7 @@ func (c *LdapCommand) extraLdapHelpFunc(helpMap map[string]func() string) string
 		helpStr = base.WrapForHelpText([]string{
 			"Usage: boundary accounts update ldap [options] [args]",
 			"",
-			"  Update a ldap-type account given its ID. Example:",
+			"  Update an ldap-type account given its ID. Example:",
 			"",
 			`    $ boundary accounts update ldap -id acctldap_1234567890 -name "devops" -description "ldap account for DevOps"`,
 			"",
