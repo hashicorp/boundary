@@ -36,6 +36,33 @@ Password account types have the following additional attributes:
 - `password` - (optional)
   Not setting the `password` disables the account.
 
+### LDAP Account Attributes
+
+LDAP account types have the following additional attributes:
+
+- `login_name` - (required)
+  Must be unique within the account's [auth method][].
+  Can only contain lower case letters.
+
+- `full_name` - (output only)
+  Maps to the name attribute for the authenticated user, and is updated every
+  time the user successfully authenticates. It is empty until the user's
+  first successful authentication.
+
+- `email` - (output only)
+  Maps to the email address attribute for the authenticated user, and is updated
+  every time the user successfully authenticates. It is empty until the
+  user's first successful authentication.
+
+- `dn` - (output only)
+  Maps to the distinguished name for the authenticated user, and is updated
+  every time the user successfully authenticates. It is empty until the
+  user's first successful authentication.  
+  
+- `member_of_groups` - (output only)
+  A list of the groups the authenticated user is a member of. It is empty
+  until the user's first successful authentication.
+
 ## Referenced By
 
 - [Auth Method][]
