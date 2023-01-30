@@ -2,7 +2,9 @@ package vault
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
@@ -10,6 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/boundary/internal/util/template"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,7 +67,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 				opts = append(opts, WithClientCert(clientCert))
 			}
 
-			_, token := v.CreateToken(t)
+			_, token := v.CreateToken(t, WithTokenPeriod(time.Hour))
 
 			credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token), opts...)
 			assert.NoError(err)
@@ -1212,6 +1216,174 @@ func TestBaseToSshPriKey(t *testing.T) {
 			want := tt.want
 			want.baseCred = tt.given
 			assert.Equal(want, got)
+		})
+	}
+}
+
+func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testing.T) {
+	t.Parallel()
+
+	// create test vault server
+	v := NewTestVaultServer(t, WithTestVaultTLS(TestNoTLS), WithVaultVersion("1.12.2"))
+	require.NotNil(t, v)
+
+	vc := v.client(t).cl
+	mounts, err := vc.Sys().ListMounts()
+	assert.NoError(t, err)
+	require.NotEmpty(t, mounts)
+	beforeCount := len(mounts)
+
+	// enable ssh secrets engine
+	v.MountSSH(t, WithAllowedExtension("permit-pty"))
+	mounts, err = vc.Sys().ListMounts()
+	fmt.Printf("mounts: %#v\n", mounts)
+	assert.NoError(t, err)
+	require.NotEmpty(t, mounts)
+	afterCount := len(mounts)
+	assert.Greater(t, afterCount, beforeCount)
+
+	// create and setup db
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	sec, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "ssh"}), WithTokenPeriod(time.Hour))
+
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(rw, rw, kms, sche)
+	require.NoError(t, err)
+	require.NotNil(t, repo)
+
+	cs := TestCredentialStore(t, conn, wrapper, prj.GetPublicId(), v.Addr, token, sec.Auth.Accessor)
+
+	tests := []struct {
+		name       string
+		username   string
+		vaulthPath string
+		opts       []Option
+		retOpts    []credential.Option
+		expected   map[string]string
+	}{
+		{
+			name:       "vault sign boundary ed25519 key",
+			username:   "username",
+			vaulthPath: "ssh/sign/boundary",
+			opts:       []Option{WithKeyType(KeyTypeEd25519)},
+		},
+		{
+			name:       "vault sign boundary rsa(4096) key",
+			username:   "username-2-electric-boogaloo",
+			vaulthPath: "ssh/sign/boundary",
+			opts:       []Option{WithKeyType(KeyTypeRsa), WithKeyBits(4096)},
+		},
+		{
+			name:       "vault sign boundary ec(521) key",
+			username:   "username-3-the-namening",
+			vaulthPath: "ssh/sign/boundary",
+			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(521)},
+		},
+		{
+			name:       "vault issue ed25519 cert",
+			username:   "username-4-revengeance",
+			vaulthPath: "ssh/issue/boundary",
+			opts:       []Option{WithKeyType(KeyTypeEd25519)},
+		},
+		{
+			name:       "vault issue rsa(4096) cert",
+			username:   "username-5-this-time-its-personal",
+			vaulthPath: "ssh/issue/boundary",
+			opts:       []Option{WithKeyType(KeyTypeRsa), WithKeyBits(4096)},
+		},
+		{
+			name:       "vault issue ec(521) cert",
+			username:   "username-6-the-holiday-episode",
+			vaulthPath: "ssh/issue/boundary",
+			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(521)},
+		},
+		{
+			name:       "vault issue rsa(2048) cert with critical options and extensions",
+			username:   "username-7-because-789",
+			vaulthPath: "ssh/issue/boundary",
+			opts:       []Option{WithKeyType(KeyTypeRsa), WithKeyBits(2048), WithCriticalOptions("{ \"force-commnad\": \"/bin/some-script\" }"), WithExtensions("{ \"permit-pty\": \"\" }")},
+		},
+		{
+			name:       "vault sign boundary rsa(3072) key with critical options and extensions",
+			username:   "username-7-because-789",
+			vaulthPath: "ssh/sign/boundary",
+			opts:       []Option{WithKeyType(KeyTypeRsa), WithKeyBits(3072), WithCriticalOptions("{ \"force-commnad\": \"/bin/some-script\" }"), WithExtensions("{ \"permit-pty\": \"\" }")},
+		},
+		{
+			name:     "vault issue ec(256) cert with template username",
+			username: "username-8-{{ .User.Name }}",
+			expected: map[string]string{
+				"username": "username-8-revenge-of-the-template",
+			},
+			vaulthPath: "ssh/issue/boundary",
+			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(256)},
+			retOpts:    []credential.Option{credential.WithTemplateData(template.Data{User: template.User{Name: util.Pointer("revenge-of-the-template")}})},
+		},
+		{
+			name:     "vault issue ec(384) cert with disallowed extension",
+			username: "username-10-because-789",
+			expected: map[string]string{
+				"error": "extensions [permit-port-forwarding] are not on allowed list",
+			},
+			vaulthPath: "ssh/issue/boundary",
+			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(384), WithExtensions("{ \"permit-port-forwarding\": \"\" }")},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			// create ssh library
+			lib, err := NewSSHCertificateCredentialLibrary(cs.GetPublicId(), tt.vaulthPath, tt.username, tt.opts...)
+			require.NoError(err)
+			require.NotNil(lib)
+			lib.PublicId, err = newSSHCertificateCredentialLibraryId()
+			require.NoError(err)
+
+			_, err = rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
+				func(_ db.Reader, iw db.Writer) error {
+					return iw.Create(ctx, lib)
+				},
+			)
+			require.NoError(err)
+
+			req := credential.Request{
+				SourceId: lib.GetPublicId(),
+				Purpose:  "doesn't matter",
+			}
+
+			libs, err := repo.getIssueCredLibraries(ctx, []credential.Request{req})
+			require.NoError(err)
+			require.NotEmpty(libs)
+			require.Equal(1, len(libs))
+
+			cred, err := libs[0].retrieveCredential(ctx, "op", tt.retOpts...)
+			if retErr, ok := tt.expected["error"]; ok {
+				require.ErrorContains(err, retErr)
+				return // retrieveCredential failed (as expected) don't do the rest of the checks
+			}
+			require.NoError(err)
+
+			cert, ok := cred.(*sshCertCred)
+			require.True(ok)
+
+			if usr, ok := tt.expected["username"]; ok {
+				require.Equal(usr, cert.username)
+			}
+
+			// TODO: somehow check that the ssh cert matches the private key
+			// for now, manually check that private key and cert match and that sign/issue both return correct formats
+			fmt.Printf("test: %s\npriv:\n%s\ncert:\n%s\n", tt.name, string(cert.privateKey), string(cert.certificate))
+
+			// ensure credential matches expected SshCertificate
+			_, ok = cred.(credential.SshCertificate)
+			require.True(ok)
 		})
 	}
 }
