@@ -42,10 +42,11 @@ The ldap auth method has the following additional attributes:
   an unencrypted connection. Defaults to false.
 
 - `insecure_tls` - (optional) If true, skips LDAP server SSL certificate
-  validation - insecure and use with caution. Defaults to false.
+  validation - which is insecure and should be used with caution. Defaults to
+  false. 
 
-- `discover_dn` - (optional) If true, use anon bind to discover the bind DN of a
-  user. Defaults to false.
+- `discover_dn` - (optional) If true, use anon bind to discover the bind DN
+  (Distinguished Name) of a user. Defaults to false.
 
 - `anon_group_search` - (optional) If true, use anon bind when performing LDAP
   group searches. Defaults to false.
@@ -55,17 +56,17 @@ The ldap auth method has the following additional attributes:
   [username]@UPNDomain  Example: example.com, which will cause Boundary to
   bind as username@example.com when authenticating the user.
 
-- `urls` - (required) The LDAP URLS that specify LDAP servers to connection to.
+- `urls` - (required) The LDAP URLS that specify LDAP servers to connect to.
   There must be at least one URL for each LDAP auth method. When attempting to
   connect, the URLs are tried in the order specified. 
 
-- `user_dn` - (optional) If set is the base DN under which to perform user
+- `user_dn` - (optional) If set, the base DN under which to perform user
   search. Example: ou=Users,dc=example,dc=com
 
-- `user_attr` - (optional) If set is the attribute on user attribute entry
-  matching the login-name passed when authenticating.  Examples: cn, uid
+- `user_attr` - (optional) If set, defines the attribute on a user's entry 
+  matching the login-name passed when the user authenticates.  Examples: cn, uid  
 
-- `user_filter` - (optional) If set is a go template used to construct a LDAP
+- `user_filter` - (optional) If set, the go template used to construct a LDAP
   user search filter. The template can access the following context variables:
   [UserAttr, Username]. The default userfilter is ({{.UserAttr}}={{.Username}})
   or (userPrincipalName={{.Username}}@UPNDomain) if the upn-domain parameter is
@@ -74,40 +75,40 @@ The ldap auth method has the following additional attributes:
 - `enable_groups` - (optional) If true, an authenticated user's groups will be
   found during authentication. Defaults to false.
 
-- `group_dn` - (optional) If set is the base DN under which to perform a group
+- `group_dn` - (optional) If set, the base DN under which to perform a group
   search. Example: ou=Groups,dc=example,dc=com
 
   Note: there is no default, so no base dn will be used for group searches if
   it's not specified
 
-- `group_attr` - (optional) If set is the LDAP attribute to follow on objects
+- `group_attr` - (optional) If set, the LDAP attribute to follow on objects
   returned by group_filter in order to enumerate user group membership.
   Examples: for group_filter queries returning group objects, use: cn. For
   queries returning user objects, use: memberOf. The default is cn.
 
-- `group_filter` - (optional) If set is a Go template used when constructing the
+- `group_filter` - (optional) If set, the Go template used when constructing the
   group membership query. The template can access the following context
   variables: [UserDN, Username]. The default is
   (|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}})),
   which is compatible with several common directory schemas.
 
-- `certificates` - (optional) If set are PEM encoded x509 certificates in ASN.1
+- `certificates` - (optional) If set, PEM encoded x509 certificates in ASN.1
   DER form that can be used as trust anchors when connecting to an LDAP
   provider. 
 
-- `client)certificate` - (optional) If set is a PEM encoded x509 certificates in
+- `client_certificate` - (optional) If set, a PEM encoded x509 certificate in
   ASN.1 DER form to be used as a client certificate. It must be set if the
   optional client_certificate_key is specified
 
-- `client_certificate_key` - (optional) If set is a certificate key in PKCS #8,
+- `client_certificate_key` - (optional) If set, a certificate key in PKCS #8,
   ASN.1 DER form. It must be set if the optional client_certificate is
   specified.
   
-- `bind_dn` - (optional) If set is the distinguished name of entry to bind when 
+- `bind_dn` - (optional) If set, the distinguished name of entry to bind when 
   performing user and group searches. Example:
   cn=vault,ou=Users,dc=example,dc=com 
 
-- `bind_password` - (optional) If set is the password to use along with bind_dn
+- `bind_password` - (optional) If set, the password to use along with bind_dn
   when performing user search. It must be set if the optional bind_dn is
   specified. 
 
@@ -115,7 +116,7 @@ The ldap auth method has the following additional attributes:
   constructed attribute of the user to find the group memberships. This will
   find all security groups including nested ones.
 
-- `account_attribute_maps` - (optional) If set are attribute maps from custom
+- `account_attribute_maps` - (optional) If set, the attribute maps from custom
   attributes to the standard account attributes of fullname and email.  These
   maps are represented as key=value where the key equals the from_attribute and
   the value equals the to_attribute.  For example "preferredName=fullName".  All
