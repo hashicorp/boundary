@@ -45,6 +45,6 @@ resource "aws_iam_role" "github_actions_doormat_role" {
   inline_policy {
     name = "AssumeServiceUserPolicy"
     // Use the service user policy for now
-    policy = data.aws_iam_policy_document.iam_policy_document.json
+    policy = data.aws_iam_policy_document.combined_policy_document.json
   }
 }
