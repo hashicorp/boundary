@@ -25,7 +25,7 @@ jobs:
         else
           echo "Actor ${{ github.actor }} is not a ${TEAM} team member"
         fi
-        echo "::set-output name=role::${ROLE}"
+        echo "role=${ROLE}" >> $GITHUB_OUTPUT
       env:
         GITHUB_TOKEN: ${{ secrets.JIRA_SYNC_GITHUB_TOKEN }}
 
@@ -41,9 +41,9 @@ jobs:
       id: set-ticket-type
       run: |
         if [[ "${{ github.event_name }}" == "pull_request_target" ]]; then
-          echo "::set-output name=type::PR"
+          echo "type=PR" >> $GITHUB_OUTPUT
         else
-          echo "::set-output name=type::ISS"
+          echo "type=ISS" >> $GITHUB_OUTPUT
         fi
 
     - name: Create ticket
