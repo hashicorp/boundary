@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -542,18 +543,27 @@ func TestHcpbWorkers(t *testing.T) {
 	connectionRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kmsCache)
 	}
+	var liveDur atomic.Int64
+	liveDur.Store(int64(1 * time.Second))
 
-	for i := 0; i < 3; i++ {
-		var opt []server.Option
-		if i > 0 {
-			// Out of three KMS workers we expect to see two
-			opt = append(opt, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}))
-		}
-		server.TestKmsWorker(t, conn, wrapper, append(opt, server.WithAddress(fmt.Sprintf("kms.%d", i)))...)
-		server.TestPkiWorker(t, conn, wrapper, opt...)
-	}
+	// Stale/unalive kms worker aren't expected...
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}),
+		server.WithAddress("old.kms.1"))
+	// Sleep + 500ms longer than the liveness duration.
+	time.Sleep(time.Duration(liveDur.Load()) + time.Second)
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, new(atomic.Int64))
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}),
+		server.WithAddress("kms.1"))
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}),
+		server.WithAddress("kms.2"))
+
+	// Shutdown workers aren't expected
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}),
+		server.WithAddress("shutdown.kms.1"), server.WithOperationalState(server.ShutdownOperationalState.String()))
+	// PKI workers aren't expected
+	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}))
+
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, &liveDur)
 	require.NotNil(t, s)
 
 	res, err := s.ListHcpbWorkers(ctx, &pbs.ListHcpbWorkersRequest{})
