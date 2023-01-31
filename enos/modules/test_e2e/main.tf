@@ -100,6 +100,7 @@ locals {
   vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:8200" : ""
   aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
   aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)
+  package_name             = reverse(split("/", var.test_package))[0]
 }
 
 resource "enos_local_exec" "run_e2e_test" {
@@ -122,7 +123,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
   }
 
-  inline = ["PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json | tparse -follow -format plain"]
+  inline = ["PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json | tparse -follow -format plain 2>&1 | tee ${path.module}/../../test-e2e-${local.package_name}.out"]
 }
 
 output "test_results" {
