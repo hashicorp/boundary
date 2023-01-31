@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/common"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/cap/util"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
@@ -24,6 +26,9 @@ var (
 
 type OidcCommand struct {
 	*base.Command
+
+	Opts       []common.Option
+	parsedOpts *common.Options
 }
 
 func (c *OidcCommand) Synopsis() string {
@@ -53,6 +58,15 @@ func (c *OidcCommand) Flags() *base.FlagSets {
 		Usage:  "The auth-method resource to use for the operation",
 	})
 
+	if c.parsedOpts == nil || !c.parsedOpts.WithSkipScopeIdFlag {
+		f.StringVar(&base.StringVar{
+			Name:   "scope-id",
+			EnvVar: "BOUNDARY_SCOPE_ID",
+			Target: &c.FlagScopeId,
+			Usage:  "The scope ID to use for the operation.",
+		})
+	}
+
 	return set
 }
 
@@ -65,16 +79,17 @@ func (c *OidcCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *OidcCommand) Run(args []string) int {
+	opts, err := common.GetOpts(c.Opts...)
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+	c.parsedOpts = opts
+
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
-		return base.CommandUserError
-	}
-
-	switch {
-	case c.FlagAuthMethodId == "":
-		c.PrintCliError(errors.New("Auth method ID must be provided via -auth-method-id"))
 		return base.CommandUserError
 	}
 
@@ -92,6 +107,23 @@ func (c *OidcCommand) Run(args []string) int {
 	}
 
 	aClient := authmethods.NewClient(client)
+
+	// if auth method ID isn't passed on the CLI, try looking up the primary auth method ID
+	if c.FlagAuthMethodId == "" {
+		// if flag for scope is empty try looking up global
+		if c.FlagScopeId == "" {
+			c.FlagScopeId = scope.Global.String()
+		}
+
+		pri, err := getPrimaryAuthMethodId(c.Context, aClient, c.FlagScopeId, "amoidc")
+		if err != nil {
+			c.PrintCliError(err)
+			return base.CommandUserError
+		}
+
+		c.FlagAuthMethodId = pri
+	}
+
 	result, err := aClient.Authenticate(c.Context, c.FlagAuthMethodId, "start", nil)
 	if err != nil {
 		if apiErr := api.AsServerError(err); apiErr != nil {
