@@ -178,6 +178,7 @@ jobs:
         with:
           name: test-e2e-output.zip
           path: enos/test*.out
+          retention-days: 5
       - name: Retry Enos scenario
         id: run_retry
         if: steps.run.outcome == 'failure'
