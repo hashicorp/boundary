@@ -75,6 +75,12 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 			return nil, err
 		}
 
+		creds = append(creds, cred)
+		if !cred.isRevokable() {
+			// No need to persist since the credential cannot be revoked nor renewed
+			continue
+		}
+
 		if cred.getExpiration() < runJobsInterval {
 			event.WriteError(ctx, op,
 				fmt.Errorf("WARNING: credential will expire before job scheduler can run"),
@@ -123,8 +129,6 @@ func (r *Repository) Issue(ctx context.Context, sessionId string, requests []cre
 		); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-
-		creds = append(creds, cred)
 	}
 
 	// Best effort update next run time of credential renewal job, but an error should not

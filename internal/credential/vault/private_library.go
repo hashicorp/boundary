@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/sshprivatekey"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/usernamepassword"
+	"github.com/hashicorp/boundary/internal/db/sentinel"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -46,6 +47,7 @@ func (bc *baseCred) Library() credential.Library   { return bc.lib }
 func (bc *baseCred) Purpose() credential.Purpose   { return bc.lib.GetPurpose() }
 func (bc *baseCred) getExpiration() time.Duration  { return bc.expiration }
 func (bc *baseCred) getCredential() *Credential    { return bc.Credential }
+func (bc *baseCred) isRevokable() bool             { return bc.ExternalId != sentinel.ExternalIdNone }
 
 // convert converts bc to a specific credential type if bc is not
 // UnspecifiedType.
@@ -289,6 +291,7 @@ type dynamicCred interface {
 	credential.Dynamic
 	getExpiration() time.Duration
 	getCredential() *Credential
+	isRevokable() bool
 }
 
 // retrieveCredential retrieves a dynamic credential from Vault for the
