@@ -2,14 +2,13 @@
 package boundary
 
 import (
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 )
 
 // AuthenticateCliOutput parses the json response from running `boundary authenticate`
 type AuthenticateCliOutput struct {
-	Item     *authmethods.AuthenticateResult
-	response *api.Response
+	Item       *authmethods.AuthenticateResult
+	StatusCode int `json:"status_code"`
 }
 
 // AuthMethodInfo parses auth method info in the json response from running `boundary database init`

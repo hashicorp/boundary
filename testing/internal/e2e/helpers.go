@@ -92,6 +92,8 @@ func RunCommand(ctx context.Context, command string, opt ...Option) *CommandResu
 
 // WithArgs is an option to RunCommand that allows the user to specify arguments
 // for the provided command. This option can be used multiple times in one command.
+//
+//	RunCommand(context.Background(), "ls", WithArgs("-al"))
 func WithArgs(args ...string) Option {
 	return func(o *options) {
 		if o.withArgs == nil {
