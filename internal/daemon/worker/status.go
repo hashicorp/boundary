@@ -23,6 +23,8 @@ var firstStatusCheckPostHooks []func(context.Context, *Worker) error
 
 var downstreamWorkersFactory func(ctx context.Context, workerId string, ver string) (downstreamers, error)
 
+var checkHCPBUpstreams func(w *Worker) bool
+
 type LastStatusInformation struct {
 	*pbs.StatusResponse
 	StatusTime              time.Time
@@ -256,7 +258,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		for _, v := range result.CalculatedUpstreams {
 			addrs = append(addrs, v.Address)
 		}
-	} else if w.conf.RawConfig.HcpbClusterId != "" && len(w.conf.RawConfig.Worker.InitialUpstreams) == 0 {
+	} else if checkHCPBUpstreams != nil && checkHCPBUpstreams(w) {
 		// This is a worker that is one hop away from managed workers, so attempt to get that list
 		hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, time.Duration(w.statusCallTimeoutDuration.Load()))
 		defer hcpbWorkersCancel()
