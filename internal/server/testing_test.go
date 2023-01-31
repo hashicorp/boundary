@@ -21,7 +21,7 @@ func TestTestKmsWorker(t *testing.T) {
 		description = "test description"
 		address     = "test address"
 	)
-	tWorker := TestKmsWorker(t, conn, wrapper, WithName(name), WithDescription(description), WithAddress(address))
+	tWorker := TestKmsWorker(t, conn, wrapper, WithName(name), WithDescription(description), WithAddress(address), WithLiveness(24), WithOperationalState(ShutdownOperationalState.String()))
 	assert.NotNil(t, tWorker)
 	assert.True(t, strings.HasPrefix(tWorker.GetPublicId(), WorkerPrefix))
 
@@ -35,6 +35,7 @@ func TestTestKmsWorker(t *testing.T) {
 	assert.Equal(t, name, lkpWorker.GetName())
 	assert.Equal(t, description, lkpWorker.GetDescription())
 	assert.Equal(t, address, lkpWorker.GetAddress())
+	assert.Equal(t, ShutdownOperationalState.String(), lkpWorker.OperationalState)
 }
 
 func TestTestPkiWorker(t *testing.T) {
