@@ -88,15 +88,6 @@ instance, and click **Authenticate**.
    instance's Global scope via the web UI. This is the default scope for all new
    Boundary clusters.
 
-1. Click **Auth Methods**.
-
-1. Click the **copy icon** for the Password **Auth Method ID**. The ID is needed to
-authenticate to HCP Boundary using the CLI.
-
-<Tabs>
-<Tab heading="CLI">
-
-
 1. In the HCP Boundary portal, open the **Boundary Overview** page, and click
 the **copy icon** in the **Copy this into Boundary Desktop** section. This
 copies your environment’s Boundary **Cluster URL**.
@@ -112,9 +103,7 @@ $ export BOUNDARY_ADDR=<boundary-cluster-url>
 HCP Boundary instance.
 
 ```shell-session
-$ boundary authenticate password \
-   -auth-method-id=<boundary-auth-method-id> \
-   -login-name=<boundary-admin-username>
+$ boundary authenticate
 ```
 
 You are now logged into your HCP Boundary instance's Global scope via the CLI.
