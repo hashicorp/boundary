@@ -557,9 +557,10 @@ func TestHcpbWorkers(t *testing.T) {
 	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}),
 		server.WithAddress("kms.2"))
 
-	// Shutdown workers aren't expected
+	// Shutdown workers will be removed from routes and sessions, but still returned
+	// to downstream workers
 	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}),
-		server.WithAddress("shutdown.kms.1"), server.WithOperationalState(server.ShutdownOperationalState.String()))
+		server.WithAddress("shutdown.kms.3"), server.WithOperationalState(server.ShutdownOperationalState.String()))
 	// PKI workers aren't expected
 	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}))
 
@@ -569,7 +570,7 @@ func TestHcpbWorkers(t *testing.T) {
 	res, err := s.ListHcpbWorkers(ctx, &pbs.ListHcpbWorkersRequest{})
 	require.NoError(err)
 	require.NotNil(res)
-	expValues := []string{"kms.1", "kms.2"}
+	expValues := []string{"kms.1", "kms.2", "shutdown.kms.3"}
 	var gotValues []string
 	for _, worker := range res.Workers {
 		gotValues = append(gotValues, worker.Address)

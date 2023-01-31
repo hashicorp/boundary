@@ -272,7 +272,6 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 	}
 	workers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()},
 		server.WithWorkerType(server.KmsWorkerType),
-		server.WithActiveWorkers(true),
 		server.WithLiveness(time.Duration(ws.livenessTimeToStale.Load())))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error looking up workers: %v", err)
