@@ -272,6 +272,11 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 	}
 	workers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()},
 		server.WithWorkerType(server.KmsWorkerType),
+		// We use the livenessTimeToStale here instead of WorkerStatusGracePeriod
+		// since WorkerStatusGracePeriod is more for deciding which workers
+		// should be used for session proxying, but here we care about providing
+		// the BYOW workers with a list of which upstreams to connect to as their
+		// upstreams.
 		server.WithLiveness(time.Duration(ws.livenessTimeToStale.Load())))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error looking up workers: %v", err)
