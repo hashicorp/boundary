@@ -323,7 +323,7 @@ type VaultSSHCertificateCredentialLibraryAttributes struct {
 	// The path in Vault to request credentials from.
 	Path *wrapperspb.StringValue `protobuf:"bytes,10,opt,name=path,proto3" json:"path,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The username to use when making an SSH connection.
-	Username *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=username,proto3" json:"username,omitempty" class:"public"` // @gotags: `class:"public"`
+	Username *wrapperspb.StringValue `protobuf:"bytes,20,opt,name=username,proto3" json:"username,omitempty" class:"sensitive"` // @gotags: `class:"sensitive"`
 	// The key type to use when generating an SSH private key.
 	KeyType *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=key_type,json=keyType,proto3" json:"key_type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The number of bits to use to generate an SSH private key.
