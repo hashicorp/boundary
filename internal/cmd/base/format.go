@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/plugins"
 	"github.com/hashicorp/boundary/api/scopes"
+	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/pkg/errors"
@@ -181,16 +182,32 @@ func (c *Command) PrintApiError(in *api.Error, contextStr string, opt ...Option)
 	opts := getOpts(opt...)
 	switch Format(c.UI) {
 	case "json":
-		output := struct {
-			Context  string          `json:"context,omitempty"`
-			Status   int             `json:"status"`
-			ApiError json.RawMessage `json:"api_error"`
-		}{
-			Context:  contextStr,
-			Status:   in.Response().StatusCode(),
-			ApiError: in.Response().Body.Bytes(),
+		var b []byte
+		if version.SupportsFeature(version.Binary, version.IncludeStatusInCli) {
+			output := struct {
+				Context    string          `json:"context,omitempty"`
+				StatusCode int             `json:"status_code"`
+				Status     int             `json:"status"`
+				ApiError   json.RawMessage `json:"api_error"`
+			}{
+				Context:    contextStr,
+				StatusCode: in.Response().StatusCode(),
+				Status:     in.Response().StatusCode(),
+				ApiError:   in.Response().Body.Bytes(),
+			}
+			b, _ = JsonFormatter{}.Format(output)
+		} else {
+			output := struct {
+				Context    string          `json:"context,omitempty"`
+				StatusCode int             `json:"status_code"`
+				ApiError   json.RawMessage `json:"api_error"`
+			}{
+				Context:    contextStr,
+				StatusCode: in.Response().StatusCode(),
+				ApiError:   in.Response().Body.Bytes(),
+			}
+			b, _ = JsonFormatter{}.Format(output)
 		}
-		b, _ := JsonFormatter{}.Format(output)
 		c.UI.Error(string(b))
 
 	default:

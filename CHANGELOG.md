@@ -34,6 +34,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   subcommand, will have the subtype set to `vault-generic`. The deprecated
   subtype and subcommands will be removed in boundary 0.14.0, at which point
   `vault-generic` must be used.
+* In Boundary 0.1.8 using the `-format=json` option with the cli would provide
+  a `status_code` for successful API requests from the cli. However, in the
+  case where an error was returned, the JSON would use `status` instead. This
+  inconsistency has been fixed, with `status_code` being used in both cases.
+  For error cases `status` will still be populated, but is deprecated and will
+  be removed in 0.14.0.
 
 ### New and Improved
 
@@ -68,6 +74,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * data warehouse: Fix bug that caused credential dimensions to not get
     associated with session facts ([PR](https://github.com/hashicorp/boundary/pull/2787)).
 * sessions: Fix two authorizeSession race conditions in handleProxy. ([PR](https://github.com/hashicorp/boundary/pull/2795))
+* cli: When using `-format=json` the JSON was inconsistent in how it reported
+  status codes. In successful cases it would use `status_code`, but in error
+  cases it would use `status`. Now `status_code` is used in both cases. In
+  error cases `status` is still populated, see the deprecations above for
+  more details. ([PR](https://github.com/hashicorp/boundary/pull/2887))
 
 ## 0.11.2 (2022/12/09)
 
