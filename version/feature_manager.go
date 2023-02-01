@@ -23,6 +23,7 @@ type Feature int
 const (
 	UnknownFeature Feature = iota
 	MultiHopSessionFeature
+	IncludeStatusInCli
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -52,6 +53,10 @@ func init() {
 			Constraints: mustNewConstraints(">= 0.1.0"), // This feature exists at 0.1.0 and above
 		}
 	*/
+	featureMap[IncludeStatusInCli] = MetadataConstraint{
+		MetaInfo:    []Metadata{OSS, HCP},
+		Constraints: mustNewConstraints("< 0.14.0"),
+	}
 }
 
 func metadataStringToMetadata(m string) Metadata {

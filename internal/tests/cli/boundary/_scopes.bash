@@ -16,7 +16,7 @@ function read_scope() {
 function delete_scope() {
   local sid=$1
 
-  boundary scopes delete -id $sid
+  boundary scopes delete -id $sid -format json
 }
 
 function list_scopes() {
@@ -26,7 +26,7 @@ function list_scopes() {
 function scope_id() {
   local name=$1
   local sid=$2
-  
+
   strip $(list_scopes $sid | jq -c ".items[] | select(.name | contains(\"$name\")) | .[\"id\"]")
 }
 
@@ -37,7 +37,7 @@ function has_default_scope_actions() {
   for action in ${actions[@]}; do
     $(has_authorized_action "$out" "$action") || {
       echo "failed to find $action action in output: $out"
-      return 1 
-    } 
+      return 1
+    }
   done
 }

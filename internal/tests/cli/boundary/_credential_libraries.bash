@@ -20,7 +20,7 @@ function read_credential_library() {
 }
 
 function delete_credential_library() {
-  boundary credential-libraries delete -id $1
+  boundary credential-libraries delete -id $1 -format json
 }
 
 function list_credential_libraries() {

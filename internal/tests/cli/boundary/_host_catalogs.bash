@@ -15,7 +15,7 @@ function read_host_catalog() {
 }
 
 function delete_host_catalog() {
-  boundary host-catalogs delete -id $1
+  boundary host-catalogs delete -id $1 -format json
 }
 
 function list_host_catalogs() {
@@ -35,7 +35,7 @@ function has_default_host_catalog_actions() {
   for action in ${actions[@]}; do
     $(has_authorized_action "$out" "$action") || {
       echo "failed to find $action action in output: $out"
-      return 1 
-    } 
+      return 1
+    }
   done
 }

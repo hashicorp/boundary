@@ -8,7 +8,7 @@ function read_account() {
 }
 
 function delete_account() {
-  boundary accounts delete -id $1
+  boundary accounts delete -id $1 -format json
 }
 
 function list_accounts() {

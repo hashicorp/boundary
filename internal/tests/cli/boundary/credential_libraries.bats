@@ -73,6 +73,13 @@ export NEW_VAULT_LIB="test_vault"
   [ "$status" -eq 0 ]
   run has_status_code "$output" "204"
   [ "$status" -eq 0 ]
+
+  run delete_credential_library $clid
+  echo "$output"
+  [ "$status" -eq 1 ]
+  run has_status_code "$output" "404"
+  echo "$output"
+  [ "$status" -eq 0 ]
 }
 
 @test "boundary/credential-libraries: can create $NEW_VAULT_LIB vault library in credential store $NEW_STORE deprecated subcommand" {
