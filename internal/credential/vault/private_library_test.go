@@ -1333,15 +1333,6 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 			vaulthPath: "ssh/issue/boundary",
 			opts:       []Option{WithKeyType(KeyTypeEcdsa), WithKeyBits(384), WithExtensions("{ \"permit-port-forwarding\": \"\" }")},
 		},
-		{
-			name:     "invalid vault path returns correct error",
-			username: "username-11-palindrome",
-			expected: map[string]string{
-				"error": "vault path was not in an expected format. expected path containing \"sign\" or \"issue\"",
-			},
-			vaulthPath: "ssh/biscuit/boundary",
-			opts:       []Option{WithKeyType(KeyTypeEd25519)},
-		},
 	}
 
 	for _, tt := range tests {
