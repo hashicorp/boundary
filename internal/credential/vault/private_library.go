@@ -914,7 +914,13 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 	var privateKey credential.PrivateKey
 	var secret *vault.Secret
 
-	switch match := vaultPathRegexp.FindStringSubmatch(lib.VaultPath); match[1] {
+	match := vaultPathRegexp.FindStringSubmatch(lib.VaultPath)
+	if len(match) < 2 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "vault path was not in an expected format. expected path containing \"sign\" or \"issue\"")
+	}
+
+	// by definition, if match exists, then match[1] == "sign" or "issue"
+	switch match[1] {
 	case "sign":
 		payload.PublicKey, privateKey, err = generatePublicPrivateKeys(ctx, lib.KeyType, lib.KeyBits)
 		if err != nil {
@@ -967,9 +973,6 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 		}
 
 		privateKey = []byte(pk)
-
-	default:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "vault path was not in an expected format. expected path containing \"sign\" or \"issue\"")
 	}
 
 	leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
