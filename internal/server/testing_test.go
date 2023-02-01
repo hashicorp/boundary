@@ -21,7 +21,7 @@ func TestTestKmsWorker(t *testing.T) {
 		description = "test description"
 		address     = "test address"
 	)
-	tWorker := TestKmsWorker(t, conn, wrapper, WithName(name), WithDescription(description), WithAddress(address), WithLiveness(24), WithOperationalState(ShutdownOperationalState.String()))
+	tWorker := TestKmsWorker(t, conn, wrapper, WithName(name), WithDescription(description), WithAddress(address), WithOperationalState(ShutdownOperationalState.String()))
 	assert.NotNil(t, tWorker)
 	assert.True(t, strings.HasPrefix(tWorker.GetPublicId(), WorkerPrefix))
 
