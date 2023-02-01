@@ -36,7 +36,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-var handleHcpbClusterId func(s string) string
+var HandleHcpbClusterId func(s string) string
 
 // StartControllerConnections starts up the resolver and initiates controller
 // connection client creation
@@ -60,8 +60,8 @@ func (w *Worker) StartControllerConnections() error {
 	}
 
 	if len(initialAddrs) == 0 {
-		if w.conf.RawConfig.HcpbClusterId != "" && handleHcpbClusterId != nil {
-			clusterAddress := handleHcpbClusterId(w.conf.RawConfig.HcpbClusterId)
+		if w.conf.RawConfig.HcpbClusterId != "" && HandleHcpbClusterId != nil {
+			clusterAddress := HandleHcpbClusterId(w.conf.RawConfig.HcpbClusterId)
 			initialAddrs = append(initialAddrs, clusterAddress)
 			event.WriteSysEvent(w.baseContext, op, fmt.Sprintf("Setting HCP Boundary cluster address %s as upstream address", clusterAddress))
 		} else {
