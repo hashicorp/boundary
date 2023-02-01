@@ -31,3 +31,11 @@ function has_status_code() {
 diag() {
     echo "$@" | sed -e 's/^/# /' >&3 ;
 }
+
+function field_eq() {
+    local json=$1
+    local field=$2
+    local expected=$3
+    echo "checking $field == $expected in $json"
+    echo "$json" | jq -e "$field == $expected"
+}
