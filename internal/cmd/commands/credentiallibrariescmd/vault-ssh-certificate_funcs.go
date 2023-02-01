@@ -1,6 +1,9 @@
 package credentiallibrariescmd
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
@@ -28,7 +31,7 @@ type extraVaultSshCertificateCmdVars struct {
 	flagPath            string
 	flagUsername        string
 	flagKeyType         string
-	flagKeyBits         uint
+	flagKeyBits         string
 	flagTtl             string
 	flagKeyId           string
 	flagCriticalOptions string
@@ -59,7 +62,9 @@ func extraVaultSshCertificateActionsFlagsMapFuncImpl() map[string][]string {
 			ttlName,
 			keyIdName,
 			criticalOptionsName,
+			piecewiseCriticalOptionsName,
 			extensionsName,
+			piecewiseExtensionName,
 		},
 	}
 	return flags
@@ -89,10 +94,10 @@ func extraVaultSshCertificateFlagsFuncImpl(c *VaultSshCertificateCommand, set *b
 				Usage:  "The key type for the generated ssh private key. One of: ed25519, ecdsa, rsa.",
 			})
 		case keyBitsName:
-			f.UintVar(&base.UintVar{
+			f.StringVar(&base.StringVar{
 				Name:   keyBitsName,
 				Target: &c.flagKeyBits,
-				Usage:  "The number of bits when generating the ssh private key. Depends on key_type. If ed25519 this should not be set, or set to null, if ecdsa one of 256, 384, 521, if rsa one of 2048, 3072, 4096.",
+				Usage:  "The number of bits when generating the ssh private key. Depends on key_type. If ed25519 this should not be set, or set to 0, if ecdsa one of 256, 384, 521, if rsa one of 2048, 3072, 4096.",
 			})
 		case ttlName:
 			f.StringVar(&base.StringVar{
@@ -144,21 +149,36 @@ func extraVaultSshCertificateFlagHandlingFuncImpl(c *VaultSshCertificateCommand,
 	}
 	switch c.flagKeyType {
 	case "":
+	case "null":
+		*opts = append(*opts, credentiallibraries.DefaultVaultSSHCertificateCredentialLibraryKeyType())
 	default:
 		*opts = append(*opts, credentiallibraries.WithVaultSSHCertificateCredentialLibraryKeyType(c.flagKeyType))
 	}
 	switch c.flagKeyBits {
-	case 0:
+	case "":
+	case "0", "null":
+		*opts = append(*opts, credentiallibraries.DefaultVaultSSHCertificateCredentialLibraryKeyBits())
 	default:
-		*opts = append(*opts, credentiallibraries.WithVaultSSHCertificateCredentialLibraryKeyBits(uint32(c.flagKeyBits)))
+		var final uint32
+		keyBits, err := strconv.ParseUint(c.flagKeyBits, 10, 32)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error parsing %q: %s", c.flagKeyBits, err))
+			return false
+		}
+		final = uint32(keyBits)
+		*opts = append(*opts, credentiallibraries.WithVaultSSHCertificateCredentialLibraryKeyBits(final))
 	}
 	switch c.flagTtl {
 	case "":
+	case "null":
+		*opts = append(*opts, credentiallibraries.DefaultVaultSSHCertificateCredentialLibraryTtl())
 	default:
 		*opts = append(*opts, credentiallibraries.WithVaultSSHCertificateCredentialLibraryTtl(c.flagTtl))
 	}
 	switch c.flagKeyId {
 	case "":
+	case "null":
+		*opts = append(*opts, credentiallibraries.DefaultVaultSSHCertificateCredentialLibraryKeyId())
 	default:
 		*opts = append(*opts, credentiallibraries.WithVaultSSHCertificateCredentialLibraryKeyId(c.flagKeyId))
 	}
