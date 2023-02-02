@@ -95,7 +95,6 @@ func (c *LdapCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *LdapCommand) Run(args []string) int {
-
 	opts, err := common.GetOpts(c.Opts...)
 	if err != nil {
 		c.PrintCliError(err)
