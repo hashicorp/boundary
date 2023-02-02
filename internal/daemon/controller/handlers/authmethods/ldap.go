@@ -32,7 +32,6 @@ func init() {
 		action.Read,
 		action.Update,
 		action.Delete,
-		action.ChangeState,
 		action.Authenticate,
 	}
 }
