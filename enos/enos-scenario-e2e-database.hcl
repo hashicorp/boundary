@@ -85,33 +85,11 @@ scenario "e2e_database" {
     }
   }
 
-  step "create_vault_cluster" {
-    module = module.vault
-    depends_on = [
-      step.create_base_infra,
-    ]
-
-    variables {
-      ami_id          = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
-      instance_type   = var.vault_instance_type
-      instance_count  = 1
-      kms_key_arn     = step.create_base_infra.kms_key_arn
-      storage_backend = "raft"
-      unseal_method   = "awskms"
-      vault_release = {
-        version = var.vault_version
-        edition = "oss"
-      }
-      vpc_id = step.create_base_infra.vpc_id
-    }
-  }
-
   step "run_e2e_test" {
     module = module.test_e2e
     depends_on = [
       step.create_targets_with_tag,
       step.iam_setup,
-      step.create_vault_cluster,
     ]
 
     variables {
@@ -122,8 +100,6 @@ scenario "e2e_database" {
       aws_access_key_id        = step.iam_setup.access_key_id
       aws_secret_access_key    = step.iam_setup.secret_access_key
       aws_host_set_filter1     = step.create_tag_inputs.tag_string
-      vault_addr               = step.create_vault_cluster.instance_public_ips[0]
-      vault_root_token         = step.create_vault_cluster.vault_root_token
     }
   }
 

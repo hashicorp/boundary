@@ -161,6 +161,39 @@ func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Netw
 	}
 }
 
+// StartVault starts a vault container.
+// Returns information about the container.
+func StartVault(t testing.TB, pool *dockertest.Pool, network *dockertest.Network) *Container {
+	t.Log("Starting Vault...")
+
+	vaultToken := "boundarytok"
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "hashicorp/vault",
+		Tag:        "latest",
+		Env: []string{
+			"VAULT_DEV_ROOT_TOKEN_ID=" + vaultToken,
+		},
+		Name:         "vault",
+		Networks:     []*dockertest.Network{network},
+		ExposedPorts: []string{"8200"},
+		PortBindings: map[docker.Port][]docker.PortBinding{
+			"8200/tcp": {{HostIP: "localhost", HostPort: "8200/tcp"}},
+		},
+		CapAdd: []string{"IPC_LOCK"},
+	})
+	require.NoError(t, err)
+
+	uriLocalhost := "http://localhost:8200"
+	os.Setenv("VAULT_ADDR", uriLocalhost)
+	os.Setenv("VAULT_TOKEN", vaultToken)
+
+	return &Container{
+		Resource:     resource,
+		UriLocalhost: uriLocalhost,
+		UriNetwork:   "http://vault:8200",
+	}
+}
+
 // ConnectToTarget starts a boundary container and attempts to connect to the specified target. The
 // goal of this method is to create a session entry in the database.
 // Returns information about the container.
