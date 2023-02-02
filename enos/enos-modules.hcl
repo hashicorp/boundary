@@ -9,10 +9,6 @@ module "bats_deps" {
   source = "./modules/bats_deps"
 }
 
-module "binary_finder" {
-  source = "./modules/binary_finder"
-}
-
 module "boundary" {
   source  = "app.terraform.io/hashicorp-qti/aws-boundary/enos"
   version = ">= 0.2.6"
@@ -88,10 +84,6 @@ module "vault" {
   }
 
   ssh_aws_keypair = var.aws_ssh_keypair_name
-}
-
-module "test_cli_ui" {
-  source = "./modules/test_cli_ui"
 }
 
 module "test_e2e" {
