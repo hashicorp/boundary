@@ -259,7 +259,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non existing ldap account",
-			req:  &pbs.GetAccountRequest{Id: ldap.AccountPrefix + "_DoesntExis"},
+			req:  &pbs.GetAccountRequest{Id: globals.LdapAccountPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -696,7 +696,7 @@ func TestListLdap(t *testing.T) {
 		},
 		{
 			name: "Unfound Auth Method",
-			req:  &pbs.ListAccountsRequest{AuthMethodId: oidc.AuthMethodPrefix + "_DoesntExis"},
+			req:  &pbs.ListAccountsRequest{AuthMethodId: globals.OidcAuthMethodPrefix + "_DoesntExis"},
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
@@ -852,7 +852,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad ldap account id",
 			req: &pbs.DeleteAccountRequest{
-				Id: ldap.AccountPrefix + "_doesntexis",
+				Id: globals.LdapAccountPrefix + "_doesntexis",
 			},
 			err:         handlers.ApiErrorWithCode(codes.NotFound),
 			errContains: "Resource not found.",
@@ -1451,7 +1451,7 @@ func TestCreateLdap(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", ldap.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.LdapAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
@@ -1481,7 +1481,7 @@ func TestCreateLdap(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", ldap.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.LdapAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
@@ -1518,7 +1518,7 @@ func TestCreateLdap(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Id:           ldap.AccountPrefix + "_notallowed",
+					Id:           globals.LdapAccountPrefix + "_notallowed",
 					Type:         ldap.Subtype.String(),
 					Attrs: &pb.Account_LdapAccountAttributes{
 						LdapAccountAttributes: &pb.LdapAccountAttributes{
@@ -1669,7 +1669,7 @@ func TestCreateLdap(t *testing.T) {
 			require.NoError(gErr)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), ldap.AccountPrefix+"_"))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.LdapAccountPrefix+"_"))
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
 				got.Item.Id, tc.res.Item.Id = "", ""
@@ -2696,7 +2696,7 @@ func TestUpdateLdap(t *testing.T) {
 		{
 			name: "Update a Non Existing Account",
 			req: &pbs.UpdateAccountRequest{
-				Id: ldap.AccountPrefix + "_DoesntExis",
+				Id: globals.LdapAccountPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{globals.DescriptionField},
 				},
@@ -2715,7 +2715,7 @@ func TestUpdateLdap(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.Account{
-					Id:          ldap.AccountPrefix + "_somethinge",
+					Id:          globals.LdapAccountPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
