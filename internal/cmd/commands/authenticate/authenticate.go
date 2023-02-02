@@ -115,7 +115,7 @@ func (c *Command) Run(args []string) int {
 		cmd.Run([]string{})
 
 	default:
-		c.PrintCliError(fmt.Errorf("The primary auth method was of an unsupported type. The given ID was %s; only 'ampw' (password) and 'amoidc' (OIDC) auth method prefixes are supported.", c.FlagAuthMethodId))
+		c.PrintCliError(fmt.Errorf("The primary auth method was of an unsupported type. The given ID was %s; only 'ampw' (password), 'amoidc' (OIDC) and 'amldap' (LDAP) auth method prefixes are supported.", c.FlagAuthMethodId))
 		return cli.RunResultHelp
 	}
 
