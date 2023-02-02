@@ -70,7 +70,6 @@ var (
 		action.Read.String(),
 		action.Update.String(),
 		action.Delete.String(),
-		action.ChangeState.String(),
 		action.Authenticate.String(),
 	}
 )
