@@ -1069,7 +1069,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 		opts = append(opts, target.WithIngressWorkerFilter(item.GetIngressWorkerFilter().GetValue()))
 	}
 	if item.GetAddress() != nil {
-		opts = append(opts, target.WithAddress(item.GetAddress().GetValue()))
+		opts = append(opts, target.WithAddress(strings.TrimSpace(item.GetAddress().GetValue())))
 	}
 
 	attr, err := subtypeRegistry.newAttribute(target.SubtypeFromType(item.GetType()), item.GetAttrs())
@@ -1124,7 +1124,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	if item.GetAddress() != nil {
 		dbMask = append(dbMask, "Address")
-		opts = append(opts, target.WithAddress(item.GetAddress().GetValue()))
+		opts = append(opts, target.WithAddress(strings.TrimSpace(item.GetAddress().GetValue())))
 	}
 	subtype := target.SubtypeFromId(id)
 

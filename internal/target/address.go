@@ -2,6 +2,7 @@ package target
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -37,6 +38,7 @@ func NewAddress(targetId, address string, _ ...Option) (*Address, error) {
 	if address == "" {
 		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing address")
 	}
+	address = strings.TrimSpace(address)
 	t := &Address{
 		TargetAddress: &store.TargetAddress{
 			TargetId: targetId,

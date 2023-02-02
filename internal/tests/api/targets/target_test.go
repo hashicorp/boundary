@@ -693,3 +693,43 @@ func TestSet_Errors(t *testing.T) {
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusBadRequest, apiErr.Response().StatusCode())
 }
+
+func TestCreateTarget_WhitespaceInAddress(t *testing.T) {
+	require := require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	tarClient := targets.NewClient(client)
+
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"), targets.WithTcpTargetDefaultPort(2), targets.WithAddress(" 127.0.0.1 "))
+	require.NoError(err)
+	require.NotNil(tar)
+	require.Equal("127.0.0.1", tar.GetItem().Address)
+}
+
+func TestUpdateTarget_WhitespaceInAddress(t *testing.T) {
+	require := require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	tarClient := targets.NewClient(client)
+
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo"), targets.WithTcpTargetDefaultPort(2), targets.WithAddress("127.0.0.1"))
+	require.NoError(err)
+	require.NotNil(tar)
+
+	updateResult, err := tarClient.Update(tc.Context(), tar.Item.Id, tar.Item.Version, targets.WithAddress(" 10.0.0.1 "))
+	require.NoError(err)
+	require.NotNil(updateResult)
+	require.Equal("10.0.0.1", updateResult.Item.Address)
+}
