@@ -8,7 +8,10 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/common"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/mitchellh/cli"
@@ -26,6 +29,8 @@ type LdapCommand struct {
 
 	flagLoginName string
 	flagPassword  string
+	Opts          []common.Option
+	parsedOpts    *common.Options
 }
 
 func (c *LdapCommand) Synopsis() string {
@@ -69,6 +74,15 @@ func (c *LdapCommand) Flags() *base.FlagSets {
 		Usage:  "The auth-method resource to use for the operation.",
 	})
 
+	if c.parsedOpts == nil || !c.parsedOpts.WithSkipScopeIdFlag {
+		f.StringVar(&base.StringVar{
+			Name:   "scope-id",
+			EnvVar: "BOUNDARY_SCOPE_ID",
+			Target: &c.FlagScopeId,
+			Usage:  "The scope ID to use for the operation.",
+		})
+	}
+
 	return set
 }
 
@@ -81,20 +95,29 @@ func (c *LdapCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *LdapCommand) Run(args []string) int {
-	f := c.Flags()
+	opts, err := common.GetOpts(c.Opts...)
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+	c.parsedOpts = opts
 
+	f := c.Flags()
 	if err := f.Parse(args); err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
 	}
 
-	switch {
-	case c.flagLoginName == "":
-		c.PrintCliError(errors.New("Login name must be provided via -login-name"))
-		return base.CommandUserError
-	case c.FlagAuthMethodId == "":
-		c.PrintCliError(errors.New("Auth method ID must be provided via -auth-method-id"))
-		return base.CommandUserError
+	switch c.flagLoginName {
+	case "":
+		var input string
+		fmt.Print("Please enter the login name: ")
+		_, err := fmt.Scanln(&input)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the login name. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
+			return base.CommandUserError
+		}
+		c.flagLoginName = strings.TrimSpace(input)
 	}
 
 	switch c.flagPassword {
@@ -136,6 +159,23 @@ func (c *LdapCommand) Run(args []string) int {
 	}
 
 	aClient := authmethods.NewClient(client)
+
+	// if auth method ID isn't passed on the CLI, try looking up the primary auth method ID
+	if c.FlagAuthMethodId == "" {
+		// if flag for scope is empty try looking up global
+		if c.FlagScopeId == "" {
+			c.FlagScopeId = scope.Global.String()
+		}
+
+		pri, err := getPrimaryAuthMethodId(c.Context, aClient, c.FlagScopeId, ldap.AuthMethodPrefix)
+		if err != nil {
+			c.PrintCliError(err)
+			return base.CommandUserError
+		}
+
+		c.FlagAuthMethodId = pri
+	}
+
 	result, err := aClient.Authenticate(c.Context, c.FlagAuthMethodId, "login",
 		map[string]any{
 			"login_name": c.flagLoginName,

@@ -47,7 +47,10 @@ message AuthMethod {
   // operational_state is the current state of the auth_ldap_method (inactive,
   // active-private, or active-public).
   // @inject_tag: `gorm:"column:state;not_null"`
-  string operational_state = 80;
+  string operational_state = 80 [(custom_options.v1.mask_mapping) = {
+    this: "OperationalState"
+    that: "attributes.state"
+  }];
 
   // start_tls if true, issues a StartTLS command after establishing an
   // unencrypted connection. Defaults to false.
