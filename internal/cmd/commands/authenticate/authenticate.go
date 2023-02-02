@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -107,6 +108,10 @@ func (c *Command) Run(args []string) int {
 
 	case strings.HasPrefix(c.FlagAuthMethodId, oidc.AuthMethodPrefix):
 		cmd := OidcCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
+		cmd.Run([]string{})
+
+	case strings.HasPrefix(c.FlagAuthMethodId, ldap.AuthMethodPrefix):
+		cmd := LdapCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
 		cmd.Run([]string{})
 
 	default:
