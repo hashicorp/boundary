@@ -19,6 +19,7 @@ func init() {
 }
 
 type extraLdapCmdVars struct {
+	flagState                string
 	flagUrls                 []string
 	flagInsecureTls          bool
 	flagDiscoverDn           bool
@@ -87,6 +88,7 @@ func extraLdapActionsFlagsMapFuncImpl() map[string][]string {
 			bindPasswordFlagName,
 			useTokenGroupsFlagName,
 			accountAttributeMaps,
+			stateFlagName,
 		},
 	}
 	flags["update"] = flags["create"]
@@ -211,6 +213,12 @@ func extraLdapFlagsFuncImpl(c *LdapCommand, set *base.FlagSets, _ *base.FlagSet)
 				Name:   useTokenGroupsFlagName,
 				Target: &c.flagUseTokenGroups,
 				Usage:  "Use the Active Directory tokenGroups constructed attribute of the user to find the group memberships (optional).",
+			})
+		case stateFlagName:
+			f.StringVar(&base.StringVar{
+				Name:   stateFlagName,
+				Target: &c.flagState,
+				Usage:  "The desired operational state of the auth method.",
 			})
 		}
 	}
@@ -465,6 +473,16 @@ func extraLdapFlagHandlingFuncImpl(c *LdapCommand, _ *base.FlagSets, opts *[]aut
 		*opts = append(*opts, authmethods.WithLdapAuthMethodAccountAttributeMaps(c.flagAccountAttributeMaps))
 	}
 
+	switch c.flagState {
+	case "":
+		// there is a default value during "create", so it's okay to not
+		// specify a state
+	case "null":
+		c.UI.Error("State is required, you cannot set it to null")
+		return false
+	default:
+		*opts = append(*opts, authmethods.WithLdapAuthMethodState(c.flagState))
+	}
 	return true
 }
 

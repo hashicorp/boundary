@@ -310,7 +310,12 @@ message OidcAuthMethodAuthenticateTokenResponse {
 message LdapAuthMethodAttributes {
   // Output only. The state of the auth method. Will be "inactive",
   // "active-private", or "active-public".
-  string state = 10 [json_name = "state"]; // @gotags: `class:"public"`
+  string state = 10 [json_name = "state",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.state"
+      that: "OperationalState"
+    }]; // @gotags: `class:"public"`
 
   // start_tls if true, issues a StartTLS command after establishing an
   // unencrypted connection. Defaults to false.
