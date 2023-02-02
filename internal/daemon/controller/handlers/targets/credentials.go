@@ -33,7 +33,16 @@ func dynamicToWorkerCredential(ctx context.Context, cred credential.Dynamic) (se
 				},
 			},
 		}
-
+	case credential.SshCertificate:
+		workerCred = &serverpb.Credential{
+			Credential: &serverpb.Credential_SshCertificate{
+				SshCertificate: &serverpb.SshCertificate{
+					Username:    c.Username(),
+					PrivateKey:  string(c.PrivateKey()),
+					Certificate: string(c.Certificate()),
+				},
+			},
+		}
 	case credential.SshPrivateKey:
 		workerCred = &serverpb.Credential{
 			Credential: &serverpb.Credential_SshPrivateKey{

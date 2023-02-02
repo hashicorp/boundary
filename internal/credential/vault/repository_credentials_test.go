@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -20,6 +21,95 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// since we're not using gorm tags to retrieve this, it's faster and easier to just make a new struct than import usrPassCred from the vault package
+type revokableCred struct {
+	PublicId        string
+	LibraryId       string
+	SessionId       string
+	TokenHmac       []byte
+	ExternalId      string
+	IsRenewable     bool
+	Status          string
+	LastRenewalTime *timestamp.Timestamp
+	ExpirationTime  *timestamp.Timestamp
+}
+
+func lookupDbCred(t *testing.T, ctx context.Context, rw *db.Db, dc credential.Dynamic) *revokableCred {
+	rows, err := rw.Query(ctx, `
+	select
+		public_id,
+		library_id,
+		session_id,
+		token_hmac,
+		external_id,
+		is_renewable,
+		status,
+		last_renewal_time,
+		expiration_time
+	from credential_vault_credential
+	where public_id = ?;
+	`, []any{dc.GetPublicId()})
+	require.NoError(t, err)
+	rowCount := 0
+
+	got := revokableCred{}
+
+	for rows.Next() {
+		rowCount++
+		require.NoError(t, rows.Scan(
+			&got.PublicId,
+			&got.LibraryId,
+			&got.SessionId,
+			&got.TokenHmac,
+			&got.ExternalId,
+			&got.IsRenewable,
+			&got.Status,
+			&got.LastRenewalTime,
+			&got.ExpirationTime,
+		))
+	}
+	// Should never get more than one that matches, but can get 0
+	assert.LessOrEqual(t, rowCount, 1)
+
+	if rowCount == 0 {
+		return nil
+	}
+
+	return &got
+}
+
+type libT int
+
+const (
+	libDB libT = iota
+	libUsrPassDB
+	libErrUsrPassDB
+	libPKI
+	libErrPKI
+	libKV
+	libErrKV
+	libUsrPassKV
+	libSshPkKV
+	libExpiredToken
+)
+
+type testLib struct {
+	PublicId    string
+	HasLease    bool
+	IsRenewable bool
+}
+
+type testLibMap map[libT]testLib
+
+func (m testLibMap) GetByPublicId(id string) (testLib, bool) {
+	for _, v := range m {
+		if v.PublicId == id {
+			return v, true
+		}
+	}
+	return testLib{}, false
+}
 
 func TestRepository_IssueCredentials(t *testing.T) {
 	t.Parallel()
@@ -80,21 +170,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	assert.Equal(t, 1, num)
 	v.RevokeToken(t, expToken)
 
-	type libT int
-	const (
-		libDB libT = iota
-		libUsrPassDB
-		libErrUsrPassDB
-		libPKI
-		libErrPKI
-		libKV
-		libErrKV
-		libUsrPassKV
-		libSshPkKV
-		libExpiredToken
-	)
-
-	libs := make(map[libT]string)
+	libs := make(testLibMap)
 	{
 		libPath := path.Join("database", "creds", "opened")
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath)
@@ -103,7 +179,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
-		libs[libDB] = lib.GetPublicId()
+		libs[libDB] = testLib{PublicId: lib.GetPublicId(), HasLease: true, IsRenewable: true}
 	}
 	{
 		libPath := path.Join("pki", "issue", "boundary")
@@ -113,7 +189,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
-		libs[libPKI] = lib.GetPublicId()
+		libs[libPKI] = testLib{PublicId: lib.GetPublicId(), HasLease: false, IsRenewable: false}
 	}
 	{
 
@@ -124,7 +200,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
-		libs[libErrPKI] = lib.GetPublicId()
+		libs[libErrPKI] = testLib{PublicId: lib.GetPublicId(), HasLease: true, IsRenewable: true}
 	}
 	{
 		libPath := path.Join("secret", "data", "my-up-secret")
@@ -134,7 +210,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
-		libs[libKV] = lib.GetPublicId()
+		libs[libKV] = testLib{PublicId: lib.GetPublicId(), HasLease: false, IsRenewable: true}
 	}
 	{
 		libPath := path.Join("secret", "data", "fake-secret")
@@ -144,7 +220,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
-		libs[libErrKV] = lib.GetPublicId()
+		libs[libErrKV] = testLib{PublicId: lib.GetPublicId(), HasLease: false, IsRenewable: true}
 	}
 	{
 		libPath := path.Join("database", "creds", "opened")
@@ -157,7 +233,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
-		libs[libUsrPassDB] = lib.GetPublicId()
+		libs[libUsrPassDB] = testLib{PublicId: lib.GetPublicId(), HasLease: true, IsRenewable: true}
 	}
 	{
 		libPath := path.Join("database", "creds", "opened")
@@ -174,7 +250,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
-		libs[libErrUsrPassDB] = lib.GetPublicId()
+		libs[libErrUsrPassDB] = testLib{PublicId: lib.GetPublicId(), HasLease: true, IsRenewable: true}
 	}
 	{
 		libPath := path.Join("secret", "data", "my-up-secret")
@@ -187,7 +263,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
-		libs[libUsrPassKV] = lib.GetPublicId()
+		libs[libUsrPassKV] = testLib{PublicId: lib.GetPublicId(), HasLease: false}
 	}
 	{
 		libPath := path.Join("secret", "data", "my-sshpk-secret")
@@ -200,7 +276,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
-		libs[libSshPkKV] = lib.GetPublicId()
+		libs[libSshPkKV] = testLib{PublicId: lib.GetPublicId(), HasLease: false}
 	}
 	{
 		libPath := path.Join("secret", "data", "my-up-secret")
@@ -213,7 +289,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 		lib, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
 		assert.NoError(t, err)
 		require.NotNil(t, lib)
-		libs[libExpiredToken] = lib.GetPublicId()
+		libs[libExpiredToken] = testLib{PublicId: lib.GetPublicId(), HasLease: false}
 	}
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
@@ -250,7 +326,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libDB],
+					SourceId: libs[libDB].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -260,11 +336,11 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libDB],
+					SourceId: libs[libDB].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 				{
-					SourceId: libs[libPKI],
+					SourceId: libs[libPKI].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -274,7 +350,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libErrPKI],
+					SourceId: libs[libErrPKI].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -285,11 +361,11 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2nil,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libDB],
+					SourceId: libs[libDB].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 				{
-					SourceId: libs[libPKI],
+					SourceId: libs[libPKI].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -300,7 +376,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libKV],
+					SourceId: libs[libKV].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -310,7 +386,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libUsrPassDB],
+					SourceId: libs[libUsrPassDB].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -320,7 +396,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libErrKV],
+					SourceId: libs[libErrKV].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -331,7 +407,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libErrUsrPassDB],
+					SourceId: libs[libErrUsrPassDB].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -342,7 +418,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libUsrPassKV],
+					SourceId: libs[libUsrPassKV].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -352,7 +428,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libSshPkKV],
+					SourceId: libs[libSshPkKV].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -362,7 +438,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			convertFn: rc2dc,
 			requests: []credential.Request{
 				{
-					SourceId: libs[libExpiredToken],
+					SourceId: libs[libExpiredToken].PublicId,
 					Purpose:  credential.BrokeredPurpose,
 				},
 			},
@@ -404,6 +480,19 @@ func TestRepository_IssueCredentials(t *testing.T) {
 				case credential.UnspecifiedType:
 					if _, ok := dc.(credential.UsernamePassword); ok {
 						assert.Fail("do not want UsernamePassword credential from library with credential type Unspecified")
+					}
+				}
+				if lib, ok := libs.GetByPublicId(dc.Library().GetPublicId()); ok {
+					retrieved := lookupDbCred(t, ctx, rw, dc)
+					if lib.HasLease {
+						// we also want to retrieve the cred from the db and make sure it's the same as the one returned by Issue
+						require.NotNil(retrieved)
+						require.Equal(retrieved.SessionId, sess.GetPublicId())
+						require.Equal(retrieved.PublicId, dc.GetPublicId())
+						assert.NotEmpty(retrieved.ExternalId)
+						assert.Equal(retrieved.IsRenewable, lib.IsRenewable)
+					} else {
+						assert.Nil(retrieved)
 					}
 				}
 			}

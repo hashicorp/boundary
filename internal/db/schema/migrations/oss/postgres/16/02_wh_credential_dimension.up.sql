@@ -65,6 +65,7 @@ begin;
         and o.public_id = p.parent_id
         and o.type = 'org';
 
+  -- Replaced in 63/03_wh_ssh_cert_library.up.sql
   create view whx_credential_dimension_target as
   select key,
          credential_purpose,

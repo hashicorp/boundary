@@ -8,18 +8,27 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix, CredentialLibraryPrefix, DynamicCredentialPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix, DynamicCredentialPrefix); err != nil {
+		panic(err)
+	}
+	if err := subtypes.Register(credential.Domain, GenericLibrarySubtype, CredentialLibraryPrefix); err != nil {
+		panic(err)
+	}
+	if err := subtypes.Register(credential.Domain, SSHCertificateLibrarySubtype, SSHCertificateCredentialLibraryPrefix); err != nil {
 		panic(err)
 	}
 }
 
 // PublicId prefixes for the resources in the vault package.
 const (
-	CredentialStorePrefix   = "csvlt"
-	CredentialLibraryPrefix = "clvlt"
-	DynamicCredentialPrefix = "cdvlt"
+	CredentialStorePrefix                 = "csvlt"
+	CredentialLibraryPrefix               = "clvlt"
+	DynamicCredentialPrefix               = "cdvlt"
+	SSHCertificateCredentialLibraryPrefix = "clvsclt"
 
-	Subtype = subtypes.Subtype("vault")
+	Subtype                      = subtypes.Subtype("vault")
+	GenericLibrarySubtype        = subtypes.Subtype("vault-generic")
+	SSHCertificateLibrarySubtype = subtypes.Subtype("vault-ssh-certificate")
 )
 
 func newCredentialStoreId() (string, error) {
@@ -42,6 +51,14 @@ func newCredentialLibraryId() (string, error) {
 	id, err := db.NewPublicId(CredentialLibraryPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "vault.newCredentialLibraryId")
+	}
+	return id, nil
+}
+
+func newSSHCertificateCredentialLibraryId() (string, error) {
+	id, err := db.NewPublicId(SSHCertificateCredentialLibraryPrefix)
+	if err != nil {
+		return "", errors.WrapDeprecated(err, "vault.newSSHCertificateCredentialLibraryPrefix")
 	}
 	return id, nil
 }

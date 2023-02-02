@@ -7,21 +7,50 @@ import (
 )
 
 func init() {
-	extraVaultFlagsFunc = extraVaultFlagsFuncImpl
-	extraVaultActionsFlagsMapFunc = extraVaultActionsFlagsMapFuncImpl
-	extraVaultFlagsHandlingFunc = extraVaultFlagHandlingFuncImpl
+	extraVaultGenericFlagsFunc = extraVaultGenericFlagsFuncImpl
+	extraVaultGenericActionsFlagsMapFunc = extraVaultGenericActionsFlagsMapFuncImpl
+	extraVaultGenericFlagsHandlingFunc = extraVaultGenericFlagHandlingFuncImpl
 }
 
-type extraVaultCmdVars extraVaultGenericCmdVars
+const (
+	pathFlagName              = "vault-path"
+	httpMethodFlagName        = "vault-http-method"
+	httpRequestBodyFlagName   = "vault-http-request-body"
+	credentialTypeFlagName    = "credential-type"
+	credentialMappingFlagName = "credential-mapping-override"
+)
 
-func extraVaultActionsFlagsMapFuncImpl() map[string][]string {
-	return extraVaultGenericActionsFlagsMapFuncImpl()
+type extraVaultGenericCmdVars struct {
+	flagPath              string
+	flagHttpMethod        string
+	flagHttpRequestBody   string
+	flagCredentialType    string
+	flagCredentialMapping []base.CombinedSliceFlagValue
 }
 
-func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSet) {
+func extraVaultGenericActionsFlagsMapFuncImpl() map[string][]string {
+	flags := map[string][]string{
+		"create": {
+			pathFlagName,
+			httpMethodFlagName,
+			httpRequestBodyFlagName,
+			credentialTypeFlagName,
+			credentialMappingFlagName,
+		},
+		"update": {
+			pathFlagName,
+			httpMethodFlagName,
+			httpRequestBodyFlagName,
+			credentialMappingFlagName,
+		},
+	}
+	return flags
+}
+
+func extraVaultGenericFlagsFuncImpl(c *VaultGenericCommand, set *base.FlagSets, _ *base.FlagSet) {
 	f := set.NewFlagSet("Vault Credential Library Options")
 
-	for _, name := range flagsVaultMap[c.Func] {
+	for _, name := range flagsVaultGenericMap[c.Func] {
 		switch name {
 		case pathFlagName:
 			f.StringVar(&base.StringVar{
@@ -58,7 +87,7 @@ func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSe
 	}
 }
 
-func extraVaultFlagHandlingFuncImpl(c *VaultCommand, _ *base.FlagSets, opts *[]credentiallibraries.Option) bool {
+func extraVaultGenericFlagHandlingFuncImpl(c *VaultGenericCommand, _ *base.FlagSets, opts *[]credentiallibraries.Option) bool {
 	switch c.flagPath {
 	case "":
 	default:
@@ -116,29 +145,27 @@ func extraVaultFlagHandlingFuncImpl(c *VaultCommand, _ *base.FlagSets, opts *[]c
 	return true
 }
 
-func (c *VaultCommand) extraVaultHelpFunc(_ map[string]func() string) string {
+func (c *VaultGenericCommand) extraVaultGenericHelpFunc(_ map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
 	case "create":
 		helpStr = base.WrapForHelpText([]string{
-			"Deprecated: use 'boundary credential-libraries create vault-generic' instead.",
 			"Usage: boundary credential-libraries create vault -credential-store-id [options] [args]",
 			"",
-			"  Create a vault-type credential library. Example:",
+			"  Create a vault-generic-type credential library. Example:",
 			"",
-			`    $ boundary credential-libraries create vault -credential-store-id csvlt_1234567890 -vault-path "/some/path"`,
+			`    $ boundary credential-libraries create vault-generic -credential-store-id csvlt_1234567890 -vault-path "/some/path"`,
 			"",
 			"",
 		})
 
 	case "update":
 		helpStr = base.WrapForHelpText([]string{
-			"Deprecated: use 'boundary credential-libraries update vault-generic' instead.",
 			"Usage: boundary credential-libraries update vault [options] [args]",
 			"",
-			"  Update a vault-type credential library given its ID. Example:",
+			"  Update a vault-generic-type credential library given its ID. Example:",
 			"",
-			`    $ boundary credential-libraries update vault -id clvlt_1234567890 -name devops -description "For DevOps usage"`,
+			`    $ boundary credential-libraries update vault-generic -id clvlt_1234567890 -name devops -description "For DevOps usage"`,
 			"",
 			"",
 		})

@@ -75,9 +75,14 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 		pool:      pool,
 	}
 
+	vaultVersion := DefaultVaultVersion
+	if opts.vaultVersion != "" {
+		vaultVersion = opts.vaultVersion
+	}
+
 	dockerOptions := &dockertest.RunOptions{
 		Repository: "vault",
-		Tag:        DefaultVaultVersion,
+		Tag:        vaultVersion,
 		Env:        []string{fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken)},
 	}
 
