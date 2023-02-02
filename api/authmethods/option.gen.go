@@ -795,6 +795,30 @@ func DefaultLdapAuthMethodStartTls() Option {
 	}
 }
 
+func WithLdapAuthMethodState(inState string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["state"] = inState
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodState() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["state"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithLdapAuthMethodUpnDomain(inUpnDomain string) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
