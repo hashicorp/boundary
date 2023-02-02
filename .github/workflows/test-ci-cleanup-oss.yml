@@ -6,6 +6,7 @@ on:
 
 jobs:
   setup:
+    if: ${{ github.event.repository.name == 'boundary' }}
     runs-on: ubuntu-latest
     outputs:
       regions: ${{steps.setup.outputs.regions}}
@@ -30,6 +31,7 @@ jobs:
           echo "account_id=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | awk -F'"' '/"accountId"/ { print $4 }')" >> $GITHUB_OUTPUT
 
   aws-nuke:
+    if: ${{ github.event.repository.name == 'boundary' }}
     needs: setup
     runs-on: ubuntu-latest
     container:
@@ -40,7 +42,7 @@ jobs:
       env:
         AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
-        TIME_LIMIT: "72h"
+        TIME_LIMIT: "48h"
     timeout-minutes: 60
     steps:
       - name: Configure AWS credentials
@@ -67,6 +69,7 @@ jobs:
           aws-nuke -c aws-nuke.yml -q --no-dry-run --force 2>/tmp/aws-nuke-error.log || true
 
   check-quotas:
+    if: ${{ github.event.repository.name == 'boundary' }}
     needs: [ setup, aws-nuke ]
     runs-on: ubuntu-latest
     container:
