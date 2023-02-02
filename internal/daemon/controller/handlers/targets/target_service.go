@@ -1810,6 +1810,7 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			vault.CredentialLibraryPrefix,
+			vault.SSHCertificateCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix) {
@@ -1857,6 +1858,7 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			vault.CredentialLibraryPrefix,
+			vault.SSHCertificateCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix) {
@@ -1908,6 +1910,7 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			vault.CredentialLibraryPrefix,
+			vault.SSHCertificateCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix,

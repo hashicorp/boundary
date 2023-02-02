@@ -18,6 +18,22 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   0.14.0, this will become an error instead. As a consequence, it means that the
   fallback logic for targets that did not have a default port defined is no
   longer in service; all targets must now have a default port defined.
+* With the introduction of `vault-ssh-certificate` credential libraries, the
+  `vault` credential library subtype is being renamed to `vault-generic` to
+  denote it as a credential library that can be used in a generalized way to
+  issue credentials from vault. Existing credential libraries with the
+  subtype of `vault` will be updated to `vault-generic`. The subtype of
+  `vault` will still be accepted as a valid subtype in API requests to the
+  credential libraries endpoints, but is deprecated. Instead `vault-generic`
+  should be used. In addition the `boundary credential-libraries create
+  vault` and `boundary credential-libraries update vault` subcommands will
+  still function, but are deprecated. Instead `boundary credential-libraries
+  create vault-generic` and `boundary credential-libraries update
+  vault-generic` should be used. Also note that any credential library created
+  using the subtype of `vault`, either via the API or via the deprecated
+  subcommand, will have the subtype set to `vault-generic`. The deprecated
+  subtype and subcommands will be removed in boundary 0.14.0, at which point
+  `vault-generic` must be used.
 
 ### New and Improved
 
@@ -39,6 +55,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
  multiple workers together to access services hidden under layers of network security. Multi-hop 
  workers can also establish a TCP session through multiple workers, with the ability to reverse 
  proxy and establish a connection.
+* Vault SSH certificate credential library: A new credential library that uses
+  the vault ssh secret engine to generate ssh private key and certificates. The
+  library can be used as an injected application credential source for targets
+  that support credential injection. ([PR](https://github.com/hashicorp/boundary/pull/2860))
 
 ### Bug Fixes
 

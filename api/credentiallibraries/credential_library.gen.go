@@ -90,7 +90,7 @@ func (c *Client) ApiClient() *api.Client {
 	return c.client
 }
 
-func (c *Client) Create(ctx context.Context, credentialStoreId string, opt ...Option) (*CredentialLibraryCreateResult, error) {
+func (c *Client) Create(ctx context.Context, resourceType string, credentialStoreId string, opt ...Option) (*CredentialLibraryCreateResult, error) {
 	if credentialStoreId == "" {
 		return nil, fmt.Errorf("empty credentialStoreId value passed into Create request")
 	}
@@ -99,6 +99,11 @@ func (c *Client) Create(ctx context.Context, credentialStoreId string, opt ...Op
 
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client")
+	}
+	if resourceType == "" {
+		return nil, fmt.Errorf("empty resourceType value passed into Create request")
+	} else {
+		opts.postMap["type"] = resourceType
 	}
 
 	opts.postMap["credential_store_id"] = credentialStoreId

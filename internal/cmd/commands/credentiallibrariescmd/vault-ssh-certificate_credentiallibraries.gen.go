@@ -14,54 +14,54 @@ import (
 	"github.com/posener/complete"
 )
 
-func initVaultFlags() {
+func initVaultSshCertificateFlags() {
 	flagsOnce.Do(func() {
-		extraFlags := extraVaultActionsFlagsMapFunc()
+		extraFlags := extraVaultSshCertificateActionsFlagsMapFunc()
 		for k, v := range extraFlags {
-			flagsVaultMap[k] = append(flagsVaultMap[k], v...)
+			flagsVaultSshCertificateMap[k] = append(flagsVaultSshCertificateMap[k], v...)
 		}
 	})
 }
 
 var (
-	_ cli.Command             = (*VaultCommand)(nil)
-	_ cli.CommandAutocomplete = (*VaultCommand)(nil)
+	_ cli.Command             = (*VaultSshCertificateCommand)(nil)
+	_ cli.CommandAutocomplete = (*VaultSshCertificateCommand)(nil)
 )
 
-type VaultCommand struct {
+type VaultSshCertificateCommand struct {
 	*base.Command
 
 	Func string
 
 	plural string
 
-	extraVaultCmdVars
+	extraVaultSshCertificateCmdVars
 }
 
-func (c *VaultCommand) AutocompleteArgs() complete.Predictor {
-	initVaultFlags()
+func (c *VaultSshCertificateCommand) AutocompleteArgs() complete.Predictor {
+	initVaultSshCertificateFlags()
 	return complete.PredictAnything
 }
 
-func (c *VaultCommand) AutocompleteFlags() complete.Flags {
-	initVaultFlags()
+func (c *VaultSshCertificateCommand) AutocompleteFlags() complete.Flags {
+	initVaultSshCertificateFlags()
 	return c.Flags().Completions()
 }
 
-func (c *VaultCommand) Synopsis() string {
-	if extra := extraVaultSynopsisFunc(c); extra != "" {
+func (c *VaultSshCertificateCommand) Synopsis() string {
+	if extra := extraVaultSshCertificateSynopsisFunc(c); extra != "" {
 		return extra
 	}
 
 	synopsisStr := "credential library"
 
-	synopsisStr = fmt.Sprintf("%s %s", "vault-type", synopsisStr)
+	synopsisStr = fmt.Sprintf("%s %s", "vault-ssh-certificate-type", synopsisStr)
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }
 
-func (c *VaultCommand) Help() string {
-	initVaultFlags()
+func (c *VaultSshCertificateCommand) Help() string {
+	initVaultSshCertificateFlags()
 
 	var helpStr string
 	helpMap := common.HelpMap("credential library")
@@ -70,7 +70,7 @@ func (c *VaultCommand) Help() string {
 
 	default:
 
-		helpStr = c.extraVaultHelpFunc(helpMap)
+		helpStr = c.extraVaultSshCertificateHelpFunc(helpMap)
 
 	}
 
@@ -79,29 +79,29 @@ func (c *VaultCommand) Help() string {
 	return helpStr
 }
 
-var flagsVaultMap = map[string][]string{
+var flagsVaultSshCertificateMap = map[string][]string{
 
 	"create": {"credential-store-id", "name", "description"},
 
 	"update": {"id", "name", "description", "version"},
 }
 
-func (c *VaultCommand) Flags() *base.FlagSets {
-	if len(flagsVaultMap[c.Func]) == 0 {
+func (c *VaultSshCertificateCommand) Flags() *base.FlagSets {
+	if len(flagsVaultSshCertificateMap[c.Func]) == 0 {
 		return c.FlagSet(base.FlagSetNone)
 	}
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "vault-type credential library", flagsVaultMap, c.Func)
+	common.PopulateCommonFlags(c.Command, f, "vault-ssh-certificate-type credential library", flagsVaultSshCertificateMap, c.Func)
 
-	extraVaultFlagsFunc(c, set, f)
+	extraVaultSshCertificateFlagsFunc(c, set, f)
 
 	return set
 }
 
-func (c *VaultCommand) Run(args []string) int {
-	initVaultFlags()
+func (c *VaultSshCertificateCommand) Run(args []string) int {
+	initVaultSshCertificateFlags()
 
 	switch c.Func {
 	case "":
@@ -109,10 +109,10 @@ func (c *VaultCommand) Run(args []string) int {
 
 	}
 
-	c.plural = "vault-type credential library"
+	c.plural = "vault-ssh-certificate-type credential library"
 	switch c.Func {
 	case "list":
-		c.plural = "vault-type credential librarys"
+		c.plural = "vault-ssh-certificate-type credential librarys"
 	}
 
 	f := c.Flags()
@@ -122,14 +122,14 @@ func (c *VaultCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if strutil.StrListContains(flagsVaultMap[c.Func], "id") && c.FlagId == "" {
+	if strutil.StrListContains(flagsVaultSshCertificateMap[c.Func], "id") && c.FlagId == "" {
 		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
 		return base.CommandUserError
 	}
 
 	var opts []credentiallibraries.Option
 
-	if strutil.StrListContains(flagsVaultMap[c.Func], "credential-store-id") {
+	if strutil.StrListContains(flagsVaultSshCertificateMap[c.Func], "credential-store-id") {
 		switch c.Func {
 
 		case "create":
@@ -189,7 +189,7 @@ func (c *VaultCommand) Run(args []string) int {
 
 	}
 
-	if ok := extraVaultFlagsHandlingFunc(c, f, &opts); !ok {
+	if ok := extraVaultSshCertificateFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
 
@@ -203,7 +203,7 @@ func (c *VaultCommand) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		createResult, err = credentiallibrariesClient.Create(c.Context, "vault", c.FlagCredentialStoreId, opts...)
+		createResult, err = credentiallibrariesClient.Create(c.Context, "vault-ssh-certificate", c.FlagCredentialStoreId, opts...)
 		if exitCode := c.checkFuncError(err); exitCode > 0 {
 			return exitCode
 		}
@@ -220,12 +220,12 @@ func (c *VaultCommand) Run(args []string) int {
 
 	}
 
-	resp, item, err = executeExtraVaultActions(c, resp, item, err, credentiallibrariesClient, version, opts)
+	resp, item, err = executeExtraVaultSshCertificateActions(c, resp, item, err, credentiallibrariesClient, version, opts)
 	if exitCode := c.checkFuncError(err); exitCode > 0 {
 		return exitCode
 	}
 
-	output, err := printCustomVaultActionOutput(c)
+	output, err := printCustomVaultSshCertificateActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
@@ -251,7 +251,7 @@ func (c *VaultCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *VaultCommand) checkFuncError(err error) int {
+func (c *VaultSshCertificateCommand) checkFuncError(err error) int {
 	if err == nil {
 		return 0
 	}
@@ -264,12 +264,12 @@ func (c *VaultCommand) checkFuncError(err error) int {
 }
 
 var (
-	extraVaultActionsFlagsMapFunc = func() map[string][]string { return nil }
-	extraVaultSynopsisFunc        = func(*VaultCommand) string { return "" }
-	extraVaultFlagsFunc           = func(*VaultCommand, *base.FlagSets, *base.FlagSet) {}
-	extraVaultFlagsHandlingFunc   = func(*VaultCommand, *base.FlagSets, *[]credentiallibraries.Option) bool { return true }
-	executeExtraVaultActions      = func(_ *VaultCommand, inResp *api.Response, inItem *credentiallibraries.CredentialLibrary, inErr error, _ *credentiallibraries.Client, _ uint32, _ []credentiallibraries.Option) (*api.Response, *credentiallibraries.CredentialLibrary, error) {
+	extraVaultSshCertificateActionsFlagsMapFunc = func() map[string][]string { return nil }
+	extraVaultSshCertificateSynopsisFunc        = func(*VaultSshCertificateCommand) string { return "" }
+	extraVaultSshCertificateFlagsFunc           = func(*VaultSshCertificateCommand, *base.FlagSets, *base.FlagSet) {}
+	extraVaultSshCertificateFlagsHandlingFunc   = func(*VaultSshCertificateCommand, *base.FlagSets, *[]credentiallibraries.Option) bool { return true }
+	executeExtraVaultSshCertificateActions      = func(_ *VaultSshCertificateCommand, inResp *api.Response, inItem *credentiallibraries.CredentialLibrary, inErr error, _ *credentiallibraries.Client, _ uint32, _ []credentiallibraries.Option) (*api.Response, *credentiallibraries.CredentialLibrary, error) {
 		return inResp, inItem, inErr
 	}
-	printCustomVaultActionOutput = func(*VaultCommand) (bool, error) { return false, nil }
+	printCustomVaultSshCertificateActionOutput = func(*VaultSshCertificateCommand) (bool, error) { return false, nil }
 )

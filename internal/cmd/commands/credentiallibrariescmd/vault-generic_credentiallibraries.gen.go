@@ -14,54 +14,54 @@ import (
 	"github.com/posener/complete"
 )
 
-func initVaultFlags() {
+func initVaultGenericFlags() {
 	flagsOnce.Do(func() {
-		extraFlags := extraVaultActionsFlagsMapFunc()
+		extraFlags := extraVaultGenericActionsFlagsMapFunc()
 		for k, v := range extraFlags {
-			flagsVaultMap[k] = append(flagsVaultMap[k], v...)
+			flagsVaultGenericMap[k] = append(flagsVaultGenericMap[k], v...)
 		}
 	})
 }
 
 var (
-	_ cli.Command             = (*VaultCommand)(nil)
-	_ cli.CommandAutocomplete = (*VaultCommand)(nil)
+	_ cli.Command             = (*VaultGenericCommand)(nil)
+	_ cli.CommandAutocomplete = (*VaultGenericCommand)(nil)
 )
 
-type VaultCommand struct {
+type VaultGenericCommand struct {
 	*base.Command
 
 	Func string
 
 	plural string
 
-	extraVaultCmdVars
+	extraVaultGenericCmdVars
 }
 
-func (c *VaultCommand) AutocompleteArgs() complete.Predictor {
-	initVaultFlags()
+func (c *VaultGenericCommand) AutocompleteArgs() complete.Predictor {
+	initVaultGenericFlags()
 	return complete.PredictAnything
 }
 
-func (c *VaultCommand) AutocompleteFlags() complete.Flags {
-	initVaultFlags()
+func (c *VaultGenericCommand) AutocompleteFlags() complete.Flags {
+	initVaultGenericFlags()
 	return c.Flags().Completions()
 }
 
-func (c *VaultCommand) Synopsis() string {
-	if extra := extraVaultSynopsisFunc(c); extra != "" {
+func (c *VaultGenericCommand) Synopsis() string {
+	if extra := extraVaultGenericSynopsisFunc(c); extra != "" {
 		return extra
 	}
 
 	synopsisStr := "credential library"
 
-	synopsisStr = fmt.Sprintf("%s %s", "vault-type", synopsisStr)
+	synopsisStr = fmt.Sprintf("%s %s", "vault-generic-type", synopsisStr)
 
 	return common.SynopsisFunc(c.Func, synopsisStr)
 }
 
-func (c *VaultCommand) Help() string {
-	initVaultFlags()
+func (c *VaultGenericCommand) Help() string {
+	initVaultGenericFlags()
 
 	var helpStr string
 	helpMap := common.HelpMap("credential library")
@@ -70,7 +70,7 @@ func (c *VaultCommand) Help() string {
 
 	default:
 
-		helpStr = c.extraVaultHelpFunc(helpMap)
+		helpStr = c.extraVaultGenericHelpFunc(helpMap)
 
 	}
 
@@ -79,29 +79,29 @@ func (c *VaultCommand) Help() string {
 	return helpStr
 }
 
-var flagsVaultMap = map[string][]string{
+var flagsVaultGenericMap = map[string][]string{
 
 	"create": {"credential-store-id", "name", "description"},
 
 	"update": {"id", "name", "description", "version"},
 }
 
-func (c *VaultCommand) Flags() *base.FlagSets {
-	if len(flagsVaultMap[c.Func]) == 0 {
+func (c *VaultGenericCommand) Flags() *base.FlagSets {
+	if len(flagsVaultGenericMap[c.Func]) == 0 {
 		return c.FlagSet(base.FlagSetNone)
 	}
 
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient | base.FlagSetOutputFormat)
 	f := set.NewFlagSet("Command Options")
-	common.PopulateCommonFlags(c.Command, f, "vault-type credential library", flagsVaultMap, c.Func)
+	common.PopulateCommonFlags(c.Command, f, "vault-generic-type credential library", flagsVaultGenericMap, c.Func)
 
-	extraVaultFlagsFunc(c, set, f)
+	extraVaultGenericFlagsFunc(c, set, f)
 
 	return set
 }
 
-func (c *VaultCommand) Run(args []string) int {
-	initVaultFlags()
+func (c *VaultGenericCommand) Run(args []string) int {
+	initVaultGenericFlags()
 
 	switch c.Func {
 	case "":
@@ -109,10 +109,10 @@ func (c *VaultCommand) Run(args []string) int {
 
 	}
 
-	c.plural = "vault-type credential library"
+	c.plural = "vault-generic-type credential library"
 	switch c.Func {
 	case "list":
-		c.plural = "vault-type credential librarys"
+		c.plural = "vault-generic-type credential librarys"
 	}
 
 	f := c.Flags()
@@ -122,14 +122,14 @@ func (c *VaultCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if strutil.StrListContains(flagsVaultMap[c.Func], "id") && c.FlagId == "" {
+	if strutil.StrListContains(flagsVaultGenericMap[c.Func], "id") && c.FlagId == "" {
 		c.PrintCliError(errors.New("ID is required but not passed in via -id"))
 		return base.CommandUserError
 	}
 
 	var opts []credentiallibraries.Option
 
-	if strutil.StrListContains(flagsVaultMap[c.Func], "credential-store-id") {
+	if strutil.StrListContains(flagsVaultGenericMap[c.Func], "credential-store-id") {
 		switch c.Func {
 
 		case "create":
@@ -189,7 +189,7 @@ func (c *VaultCommand) Run(args []string) int {
 
 	}
 
-	if ok := extraVaultFlagsHandlingFunc(c, f, &opts); !ok {
+	if ok := extraVaultGenericFlagsHandlingFunc(c, f, &opts); !ok {
 		return base.CommandUserError
 	}
 
@@ -203,7 +203,7 @@ func (c *VaultCommand) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		createResult, err = credentiallibrariesClient.Create(c.Context, "vault", c.FlagCredentialStoreId, opts...)
+		createResult, err = credentiallibrariesClient.Create(c.Context, "vault-generic", c.FlagCredentialStoreId, opts...)
 		if exitCode := c.checkFuncError(err); exitCode > 0 {
 			return exitCode
 		}
@@ -220,12 +220,12 @@ func (c *VaultCommand) Run(args []string) int {
 
 	}
 
-	resp, item, err = executeExtraVaultActions(c, resp, item, err, credentiallibrariesClient, version, opts)
+	resp, item, err = executeExtraVaultGenericActions(c, resp, item, err, credentiallibrariesClient, version, opts)
 	if exitCode := c.checkFuncError(err); exitCode > 0 {
 		return exitCode
 	}
 
-	output, err := printCustomVaultActionOutput(c)
+	output, err := printCustomVaultGenericActionOutput(c)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
@@ -251,7 +251,7 @@ func (c *VaultCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *VaultCommand) checkFuncError(err error) int {
+func (c *VaultGenericCommand) checkFuncError(err error) int {
 	if err == nil {
 		return 0
 	}
@@ -264,12 +264,12 @@ func (c *VaultCommand) checkFuncError(err error) int {
 }
 
 var (
-	extraVaultActionsFlagsMapFunc = func() map[string][]string { return nil }
-	extraVaultSynopsisFunc        = func(*VaultCommand) string { return "" }
-	extraVaultFlagsFunc           = func(*VaultCommand, *base.FlagSets, *base.FlagSet) {}
-	extraVaultFlagsHandlingFunc   = func(*VaultCommand, *base.FlagSets, *[]credentiallibraries.Option) bool { return true }
-	executeExtraVaultActions      = func(_ *VaultCommand, inResp *api.Response, inItem *credentiallibraries.CredentialLibrary, inErr error, _ *credentiallibraries.Client, _ uint32, _ []credentiallibraries.Option) (*api.Response, *credentiallibraries.CredentialLibrary, error) {
+	extraVaultGenericActionsFlagsMapFunc = func() map[string][]string { return nil }
+	extraVaultGenericSynopsisFunc        = func(*VaultGenericCommand) string { return "" }
+	extraVaultGenericFlagsFunc           = func(*VaultGenericCommand, *base.FlagSets, *base.FlagSet) {}
+	extraVaultGenericFlagsHandlingFunc   = func(*VaultGenericCommand, *base.FlagSets, *[]credentiallibraries.Option) bool { return true }
+	executeExtraVaultGenericActions      = func(_ *VaultGenericCommand, inResp *api.Response, inItem *credentiallibraries.CredentialLibrary, inErr error, _ *credentiallibraries.Client, _ uint32, _ []credentiallibraries.Option) (*api.Response, *credentiallibraries.CredentialLibrary, error) {
 		return inResp, inItem, inErr
 	}
-	printCustomVaultActionOutput = func(*VaultCommand) (bool, error) { return false, nil }
+	printCustomVaultGenericActionOutput = func(*VaultGenericCommand) (bool, error) { return false, nil }
 )

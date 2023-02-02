@@ -10,6 +10,10 @@ function create_static_credential_store() {
     -scope-id $sid
 }
 
+function create_vault_credential_store() {
+  boundary credential-stores create vault $@
+}
+
 function read_credential_store() {
   boundary credential-stores read -id $1 -format json
 }
