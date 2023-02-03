@@ -690,8 +690,8 @@ func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibra
 			if vaultIn.GetHttpRequestBody() != nil {
 				attrs.HttpRequestBody = wrapperspb.String(string(vaultIn.GetHttpRequestBody()))
 			}
-			out.Attrs = &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-				VaultCredentialLibraryAttributes: attrs,
+			out.Attrs = &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+				VaultGenericCredentialLibraryAttributes: attrs,
 			}
 		}
 	case vault.SSHCertificateLibrarySubtype:

@@ -39,6 +39,17 @@ export NEW_VAULT_LIB="test_vault"
     -vault-http-method GET
   echo "$output"
   [ "$status" -eq 0 ]
+
+  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
+  run read_credential_library $clid
+  echo "$output"
+  [ "$status" -eq 0 ]
+  got=$(echo "$output")
+
+  run field_eq "$got" ".item.attributes.path" '"/kv/secret"'
+  [ "$status" -eq 0 ]
+  run field_eq "$got" ".item.attributes.http_method" '"GET"'
+  [ "$status" -eq 0 ]
 }
 
 @test "boundary/credential-libraries: can not create already created $NEW_VAULT_LIB vault-generic libary" {
@@ -91,6 +102,17 @@ export NEW_VAULT_LIB="test_vault"
     -vault-path /kv/secret \
     -vault-http-method GET
   echo "$output"
+  [ "$status" -eq 0 ]
+
+  local clid=$(credential_library_id $NEW_VAULT_LIB $csid)
+  run read_credential_library $clid
+  echo "$output"
+  [ "$status" -eq 0 ]
+  got=$(echo "$output")
+
+  run field_eq "$got" ".item.attributes.path" '"/kv/secret"'
+  [ "$status" -eq 0 ]
+  run field_eq "$got" ".item.attributes.http_method" '"GET"'
   [ "$status" -eq 0 ]
 }
 

@@ -68,8 +68,8 @@ func TestList(t *testing.T) {
 			Version:           l.GetVersion(),
 			Type:              vault.GenericLibrarySubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
-			Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-				VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+			Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+				VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 					Path:       wrapperspb.String(l.GetVaultPath()),
 					HttpMethod: wrapperspb.String(l.GetHttpMethod()),
 				},
@@ -198,8 +198,8 @@ func TestList_Attributes(t *testing.T) {
 			Version:           l.GetVersion(),
 			Type:              vault.GenericLibrarySubtype.String(),
 			AuthorizedActions: testAuthorizedActions,
-			Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-				VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+			Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+				VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 					Path:       wrapperspb.String(l.GetVaultPath()),
 					HttpMethod: wrapperspb.String(l.GetHttpMethod()),
 				},
@@ -235,7 +235,7 @@ func TestList_Attributes(t *testing.T) {
 	}{
 		{
 			name:    "Filter on Attribute Generic Library",
-			req:     &pbs.ListCredentialLibrariesRequest{CredentialStoreId: storeGeneric.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/path"==%q`, wantLibrariesGeneric[2].GetVaultCredentialLibraryAttributes().GetPath().Value)},
+			req:     &pbs.ListCredentialLibrariesRequest{CredentialStoreId: storeGeneric.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/path"==%q`, wantLibrariesGeneric[2].GetVaultGenericCredentialLibraryAttributes().GetPath().Value)},
 			res:     &pbs.ListCredentialLibrariesResponse{Items: wantLibrariesGeneric[2:3]},
 			anonRes: &pbs.ListCredentialLibrariesResponse{}, // anonymous user does not have access to attributes
 		},
@@ -314,8 +314,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{},
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{},
 				},
 			}},
 			idPrefix: vault.CredentialLibraryPrefix + "_",
@@ -327,8 +327,8 @@ func TestCreate(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
 				Id:                vault.CredentialLibraryPrefix + "_notallowed",
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -342,8 +342,8 @@ func TestCreate(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
 				CreatedTime:       timestamppb.Now(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -357,8 +357,8 @@ func TestCreate(t *testing.T) {
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
 				UpdatedTime:       timestamppb.Now(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -371,8 +371,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              "static",
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -384,8 +384,8 @@ func TestCreate(t *testing.T) {
 			name: "parent id must be included",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				Type: vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -398,8 +398,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path:            wrapperspb.String("something"),
 						HttpRequestBody: wrapperspb.String("foo"),
 					},
@@ -413,8 +413,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path:       wrapperspb.String("something"),
 						HttpMethod: wrapperspb.String("PATCH"),
 					},
@@ -428,8 +428,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path:            wrapperspb.String("something"),
 						HttpRequestBody: wrapperspb.String("foo"),
 					},
@@ -443,8 +443,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -458,8 +458,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -482,8 +482,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path:            wrapperspb.String("something"),
 						HttpMethod:      wrapperspb.String("post"),
 						HttpRequestBody: wrapperspb.String("foo"),
@@ -501,8 +501,8 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
 					Type:              vault.GenericLibrarySubtype.String(),
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:            wrapperspb.String("something"),
 							HttpMethod:      wrapperspb.String("POST"),
 							HttpRequestBody: wrapperspb.String("foo"),
@@ -519,8 +519,8 @@ func TestCreate(t *testing.T) {
 				Type:              vault.GenericLibrarySubtype.String(),
 				Name:              &wrapperspb.StringValue{Value: "name"},
 				Description:       &wrapperspb.StringValue{Value: "desc"},
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -538,8 +538,8 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
 					Type:              vault.GenericLibrarySubtype.String(),
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
@@ -553,8 +553,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -571,8 +571,8 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
 					Type:              vault.GenericLibrarySubtype.String(),
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
@@ -587,8 +587,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -613,8 +613,8 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
 					Type:              vault.GenericLibrarySubtype.String(),
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
@@ -637,8 +637,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -664,8 +664,8 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
 					Type:              vault.GenericLibrarySubtype.String(),
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
@@ -689,8 +689,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -707,8 +707,8 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
 					Type:              vault.GenericLibrarySubtype.String(),
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
@@ -723,8 +723,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -751,8 +751,8 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
 					Type:              vault.GenericLibrarySubtype.String(),
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
@@ -777,8 +777,8 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.Subtype.String(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
@@ -794,8 +794,8 @@ func TestCreate(t *testing.T) {
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
 					Type:              vault.GenericLibrarySubtype.String(),
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String("something"),
 							HttpMethod: wrapperspb.String("GET"),
 						},
@@ -916,8 +916,8 @@ func TestGet(t *testing.T) {
 					CreatedTime:       unspecifiedLib.CreateTime.GetTimestamp(),
 					UpdatedTime:       unspecifiedLib.UpdateTime.GetTimestamp(),
 					Version:           1,
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String(unspecifiedLib.GetVaultPath()),
 							HttpMethod: wrapperspb.String(unspecifiedLib.GetHttpMethod()),
 						},
@@ -938,8 +938,8 @@ func TestGet(t *testing.T) {
 					CreatedTime:       userPassLib.CreateTime.GetTimestamp(),
 					UpdatedTime:       userPassLib.UpdateTime.GetTimestamp(),
 					Version:           1,
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String(userPassLib.GetVaultPath()),
 							HttpMethod: wrapperspb.String(userPassLib.GetHttpMethod()),
 						},
@@ -970,8 +970,8 @@ func TestGet(t *testing.T) {
 					CreatedTime:       sshPkLib.CreateTime.GetTimestamp(),
 					UpdatedTime:       sshPkLib.UpdateTime.GetTimestamp(),
 					Version:           1,
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path:       wrapperspb.String(sshPkLib.GetVaultPath()),
 							HttpMethod: wrapperspb.String(sshPkLib.GetHttpMethod()),
 						},
@@ -1191,8 +1191,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask(httpMethodField),
 				Item: &pb.CredentialLibrary{
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							HttpMethod: wrapperspb.String("pOsT"),
 						},
 					},
@@ -1200,8 +1200,8 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				out.GetVaultCredentialLibraryAttributes().Path = wrapperspb.String("vault/path")
-				out.GetVaultCredentialLibraryAttributes().HttpMethod = wrapperspb.String("POST")
+				out.GetVaultGenericCredentialLibraryAttributes().Path = wrapperspb.String("vault/path")
+				out.GetVaultGenericCredentialLibraryAttributes().HttpMethod = wrapperspb.String("POST")
 				return out
 			},
 		},
@@ -1210,8 +1210,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask(httpRequestBodyField, httpMethodField),
 				Item: &pb.CredentialLibrary{
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							HttpMethod:      wrapperspb.String("pOsT"),
 							HttpRequestBody: wrapperspb.String("body"),
 						},
@@ -1220,9 +1220,9 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				out.GetVaultCredentialLibraryAttributes().Path = wrapperspb.String("vault/path")
-				out.GetVaultCredentialLibraryAttributes().HttpMethod = wrapperspb.String("POST")
-				out.GetVaultCredentialLibraryAttributes().HttpRequestBody = wrapperspb.String("body")
+				out.GetVaultGenericCredentialLibraryAttributes().Path = wrapperspb.String("vault/path")
+				out.GetVaultGenericCredentialLibraryAttributes().HttpMethod = wrapperspb.String("POST")
+				out.GetVaultGenericCredentialLibraryAttributes().HttpRequestBody = wrapperspb.String("body")
 				return out
 			},
 		},
@@ -1231,8 +1231,8 @@ func TestUpdate(t *testing.T) {
 			req: &pbs.UpdateCredentialLibraryRequest{
 				UpdateMask: fieldmask(vaultPathField),
 				Item: &pb.CredentialLibrary{
-					Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-						VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 							Path: wrapperspb.String("something"),
 						},
 					},
@@ -1240,7 +1240,7 @@ func TestUpdate(t *testing.T) {
 			},
 			res: func(in *pb.CredentialLibrary) *pb.CredentialLibrary {
 				out := proto.Clone(in).(*pb.CredentialLibrary)
-				out.GetVaultCredentialLibraryAttributes().Path = wrapperspb.String("something")
+				out.GetVaultGenericCredentialLibraryAttributes().Path = wrapperspb.String("something")
 				return out
 			},
 		},
@@ -1813,8 +1813,8 @@ func TestUpdate(t *testing.T) {
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpRequestBodyField}},
 			Item: &pb.CredentialLibrary{
 				Version: vl.GetVersion(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						HttpRequestBody: wrapperspb.String("body"),
 					},
 				},
@@ -1829,8 +1829,8 @@ func TestUpdate(t *testing.T) {
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpMethodField}},
 			Item: &pb.CredentialLibrary{
 				Version: vl.GetVersion(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						HttpMethod: wrapperspb.String("POST"),
 					},
 				},
@@ -1838,7 +1838,7 @@ func TestUpdate(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, cl)
-		require.Equal(t, "POST", cl.GetItem().GetVaultCredentialLibraryAttributes().GetHttpMethod().Value)
+		require.Equal(t, "POST", cl.GetItem().GetVaultGenericCredentialLibraryAttributes().GetHttpMethod().Value)
 
 		// Can set request body on POST
 		cl, err = s.UpdateCredentialLibrary(ctx, &pbs.UpdateCredentialLibraryRequest{
@@ -1846,8 +1846,8 @@ func TestUpdate(t *testing.T) {
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{httpRequestBodyField}},
 			Item: &pb.CredentialLibrary{
 				Version: cl.Item.GetVersion(),
-				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
-					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						HttpRequestBody: wrapperspb.String("body"),
 					},
 				},
@@ -1855,8 +1855,8 @@ func TestUpdate(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, cl)
-		require.Equal(t, "POST", cl.GetItem().GetVaultCredentialLibraryAttributes().GetHttpMethod().Value)
-		require.Equal(t, "body", cl.GetItem().GetVaultCredentialLibraryAttributes().GetHttpRequestBody().Value)
+		require.Equal(t, "POST", cl.GetItem().GetVaultGenericCredentialLibraryAttributes().GetHttpMethod().Value)
+		require.Equal(t, "body", cl.GetItem().GetVaultGenericCredentialLibraryAttributes().GetHttpRequestBody().Value)
 
 		// Cannot unset POST method (defaulting to GET) when request body is set
 		_, err = s.UpdateCredentialLibrary(ctx, &pbs.UpdateCredentialLibraryRequest{
@@ -1878,8 +1878,8 @@ func TestUpdate(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		require.NotNil(t, cl)
-		assert.Equal(t, "GET", cl.GetItem().GetVaultCredentialLibraryAttributes().GetHttpMethod().Value)
-		assert.Nil(t, cl.GetItem().GetVaultCredentialLibraryAttributes().GetHttpRequestBody())
+		assert.Equal(t, "GET", cl.GetItem().GetVaultGenericCredentialLibraryAttributes().GetHttpMethod().Value)
+		assert.Nil(t, cl.GetItem().GetVaultGenericCredentialLibraryAttributes().GetHttpRequestBody())
 	})
 }
 
