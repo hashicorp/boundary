@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- target tests teh whx_user_dimension_target view.
 begin;
   select plan(2);

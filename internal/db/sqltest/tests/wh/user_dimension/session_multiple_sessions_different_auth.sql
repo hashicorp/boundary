@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- session_multiple_sessions_differnt_auth tests the wh_user_dimesion when
 -- multiple sessions are created using the same user
 -- but different auth accounts.

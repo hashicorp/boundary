@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
   -- The whx_credential_dimension_source and whx_credential_dimension_target views are used
   -- by an insert trigger to determine if the current row for the dimension has

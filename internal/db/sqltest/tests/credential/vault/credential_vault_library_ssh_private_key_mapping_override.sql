@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 --  credential_vault_library_ssh_private_key_mapping_override tests:
 --   the following triggers
 --    insert_credential_vault_library_mapping_override_subtype

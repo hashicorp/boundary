@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- source tests the whx_credential_dimension_source view.
 begin;
   select plan(1);

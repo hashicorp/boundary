@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 # This is a default configuration provided for our Docker image. It's meant to
 # be a starting point and to help new users get started. It's strongly
 # recommended that this configuration is not used outside of demonstrations

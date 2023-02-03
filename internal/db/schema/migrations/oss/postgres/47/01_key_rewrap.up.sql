@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- make the required schema changes to upgrade the dependency:
 -- github.com/hashicorp/go-kms-wrapping/extras/kms/v2
 -- this migration is from:

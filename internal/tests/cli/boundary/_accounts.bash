@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 function create_account() {
   export BP="${DEFAULT_PASSWORD}"
   boundary accounts create password -login-name $1 -password env://BP -auth-method-id $DEFAULT_AMPW

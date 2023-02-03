@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- password_auth_description_change tests the wh_user_dimesion when
 -- sessions are created using the password auth method
 -- after the auth_password_account has its description change.

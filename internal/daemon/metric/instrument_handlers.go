@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package metric provides functions to initialize the controller specific
 // collectors and hooks to measure metrics and update the relevant collectors.
 package metric

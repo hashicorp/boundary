@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- three_credentials_one_change tests that:
 --  when a session with three credentials is created
 --  three wh_credential_dimensions are created

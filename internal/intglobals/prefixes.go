@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package intglobals
 
 // This set of consts is intended to be a place to collect commonly-used

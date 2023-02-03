@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 # Infrastructure
 variable "aws_ssh_keypair_name" {
   description = "Name of the AWS keypair Enos will use to connect"

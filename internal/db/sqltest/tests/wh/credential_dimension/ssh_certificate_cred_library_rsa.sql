@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- ssh_certificate_cred_library tests the wh_credential_dimension when
 -- sessions are created with targets that use a vault ssh cert credential library with rsa key type
 begin;

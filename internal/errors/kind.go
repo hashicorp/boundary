@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package errors
 
 // Kind specifies the kind of error (unknown, parameter, integrity, etc).

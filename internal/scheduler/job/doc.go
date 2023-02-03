@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package job provides a Job and a Run struct suitable for persisting to
 // the repository.
 //

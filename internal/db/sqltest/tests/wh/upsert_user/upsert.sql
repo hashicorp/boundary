@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- upsert tests that the wh_upsert_user function will do an update when
 -- an existing source wh_user_dimension exists.
 begin;

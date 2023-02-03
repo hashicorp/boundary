@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 export BOUNDARY_ADDR="${BOUNDARY_ADDR:-http://127.0.0.1:9200}"
 export DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-password}"
 export DEFAULT_LOGIN="${DEFAULT_LOGIN:-admin}"

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
 -- Updating definition from 16/05_wh_credential_dimension.up.sql
 -- Remove call to wh_rollup_connections(new.session_id) from function
