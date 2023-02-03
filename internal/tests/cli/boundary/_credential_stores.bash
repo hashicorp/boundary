@@ -19,7 +19,7 @@ function read_credential_store() {
 }
 
 function delete_credential_store() {
-  boundary credential-stores delete -id $1
+  boundary credential-stores delete -id $1 -format json
 }
 
 function list_credential_stores() {

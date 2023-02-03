@@ -24,11 +24,18 @@ function strip_all() {
 function has_status_code() {
   local json=$1
   local code=$2
-  if [ echo "$json"|jq -c ".status_code == $code" ]; then
-    return 1
-  fi
+  echo "checking .status_code == $code in $json"
+  echo "$json" | jq -e ".status_code == $code"
 }
 
 diag() {
     echo "$@" | sed -e 's/^/# /' >&3 ;
+}
+
+function field_eq() {
+    local json=$1
+    local field=$2
+    local expected=$3
+    echo "checking $field == $expected in $json"
+    echo "$json" | jq -e "$field == $expected"
 }

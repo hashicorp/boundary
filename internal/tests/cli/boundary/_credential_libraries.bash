@@ -5,6 +5,11 @@ function create_vault_ssh_certificate_library() {
     create vault-ssh-certificate $@
 }
 
+function update_vault_ssh_certificate_library() {
+  boundary credential-libraries \
+    update vault-ssh-certificate $@
+}
+
 function create_vault_generic_library() {
   boundary credential-libraries \
     create vault-generic $@
@@ -20,7 +25,7 @@ function read_credential_library() {
 }
 
 function delete_credential_library() {
-  boundary credential-libraries delete -id $1
+  boundary credential-libraries delete -id $1 -format json
 }
 
 function list_credential_libraries() {

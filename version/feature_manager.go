@@ -23,22 +23,40 @@ type Feature int
 const (
 	UnknownFeature Feature = iota
 	MultiHopSessionFeature
+	IncludeStatusInCli
 )
 
 var featureMap map[Feature]MetadataConstraint
 
+// Binary is the version of the running binary.
+// This can be used for feature checks.
+var Binary *gvers.Version
+
 func init() {
+	// Do this early to ensure version is valid, if this panics something is
+	// very broken with the version and any version checks based on the binary's
+	// version info will not work correctly. Also do this once since the version
+	// can't change while running.
+	var err error
+	Binary, err = GetReleaseVersion()
+	if err != nil {
+		panic(err)
+	}
+
 	if featureMap == nil {
 		featureMap = make(map[Feature]MetadataConstraint)
 	}
 	/*
 		Add constraints here following this format after adding a Feature to the Feature iota:
-		featureConstraint, err := gvers.NewConstraint(">= 0.1.0") // This feature exists at 0.1.0 and above
 		featureMap[FEATURE] = MetadataConstraint{
 			MetaInfo:    []Metadata{OSS, HCP},
-			Constraints: featureConstraint,
+			Constraints: mustNewConstraints(">= 0.1.0"), // This feature exists at 0.1.0 and above
 		}
 	*/
+	featureMap[IncludeStatusInCli] = MetadataConstraint{
+		MetaInfo:    []Metadata{OSS, HCP},
+		Constraints: mustNewConstraints("< 0.14.0"),
+	}
 }
 
 func metadataStringToMetadata(m string) Metadata {
@@ -47,6 +65,14 @@ func metadataStringToMetadata(m string) Metadata {
 	}
 
 	return OSS
+}
+
+func mustNewConstraints(v string) gvers.Constraints {
+	c, err := gvers.NewConstraint(v)
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
 
 // Check returns a bool indicating if a version meets the metadata constraint

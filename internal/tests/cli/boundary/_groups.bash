@@ -9,7 +9,7 @@ function read_group() {
 }
 
 function delete_group() {
-  boundary groups delete -id $1
+  boundary groups delete -id $1 -format json
 }
 
 function list_groups() {
@@ -27,7 +27,7 @@ function group_id() {
 
 function group_member_ids() {
   local gid=$1
-  boundary groups read -id $gid -format json | jq '.item["members"][]["id"]'  
+  boundary groups read -id $gid -format json | jq '.item["members"][]["id"]'
 }
 
 function group_has_member_id() {
@@ -36,10 +36,10 @@ function group_has_member_id() {
   ids=$(group_member_ids $gid)
   for id in $ids; do
     if [ $(strip "$id") == "$mid" ]; then
-      return 0 
+      return 0
     fi
   done
-  return 1 
+  return 1
 }
 
 function has_default_group_actions() {
@@ -51,6 +51,6 @@ function has_default_group_actions() {
     $(has_authorized_action "$out" "$action") || {
       echo "failed to find $action action in output: $out"
       return 1
-    } 
+    }
   done
 }
