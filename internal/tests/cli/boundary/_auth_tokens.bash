@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 function read_token() {
   if [[ "x$1" == "x" ]]
   then

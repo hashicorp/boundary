@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 // Example variable inputs. Set these to valid values and uncomment them before
 // running scenarios.
 

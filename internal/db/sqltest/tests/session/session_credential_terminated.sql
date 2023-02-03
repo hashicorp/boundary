@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- session_credential tests:
 --   the following triggers
 --    delete_session_credentials

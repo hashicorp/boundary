@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package dbassert provides a set of assertions for testing the boundary database
 // applications.
 //

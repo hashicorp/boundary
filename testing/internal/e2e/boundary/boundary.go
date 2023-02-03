@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package boundary provides methods for commonly used boundary actions that are used in end-to-end tests.
 package boundary
 

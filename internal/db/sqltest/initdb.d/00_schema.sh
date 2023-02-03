@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 #
 # This script is designed to run as an init script in a postgres docker container.
 # The docker-entrypoint.sh script does not traverse a nested directory

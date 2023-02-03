@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package edition provides internal structs for the schema package for
 // defining and organizing database migration editions.
 package edition

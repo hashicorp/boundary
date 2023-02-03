@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 # This file defines the breaking change configuration we use for
 # files for which we require only JSON level compatibility checks,
 # such as those used to describe the HTTP/JSON API we expose to the CLI,

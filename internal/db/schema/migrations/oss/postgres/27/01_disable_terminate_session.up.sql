@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
 -- Replaces function from 0/51_connection.up.sql
 -- Remove call to terminate_session_if_possible

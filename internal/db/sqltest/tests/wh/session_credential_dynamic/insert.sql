@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 --- insert tests a simple insert of session_credential_dynamic
 begin;
   select plan(6);

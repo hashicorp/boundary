@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 variable "repository" {
   description = "The GitHub repository, either boundary, boundary-enterprise, or boundary-hcp"
   type        = string

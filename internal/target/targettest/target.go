@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package targettest provides a test target subtype for use by the target
 // package.  Note that it leverages the tcp.Target's database table to avoid
 // needing schema migrations just for tests.

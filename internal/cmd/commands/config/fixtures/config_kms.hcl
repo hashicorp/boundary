@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 kms "aead" {
   purpose = "config"
   aead_type = "aes-gcm"

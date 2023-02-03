@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
   -- wtt_load populates tables for the given test persona and set of aggregates.
   -- Valid personas are:

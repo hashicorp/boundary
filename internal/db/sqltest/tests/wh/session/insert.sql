@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- insert tests that a wh_session_accumulating_fact is created when
 -- a session is created.
 begin;

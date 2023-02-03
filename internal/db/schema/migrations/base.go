@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package migrations contains the base sql statements needed to bootstrap the
 // migration process. These statements setup the tables necessary for tracking
 // the state of migrations.

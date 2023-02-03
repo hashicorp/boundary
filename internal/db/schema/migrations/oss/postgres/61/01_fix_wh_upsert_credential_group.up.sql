@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
 
   drop trigger wh_insert_stmt_session_credential_dynamic on session_credential_dynamic;

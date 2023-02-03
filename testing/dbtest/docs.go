@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package dbtest provides a way to create a clean database for tests using
 // template databases.  For it to function properly a postgres database server
 // must be running with the expected templates.  This is typically done using
