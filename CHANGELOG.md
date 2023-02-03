@@ -83,6 +83,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   cases it would use `status`. Now `status_code` is used in both cases. In
   error cases `status` is still populated, see the deprecations above for
   more details. ([PR](https://github.com/hashicorp/boundary/pull/2887))
+* database: Add job that automatically cleans up completed runs in the `job_run` table.
+  ([PR](https://github.com/hashicorp/boundary/pull/2866))
 
 ## 0.11.2 (2022/12/09)
 
