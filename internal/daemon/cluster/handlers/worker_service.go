@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	dcommon "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -23,8 +23,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 )
-
-const ManagedWorkerTagKey = "boundary.cloud.hashicorp.com:managed"
 
 type workerServiceServer struct {
 	pbs.UnsafeServerCoordinationServiceServer
@@ -44,7 +42,7 @@ var (
 	_ pbs.SessionServiceServer            = &workerServiceServer{}
 	_ pbs.ServerCoordinationServiceServer = &workerServiceServer{}
 
-	workerFilterSelectionFn = workerFilterSelector
+	workerFilterSelectionFn = egressFilterSelector
 	// connectionRouteFn returns a route to the egress worker.  If the requester
 	// is the egress worker a route of length 1 is returned. A route of
 	// length 0 is never returned unless there is an error.
@@ -59,8 +57,8 @@ var (
 )
 
 // singleHopConnectionRoute returns a route consisting of the singlehop worker (the root worker id)
-func singleHopConnectionRoute(_ context.Context, rootInfo server.RootInfo, _ *session.AuthzSummary, _ *server.Repository, _ common.Downstreamers) ([]string, error) {
-	return []string{rootInfo.RootId}, nil
+func singleHopConnectionRoute(_ context.Context, w *server.Worker, _ *session.Session, _ *session.AuthzSummary, _ *server.Repository, _ common.Downstreamers) ([]string, error) {
+	return []string{w.GetPublicId()}, nil
 }
 
 func NewWorkerServiceServer(
@@ -289,7 +287,7 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 
 	resp.Workers = make([]*pbs.WorkerInfo, 0, len(workers))
 	for _, worker := range workers {
-		vals := worker.CanonicalTags()[ManagedWorkerTagKey]
+		vals := worker.CanonicalTags()[dcommon.ManagedWorkerTag]
 		if len(vals) == 1 && vals[0] == "true" {
 			resp.Workers = append(resp.Workers, &pbs.WorkerInfo{
 				Id:      worker.GetPublicId(),
@@ -303,7 +301,7 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 
 // Single-hop filter lookup. We have either an egress filter or worker filter to use, if any
 // Used to verify that the worker serving this session to a client matches this filter
-func workerFilterSelector(sessionInfo *session.Session) string {
+func egressFilterSelector(sessionInfo *session.Session) string {
 	if sessionInfo.EgressWorkerFilter != "" {
 		return sessionInfo.EgressWorkerFilter
 	} else if sessionInfo.WorkerFilter != "" {
@@ -317,26 +315,17 @@ func noProtocolContext(context.Context, *session.Repository, *server.Repository,
 	return nil, nil
 }
 
-func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session, ws *workerServiceServer,
+func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session, authzSummary *session.AuthzSummary, ws *workerServiceServer,
 	req *pbs.LookupSessionRequest,
 ) error {
 	const op = "workers.lookupSessionEgressWorkerFilter"
 
-	filter := workerFilterSelectionFn(sessionInfo)
-	if filter == "" {
-		return nil
-	}
-
-	if req.WorkerId == "" {
-		event.WriteError(ctx, op, errors.New("worker filter enabled for session but got no id information from worker"))
-		return status.Errorf(codes.Internal, "Did not receive worker id when looking up session but filtering is enabled")
-	}
 	serversRepo, err := ws.serversRepoFn()
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting server repo"))
 		return status.Errorf(codes.Internal, "Error acquiring server repo when looking up session: %v", err)
 	}
-	w, err := serversRepo.LookupWorker(ctx, req.WorkerId)
+	w, err := serversRepo.LookupWorker(ctx, req.GetWorkerId())
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
 		return status.Errorf(codes.Internal, "Error looking up worker: %v", err)
@@ -345,6 +334,20 @@ func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error looking up worker", "worker_id", req.WorkerId))
 		return status.Errorf(codes.Internal, "Worker not found")
 	}
+
+	filter := workerFilterSelectionFn(sessionInfo)
+	if filter == "" {
+		// Verify that this ingress worker can build a route to the endpoint safely
+		// While the AuthorizeSession may have done a similar check, this makes sure
+		// we can select a worker for egress that wouldn't potentially grant access
+		// to a private ip address in the network of the boundary deployment in the
+		// case of hcp.
+		if _, err := connectionRouteFn(ctx, w, sessionInfo, authzSummary, serversRepo, ws.downstreams); err != nil {
+			return status.Errorf(codes.Internal, "error calculating route to endpoint: %v", err)
+		}
+		return nil
+	}
+
 	// Build the map for filtering.
 	tagMap := w.CanonicalTags()
 
@@ -366,11 +369,24 @@ func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session
 		return handlers.ApiErrorWithCodeAndMessage(codes.FailedPrecondition, "Worker filter expression precludes this worker from serving this session")
 	}
 
+	// Verify that this ingress worker can build a route to the endpoint safely
+	// While the AuthorizeSession may have done a similar check, this makes sure
+	// we can select a worker for egress that wouldn't potentially grant access
+	// to a private ip address in the network of the boundary deployment in the
+	// case of hcp.
+	if _, err = connectionRouteFn(ctx, w, sessionInfo, authzSummary, serversRepo, ws.downstreams); err != nil {
+		return status.Errorf(codes.Internal, "error calculating route to endpoint: %v", err)
+	}
+
 	return nil
 }
 
 func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.LookupSessionRequest) (*pbs.LookupSessionResponse, error) {
 	const op = "workers.(workerServiceServer).LookupSession"
+
+	if req.WorkerId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Did not receive worker id when looking up session")
+	}
 
 	sessRepo, err := ws.sessionRepoFn()
 	if err != nil {
@@ -388,7 +404,7 @@ func (ws *workerServiceServer) LookupSession(ctx context.Context, req *pbs.Looku
 		return nil, status.Error(codes.Internal, "Empty session states during lookup.")
 	}
 
-	err = lookupSessionWorkerFilter(ctx, sessionInfo, ws, req)
+	err = lookupSessionWorkerFilter(ctx, sessionInfo, authzSummary, ws, req)
 	if err != nil {
 		return nil, err
 	}
@@ -509,7 +525,7 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		return nil, status.Errorf(codes.NotFound, "worker not found with name %q", req.GetWorkerId())
 	}
 
-	connectionInfo, connStates, authzSummary, err := session.AuthorizeConnection(ctx, sessionRepo, connectionRepo, req.GetSessionId(), w.GetPublicId())
+	connectionInfo, connStates, err := connectionRepo.AuthorizeConnection(ctx, req.GetSessionId(), w.GetPublicId())
 	if err != nil {
 		return nil, err
 	}
@@ -520,12 +536,15 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		return nil, status.Error(codes.Internal, "Invalid connection state in authorize response.")
 	}
 
-	rootInfo := server.RootInfo{
-		RootId:  req.GetWorkerId(),
-		RootVer: w.ReleaseVersion,
+	sessInfo, authzSummary, err := sessionRepo.LookupSession(ctx, req.GetSessionId())
+	if err != nil {
+		return nil, err
+	}
+	if sessInfo == nil {
+		return nil, status.Errorf(codes.Internal, "Invalid session info in lookup session response")
 	}
 
-	route, err := connectionRouteFn(ctx, rootInfo, authzSummary, serversRepo, ws.downstreams)
+	route, err := connectionRouteFn(ctx, w, sessInfo, authzSummary, serversRepo, ws.downstreams)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error getting route to egress worker: %v", err)
 	}

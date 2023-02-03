@@ -114,7 +114,7 @@ func TestWorkerList_EgressFilter(t *testing.T) {
 			if len(tc.filter) > 0 {
 				target.EgressWorkerFilter = tc.filter
 			}
-			out, err := AuthorizeSessionWithWorkerFilter(ctx, target, tc.in, nil)
+			out, err := AuthorizeSessionWithWorkerFilter(ctx, target, tc.in, "", nil)
 			if tc.errContains != "" {
 				assert.Contains(err.Error(), tc.errContains)
 				assert.Nil(out)
