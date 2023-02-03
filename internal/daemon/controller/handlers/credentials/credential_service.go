@@ -849,11 +849,14 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 				if err != nil {
 					badFields[objectField] = "Unable to parse given json value"
 				}
-				if !handlers.MaskContainsSubString(req.GetUpdateMask().GetPaths(), objectField) || len(object.AsMap()) <= 0 {
+				if !handlers.MaskContainsPrefix(req.GetUpdateMask().GetPaths(), objectField) {
+					badFields[objectField] = "This is a required field and cannot be set to empty."
+				}
+				if len(object.AsMap()) == 0 {
 					badFields[objectField] = "This is a required field and cannot be set to empty."
 				}
 			}
-			if handlers.MaskContainsSubString(req.GetUpdateMask().GetPaths(), objectField) && object == nil {
+			if handlers.MaskContainsPrefix(req.GetUpdateMask().GetPaths(), objectField) && object == nil {
 				badFields[objectField] = "This is a required field and cannot be set to empty."
 			}
 
