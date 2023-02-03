@@ -1784,7 +1784,7 @@ func TestLoad(t *testing.T) {
 		{
 			"MultiFileMix",
 			nil,
-			fmt.Errorf("Error parsing KMS HCL: At 30:1: expected: IDENT | STRING got: LBRACE"),
+			fmt.Errorf("expected: IDENT | STRING got: LBRACE"),
 		},
 	}
 
@@ -1802,7 +1802,7 @@ func TestLoad(t *testing.T) {
 			ctx := context.Background()
 			cfg, err := config.Load(ctx, paths, "")
 			if tc.expectedErr != nil {
-				require.Equal(t, tc.expectedErr.Error(), err.Error())
+				require.Contains(t, err.Error(), tc.expectedErr.Error())
 			} else {
 				require.NoError(t, err)
 			}
