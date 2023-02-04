@@ -189,6 +189,30 @@ begin;
       ('kdkv___widget', 'aoa___walter', 'oidc__walter', 'oidc__walter'::bytea),
       ('kdkv___widget', 'aoa___warren', 'oidc__warren', 'oidc__warren'::bytea);
 
+    insert into auth_ldap_method
+      (scope_id,       public_id,      name,          state)
+    values
+      ('o_____widget', 'alm___widget', 'Widget LDAP', 'active-private');
+    insert into auth_ldap_url
+      (ldap_method_id, url,             connection_priority)
+    values 
+      ('alm___widget', 'ldaps://ldap1', 1);
+
+    insert into auth_ldap_account
+      (auth_method_id, public_id,      name,             description,           full_name, email,                login_name)
+    values
+      ('alm___widget', 'ala___walter', 'walter account', 'Walter LDAP Account', 'Walter',  'walter@widget.test', 'walter'),
+      ('alm___widget', 'ala___warren', 'warren account', 'Warren LDAP Account', null,      null,                 'warren');
+
+    update auth_account set iam_user_id = 'u_____walter' where public_id = 'ala___walter';
+    update auth_account set iam_user_id = 'u_____warren' where public_id = 'ala___warren';
+
+    insert into auth_token
+      (key_id, auth_account_id, public_id, token)
+    values
+      ('kdkv___widget', 'ala___walter', 'ldap__walter', 'ldap__walter'::bytea),
+      ('kdkv___widget', 'ala___warren', 'ldap__warren', 'ldap__warren'::bytea);
+
   end;
   $$ language plpgsql;
 
