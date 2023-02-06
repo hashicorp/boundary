@@ -97,7 +97,8 @@ func InitBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockerte
 }
 
 // GetDbInitInfoFromContainer extracts info from calling `boundary database init` in the specified
-// container. Returns a struct containing the generated info.
+// container.
+// Returns a struct containing the generated info.
 func GetDbInitInfoFromContainer(t testing.TB, pool *dockertest.Pool, container *Container) boundary.DbInitInfo {
 	_, err := pool.Client.WaitContainer(container.Resource.Container.ID)
 	require.NoError(t, err)
@@ -122,8 +123,8 @@ func GetDbInitInfoFromContainer(t testing.TB, pool *dockertest.Pool, container *
 }
 
 // StartBoundary starts a boundary container and spins up an instance of boundary using the
-// specified database at postgresURI. Returns information about the container.
-// Returns information about the container
+// specified database at postgresURI.
+// Returns information about the container.
 func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, postgresURI string) *Container {
 	t.Log("Starting Boundary...")
 
