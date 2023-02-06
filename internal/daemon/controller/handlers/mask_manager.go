@@ -117,3 +117,12 @@ func MaskContains(paths []string, s string) bool {
 	}
 	return false
 }
+
+func MaskContainsPrefix(paths []string, s string) bool {
+	for _, p := range paths {
+		if strings.Contains(p, s) {
+			return true
+		}
+	}
+	return false
+}
