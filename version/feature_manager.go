@@ -67,7 +67,7 @@ func init() {
 		Constraints: mustNewConstraints("< 0.14.0"),
 	}
 	featureMap[ShhIntoTcpTargetAddress] = MetadataConstraint{
-		MetaInfo: []Metadata{OSS, HCP},
+		MetaInfo:    []Metadata{OSS, HCP},
 		Constraints: mustNewConstraints("< 0.14.0"),
 	}
 }
