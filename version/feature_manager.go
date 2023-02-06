@@ -25,6 +25,7 @@ const (
 	MultiHopSessionFeature
 	IncludeStatusInCli
 	CredentialLibraryVaultSubtype
+	ShhIntoTcpTargetAddress
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -60,6 +61,10 @@ func init() {
 	}
 	featureMap[CredentialLibraryVaultSubtype] = MetadataConstraint{
 		MetaInfo:    []Metadata{OSS, HCP},
+		Constraints: mustNewConstraints("< 0.14.0"),
+	}
+	featureMap[ShhIntoTcpTargetAddress] = MetadataConstraint{
+		MetaInfo: []Metadata{OSS, HCP},
 		Constraints: mustNewConstraints("< 0.14.0"),
 	}
 }
