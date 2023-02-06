@@ -51,6 +51,13 @@ TCP targets have the following additional attributes:
 - `default_port` - (optional)
   The default port to set on this target.
 
+- `egress_worker_filter` - (optional)
+  A boolean expression to [filter][] which egress workers can handle sessions
+  for this target.
+  Egress worker filters determine which workers are used to access targets.
+  You can configure an egress filter to enable [multi-hop](/boundary/docs/configuration/worker/pki-worker#multi-hop-workershcp-only) connections.
+  If you do not configure an egress filter, then Boundary uses a single worker to connect to the controller.
+
 - `session_connection_limit` - (required)
   The cumulative number of TCP connections allowed during a session.
   A -1 value means no limit.
