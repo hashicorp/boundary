@@ -24,6 +24,7 @@ const (
 	UnknownFeature Feature = iota
 	MultiHopSessionFeature
 	IncludeStatusInCli
+	CredentialLibraryVaultSubtype
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -54,6 +55,10 @@ func init() {
 		}
 	*/
 	featureMap[IncludeStatusInCli] = MetadataConstraint{
+		MetaInfo:    []Metadata{OSS, HCP},
+		Constraints: mustNewConstraints("< 0.14.0"),
+	}
+	featureMap[CredentialLibraryVaultSubtype] = MetadataConstraint{
 		MetaInfo:    []Metadata{OSS, HCP},
 		Constraints: mustNewConstraints("< 0.14.0"),
 	}
