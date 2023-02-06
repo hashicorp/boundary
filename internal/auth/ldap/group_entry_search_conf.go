@@ -54,8 +54,8 @@ func allocGroupEntrySearchConf() *GroupEntrySearchConf {
 }
 
 // clone a GroupEntrySearchConf
-func (uc *GroupEntrySearchConf) clone() *GroupEntrySearchConf {
-	cp := proto.Clone(uc.GroupEntrySearchConf)
+func (gc *GroupEntrySearchConf) clone() *GroupEntrySearchConf {
+	cp := proto.Clone(gc.GroupEntrySearchConf)
 	return &GroupEntrySearchConf{
 		GroupEntrySearchConf: cp.(*store.GroupEntrySearchConf),
 	}

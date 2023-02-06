@@ -69,19 +69,19 @@ func (bc *BindCredential) SetTableName(n string) {
 }
 
 // encrypt the bind credential before writing it to the database
-func (cc *BindCredential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (bc *BindCredential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "ldap.(BindCredential).encrypt"
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
-	if err := structwrapping.WrapStruct(ctx, cipher, cc.BindCredential); err != nil {
+	if err := structwrapping.WrapStruct(ctx, cipher, bc.BindCredential); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	var err error
-	if cc.KeyId, err = cipher.KeyId(ctx); err != nil {
+	if bc.KeyId, err = cipher.KeyId(ctx); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("failed to read cipher key id"))
 	}
-	if cc.PasswordHmac, err = hmacField(ctx, cipher, cc.Password, cc.LdapMethodId); err != nil {
+	if bc.PasswordHmac, err = hmacField(ctx, cipher, bc.Password, bc.LdapMethodId); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt), errors.WithMsg("failed to hmac password"))
 	}
 
@@ -89,12 +89,12 @@ func (cc *BindCredential) encrypt(ctx context.Context, cipher wrapping.Wrapper) 
 }
 
 // decrypt the bind credential after reading it from the database
-func (cc *BindCredential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (bc *BindCredential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "ldap.(BindCredential).decrypt"
 	if cipher == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing cipher")
 	}
-	if err := structwrapping.UnwrapStruct(ctx, cipher, cc.BindCredential); err != nil {
+	if err := structwrapping.UnwrapStruct(ctx, cipher, bc.BindCredential); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
