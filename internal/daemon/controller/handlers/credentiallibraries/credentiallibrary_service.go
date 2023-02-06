@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
@@ -872,20 +873,43 @@ func validateCreateRequest(req *pbs.CreateCredentialLibraryRequest) error {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetItem().GetCredentialStoreId()) {
 		case vault.Subtype:
-			t := req.GetItem().GetType()
-			if t == "" {
-				badFields[globals.TypeField] = "This is a required field."
-			}
+			var t string
+			if version.SupportsFeature(version.Binary, version.CredentialLibraryVaultSubtype) {
+				t = req.GetItem().GetType()
 
-			// support older vault generic libraries with 'vault.Subtype'.
-			if subtypes.SubtypeFromType(domain, t) == vault.Subtype {
-				req.GetItem().Type = vault.GenericLibrarySubtype.String()
-				t = vault.GenericLibrarySubtype.String()
+				// To support older cli's that do not send a `type`, assume
+				// subtype of vault-generic based on the credential store's subtype.
+				// To support the deprecated subtype 'vault.Subtype', convert it
+				// to vault-generic.
+				if t == "" || subtypes.SubtypeFromType(domain, t) == vault.Subtype {
+					// fallback to assuming subtype from credential store.
+					t = vault.GenericLibrarySubtype.String()
+					req.GetItem().Type = t
+
+					switch req.GetItem().Attrs.(type) {
+					case *pb.CredentialLibrary_Attributes:
+						oldAttrs := req.GetItem().GetAttributes()
+						newAttrs := &pb.VaultCredentialLibraryAttributes{}
+						_ = handlers.StructToProto(oldAttrs, newAttrs)
+						req.GetItem().Attrs = &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+							VaultGenericCredentialLibraryAttributes: newAttrs,
+						}
+					case *pb.CredentialLibrary_VaultCredentialLibraryAttributes:
+						req.GetItem().Attrs = &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+							VaultGenericCredentialLibraryAttributes: req.GetItem().GetVaultCredentialLibraryAttributes(),
+						}
+					}
+				}
+			} else {
+				t = req.GetItem().GetType()
+				if t == "" {
+					badFields[globals.TypeField] = "This is a required field."
+				}
 			}
 
 			if subtypes.SubtypeFromType(domain, t) != vault.GenericLibrarySubtype &&
 				subtypes.SubtypeFromType(domain, t) != vault.SSHCertificateLibrarySubtype {
-				badFields[globals.CredentialStoreIdField] = "If included, type must match that of the credential store."
+				badFields[globals.CredentialStoreIdField] = fmt.Sprintf("Type must be a vault subtype %q or %q", vault.GenericLibrarySubtype.String(), vault.SSHCertificateLibrarySubtype.String())
 			}
 
 			switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
