@@ -81,6 +81,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   more details. ([PR](https://github.com/hashicorp/boundary/pull/2887))
 * database: Add job that automatically cleans up completed runs in the `job_run` table.
   ([PR](https://github.com/hashicorp/boundary/pull/2866))
+* core: Linux packages now have vendor label and set the default label to HashiCorp.
+  This fix is implemented for any future releases, but will not be updated for historical releases.
 
 ## 0.11.2 (2022/12/09)
 
