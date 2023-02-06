@@ -78,30 +78,6 @@ kms "aead" {
 workers. These fields are only valid for [KMS Workers][]. `name` and
 `description` can only be set for PKI workers through the API.
 
-# Multi-Hop Workers<sup>HCP Only</sup>
-
-You can use the `hcp_boundary_cluster_id` field to configure PKI workers to connect to your HCP
-Boundary cluster or the `initial_upstreams` field to connect directly to other workers,
- when set to that worker's `public_addr` field.
-
-A multi-hop configuration is when two or more workers are connected, and there are multiple “hops” from a worker to
-the controller. There are no limits on the amount of workers allowed in a multi-hop configuration.
-
-The multi-hop configuration introduces the concepts of “upstream” and “downstream” workers. If you view controllers
-as the “top” of a multi-hop chain, downstream workers reside below a worker in the chain, while upstream workers reside
-above a worker in the chain. For example, in the diagram below, Worker 2’s upstream is Worker 1, and its
-downstream is Worker 3.
-
-![multi-hop workers](/img/multi-hop-workers.png)
-
-You can deploy multi-hop workers in scenarios where inbound network traffic is not allowed. A worker in a private
-network can send outbound communication to its upstream worker, and create a reverse proxy to establish a session.
-
-You can configure [target worker filters][] with multi-hop workers to allow for fine-grained control on which workers handle
-ingress and egress for session traffic to a [target][]. Ingress worker filters determine which
-workers you connect with to initiate a session, and egress worker filters determine which workers are
-used to access targets.
-
 # Complete Configuration Example
 
 ```hcl
@@ -142,8 +118,6 @@ kms "aead" {
 
 ```
 [kms workers]: /boundary/docs/configuration/worker/kms-worker
-[target]: /boundary/docs/concepts/domain-model/targets
-[target worker filters]: /boundary/docs/concepts/filtering/worker-tags#target-worker-filtering
 
 ## Tutorial
 
