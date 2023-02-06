@@ -1151,6 +1151,48 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
+			name: "update-empty-json",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask(),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_JsonAttributes{
+						JsonAttributes: &pb.JsonAttributes{
+							Object: &structpb.Struct{},
+						},
+					},
+				},
+			},
+			expErrorContains: "This is a required field and cannot be set to empty",
+		},
+		{
+			name: "update-empty-object-json",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.object.password"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_JsonAttributes{
+						JsonAttributes: &pb.JsonAttributes{
+							Object: &structpb.Struct{},
+						},
+					},
+				},
+			},
+			expErrorContains: "This is a required field and cannot be set to empty",
+		},
+		{
+			name: "update-empty-mask-json",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask(),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_JsonAttributes{
+						JsonAttributes: &pb.JsonAttributes{
+							Object: secondSecret,
+						},
+					},
+				},
+			},
+			expErrorContains: "This is a required field and cannot be set to empty",
+		},
+		{
 			name: "update-spk-with-bad-passphrase",
 			req: &pbs.UpdateCredentialRequest{
 				UpdateMask: fieldmask("attributes.private_key", "attributes.private_key_passphrase"),
