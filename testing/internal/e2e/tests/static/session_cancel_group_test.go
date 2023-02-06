@@ -26,6 +26,8 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
+	bc, err := boundary.LoadConfig()
+	require.NoError(t, err)
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
@@ -63,7 +65,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 
 	// Try to connect to the target as a user without permissions
-	boundary.AuthenticateCli(t, ctx, acctName, acctPassword)
+	boundary.AuthenticateCli(t, ctx, bc.AuthMethodId, acctName, acctPassword)
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",

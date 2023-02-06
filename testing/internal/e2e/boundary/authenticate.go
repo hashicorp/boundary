@@ -46,11 +46,11 @@ func AuthenticateAdminCli(t testing.TB, ctx context.Context) {
 	c, err := LoadConfig()
 	require.NoError(t, err)
 
-	AuthenticateCli(t, ctx, c.AdminLoginName, c.AdminLoginPassword)
+	AuthenticateCli(t, ctx, c.AuthMethodId, c.AdminLoginName, c.AdminLoginPassword)
 }
 
 // AuthenticateCli uses the cli to authenticate the specified Boundary instance
-func AuthenticateCli(t testing.TB, ctx context.Context, loginName string, password string) {
+func AuthenticateCli(t testing.TB, ctx context.Context, authMethodId string, loginName string, password string) {
 	c, err := LoadConfig()
 	require.NoError(t, err)
 
@@ -58,7 +58,7 @@ func AuthenticateCli(t testing.TB, ctx context.Context, loginName string, passwo
 		e2e.WithArgs(
 			"authenticate", "password",
 			"-addr", c.Address,
-			"-auth-method-id", c.AuthMethodId,
+			"-auth-method-id", authMethodId,
 			"-login-name", loginName,
 			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
 		),
