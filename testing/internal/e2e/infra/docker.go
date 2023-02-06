@@ -163,7 +163,7 @@ func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Netw
 
 // StartVault starts a vault container.
 // Returns information about the container.
-func StartVault(t testing.TB, pool *dockertest.Pool, network *dockertest.Network) *Container {
+func StartVault(t testing.TB, pool *dockertest.Pool, network *dockertest.Network) (*Container, string) {
 	t.Log("Starting Vault...")
 
 	vaultToken := "boundarytok"
@@ -184,14 +184,13 @@ func StartVault(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 	require.NoError(t, err)
 
 	uriLocalhost := "http://localhost:8200"
-	os.Setenv("VAULT_ADDR", uriLocalhost)
-	os.Setenv("VAULT_TOKEN", vaultToken)
 
 	return &Container{
-		Resource:     resource,
-		UriLocalhost: uriLocalhost,
-		UriNetwork:   "http://vault:8200",
-	}
+			Resource:     resource,
+			UriLocalhost: uriLocalhost,
+			UriNetwork:   "http://vault:8200",
+		},
+		vaultToken
 }
 
 // ConnectToTarget starts a boundary container and attempts to connect to the specified target. The

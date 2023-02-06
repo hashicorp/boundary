@@ -90,10 +90,12 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 	})
 
 	// Start Vault
-	v := infra.StartVault(t, pool, network)
+	v, vaultToken := infra.StartVault(t, pool, network)
 	t.Cleanup(func() {
 		pool.Purge(v.Resource)
 	})
+	os.Setenv("VAULT_ADDR", v.UriLocalhost)
+	os.Setenv("VAULT_TOKEN", vaultToken)
 	t.Log("Waiting for Vault to finish loading...")
 	err = pool.Retry(func() error {
 		response, err := http.Get(v.UriLocalhost)
@@ -143,6 +145,7 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 	t.Cleanup(func() {
 		pool.Purge(b.Resource)
 	})
+	os.Setenv("BOUNDARY_ADDR", b.UriLocalhost)
 
 	buf := bytes.NewBuffer(nil)
 	ebuf := bytes.NewBuffer(nil)
@@ -182,11 +185,6 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 }
 
 func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te TestEnvironment) {
-	os.Setenv("BOUNDARY_ADDR", te.Boundary.UriLocalhost)
-	os.Setenv("E2E_PASSWORD_AUTH_METHOD_ID", te.DbInitInfo.AuthMethod.AuthMethodId)
-	os.Setenv("E2E_PASSWORD_ADMIN_LOGIN_NAME", te.DbInitInfo.AuthMethod.LoginName)
-	os.Setenv("E2E_PASSWORD_ADMIN_PASSWORD", te.DbInitInfo.AuthMethod.Password)
-
 	// Create resources for target. Uses the local CLI so that these methods can be reused.
 	// While the CLI version used won't necessarily match the controller version, it should be (and is
 	// supposed to be) backwards ompatible
