@@ -82,7 +82,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /tmp/test-deps
-          key: enos-test-deps-password-store-1.7.4-vault-1.11.4
+          key: enos-test-deps-password-store-1.7.4-vault-1.12.2
       - name: Debug dep-cache
         run: |
           mkdir -p /tmp/test-deps
