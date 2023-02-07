@@ -1,0 +1,16 @@
+name: schema-diff
+
+on:
+  - pull_request
+
+jobs:
+  schema-diff:
+    name: "Schema Diff"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+      - name: Generate Schema Diff
+        run: |
+          ./scripts/schema-diff.sh "origin/${GITHUB_BASE_REF}"
