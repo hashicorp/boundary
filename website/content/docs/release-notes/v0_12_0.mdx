@@ -46,6 +46,9 @@ You can now create and broker JSON blobs to authorized users at session establis
 
 For more information, refer to the [JSON credentials](/boundary/docs/concepts/domain-model/credentials#json) documentation.
 
+**Job run table maintenance**: A new job was added to automaticaly clean up completed runs from the `job_run` table.
+It deletes any existing completed jobs on a regular interval to improve the speed of index creation, and to help manage the size of your Boundary database.
+
 ## Deprecations and changes
 
 Boundary version 0.12.0 has the following deprecations or changes:
