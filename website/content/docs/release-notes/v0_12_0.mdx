@@ -13,15 +13,43 @@ To learn about what Boundary consists of, we highly recommend you review the [Ge
 
 For instructions on how to upgrade an existing Boundary deployment to v0.12.0, refer to Boundary's [general upgrade guide](/boundary/tutorials/oss-configuration/upgrade-version).
 
+<Note>
+
+  Boundary OSS v0.12.0 will be available to customers before HCP Boundary is.
+  HCP Boundary v0.12.0 specific features will be available shortly.
+
+</Note>
+
 ## Boundary v0.12.0 highlights
 
 The 0.12.0 release adds major new functionality to Boundary.
 Highlights include:
 
+- Reversed-proxying to target networks through multi-hop workers (HCP oly)
+- Credential injection using Vault SSH signed certificates (HCP only)
 - Addresses on targets
 - Authentication improvements
 
 ## New features
+
+**Reverse proxying to target networks using multi-hop sessions (HCP only)**: You can deploy Boundary workers in any public or private network to enable secure access to resources.
+In previous versions workers needed outbound network access to the HCP Boundary control plane, and those workers needed inbound network access from teh client that was trying to establish the session.
+However, many users do not want any inbound access to their private networks, which means that remote users would need to be on the same corporate network or use a VPN to reach the Boundary worker.
+
+We are introducing a feature called multi-hop sessions in version 0.12.0.
+This new feature allows multiple workers to chain together to form reverse-proxy connections.
+Now a worker in a private network only requires outbound network access to reach upstream workers or the control plane.
+Remote users no longer require network access to the private network.
+They only need network access to the client-facing (or "frontline") worker.
+
+**Credential injection using Vault SSH signed certificates (HCP only)**: You can now configure SSH credential injection using Vault's secret engine to create the SSH certificate credentials.
+SSH certificate-based authentication extends key-based authentication using digital signatures
+Your users' authenticity is determined by a certificate signed by a trusted certificate authority (CA).
+You configure Vault's secrets engine to act as the CA.
+Vault is the only supported CA in Boundary version 0.12.0.
+
+SSH certificates let you specify how long they are valid for, who can gain access to a target, how users can log in, and what commands can be used on the target machine.
+SSH certificates are short-lived and self-destructive unlinke SSH key pairs.
 
 **Addresses on targets**: HashiCorp Boundary offers an extensible domain model that allows administrators to organize target resources in a way that best compliments how their organization manages its computing infrastructure.
 But that flexibility could become a hindrance when setting up a quick proof-of-concept and defining a target to create a session.
@@ -67,7 +95,7 @@ Unfortunately, due to a separate defect in the update verification logic for sta
 This meant that targets could use ports attached to host addresses, which was not the intention and lead to confusing behavior across different installations.
 
   In this version, updating static hosts no longer allows ports to be part of the address.
-  When authorizing a session, any port on such a host will be ignored in favor of the default port on the target.
+  Any port on such a host will be ignored in favor of the default port on the target when you authorize a session.
   In Boundary 0.14.0 this will become an error instead.
   This means that the fallback logic for targets that did not have a default port defined is no longer in service.
   All targets must now have a default port defined.
