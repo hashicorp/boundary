@@ -985,7 +985,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	// this is an edge case issue where the hostId cannot be empty when trying to execute an ssh connection
 	// on a tcp target type. By setting the hostId to the targetId value, this will enable support of previous
 	// boundary cli versions.
-	if fm.SupportsFeature(fm.Binary, fm.SshIntoTcpTargetAddress) && t.GetAddress() != "" {
+	if fm.SupportsFeature(fm.Binary, fm.UseTargetIdForHostId) && t.GetAddress() != "" {
 		hostId = t.GetPublicId()
 	}
 

@@ -25,7 +25,7 @@ const (
 	MultiHopSessionFeature
 	IncludeStatusInCli
 	CredentialLibraryVaultSubtype
-	SshIntoTcpTargetAddress
+	UseTargetIdForHostId
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -64,13 +64,11 @@ func init() {
 		Constraints: mustNewConstraints("< 0.14.0"),
 	}
 
-	/*
-		To support old CLI clients that are unaware of host-sourceless targets,
-		this feature populates the target's public id into the AuthorizeSessionResponse
-		and the SessionAuthroizationData so the CLI can properly build the ssh command 
-		when calling boundary connect ssh...
-	*/
-	featureMap[SshIntoTcpTargetAddress] = MetadataConstraint{
+	// UseTargetIdForHostId supports old CLI clients that are unaware of host-sourceless targets,
+	// this feature populates the target's public id into the AuthorizeSessionResponse
+	// and the SessionAuthroizationData so the CLI can properly build the ssh command 
+	// when calling "boundary connect ssh..."
+	featureMap[UseTargetIdForHostId] = MetadataConstraint{
 		MetaInfo:    []Metadata{OSS, HCP},
 		Constraints: mustNewConstraints("< 0.14.0"),
 	}
