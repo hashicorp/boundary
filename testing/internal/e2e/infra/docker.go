@@ -100,7 +100,8 @@ func InitBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockerte
 }
 
 // GetDbInitInfoFromContainer extracts info from calling `boundary database init` in the specified
-// container. Returns a struct containing the generated info.
+// container.
+// Returns a struct containing the generated info.
 func GetDbInitInfoFromContainer(t testing.TB, pool *dockertest.Pool, container *Container) boundary.DbInitInfo {
 	_, err := pool.Client.WaitContainer(container.Resource.Container.ID)
 	require.NoError(t, err)
@@ -125,8 +126,8 @@ func GetDbInitInfoFromContainer(t testing.TB, pool *dockertest.Pool, container *
 }
 
 // StartBoundary starts a boundary container and spins up an instance of boundary using the
-// specified database at postgresURI. Returns information about the container.
-// Returns information about the container
+// specified database at postgresURI.
+// Returns information about the container.
 func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, postgresURI string) *Container {
 	t.Log("Starting Boundary...")
 
@@ -161,6 +162,38 @@ func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Netw
 		UriLocalhost: "http://localhost:9200",
 		UriNetwork:   "http://boundary:9200",
 	}
+}
+
+// StartVault starts a vault container.
+// Returns information about the container.
+func StartVault(t testing.TB, pool *dockertest.Pool, network *dockertest.Network) (*Container, string) {
+	t.Log("Starting Vault...")
+
+	vaultToken := "boundarytok"
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "hashicorp/vault",
+		Tag:        "latest",
+		Env: []string{
+			"VAULT_DEV_ROOT_TOKEN_ID=" + vaultToken,
+		},
+		Name:         "vault",
+		Networks:     []*dockertest.Network{network},
+		ExposedPorts: []string{"8200"},
+		PortBindings: map[docker.Port][]docker.PortBinding{
+			"8200/tcp": {{HostIP: "localhost", HostPort: "8200/tcp"}},
+		},
+		CapAdd: []string{"IPC_LOCK"},
+	})
+	require.NoError(t, err)
+
+	uriLocalhost := "http://localhost:8200"
+
+	return &Container{
+			Resource:     resource,
+			UriLocalhost: uriLocalhost,
+			UriNetwork:   "http://vault:8200",
+		},
+		vaultToken
 }
 
 // ConnectToTarget starts a boundary container and attempts to connect to the specified target. The

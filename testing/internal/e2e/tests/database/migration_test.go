@@ -32,6 +32,7 @@ type TestEnvironment struct {
 	Boundary   *infra.Container
 	Database   *infra.Container
 	Target     *infra.Container
+	Vault      *infra.Container
 	DbInitInfo boundary.DbInitInfo
 }
 
@@ -70,10 +71,16 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 	require.NoError(t, err)
 	err = pool.Client.Ping()
 	require.NoError(t, err)
+	pool.MaxWait = 10 * time.Second
 
-	// This ensures that the latest Boundary image is used
+	// This ensures that the latest images are used
 	err = pool.Client.PullImage(docker.PullImageOptions{
 		Repository: "hashicorp/boundary",
+		Tag:        "latest",
+	}, docker.AuthConfiguration{})
+	require.NoError(t, err)
+	err = pool.Client.PullImage(docker.PullImageOptions{
+		Repository: "hashicorp/vault",
 		Tag:        "latest",
 	}, docker.AuthConfiguration{})
 	require.NoError(t, err)
@@ -85,13 +92,34 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 		require.NoError(t, pool.RemoveNetwork(network))
 	})
 
+	// Start Vault
+	v, vaultToken := infra.StartVault(t, pool, network)
+	t.Cleanup(func() {
+		pool.Purge(v.Resource)
+	})
+	os.Setenv("VAULT_ADDR", v.UriLocalhost)
+	os.Setenv("VAULT_TOKEN", vaultToken)
+	t.Log("Waiting for Vault to finish loading...")
+	err = pool.Retry(func() error {
+		response, err := http.Get(v.UriLocalhost)
+		if err != nil {
+			t.Logf("Could not access Vault URL: %s. Retrying...", err.Error())
+			return err
+		}
+
+		if response.StatusCode != http.StatusOK {
+			return fmt.Errorf("Could not connect to %s. Status Code: %d", v.UriLocalhost, response.StatusCode)
+		}
+
+		return nil
+	})
+	require.NoError(t, err)
+
 	// Start a Boundary database and wait until it's ready
 	db := infra.StartBoundaryDatabase(t, pool, network)
 	t.Cleanup(func() {
 		pool.Purge(db.Resource)
 	})
-
-	pool.MaxWait = 10 * time.Second
 	t.Log("Waiting for database to load...")
 	err = pool.Retry(func() error {
 		db, err := sql.Open("pgx", db.UriLocalhost)
@@ -120,6 +148,7 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 	t.Cleanup(func() {
 		pool.Purge(b.Resource)
 	})
+	os.Setenv("BOUNDARY_ADDR", b.UriLocalhost)
 
 	buf := bytes.NewBuffer(nil)
 	ebuf := bytes.NewBuffer(nil)
@@ -153,20 +182,16 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 		Boundary:   b,
 		Database:   db,
 		Target:     target,
+		Vault:      v,
 		DbInitInfo: dbInitInfo,
 	}
 }
 
 func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te TestEnvironment) {
-	os.Setenv("BOUNDARY_ADDR", te.Boundary.UriLocalhost)
-	os.Setenv("E2E_PASSWORD_AUTH_METHOD_ID", te.DbInitInfo.AuthMethod.AuthMethodId)
-	os.Setenv("E2E_PASSWORD_ADMIN_LOGIN_NAME", te.DbInitInfo.AuthMethod.LoginName)
-	os.Setenv("E2E_PASSWORD_ADMIN_PASSWORD", te.DbInitInfo.AuthMethod.Password)
-
 	// Create resources for target. Uses the local CLI so that these methods can be reused.
 	// While the CLI version used won't necessarily match the controller version, it should be (and is
 	// supposed to be) backwards ompatible
-	boundary.AuthenticateAdminCli(t, ctx)
+	boundary.AuthenticateCli(t, ctx, te.DbInitInfo.AuthMethod.AuthMethodId, te.DbInitInfo.AuthMethod.LoginName, te.DbInitInfo.AuthMethod.Password)
 	newOrgId := boundary.CreateNewOrgCli(t, ctx)
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
@@ -189,31 +214,14 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
 
 	// Create vault credentials
-	vaultAddr, boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", boundaryPolicyName),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
+	_, boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("secrets", "disable", c.VaultSecretPath),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
+
 	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
 	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
-	t.Cleanup(func() {
-		output := e2e.RunCommand(ctx, "vault",
-			e2e.WithArgs("policy", "delete", kvPolicyName),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
 	t.Log("Created Vault Credential")
 	output = e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs(
@@ -233,7 +241,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 	credStoreToken := tokenCreateResult.Auth.Client_Token
 	t.Log("Created Vault Cred Store Token")
-	newVaultCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, vaultAddr, credStoreToken)
+	newVaultCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, te.Vault.UriNetwork, credStoreToken)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-libraries", "create", "vault",
