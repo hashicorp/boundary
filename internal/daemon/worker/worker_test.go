@@ -9,7 +9,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"os"
 	"testing"
 	"time"
 
@@ -153,9 +152,7 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 	require.NoError(t, err)
 
 	// First, just test the key ID is populated
-	tmpDir, err := os.MkdirTemp("", "")
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, os.RemoveAll(tmpDir)) })
+	tmpDir := t.TempDir()
 	tw := NewTestWorker(t, &TestWorkerOpts{
 		WorkerAuthStorageKms:  ts,
 		WorkerAuthStoragePath: tmpDir,
@@ -170,9 +167,7 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 	assert.Equal(t, keyId, wKeyId)
 
 	// Create a fresh persistent dir for the following tests
-	tmpDir, err = os.MkdirTemp("", "")
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, os.RemoveAll(tmpDir)) })
+	tmpDir = t.TempDir()
 
 	// Get an initial set of authorized node credentials
 	initStorage, err := nodeefile.New(ctx)
