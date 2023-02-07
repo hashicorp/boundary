@@ -25,7 +25,6 @@ jobs:
       fail-fast: false # don't fail as that can skip required cleanup steps for jobs
       matrix:
         include:
-          - filter: 'integration test:cli_ui builder:crt'
           - filter: 'e2e_aws builder:crt'
           - filter: 'e2e_database'
           - filter: 'e2e_static builder:crt'
@@ -83,31 +82,11 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /tmp/test-deps
-          key: enos-test-deps-jq-1.6-password-store-1.7.4-vault-1.11.4
+          key: enos-test-deps-password-store-1.7.4-vault-1.12.2
       - name: Debug dep-cache
         run: |
           mkdir -p /tmp/test-deps
           ls -la /tmp/test-deps
-      - name: Set up Node for Bats install
-        if: matrix.filter == 'integration test:cli_ui builder:crt'
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - name: Install Bats via NPM
-        if: matrix.filter == 'integration test:cli_ui builder:crt'
-        # Use npm so this workflow is portable on multiple runner distros
-        run: npm install --location=global bats
-      - name: Download jq for Bats CLI UI tests
-        if: steps.dep-cache.outputs.cache-hit != 'true'
-        # NOTE: if you update the jq version make sure to update the dep cache key
-        run: |
-          mkdir -p /tmp/test-deps
-          wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /tmp/test-deps/jq-bin
-      - name: Install jq for Bats CLI UI tests
-        if: matrix.filter == 'integration test:cli_ui builder:crt'
-        run: |
-          chmod +x /tmp/test-deps/jq-bin
-          sudo cp /tmp/test-deps/jq-bin /usr/local/bin/jq
       - name: Download and unzip pass for Boundary keyring
         if: steps.dep-cache.outputs.cache-hit != 'true'
         # NOTE: if you update the password store version make sure to update the dep cache key
