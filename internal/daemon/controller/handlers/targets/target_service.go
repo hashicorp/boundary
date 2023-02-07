@@ -37,6 +37,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	fm "github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mr-tron/base58"
@@ -979,6 +980,13 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
+	}
+
+	// this is an edge case issue where the hostId cannot be empty when trying to execute an ssh connection
+	// on a tcp target type. By setting the hostId to the targetId value, this will enable support of previous
+	// boundary cli versions.
+	if fm.SupportsFeature(fm.Binary, fm.UseTargetIdForHostId) && t.GetAddress() != "" {
+		hostId = t.GetPublicId()
 	}
 
 	sad := &pb.SessionAuthorizationData{
