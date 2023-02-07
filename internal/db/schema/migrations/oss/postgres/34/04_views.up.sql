@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
 
 -- worker_aggregate view allows the worker and configuration to be read at the

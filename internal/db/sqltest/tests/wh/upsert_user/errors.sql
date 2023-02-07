@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- errors tests that the wh_upsert_user function throws errors under certain conditions.
 begin;
   select plan(3);

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
 
   -- dropping these foreign keys because they were never needed
@@ -157,6 +160,7 @@ begin;
   -- The whx_credential_dimension_source view shows the current values in the
   -- operational tables of the credential dimension.
   -- Replaces whx_credential_dimension_source defined in 16/02_wh_credential_dimension.up.sql
+  -- Replaced in 63/03_wh_ssh_cert_library.up.sql
   drop view whx_credential_dimension_source;
   create view whx_credential_dimension_source as
        select -- id is the first column in the target view

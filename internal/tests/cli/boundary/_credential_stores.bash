@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 load _authorized_actions
 
 function create_static_credential_store() {
@@ -10,12 +13,16 @@ function create_static_credential_store() {
     -scope-id $sid
 }
 
+function create_vault_credential_store() {
+  boundary credential-stores create vault $@
+}
+
 function read_credential_store() {
   boundary credential-stores read -id $1 -format json
 }
 
 function delete_credential_store() {
-  boundary credential-stores delete -id $1
+  boundary credential-stores delete -id $1 -format json
 }
 
 function list_credential_stores() {

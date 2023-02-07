@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package credentiallibraries_test
 
 import (
@@ -44,7 +47,7 @@ func TestList(t *testing.T) {
 		expected = append(expected, &credentiallibraries.CredentialLibrary{Name: fmt.Sprint(i), Attributes: map[string]any{"vault_path": "something"}})
 	}
 
-	cl, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithName(expected[0].Name), credentiallibraries.WithVaultCredentialLibraryPath("something"))
+	cl, err := lClient.Create(tc.Context(), cs.Item.Type, cs.Item.Id, credentiallibraries.WithName(expected[0].Name), credentiallibraries.WithVaultCredentialLibraryPath("something"))
 	require.NoError(err)
 	expected[0] = cl.Item
 
@@ -53,7 +56,7 @@ func TestList(t *testing.T) {
 	assert.ElementsMatch(comparableSetSlice(expected[:1]), comparableSetSlice(ul.Items))
 
 	for i := 1; i < 10; i++ {
-		cl, err = lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithName(expected[i].Name), credentiallibraries.WithVaultCredentialLibraryPath("something"))
+		cl, err = lClient.Create(tc.Context(), cs.Item.Type, cs.Item.Id, credentiallibraries.WithName(expected[i].Name), credentiallibraries.WithVaultCredentialLibraryPath("something"))
 		require.NoError(err)
 		expected[i] = cl.Item
 	}
@@ -115,8 +118,9 @@ func TestCrud(t *testing.T) {
 
 	lClient := credentiallibraries.NewClient(client)
 
-	r, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithName("foo"),
+	r, err := lClient.Create(tc.Context(), cs.Item.Type, cs.Item.Id, credentiallibraries.WithName("foo"),
 		credentiallibraries.WithVaultCredentialLibraryPath("something"))
+	require.Nil(err)
 	checkResource(t, "create", r.Item, err, "foo", 1)
 
 	r, err = lClient.Read(tc.Context(), r.Item.Id)
@@ -157,7 +161,7 @@ func TestErrors(t *testing.T) {
 
 	lClient := credentiallibraries.NewClient(client)
 
-	l, err := lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithName("foo"),
+	l, err := lClient.Create(tc.Context(), cs.Item.Type, cs.Item.Id, credentiallibraries.WithName("foo"),
 		credentiallibraries.WithVaultCredentialLibraryPath("something"))
 	require.NoError(err)
 	assert.NotNil(l)
@@ -178,7 +182,7 @@ func TestErrors(t *testing.T) {
 	assert.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
-	l, err = lClient.Create(tc.Context(), cs.Item.Id, credentiallibraries.WithName("foo"))
+	l, err = lClient.Create(tc.Context(), cs.Item.Type, cs.Item.Id, credentiallibraries.WithName("foo"))
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

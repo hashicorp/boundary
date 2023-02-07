@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
 
 -- Changes the default that was set in 0/41_targets.up.sql

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
 
   -- Replaces trigger from 56/02_add_data_key_foreign_key_references.up.sql

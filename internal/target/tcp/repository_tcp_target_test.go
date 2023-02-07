@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package tcp_test
 
 import (
@@ -48,6 +51,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 		name        string
 		args        args
 		wantErr     bool
+		wantAddress string
 		wantIsError errors.Code
 	}{
 		{
@@ -78,6 +82,22 @@ func TestRepository_CreateTarget(t *testing.T) {
 				}(),
 			},
 			wantErr: false,
+		},
+		{
+			name: "with-address-whitespace",
+			args: args{
+				target: func() target.Target {
+					target, err := target.New(ctx, tcp.Subtype, proj.PublicId,
+						target.WithName("with-address-whitespace"),
+						target.WithDescription("with-address-whitespace"),
+						target.WithDefaultPort(80),
+						target.WithAddress(" 8.8.8.8 "))
+					require.NoError(t, err)
+					return target
+				}(),
+			},
+			wantErr:     false,
+			wantAddress: "8.8.8.8",
 		},
 		{
 			name: "nil-target",
@@ -202,7 +222,11 @@ func TestRepository_CreateTarget(t *testing.T) {
 
 			foundTarget, foundHostSources, foundCredLibs, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 			assert.NoError(err)
-			assert.Equal(tt.args.target.GetAddress(), tar.GetAddress())
+			if len(tt.wantAddress) != 0 {
+				assert.Equal(tt.wantAddress, tar.GetAddress())
+			} else {
+				assert.Equal(tt.args.target.GetAddress(), tar.GetAddress())
+			}
 			assert.True(proto.Equal(tar.(*tcp.Target), foundTarget.(*tcp.Target)))
 			assert.Equal(hostSources, foundHostSources)
 			assert.Equal(credSources, foundCredLibs)
@@ -259,6 +283,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 		wantIsError     errors.Code
 		wantDup         bool
 		wantHostSources bool
+		wantAddress     string
 	}{
 		{
 			name: "valid",
@@ -298,6 +323,20 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			wantErr:         false,
 			wantRowsUpdate:  1,
 			wantHostSources: false,
+		},
+		{
+			name: "address-with-whitespace",
+			args: args{
+				fieldMaskPaths: []string{"Address"},
+				ProjectId:      proj.PublicId,
+				address:        " 127.0.0.1 ",
+			},
+			newProjectId:    proj.PublicId,
+			newTargetOpts:   []target.Option{target.WithAddress("10.0.0.1")},
+			wantErr:         false,
+			wantRowsUpdate:  1,
+			wantHostSources: false,
+			wantAddress:     "127.0.0.1",
 		},
 		{
 			name: "delete-address",
@@ -558,7 +597,11 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				afterUpdateIds = append(afterUpdateIds, hs.Id())
 			}
 			assert.Equal(testHostSetIds, afterUpdateIds)
-			assert.Equal(tt.args.address, targetAfterUpdate.GetAddress())
+			if len(tt.wantAddress) != 0 {
+				assert.Equal(tt.wantAddress, targetAfterUpdate.GetAddress())
+			} else {
+				assert.Equal(tt.args.address, targetAfterUpdate.GetAddress())
+			}
 
 			afterUpdateIds = make([]string, 0, len(credSources))
 			for _, cl := range credSources {

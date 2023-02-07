@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 export BOUNDARY_ADDR="${BOUNDARY_ADDR:-http://127.0.0.1:9200}"
 export DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-password}"
 export DEFAULT_LOGIN="${DEFAULT_LOGIN:-admin}"
@@ -24,11 +27,18 @@ function strip_all() {
 function has_status_code() {
   local json=$1
   local code=$2
-  if [ echo "$json"|jq -c ".status_code == $code" ]; then
-    return 1
-  fi
+  echo "checking .status_code == $code in $json"
+  echo "$json" | jq -e ".status_code == $code"
 }
 
 diag() {
     echo "$@" | sed -e 's/^/# /' >&3 ;
+}
+
+function field_eq() {
+    local json=$1
+    local field=$2
+    local expected=$3
+    echo "checking $field == $expected in $json"
+    echo "$json" | jq -e "$field == $expected"
 }

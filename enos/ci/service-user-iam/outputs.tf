@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 output "ci_role" {
   value = local.is_ent ? {
     name = aws_iam_role.github_actions_doormat_role[0].name

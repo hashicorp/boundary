@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package store
 
 // TableName overrides the table name used by Controller to `server_controller`

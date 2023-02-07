@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package cmd
 
 import (
@@ -364,6 +367,18 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
+		"credential-libraries create vault-generic": func() (cli.Command, error) {
+			return &credentiallibrariescmd.VaultGenericCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"credential-libraries create vault-ssh-certificate": func() (cli.Command, error) {
+			return &credentiallibrariescmd.VaultSshCertificateCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
 		"credential-libraries update": func() (cli.Command, error) {
 			return &credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
@@ -371,7 +386,19 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 		"credential-libraries update vault": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultCommand{
+			return &credentiallibrariescmd.VaultGenericCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"credential-libraries update vault-generic": func() (cli.Command, error) {
+			return &credentiallibrariescmd.VaultGenericCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}, nil
+		},
+		"credential-libraries update vault-ssh-certificate": func() (cli.Command, error) {
+			return &credentiallibrariescmd.VaultSshCertificateCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}, nil

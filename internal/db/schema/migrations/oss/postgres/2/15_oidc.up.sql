@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
 
 -- oidc_auth_method_with_value_obj is useful for reading an oidc auth method

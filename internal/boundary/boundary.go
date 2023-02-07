@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package boundary contains global interfaces and other definitions that
 // define the Boundary domain.
 package boundary

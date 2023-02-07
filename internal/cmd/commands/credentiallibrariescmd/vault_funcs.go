@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package credentiallibrariescmd
 
 import (
@@ -12,39 +15,10 @@ func init() {
 	extraVaultFlagsHandlingFunc = extraVaultFlagHandlingFuncImpl
 }
 
-const (
-	pathFlagName              = "vault-path"
-	httpMethodFlagName        = "vault-http-method"
-	httpRequestBodyFlagName   = "vault-http-request-body"
-	credentialTypeFlagName    = "credential-type"
-	credentialMappingFlagName = "credential-mapping-override"
-)
-
-type extraVaultCmdVars struct {
-	flagPath              string
-	flagHttpMethod        string
-	flagHttpRequestBody   string
-	flagCredentialType    string
-	flagCredentialMapping []base.CombinedSliceFlagValue
-}
+type extraVaultCmdVars extraVaultGenericCmdVars
 
 func extraVaultActionsFlagsMapFuncImpl() map[string][]string {
-	flags := map[string][]string{
-		"create": {
-			pathFlagName,
-			httpMethodFlagName,
-			httpRequestBodyFlagName,
-			credentialTypeFlagName,
-			credentialMappingFlagName,
-		},
-		"update": {
-			pathFlagName,
-			httpMethodFlagName,
-			httpRequestBodyFlagName,
-			credentialMappingFlagName,
-		},
-	}
-	return flags
+	return extraVaultGenericActionsFlagsMapFuncImpl()
 }
 
 func extraVaultFlagsFuncImpl(c *VaultCommand, set *base.FlagSets, _ *base.FlagSet) {
@@ -150,6 +124,7 @@ func (c *VaultCommand) extraVaultHelpFunc(_ map[string]func() string) string {
 	switch c.Func {
 	case "create":
 		helpStr = base.WrapForHelpText([]string{
+			"Deprecated: use 'boundary credential-libraries create vault-generic' instead.",
 			"Usage: boundary credential-libraries create vault -credential-store-id [options] [args]",
 			"",
 			"  Create a vault-type credential library. Example:",
@@ -161,6 +136,7 @@ func (c *VaultCommand) extraVaultHelpFunc(_ map[string]func() string) string {
 
 	case "update":
 		helpStr = base.WrapForHelpText([]string{
+			"Deprecated: use 'boundary credential-libraries update vault-generic' instead.",
 			"Usage: boundary credential-libraries update vault [options] [args]",
 			"",
 			"  Update a vault-type credential library given its ID. Example:",

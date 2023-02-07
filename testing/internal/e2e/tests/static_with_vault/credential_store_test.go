@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package static_with_vault_test
 
 import (
@@ -256,7 +259,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	// Create a credential library for the private key
 	clClient := credentiallibraries.NewClient(client)
-	newCredentialLibraryResult, err := clClient.Create(ctx, newCredentialStoreId,
+	newCredentialLibraryResult, err := clClient.Create(ctx, "vault", newCredentialStoreId,
 		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 		credentiallibraries.WithCredentialType("ssh_private_key"),
 	)
@@ -265,7 +268,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	t.Logf("Created Credential Library: %s", newPrivateKeyCredentialLibraryId)
 
 	// Create a credential library for the password
-	newCredentialLibraryResult, err = clClient.Create(ctx, newCredentialStoreId,
+	newCredentialLibraryResult, err = clClient.Create(ctx, "vault", newCredentialStoreId,
 		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+passwordSecretName),
 		credentiallibraries.WithCredentialType("username_password"),
 	)

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package targets
 
 import (
@@ -622,9 +625,9 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	return &pbs.RemoveTargetCredentialSourcesResponse{Item: item}, nil
 }
 
-// If set, use the worker_filter or egress_worker_filter to filtere the selected workers
+// If set, use the worker_filter or egress_worker_filter to filter the selected workers
 // and ensure we have workers available to service this request.
-func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, selectedWorkers wl.WorkerList, _ common.Downstreamers) (wl.WorkerList, error) {
+func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, selectedWorkers wl.WorkerList, _ string, _ common.Downstreamers) (wl.WorkerList, error) {
 	if len(selectedWorkers) > 0 {
 		var eval *bexpr.Evaluator
 		var err error
@@ -727,26 +730,6 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-
-	// First ensure we can actually service a request, that is, we have workers
-	// available (after any filtering). WorkerInfo only contains the address;
-	// worker IDs below is used to contain their IDs in the same order. This is
-	// used to fetch tags for filtering. But we avoid allocation unless we
-	// actually need it.
-	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(time.Duration(s.workerStatusGracePeriod.Load())))
-	if err != nil {
-		return nil, err
-	}
-
-	selectedWorkers, err = AuthorizeSessionWorkerFilterFn(ctx, t, selectedWorkers, s.downstreams)
-	if err != nil {
-		return nil, err
-	}
-
-	// Randomize the workers
-	rand.Shuffle(len(selectedWorkers), func(i, j int) {
-		selectedWorkers[i], selectedWorkers[j] = selectedWorkers[j], selectedWorkers[i]
-	})
 
 	p := strconv.FormatUint(uint64(t.GetDefaultPort()), 10)
 	var h, hostId, hostSetId string
@@ -852,17 +835,21 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		Host:   net.JoinHostPort(h, p),
 	}
 
-	for _, extraFilter := range ExtraWorkerFilters {
-		selectedWorkers, err = extraFilter(ctx, selectedWorkers, h, p)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error executing extra worker filter"))
-		}
-		if len(selectedWorkers) == 0 {
-			return nil, handlers.ApiErrorWithCodeAndMessage(
-				codes.FailedPrecondition,
-				"No workers are available to handle this session, or all have been filtered.")
-		}
+	// Get workers and filter down to ones that can service this request
+	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(time.Duration(s.workerStatusGracePeriod.Load())))
+	if err != nil {
+		return nil, err
 	}
+
+	selectedWorkers, err = AuthorizeSessionWorkerFilterFn(ctx, t, selectedWorkers, h, s.downstreams)
+	if err != nil {
+		return nil, err
+	}
+
+	// Randomize the workers
+	rand.Shuffle(len(selectedWorkers), func(i, j int) {
+		selectedWorkers[i], selectedWorkers[j] = selectedWorkers[j], selectedWorkers[i]
+	})
 
 	var vaultReqs []credential.Request
 	var staticIds []string
@@ -1069,7 +1056,7 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 		opts = append(opts, target.WithIngressWorkerFilter(item.GetIngressWorkerFilter().GetValue()))
 	}
 	if item.GetAddress() != nil {
-		opts = append(opts, target.WithAddress(item.GetAddress().GetValue()))
+		opts = append(opts, target.WithAddress(strings.TrimSpace(item.GetAddress().GetValue())))
 	}
 
 	attr, err := subtypeRegistry.newAttribute(target.SubtypeFromType(item.GetType()), item.GetAttrs())
@@ -1124,7 +1111,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	if item.GetAddress() != nil {
 		dbMask = append(dbMask, "Address")
-		opts = append(opts, target.WithAddress(item.GetAddress().GetValue()))
+		opts = append(opts, target.WithAddress(strings.TrimSpace(item.GetAddress().GetValue())))
 	}
 	subtype := target.SubtypeFromId(id)
 
@@ -1810,6 +1797,7 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			vault.CredentialLibraryPrefix,
+			vault.SSHCertificateCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix) {
@@ -1857,6 +1845,7 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			vault.CredentialLibraryPrefix,
+			vault.SSHCertificateCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix) {
@@ -1908,6 +1897,7 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			vault.CredentialLibraryPrefix,
+			vault.SSHCertificateCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix,

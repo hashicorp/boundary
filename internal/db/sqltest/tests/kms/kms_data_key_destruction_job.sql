@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
   select plan(15);
   select wtt_load('widgets', 'iam', 'kms');

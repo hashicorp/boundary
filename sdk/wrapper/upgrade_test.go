@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package wrapper
 
 // NOTE: The test below is commented out for a very specific reason: to not

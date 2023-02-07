@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package handlers
 
 import (
@@ -7,10 +10,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
+	dcommon "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -142,6 +147,12 @@ func TestLookupSession(t *testing.T) {
 	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
 	require.NotNil(t, s)
 
+	oldFn := connectionRouteFn
+	connectionRouteFn = singleHopConnectionRoute
+	t.Cleanup(func() {
+		connectionRouteFn = oldFn
+	})
+
 	cases := []struct {
 		name       string
 		wantErr    bool
@@ -153,6 +164,7 @@ func TestLookupSession(t *testing.T) {
 			name: "Invalid session id",
 			req: &pbs.LookupSessionRequest{
 				SessionId: "s_fakesession",
+				WorkerId:  worker1.GetPublicId(),
 			},
 			wantErr:    true,
 			wantErrMsg: "rpc error: code = PermissionDenied desc = Unknown session ID.",
@@ -163,7 +175,7 @@ func TestLookupSession(t *testing.T) {
 				SessionId: sessWithWorkerFilter.PublicId,
 			},
 			wantErr:    true,
-			wantErrMsg: "rpc error: code = Internal desc = Did not receive worker id when looking up session but filtering is enabled",
+			wantErrMsg: "rpc error: code = InvalidArgument desc = Did not receive worker id when looking up session",
 		},
 		{
 			name: "nonexistant worker id",
@@ -178,6 +190,7 @@ func TestLookupSession(t *testing.T) {
 			name: "Valid",
 			req: &pbs.LookupSessionRequest{
 				SessionId: sess.PublicId,
+				WorkerId:  worker1.GetPublicId(),
 			},
 			want: &pbs.LookupSessionResponse{
 				Authorization: &targets.SessionAuthorizationData{
@@ -223,6 +236,7 @@ func TestLookupSession(t *testing.T) {
 			name: "Valid-with-worker-creds",
 			req: &pbs.LookupSessionRequest{
 				SessionId: sessWithCreds.PublicId,
+				WorkerId:  worker1.GetPublicId(),
 			},
 			want: &pbs.LookupSessionResponse{
 				Authorization: &targets.SessionAuthorizationData{
@@ -255,6 +269,7 @@ func TestLookupSession(t *testing.T) {
 				assert.Equal(tc.wantErrMsg, err.Error())
 				return
 			}
+			require.NoError(err)
 			assert.Empty(
 				cmp.Diff(
 					tc.want,
@@ -542,24 +557,34 @@ func TestHcpbWorkers(t *testing.T) {
 	connectionRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kmsCache)
 	}
+	var liveDur atomic.Int64
+	liveDur.Store(int64(1 * time.Second))
 
-	for i := 0; i < 3; i++ {
-		var opt []server.Option
-		if i > 0 {
-			// Out of three KMS workers we expect to see two
-			opt = append(opt, server.WithWorkerTags(&server.Tag{Key: ManagedWorkerTagKey, Value: "true"}))
-		}
-		server.TestKmsWorker(t, conn, wrapper, append(opt, server.WithAddress(fmt.Sprintf("kms.%d", i)))...)
-		server.TestPkiWorker(t, conn, wrapper, opt...)
-	}
+	// Stale/unalive kms worker aren't expected...
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+		server.WithAddress("old.kms.1"))
+	// Sleep + 500ms longer than the liveness duration.
+	time.Sleep(time.Duration(liveDur.Load()) + time.Second)
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, new(atomic.Int64))
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+		server.WithAddress("kms.1"))
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+		server.WithAddress("kms.2"))
+
+	// Shutdown workers will be removed from routes and sessions, but still returned
+	// to downstream workers
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+		server.WithAddress("shutdown.kms.3"), server.WithOperationalState(server.ShutdownOperationalState.String()))
+	// PKI workers aren't expected
+	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}))
+
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, &liveDur)
 	require.NotNil(t, s)
 
 	res, err := s.ListHcpbWorkers(ctx, &pbs.ListHcpbWorkersRequest{})
 	require.NoError(err)
 	require.NotNil(res)
-	expValues := []string{"kms.1", "kms.2"}
+	expValues := []string{"kms.1", "kms.2", "shutdown.kms.3"}
 	var gotValues []string
 	for _, worker := range res.Workers {
 		gotValues = append(gotValues, worker.Address)

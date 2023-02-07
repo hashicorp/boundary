@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package errors
 
 // Template is useful constructing Match Err templates.  Templates allow you to

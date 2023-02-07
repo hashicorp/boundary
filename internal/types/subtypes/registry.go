@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package subtypes provides helpers to work with boundary resource subtypes.
 package subtypes
 

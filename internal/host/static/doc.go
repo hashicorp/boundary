@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package static provides a host, a host catalog, and a host set suitable
 // for hosts with a static address.
 //

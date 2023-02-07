@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package vault_test
 
 import (
@@ -74,7 +77,7 @@ func TestSetupSleepyDevEnvironment(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, store)
 	libClient := credentiallibraries.NewClient(client)
-	lib, err := libClient.Create(ctx, store.Item.Id, credentiallibraries.WithVaultCredentialLibraryPath(path.Join("database", "creds", "opened")),
+	lib, err := libClient.Create(ctx, store.Item.Type, store.Item.Id, credentiallibraries.WithVaultCredentialLibraryPath(path.Join("database", "creds", "opened")),
 		credentiallibraries.WithVaultCredentialLibraryHttpMethod("GET"),
 	)
 	require.NoError(t, err)

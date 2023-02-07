@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 //go:build linux || darwin || windows
 // +build linux darwin windows
 
@@ -75,9 +78,14 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 		pool:      pool,
 	}
 
+	vaultVersion := DefaultVaultVersion
+	if opts.vaultVersion != "" {
+		vaultVersion = opts.vaultVersion
+	}
+
 	dockerOptions := &dockertest.RunOptions{
 		Repository: "vault",
-		Tag:        DefaultVaultVersion,
+		Tag:        vaultVersion,
 		Env:        []string{fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken)},
 	}
 

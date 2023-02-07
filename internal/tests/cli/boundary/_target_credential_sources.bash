@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 load _authorized_actions
 
 function add_target_brokered_credential_sources() {

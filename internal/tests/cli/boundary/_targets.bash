@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 load _authorized_actions
 
 export TGT_NAME='test'
@@ -32,7 +35,7 @@ function read_target() {
 }
 
 function delete_target() {
-  boundary targets delete -id $1
+  boundary targets delete -id $1 -format json
 }
 
 function list_targets() {
@@ -65,20 +68,20 @@ function target_id_from_name() {
 
 function target_host_source_ids() {
   local tid=$1
-  boundary targets read -id $tid -format json | jq '.item.host_sources[].id'  
+  boundary targets read -id $tid -format json | jq '.item.host_sources[].id'
 }
 
 function target_has_host_source_id() {
   local tid=$1
   local hsid=$2
 
-  ids=$(target_host_source_ids $tid)  
+  ids=$(target_host_source_ids $tid)
   for id in $ids; do
     if [ $(strip "$id") == "$hsid" ]; then
-      return 0 
+      return 0
     fi
   done
-  return 1 
+  return 1
 }
 
 function has_default_target_actions() {
@@ -88,7 +91,7 @@ function has_default_target_actions() {
   for action in ${actions[@]}; do
     $(has_authorized_action "$out" "$action") || {
       echo "failed to find $action action in output: $out"
-      return 1 
-    } 
+      return 1
+    }
   done
 }

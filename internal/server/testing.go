@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package server
 
 import (
@@ -101,23 +104,22 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	ctx := context.Background()
 	opts := GetOpts(opt...)
 
-	namePart, err := newWorkerId(ctx)
-	require.NoError(t, err)
-	name := "test-worker-" + strings.ToLower(namePart)
-	if opts.withName != "" {
-		name = opts.withName
+	if opts.withName == "" {
+		namePart, err := newWorkerId(ctx)
+		require.NoError(t, err)
+		name := "test-worker-" + strings.ToLower(namePart)
+		opt = append(opt, WithName(name))
 	}
-	address := "127.0.0.1"
-	if opts.withAddress != "" {
-		address = opts.withAddress
+	if opts.withAddress == "" {
+		address := "127.0.0.1"
+		opt = append(opt, WithAddress(address))
 	}
 	versionInfo := version.Get()
 	relVer := versionInfo.FullVersionNumber(false)
-	wrk := NewWorker(scope.Global.String(),
-		WithName(name),
-		WithAddress(address),
-		WithDescription(opts.withDescription),
-		WithReleaseVersion(relVer))
+
+	opt = append(opt, WithReleaseVersion(relVer))
+
+	wrk := NewWorker(scope.Global.String(), opt...)
 	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
 	require.NoError(t, err)
 	require.NotNil(t, wrk)

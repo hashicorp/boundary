@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package vault
 
 import (
@@ -49,17 +52,6 @@ func TestCredential_New(t *testing.T) {
 			name: "missing-library-id",
 			args: args{
 				sessionId:  session.GetPublicId(),
-				externalId: "some/vault/credential",
-				tokenHmac:  token.GetTokenHmac(),
-				expiration: 5 * time.Minute,
-			},
-			want:    nil,
-			wantErr: true,
-		},
-		{
-			name: "missing-session-id",
-			args: args{
-				libraryId:  lib.GetPublicId(),
 				externalId: "some/vault/credential",
 				tokenHmac:  token.GetTokenHmac(),
 				expiration: 5 * time.Minute,
@@ -144,7 +136,7 @@ func TestCredential_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
-			got, err := newCredential(tt.args.libraryId, tt.args.sessionId,
+			got, err := newCredential(tt.args.libraryId,
 				tt.args.externalId, tt.args.tokenHmac, tt.args.expiration)
 			if tt.wantErr {
 				assert.Error(err)
@@ -162,7 +154,8 @@ func TestCredential_New(t *testing.T) {
 			tt.want.PublicId = id
 			got.PublicId = id
 
-			query, queryValues := got.insertQuery()
+			query, queryValues := insertQuery(got, tt.args.sessionId)
+			require.NoError(err)
 
 			rows, err2 := rw.Exec(ctx, query, queryValues)
 			assert.Equal(1, rows)

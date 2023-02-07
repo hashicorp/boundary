@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 load _authorized_actions
 
 function read_worker() {
@@ -15,7 +18,7 @@ function update_worker() {
 }
 
 function delete_worker() {
-  boundary workers delete -id $1
+  boundary workers delete -id $1 -format json
 }
 
 function list_workers() {
@@ -34,7 +37,7 @@ function has_default_worker_actions() {
   for action in ${actions[@]}; do
     $(has_authorized_action "$out" "$action") || {
       echo "failed to find $action action in output: $out"
-      return 1 
-    } 
+      return 1
+    }
   done
 }

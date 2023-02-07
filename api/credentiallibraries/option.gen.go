@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package credentiallibraries
 
 import (
@@ -110,6 +113,30 @@ func DefaultCredentialType() Option {
 	}
 }
 
+func WithVaultSSHCertificateCredentialLibraryCriticalOptions(inCriticalOptions map[string]string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["critical_options"] = inCriticalOptions
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultSSHCertificateCredentialLibraryCriticalOptions() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["critical_options"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription
@@ -119,6 +146,30 @@ func WithDescription(inDescription string) Option {
 func DefaultDescription() Option {
 	return func(o *options) {
 		o.postMap["description"] = nil
+	}
+}
+
+func WithVaultSSHCertificateCredentialLibraryExtensions(inExtensions map[string]string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["extensions"] = inExtensions
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultSSHCertificateCredentialLibraryExtensions() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["extensions"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 
@@ -170,6 +221,78 @@ func DefaultVaultCredentialLibraryHttpRequestBody() Option {
 	}
 }
 
+func WithVaultSSHCertificateCredentialLibraryKeyBits(inKeyBits uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_bits"] = inKeyBits
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultSSHCertificateCredentialLibraryKeyBits() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_bits"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultSSHCertificateCredentialLibraryKeyId(inKeyId string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_id"] = inKeyId
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultSSHCertificateCredentialLibraryKeyId() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_id"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultSSHCertificateCredentialLibraryKeyType(inKeyType string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_type"] = inKeyType
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultSSHCertificateCredentialLibraryKeyType() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["key_type"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithName(inName string) Option {
 	return func(o *options) {
 		o.postMap["name"] = inName
@@ -190,6 +313,54 @@ func WithVaultCredentialLibraryPath(inPath string) Option {
 		}
 		val := raw.(map[string]interface{})
 		val["path"] = inPath
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultSSHCertificateCredentialLibraryPath(inPath string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["path"] = inPath
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultSSHCertificateCredentialLibraryTtl(inTtl string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["ttl"] = inTtl
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultSSHCertificateCredentialLibraryTtl() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["ttl"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithVaultSSHCertificateCredentialLibraryUsername(inUsername string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["username"] = inUsername
 		o.postMap["attributes"] = val
 	}
 }

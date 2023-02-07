@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package target
 
 import (
@@ -411,6 +414,7 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 	var address *Address
 	var err error
 	if t.GetAddress() != "" {
+		t.SetAddress(strings.TrimSpace(t.GetAddress()))
 		address, err = NewAddress(t.GetPublicId(), t.GetAddress())
 		if err != nil {
 			return nil, nil, nil, errors.Wrap(ctx, err, op)
@@ -504,6 +508,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		case strings.EqualFold("egressworkerfilter", f):
 		case strings.EqualFold("ingressworkerfilter", f):
 		case strings.EqualFold("address", f):
+			target.SetAddress(strings.TrimSpace(target.GetAddress()))
 			addressEndpoint = target.GetAddress()
 		default:
 			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))

@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
   -- The whx_credential_dimension_source and whx_credential_dimension_target views are used
   -- by an insert trigger to determine if the current row for the dimension has
@@ -65,6 +68,7 @@ begin;
         and o.public_id = p.parent_id
         and o.type = 'org';
 
+  -- Replaced in 63/03_wh_ssh_cert_library.up.sql
   create view whx_credential_dimension_target as
   select key,
          credential_purpose,

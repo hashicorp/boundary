@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package event
 
 // Define a set of common keys and values to use in event payload maps.  Having

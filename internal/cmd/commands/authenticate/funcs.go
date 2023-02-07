@@ -1,9 +1,14 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package authenticate
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/api/authmethods"
@@ -99,4 +104,27 @@ func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult
 	}
 
 	return base.CommandSuccess
+}
+
+// getPrimaryAuthMethodId iterates over client.List() to find the primary auth method ID for the
+// given scopeId. If scope ID is empty or no primary auth method is found, it returns an error.
+func getPrimaryAuthMethodId(ctx context.Context, client *authmethods.Client, scopeId, amType string) (string, error) {
+	if scopeId == "" {
+		return "", fmt.Errorf("Must pass a non empty scope ID string to GetPrimaryAuthMethodId()")
+	}
+	authMethodListResult, err := client.List(ctx, scopeId)
+	if err != nil {
+		return "", err
+	}
+
+	for _, m := range authMethodListResult.GetItems() {
+		if m.IsPrimary {
+			if !strings.HasPrefix(m.Id, amType) {
+				return "", fmt.Errorf("Error looking up primary auth method in scope '%s': got '%s' but the command requires an auth method prefix of '%s'. Make sure the sub command you're using matches the primary auth method type in the scope being used. For example, if using the password sub command the primary auth method must have a prefix of 'ampw'.\n\nSee 'boundary authenticate -h' for available sub command usage.", scopeId, m.Id, amType)
+			}
+
+			return m.Id, nil
+		}
+	}
+	return "", fmt.Errorf("Primary auth method not found for scope ID: '%s'. Please set a primary auth method on this scope or pass one explicitly using an authenticate sub command (see 'boundary authenticate -h') along with the -auth-method-id flag.", scopeId)
 }

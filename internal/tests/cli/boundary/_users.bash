@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 load _authorized_actions
 
 function create_user() {
@@ -9,7 +12,7 @@ function read_user() {
 }
 
 function delete_user() {
-  boundary users delete -id $1
+  boundary users delete -id $1 -format json
 }
 
 function list_users() {
@@ -28,8 +31,8 @@ function has_default_user_actions() {
   for action in ${actions[@]}; do
     $(has_authorized_action "$out" "$action") || {
       echo "failed to find $action action in output: $out"
-      return 1 
-    } 
+      return 1
+    }
   done
 }
 

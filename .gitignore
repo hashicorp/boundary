@@ -135,7 +135,8 @@ enos/.terraform/*
 enos/.terraform.lock.hcl
 enos/*.tfstate
 enos/*.tfstate.*
-
+enos/ci/*/.terraform/*
+enos/ci/*/.terraform.lock.hcl
 # vim: set filetype=conf :
 
 # CRT (Common Release Tooling)

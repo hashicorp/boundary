@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 scenario "e2e_static" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default

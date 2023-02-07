@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 scenario "integration" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default

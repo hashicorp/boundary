@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package boundary
 
 import (
@@ -15,7 +18,7 @@ import (
 // NewApiClient creates a new Api client for the specified Boundary instance and
 // attempts to authenticate it. Returns the client.
 func NewApiClient() (*api.Client, error) {
-	c, err := loadConfig()
+	c, err := LoadConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +46,7 @@ func NewApiClient() (*api.Client, error) {
 
 // AuthenticateAdminCli uses the cli to authenticate the specified Boundary instance as an admin
 func AuthenticateAdminCli(t testing.TB, ctx context.Context) {
-	c, err := loadConfig()
+	c, err := LoadConfig()
 	require.NoError(t, err)
 
 	AuthenticateCli(t, ctx, c.AdminLoginName, c.AdminLoginPassword)
@@ -51,7 +54,7 @@ func AuthenticateAdminCli(t testing.TB, ctx context.Context) {
 
 // AuthenticateCli uses the cli to authenticate the specified Boundary instance
 func AuthenticateCli(t testing.TB, ctx context.Context, loginName string, password string) {
-	c, err := loadConfig()
+	c, err := LoadConfig()
 	require.NoError(t, err)
 
 	output := e2e.RunCommand(ctx, "boundary",
@@ -70,7 +73,7 @@ func AuthenticateCli(t testing.TB, ctx context.Context, loginName string, passwo
 // GetAuthenticationTokenCli uses the cli to get an auth token that can be used in subsequent
 // commands
 func GetAuthenticationTokenCli(t testing.TB, ctx context.Context, loginName string, password string) string {
-	c, err := loadConfig()
+	c, err := LoadConfig()
 	require.NoError(t, err)
 
 	output := e2e.RunCommand(ctx, "boundary",

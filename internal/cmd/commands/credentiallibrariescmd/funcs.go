@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package credentiallibrariescmd
 
 import (
@@ -140,6 +143,16 @@ func printItemTable(item *credentiallibraries.CredentialLibrary, resp *api.Respo
 		nonAttributeMap["Type"] = item.Type
 	}
 
+	var keySubstMap map[string]string
+	switch item.Type {
+	case "vault":
+		fallthrough
+	case "vault-generic":
+		keySubstMap = genericKeySubstMap
+	case "vault-ssh-certificate":
+		keySubstMap = sshCertKeySubstMap
+	}
+
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
 
 	ret := []string{
@@ -189,8 +202,19 @@ func printItemTable(item *credentiallibraries.CredentialLibrary, resp *api.Respo
 	return base.WrapForHelpText(ret)
 }
 
-var keySubstMap = map[string]string{
+var genericKeySubstMap = map[string]string{
 	"path":              "Path",
 	"http_method":       "HTTP Method",
 	"http_request_body": "HTTP Request Body",
+}
+
+var sshCertKeySubstMap = map[string]string{
+	"path":             "Path",
+	"username":         "Username",
+	"key_type":         "Key Type",
+	"key_bits":         "Key Bits",
+	"ttl":              "TTL",
+	"key_id":           "Key ID",
+	"critical_options": "Critical Options",
+	"extensions":       "Extensions",
 }

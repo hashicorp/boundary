@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package handlers
 
 import (
@@ -112,6 +115,15 @@ func (m MaskManager) Translate(paths []string, passedThroughPrefix ...string) []
 func MaskContains(paths []string, s string) bool {
 	for _, p := range paths {
 		if p == s {
+			return true
+		}
+	}
+	return false
+}
+
+func MaskContainsPrefix(paths []string, s string) bool {
+	for _, p := range paths {
+		if strings.Contains(p, s) {
 			return true
 		}
 	}

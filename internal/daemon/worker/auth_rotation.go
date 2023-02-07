@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package worker
 
 import (
@@ -136,7 +139,7 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 		ctx,
 		w.WorkerAuthStorage,
 		randReaderOpt,
-		nodeenrollment.WithWrapper(w.conf.WorkerAuthKms),
+		nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
 		nodeenrollment.WithSkipStorage(true),
 	)
 	if err != nil {
@@ -186,7 +189,7 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 		ctx,
 		w.WorkerAuthStorage,
 		fetchResp,
-		nodeenrollment.WithWrapper(w.conf.WorkerAuthKms),
+		nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
 	)
 	if err != nil {
 		return berrors.Wrap(ctx, err, op)

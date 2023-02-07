@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package controller
 
 import (
@@ -28,8 +31,8 @@ import (
 	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/plugin/host"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/scheduler/cleaner"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/server"
 	serversjob "github.com/hashicorp/boundary/internal/server/job"
@@ -239,9 +242,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		switch enabledPlugin {
 		case base.EnabledPluginHostLoopback:
 			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
-			opts := []hostplugin.Option{
-				hostplugin.WithDescription("Provides an initial loopback host plugin in Boundary"),
-				hostplugin.WithPublicId(conf.DevLoopbackHostPluginId),
+			opts := []host.Option{
+				host.WithDescription("Provides an initial loopback host plugin in Boundary"),
+				host.WithPublicId(conf.DevLoopbackHostPluginId),
 			}
 			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
 				return nil, err
@@ -261,7 +264,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
 			}
 			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
-			if _, err := conf.RegisterHostPlugin(ctx, pluginType, client, hostplugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+			if _, err := conf.RegisterHostPlugin(ctx, pluginType, client, host.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
 				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
 		}
@@ -514,6 +517,9 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := kmsjob.RegisterJobs(c.baseContext, c.scheduler, c.kms); err != nil {
+		return err
+	}
+	if err := cleaner.RegisterJob(c.baseContext, c.scheduler, rw); err != nil {
 		return err
 	}
 

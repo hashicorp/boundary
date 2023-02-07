@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package worker
 
 import (
@@ -22,6 +25,8 @@ import (
 var firstStatusCheckPostHooks []func(context.Context, *Worker) error
 
 var downstreamWorkersFactory func(ctx context.Context, workerId string, ver string) (downstreamers, error)
+
+var checkHCPBUpstreams func(w *Worker) bool
 
 type LastStatusInformation struct {
 	*pbs.StatusResponse
@@ -216,9 +221,8 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 
 					if len(w.conf.RawConfig.Worker.InitialUpstreams) > 0 {
 						addrs = append(addrs, w.conf.RawConfig.Worker.InitialUpstreams...)
-					}
-					if len(w.conf.RawConfig.HcpbClusterId) > 0 {
-						clusterAddress := fmt.Sprintf("%s%s", w.conf.RawConfig.HcpbClusterId, hcpbUrlSuffix)
+					} else if HandleHcpbClusterId != nil && len(w.conf.RawConfig.HcpbClusterId) > 0 {
+						clusterAddress := HandleHcpbClusterId(w.conf.RawConfig.HcpbClusterId)
 						addrs = append(addrs, clusterAddress)
 					}
 
@@ -256,7 +260,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		for _, v := range result.CalculatedUpstreams {
 			addrs = append(addrs, v.Address)
 		}
-	} else if w.conf.RawConfig.HcpbClusterId != "" && len(w.conf.RawConfig.Worker.InitialUpstreams) == 0 {
+	} else if checkHCPBUpstreams != nil && checkHCPBUpstreams(w) {
 		// This is a worker that is one hop away from managed workers, so attempt to get that list
 		hcpbWorkersCtx, hcpbWorkersCancel := context.WithTimeout(cancelCtx, time.Duration(w.statusCallTimeoutDuration.Load()))
 		defer hcpbWorkersCancel()

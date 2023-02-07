@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package authenticate
 
 import (
@@ -9,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/mitchellh/cli"
@@ -31,6 +35,9 @@ type PasswordCommand struct {
 
 	flagLoginName string
 	flagPassword  string
+
+	Opts       []common.Option
+	parsedOpts *common.Options
 }
 
 func (c *PasswordCommand) Synopsis() string {
@@ -74,6 +81,15 @@ func (c *PasswordCommand) Flags() *base.FlagSets {
 		Usage:  "The auth-method resource to use for the operation.",
 	})
 
+	if c.parsedOpts == nil || !c.parsedOpts.WithSkipScopeIdFlag {
+		f.StringVar(&base.StringVar{
+			Name:   "scope-id",
+			EnvVar: "BOUNDARY_SCOPE_ID",
+			Target: &c.FlagScopeId,
+			Usage:  "The scope ID to use for the operation.",
+		})
+	}
+
 	return set
 }
 
@@ -86,6 +102,13 @@ func (c *PasswordCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *PasswordCommand) Run(args []string) int {
+	opts, err := common.GetOpts(c.Opts...)
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+	c.parsedOpts = opts
+
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
@@ -93,13 +116,47 @@ func (c *PasswordCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	switch {
-	case c.flagLoginName == "":
-		c.PrintCliError(errors.New("Login name must be provided via -login-name"))
-		return base.CommandUserError
-	case c.FlagAuthMethodId == "":
-		c.PrintCliError(errors.New("Auth method ID must be provided via -auth-method-id"))
-		return base.CommandUserError
+	client, err := c.Client(base.WithNoTokenScope(), base.WithNoTokenValue())
+	if c.WrapperCleanupFunc != nil {
+		defer func() {
+			if err := c.WrapperCleanupFunc(); err != nil {
+				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
+			}
+		}()
+	}
+	if err != nil {
+		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
+		return base.CommandCliError
+	}
+
+	aClient := authmethods.NewClient(client)
+
+	// if auth method ID isn't passed on the CLI, try looking up the primary auth method ID
+	if c.FlagAuthMethodId == "" {
+		// if flag for scope is empty try looking up global
+		if c.FlagScopeId == "" {
+			c.FlagScopeId = "global"
+		}
+
+		pri, err := getPrimaryAuthMethodId(c.Context, aClient, c.FlagScopeId, "ampw")
+		if err != nil {
+			c.PrintCliError(err)
+			return base.CommandUserError
+		}
+
+		c.FlagAuthMethodId = pri
+	}
+
+	switch c.flagLoginName {
+	case "":
+		fmt.Print("Please enter the login name (it will be hidden): ")
+		value, err := password.Read(os.Stdin)
+		fmt.Print("\n")
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("An error occurred attempting to read the login name. The raw error message is shown below but usually this is because you attempted to pipe a value into the command or you are executing outside of a terminal (TTY). The raw error was:\n\n%s", err.Error()))
+			return base.CommandUserError
+		}
+		c.flagLoginName = strings.TrimSpace(value)
 	}
 
 	switch c.flagPassword {
@@ -127,20 +184,6 @@ func (c *PasswordCommand) Run(args []string) int {
 		c.flagPassword = password
 	}
 
-	client, err := c.Client(base.WithNoTokenScope(), base.WithNoTokenValue())
-	if c.WrapperCleanupFunc != nil {
-		defer func() {
-			if err := c.WrapperCleanupFunc(); err != nil {
-				c.PrintCliError(fmt.Errorf("Error cleaning kms wrapper: %w", err))
-			}
-		}()
-	}
-	if err != nil {
-		c.PrintCliError(fmt.Errorf("Error creating API client: %w", err))
-		return base.CommandCliError
-	}
-
-	aClient := authmethods.NewClient(client)
 	result, err := aClient.Authenticate(c.Context, c.FlagAuthMethodId, "login",
 		map[string]any{
 			"login_name": c.flagLoginName,

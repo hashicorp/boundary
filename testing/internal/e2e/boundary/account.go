@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package boundary
 
 import (
@@ -15,7 +18,7 @@ import (
 // CreateNewAccountApi creates a new account using the Go api.
 // Returns the id of the new account as well as the password that was generated
 func CreateNewAccountApi(t testing.TB, ctx context.Context, client *api.Client, loginName string) (accountId string, password string) {
-	c, err := loadConfig()
+	c, err := LoadConfig()
 	require.NoError(t, err)
 
 	aClient := accounts.NewClient(client)
@@ -35,7 +38,7 @@ func CreateNewAccountApi(t testing.TB, ctx context.Context, client *api.Client, 
 // CreateNewAccountCli creates a new account using the cli.
 // Returns the id of the new account as well as the password that was generated
 func CreateNewAccountCli(t testing.TB, ctx context.Context, loginName string) (string, string) {
-	c, err := loadConfig()
+	c, err := LoadConfig()
 	require.NoError(t, err)
 
 	password, err := base62.Random(16)

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package credentials
 
 import (
@@ -1146,6 +1149,48 @@ func TestUpdate(t *testing.T) {
 				out.GetJsonAttributes().ObjectHmac = base64.RawURLEncoding.EncodeToString([]byte(hm))
 				return out
 			},
+		},
+		{
+			name: "update-empty-json",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask(),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_JsonAttributes{
+						JsonAttributes: &pb.JsonAttributes{
+							Object: &structpb.Struct{},
+						},
+					},
+				},
+			},
+			expErrorContains: "This is a required field and cannot be set to empty",
+		},
+		{
+			name: "update-empty-object-json",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask("attributes.object.password"),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_JsonAttributes{
+						JsonAttributes: &pb.JsonAttributes{
+							Object: &structpb.Struct{},
+						},
+					},
+				},
+			},
+			expErrorContains: "This is a required field and cannot be set to empty",
+		},
+		{
+			name: "update-empty-mask-json",
+			req: &pbs.UpdateCredentialRequest{
+				UpdateMask: fieldmask(),
+				Item: &pb.Credential{
+					Attrs: &pb.Credential_JsonAttributes{
+						JsonAttributes: &pb.JsonAttributes{
+							Object: secondSecret,
+						},
+					},
+				},
+			},
+			expErrorContains: "This is a required field and cannot be set to empty",
 		},
 		{
 			name: "update-spk-with-bad-passphrase",

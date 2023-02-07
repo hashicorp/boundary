@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package authtoken provides an authtoken with an encrypted value and
 // an associated expiration time.  It also provides a repository which
 // manages the lifetime of the token.

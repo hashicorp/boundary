@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- credential_vault_token_renewal_revocation tests the credential_vault_token_renewal_revocation view
 
 begin;

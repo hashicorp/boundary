@@ -24,6 +24,7 @@ tools: golangci-lint
 	go generate -tags tools tools/tools.go
 	go install github.com/bufbuild/buf/cmd/buf@v1.3.1
 	go install github.com/mfridman/tparse@v0.10.3
+	go install github.com/hashicorp/copywrite@v0.15.0
 
 # golangci-lint recommends installing the binary directly, instead of using go get
 # See the note: https://golangci-lint.run/usage/install/#install-from-source
@@ -132,7 +133,7 @@ perms-table:
 	@go run internal/website/permstable/permstable.go
 
 .PHONY: gen
-gen: cleangen proto api cli perms-table fmt
+gen: cleangen proto api cli perms-table fmt copywrite
 
 ### oplog requires protoc-gen-go v1.20.0 or later
 # GO111MODULE=on go get -u github.com/golang/protobuf/protoc-gen-go@v1.40
@@ -249,6 +250,10 @@ protolint:
 	# Next check all protos for WIRE compatibility. WIRE is a subset of WIRE_JSON so we don't need to exclude any files.
 	cd internal/proto && buf breaking --against 'https://github.com/hashicorp/boundary.git#branch=stable-website,subdir=internal/proto' \
 		--config buf.breaking.wire.yaml
+
+.PHONY: copywrite
+copywrite:
+	copywrite headers
 
 .PHONY: website
 # must have nodejs and npm installed

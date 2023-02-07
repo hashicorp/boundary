@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
   alter table wh_host_dimension
     rename column host_organization_id to organization_id;

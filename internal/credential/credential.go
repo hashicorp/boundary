@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package credential defines interfaces shared by other packages that
 // manage credentials for Boundary sessions.
 package credential
@@ -30,6 +33,7 @@ const (
 	UnspecifiedType      Type = "unspecified"
 	UsernamePasswordType Type = "username_password"
 	SshPrivateKeyType    Type = "ssh_private_key"
+	SshCertificateType   Type = "ssh_certificate"
 	JsonType             Type = "json"
 )
 
@@ -95,6 +99,13 @@ type Static interface {
 type Request struct {
 	SourceId string
 	Purpose  Purpose
+}
+
+// SshCertificate is a credential containing a client certificate, username,
+// and SSH private key.
+type SshCertificate interface {
+	SshPrivateKey
+	Certificate() []byte
 }
 
 // Issuer issues dynamic credentials.

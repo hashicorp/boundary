@@ -203,7 +203,7 @@ func (c *VaultCommand) Run(args []string) int {
 	switch c.Func {
 
 	case "create":
-		createResult, err = credentiallibrariesClient.Create(c.Context, c.FlagCredentialStoreId, opts...)
+		createResult, err = credentiallibrariesClient.Create(c.Context, "vault", c.FlagCredentialStoreId, opts...)
 		if exitCode := c.checkFuncError(err); exitCode > 0 {
 			return exitCode
 		}

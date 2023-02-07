@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 int_val = {{encrypt(20)}}
 bool_val = {{encrypt(true)}}
 kms "aead" {

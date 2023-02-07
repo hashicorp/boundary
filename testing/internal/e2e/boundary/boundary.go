@@ -1,15 +1,17 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package boundary provides methods for commonly used boundary actions that are used in end-to-end tests.
 package boundary
 
 import (
-	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 )
 
 // AuthenticateCliOutput parses the json response from running `boundary authenticate`
 type AuthenticateCliOutput struct {
-	Item     *authmethods.AuthenticateResult
-	response *api.Response
+	Item       *authmethods.AuthenticateResult
+	StatusCode int `json:"status_code"`
 }
 
 // AuthMethodInfo parses auth method info in the json response from running `boundary database init`

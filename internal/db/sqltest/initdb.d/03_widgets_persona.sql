@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
   -- _wtt_load_widgets_iam populates all iam_ tables for the widgets persona.
   -- iam does not depend on any other aggregates, but others depend on it,
@@ -315,7 +318,9 @@ begin;
       (project_id, public_id, name)
     values
       ('p____bwidget', 't_________wb', 'Big Widget Target'),
-      ('p____swidget', 't_________ws', 'Small Widget Target');
+      ('p____swidget', 't_________ws', 'Small Widget Target'),
+      ('p____swidget', 't________ws2', 'Small Widget Target 2'),
+      ('p____swidget', 't________ws3', 'Small Widget Target 3');
 
     insert into target_host_set
       (project_id, target_id, host_set_id)
@@ -327,7 +332,9 @@ begin;
       ('p____bwidget', 't_________wb', 's___1wb-plghs'),
       ('p____bwidget', 't_________wb', 's___2wb-plghs'),
       ('p____swidget', 't_________ws', 's___1ws-plghs'),
-      ('p____swidget', 't_________ws', 's___2ws-plghs');
+      ('p____swidget', 't_________ws', 's___2ws-plghs'),
+      ('p____swidget', 't________ws2', 's___1ws-sths'),
+      ('p____swidget', 't________ws3', 's___1ws-sths');
 
   end;
   $$ language plpgsql;
@@ -336,9 +343,10 @@ begin;
   as $$
   begin
     insert into credential_vault_store
-      (project_id,       public_id,      name,                 description, vault_address,          namespace)
+      (project_id,     public_id,      name,                       description, vault_address,                namespace)
     values
-      ('p____bwidget', 'vs_______wvs', 'widget vault store', 'None',      'https://vault.widget', 'default');
+      ('p____bwidget', 'vs_______wvs', 'widget vault store',       'None',      'https://vault.widget',       'default'),
+      ('p____swidget', 'vs______swvs', 'small widget vault store', 'None',      'https://small.vault.widget', 'default');
 
     insert into credential_vault_token
       (store_id,       key_id,          status,   token_hmac,   token,         last_renewal_time, expiration_time)
@@ -401,13 +409,23 @@ begin;
     values
       ('vl______wvl12', 'my_username',      'my_private_key',     'my_passphrase');
 
+    insert into credential_vault_ssh_cert_library
+      (store_id,       public_id,      name,                    description, vault_path,         username, key_type,  key_bits)
+    values
+      ('vs______swvs', 'vscl____wvl1', 'widget ssh admin cert', 'None',      '/ssh/issue/admin', 'admin',  'rsa',     4096),
+      ('vs______swvs', 'vscl____wvl2', 'widget ssh ecdsa',      'None',      '/ssh/sign/user',   'user',   'ecdsa',   521),
+      ('vs______swvs', 'vscl____wvl3', 'widget ssh ed25519',    'None',      '/ssh/sign/user',   'user',   'ed25519', 0);
+
     insert into target_credential_library
       (project_id,     target_id,      credential_library_id, credential_purpose)
     values
       ('p____bwidget', 't_________wb', 'vl______wvl1',        'brokered'),
       ('p____bwidget', 't_________wb', 'vl______wvl2',        'brokered'),
       ('p____bwidget', 't_________wb', 'vl______wvl3',        'brokered'),
-      ('p____bwidget', 't_________wb', 'vl______wvl3',        'injected_application');
+      ('p____bwidget', 't_________wb', 'vl______wvl3',        'injected_application'),
+      ('p____bwidget', 't_________ws', 'vscl____wvl1',        'injected_application'),
+      ('p____bwidget', 't________ws2', 'vscl____wvl2',        'injected_application'),
+      ('p____bwidget', 't________ws3', 'vscl____wvl3',        'injected_application');
 
     insert into credential_static_store
       (project_id,     public_id,      name,                  description)
@@ -432,9 +450,9 @@ create function _wtt_load_widgets_sessions() returns void
 as $$
 begin
     insert into session
-    ( project_id        ,  target_id      , host_set_id    , host_id        , user_id        , auth_token_id  , certificate  , endpoint , public_id)
+      (project_id,     target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
     values
-        ('p____bwidget' , 't_________wb' , 's___1wb-sths' , 'h_____wb__01' , 'u_____warren' , 'tok___warren' , 'abc'::bytea , 'ep1'    , 's1____warren');
+      ('p____swidget', 't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____warren', 'tok___warren', 'abc'::bytea, 'ep1',    's1____warren');
 end;
 $$ language plpgsql;
 
