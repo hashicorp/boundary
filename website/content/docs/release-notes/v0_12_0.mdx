@@ -25,7 +25,7 @@ For instructions on how to upgrade an existing Boundary deployment to v0.12.0, r
 The 0.12.0 release adds major new functionality to Boundary.
 Highlights include:
 
-- Reversed-proxying to target networks through multi-hop workers (HCP oly)
+- Reversed-proxying to target networks through multi-hop sessions (HCP only)
 - Credential injection using Vault SSH signed certificates (HCP only)
 - Addresses on targets
 - Authentication improvements
@@ -33,7 +33,7 @@ Highlights include:
 ## New features
 
 **Reverse proxying to target networks using multi-hop sessions (HCP only)**: You can deploy Boundary workers in any public or private network to enable secure access to resources.
-In previous versions workers needed outbound network access to the HCP Boundary control plane, and those workers needed inbound network access from teh client that was trying to establish the session.
+In previous versions workers needed outbound network access to the HCP Boundary control plane, and those workers needed inbound network access from the client that was trying to establish the session.
 However, many users do not want any inbound access to their private networks, which means that remote users would need to be on the same corporate network or use a VPN to reach the Boundary worker.
 
 We are introducing a feature called multi-hop sessions in version 0.12.0.
