@@ -112,7 +112,7 @@ func (c *VaultCommand) Run(args []string) int {
 	c.plural = "vault-type credential library"
 	switch c.Func {
 	case "list":
-		c.plural = "vault-type credential librarys"
+		c.plural = "vault-type credential libraries"
 	}
 
 	f := c.Flags()
