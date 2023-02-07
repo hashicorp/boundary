@@ -112,7 +112,7 @@ func (c *VaultGenericCommand) Run(args []string) int {
 	c.plural = "vault-generic-type credential library"
 	switch c.Func {
 	case "list":
-		c.plural = "vault-generic-type credential librarys"
+		c.plural = "vault-generic-type credential libraries"
 	}
 
 	f := c.Flags()

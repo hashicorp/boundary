@@ -43,25 +43,25 @@ func HelpMap(resType string) map[string]func() string {
 	return map[string]func() string{
 		"base": func() string {
 			return base.WrapForHelpText(subtype([]string{
-				"Usage: boundary {{hyphentype}}s [sub command] [options] [args]",
+				"Usage: boundary {{hyphentypes}} [sub command] [options] [args]",
 				"",
 				"  This command allows operations on Boundary {{type}} resources. Example:",
 				"",
 				"    Create {{articletype}}:",
 				"",
-				`      $ boundary {{hyphentype}}s create -name prodops -description "For ProdOps usage"`,
+				`      $ boundary {{hyphentypes}} create -name prodops -description "For ProdOps usage"`,
 				"",
-				"  Please see the {{hyphentype}}s subcommand help for detailed usage information.",
+				"  Please see the {{hyphentypes}} subcommand help for detailed usage information.",
 			}, resType, prefixMap))
 		},
 
 		"create": func() string {
 			return base.WrapForHelpText(subtype([]string{
-				"Usage: boundary {{hyphentype}}s create [options] [args]",
+				"Usage: boundary {{hyphentypes}} create [options] [args]",
 				"",
 				"  Create {{articletype}}. Example:",
 				"",
-				`    $ boundary {{hyphentype}}s create -name prodops -description "{{uppertype}} for ProdOps"`,
+				`    $ boundary {{hyphentypes}} create -name prodops -description "{{uppertype}} for ProdOps"`,
 				"",
 				"",
 			}, resType, prefixMap))
@@ -69,11 +69,11 @@ func HelpMap(resType string) map[string]func() string {
 
 		"update": func() string {
 			return base.WrapForHelpText(subtype([]string{
-				"Usage: boundary {{hyphentype}}s update [options] [args]",
+				"Usage: boundary {{hyphentypes}} update [options] [args]",
 				"",
 				"  Update {{articletype}} given its ID. Example:",
 				"",
-				`    $ boundary {{hyphentype}}s update -id {{prefix}}_1234567890 -name "devops" -description "{{uppertype}} for DevOps"`,
+				`    $ boundary {{hyphentypes}} update -id {{prefix}}_1234567890 -name "devops" -description "{{uppertype}} for DevOps"`,
 				"",
 				"",
 			}, resType, prefixMap))
@@ -81,11 +81,11 @@ func HelpMap(resType string) map[string]func() string {
 
 		"read": func() string {
 			return base.WrapForHelpText(subtype([]string{
-				"Usage: boundary {{hyphentype}}s read [options] [args]",
+				"Usage: boundary {{hyphentypes}} read [options] [args]",
 				"",
 				"  Read {{articletype}} given its ID. Example:",
 				"",
-				`    $ boundary {{hyphentype}}s read -id {{prefix}}_1234567890`,
+				`    $ boundary {{hyphentypes}} read -id {{prefix}}_1234567890`,
 				"",
 				"",
 			}, resType, prefixMap))
@@ -93,11 +93,11 @@ func HelpMap(resType string) map[string]func() string {
 
 		"delete": func() string {
 			return base.WrapForHelpText(subtype([]string{
-				"Usage: boundary {{hyphentype}}s delete [options] [args]",
+				"Usage: boundary {{hyphentypes}} delete [options] [args]",
 				"",
 				"  Delete {{articletype}} given its ID. Example:",
 				"",
-				`    $ boundary {{hyphentype}}s delete -id {{prefix}}_1234567890`,
+				`    $ boundary {{hyphentypes}} delete -id {{prefix}}_1234567890`,
 				"",
 				"",
 			}, resType, prefixMap))
@@ -105,11 +105,11 @@ func HelpMap(resType string) map[string]func() string {
 
 		"list": func() string {
 			return base.WrapForHelpText(subtype([]string{
-				"Usage: boundary {{hyphentype}}s list [options] [args]",
+				"Usage: boundary {{hyphentypes}} list [options] [args]",
 				"",
-				"  List {{type}}s within an enclosing scope or resource. Example:",
+				"  List {{pluraltypes}} within an enclosing scope or resource. Example:",
 				"",
-				`    $ boundary {{hyphentype}}s list`,
+				`    $ boundary {{hyphentypes}} list`,
 				"",
 				"",
 			}, resType, prefixMap))
@@ -118,7 +118,8 @@ func HelpMap(resType string) map[string]func() string {
 }
 
 func subtype(in []string, resType string, prefixMap map[string]string) []string {
-	hyphenType := strings.ReplaceAll(resType, " ", "-")
+	hyphenTypePlural := resource.Map[strings.ReplaceAll(resType, " ", "-")].PluralString()
+	pluralTypes := strings.ReplaceAll(hyphenTypePlural, "-", " ")
 	articleType := resType
 	switch resType[0] {
 	case 'a', 'e', 'i', 'o':
@@ -132,8 +133,10 @@ func subtype(in []string, resType string, prefixMap map[string]string) []string 
 				strings.Replace(
 					strings.Replace(
 						strings.Replace(
-							v, "{{hyphentype}}", hyphenType, -1),
-						"{{type}}", resType, -1),
+							strings.Replace(
+								v, "{{hyphentypes}}", hyphenTypePlural, -1),
+							"{{type}}", resType, -1),
+						"{{pluraltypes}}", pluralTypes, -1),
 					"{{uppertype}}", textproto.CanonicalMIMEHeaderKey(resType), -1),
 				"{{prefix}}", prefixMap[resType], -1),
 			"{{articletype}}", articleType, -1)
