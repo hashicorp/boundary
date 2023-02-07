@@ -66,7 +66,7 @@ func init() {
 
 	// UseTargetIdForHostId supports old CLI clients that are unaware of host-sourceless targets,
 	// this feature populates the target's public id into the AuthorizeSessionResponse
-	// and the SessionAuthroizationData so the CLI can properly build the ssh command 
+	// and the SessionAuthroizationData so the CLI can properly build the ssh command
 	// when calling "boundary connect ssh..."
 	featureMap[UseTargetIdForHostId] = MetadataConstraint{
 		MetaInfo:    []Metadata{OSS, HCP},
