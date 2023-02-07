@@ -54,7 +54,7 @@ SSH certificates are short-lived and self-destructive unlinke SSH key pairs.
 **Addresses on targets**: HashiCorp Boundary offers an extensible domain model that allows administrators to organize target resources in a way that best compliments how their organization manages its computing infrastructure.
 But that flexibility could become a hindrance when setting up a quick proof-of-concept and defining a target to create a session.
 
-With version 0.12.0, we are introducing a quick way to set up a target.
+Version 0.12.0 introduces a quick way to set up a target.
 Previously, you would need to define [hosts](/boundary/docs/concepts/domain-model/hosts) within a [host set](/boundary/docs/concepts/domain-model/host-sets), and then assign that to a [target](/boundary/docs/concepts/domain-model/targets).
 The hosts contain the hostname or IP address of the computing resources, and the target definition contains various connection parameters for those hosts.
 Starting with version 0.12.0 the hostname or IP address can be specified directly within the target definition, without having to create hosts, host sets, or a host catalog.
