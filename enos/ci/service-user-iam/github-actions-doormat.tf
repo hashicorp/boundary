@@ -6,8 +6,8 @@ locals {
   // "Github Actions Doormat repositories and qualifiers"
   // see: https://docs.prod.secops.hashicorp.services/doormat/gha/
   github_actions_doormat_rwqs = {
-    boundary-enterprise = "github.com/hashicorp/boundary-enterprise@event_name=workflow_dispatch+push:ref=refs/heads/main+refs/heads/release/0.8.x+refs/heads/release/0.10.x+refs/heads/release/0.11.x///event_name=pull_request:base_ref=main+release/0.8.x+release/0.10.x+release/0.11.x",
-    boundary-hcp        = "github.com/hashicorp/boundary-hcp@event_name=workflow_dispatch+push:ref=refs/heads/main+refs/heads/release/0.8.x+refs/heads/release/0.10.x+refs/heads/release/0.11.x///event_name=pull_request:base_ref=main+release/0.8.x+release/0.10.x+release/0.11.x",
+    boundary-enterprise = "github.com/hashicorp/boundary-enterprise@event_name=schedule///event_name=workflow_dispatch+push:ref=refs/heads/main+refs/heads/release/0.8.x+refs/heads/release/0.10.x+refs/heads/release/0.11.x///event_name=pull_request:base_ref=main+release/0.8.x+release/0.10.x+release/0.11.x",
+    boundary-hcp        = "github.com/hashicorp/boundary-hcp@event_name=schedule///event_name=workflow_dispatch+push:ref=refs/heads/main+refs/heads/release/0.8.x+refs/heads/release/0.10.x+refs/heads/release/0.11.x///event_name=pull_request:base_ref=main+release/0.8.x+release/0.10.x+release/0.11.x",
   }
   github_actions_doormat_assume_policy_name = "AssumeServiceUserPolicy"
   boundary_gha_iam_role_name                = "${var.repository}-GHA-ci"
