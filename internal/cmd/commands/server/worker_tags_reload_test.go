@@ -17,7 +17,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -81,9 +80,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	testController := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
 	defer testController.Shutdown()
 
-	authStoragePath, err := os.MkdirTemp("", "")
-	require.NoError(err)
-	t.Cleanup(func() { os.RemoveAll(authStoragePath) })
+	authStoragePath := t.TempDir()
 
 	wg := &sync.WaitGroup{}
 
