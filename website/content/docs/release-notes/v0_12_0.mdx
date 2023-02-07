@@ -24,29 +24,29 @@ Highlights include:
 ## New features
 
 **Addresses on targets**: HashiCorp Boundary offers an extensible domain model that allows administrators to organize target resources in a way that best compliments how their organization manages its computing infrastructure.
-However, that flexibility could sometimes become a hindrance when it comes to setting up a quick proof-of-concept, and defining a target to create a session.
+But that flexibility could become a hindrance when setting up a quick proof-of-concept and defining a target to create a session.
 
 With version 0.12.0, we are introducing a quick way to set up a target.
 Previously, you would need to define [hosts](/boundary/docs/concepts/domain-model/hosts) within a [host set](/boundary/docs/concepts/domain-model/host-sets), and then assign that to a [target](/boundary/docs/concepts/domain-model/targets).
-The hosts contain the actual hostname or IP address of the computing resources that you want to connect to, and the target definition contains various connection parameters for those hosts.
-Starting with version 0.12.0, you can specify the hostname or IP address directly within the target definition, negating the need to create hosts, host sets, or a host catalog.
+The hosts contain the hostname or IP address of the computing resources, and the target definition contains various connection parameters for those hosts.
+Starting with version 0.12.0 the hostname or IP address can be specified directly within the target definition, without having to create hosts, host sets, or a host catalog.
 
-This functionality allows you to get started with Boundary quuickly, while still maintaining the same flexibility for more complex and production-like scenarios.
+This functionality allows you to get started with Boundary quickly while still maintaining the same flexibility for more complex and production-like scenarios.
 
 For more information, refer to the [Target and Host Resources](/boundary/docs/concepts/domain-model#target-and-host-resources) documentation.
 
 **Authentication improvements**: In previous versions, authenticating through the CLI required you to provide an [**Auth Method ID**](/boundary/docs/concepts/domain-model/auth-methods).
-This value could be difficult to find, if you did not previously save it.
+This value could be difficult to find if you did not previously save it.
 Starting in version 0.12.0, the Boundary CLI no longer requires an **Auth Method ID**, and will use the default **Auth Method ID**, if none is provided.
 The built-in password auth method is now marked as **Primary** when an HCP Boundary cluster is deployed.
 
-**JSON credentials**: In previous versions, Boundary only supported two types of static credentials: Username/Password and SSH Private Key.
+**JSON credentials**: In previous versions Boundary only supported two types of static credentials: Username/Password and SSH Private Key.
 In version 0.12.0, we are releasing a new type of credential to the static credential store.
 You can now create and broker JSON blobs to authorized users at session establishment time.
 
 For more information, refer to the [JSON credentials](/boundary/docs/concepts/domain-model/credentials#json) documentation.
 
-**Job run table maintenance**: A new job was added to automaticaly clean up completed runs from the `job_run` table.
+**Job run table maintenance**: A new job was added to automatically clean up completed runs from the `job_run` table.
 It deletes any existing completed jobs on a regular interval to help manage the size of your Boundary database.
 
 ## Deprecations and changes
@@ -57,9 +57,9 @@ Boundary version 0.12.0 has the following deprecations or changes:
 This would result in the credentials being stored in plain text on the Boundary PKI worker's disk.
 This vulnerability, CVE-2023-0690, was fixed in Boundary 0.12.0.
 
-- In this release, there was a change to the initial components that are created when you run Boundary in dev mode.
+- In this release there is a change to the initial components that are created when you run Boundary in dev mode.
 The `boundary dev` command now creates two TCP targets: one is created using the host source, and the other is created using the `address` field.
-Note that this may affect you, if you use the default target for testing.
+Note that this may affect you if you use the default target for testing.
 
 - In Boundary 0.9.0, targets were updated to require a default port value.
 This had been the original intention; it was a mistake that it was optional.
@@ -68,8 +68,8 @@ This meant that targets could use ports attached to host addresses, which was no
 
   In this version, updating static hosts no longer allows ports to be part of the address.
   When authorizing a session, any port on such a host will be ignored in favor of the default port on the target.
-  In Boundary 0.14.0, this will become an error instead.
-  As a consequence, it means that the fallback logic for targets that did not have a default port defined is no longer in service.
+  In Boundary 0.14.0 this will become an error instead.
+  This means that the fallback logic for targets that did not have a default port defined is no longer in service.
   All targets must now have a default port defined.
 
 - With the introduction of `vault-ssh-certificate` credential libraries, the Vault credential library subtype is being renamed to `vault-generic` to denote it as a credential library that can be used in a generalized way to issue credentials from Vault.
