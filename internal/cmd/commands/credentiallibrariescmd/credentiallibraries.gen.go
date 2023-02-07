@@ -126,7 +126,7 @@ func (c *Command) Run(args []string) int {
 	c.plural = "credential library"
 	switch c.Func {
 	case "list":
-		c.plural = "credential librarys"
+		c.plural = "credential libraries"
 	}
 
 	f := c.Flags()

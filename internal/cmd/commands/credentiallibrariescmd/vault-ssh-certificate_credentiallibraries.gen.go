@@ -112,7 +112,7 @@ func (c *VaultSshCertificateCommand) Run(args []string) int {
 	c.plural = "vault-ssh-certificate-type credential library"
 	switch c.Func {
 	case "list":
-		c.plural = "vault-ssh-certificate-type credential librarys"
+		c.plural = "vault-ssh-certificate-type credential libraries"
 	}
 
 	f := c.Flags()
