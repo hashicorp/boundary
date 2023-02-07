@@ -12,5 +12,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Generate Schema Diff
+        env:
+          PGPASSWORD: boundary
         run: |
           ./scripts/schema-diff.sh "origin/${GITHUB_BASE_REF}"
