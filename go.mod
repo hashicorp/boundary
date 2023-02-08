@@ -20,8 +20,8 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.2
-	github.com/hashicorp/boundary/api v0.0.30
-	github.com/hashicorp/boundary/sdk v0.0.28
+	github.com/hashicorp/boundary/api v0.0.33
+	github.com/hashicorp/boundary/sdk v0.0.29
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
@@ -97,6 +97,7 @@ require (
 	github.com/hashicorp/go-version v1.3.0
 	github.com/hashicorp/nodeenrollment v0.1.18
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 )
@@ -161,7 +162,6 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
-	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
