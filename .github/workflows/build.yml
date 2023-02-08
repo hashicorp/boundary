@@ -162,7 +162,7 @@ jobs:
         env:
           CGO_ENABLED: "0"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
-          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
+#          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
         uses: hashicorp/actions-go-build@v0.1.7
         with:
           product_name: ${{ env.PKG_NAME }}
@@ -233,7 +233,7 @@ jobs:
         env:
           CGO_ENABLED: "0"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
-          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
+#          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
         uses: hashicorp/actions-go-build@v0.1.7
         with:
           product_name: ${{ env.PKG_NAME }}
@@ -331,11 +331,11 @@ jobs:
         env:
           CGO_ENABLED: "0"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
-          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
+#          METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
         uses: hashicorp/actions-go-build@v0.1.7
         with:
           product_name: ${{ env.PKG_NAME }}
-          product_version: ${{ needs.set-product-version. outputs.product-version }}
+          product_version: ${{ needs.set-product-version.outputs.product-version }}
           go_version: ${{ matrix.go }}
           os: ${{ matrix.goos }}
           arch: ${{ matrix.goarch }}
