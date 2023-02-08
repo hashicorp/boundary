@@ -115,7 +115,7 @@ func (c *Info) FullVersionNumber(rev bool) string {
 		fmt.Fprintf(&versionString, "-%s", c.VersionPrerelease)
 	}
 
-	if c.VersionMetadata != "" {
+	if c.VersionMetadata != "" || c.VersionMetadata != "oss" {
 		fmt.Fprintf(&versionString, "+%s", c.VersionMetadata)
 	}
 
