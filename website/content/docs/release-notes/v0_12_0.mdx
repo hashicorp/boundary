@@ -83,7 +83,7 @@ Boundary version 0.12.0 has the following deprecations or changes:
 
 - A vulnerability in Boundary was identified such that when a Key Management Service (KMS) was defined in Boundary's configuration file with the intent of using the KMS to encrypt the credentials stored on disk, new credentials created after a rotation may not have been encrypted via the intended KMS.
 This would result in the credentials being stored in plain text on the Boundary PKI worker's disk.
-This vulnerability, CVE-2023-0690, was fixed in Boundary 0.12.0.
+This vulnerability, [CVE-2023-0690](https://discuss.hashicorp.com/t/hcsec-2023-03-boundary-workers-store-rotated-credentials-in-plaintext-even-when-key-management-service-configured/49907), was fixed in Boundary 0.12.0.
 
 - In this release there is a change to the initial components that are created when you run Boundary in dev mode.
 The `boundary dev` command now creates two TCP targets: one is created using the host source, and the other is created using the `address` field.
