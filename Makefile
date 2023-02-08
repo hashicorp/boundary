@@ -388,7 +388,7 @@ EDITION?=
 # This is used for release builds by .github/workflows/build.yml
 edition:
 	@if [ -z "$(EDITION)" ]; then \
-		go run ./cmd/boundary version -format=json | jq -r '.version_metadata // "oss"'; \
+		go run ./cmd/boundary version -format=json | jq -r '.version_metadata // ""'; \
 	else \
 		echo $(EDITION); \
 	fi; \
