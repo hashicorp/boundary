@@ -29,10 +29,10 @@ func TestCliVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	parts := strings.Split(versionResult.Version, ".")
-	assert.Equal(t, 3, len(parts), "Incorrect number of parts in version (%s). EXPECTED: 3, ACTUAL: %d", versionResult.Version, len(parts))
+	assert.Equal(t, 3, len(parts), "Incorrect number of parts in version %q. EXPECTED: 3, ACTUAL: %d", versionResult.Version, len(parts))
 
 	for _, v := range parts {
 		_, err := strconv.Atoi(v)
-		require.NoError(t, err, "Invalid value in version (%s). EXPECTED: Number, ACTUAL: %s", versionResult.Version, v)
+		assert.NoError(t, err, "Invalid value in version %q. EXPECTED: Number, ACTUAL: %s", versionResult.Version, v)
 	}
 }
