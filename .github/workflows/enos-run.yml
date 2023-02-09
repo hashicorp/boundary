@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
+    outputs:
+      status: ${{ steps.enos-status.outputs.status }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -135,8 +137,6 @@ jobs:
           enos scenario exec --chdir ./enos ${{ matrix.filter }} --cmd "version"
       - name: Run Enos scenario
         id: run
-        # Continue once and retry
-        continue-on-error: true
         env:
           ENOS_VAR_aws_region: us-east-1
           ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
@@ -155,20 +155,10 @@ jobs:
           name: test-e2e-output.zip
           path: enos/test*.out
           retention-days: 5
-      - name: Retry Enos scenario
-        id: run_retry
-        if: steps.run.outcome == 'failure'
-        env:
-          ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
-          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/
-          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
-          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
-          ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-        run: |
-          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Set Enos Job Status
+        id: enos-status
+        if: ${{ failure() }}
+        run: echo "status=${{ steps.run.outcome }}" >> $GITHUB_OUTPUT
       - name: Destroy Enos scenario
         env:
           ENOS_VAR_aws_region: us-east-1
@@ -186,3 +176,23 @@ jobs:
         run: |
           env
           find ./enos -name "scenario.tf" -exec cat {} \;
+  notify:
+    name: Notify
+    needs: enos
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checking status from enos run
+        run: |
+          echo "STATUS: ${{ needs.enos.outputs.status }}"
+      - name: Send Slack message
+        if: ${{ contains(needs.enos.outputs.status, 'failure') }}
+        uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+          payload: |
+            {
+              "text": ":x: e2e tests failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{github.event.pull_request.html_url || github.event.head_commit.url }}|${{ github.event.after }}>"
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}

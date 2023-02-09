@@ -499,3 +499,14 @@ jobs:
         if: success() || failure()
         run: |
           make -C internal/tests/cli test-vault-down
+      - name: Send Slack message
+        if: ${{ failure() }}
+        uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+          payload: |
+            {
+              "text": ":x: bats tests failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{github.event.pull_request.html_url || github.event.head_commit.url }}|${{ github.event.after }}>"
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
