@@ -159,6 +159,9 @@ jobs:
           retention-days: 5
       - name: Set Enos Job Status
         id: enos-status
+        # steps.run.outcome reports as failure when there is an error in `Run Enos scenario`
+        # failure() captures errors before `Run Enos scenario`
+        # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
         if: ${{ steps.run.outcome == 'failure' || failure() }}
         run: echo "status=failure" >> $GITHUB_OUTPUT
       - name: Retry Enos scenario
@@ -197,13 +200,9 @@ jobs:
     name: Notify
     needs: enos
     runs-on: ubuntu-latest
-    if: always()
+    if: ${{ always() && needs.enos.outputs.status == 'failure' }}
     steps:
-      - name: Checking status from enos run
-        run: |
-          echo "STATUS: ${{ needs.enos.outputs.status }}"
       - name: Send Slack message
-        if: ${{ contains(needs.enos.outputs.status, 'failure') }}
         uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
         with:
           channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
