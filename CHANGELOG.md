@@ -2,6 +2,24 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+### New and Improved
+* cli/api/sdk: New LDAP auth method type added with support for create, read,
+  update, delete, and list (see new cli `ldap` subcommands available on CRUDL
+  operations for examples), as well as the ability to authenticate against it
+  via the SDK and CLI.
+  ([PR](https://github.com/hashicorp/boundary/pull/2912))
+* cli/api/sdk: New LDAP account type added with support for create, read,
+  update, delete and list (see new cli `ldap` subcommands available on CRUDL
+  operations for examples).
+  ([PR](https://github.com/hashicorp/boundary/pull/2912))
+* cli/api/sdk: New LDAP managed group type added with support for create, read,
+  update, delete and list (see new cli `ldap` subcommands available on CRUDL
+  operations for examples).
+  ([PR](https://github.com/hashicorp/boundary/pull/2912))
+* Data Warehouse: Add LDAP auth method and accounts to the database warehouse.
+  ([PR](https://github.com/hashicorp/boundary/pull/2912))
+  
+
 ## 0.12.0 (2023/01/24)
 
 ### Deprecations/Changes
