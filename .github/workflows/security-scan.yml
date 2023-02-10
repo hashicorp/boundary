@@ -1,0 +1,79 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor != 'dependabot[bot]' || github.actor != 'hc-github-team-secure-boundary' }}
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Determine Go version
+      id: get-go-version
+      # We use .go-version as our source of truth for current Go
+      # version, because "goenv" can react to it automatically.
+      run: |
+        echo "Building with Go $(cat .go-version)"
+        echo "go-version=$(cat .go-version)" >> $GITHUB_OUTPUT
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: "${{ steps.get-go-version.outputs.go-version }}"
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.x
+
+    - name: Clone Security Scanner repo
+      uses: actions/checkout@v3
+      with:
+        repository: hashicorp/security-scanner
+        token: ${{ secrets.HASHIBOT_PRODSEC_GITHUB_TOKEN }}
+        path: security-scanner
+        ref: ed940e61b85fcc6631aa836fab9df13258acb21d
+
+    - name: Install dependencies
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        mkdir $HOME/.bin
+        cd $GITHUB_WORKSPACE/security-scanner/pkg/sdk/examples/scan-plugin-semgrep
+        go build -o scan-plugin-semgrep .
+        mv scan-plugin-semgrep $HOME/.bin
+        
+        cd $GITHUB_WORKSPACE/security-scanner/pkg/sdk/examples/scan-plugin-codeql
+        go build -o scan-plugin-codeql .
+        mv scan-plugin-codeql $HOME/.bin
+        
+        # Semgrep
+        python3 -m pip install semgrep
+        
+        # CodeQL
+        LATEST=$(gh release list --repo https://github.com/github/codeql-action | cut -f 3 | sort --version-sort | tail -n1)
+        gh release download --repo https://github.com/github/codeql-action --pattern codeql-bundle-linux64.tar.gz "$LATEST"
+        tar xf codeql-bundle-linux64.tar.gz -C $HOME/.bin
+        
+        # Add to PATH
+        echo "$HOME/.bin" >> $GITHUB_PATH
+        echo "$HOME/.bin/codeql" >> $GITHUB_PATH
+
+    - name: Scan
+      id: scan
+      uses: ./security-scanner
+      with:
+        repository: "$PWD"
+
+    - name: Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: results.sarif
+
