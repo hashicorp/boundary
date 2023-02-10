@@ -9,8 +9,7 @@ on:
 
 jobs:
   scan:
-    runs-on:
-      labels: ['linux', 'large']
+    runs-on: ubuntu-latest
     if: ${{ github.actor != 'dependabot[bot]' || github.actor != 'hc-github-team-secure-boundary' }}
     steps:
     - uses: actions/checkout@v3
