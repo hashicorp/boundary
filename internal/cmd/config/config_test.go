@@ -1888,7 +1888,6 @@ func TestDatabaseSkipSharedLockAcquisition(t *testing.T) {
 }
 
 func TestSetupControllerPublicClusterAddress(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name                    string
 		inputConfig             *Config
