@@ -166,21 +166,34 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		responseControllers = append(responseControllers, thisController)
 	}
 
-	workerAuthRepo, err := ws.workerAuthRepoFn()
-	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting worker auth repo"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to lookup worker auth info: %v", err)
+	authorizedWorkerList := &pbs.AuthorizedWorkerList{}
+	if len(req.GetConnectedWorkerPublicIds()) > 0 {
+		knownConnectedWorkers, err := serverRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithWorkerPool(req.GetConnectedWorkerPublicIds()), server.WithLiveness(-1))
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting known connected worker ids"))
+			return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting known connected worker ids: %v", err)
+		}
+		authorizedWorkerList.WorkerPublicIds = dcommon.WorkerList(knownConnectedWorkers).PublicIds()
 	}
-	authorizedWorkers, err := workerAuthRepo.FilterToAuthorizedWorkerKeyIds(ctx, req.GetConnectedWorkerKeyIdentifiers())
-	if err != nil {
-		event.WriteError(ctx, op, err, event.WithInfoMsg("error getting authorizable worker key ids"))
-		return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting authorized worker key ids: %v", err)
+
+	if len(req.GetConnectedWorkerKeyIdentifiers()) > 0 {
+		workerAuthRepo, err := ws.workerAuthRepoFn()
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting worker auth repo"))
+			return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error acquiring repo to lookup worker auth info: %v", err)
+		}
+		authorizedKeyIds, err := workerAuthRepo.FilterToAuthorizedWorkerKeyIds(ctx, req.GetConnectedWorkerKeyIdentifiers())
+		if err != nil {
+			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting authorized worker key ids"))
+			return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting authorized worker key ids: %v", err)
+		}
+		authorizedWorkerList.WorkerKeyIdentifiers = authorizedKeyIds
 	}
 
 	ret := &pbs.StatusResponse{
 		CalculatedUpstreams: responseControllers,
 		WorkerId:            wrk.GetPublicId(),
-		AuthorizedWorkers:   &pbs.AuthorizedWorkerList{WorkerKeyIdentifiers: authorizedWorkers},
+		AuthorizedWorkers:   authorizedWorkerList,
 	}
 
 	stateReport := make([]*session.StateReport, 0, len(req.GetJobs()))

@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	nodee "github.com/hashicorp/nodeenrollment"
+	"github.com/hashicorp/nodeenrollment/protocol"
 )
 
 // EventingListener simply sends an event when a worker has connected
@@ -41,9 +42,14 @@ func (e *eventingListener) Accept() (net.Conn, error) {
 		return conn, err
 	}
 
-	tlsConn, ok := conn.(*tls.Conn)
-	if !ok {
-		return conn, err
+	var tlsConn *tls.Conn
+	switch c := conn.(type) {
+	case *tls.Conn:
+		tlsConn = c
+	case *protocol.Conn:
+		tlsConn = c.Conn
+	default:
+		return conn, nil
 	}
 
 	if tlsConn != nil && len(tlsConn.ConnectionState().PeerCertificates) > 0 {

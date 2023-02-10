@@ -32,6 +32,13 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	// the purpose strings used to identify listeners
+	reverseGrpcListenerPurpose            = "reverse-grpc"
+	multihopProxyDataplaneListenerPurpose = "multihop-proxy-dataplane"
+	grpcListenerPurpose                   = "grpc"
+)
+
 // the function that handles a secondary connection over a provided listener
 var handleSecondaryConnection = closeListeners
 
@@ -162,7 +169,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	// This handles connections coming in that are authenticated via
 	// nodeenrollment but not with any extra purpose; these are normal PKI
 	// worker connections
-	nodeeAuthListener, err := w.workerAuthSplitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto)
+	nodeeAuthListener, err := w.workerAuthSplitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto, nodee.WithNativeConns(true))
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating worker split listener: %w", err)
 	}
@@ -183,7 +190,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	// This wraps the reverse grpc pki worker connections with a listener which
 	// adds the worker key id of the connections to the worker's pkiConnManager.
-	revPkiWorkerTrackingListener, err := cluster.NewTrackingListener(w.baseContext, reverseGrpcListener, w.pkiConnManager)
+	revPkiWorkerTrackingListener, err := cluster.NewTrackingListener(w.baseContext, reverseGrpcListener, w.pkiConnManager, sourcePurpose(reverseGrpcListenerPurpose))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating reverse grpc pki worker tracking listener: %w", op, err)
 	}
@@ -197,7 +204,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	// This wraps the web socket proxying worker connections with a listener which
 	// adds the worker key id of the connections to the worker's pkiConnManager.
-	dataPlaneProxyTrackingListener, err := cluster.NewTrackingListener(w.baseContext, dataPlaneProxyListener, w.pkiConnManager)
+	dataPlaneProxyTrackingListener, err := cluster.NewTrackingListener(w.baseContext, dataPlaneProxyListener, w.pkiConnManager, sourcePurpose(multihopProxyDataplaneListenerPurpose))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating web socket proxying tracking listener: %w", op, err)
 	}
@@ -230,17 +237,17 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	// This wraps the normal pki worker connections with a listener which adds
 	// the worker key id of the  connections to the worker's pkiConnManager.
-	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(cancelCtx, eventingListener, w.pkiConnManager)
+	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(cancelCtx, eventingListener, w.pkiConnManager, sourcePurpose(grpcListenerPurpose))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating pki worker tracking listener: %w", op, err)
 	}
 
 	return func() {
-		handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(revPkiWorkerTrackingListener, "reverse-grpc"),
-			metric.InstrumentWorkerClusterTrackingListener(dataPlaneProxyTrackingListener, "multihop-proxy-dataplane"), w.downstreamReceiver)
+		handleSecondaryConnection(cancelCtx, metric.InstrumentWorkerClusterTrackingListener(revPkiWorkerTrackingListener, reverseGrpcListenerPurpose),
+			metric.InstrumentWorkerClusterTrackingListener(dataPlaneProxyTrackingListener, multihopProxyDataplaneListenerPurpose), w.downstreamReceiver)
 		go w.workerAuthSplitListener.Start()
 		go httpServer.Serve(proxyListener)
-		go ln.GrpcServer.Serve(metric.InstrumentWorkerClusterTrackingListener(pkiWorkerTrackingListener, "grpc"))
+		go ln.GrpcServer.Serve(metric.InstrumentWorkerClusterTrackingListener(pkiWorkerTrackingListener, grpcListenerPurpose))
 	}, nil
 }
 
@@ -320,4 +327,8 @@ func listenerCloseErrorCheck(lnType string, err error) error {
 	}
 
 	return err
+}
+
+func sourcePurpose(purpose string) string {
+	return fmt.Sprintf("worker %s", purpose)
 }
