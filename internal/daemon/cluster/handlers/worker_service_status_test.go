@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package handlers
 
 import (
@@ -779,8 +782,8 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 	var w1KeyId, w2KeyId string
-	_ = server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w1KeyId))
-	_ = server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w2KeyId))
+	w1 := server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w1KeyId))
+	w2 := server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w2KeyId))
 
 	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kmsCache, new(atomic.Int64))
 	require.NotNil(t, s)
@@ -859,6 +862,57 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:    "Some authorized connected downstreams with worker public ids",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId: worker1.GetPublicId(),
+					Name:     worker1.GetName(),
+					Address:  worker1.GetAddress(),
+				},
+				ConnectedWorkerKeyIdentifiers: []string{w2KeyId, "unknown"},
+				ConnectedWorkerPublicIds:      []string{w1.GetPublicId(), "unknown"},
+			},
+			want: &pbs.StatusResponse{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
+					{
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
+					},
+				},
+				WorkerId: worker1.PublicId,
+				AuthorizedWorkers: &pbs.AuthorizedWorkerList{
+					WorkerKeyIdentifiers: []string{w2KeyId},
+					WorkerPublicIds:      []string{w1.GetPublicId()},
+				},
+			},
+		},
+		{
+			name:    "Some authorized connected downstreams with only worker public ids",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId: worker1.GetPublicId(),
+					Name:     worker1.GetName(),
+					Address:  worker1.GetAddress(),
+				},
+				ConnectedWorkerKeyIdentifiers: []string{"unknown"},
+				ConnectedWorkerPublicIds:      []string{w1.GetPublicId(), w2.GetPublicId(), "unknown"},
+			},
+			want: &pbs.StatusResponse{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
+					{
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
+					},
+				},
+				WorkerId: worker1.PublicId,
+				AuthorizedWorkers: &pbs.AuthorizedWorkerList{
+					WorkerPublicIds: []string{w1.GetPublicId(), w2.GetPublicId()},
+				},
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -874,6 +928,8 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 			}
 			sort.Strings(got.GetAuthorizedWorkers().GetWorkerKeyIdentifiers())
 			sort.Strings(tc.want.GetAuthorizedWorkers().GetWorkerKeyIdentifiers())
+			sort.Strings(got.GetAuthorizedWorkers().GetWorkerPublicIds())
+			sort.Strings(tc.want.GetAuthorizedWorkers().GetWorkerPublicIds())
 			assert.Empty(
 				cmp.Diff(
 					tc.want,
