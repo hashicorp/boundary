@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package server
 
 import (
@@ -163,7 +166,9 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 // If WithLiveness is zero the default liveness value is used, if it is negative
 // then the last status update time is ignored.
 // If WithLimit < 0, then unlimited results are returned. If WithLimit == 0, then
-// default limits are used for results.
+// default limits are used for results.  WithWorkerPool can be provided with a
+// non-zero length slice of worker ids to restrict the returned workers to only
+// ones with the ids provided.
 // Also supports: WithWorkerType, WithActiveWorkers
 func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
 	const op = "server.(Repository).ListWorkers"
@@ -200,6 +205,11 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 	if opts.withActiveWorkers {
 		where = append(where, "operational_state = ?")
 		whereArgs = append(whereArgs, ActiveOperationalState.String())
+	}
+
+	if len(opts.withWorkerPool) > 0 {
+		where = append(where, "public_id in (?)")
+		whereArgs = append(whereArgs, opts.withWorkerPool)
 	}
 
 	limit := r.defaultLimit

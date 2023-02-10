@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package cluster
 
 import (
@@ -12,86 +15,339 @@ import (
 
 func TestNewDownstreamManager(t *testing.T) {
 	dm := NewDownstreamManager()
-	assert.Empty(t, dm.Connected())
+	assert.Empty(t, dm.Connected().KeyIds())
+	assert.Empty(t, dm.Connected().WorkerIds())
 
 	t.Run("single connection", func(t *testing.T) {
 		w1, g1 := net.Pipe()
 		dm.addConnection("1", w1)
-		assert.Equal(t, []string{"1"}, dm.Connected())
+		st := dm.Connected()
+		assert.Equal(t, []string{"1"}, st.KeyIds())
 
-		dm.Disconnect("1")
+		dm.disconnectKeys("1")
 		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 		assert.ErrorIs(t, g1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 
-		assert.Empty(t, dm.Connected())
+		assert.Empty(t, dm.Connected().KeyIds())
+	})
+
+	t.Run("single connection with worker", func(t *testing.T) {
+		w1, g1 := net.Pipe()
+		dm.addConnection("1", w1)
+		dm.mapKeyToWorkerId("1", "w1")
+
+		st := dm.Connected()
+		assert.Empty(t, st.KeyIds())
+		assert.Equal(t, []string{"w1"}, st.WorkerIds())
+
+		dm.disconnectWorkerId("w1")
+		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, g1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+
+		assert.Empty(t, dm.Connected().KeyIds())
+		assert.Empty(t, dm.Connected().WorkerIds())
 	})
 
 	t.Run("multiple connection with single name", func(t *testing.T) {
 		w1, g1 := net.Pipe()
 		dm.addConnection("1", w1)
-		assert.Equal(t, []string{"1"}, dm.Connected())
+		assert.Equal(t, []string{"1"}, dm.Connected().KeyIds())
 		w2, g2 := net.Pipe()
 		dm.addConnection("1", w2)
-		assert.Equal(t, []string{"1"}, dm.Connected())
+		assert.Equal(t, []string{"1"}, dm.Connected().KeyIds())
 
 		assert.NoError(t, w1.SetReadDeadline(time.Now()))
 		assert.NoError(t, g1.SetReadDeadline(time.Now()))
 		assert.NoError(t, w2.SetReadDeadline(time.Now()))
 		assert.NoError(t, g2.SetReadDeadline(time.Now()))
 
-		dm.Disconnect("1")
+		dm.disconnectKeys("1")
 		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 		assert.ErrorIs(t, g1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 		assert.ErrorIs(t, w2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 		assert.ErrorIs(t, g2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 
-		assert.Empty(t, dm.Connected())
+		assert.Empty(t, dm.Connected().KeyIds())
 	})
 
-	t.Run("multiple connection with different names", func(t *testing.T) {
+	t.Run("multiple connection with single key mapped to worker", func(t *testing.T) {
 		w1, g1 := net.Pipe()
 		dm.addConnection("1", w1)
-		assert.Equal(t, []string{"1"}, dm.Connected())
+		assert.Equal(t, []string{"1"}, dm.Connected().KeyIds())
+		w2, g2 := net.Pipe()
+		dm.addConnection("1", w2)
+		assert.Equal(t, []string{"1"}, dm.Connected().KeyIds())
+
+		dm.mapKeyToWorkerId("1", "w1")
+		assert.Equal(t, []string{"w1"}, dm.Connected().WorkerIds())
+		assert.Empty(t, dm.Connected().KeyIds())
+
+		assert.NoError(t, w1.SetReadDeadline(time.Now()))
+		assert.NoError(t, g1.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2.SetReadDeadline(time.Now()))
+		assert.NoError(t, g2.SetReadDeadline(time.Now()))
+
+		dm.disconnectWorkerId("w1")
+		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, g1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, g2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+
+		assert.Empty(t, dm.Connected().KeyIds())
+		assert.Empty(t, dm.Connected().WorkerIds())
+	})
+
+	t.Run("multiple connection with different keys", func(t *testing.T) {
+		w1, g1 := net.Pipe()
+		dm.addConnection("1", w1)
+		assert.Equal(t, []string{"1"}, dm.Connected().KeyIds())
 		w2, g2 := net.Pipe()
 		dm.addConnection("2", w2)
-		got := dm.Connected()
+		got := dm.Connected().KeyIds()
 		sort.Strings(got)
 		assert.Equal(t, []string{"1", "2"}, got)
 
-		dm.Disconnect("1")
+		dm.disconnectKeys("1")
 		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 		assert.ErrorIs(t, g1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 
 		assert.NoError(t, w2.SetReadDeadline(time.Now()))
 		assert.NoError(t, g2.SetReadDeadline(time.Now()))
 
-		assert.Equal(t, []string{"2"}, dm.Connected())
+		assert.Equal(t, []string{"2"}, dm.Connected().KeyIds())
 
-		dm.Disconnect("2")
+		dm.disconnectKeys("2")
 		assert.ErrorIs(t, w2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
 		assert.ErrorIs(t, g2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.Empty(t, dm.Connected().KeyIds())
+		assert.Empty(t, dm.Connected().WorkerIds())
+	})
+
+	t.Run("multiple connection with different keys to same worker", func(t *testing.T) {
+		w1, g1 := net.Pipe()
+		dm.addConnection("1", w1)
+		assert.Equal(t, []string{"1"}, dm.Connected().KeyIds())
+		w2, g2 := net.Pipe()
+		dm.addConnection("2", w2)
+		assert.ElementsMatch(t, []string{"1", "2"}, dm.Connected().KeyIds())
+
+		dm.mapKeyToWorkerId("1", "w1")
+		dm.mapKeyToWorkerId("2", "w1")
+		assert.Equal(t, []string{"w1"}, dm.Connected().WorkerIds())
+		assert.Empty(t, dm.Connected().KeyIds())
+
+		assert.NoError(t, w1.SetReadDeadline(time.Now()))
+		assert.NoError(t, g1.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2.SetReadDeadline(time.Now()))
+		assert.NoError(t, g2.SetReadDeadline(time.Now()))
+
+		dm.disconnectWorkerId("w1")
+		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, g1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, g2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.Empty(t, dm.Connected().KeyIds())
+		assert.Empty(t, dm.Connected().WorkerIds())
+	})
+
+	t.Run("multiple connection with different key to partial worker", func(t *testing.T) {
+		w1, g1 := net.Pipe()
+		dm.addConnection("1", w1)
+		assert.Equal(t, []string{"1"}, dm.Connected().KeyIds())
+		w2, g2 := net.Pipe()
+		dm.addConnection("2", w2)
+		assert.ElementsMatch(t, []string{"1", "2"}, dm.Connected().KeyIds())
+
+		dm.mapKeyToWorkerId("1", "w1")
+		assert.Equal(t, []string{"w1"}, dm.Connected().WorkerIds())
+		assert.Equal(t, []string{"2"}, dm.Connected().KeyIds())
+
+		assert.NoError(t, w1.SetReadDeadline(time.Now()))
+		assert.NoError(t, g1.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2.SetReadDeadline(time.Now()))
+		assert.NoError(t, g2.SetReadDeadline(time.Now()))
+
+		dm.disconnectWorkerId("w1")
+		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, g1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.NoError(t, w2.SetReadDeadline(time.Now()))
+		assert.NoError(t, g2.SetReadDeadline(time.Now()))
+		dm.disconnectKeys("2")
+		assert.ErrorIs(t, w2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, g2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.Empty(t, dm.Connected().KeyIds())
+		assert.Empty(t, dm.Connected().WorkerIds())
+	})
+
+	t.Run("multiple connection with different key to different workers", func(t *testing.T) {
+		w1, g1 := net.Pipe()
+		dm.addConnection("1", w1)
+		assert.Equal(t, []string{"1"}, dm.Connected().KeyIds())
+		w2, g2 := net.Pipe()
+		dm.addConnection("2", w2)
+		assert.ElementsMatch(t, []string{"1", "2"}, dm.Connected().KeyIds())
+
+		dm.mapKeyToWorkerId("1", "w1")
+		dm.mapKeyToWorkerId("2", "w2")
+		assert.Equal(t, []string{"w1", "w2"}, dm.Connected().WorkerIds())
+		assert.Empty(t, dm.Connected().KeyIds())
+
+		assert.NoError(t, w1.SetReadDeadline(time.Now()))
+		assert.NoError(t, g1.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2.SetReadDeadline(time.Now()))
+		assert.NoError(t, g2.SetReadDeadline(time.Now()))
+
+		dm.disconnectWorkerId("w1")
+		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, g1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.NoError(t, w2.SetReadDeadline(time.Now()))
+		assert.NoError(t, g2.SetReadDeadline(time.Now()))
+		dm.disconnectWorkerId("w2")
+		assert.ErrorIs(t, w2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, g2.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.Empty(t, dm.Connected().KeyIds())
+		assert.Empty(t, dm.Connected().WorkerIds())
 	})
 }
 
-func TestDisconnectUnauthorized(t *testing.T) {
-	dm := NewDownstreamManager()
-	w1, _ := net.Pipe()
-	dm.addConnection("w1", w1)
-	w2a, _ := net.Pipe()
-	dm.addConnection("w2", w2a)
-	w2b, _ := net.Pipe()
-	dm.addConnection("w2", w2b)
-	w3, _ := net.Pipe()
-	dm.addConnection("w3", w3)
+func TestConnectionState_Disconnect(t *testing.T) {
+	t.Run("disconnect some key ids", func(t *testing.T) {
+		dm := NewDownstreamManager()
+		w1, _ := net.Pipe()
+		dm.addConnection("1", w1)
+		w2a, _ := net.Pipe()
+		dm.addConnection("2", w2a)
+		w2b, _ := net.Pipe()
+		dm.addConnection("2", w2b)
+		w3, _ := net.Pipe()
+		dm.addConnection("3", w3)
 
-	assert.NoError(t, w1.SetReadDeadline(time.Now()))
-	assert.NoError(t, w2a.SetReadDeadline(time.Now()))
-	assert.NoError(t, w2b.SetReadDeadline(time.Now()))
-	assert.NoError(t, w3.SetReadDeadline(time.Now()))
+		assert.NoError(t, w1.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2a.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2b.SetReadDeadline(time.Now()))
+		assert.NoError(t, w3.SetReadDeadline(time.Now()))
 
-	DisconnectUnauthorized(dm, dm.Connected(), []string{"w3"})
-	assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
-	assert.ErrorIs(t, w2a.SetReadDeadline(time.Now()), io.ErrClosedPipe)
-	assert.ErrorIs(t, w2b.SetReadDeadline(time.Now()), io.ErrClosedPipe)
-	assert.NoError(t, w3.SetReadDeadline(time.Now()))
+		st := dm.Connected()
+		assert.ElementsMatch(t, []string{"1", "2", "3"}, st.KeyIds())
+
+		st.DisconnectMissingKeyIds([]string{"3"})
+		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w2a.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w2b.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.NoError(t, w3.SetReadDeadline(time.Now()))
+	})
+
+	t.Run("disconnect all key ids", func(t *testing.T) {
+		dm := NewDownstreamManager()
+		w1, _ := net.Pipe()
+		dm.addConnection("1", w1)
+		w2a, _ := net.Pipe()
+		dm.addConnection("2", w2a)
+		w2b, _ := net.Pipe()
+		dm.addConnection("2", w2b)
+		w3, _ := net.Pipe()
+		dm.addConnection("3", w3)
+
+		assert.NoError(t, w1.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2a.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2b.SetReadDeadline(time.Now()))
+		assert.NoError(t, w3.SetReadDeadline(time.Now()))
+
+		st := dm.Connected()
+		assert.ElementsMatch(t, []string{"1", "2", "3"}, st.KeyIds())
+
+		st.DisconnectMissingKeyIds(nil)
+		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w2a.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w2b.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w3.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+	})
+
+	t.Run("disconnect 1 worker id leave unmapped key id alone", func(t *testing.T) {
+		dm := NewDownstreamManager()
+		w1, _ := net.Pipe()
+		dm.addConnection("1", w1)
+		w2a, _ := net.Pipe()
+		dm.addConnection("2", w2a)
+		w2b, _ := net.Pipe()
+		dm.addConnection("2", w2b)
+		w3, _ := net.Pipe()
+		dm.addConnection("3", w3)
+
+		assert.NoError(t, w1.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2a.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2b.SetReadDeadline(time.Now()))
+		assert.NoError(t, w3.SetReadDeadline(time.Now()))
+
+		dm.mapKeyToWorkerId("1", "w1")
+		dm.mapKeyToWorkerId("2", "w1")
+		st := dm.Connected()
+		assert.ElementsMatch(t, []string{"3"}, st.KeyIds())
+		assert.ElementsMatch(t, []string{"w1"}, st.WorkerIds())
+
+		st.DisconnectMissingWorkers(nil)
+		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w2a.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w2b.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.NoError(t, w3.SetReadDeadline(time.Now()))
+	})
+
+	t.Run("disconnect 1 key id leave worker id alone", func(t *testing.T) {
+		dm := NewDownstreamManager()
+		w1, _ := net.Pipe()
+		dm.addConnection("1", w1)
+		w2a, _ := net.Pipe()
+		dm.addConnection("2", w2a)
+		w2b, _ := net.Pipe()
+		dm.addConnection("2", w2b)
+		w3, _ := net.Pipe()
+		dm.addConnection("3", w3)
+
+		assert.NoError(t, w1.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2a.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2b.SetReadDeadline(time.Now()))
+		assert.NoError(t, w3.SetReadDeadline(time.Now()))
+
+		dm.mapKeyToWorkerId("1", "w1")
+		dm.mapKeyToWorkerId("2", "w1")
+		st := dm.Connected()
+		assert.ElementsMatch(t, []string{"3"}, st.KeyIds())
+		assert.ElementsMatch(t, []string{"w1"}, st.WorkerIds())
+
+		st.DisconnectMissingKeyIds(nil)
+		assert.NoError(t, w1.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2a.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2b.SetReadDeadline(time.Now()))
+		assert.ErrorIs(t, w3.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+	})
+
+	t.Run("disconnect 1 worker id prividing a different worker", func(t *testing.T) {
+		dm := NewDownstreamManager()
+		w1, _ := net.Pipe()
+		dm.addConnection("1", w1)
+		w2a, _ := net.Pipe()
+		dm.addConnection("2", w2a)
+		w2b, _ := net.Pipe()
+		dm.addConnection("2", w2b)
+		w3, _ := net.Pipe()
+		dm.addConnection("3", w3)
+
+		assert.NoError(t, w1.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2a.SetReadDeadline(time.Now()))
+		assert.NoError(t, w2b.SetReadDeadline(time.Now()))
+		assert.NoError(t, w3.SetReadDeadline(time.Now()))
+
+		dm.mapKeyToWorkerId("1", "w1")
+		dm.mapKeyToWorkerId("2", "w1")
+		dm.mapKeyToWorkerId("3", "w2")
+		st := dm.Connected()
+		assert.Empty(t, st.KeyIds())
+		assert.ElementsMatch(t, []string{"w1", "w2"}, st.WorkerIds())
+
+		st.DisconnectMissingWorkers([]string{"w2"})
+		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w2a.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.ErrorIs(t, w2b.SetReadDeadline(time.Now()), io.ErrClosedPipe)
+		assert.NoError(t, w3.SetReadDeadline(time.Now()))
+	})
 }

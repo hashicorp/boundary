@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package controller
 
 import (
@@ -7,10 +10,12 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
-	"github.com/hashicorp/boundary/internal/server/store"
-
+	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/server/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // In the future we could make this configurable
@@ -187,18 +192,34 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 				return
 
 			case <-timer.C:
-				repo, err := c.WorkerAuthRepoStorageFn()
-				if err != nil {
-					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching repository for cluster connection maintenance"))
-					break
+				connectionState := m.Connected()
+				if len(connectionState.WorkerIds()) > 0 {
+					serverRepo, err := c.ServersRepoFn()
+					if err != nil {
+						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching server repository for cluster connection maintenance"))
+						break
+					}
+					knownWorker, err := serverRepo.ListWorkers(cancelCtx, []string{scope.Global.String()}, server.WithWorkerPool(connectionState.WorkerIds()), server.WithLiveness(-1))
+					if err != nil {
+						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get known workers from repo"))
+						break
+					}
+					connectionState.DisconnectMissingWorkers(common.WorkerList(knownWorker).PublicIds())
 				}
-				wKeyIds := m.Connected()
-				authorized, err := repo.FilterToAuthorizedWorkerKeyIds(cancelCtx, wKeyIds)
-				if err != nil {
-					event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get authorized workers from repo"))
-					break
+
+				if len(connectionState.KeyIds()) > 0 {
+					repo, err := c.WorkerAuthRepoStorageFn()
+					if err != nil {
+						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching worker auth repository for cluster connection maintenance"))
+						break
+					}
+					authorized, err := repo.FilterToAuthorizedWorkerKeyIds(cancelCtx, connectionState.KeyIds())
+					if err != nil {
+						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get authorized workers from repo"))
+						break
+					}
+					connectionState.DisconnectMissingKeyIds(authorized)
 				}
-				cluster.DisconnectUnauthorized(m, wKeyIds, authorized)
 			}
 
 			timer.Reset(getRandomInterval())
