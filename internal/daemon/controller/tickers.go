@@ -207,13 +207,13 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 					connectionState.DisconnectMissingWorkers(common.WorkerList(knownWorker).PublicIds())
 				}
 
-				if len(connectionState.KeyIds()) > 0 {
+				if len(connectionState.UnMappedKeyIds()) > 0 {
 					repo, err := c.WorkerAuthRepoStorageFn()
 					if err != nil {
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching worker auth repository for cluster connection maintenance"))
 						break
 					}
-					authorized, err := repo.FilterToAuthorizedWorkerKeyIds(cancelCtx, connectionState.KeyIds())
+					authorized, err := repo.FilterToAuthorizedWorkerKeyIds(cancelCtx, connectionState.UnMappedKeyIds())
 					if err != nil {
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get authorized workers from repo"))
 						break

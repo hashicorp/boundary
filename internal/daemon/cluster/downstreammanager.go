@@ -81,8 +81,8 @@ func (m *DownstreamManager) disconnectKeys(id string) {
 	}
 }
 
-// Connected returns a slice of worker key identifiers for all workers that are
-// currently being tracked by this downstream manager.
+// Connected returns a connected state which provides the worker ids that are
+// being tracked and any key ids for which we don't know the worker id.
 func (m *DownstreamManager) Connected() *connectedState {
 	m.l.RLock()
 	defer m.l.RUnlock()
@@ -101,24 +101,24 @@ func (m *DownstreamManager) Connected() *connectedState {
 		}
 	}
 	return &connectedState{
-		dm:        m,
-		keyIds:    keyIds,
-		workerIds: workerIds,
+		dm:             m,
+		unmappedKeyIds: keyIds,
+		workerIds:      workerIds,
 	}
 }
 
 // connectedState provides a state of the downstream manager and allows users
 // to request connections be disconnected that are capturred in this state.
 type connectedState struct {
-	dm        *DownstreamManager
-	keyIds    []string
-	workerIds []string
+	dm             *DownstreamManager
+	unmappedKeyIds []string
+	workerIds      []string
 }
 
-// KeyIds are the keys for which no worker id association is known and which
-// are tracking a specific connection.
-func (s *connectedState) KeyIds() []string {
-	return s.keyIds
+// UnMappedKeyIds are the key ids for which no worker id association is known
+// and which are tracking at least 1 connection.
+func (s *connectedState) UnMappedKeyIds() []string {
+	return s.unmappedKeyIds
 }
 
 // WorkerIds are the public ids for workers which we are tracking connections.
@@ -127,7 +127,7 @@ func (s *connectedState) WorkerIds() []string {
 }
 
 // DisconnectMissingWorkers disconnects all workers that are not in the slice
-// of worker ids provided but are tracked in this connection state.
+// of worker ids provided but are tracked in this connected state.
 func (s *connectedState) DisconnectMissingWorkers(workers []string) {
 	aw := make(map[string]struct{}, len(workers))
 	for _, i := range workers {
@@ -141,13 +141,13 @@ func (s *connectedState) DisconnectMissingWorkers(workers []string) {
 }
 
 // DisconnectMissingKeyIds disconnects all workers which are not in the slice of
-// key ids provided but are tracked in this connection state.
+// key ids provided but are tracked in this connected state.
 func (s *connectedState) DisconnectMissingKeyIds(keyIds []string) {
 	am := make(map[string]struct{}, len(keyIds))
 	for _, i := range keyIds {
 		am[i] = struct{}{}
 	}
-	for _, i := range s.keyIds {
+	for _, i := range s.unmappedKeyIds {
 		if _, found := am[i]; !found {
 			s.dm.disconnectKeys(i)
 		}

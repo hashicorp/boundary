@@ -183,7 +183,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			ReleaseVersion:   versionInfo.FullVersionNumber(false),
 			OperationalState: w.operationalState.Load().(server.OperationalState).String(),
 		},
-		ConnectedWorkerKeyIdentifiers: connectionState.KeyIds(),
+		ConnectedWorkerKeyIdentifiers: connectionState.UnMappedKeyIds(),
 		ConnectedWorkerPublicIds:      connectionState.WorkerIds(),
 		UpdateTags:                    w.updateTags.Load(),
 	})

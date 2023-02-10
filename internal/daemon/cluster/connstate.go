@@ -26,7 +26,7 @@ type WorkerConnectionInfo struct {
 }
 
 // AsConnectionStateStruct builds a structPb in the format that is expected for
-// workers to attach there state to a *protocol.Conn through the withState option.
+// workers to attach their state to a *protocol.Conn through the withState option.
 func (w *WorkerConnectionInfo) AsConnectionStateStruct() (*structpb.Struct, error) {
 	if w == nil {
 		return nil, nil
