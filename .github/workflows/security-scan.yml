@@ -6,7 +6,6 @@ on:
   pull_request:
     branches:
       - 'main'
-      - '!oss-merge-main*'
 
 jobs:
   scan:
@@ -16,10 +15,17 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Determine Go version
+        id: get-go-version
+        # We use .go-version as our source of truth for current Go
+        # version, because "goenv" can react to it automatically.
+        run: |
+          echo "Building with Go $(cat .go-version)"
+          echo "go-version=$(cat .go-version)" >> $GITHUB_OUTPUT
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.18
+        go-version: "${{ steps.get-go-version.outputs.go-version }}"
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -65,10 +71,6 @@ tail -n1)
     - name: Scan
       id: scan
       uses: ./security-scanner
-      # env:
-        # Note: this _should_ work, but causes some issues with Semgrep.
-        # Instead, rely on filtering in the SARIF Output step.
-        #SEMGREP_BASELINE_REF: ${{ github.base_ref }}
       with:
         repository: "$PWD"
 
