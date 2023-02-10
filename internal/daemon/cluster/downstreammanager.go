@@ -115,9 +115,9 @@ type connectedState struct {
 	workerIds      []string
 }
 
-// UnMappedKeyIds are the key ids for which no worker id association is known
+// UnmappedKeyIds are the key ids for which no worker id association is known
 // and which are tracking at least 1 connection.
-func (s *connectedState) UnMappedKeyIds() []string {
+func (s *connectedState) UnmappedKeyIds() []string {
 	return s.unmappedKeyIds
 }
 
