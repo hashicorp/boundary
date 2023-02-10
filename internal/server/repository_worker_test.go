@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package server_test
 
 import (
@@ -641,6 +644,62 @@ func TestListWorkers(t *testing.T) {
 					assert.Empty(t, worker.CanonicalTags())
 				}
 			}
+		})
+	}
+}
+
+func TestListWorkers_WithWorkerPool(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrapper)
+	require.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	serversRepo, err := server.NewRepository(rw, rw, kmsCache)
+	require.NoError(err)
+	ctx := context.Background()
+
+	worker1 := server.TestKmsWorker(t, conn, wrapper)
+	worker2 := server.TestPkiWorker(t, conn, wrapper)
+	worker3 := server.TestKmsWorker(t, conn, wrapper)
+
+	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(-1))
+	require.NoError(err)
+	require.Len(result, 3)
+
+	tests := []struct {
+		name       string
+		workerPool []string
+		want       []*server.Worker
+	}{
+		{
+			name:       "one",
+			workerPool: []string{worker1.GetPublicId()},
+			want:       []*server.Worker{worker1},
+		},
+		{
+			name:       "two",
+			workerPool: []string{worker2.GetPublicId(), worker3.GetPublicId()},
+			want:       []*server.Worker{worker2, worker3},
+		},
+		{
+			name:       "none",
+			workerPool: []string{},
+			want:       []*server.Worker{worker1, worker2, worker3},
+		},
+		{
+			name:       "unknown ids",
+			workerPool: []string{"this_is_unknown"},
+			want:       []*server.Worker{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(-1), server.WithWorkerPool(tt.workerPool))
+			require.NoError(err)
+			assert.ElementsMatch(t, tt.want, got)
 		})
 	}
 }

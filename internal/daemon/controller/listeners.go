@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package controller
 
 import (
@@ -18,9 +21,16 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-multierror"
+	nodee "github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/hashicorp/nodeenrollment/protocol"
 	"google.golang.org/grpc"
+)
+
+const (
+	// the purpose strings used to identify listeners
+	reverseGrpcListenerPurpose = "reverse-grpc"
+	grpcListenerPurpose        = "grpc"
 )
 
 // the function that handles a secondary connection over a provided listener
@@ -148,7 +158,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	// This handles connections coming in on the cluster port that are
 	// authenticated via nodeenrollment but not with any extra purpose; these
 	// are normal worker connections
-	nodeeAuthedListener, err := splitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto)
+	nodeeAuthedListener, err := splitListener.GetListener(nodeenet.AuthenticatedNonSpecificNextProto, nodee.WithNativeConns(true))
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating node enrollment authed split listener: %w", err)
 	}
@@ -161,7 +171,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 
 	// This wraps the normal pki worker connections with a listener which adds
 	// the worker key id of the connections to the controller's pkiConnManager.
-	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, eventingAuthedListener, c.pkiConnManager)
+	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, eventingAuthedListener, c.pkiConnManager, sourcePurpose(grpcListenerPurpose))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating pki worker tracking listener: %w", op, err)
 	}
@@ -183,14 +193,14 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 
 	// Connections coming in here are authed by nodeenrollment and are for the
 	// reverse grpc purpose
-	reverseGrpcListener, err := splitListener.GetListener(common.ReverseGrpcConnectionAlpnValue)
+	reverseGrpcListener, err := splitListener.GetListener(common.ReverseGrpcConnectionAlpnValue, nodee.WithNativeConns(true))
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating reverse gprc connection split listener: %w", err)
 	}
 
 	// This wraps the reverse grpc pki worker connections with a listener which
 	// adds the worker key id of the connections to the pkiConnManager.
-	revPkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, reverseGrpcListener, c.pkiConnManager)
+	revPkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, reverseGrpcListener, c.pkiConnManager, sourcePurpose(reverseGrpcListenerPurpose))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating reverse grpc pki worker tracking listener: %w", op, err)
 	}
@@ -243,7 +253,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	ln.GrpcServer = workerServer
 
 	return func() {
-		err := handleSecondaryConnection(c.baseContext, metric.InstrumentClusterTrackingListener(multiplexingReverseGrpcListener, "reverse-grpc"),
+		err := handleSecondaryConnection(c.baseContext, metric.InstrumentClusterTrackingListener(multiplexingReverseGrpcListener, reverseGrpcListenerPurpose),
 			c.downstreamRoutes)
 		if err != nil {
 			event.WriteError(c.baseContext, op, err, event.WithInfoMsg("handleSecondaryConnection error"))
@@ -255,7 +265,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 			}
 		}()
 		go func() {
-			err := ln.GrpcServer.Serve(metric.InstrumentClusterTrackingListener(multiplexingAuthedListener, "grpc"))
+			err := ln.GrpcServer.Serve(metric.InstrumentClusterTrackingListener(multiplexingAuthedListener, grpcListenerPurpose))
 			if err != nil {
 				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("multiplexingAuthedListener error"))
 			}
@@ -368,4 +378,8 @@ func listenerCloseErrorCheck(lnType string, err error) error {
 	}
 
 	return err
+}
+
+func sourcePurpose(purpose string) string {
+	return fmt.Sprintf("controller %s", purpose)
 }
