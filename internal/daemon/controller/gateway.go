@@ -39,10 +39,20 @@ func gatewayDialOptions(lis grpcServerListener) []grpc.DialOption {
 	}
 }
 
+type noDelimiterStreamingMarshaler struct {
+	runtime.Marshaler
+}
+
+func (noDelimiterStreamingMarshaler) Delimiter() []byte {
+	return nil
+}
+
 func newGrpcGatewayMux() *runtime.ServeMux {
 	return runtime.NewServeMux(
-		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
-			Marshaler: handlers.JSONMarshaler(),
+		runtime.WithMarshalerOption(runtime.MIMEWildcard, &noDelimiterStreamingMarshaler{
+			&runtime.HTTPBodyMarshaler{
+				Marshaler: handlers.JSONMarshaler(),
+			},
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler()),
 		runtime.WithForwardResponseOption(handlers.OutgoingResponseFilter),
