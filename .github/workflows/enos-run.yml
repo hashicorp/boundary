@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
+    outputs:
+      status: ${{ steps.enos-status.outputs.status }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -155,6 +157,13 @@ jobs:
           name: test-e2e-output.zip
           path: enos/test*.out
           retention-days: 5
+      - name: Set Enos Job Status
+        id: enos-status
+        # steps.run.outcome reports as failure when there is an error in `Run Enos scenario`
+        # failure() captures errors before `Run Enos scenario`
+        # failure() does not capture errors in `Run Enos scenario` due to continue-on-error
+        if: ${{ steps.run.outcome == 'failure' || failure() }}
+        run: echo "status=failure" >> $GITHUB_OUTPUT
       - name: Retry Enos scenario
         id: run_retry
         if: steps.run.outcome == 'failure'
@@ -186,3 +195,20 @@ jobs:
         run: |
           env
           find ./enos -name "scenario.tf" -exec cat {} \;
+
+  notify:
+    name: Notify
+    needs: enos
+    runs-on: ubuntu-latest
+    if: ${{ always() && needs.enos.outputs.status == 'failure' }}
+    steps:
+      - name: Send Slack message
+        uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
+        with:
+          channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
+          payload: |
+            {
+              "text": ":x: e2e tests failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n*Branch:* ${{ github.event.ref }}\n*SHA:* <${{ github.event.head_commit.url }}|${{ github.event.after }}>"
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_TOKEN }}
