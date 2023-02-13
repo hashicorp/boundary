@@ -272,6 +272,12 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 			address = v
 		}
 		subtype, err := t.targetSubtype(ctx, address)
+		if errors.Is(err, errTargetSubtypeNotFound) {
+			// In cases where we have mixed target types and the controller
+			// doesn't support all of them, we want to ignore if we can't find
+			// the target subtype and continue listing the others we do support.
+			continue
+		}
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
