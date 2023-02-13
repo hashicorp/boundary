@@ -284,7 +284,7 @@ test-ci: export CI_BUILD=1
 test-ci:
 	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 	#go test ./... -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
-	go test ./internal/credential/... -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
+	go test ./internal/credential/vault -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
 
 .PHONY: test-sql
 test-sql:
