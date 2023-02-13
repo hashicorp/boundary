@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -174,6 +175,12 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 			stats := exec.Command("docker", "stats", "--no-stream")
 			o, _ := stats.CombinedOutput()
 			t.Logf("Docker stats:\n%s\n", string(o))
+
+			logs := exec.Command("docker", "logs", resource.Container.ID)
+			o, _ = logs.CombinedOutput()
+			t.Logf("Docker logs:\n%s\n", string(o))
+
+			t.Logf("GOMAXPROCS: %d\n", runtime.NumCPU())
 			cleanupResource(t, pool, resource)
 		})
 	}
@@ -195,6 +202,9 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 
 	err = pool.Retry(func() error {
 		if _, err := client.Sys().Health(); err != nil {
+			stats := exec.Command("docker", "stats", "--no-stream")
+			o, _ := stats.CombinedOutput()
+			t.Logf("Docker stats waiting for healthy:\n%s\n", string(o))
 			return err
 		}
 		return nil
