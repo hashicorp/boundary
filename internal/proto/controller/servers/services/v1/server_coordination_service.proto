@@ -103,7 +103,7 @@ message StatusRequest {
   // worker.
   // Deprecated. Should be removed in 0.15.0 at which time
   // connected_unmapped_worker_key_identifiers should be used exclusively.
-  repeated string connected_worker_key_identifiers = 50;
+  repeated string connected_worker_key_identifiers = 50 [deprecated = true];
 
   // The worker key identifiers for downstream workers for which there
   // is not a known worker id mapping for them yet.
