@@ -102,6 +102,30 @@ ingress and egress for session traffic to a [target][]. Ingress worker filters d
 workers you connect with to initiate a session, and egress worker filters determine which workers are
 used to access targets.
 
+## Multi-hop worker requirements
+
+When you configure multi-hop sessions, there is an "ingress" worker, an "egress" worker, and any number of intermediary workers.
+Ingress, egress, and intermediary workers have the following requirements.
+
+### Ingress worker requirements
+
+To proxy target connections, ingress workers require outbound access to the Boundary control plane and inbound access from clients.
+
+### Intermediary worker requirements
+
+Intermediary workers require outbound access to an upstream worker.
+The upstream worker may be an ingress worker or another intermediary worker.
+Any upstream intermediary worker needs eventual connectivity to an ingress worker via trusted intermediaries.
+
+Intermediary workers also require inbound access from a downstream worker.
+The downstream worker may be an egress worker or another intermediary worker.
+Any downstream intermediary worker needs eventual connectivity to an egress worker via trusted intermediaries.
+
+### Egress worker requirements
+
+To proxy target connections, egress workers require outbound access to an upstream worker and outbound access to the destination host.
+Inbound session connections from clients reach the egress worker via reverse proxy; the ingress worker is initatied from the egress worker.
+
 # Complete Configuration Example
 
 ```hcl
