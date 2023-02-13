@@ -166,6 +166,8 @@ func (s *connectedState) DisconnectMissingUnmappedKeyIds(keyIds []string) {
 
 // DisconnectAllMissingKeyIds disconnects all workers which are not in the slice
 // of key ids provided but are tracked in this connected state.
+// Deprecated. Please use DisconnectMissingUnmappedKeyIds and DisconnectMissingWorkers.
+// This remains for now only to support older controller versions.
 func (s *connectedState) DisconnectAllMissingKeyIds(keyIds []string) {
 	am := make(map[string]struct{}, len(keyIds))
 	for _, i := range keyIds {
