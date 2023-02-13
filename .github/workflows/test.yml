@@ -115,7 +115,7 @@ jobs:
           make tools
       - name: Test
         run: |
-          make test
+          make test-ci
       - name: Cleanup
         if: always()
         run: |
