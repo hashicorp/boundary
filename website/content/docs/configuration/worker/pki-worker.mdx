@@ -6,7 +6,7 @@ description: |-
 ---
 
 
-## PKI Worker Configuration
+# PKI Worker Configuration
 PKI Workers authenticate to Boundary using a certificate-based method, allowing
 for worker deployment without using a shared KMS.
 
@@ -22,10 +22,10 @@ worker {
 }
 ```
 
-## Authorization Methods
+## Authorization methods
 There are two mechanisms that can be used to register a worker to the cluster.
 
-### Controller-Led Authorization Flow
+### Controller-led authorization flow
 In this flow, the operator fetches an activation token from the controller's
 `workers:create:controller-led` action (on the CLI, this is via `boundary
 workers create controller-led`). That activation token is given to the worker
@@ -53,7 +53,7 @@ flow, described below. So long as the worker-led flow has not been used to
 authorize the worker, if the controller-generated activation token is provided
 and the worker restarted, it will make use of it.
 
-### Worker-Led Authorization Flow
+### Worker-led authorization flow
 In this flow, the worker prints out an authorization request token to two
 places: the startup information printed to stdout, and a file called
 `auth_request_token` in the base of the configured `auth_storage_path`. This
@@ -61,7 +61,7 @@ token can be submitted to a controller at the `workers:create:worker-led` path;
 on the CLI this would be via `boundary workers create worker-led
 -worker-generated-auth-token`. No values are needed in the configuration file.
 
-## KMS Configuration
+## KMS configuration
 PKI Workers credentials can be encrypted by including an optional KMS stanza with the purpose `worker-auth-storage`.
 
 Example (not safe for production!):
@@ -78,7 +78,7 @@ kms "aead" {
 workers. These fields are only valid for [KMS Workers][]. `name` and
 `description` can only be set for PKI workers through the API.
 
-# Multi-Hop Workers<sup>HCP Only</sup>
+## Multi-hop workers<sup>HCP only</sup>
 
 You can use the `hcp_boundary_cluster_id` field to configure PKI workers to connect to your HCP
 Boundary cluster or the `initial_upstreams` field to connect directly to other workers,
@@ -102,16 +102,16 @@ ingress and egress for session traffic to a [target][]. Ingress worker filters d
 workers you connect with to initiate a session, and egress worker filters determine which workers are
 used to access targets.
 
-## Multi-hop worker requirements
+### Multi-hop worker requirements
 
 When you configure multi-hop sessions, there is an "ingress" worker, an "egress" worker, and any number of intermediary workers.
 Ingress, egress, and intermediary workers have the following requirements.
 
-### Ingress worker requirements
+#### Ingress worker requirements
 
 To proxy target connections, ingress workers require outbound access to the Boundary control plane and inbound access from clients.
 
-### Intermediary worker requirements
+#### Intermediary worker requirements
 
 Intermediary workers require outbound access to an upstream worker.
 The upstream worker may be an ingress worker or another intermediary worker.
@@ -121,12 +121,12 @@ Intermediary workers also require inbound access from a downstream worker.
 The downstream worker may be an egress worker or another intermediary worker.
 Any downstream intermediary worker needs eventual connectivity to an egress worker via trusted intermediaries.
 
-### Egress worker requirements
+#### Egress worker requirements
 
 To proxy target connections, egress workers require outbound access to an upstream worker and outbound access to the destination host.
-Inbound session connections from clients reach the egress worker via reverse proxy; the ingress worker is initatied from the egress worker.
+Inbound session connections from clients reach the egress worker via reverse proxy; the ingress worker is initiated from the egress worker.
 
-# Complete Configuration Example
+### Complete configuration example
 
 ```hcl
 listener "tcp" {
