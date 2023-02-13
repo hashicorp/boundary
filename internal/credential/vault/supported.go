@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -170,6 +171,9 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 	require.NoError(err)
 	if !opts.skipCleanup {
 		t.Cleanup(func() {
+			stats := exec.Command("docker", "stats", "--no-stream")
+			o, _ := stats.CombinedOutput()
+			t.Logf("Docker stats:\n%s\n", string(o))
 			cleanupResource(t, pool, resource)
 		})
 	}
