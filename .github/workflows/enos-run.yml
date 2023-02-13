@@ -35,6 +35,8 @@ jobs:
     outputs:
       status: ${{ steps.enos-status.outputs.status }}
     steps:
+      - name: Reset status output
+        run: echo "status=none" >> $GITHUB_OUTPUT
       - name: Checkout
         uses: actions/checkout@v3
       - name: Set up Go
