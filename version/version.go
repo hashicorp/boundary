@@ -92,7 +92,7 @@ func FromVersionString(s string) *Info {
 		return nil
 	}
 
-	if md := v.Metadata(); len(md) > 0 && v.Metadata() != "oss" {
+	if md := v.Metadata(); len(md) > 0 && md != "oss" {
 		i.VersionMetadata = md
 	}
 	if pr := v.Prerelease(); len(pr) > 0 {
