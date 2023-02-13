@@ -93,6 +93,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 	}
 	dbMask, nullFields := dbw.BuildUpdatePaths(
 		map[string]any{
+			OperationalStateField:     am.OperationalState,
 			NameField:                 am.Name,
 			DescriptionField:          am.Description,
 			StartTlsField:             am.StartTls,
@@ -565,6 +566,7 @@ func validateFieldMask(ctx context.Context, fieldMaskPaths []string) error {
 	const op = "ldap.validateFieldMasks"
 	for _, f := range fieldMaskPaths {
 		switch {
+		case strings.EqualFold(OperationalStateField, f):
 		case strings.EqualFold(NameField, f):
 		case strings.EqualFold(DescriptionField, f):
 		case strings.EqualFold(StartTlsField, f):

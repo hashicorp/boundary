@@ -93,7 +93,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am := AllocAuthMethod()
 				am.PublicId = orig.PublicId
 				am.Urls = []string{"ldaps://ldap1.alice.com", "ldaps://ldap2.alice.com"}
-				am.OperationalState = string(InactiveState)
+				am.OperationalState = string(ActivePublicState)
 				am.Name = "update-everything-updated-name"
 				am.Description = "update-everything-updated-description"
 				am.StartTls = true
@@ -120,6 +120,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				return &am
 			},
 			fieldMasks: []string{
+				OperationalStateField,
 				NameField,
 				DescriptionField,
 				UrlsField,
@@ -146,6 +147,7 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			version: 1,
 			want: func(orig, updateWith *AuthMethod) *AuthMethod {
 				am := orig.clone()
+				am.OperationalState = string(ActivePublicState)
 				am.Name = updateWith.Name
 				am.Description = updateWith.Description
 				am.Urls = updateWith.Urls
