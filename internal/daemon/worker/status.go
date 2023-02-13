@@ -183,10 +183,10 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			ReleaseVersion:   versionInfo.FullVersionNumber(false),
 			OperationalState: w.operationalState.Load().(server.OperationalState).String(),
 		},
-		ConnectedWorkerKeyIdentifiers:           connectionState.AllKeyIds(),
-		ConnectedUnammappedWorkerKeyIdentifiers: connectionState.UnmappedKeyIds(),
-		ConnectedWorkerPublicIds:                connectionState.WorkerIds(),
-		UpdateTags:                              w.updateTags.Load(),
+		ConnectedWorkerKeyIdentifiers:         connectionState.AllKeyIds(),
+		ConnectedUnmappedWorkerKeyIdentifiers: connectionState.UnmappedKeyIds(),
+		ConnectedWorkerPublicIds:              connectionState.WorkerIds(),
+		UpdateTags:                            w.updateTags.Load(),
 	})
 	if err != nil {
 		event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error making status request to controller"))
@@ -255,7 +255,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 		connectionState.DisconnectMissingWorkers(authorized.GetWorkerPublicIds())
 		connectionState.DisconnectMissingUnmappedKeyIds(authorized.GetUnmappedWorkerKeyIdentifiers())
 	} else if authorized := result.GetAuthorizedWorkers(); authorized != nil {
-		connectionState.DisconnectMissingUnmappedKeyIds(authorized.GetWorkerKeyIdentifiers())
+		connectionState.DisconnectAllMissingKeyIds(authorized.GetWorkerKeyIdentifiers())
 	}
 	var addrs []string
 	// This may be empty if we are in a multiple hop scenario

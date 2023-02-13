@@ -874,9 +874,9 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
-				ConnectedWorkerKeyIdentifiers:           []string{w1KeyId, w2KeyId, "unknown"},
-				ConnectedUnammappedWorkerKeyIdentifiers: []string{w2KeyId, "unknown"},
-				ConnectedWorkerPublicIds:                []string{w1.GetPublicId(), "unknown"},
+				ConnectedWorkerKeyIdentifiers:         []string{w1KeyId, w2KeyId, "unknown"},
+				ConnectedUnmappedWorkerKeyIdentifiers: []string{w2KeyId, "unknown"},
+				ConnectedWorkerPublicIds:              []string{w1.GetPublicId(), "unknown"},
 			},
 			want: &pbs.StatusResponse{
 				CalculatedUpstreams: []*pbs.UpstreamServer{
@@ -904,9 +904,9 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 					Name:     worker1.GetName(),
 					Address:  worker1.GetAddress(),
 				},
-				ConnectedWorkerKeyIdentifiers:           []string{w1KeyId, w2KeyId, "unknown"},
-				ConnectedUnammappedWorkerKeyIdentifiers: []string{"unknown"},
-				ConnectedWorkerPublicIds:                []string{w1.GetPublicId(), w2.GetPublicId(), "unknown"},
+				ConnectedWorkerKeyIdentifiers:         []string{w1KeyId, w2KeyId, "unknown"},
+				ConnectedUnmappedWorkerKeyIdentifiers: []string{"unknown"},
+				ConnectedWorkerPublicIds:              []string{w1.GetPublicId(), w2.GetPublicId(), "unknown"},
 			},
 			want: &pbs.StatusResponse{
 				CalculatedUpstreams: []*pbs.UpstreamServer{

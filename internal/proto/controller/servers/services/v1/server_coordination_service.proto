@@ -102,12 +102,12 @@ message StatusRequest {
   // The worker key identifiers presented by all downstreams connected to this
   // worker.
   // Deprecated. Should be removed in 0.15.0 at which time
-  // connected_unammapped_worker_key_identifiers should be used exclusively.
+  // connected_unmapped_worker_key_identifiers should be used exclusively.
   repeated string connected_worker_key_identifiers = 50;
 
   // The worker key identifiers for downstream workers for which there
   // is not a known worker id mapping for them yet.
-  repeated string connected_unammapped_worker_key_identifiers = 51;
+  repeated string connected_unmapped_worker_key_identifiers = 51;
 
   // The worker public ids of all downstreams connected to this worker if known.
   // While there may be workers with key ids in the connected_worker_key_identifiers

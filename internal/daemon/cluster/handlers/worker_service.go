@@ -182,8 +182,8 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 		authorizedDownstreams.WorkerPublicIds = dcommon.WorkerList(knownConnectedWorkers).PublicIds()
 	}
 
-	if len(req.GetConnectedUnammappedWorkerKeyIdentifiers()) > 0 {
-		authorizedKeyIds, err := workerAuthRepo.FilterToAuthorizedWorkerKeyIds(ctx, req.GetConnectedUnammappedWorkerKeyIdentifiers())
+	if len(req.GetConnectedUnmappedWorkerKeyIdentifiers()) > 0 {
+		authorizedKeyIds, err := workerAuthRepo.FilterToAuthorizedWorkerKeyIds(ctx, req.GetConnectedUnmappedWorkerKeyIdentifiers())
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting authorized unmapped worker key ids"))
 			return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting authorized worker key ids: %v", err)
