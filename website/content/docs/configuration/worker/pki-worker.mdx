@@ -78,16 +78,16 @@ kms "aead" {
 workers. These fields are only valid for [KMS Workers][]. `name` and
 `description` can only be set for PKI workers through the API.
 
-## Multi-hop workers<sup>HCP only</sup>
+## Multi-hop sessions<sup>HCP only</sup>
 
 You can use the `hcp_boundary_cluister_id` field to configure PKI workers to connect to your HCP
 Boundary cluster or the `initial_upstreams` field to connect directly to other workers,
  when set to the worker's `public_addr` field.
 
-A multi-hop configuration is when two or more workers are connected, and there are multiple “hops” from a worker to
-the controller. There are no limits on the amount of workers allowed in a multi-hop configuration.
+A multi-hop session is when two or more workers are connected, and there are multiple “hops” from a worker to
+the controller. There are no limits on the amount of workers allowed in a multi-hop session configuration.
 
-The multi-hop configuration introduces the concepts of “upstream” and “downstream” workers. If you view controllers
+The multi-hop session introduces the concepts of “upstream” and “downstream” workers. If you view controllers
 as the “top” of a multi-hop chain, downstream workers reside below a worker in the chain, while upstream workers reside
 above a worker in the chain. For example, in the diagram below, Worker 2’s upstream is Worker 1, and its
 downstream is Worker 3.
