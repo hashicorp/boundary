@@ -49,7 +49,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, acctName)
+	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
@@ -94,29 +94,8 @@ func TestCliSessionCancelGroup(t *testing.T) {
 
 	// Create a group
 	boundary.AuthenticateAdminCli(t, ctx)
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"groups", "create",
-			"-scope-id", "global",
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newGroupResult groups.GroupCreateResult
-	err = json.Unmarshal(output.Stdout, &newGroupResult)
-	require.NoError(t, err)
-	newGroupId := newGroupResult.Item.Id
-	t.Logf("Created Group: %s", newGroupId)
-
-	// Add user to group
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"groups", "add-members",
-			"-id", newGroupId,
-			"-member", newUserId,
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	newGroupId := boundary.CreateNewGroupCli(t, ctx, "global")
+	boundary.AddUserToGroup(t, ctx, newUserId, newGroupId)
 
 	// Create a role for a group
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)

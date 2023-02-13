@@ -206,6 +206,16 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	newAwsHostSetId := boundary.CreateNewAwsHostSetCli(t, ctx, newAwsHostCatalogId, c.AwsHostSetFilter)
 	boundary.WaitForHostsInHostSetCli(t, ctx, newAwsHostSetId)
 
+	// Create a user/group and add role to group
+	newAccountId, _ := boundary.CreateNewAccountCli(t, ctx, te.DbInitInfo.AuthMethod.AuthMethodId, "test-account")
+	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
+	newGroupId := boundary.CreateNewGroupCli(t, ctx, "global")
+	boundary.AddUserToGroup(t, ctx, newUserId, newGroupId)
+	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
+	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
+	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newGroupId)
+
 	// Create static credentials
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
 	boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, "password")
@@ -221,6 +231,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	privateKeySecretName := vault.CreateKvPrivateKeyCredential(t, c.VaultSecretPath, c.TargetSshUser, c.TargetSshKeyPath, kvPolicyFilePath)
+	passwordSecretName, _ := vault.CreateKvPasswordCredential(t, c.VaultSecretPath, c.TargetSshUser, kvPolicyFilePath)
 	kvPolicyName := vault.WritePolicy(t, ctx, kvPolicyFilePath)
 	t.Log("Created Vault Credential")
 	output = e2e.RunCommand(ctx, "vault",
@@ -241,7 +252,11 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 	credStoreToken := tokenCreateResult.Auth.Client_Token
 	t.Log("Created Vault Cred Store Token")
+
+	// Create a credential store for vault
 	newVaultCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, te.Vault.UriNetwork, credStoreToken)
+
+	// Create a credential library for the private key in vault
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"credential-libraries", "create", "vault",
@@ -258,6 +273,23 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	require.NoError(t, err)
 	newCredentialLibraryId := newCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
+
+	// Create a credential library for the password in vault
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"credential-libraries", "create", "vault",
+			"-credential-store-id", newVaultCredentialStoreId,
+			"-vault-path", c.VaultSecretPath+"/data/"+passwordSecretName,
+			"-name", "e2e Automated Test Vault Credential Library - Password",
+			"-credential-type", "username_password",
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	err = json.Unmarshal(output.Stdout, &newCredentialLibraryResult)
+	require.NoError(t, err)
+	newPasswordCredentialLibraryId := newCredentialLibraryResult.Item.Id
+	t.Logf("Created Credential Library: %s", newPasswordCredentialLibraryId)
 
 	// Create a session. Uses Boundary in a docker container to do the connect in order to avoid
 	// modifying the runner's /etc/hosts file. Otherwise, you would need to add a `127.0.0.1

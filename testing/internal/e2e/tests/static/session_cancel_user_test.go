@@ -48,7 +48,7 @@ func TestCliSessionCancelUser(t *testing.T) {
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, acctName)
+	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
