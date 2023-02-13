@@ -128,10 +128,10 @@ message JobChangeRequest {
   CHANGETYPE request_type = 2;
 }
 
-// This is deprecated
 message AuthorizedWorkerList {
+  option deprecated = true;
   // the key id of authorized workers
-  repeated string worker_key_identifiers = 1;
+  repeated string worker_key_identifiers = 1 [deprecated = true];
 }
 
 message AuthorizedDownstreamWorkerList {
@@ -165,7 +165,7 @@ message StatusResponse {
   // which are authorized to remain connected.
   // This is deprecated.  Use authorized_downstream_workers instead. This
   // should be removed in version 0.15.0.
-  AuthorizedWorkerList authorized_workers = 50;
+  AuthorizedWorkerList authorized_workers = 50 [deprecated = true];
 
   // Of the downstream workers in the request, these are the ones
   // which are authorized to remain connected.
