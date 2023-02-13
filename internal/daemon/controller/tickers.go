@@ -218,7 +218,7 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get authorized workers from repo"))
 						break
 					}
-					connectionState.DisconnectMissingKeyIds(authorized)
+					connectionState.DisconnectMissingUnmappedKeyIds(authorized)
 				}
 			}
 
