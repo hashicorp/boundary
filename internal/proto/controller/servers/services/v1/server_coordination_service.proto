@@ -100,8 +100,15 @@ message StatusRequest {
   servers.v1.ServerWorkerStatus worker_status = 40;
 
   // The worker key identifiers presented by all downstreams connected to this
-  // worker
-  repeated string connected_worker_key_identifiers = 50;
+  // worker.
+  // Deprecated. Should be removed in 0.15.0 at which time
+  // connected_unmapped_worker_key_identifiers should be used exclusively.
+  repeated string connected_worker_key_identifiers = 50 [deprecated = true];
+
+  // The worker key identifiers for downstream workers for which there
+  // is not a known worker id mapping for them yet.
+  repeated string connected_unmapped_worker_key_identifiers = 51;
+
   // The worker public ids of all downstreams connected to this worker if known.
   // While there may be workers with key ids in the connected_worker_key_identifiers
   // list and their public ids in this list, once the requesting worker is aware
@@ -122,8 +129,15 @@ message JobChangeRequest {
 }
 
 message AuthorizedWorkerList {
+  option deprecated = true;
   // the key id of authorized workers
-  repeated string worker_key_identifiers = 1;
+  repeated string worker_key_identifiers = 1 [deprecated = true];
+}
+
+message AuthorizedDownstreamWorkerList {
+  // the key id of authorized workers which do not have a worker id known yet
+  // to the requester.
+  repeated string unmapped_worker_key_identifiers = 1;
   // the public id of workers that were reported as being connected and which
   // are known by the controller.
   repeated string worker_public_ids = 2;
@@ -149,7 +163,13 @@ message StatusResponse {
 
   // Of the worker key identifiers provided in the request, these are the ones
   // which are authorized to remain connected.
-  AuthorizedWorkerList authorized_workers = 50;
+  // This is deprecated.  Use authorized_downstream_workers instead. This
+  // should be removed in version 0.15.0.
+  AuthorizedWorkerList authorized_workers = 50 [deprecated = true];
+
+  // Of the downstream workers in the request, these are the ones
+  // which are authorized to remain connected.
+  AuthorizedDownstreamWorkerList authorized_downstream_workers = 51;
 }
 
 // WorkerInfo contains information about workers for the HcpbWorkerResponse message
