@@ -105,7 +105,7 @@ func TestNewDownstreamManager(t *testing.T) {
 		dm.addConnection("2", w2)
 		got := dm.Connected().UnmappedKeyIds()
 		sort.Strings(got)
-		assert.Equal(t, []string{"1", "2"}, got)
+		assert.ElementsMatch(t, []string{"1", "2"}, got)
 
 		dm.disconnectKeys("1")
 		assert.ErrorIs(t, w1.SetReadDeadline(time.Now()), io.ErrClosedPipe)
@@ -189,7 +189,7 @@ func TestNewDownstreamManager(t *testing.T) {
 
 		dm.mapKeyToWorkerId("1", "w1")
 		dm.mapKeyToWorkerId("2", "w2")
-		assert.Equal(t, []string{"w1", "w2"}, dm.Connected().WorkerIds())
+		assert.ElementsMatch(t, []string{"w1", "w2"}, dm.Connected().WorkerIds())
 		assert.Empty(t, dm.Connected().UnmappedKeyIds())
 
 		assert.NoError(t, w1.SetReadDeadline(time.Now()))
