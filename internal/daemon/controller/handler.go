@@ -80,7 +80,7 @@ func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handle
 		return p == uiPath
 	}
 
-	return http.HandlerFunc(mux.ServeHTTP), isUiRequest, nil
+	return mux, isUiRequest, nil
 }
 
 // apiHandler returns an http.Handler for the services. This can be used on

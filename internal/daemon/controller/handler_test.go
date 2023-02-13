@@ -6,8 +6,10 @@ package controller
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -15,9 +17,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/genproto/googleapis/api/httpbody"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAuthenticationHandler(t *testing.T) {
@@ -346,4 +352,63 @@ func TestCallbackInterceptor(t *testing.T) {
 	}
 
 	require.NoError(t, server.Shutdown(context.Background()))
+}
+
+func TestStreamingResponse(t *testing.T) {
+	listener, err := net.Listen("tcp", ":0")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		// Ignore errors as a normal shutdown will also close the listener when
+		// the server Shutdown is called. This is just in case.
+		_ = listener.Close()
+	})
+	mux := newGrpcGatewayMux()
+	marshaler := &noDelimiterStreamingMarshaler{
+		&runtime.HTTPBodyMarshaler{
+			Marshaler: handlers.JSONMarshaler(),
+		},
+	}
+	size := 500
+	blob := make([]byte, size)
+	_, err = io.ReadFull(rand.Reader, blob)
+	require.NoError(t, err)
+	var i int
+	n := 5
+	recv := func() (proto.Message, error) {
+		t.Log("Sending chunk", i)
+		if i < n {
+			buf := make([]byte, size/n)
+			copy(buf, blob[i*len(buf):])
+			i++
+			return &httpbody.HttpBody{
+				ContentType: "application/octet-stream",
+				Data:        buf,
+			}, nil
+		}
+		return nil, io.EOF
+	}
+
+	mux.HandlePath("GET", "/", runtime.HandlerFunc(func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		ctx := r.Context()
+		ctx = runtime.NewServerMetadataContext(ctx, runtime.ServerMetadata{})
+		runtime.ForwardResponseStream(ctx, mux, marshaler, w, r, recv)
+	}))
+
+	server := &http.Server{
+		Handler: mux,
+	}
+	go func() {
+		if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
+			assert.NoError(t, err)
+		}
+	}()
+	t.Cleanup(func() {
+		require.NoError(t, server.Shutdown(context.Background()))
+	})
+	resp, err := http.Get("http://" + listener.Addr().String())
+	require.NoError(t, err)
+	read, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.True(t, string(read) == string(blob), "Got: %q", string(read))
+	require.Equal(t, i, n)
 }
