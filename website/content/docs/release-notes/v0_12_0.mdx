@@ -42,6 +42,8 @@ Now a worker in a private network only requires outbound network access to reach
 Remote users no longer require network access to the private network.
 They only need network access to the client-facing (or "frontline") worker.
 
+For more information, refer to the [multi-hop session](/boundary/docs/configuration/worker/pki-worker#multi-hop-sessionshcp-only) documentation.
+
 **Credential injection using Vault SSH signed certificates (HCP only)**: You can now configure SSH credential injection using Vault's secret engine to create the SSH certificate credentials.
 SSH certificate-based authentication extends key-based authentication using digital signatures
 Your users' authenticity is determined by a certificate signed by a trusted certificate authority (CA).
@@ -50,6 +52,8 @@ Vault is the only supported CA in Boundary version 0.12.0.
 
 SSH certificates let you specify how long they are valid for, who can gain access to a target, how users can log in, and what commands can be used on the target machine.
 SSH certificates are short-lived and self-destructive unlinke SSH key pairs.
+
+For more information, refer to the [Vault SSH certificate credential library attributes](/boundary/docs/concepts/domain-model/credential-libraries#vault-ssh-certificate-credential-library-attributeshcp-only) documentation.
 
 **Addresses on targets**: HashiCorp Boundary offers an extensible domain model that allows administrators to organize target resources in a way that best compliments how their organization manages its computing infrastructure.
 But that flexibility could become a hindrance when setting up a quick proof-of-concept and defining a target to create a session.
