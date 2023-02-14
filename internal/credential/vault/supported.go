@@ -15,7 +15,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -176,11 +175,6 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 			o, _ := stats.CombinedOutput()
 			t.Logf("Docker stats:\n%s\n", string(o))
 
-			logs := exec.Command("docker", "logs", resource.Container.ID)
-			o, _ = logs.CombinedOutput()
-			t.Logf("Docker logs:\n%s\n", string(o))
-
-			t.Logf("GOMAXPROCS: %d\n", runtime.NumCPU())
 			cleanupResource(t, pool, resource)
 		})
 	}
