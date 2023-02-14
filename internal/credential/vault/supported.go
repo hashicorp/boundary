@@ -140,32 +140,8 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 		}
 	}
 
-	// NOTE(mgaffney) 05/2021: creating a docker network is not the default
-	// because it added a significant amount time to the tests.
-	//
-	// For reference, running 'go test .'
-	// - without creating a docker network by default: 259.668s
-	// - with creating a docker network by default: 553.497s
-	//
-	// Machine: MacBook Pro (15-inch, 2018)
-	// Processor: 2.6 GHz 6-Core Intel Core i7
-	// Memory: 16 GB 2400 MHz DDR4
-	// OS: 10.15.7 (Catalina)
-	//
-	// Docker
-	// Desktop: 3.3.3 (64133)
-	// Engine: 20.10.6
-
 	if opts.dockerNetwork {
-		network, err := pool.CreateNetwork(t.Name())
-		require.NoError(err)
-		server.network = network
-		dockerOptions.Networks = []*dockertest.Network{network}
-		if !opts.skipCleanup {
-			t.Cleanup(func() {
-				network.Close()
-			})
-		}
+		server.network = "host"
 		dockerOptions.ExtraHosts = []string{"host.docker.internal:host-gateway"}
 	}
 
@@ -216,27 +192,7 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	require.Nil(v.postgresContainer, "postgres container exists")
 	require.NotNil(v.network, "Vault server must be created with docker network")
 
-	// pool, ok := v.pool.(*dockertest.Pool)
-	// require.True(ok)
-	// network, ok := v.network.(*dockertest.Network)
-	// require.True(ok)
-
-	// dockerOptions := &dockertest.RunOptions{
-	// 	Repository: "postgres",
-	// 	Tag:        "11",
-	// 	Networks:   []*dockertest.Network{network},
-	// 	Env:        []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundarytest"},
-	// }
-
 	opts := getTestOpts(t, opt...)
-
-	// resource, err := pool.RunWithOptions(dockerOptions)
-	// require.NoError(err)
-	// if !opts.skipCleanup {
-	// 	t.Cleanup(func() {
-	// 		cleanupResource(t, pool, resource)
-	// 	})
-	// }
 
 	c, dburl, dbname, err := dbtest.StartUsingTemplate(dbtest.Postgres, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(err)
