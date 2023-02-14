@@ -29,6 +29,9 @@ func Get() *Info {
 	if GitDescribe == "" && rel == "" && VersionPrerelease != "" {
 		rel = "dev"
 	}
+	if md == "oss" {
+		md = ""
+	}
 
 	return &Info{
 		CgoEnabled:        CgoEnabled,
