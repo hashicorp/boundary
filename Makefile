@@ -285,6 +285,7 @@ test-ci:
 	cat /proc/sys/fs/file-max
 	cat /proc/sys/net/netfilter/nf_conntrack_max
 	ulimit -a
+	docker system info
 	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 	go test ./... -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
 
