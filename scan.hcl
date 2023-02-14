@@ -19,7 +19,7 @@ repository {
     exclude_rule = ["generic.html-templates.security.unquoted-attribute-var.unquoted-attribute-var"]
   }
   
-  plugin "codeql" {
-    languages = ["go"]
-  }
+  # plugin "codeql" {
+  #  languages = ["go"]
+  # }
 }
