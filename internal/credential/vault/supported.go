@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db/common"
+	"github.com/hashicorp/boundary/testing/dbtest"
 	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -139,32 +140,9 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 		}
 	}
 
-	// NOTE(mgaffney) 05/2021: creating a docker network is not the default
-	// because it added a significant amount time to the tests.
-	//
-	// For reference, running 'go test .'
-	// - without creating a docker network by default: 259.668s
-	// - with creating a docker network by default: 553.497s
-	//
-	// Machine: MacBook Pro (15-inch, 2018)
-	// Processor: 2.6 GHz 6-Core Intel Core i7
-	// Memory: 16 GB 2400 MHz DDR4
-	// OS: 10.15.7 (Catalina)
-	//
-	// Docker
-	// Desktop: 3.3.3 (64133)
-	// Engine: 20.10.6
-
 	if opts.dockerNetwork {
-		network, err := pool.CreateNetwork(t.Name())
-		require.NoError(err)
-		server.network = network
-		dockerOptions.Networks = []*dockertest.Network{network}
-		if !opts.skipCleanup {
-			t.Cleanup(func() {
-				network.Close()
-			})
-		}
+		server.network = "host"
+		dockerOptions.ExtraHosts = []string{"host.docker.internal:host-gateway"}
 	}
 
 	resource, err := pool.RunWithOptions(dockerOptions)
@@ -214,56 +192,44 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	require.Nil(v.postgresContainer, "postgres container exists")
 	require.NotNil(v.network, "Vault server must be created with docker network")
 
-	pool, ok := v.pool.(*dockertest.Pool)
-	require.True(ok)
-	network, ok := v.network.(*dockertest.Network)
-	require.True(ok)
-
-	dockerOptions := &dockertest.RunOptions{
-		Repository: "postgres",
-		Tag:        "11",
-		Networks:   []*dockertest.Network{network},
-		Env:        []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundarytest"},
-	}
-
 	opts := getTestOpts(t, opt...)
 
-	resource, err := pool.RunWithOptions(dockerOptions)
+	c, dburl, dbname, err := dbtest.StartUsingTemplate(dbtest.Postgres, dbtest.WithTemplate(dbtest.Template1))
 	require.NoError(err)
-	if !opts.skipCleanup {
-		t.Cleanup(func() {
-			cleanupResource(t, pool, resource)
-		})
-	}
-	v.postgresContainer = resource
-
-	dbUrlTemplate := fmt.Sprintf("postgres://%%s:%%s@%s/boundarytest?sslmode=disable", resource.GetHostPort("5432/tcp"))
-	dburl := fmt.Sprintf(dbUrlTemplate, "postgres", "password")
-	err = pool.Retry(func() error {
-		var err error
-		db, err := common.SqlOpen("postgres", dburl)
-		if err != nil {
-			return err
-		}
-		return db.Ping()
+	t.Cleanup(func() {
+		err := c()
+		require.NoError(err)
 	})
+	v.postgresContainer = dbname
+
+	dbUrlTemplate := strings.ReplaceAll(dburl, "boundary:boundary", "%s:%s")
+	db, err := common.SqlOpen("postgres", dburl)
 	require.NoError(err)
+	defer db.Close()
+	err = db.Ping()
+	require.NoError(err)
+
+	t.Logf("dburl: %s", dburl)
 
 	const (
 		createOpened = `create table boundary_opened ( name text primary key )`
 		createClosed = `create table boundary_closed ( name text primary key )`
-
-		createVaultAccount = `create role vault with superuser login createrole password 'vault-password'`
-		createOpenedRole   = `create role opened_role noinherit`
-		createClosedRole   = `create role closed_role noinherit`
-
-		grantOpenedRole = `grant select, insert, update, delete on boundary_opened to opened_role`
-		grantClosedRole = `grant select, insert, update, delete on boundary_closed to closed_role`
 	)
+	var (
+		vaultRole   = fmt.Sprintf("vault_%s", dbname)
+		opendedRole = fmt.Sprintf("opended_role_%s", dbname)
+		closedRole  = fmt.Sprintf("closed_role_%s", dbname)
 
-	db, err := common.SqlOpen("postgres", dburl)
-	require.NoError(err)
-	defer db.Close()
+		createVaultAccount = fmt.Sprintf(`create role %s with superuser login createrole password 'vault-password'`, vaultRole)
+		createOpenedRole   = fmt.Sprintf(`create role %s noinherit`, opendedRole)
+		createClosedRole   = fmt.Sprintf(`create role %s noinherit`, closedRole)
+		grantOpenedRole    = fmt.Sprintf(`grant select, insert, update, delete on boundary_opened to %s`, opendedRole)
+		grantClosedRole    = fmt.Sprintf(`grant select, insert, update, delete on boundary_closed to %s`, closedRole)
+
+		dropClosedRole = fmt.Sprintf(`drop owned by %s; drop role %s`, closedRole, closedRole)
+		dropOpenedRole = fmt.Sprintf(`drop owned by %s; drop role %s`, opendedRole, opendedRole)
+		dropVaultRole  = fmt.Sprintf(`drop owned by %s; drop role %s`, vaultRole, vaultRole)
+	)
 
 	exec := func(q string) {
 		_, err := db.Exec(q)
@@ -276,6 +242,18 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	exec(createClosedRole)
 	exec(grantOpenedRole)
 	exec(grantClosedRole)
+
+	t.Cleanup(func() {
+		db, err := common.SqlOpen("postgres", dburl)
+		require.NoError(err)
+
+		_, err = db.Exec(dropClosedRole)
+		require.NoError(err)
+		_, err = db.Exec(dropOpenedRole)
+		require.NoError(err)
+		_, err = db.Exec(dropVaultRole)
+		require.NoError(err)
+	})
 
 	vc := v.client(t).cl
 
@@ -308,13 +286,9 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	}
 	v.addPolicy(t, "database", pc)
 
-	vaultContainer, ok := v.vaultContainer.(*dockertest.Resource)
-	require.True(ok)
-
-	t.Log(vaultContainer.GetIPInNetwork(network))
-
 	// Configure PostgreSQL secrets engine
-	connUrl := fmt.Sprintf("postgresql://{{username}}:{{password}}@%s:5432/boundarytest?sslmode=disable", resource.GetIPInNetwork(network))
+	connUrl := strings.ReplaceAll(dburl, "boundary:boundary", "{{username}}:{{password}}")
+	connUrl = strings.ReplaceAll(dburl, "127.0.0.1", "host.docker.internal")
 	t.Log(connUrl)
 
 	postgresConfPath := path.Join(mountPath, "config/postgresql")
@@ -322,27 +296,27 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 		"plugin_name":    "postgresql-database-plugin",
 		"connection_url": connUrl,
 		"allowed_roles":  "opened,closed",
-		"username":       "vault",
+		"username":       vaultRole,
 		"password":       "vault-password",
 	}
 	s, err := vc.Logical().Write(postgresConfPath, postgresConfOptions)
 	require.NoError(err)
 	require.NotEmpty(s)
 
-	const (
-		vaultOpenedCreationStatement = `
+	var (
+		vaultOpenedCreationStatement = fmt.Sprintf(`
 create role "{{name}}"
 with login password '{{password}}'
 valid until '{{expiration}}' inherit;
-grant opened_role to "{{name}}";
-`
+grant %s to "{{name}}";
+`, opendedRole)
 
-		vaultClosedCreationStatement = `
+		vaultClosedCreationStatement = fmt.Sprintf(`
 create role "{{name}}"
 with login password '{{password}}'
 valid until '{{expiration}}' inherit;
-grant closed_role to "{{name}}";
-`
+grant %s to "{{name}}";
+`, closedRole)
 	)
 
 	openedRolePath := path.Join(mountPath, "roles", "opened")
