@@ -804,7 +804,19 @@ func (v *TestVaultServer) addPolicy(t testing.TB, name string, pc pathCapabiliti
 	policy := pc.vaultPolicy()
 	require.NotEmpty(policy)
 	vc := v.client(t).cl
-	require.NoError(vc.Sys().PutPolicy(name, policy))
+
+	err := vc.Sys().PutPolicy(name, policy)
+	if err != nil {
+		_, herr := vc.Sys().Health()
+		if herr != nil {
+			t.Logf("Vault unhealth: %s", herr.Error())
+		} else {
+			t.Logf("Vault healthy: retrying PutPolicy: %s", name)
+			err = vc.Sys().PutPolicy(name, policy)
+		}
+
+	}
+	require.NoError(err)
 }
 
 // MountSSH mounts the Vault SSH secret engine and initializes it by
