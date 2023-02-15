@@ -69,6 +69,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the vault ssh secret engine to generate ssh private key and certificates. The
   library can be used as an injected application credential source for targets
   that support credential injection. ([PR](https://github.com/hashicorp/boundary/pull/2860))
+* ui: Add support for managed groups in add-principals list.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1548))
 
 ### Bug Fixes
 
