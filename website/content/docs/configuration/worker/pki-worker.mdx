@@ -78,7 +78,7 @@ kms "aead" {
 workers. These fields are only valid for [KMS Workers][]. `name` and
 `description` can only be set for PKI workers through the API.
 
-# Multi-Hop Workers<sup>HCP Only</sup>
+# Multi-Hop Workers <sup>HCP only</sup>
 
 You can use the `hcp_boundary_cluster_id` field to configure PKI workers to connect to your HCP
 Boundary cluster or the `initial_upstreams` field to connect directly to other workers,
@@ -101,6 +101,12 @@ You can configure [target worker filters][] with multi-hop workers to allow for 
 ingress and egress for session traffic to a [target][]. Ingress worker filters determine which
 workers you connect with to initiate a session, and egress worker filters determine which workers are
 used to access targets.
+
+<Tip>
+
+Refer to the [Manage Multi-Hop Sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-multi-hop) tutorial for a hands-on example of configuring a multi-hop session.
+
+</Tip>
 
 # Complete Configuration Example
 
