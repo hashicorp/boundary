@@ -567,10 +567,11 @@ func TestCreate(t *testing.T) {
 	targets.AuthorizeSessionWorkerFilterFn = targets.AuthorizeSessionWithWorkerFilter
 
 	cases := []struct {
-		name string
-		req  *pbs.CreateTargetRequest
-		res  *pbs.CreateTargetResponse
-		err  error
+		name   string
+		req    *pbs.CreateTargetRequest
+		res    *pbs.CreateTargetResponse
+		err    error
+		errStr string
 	}{
 		{
 			name: "Create a valid target",
@@ -686,8 +687,9 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateTargetRequest{Item: &pb.Target{
 				WorkerFilter: wrapperspb.String(`"/name" matches "test-worker"`),
 			}},
-			res: nil,
-			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+			res:    nil,
+			err:    handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errStr: "Use egress_worker_filter instead",
 		},
 		{
 			name: "Ingress filter unsupported on OSS",
@@ -741,6 +743,9 @@ func TestCreate(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				if tc.errStr != "" {
+					require.ErrorContains(gErr, tc.errStr)
+				}
 			} else {
 				assert.Nil(gErr, "Unexpected err: %v", gErr)
 			}
