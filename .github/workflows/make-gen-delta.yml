@@ -1,0 +1,36 @@
+name: "make-gen-delta"
+on:
+  - workflow_dispatch
+  - push
+  - workflow_call
+
+jobs:
+  make-gen-delta:
+    name: "Check for uncommited changes from make gen"
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+      - name: Determine Go version
+        id: get-go-version
+        # We use .go-version as our source of truth for current Go
+        # version, because "goenv" can react to it automatically.
+        run: |
+          echo "Building with Go $(cat .go-version)"
+          echo "::set-output name=go-version::$(cat .go-version)"
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "${{ steps.get-go-version.outputs.go-version }}"
+      - name: Install Dependencies
+        run: |
+          make tools
+      - name: Running make gen
+        run: |
+          make gen
+      - name: Check for changes
+        run: |
+          git diff --exit-code
+          git status --porcelain
+          test -z "$(git status --porcelain)"
