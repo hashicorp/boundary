@@ -4,7 +4,7 @@ on: ["pull_request"]
 jobs:
   lint:
     name: "Run Linter"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
       - uses: actions/checkout@v3
         with:

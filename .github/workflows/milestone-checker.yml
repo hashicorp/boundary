@@ -16,7 +16,7 @@ jobs:
   milestone-check:
     # If there is a `pr/no-milestone` label we ignore this check
     if: "!contains(github.event.pull_request.labels.*.name, 'pr/no-milestone')"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
       - name: Checkout Actions
         uses: actions/checkout@v3
