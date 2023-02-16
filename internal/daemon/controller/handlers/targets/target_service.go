@@ -97,7 +97,6 @@ var (
 
 	ValidateIngressWorkerFilterFn  = IngressWorkerFilterUnsupported
 	AuthorizeSessionWorkerFilterFn = AuthorizeSessionWithWorkerFilter
-	WorkerFilterDeprecationMessage = "This field is deprecated. Use egress_filter instead."
 )
 
 func IngressWorkerFilterUnsupported(string) error {
@@ -1557,7 +1556,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			badFields[globals.TypeField] = "Unknown type provided."
 		}
 		if workerFilter := req.GetItem().GetWorkerFilter(); workerFilter != nil {
-			badFields[globals.WorkerFilterField] = WorkerFilterDeprecationMessage
+			badFields[globals.WorkerFilterField] = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
 		}
 		if egressFilter := req.GetItem().GetEgressWorkerFilter(); egressFilter != nil {
 			if _, err := bexpr.CreateEvaluator(egressFilter.GetValue()); err != nil {
@@ -1631,7 +1630,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		}
 		if egressFilter := req.GetItem().GetEgressWorkerFilter(); egressFilter != nil {
 			if workerFilterFound {
-				badFields[globals.EgressWorkerFilterField] = "Cannot set worker_filter and egress_filter; they are mutually exclusive fields."
+				badFields[globals.EgressWorkerFilterField] = fmt.Sprintf("Cannot set %s and %s; they are mutually exclusive fields.", globals.WorkerFilterField, globals.EgressWorkerFilterField)
 			}
 			if _, err := bexpr.CreateEvaluator(egressFilter.GetValue()); err != nil {
 				badFields[globals.EgressWorkerFilterField] = "Unable to successfully parse egress filter expression."
@@ -1639,7 +1638,7 @@ func validateUpdateRequest(req *pbs.UpdateTargetRequest) error {
 		}
 		if ingressFilter := req.GetItem().GetIngressWorkerFilter(); ingressFilter != nil {
 			if workerFilterFound {
-				badFields[globals.IngressWorkerFilterField] = "Cannot set worker_filter and ingress_filter; they are mutually exclusive fields."
+				badFields[globals.IngressWorkerFilterField] = fmt.Sprintf("Cannot set %s and %s; they are mutually exclusive fields.", globals.WorkerFilterField, globals.IngressWorkerFilterField)
 			}
 			err := ValidateIngressWorkerFilterFn(ingressFilter.GetValue())
 			if err != nil {
