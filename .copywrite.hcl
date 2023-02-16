@@ -13,5 +13,6 @@ project {
     "internal/ui/.tmp/**",
     "website/.eslintrc.js",
     "website/prettier.config.js",
+    "**/*_ent*",
   ]
 }
