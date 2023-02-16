@@ -10,6 +10,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     outputs:
       regions: ${{steps.setup.outputs.regions}}
+      account_id: ${{steps.setup.outputs.account_id}}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
@@ -24,10 +25,6 @@ jobs:
         id: setup
         run: |
           echo "regions=$(aws ec2 describe-regions --region us-east-1 --output json --query 'Regions[].RegionName' | tr -d '\n ')" >> $GITHUB_OUTPUT
-          echo "account_id=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | awk -F'"' '/"accountId"/ { print $4 }')" >> $GITHUB_OUTPUT
-      - name: Get account ID
-        id: setup_aws
-        run: |
           echo "account_id=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | awk -F'"' '/"accountId"/ { print $4 }')" >> $GITHUB_OUTPUT
 
   aws-nuke:
@@ -58,8 +55,7 @@ jobs:
       - name: Configure
         run: |
           cp enos/ci/aws-nuke.yml .
-          echo "test: ${{ needs.setup.output.account_num }}"
-          sed -i "s/ACCOUNT_NUM/${{ needs.setup.output.account_num }}/g" aws-nuke.yml
+          sed -i "s/ACCOUNT_NUM/${{ needs.setup.outputs.account_id }}/g" aws-nuke.yml
           sed -i "s/TIME_LIMIT/${TIME_LIMIT}/g" aws-nuke.yml
       # We don't care if cleanup succeeds or fails, because dependencies be dependenceies,
       # we'll fail on actually actionable things in the quota steep afterwards.

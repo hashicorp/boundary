@@ -1,4 +1,4 @@
-name: enos-ci-bootstrap-oss
+name: test-ci-bootstrap-oss
 
 on:
   pull_request:
@@ -6,13 +6,13 @@ on:
       - main
     paths:
       - enos/ci/**
-      - .github/workflows/enos-ci-bootstrap-oss.yml
+      - .github/workflows/test-ci-bootstrap-oss.yml
   push:
     branches:
       - main
     paths:
       - enos/ci/**
-      - .github/workflows/enos-ci-bootstrap-oss.yml
+      - .github/workflows/test-ci-bootstrap-oss.yml
 
 jobs:
   bootstrap-ci-oss:
@@ -28,12 +28,12 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v1-node16
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
           aws-region: us-east-1
-          role-to-assume: arn:aws:iam::271311691044:role/github_actions-boundary_ci
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_CI }}
           role-skip-session-tagging: true
           role-duration-seconds: 3600
       - name: Init Terraform
