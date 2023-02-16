@@ -29,7 +29,7 @@ jobs:
           - filter: 'e2e_database'
           - filter: 'e2e_static builder:crt'
           - filter: 'e2e_static_with_vault builder:crt'
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
     outputs:
@@ -201,7 +201,7 @@ jobs:
   notify:
     name: Notify
     needs: enos
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
     if: ${{ always() && needs.enos.outputs.status == 'failure' }}
     steps:
       - name: Send Slack message

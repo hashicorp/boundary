@@ -11,7 +11,7 @@ jobs:
     # Only run this workflow on pull requests from hashicorp/boundary branches
     # as we need secrets to install enos.
     if: "! github.event.pull_request.head.repo.fork"
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
     steps:

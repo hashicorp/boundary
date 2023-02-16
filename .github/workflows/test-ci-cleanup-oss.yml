@@ -7,7 +7,7 @@ on:
 jobs:
   setup:
     if: ${{ github.event.repository.name == 'boundary' }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
     outputs:
       regions: ${{steps.setup.outputs.regions}}
     steps:
@@ -33,7 +33,7 @@ jobs:
   aws-nuke:
     if: ${{ github.event.repository.name == 'boundary' }}
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
     container:
       image: rebuy/aws-nuke
       options:
@@ -71,7 +71,7 @@ jobs:
   check-quotas:
     if: ${{ github.event.repository.name == 'boundary' }}
     needs: [ setup, aws-nuke ]
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
     container:
       image: jantman/awslimitchecker
       env:
