@@ -7,7 +7,7 @@ on:
 jobs:
   CodeQL-Build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
 
     steps:
     - name: Checkout repository
