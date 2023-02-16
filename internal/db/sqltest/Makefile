@@ -53,7 +53,7 @@ test:
 		-v "$(CWD)/../schema/migrations":/migrations \
 		-v "$(CWD)/initdb.d":/docker-entrypoint-initdb.d/ \
 		$(POSTGRES_DOCKER_IMAGE)
-	@docker run -it --rm \
+	@docker run --rm \
 		--name test \
 		--link $(SQL_TEST_CONTAINER_NAME):db \
 		-e DATABASE=boundary \
