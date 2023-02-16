@@ -94,6 +94,7 @@ var (
 
 	ValidateIngressWorkerFilterFn  = IngressWorkerFilterUnsupported
 	AuthorizeSessionWorkerFilterFn = AuthorizeSessionWithWorkerFilter
+	WorkerFilterDeprecationMessage = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
 )
 
 func IngressWorkerFilterUnsupported(string) error {
@@ -1553,7 +1554,7 @@ func validateCreateRequest(req *pbs.CreateTargetRequest) error {
 			badFields[globals.TypeField] = "Unknown type provided."
 		}
 		if workerFilter := req.GetItem().GetWorkerFilter(); workerFilter != nil {
-			badFields[globals.WorkerFilterField] = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
+			badFields[globals.WorkerFilterField] = WorkerFilterDeprecationMessage
 		}
 		if egressFilter := req.GetItem().GetEgressWorkerFilter(); egressFilter != nil {
 			if _, err := bexpr.CreateEvaluator(egressFilter.GetValue()); err != nil {
