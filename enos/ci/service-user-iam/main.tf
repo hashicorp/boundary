@@ -18,8 +18,14 @@ terraform {
 locals {
   enterprise_repositories = ["boundary-enterprise", "boundary-hcp"]
   is_ent                  = contains(local.enterprise_repositories, var.repository)
-  service_user            = "github_actions-boundary_ci"
+  service_user            = data.aws_iam_user.service_user.user_name
   oss_aws_account_id      = "271311691044"
+}
+
+
+data "aws_iam_user" "service_user" {
+  # This is the user created in the hashicorp/hc-service-users repo
+  user_name = "github_actions-boundary_ci"
 }
 
 resource "aws_iam_role" "role" {
@@ -158,6 +164,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "iam:CreatePolicy",
       "iam:CreateRole",
       "iam:CreateRole",
+      "iam:CreateServiceLinkedRole",
       "iam:CreateUser",
       "iam:CreateUserPolicy",
       "iam:CreateUserTag",

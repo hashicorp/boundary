@@ -158,7 +158,7 @@ Here are the steps to configure the GitHub Actions service user:
 2. **Execute the Terraform module**
 ```shell
 > cd ./enos/ci/service-user-iam
-> export TF_WORKSPACE=<repo name>-ci-service-user-iam
+> export TF_WORKSPACE=<repo name>-ci-enos-service-user-iam
 > export TF_TOKEN_app_terraform_io=<Terraform Cloud Token>
 > export TF_VAR_repository=<repository name>
 > terraform init

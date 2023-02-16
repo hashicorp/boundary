@@ -66,10 +66,10 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1-node16
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
           aws-region: us-east-1
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_CI }}
           role-skip-session-tagging: true
           role-duration-seconds: 3600
       - name: Set up Enos
@@ -79,7 +79,7 @@ jobs:
       - name: Set up AWS SSH private key
         run: |
           mkdir -p ./enos/support
-          echo "${{ secrets.ENOS_CI_SSH_KEY }}" > ./enos/support/private_key.pem
+          echo "${{ secrets.SSH_KEY_PRIVATE_CI }}" > ./enos/support/private_key.pem
           chmod 600 ./enos/support/private_key.pem
       - name: Set up dependency cache
         id: dep-cache
@@ -126,7 +126,7 @@ jobs:
         # Use the same env vars from the following step
         env:
           ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
+          ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
           ENOS_VAR_local_boundary_dir: ./support/
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
@@ -143,7 +143,7 @@ jobs:
         continue-on-error: true
         env:
           ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
+          ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
           ENOS_VAR_local_boundary_dir: ./support/
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
@@ -171,7 +171,7 @@ jobs:
         if: steps.run.outcome == 'failure'
         env:
           ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
+          ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
           ENOS_VAR_local_boundary_dir: ./support/
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
@@ -183,7 +183,7 @@ jobs:
       - name: Destroy Enos scenario
         env:
           ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: enos-ci-ssh-key
+          ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
           ENOS_VAR_local_boundary_dir: ./support/
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
