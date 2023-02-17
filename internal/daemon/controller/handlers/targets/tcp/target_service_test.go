@@ -79,6 +79,9 @@ var testAuthorizedActions = []string{
 	"authorize-session",
 }
 
+// Create a variable that we can overwrite in enterprise tests
+var expectedDeprecatedWorkerFilterError = "Use egress_worker_filter instead"
+
 func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, wrapper wrapping.Wrapper) (targets.Service, error) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
@@ -689,7 +692,7 @@ func TestCreate(t *testing.T) {
 			}},
 			res:    nil,
 			err:    handlers.ApiErrorWithCode(codes.InvalidArgument),
-			errStr: "Use egress_worker_filter instead",
+			errStr: expectedDeprecatedWorkerFilterError,
 		},
 		{
 			name: "Ingress filter unsupported on OSS",
