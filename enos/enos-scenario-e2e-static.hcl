@@ -113,6 +113,7 @@ scenario "e2e_static" {
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
       target_ip                = step.create_target.target_ips[0]
       target_user              = "ubuntu"
+      target_port              = "22"
     }
   }
 

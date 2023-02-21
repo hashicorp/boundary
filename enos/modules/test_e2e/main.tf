@@ -52,6 +52,11 @@ variable "target_ip" {
   type        = string
   default     = ""
 }
+variable "target_port" {
+  description = "Port of target"
+  type        = string
+  default     = ""
+}
 variable "vault_addr" {
   description = "URL of Vault instance"
   type        = string
@@ -115,6 +120,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password,
     E2E_TARGET_IP                 = var.target_ip,
     E2E_SSH_USER                  = var.target_user,
+    E2E_SSH_PORT                  = var.target_port,
     E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path,
     VAULT_ADDR                    = local.vault_addr,
     VAULT_TOKEN                   = var.vault_root_token,
