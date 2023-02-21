@@ -287,7 +287,7 @@ test-ci:
 	ulimit -a
 	docker system info
 	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
-	go test ./... -run $(RUN_TESTS) -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
+	go test ./... -run ${RUN_TESTS} -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
 
 .PHONY: test-sql
 test-sql:
