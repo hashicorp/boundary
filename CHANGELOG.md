@@ -2,6 +2,22 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
+## Next
+
+### Bug Fixes
+
+* cli: Fix fallback parsing of un-typed credentials for `boundary connect`.
+  When using a vault credential library with no credential type set, boundary
+  will perform a best effort attempt to parse any brokered credentials. If the
+  credentials are successfully parsed, they can be used by the subprocess
+  spawned when using the connect subcommands, i.e. `ssh` or `psql`. With the
+  change to the vault credential library subtype, this fallback parsing would
+  fail. Note that if the credential library has a credential type, by using
+  `-credential-type` when creating the credential library, the credential was
+  correctly parsed. This fallback parsing is now fixed, but in order to support
+  older clients, credential libraries will need to be recreated with a
+  credential type. [PR](https://github.com/hashicorp/boundary/pull/2989)
+
 ## 0.12.0 (2023/01/24)
 
 ### Deprecations/Changes
