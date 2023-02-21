@@ -78,6 +78,10 @@ jobs:
     needs:
       - setup
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
+    fail-fast: false
+    matrix:
+      parallel: [6]
+      index: [0,1,2,3,4,5]
     steps:
       - uses: actions/checkout@v3
       - name: Determine Go version
@@ -113,7 +117,15 @@ jobs:
       - name: Install Tools
         run: |
           make tools
+      - name: Generate go test Slice
+          id: test_split
+          uses: hashicorp-forge/go-test-split-action@v1
+          with:
+            total: ${{ matrix.parallel }}
+            index: ${{ matrix.index }}
       - name: Test
+        env:
+          RUN_TESTS: "${{ steps.test_split.outputs.run}}"
         run: |
           make test-ci
       - name: Cleanup
