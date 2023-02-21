@@ -78,10 +78,11 @@ jobs:
     needs:
       - setup
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
-    fail-fast: false
-    matrix:
-      parallel: [6]
-      index: [0,1,2,3,4,5]
+    strategy:
+      fail-fast: false
+      matrix:
+        parallel: [6]
+        index: [0,1,2,3,4,5]
     steps:
       - uses: actions/checkout@v3
       - name: Determine Go version
