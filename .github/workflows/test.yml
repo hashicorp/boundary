@@ -118,11 +118,11 @@ jobs:
         run: |
           make tools
       - name: Generate go test Slice
-          id: test_split
-          uses: hashicorp-forge/go-test-split-action@v1
-          with:
-            total: ${{ matrix.parallel }}
-            index: ${{ matrix.index }}
+        id: test_split
+        uses: hashicorp-forge/go-test-split-action@v1
+        with:
+          total: ${{ matrix.parallel }}
+          index: ${{ matrix.index }}
       - name: Test
         env:
           RUN_TESTS: "${{ steps.test_split.outputs.run}}"
