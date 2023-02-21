@@ -58,7 +58,12 @@ variable "target_port" {
   default     = ""
 }
 variable "vault_addr" {
-  description = "URL of Vault instance"
+  description = "External network address of Vault. Will be converted to a URL below"
+  type        = string
+  default     = ""
+}
+variable "vault_addr_internal" {
+  description = "Internal network address of Vault (i.e. within a docker network). Will be converted to a URL below"
   type        = string
   default     = ""
 }
@@ -106,6 +111,7 @@ variable "aws_host_set_ips2" {
 locals {
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
   vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:8200" : ""
+  vault_addr_internal      = var.vault_addr_internal != "" ? "http://${var.vault_addr_internal}:8200" : local.vault_addr
   aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
   aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)
   package_name             = reverse(split("/", var.test_package))[0]
@@ -124,6 +130,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path,
     VAULT_ADDR                    = local.vault_addr,
     VAULT_TOKEN                   = var.vault_root_token,
+    E2E_VAULT_ADDR                = local.vault_addr_internal,
     E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id,
     E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key,
     E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1,

@@ -45,7 +45,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Configure vault
-	vaultAddr, boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -97,7 +97,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, vaultAddr, credStoreToken)
+	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, c.VaultAddr, credStoreToken)
 
 	// Create a credential library for the private key
 	output = e2e.RunCommand(ctx, "boundary",
@@ -209,7 +209,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	boundary.AddHostSourceToTargetApi(t, ctx, client, newTargetId, newHostSetId)
 
 	// Configure vault
-	vaultAddr, boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
@@ -250,7 +250,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	// Create a credential store
 	csClient := credentialstores.NewClient(client)
 	newCredentialStoreResult, err := csClient.Create(ctx, "vault", newProjectId,
-		credentialstores.WithVaultCredentialStoreAddress(vaultAddr),
+		credentialstores.WithVaultCredentialStoreAddress(c.VaultAddr),
 		credentialstores.WithVaultCredentialStoreToken(credStoreToken),
 	)
 	require.NoError(t, err)

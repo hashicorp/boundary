@@ -224,7 +224,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
 
 	// Create vault credentials
-	_, boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
