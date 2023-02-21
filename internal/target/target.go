@@ -5,6 +5,7 @@ package target
 
 import (
 	"context"
+	goerrs "errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/boundary"
@@ -54,7 +55,11 @@ const (
 	targetsViewDefaultTable = "target_all_subtypes"
 )
 
-var _ boundary.AuthzProtectedEntity = (*targetView)(nil)
+var (
+	_ boundary.AuthzProtectedEntity = (*targetView)(nil)
+
+	errTargetSubtypeNotFound = goerrs.New("target subtype not found")
+)
 
 // targetView provides a common way to return targets regardless of their
 // underlying type.
@@ -117,7 +122,12 @@ func (t *targetView) targetSubtype(ctx context.Context, address string) (Target,
 
 	alloc, ok := subtypeRegistry.allocFunc(t.Subtype())
 	if !ok {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unknown target subtype of %s", t.PublicId, t.Type))
+		return nil, errors.Wrap(ctx,
+			errTargetSubtypeNotFound,
+			op,
+			errors.WithCode(errors.InvalidParameter),
+			errors.WithMsg(fmt.Sprintf("%s is an unknown target subtype of %s", t.PublicId, t.Type)),
+		)
 	}
 
 	tt := alloc()

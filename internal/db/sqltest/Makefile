@@ -26,6 +26,7 @@ TESTS ?= tests/setup/*.sql \
 		 tests/account/*/*.sql \
 		 tests/target/*.sql \
 		 tests/controller/*.sql \
+		 tests/hcp/*/*.sql \
 		 tests/kms/*.sql
 
 POSTGRES_DOCKER_IMAGE_BASE ?= postgres
