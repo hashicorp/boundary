@@ -81,8 +81,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        parallel: [10]
-        index: [0,1,2,3,4,5,6,7,8,9]
+        parallel: [20]
+        index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
     steps:
       - uses: actions/checkout@v3
       - name: Determine Go version
