@@ -5,6 +5,8 @@ import (
 
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/credential/static"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,9 +32,33 @@ var (
 		},
 	}
 
+	vaultUsernamePasswordDeprecatedSubtype = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			Type: vault.Subtype.String(),
+		},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]any{
+				"username": "vault-decoded-user",
+				"password": "vault-decoded-pass",
+			},
+		},
+	}
+
+	vaultSshPrivateKeyDeprecatedSubtype = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{
+			Type: vault.Subtype.String(),
+		},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]any{
+				"username":    "vault-decoded-user",
+				"private_key": "vault-decoded-pk",
+			},
+		},
+	}
+
 	vaultUsernamePassword = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			Type: "vault",
+			Type: vault.GenericLibrarySubtype.String(),
 		},
 		Secret: &targets.SessionSecret{
 			Decoded: map[string]any{
@@ -44,7 +70,7 @@ var (
 
 	vaultSshPrivateKey = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			Type: "vault",
+			Type: vault.GenericLibrarySubtype.String(),
 		},
 		Secret: &targets.SessionSecret{
 			Decoded: map[string]any{
@@ -54,9 +80,29 @@ var (
 		},
 	}
 
+	unknownUsernamePassword = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]any{
+				"username": "unknown-decoded-user",
+				"password": "unknown-decoded-pass",
+			},
+		},
+	}
+
+	unknownSshPrivateKey = &targets.SessionCredential{
+		CredentialSource: &targets.CredentialSource{},
+		Secret: &targets.SessionSecret{
+			Decoded: map[string]any{
+				"username":    "unknown-decoded-user",
+				"private_key": "unknown-decoded-pk",
+			},
+		},
+	}
+
 	staticUsernamePassword = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			Type: "static",
+			Type: static.Subtype.String(),
 		},
 		Secret: &targets.SessionSecret{
 			Decoded: map[string]any{
@@ -68,7 +114,7 @@ var (
 
 	staticSshPrivateKey = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			Type: "static",
+			Type: static.Subtype.String(),
 		},
 		Secret: &targets.SessionSecret{
 			Decoded: map[string]any{
@@ -80,7 +126,7 @@ var (
 
 	staticKv = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			Type:              "static",
+			Type:              static.Subtype.String(),
 			CredentialType:    "json",
 			CredentialStoreId: "csst_id",
 			Description:       "test",
@@ -98,7 +144,7 @@ var (
 
 	unspecifiedCred = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			Type: "static",
+			Type: static.Subtype.String(),
 		},
 		Secret: &targets.SessionSecret{
 			Decoded: map[string]any{
@@ -110,7 +156,7 @@ var (
 
 	unspecifiedCred1 = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			Type: "static",
+			Type: static.Subtype.String(),
 		},
 		Secret: &targets.SessionSecret{
 			Decoded: map[string]any{
@@ -205,6 +251,70 @@ func Test_parseCredentials(t *testing.T) {
 						Username:   "vault-decoded-user",
 						PrivateKey: "vault-decoded-pk",
 						raw:        vaultSshPrivateKey,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "vault-deprecated-username-password-decoded",
+			creds: []*targets.SessionCredential{
+				vaultUsernamePasswordDeprecatedSubtype,
+			},
+			wantCreds: credentials{
+				usernamePassword: []usernamePassword{
+					{
+						Username: "vault-decoded-user",
+						Password: "vault-decoded-pass",
+						raw:      vaultUsernamePasswordDeprecatedSubtype,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "vault-deprecated-private-key-decoded",
+			creds: []*targets.SessionCredential{
+				vaultSshPrivateKeyDeprecatedSubtype,
+			},
+			wantCreds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						Username:   "vault-decoded-user",
+						PrivateKey: "vault-decoded-pk",
+						raw:        vaultSshPrivateKeyDeprecatedSubtype,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "unknown-username-password-decoded",
+			creds: []*targets.SessionCredential{
+				unknownUsernamePassword,
+			},
+			wantCreds: credentials{
+				usernamePassword: []usernamePassword{
+					{
+						Username: "unknown-decoded-user",
+						Password: "unknown-decoded-pass",
+						raw:      unknownUsernamePassword,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "unknown-private-key-decoded",
+			creds: []*targets.SessionCredential{
+				unknownSshPrivateKey,
+			},
+			wantCreds: credentials{
+				sshPrivateKey: []sshPrivateKey{
+					{
+						Username:   "unknown-decoded-user",
+						PrivateKey: "unknown-decoded-pk",
+						raw:        unknownSshPrivateKey,
 					},
 				},
 			},

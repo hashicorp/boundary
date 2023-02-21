@@ -89,29 +89,26 @@ func parseCredentials(creds []*targets.SessionCredential) (credentials, error) {
 		}
 
 		// Credential type is unspecified, make a best effort attempt to parse
-		// a username_password credential from the Decoded field if it exists
+		// a credential from the Decoded field if it exists
 		if cred.Secret != nil && cred.Secret.Decoded != nil {
-			switch cred.CredentialSource.Type {
-			case "vault", "static":
-				// Attempt unmarshaling into username password creds
-				if err := mapstructure.Decode(cred.Secret.Decoded, &upCred); err != nil {
-					return credentials{}, err
-				}
-				if upCred.Username != "" && upCred.Password != "" {
-					upCred.raw = cred
-					out.usernamePassword = append(out.usernamePassword, upCred)
-					continue
-				}
+			// Attempt unmarshaling into username password creds
+			if err := mapstructure.Decode(cred.Secret.Decoded, &upCred); err != nil {
+				return credentials{}, err
+			}
+			if upCred.Username != "" && upCred.Password != "" {
+				upCred.raw = cred
+				out.usernamePassword = append(out.usernamePassword, upCred)
+				continue
+			}
 
-				// Attempt unmarshaling into ssh private key creds
-				if err := mapstructure.Decode(cred.Secret.Decoded, &spkCred); err != nil {
-					return credentials{}, err
-				}
-				if spkCred.Username != "" && spkCred.PrivateKey != "" {
-					spkCred.raw = cred
-					out.sshPrivateKey = append(out.sshPrivateKey, spkCred)
-					continue
-				}
+			// Attempt unmarshaling into ssh private key creds
+			if err := mapstructure.Decode(cred.Secret.Decoded, &spkCred); err != nil {
+				return credentials{}, err
+			}
+			if spkCred.Username != "" && spkCred.PrivateKey != "" {
+				spkCred.raw = cred
+				out.sshPrivateKey = append(out.sshPrivateKey, spkCred)
+				continue
 			}
 		}
 
