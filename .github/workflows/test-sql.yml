@@ -1,0 +1,19 @@
+name: test-sql
+
+on:
+  - workflow_dispatch
+  - push
+  - workflow_call
+
+jobs:
+  test-sql:
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    strategy:
+      matrix:
+        postgres-version: [ latest, 11-alpine, 12-alpine, 13-alpine, 14-alpine, 15-alpine ]
+    name: SQL Tests ${{ matrix.postgres-version }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run SQL PgTap Tests
+        run: |
+          make test-sql POSTGRES_DOCKER_IMAGE_BASE=docker.mirror.hashicorp.services/postgres PG_DOCKER_TAG=${{ matrix.postgres-version }}

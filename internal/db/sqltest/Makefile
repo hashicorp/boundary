@@ -26,6 +26,7 @@ TESTS ?= tests/setup/*.sql \
 		 tests/account/*/*.sql \
 		 tests/target/*.sql \
 		 tests/controller/*.sql \
+		 tests/hcp/*/*.sql \
 		 tests/kms/*.sql
 
 POSTGRES_DOCKER_IMAGE_BASE ?= postgres
@@ -53,7 +54,7 @@ test:
 		-v "$(CWD)/../schema/migrations":/migrations \
 		-v "$(CWD)/initdb.d":/docker-entrypoint-initdb.d/ \
 		$(POSTGRES_DOCKER_IMAGE)
-	@docker run -it --rm \
+	@docker run --rm \
 		--name test \
 		--link $(SQL_TEST_CONTAINER_NAME):db \
 		-e DATABASE=boundary \

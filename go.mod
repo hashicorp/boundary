@@ -63,7 +63,7 @@ require (
 	github.com/mitchellh/pointerstructure v1.2.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.6.1
-	github.com/ory/dockertest/v3 v3.7.0
+	github.com/ory/dockertest/v3 v3.9.1
 	github.com/pires/go-proxyproto v0.6.1
 	github.com/pkg/errors v0.9.1
 	github.com/posener/complete v1.2.3
@@ -74,8 +74,8 @@ require (
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
-	golang.org/x/sys v0.2.0
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
+	golang.org/x/sys v0.5.0
+	golang.org/x/term v0.5.0
 	golang.org/x/tools v0.1.12
 	google.golang.org/genproto v0.0.0-20220805133916-01dd62135a58
 	google.golang.org/grpc v1.48.0
@@ -99,7 +99,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870
-	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
+	golang.org/x/net v0.7.0
 )
 
 require (
@@ -110,7 +110,7 @@ require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
-	github.com/Microsoft/go-winio v0.5.0 // indirect
+	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/apex/log v1.9.0 // indirect
@@ -119,12 +119,12 @@ require (
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/containerd/continuity v0.1.0 // indirect
+	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.0.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/danieljoos/wincred v1.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/docker/cli v20.10.7+incompatible // indirect
+	github.com/docker/cli v20.10.14+incompatible // indirect
 	github.com/docker/docker v20.10.9+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
@@ -169,8 +169,8 @@ require (
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/opencontainers/runc v1.0.2 // indirect
+	github.com/opencontainers/image-spec v1.0.2 // indirect
+	github.com/opencontainers/runc v1.1.2 // indirect
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
@@ -189,7 +189,7 @@ require (
 	go.uber.org/goleak v1.1.10 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
