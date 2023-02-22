@@ -1,0 +1,156 @@
+name: test
+
+on:
+  - workflow_dispatch
+  - push
+  - workflow_call
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    outputs:
+      go-version: ${{ steps.get-go-version.outputs.go-version }}
+      cache-go-build: ${{ steps.go-cache-paths.outputs.go-build }}
+      cache-go-mod: ${{ steps.go-cache-paths.outputs.go-mod }}
+      cache-go-bin: ${{ steps.go-cache-paths.outputs.go-bin }}
+      go-cache-key: ${{ steps.go-cache-key.outputs.key }}
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+      - name: Determine Go version
+        id: get-go-version
+        # We use .go-version as our source of truth for current Go
+        # version, because "goenv" can react to it automatically.
+        run: |
+          echo "Building with Go $(cat .go-version)"
+          echo "go-version=$(cat .go-version)" >> $GITHUB_OUTPUT
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "${{ steps.get-go-version.outputs.go-version }}"
+      - name: Determine go cache key
+        id: go-cache-key
+        run: |
+          echo "key=${{ runner.os }}-go-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}" >> $GITHUB_OUTPUT
+      - name: Determine Go cache paths
+        id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+          echo "go-bin=$(go env GOPATH)/bin" >> $GITHUB_OUTPUT
+      - name: Set up Go modules cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+            ${{ steps.go-cache-paths.outputs.go-bin }}
+          key: ${{ steps.go-cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+      - name: Install Tools
+        run: |
+          go mod download
+          make tools
+  test-modules:
+    needs:
+      - setup
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    strategy:
+      matrix:
+        module: ["api", "sdk"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "${{ needs.setup.outputs.go-version }}"
+      - name: Set up Go modules cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-build }}
+            ${{ needs.setup.outputs.cache-go-mod }}
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+      - name: Test ${{ matrix.module }} Module
+        run: |
+          make test-${{ matrix.module }}
+
+  set-test-package-matrix:
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    needs:
+      - setup
+    outputs:
+      package-matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "${{ needs.setup.outputs.go-version }}"
+      - name: Set up Go modules cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-build }}
+            ${{ needs.setup.outputs.cache-go-mod }}
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+      - id: set-matrix
+        run: ./.github/scripts/set-test-package-matrix.sh
+
+  test:
+    needs:
+      - setup
+      - set-test-package-matrix
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.set-test-package-matrix.outputs.package-matrix) }}
+    steps:
+      - name: ulimit
+        run: |
+          echo "Soft limits"
+          ulimit -Sa
+          echo "Hard limits"
+          ulimit -Ha
+      - uses: actions/checkout@v3
+      - name: Set up go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "${{ needs.setup.outputs.go-version }}"
+      - name: Set up Go modules cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-build }}
+            ${{ needs.setup.outputs.cache-go-mod }}
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+      - name: Initialize Test Database
+        run: |
+          which pg_isready || sudo apt-get update && sudo apt-get install -y postgresql-client
+          make DOCKER_ARGS='-d' PG_OPTS='-c shared_buffers=256MB -c max_connections=200000' -C testing/dbtest/docker database-up
+          until pg_isready -h 127.0.0.1; do docker container inspect boundary-sql-tests &> /dev/null || exit -1; sleep 1; done
+      - name: Test
+        env:
+          TEST_PACKAGE: "${{ matrix.package }}"
+          GOMAXPROCS: ${{ vars.TEST_GOMAXPROCS }}
+        run: |
+          make test-ci
+      - name: Cleanup
+        if: always()
+        run: |
+          make -C testing/dbtest/docker clean
