@@ -101,11 +101,11 @@ jobs:
     needs:
       - setup
       - set-test-package-matrix
-    runs-on: ["custom", "linux", "custom-linux-medium"]
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJson(needs.set-matrix.outputs.package-matrix) }}
+        package: ${{ fromJson(needs.set-test-package-matrix.outputs.package-matrix) }}
     steps:
       - uses: actions/checkout@v3
       - name: Determine Go version
