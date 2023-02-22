@@ -74,15 +74,24 @@ jobs:
       - name: Test ${{ matrix.module }} Module
         run: |
           make test-${{ matrix.module }}
+
+  set-test-package-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      package-matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: ./.github/scripts/set-test-package-matrix.sh
+
   test:
     needs:
       - setup
-    runs-on: ["custom", "linux", "custom-linux-xl"]
+      - set-test-package-matrix
+    runs-on: ["custom", "linux", "custom-linux-medium"]
     strategy:
       fail-fast: false
       matrix:
-        parallel: [10]
-        index: [0,1,2,3,4,5,6,7,8,9]
+        package: ${{ fromJson(needs.set-matrix.outputs.package-matrix) }}
     steps:
       - uses: actions/checkout@v3
       - name: Determine Go version
@@ -118,15 +127,15 @@ jobs:
       - name: Install Tools
         run: |
           make tools
-      - name: Generate go test Slice
-        id: test_split
-        uses: hashicorp-forge/go-test-split-action@v1
-        with:
-          total: ${{ matrix.parallel }}
-          index: ${{ matrix.index }}
+#      - name: generate go test slice
+#        id: test_split
+#        uses: hashicorp-forge/go-test-split-action@v1
+#        with:
+#          total: ${{ matrix.parallel }}
+#          index: ${{ matrix.index }}
       - name: Test
         env:
-          RUN_TESTS: "${{ steps.test_split.outputs.run}}"
+          PACKAGE: "${{ matrix.package }}"
         run: |
           make test-ci
       - name: Cleanup
