@@ -170,6 +170,7 @@ jobs:
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Destroy Enos scenario
+        if: ${{ always() }}
         env:
           ENOS_VAR_aws_region: us-east-1
           ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
