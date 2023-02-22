@@ -83,6 +83,17 @@ jobs:
       package-matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v3
+      - name: Determine Go version
+        id: get-go-version
+        # We use .go-version as our source of truth for current Go
+        # version, because "goenv" can react to it automatically.
+        run: |
+          echo "Building with Go $(cat .go-version)"
+          echo "go-version=$(cat .go-version)" >> $GITHUB_OUTPUT
+      - name: Set up go
+        uses: actions/setup-go@v3
+        with:
+          go-version: "${{ steps.get-go-version.outputs.go-version }}"
       - id: set-matrix
         run: ./.github/scripts/set-test-package-matrix.sh
 
