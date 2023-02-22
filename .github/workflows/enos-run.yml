@@ -32,9 +32,6 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
-    outputs:
-      status: ${{ steps.enos-status.outputs.status }}
-      status-retry: ${{ steps.enos-status-retry.outputs.status }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
