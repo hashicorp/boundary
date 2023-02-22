@@ -7,6 +7,7 @@ TMP_DIR := $(shell mktemp -d)
 REPO_PATH := github.com/hashicorp/boundary
 
 TEST_PACKAGE ?= ./...
+TEST_TIMEOUT ?= 30m
 
 CGO_ENABLED?=0
 GO_PATH = $(shell go env GOPATH)
@@ -116,6 +117,10 @@ build-ui:
 		echo "==> Building custom UI version $(UI_COMMITISH)"; \
 	fi; \
 	./scripts/build-ui.sh
+
+.PHONY: build-plugins
+build-plugins:
+	@./scripts/plugins.sh
 
 .PHONY: clean-ui
 clean-ui:
@@ -293,7 +298,7 @@ test-sql:
 
 .PHONY: test
 test:
-	go test ./... -timeout 30m -json -cover | tparse -follow
+	go test "$(TEST_PACKAGE)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) | tparse -follow
 
 .PHONY: test-sdk
 test-sdk:

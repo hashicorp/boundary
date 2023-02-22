@@ -16,6 +16,8 @@ jobs:
       cache-go-mod: ${{ steps.go-cache-paths.outputs.go-mod }}
       cache-go-bin: ${{ steps.go-cache-paths.outputs.go-bin }}
       go-cache-key: ${{ steps.go-cache-key.outputs.key }}
+      plugin-cache-path: ${{ steps.plugin-cache-paths.outputs.path }}
+      plugin-cache-key: ${{ steps.plugin-cache-key.outputs.key }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
       - uses: actions/checkout@v3
@@ -56,6 +58,27 @@ jobs:
         run: |
           go mod download
           make tools
+      - name: Determine plugin cache key
+        id: plugin-cache-key
+        run: |
+          echo "key=${{ runner.os }}-plugins-${{ hashFiles('plugins/**/*.go', 'plugins/**/go.sum') }}" >> $GITHUB_OUTPUT
+      - name: Determin plugin cache path
+        id: plugin-cache-paths
+        run: |
+          echo "path=plugins/**/assets/*.gz" >> $GITHUB_OUTPUT
+      - name: Set up plugin cache
+        id: plugin-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ steps.plugin-cache-paths.outputs.path }}
+          key: ${{ steps.plugin-cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-plugin
+      - name: Build Plugins
+        if: steps.plugin-cache.outputs.cache-hit != 'true'
+        run: |
+          make build-plugins
   test-modules:
     needs:
       - setup
@@ -139,6 +162,15 @@ jobs:
           key: ${{ needs.setup.outputs.go-cache-key }}
           restore-keys: |
             ${{ runner.os }}-go
+      - name: Set up plugin cache
+        id: plugin-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ needs.setup.outputs.plugin-cache-path }}
+          key: ${{ needs.setup.outputs.plugin-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-plugin
       - name: Initialize Test Database
         run: |
           which pg_isready || sudo apt-get update && sudo apt-get install -y postgresql-client
@@ -148,8 +180,10 @@ jobs:
         env:
           TEST_PACKAGE: "${{ matrix.package }}"
           GOMAXPROCS: ${{ vars.TEST_GOMAXPROCS }}
+          TESTARGS: -v
+          TEST_TIMEOUT: 120m
         run: |
-          make test-ci
+          make test
       - name: Cleanup
         if: always()
         run: |
