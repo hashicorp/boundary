@@ -183,11 +183,11 @@ jobs:
           TESTARGS: -v
           TEST_TIMEOUT: 120m
         run: |
-          sudo sysctl -w fs.file-max=524288
-          cat /proc/sys/fs/file-max
+          ls /etc
+          cat /etc/limits.conf
+          echo "* hard nofile 500000" >> /etc/limits.conf
           ulimit -Sa
           ulimit -Ha
-          make test
       - name: Cleanup
         if: always()
         run: |
