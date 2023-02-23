@@ -83,7 +83,15 @@ dump() {
 
     make -C internal/db/sqltest clean
     make -C internal/db/sqltest database-up
+    max=120
+    c=0
     until pg_isready -h "${DB_HOST}" -p "${SQL_TEST_DB_PORT}"; do
+        ((c+=1))
+        if [[ $c -ge $max ]]; then
+            docker logs boundary-sql-tests
+            make -C internal/db/sqltest clean
+            die "timeout waiting for database, likely an error in a migration"
+        fi
         sleep 1
     done
 
