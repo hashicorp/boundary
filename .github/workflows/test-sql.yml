@@ -5,6 +5,9 @@ on:
   - push
   - workflow_call
 
+permissions:
+  contents: read
+
 jobs:
   test-sql:
     runs-on: ${{ fromJSON(vars.RUNNER) }}

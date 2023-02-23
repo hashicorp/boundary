@@ -2,6 +2,9 @@ name: "Pull Request Labeler"
 on:
 - pull_request_target
 
+permissions:
+  content: read
+
 jobs:
   triage:
     runs-on: ${{ fromJSON(vars.RUNNER) }}

@@ -11,6 +11,9 @@ on:
       - main
       - release/**
 
+permissions:
+  contents: read
+
 jobs:
   # checks that a milestone entry is present for a PR
   milestone-check:

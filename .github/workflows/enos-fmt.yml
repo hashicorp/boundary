@@ -6,6 +6,9 @@ on:
     paths:
       - enos/**
 
+permissions:
+  contents: read
+
 jobs:
   fmt_check:
     # Only run this workflow on pull requests from hashicorp/boundary branches
