@@ -88,6 +88,7 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 		Repository: "vault",
 		Tag:        vaultVersion,
 		Env:        []string{fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken)},
+		CapAdd:     []string{"IPC_LOCK"},
 	}
 
 	vConfig := vault.DefaultConfig()
