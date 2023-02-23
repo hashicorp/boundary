@@ -139,7 +139,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: "./..."
+        package: ["./..."]
     steps:
       - name: ulimit
         run: |
