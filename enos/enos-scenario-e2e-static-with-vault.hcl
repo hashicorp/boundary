@@ -136,6 +136,7 @@ scenario "e2e_static_with_vault" {
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
       target_ip                = step.create_target.target_ips[0]
       target_user              = "ubuntu"
+      target_port              = "22"
       vault_addr               = step.create_vault_cluster.instance_public_ips[0]
       vault_root_token         = step.create_vault_cluster.vault_root_token
     }

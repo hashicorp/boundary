@@ -179,6 +179,7 @@ scenario "e2e_aws" {
       local_boundary_dir       = local.local_boundary_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
       target_user              = "ubuntu"
+      target_port              = "22"
       aws_access_key_id        = step.iam_setup.access_key_id
       aws_secret_access_key    = step.iam_setup.secret_access_key
       aws_host_set_filter1     = step.create_tag1_inputs.tag_string

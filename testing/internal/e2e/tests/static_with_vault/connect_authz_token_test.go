@@ -46,7 +46,7 @@ func TestCliVaultConnectTargetWithAuthzToken(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Configure vault
-	vaultAddr, boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -97,7 +97,7 @@ func TestCliVaultConnectTargetWithAuthzToken(t *testing.T) {
 	t.Log("Created Vault Cred Store Token")
 
 	// Create a credential store
-	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, vaultAddr, credStoreToken)
+	newCredentialStoreId := boundary.CreateNewCredentialStoreVaultCli(t, ctx, newProjectId, c.VaultAddr, credStoreToken)
 
 	// Create a credential library
 	output = e2e.RunCommand(ctx, "boundary",
