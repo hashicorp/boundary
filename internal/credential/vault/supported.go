@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -174,6 +175,14 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 		})
 	}
 	server.vaultContainer = resource
+
+	t.Cleanup(func() {
+		o, err := exec.Command("bash", "-c", "lsof -u $(whoami) -n 2> /dev/null | wc -l").CombinedOutput()
+		if err != nil {
+			t.Errorf("failed to get lsof count: %s", err.Error())
+		}
+		t.Logf("lsof count: %s", string(o))
+	})
 
 	switch opts.vaultTLS {
 	case TestNoTLS:
