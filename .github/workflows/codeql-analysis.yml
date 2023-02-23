@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '0 15 * * 0'
 
+permissions:
+  contents: read
+
 jobs:
   CodeQL-Build:
 
