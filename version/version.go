@@ -29,6 +29,9 @@ func Get() *Info {
 	if GitDescribe == "" && rel == "" && VersionPrerelease != "" {
 		rel = "dev"
 	}
+	if md == "oss" {
+		md = ""
+	}
 
 	return &Info{
 		CgoEnabled:        CgoEnabled,
@@ -50,7 +53,7 @@ func (c *Info) VersionNumber() string {
 		version = fmt.Sprintf("%s-%s", version, c.VersionPrerelease)
 	}
 
-	if c.VersionMetadata != "" {
+	if c.VersionMetadata != "" && c.VersionMetadata != "oss" {
 		version = fmt.Sprintf("%s+%s", version, c.VersionMetadata)
 	}
 
@@ -92,7 +95,7 @@ func FromVersionString(s string) *Info {
 		return nil
 	}
 
-	if md := v.Metadata(); len(md) > 0 {
+	if md := v.Metadata(); len(md) > 0 && md != "oss" {
 		i.VersionMetadata = md
 	}
 	if pr := v.Prerelease(); len(pr) > 0 {
@@ -115,7 +118,7 @@ func (c *Info) FullVersionNumber(rev bool) string {
 		fmt.Fprintf(&versionString, "-%s", c.VersionPrerelease)
 	}
 
-	if c.VersionMetadata != "" {
+	if c.VersionMetadata != "" && c.VersionMetadata != "oss" {
 		fmt.Fprintf(&versionString, "+%s", c.VersionMetadata)
 	}
 
