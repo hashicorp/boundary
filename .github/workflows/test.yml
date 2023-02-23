@@ -139,7 +139,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJson(needs.set-test-package-matrix.outputs.package-matrix) }}
+        package: "./..."
     steps:
       - name: ulimit
         run: |
