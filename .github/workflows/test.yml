@@ -179,7 +179,7 @@ jobs:
       - name: Test
         env:
           TEST_PACKAGE: "${{ matrix.package }}"
-          GOMAXPROCS: ${{ vars.TEST_GOMAXPROCS }}
+          GOMAXPROCS: 4
           TESTARGS: -v
           TEST_TIMEOUT: 120m
         run: |
