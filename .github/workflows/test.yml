@@ -185,6 +185,8 @@ jobs:
         run: |
           sudo sysctl -w fs.file-max=524288
           cat /proc/sys/fs/file-max
+          ulimit -Sa
+          ulimit -Ha
           make test
       - name: Cleanup
         if: always()
