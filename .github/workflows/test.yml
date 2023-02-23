@@ -183,7 +183,7 @@ jobs:
           TESTARGS: -v
           TEST_TIMEOUT: 120m
         run: |
-          sysctl -w fs.file-max=524288
+          sudo sysctl -w fs.file-max=524288
           cat /proc/sys/fs/file-max
           make test
       - name: Cleanup
