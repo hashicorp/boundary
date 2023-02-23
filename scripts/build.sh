@@ -14,7 +14,7 @@ DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 cd "$DIR"
 
 if [ "${CI_BUILD}x" != "x" ]; then
-    source /home/circleci/.bashrc
+    [[ -f /home/circleci/.bashrc ]] && source /home/circleci/.bashrc
 fi
 
 # Set build tags
