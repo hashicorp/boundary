@@ -183,9 +183,9 @@ jobs:
           TESTARGS: -v
           TEST_TIMEOUT: 120m
         run: |
-          ls /etc
-          cat /etc/limits.conf
-          echo "* hard nofile 500000" >> /etc/limits.conf
+          ls /etc/security
+          cat /etc/security/limits.conf
+          echo "* hard nofile 500000" >> /etc/security/limits.conf
           ulimit -Sa
           ulimit -Ha
       - name: Cleanup
