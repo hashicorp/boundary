@@ -6,6 +6,9 @@ THIS_DIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 TMP_DIR := $(shell mktemp -d)
 REPO_PATH := github.com/hashicorp/boundary
 
+TEST_PACKAGE ?= ./...
+TEST_TIMEOUT ?= 30m
+
 CGO_ENABLED?=0
 GO_PATH = $(shell go env GOPATH)
 
@@ -114,6 +117,10 @@ build-ui:
 		echo "==> Building custom UI version $(UI_COMMITISH)"; \
 	fi; \
 	./scripts/build-ui.sh
+
+.PHONY: build-plugins
+build-plugins:
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/plugins.sh'"
 
 .PHONY: clean-ui
 clean-ui:
@@ -283,7 +290,7 @@ generate-database-dumps:
 test-ci: export CI_BUILD=1
 test-ci:
 	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
-	~/.go/bin/go test ./... -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
+	go test "$(TEST_PACKAGE)" -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
 
 .PHONY: test-sql
 test-sql:
@@ -291,7 +298,7 @@ test-sql:
 
 .PHONY: test
 test:
-	go test ./... -timeout 30m -json -cover | tparse -follow
+	go test "$(TEST_PACKAGE)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) | tparse -follow
 
 .PHONY: test-sdk
 test-sdk:
