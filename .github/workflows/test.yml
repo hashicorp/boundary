@@ -184,6 +184,17 @@ jobs:
           TEST_TIMEOUT: 120m
         run: |
           make test
+      - uses: nick-fields/retry@v2
+        env:
+          TEST_PACKAGE: "${{ matrix.package }}"
+          GOMAXPROCS: ${{ vars.TEST_GOMAXPROCS }}
+          TESTARGS: -v
+          TEST_TIMEOUT: 120m
+        with: 
+          max_attempts: 3
+          timeout_minutes: 120
+          retry_on: error
+          command: make test
       - name: Cleanup
         if: always()
         run: |
