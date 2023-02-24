@@ -12,10 +12,9 @@ locals {
 }
 
 resource "aws_iam_user" "boundary" {
-  name = "boundary-e2e-${var.test_id}"
-  # These are disabled currently, as we cannot lock down this user and still perform certain tests with the service user
-  #  tags                 = { boundary-demo = local.user_email }
-  #  permissions_boundary = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/BoundaryDemoPermissionsBoundary"
+  name                 = "boundary-e2e-${var.test_id}"
+  tags                 = { boundary-demo = local.user_email }
+  permissions_boundary = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/BoundaryDemoPermissionsBoundary"
 }
 
 resource "aws_iam_user_policy" "boundary" {
