@@ -6,7 +6,7 @@ on:
       - main
       - release/**
 
-permssions:
+permissions:
   contents: read
 
 jobs:
