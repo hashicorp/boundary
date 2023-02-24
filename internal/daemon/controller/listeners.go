@@ -254,7 +254,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 
 	return func() {
 		err := handleSecondaryConnection(c.baseContext, metric.InstrumentClusterTrackingListener(multiplexingReverseGrpcListener, reverseGrpcListenerPurpose),
-			c.downstreamRoutes)
+			c.downstreamReceiver)
 		if err != nil {
 			event.WriteError(c.baseContext, op, err, event.WithInfoMsg("handleSecondaryConnection error"))
 		}
