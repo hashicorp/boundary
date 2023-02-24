@@ -32,6 +32,9 @@ scenario "e2e_database" {
 
   step "create_base_infra" {
     module = module.infra
+    depends_on = [
+      step.find_azs,
+    ]
 
     variables {
       availability_zones = step.find_azs.availability_zones
