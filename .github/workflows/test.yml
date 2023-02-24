@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  DOCKER_MIRROR: docker.mirror.hashicorp.services
+
 jobs:
   setup:
     outputs:

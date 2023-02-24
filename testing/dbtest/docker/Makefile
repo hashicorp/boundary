@@ -3,9 +3,10 @@ all: docker-build
 CWD := $(shell pwd)
 DOCKER_ARGS ?= -d
 
-REGISTRY_NAME?=docker.io/hashicorpboundary
+DOCKER_MIRROR?=docker.io
+REGISTRY_NAME?=hashicorpboundary
 TEST_IMAGE_NAME=postgres
-TEST_IMAGE_TAG ?= $(REGISTRY_NAME)/$(TEST_IMAGE_NAME):11-alpine
+TEST_IMAGE_TAG ?= $(DOCKER_MIRROR)/$(REGISTRY_NAME)/$(TEST_IMAGE_NAME):11-alpine
 PG_OPTS ?=
 TEST_DB_PORT ?= 5432
 TEST_CONTAINER_NAME ?= boundary-sql-tests
@@ -21,7 +22,7 @@ ${docker-buildxs}: %-buildx:
 	docker buildx build \
 		--platform linux/amd64,linux/arm64 \
 		--push \
-		-t $(REGISTRY_NAME)/$(TEST_IMAGE_NAME):$* \
+		-t $(DOCKER_MIRROR)/$(REGISTRY_NAME)/$(TEST_IMAGE_NAME):$* \
 		-f Dockerfile.$* .
 
 docker-load: ${docker-load-buildxs}
@@ -29,7 +30,7 @@ docker-load: ${docker-load-buildxs}
 ${docker-load-buildxs}: %-load-buildx:
 	docker buildx build \
 		--load \
-		-t $(REGISTRY_NAME)/$(TEST_IMAGE_NAME):$* \
+		-t $(DOCKER_MIRROR)/$(REGISTRY_NAME)/$(TEST_IMAGE_NAME):$* \
 		-f Dockerfile.$* .
 
 database-up:
