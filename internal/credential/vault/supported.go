@@ -25,9 +25,20 @@ import (
 
 const DefaultVaultVersion = "1.7.2"
 
+var (
+	vaultRepository    = "vault"
+	postgresRepository = "postgres"
+)
+
 func init() {
 	newVaultServer = gotNewServer
 	mountDatabase = gotMountDatabase
+
+	mirror := os.Getenv("DOCKER_MIRROR")
+	if mirror != "" {
+		vaultRepository = strings.Join([]string{mirror, vaultRepository}, "/")
+		postgresRepository = strings.Join([]string{mirror, postgresRepository}, "/")
+	}
 }
 
 func gotDocker(t testing.TB) {}
@@ -81,7 +92,7 @@ func gotNewServer(t testing.TB, opt ...TestOption) *TestVaultServer {
 	}
 
 	dockerOptions := &dockertest.RunOptions{
-		Repository: "vault",
+		Repository: vaultRepository,
 		Tag:        vaultVersion,
 		Env:        []string{fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", server.RootToken)},
 	}
@@ -209,7 +220,7 @@ func gotMountDatabase(t testing.TB, v *TestVaultServer, opt ...TestOption) *Test
 	require.True(ok)
 
 	dockerOptions := &dockertest.RunOptions{
-		Repository: "postgres",
+		Repository: postgresRepository,
 		Tag:        "11",
 		Networks:   []*dockertest.Network{network},
 		Env:        []string{"POSTGRES_PASSWORD=password", "POSTGRES_DB=boundarytest"},
