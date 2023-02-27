@@ -3,7 +3,7 @@ on:
 - pull_request_target
 
 permissions:
-  content: read
+  contents: read
 
 jobs:
   triage:
