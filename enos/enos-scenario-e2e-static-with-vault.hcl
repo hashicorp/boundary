@@ -53,6 +53,9 @@ scenario "e2e_static_with_vault" {
 
   step "create_base_infra" {
     module = module.infra
+    depends_on = [
+      step.find_azs,
+    ]
 
     variables {
       availability_zones = step.find_azs.availability_zones
@@ -64,6 +67,7 @@ scenario "e2e_static_with_vault" {
     module = module.boundary
     depends_on = [
       step.create_base_infra,
+      step.create_db_password,
       step.build_boundary
     ]
 
