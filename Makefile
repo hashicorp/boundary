@@ -95,7 +95,6 @@ UI_TARGETS := update-ui-version build-ui build-ui-ifne clean-ui
 $(UI_TARGETS): export UI_CLONE_DIR      := internal/ui/.tmp/boundary-ui
 $(UI_TARGETS): export UI_VERSION_FILE   := internal/ui/VERSION
 $(UI_TARGETS): export UI_DEFAULT_BRANCH := main
-$(UI_TARGETS): export UI_CURRENT_COMMIT := $(shell head -n1 < "$(UI_VERSION_FILE)" | cut -d' ' -f1)
 $(UI_TARGETS): export UI_COMMITISH ?=
 
 .PHONY: update-ui-version
@@ -110,12 +109,6 @@ update-ui-version:
 
 .PHONY: build-ui
 build-ui:
-	@if [ -z "$(UI_COMMITISH)" ]; then \
-		echo "==> Building default UI version from $(UI_VERSION_FILE): $(UI_CURRENT_COMMIT)"; \
-		export UI_COMMITISH="$(UI_CURRENT_COMMIT)"; \
-	else \
-		echo "==> Building custom UI version $(UI_COMMITISH)"; \
-	fi; \
 	./scripts/build-ui.sh
 
 .PHONY: build-plugins
