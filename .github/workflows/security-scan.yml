@@ -9,7 +9,7 @@ on:
 
 jobs:
   scan:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
     if: ${{ github.actor != 'dependabot[bot]' || github.actor != 'hc-github-team-secure-boundary' }}
     steps:
     - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
