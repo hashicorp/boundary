@@ -26,7 +26,7 @@ jobs:
       - name: Get all regions
         id: regions
         run: |
-          echo "regions=$(aws ec2 describe-regions --region us-east-1 --output json --query 'Regions[].RegionName' | tr -d '\n ')" >> $GITHUB_OUTPUT
+          echo "regions=$(aws ec2 describe-regions --region us-east-1 --output json --query 'Regions[].RegionName' | tr -d '\n ')" >> "$GITHUB_OUTPUT"
 
   aws-nuke:
     if: ${{ github.event.repository.name == 'boundary' }}
