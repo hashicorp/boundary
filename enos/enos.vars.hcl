@@ -30,7 +30,7 @@
 // local_boundary_dir = "/Users/<user>/.go/bin"
 
 // The directory that contains the copy of boundary-ui you want to use for UI tests
-// boundary_ui_dir = "/Users/<user>/Developer/boundary-ui"
+// local_boundary_ui_dir = "/Users/<user>/Developer/boundary-ui"
 
 // The path to the installation bundle for the target machines. The existing
 // scenarios all use linux/amd64 architecture so bundle ought to match that

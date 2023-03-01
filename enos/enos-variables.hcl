@@ -84,7 +84,7 @@ variable "local_boundary_dir" {
   type        = string
 }
 
-variable "boundary_ui_dir" {
+variable "local_boundary_ui_dir" {
   description = "Path to local boundary-ui directory"
   type        = string
   default     = null

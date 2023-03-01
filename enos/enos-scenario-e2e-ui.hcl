@@ -17,7 +17,7 @@ scenario "e2e_ui" {
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
     boundary_install_dir     = abspath(var.boundary_install_dir)
     local_boundary_dir       = abspath(var.local_boundary_dir)
-    boundary_ui_dir          = abspath(var.boundary_ui_dir)
+    local_boundary_ui_dir    = abspath(var.local_boundary_ui_dir)
     build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
@@ -203,7 +203,7 @@ scenario "e2e_ui" {
       auth_login_name          = step.create_boundary_cluster.auth_login_name
       auth_password            = step.create_boundary_cluster.auth_password
       local_boundary_dir       = local.local_boundary_dir
-      boundary_ui_dir          = local.boundary_ui_dir
+      local_boundary_ui_dir    = local.local_boundary_ui_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
       target_ip                = step.create_targets_with_tag1.target_ips[0]
       target_user              = "ubuntu"
