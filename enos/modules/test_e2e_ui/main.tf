@@ -9,7 +9,7 @@ terraform {
   }
 }
 
-variable "debug" {
+variable "debug_no_run" {
   description = "If set, this module will not execute the tests so that you can still access environment variables"
   type        = bool
   default     = true
@@ -142,7 +142,7 @@ resource "enos_local_exec" "run_e2e_ui_test" {
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
   }
 
-  inline = var.debug ? ["pwd"] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" yarn --cwd ${var.local_boundary_ui_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]
+  inline = var.debug_no_run ? ["pwd"] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" yarn --cwd ${var.local_boundary_ui_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]
 }
 
 output "test_results" {

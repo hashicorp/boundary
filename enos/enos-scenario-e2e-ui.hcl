@@ -198,6 +198,7 @@ scenario "e2e_ui" {
     ]
 
     variables {
+      debug_no_run             = var.e2e_debug_no_run
       alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
       auth_method_id           = step.create_boundary_cluster.auth_method_id
       auth_login_name          = step.create_boundary_cluster.auth_login_name
