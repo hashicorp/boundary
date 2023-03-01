@@ -55,8 +55,10 @@ begin;
     to auth_password_argon2_conf_iters_thrds_mem_pm_id_key_salt_len_uq;
   alter table auth_password_credential rename constraint auth_password_credential_password_method_id_password_conf_i_key
     to auth_password_credential_password_method_conf_account_ids_uq;
+  -- Renames credential from 39/01_static_ssh_private_key_creds.up.sql
   alter table credential_static_ssh_private_key_credential rename constraint credential_static_ssh_private_key_store_id_public_id_uq
     to credential_static_ssh_private_key_credential_store_pub_ids_uq;
+  -- Renames credential from 39/01_static_ssh_private_key_creds.up.sql
   alter table credential_static_username_password_credential rename constraint credential_static_username_password_store_id_public_id_uq
     to credential_static_username_password_credential_store_pub_ids_uq;
 
