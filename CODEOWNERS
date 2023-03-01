@@ -1,3 +1,7 @@
+# These owners will be the default owners for everything in
+# the repo, unless a later match takes precedence.
+@hashicorp/boundary
+
 # release configuration
 
 /.release/                              @hashicorp/release-engineering @hashicorp/github-secure-boundary
