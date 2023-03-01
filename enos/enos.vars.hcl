@@ -44,4 +44,4 @@
 // Generally, if there's failure in the test suite for any reason, enos/terraform will throw an error and you
 // would not be able to access the environment variables needed to test locally. Enabling this
 // will ensure that the enos scenario passes.
-// e2e_debug = true
+// e2e_debug_no_run = true

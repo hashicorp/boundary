@@ -100,7 +100,7 @@ scenario "e2e_database" {
 
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/database"
-      debug                    = var.e2e_debug
+      debug                    = var.e2e_debug_no_run
       local_boundary_dir       = local.local_boundary_dir
       target_user              = "ubuntu"
       aws_ssh_private_key_path = local.aws_ssh_private_key_path

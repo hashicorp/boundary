@@ -125,7 +125,7 @@ variable "local_build_target" {
   default     = "build-ui build"
 }
 
-variable "e2e_debug" {
+variable "e2e_debug_no_run" {
   description = "If set, this will prevent test suites from running"
   type        = bool
   default     = false
