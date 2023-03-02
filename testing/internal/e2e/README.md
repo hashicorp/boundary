@@ -84,10 +84,10 @@ export VAULT_TOKEN=
 
 Then, run...
 ```shell
-go test github.com/hashicorp/boundary/testing/e2e/target // run target tests
+go test github.com/hashicorp/boundary/testing/internal/e2e/tests/static
 go test ./target/ // run target tests if running from this directory
-go test github.com/hashicorp/boundary/testing/e2e/target -v // verbose
-go test github.com/hashicorp/boundary/testing/e2e/target -v -run '^TestCreateTargetApi$' // run a specific test
+go test github.com/hashicorp/boundary/testing/internal/e2e/tests/static -v // verbose
+go test github.com/hashicorp/boundary/testing/internal/e2e/tests/static -v -run '^TestCreateTargetApi$' // run a specific test
 ```
 
 ## Adding Tests

@@ -84,6 +84,12 @@ variable "local_boundary_dir" {
   type        = string
 }
 
+variable "local_boundary_ui_dir" {
+  description = "Path to local boundary-ui directory"
+  type        = string
+  default     = null
+}
+
 variable "crt_bundle_path" {
   description = "Path to CRT generated boundary bundle"
   type        = string

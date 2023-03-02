@@ -12,11 +12,7 @@ terraform {
 variable "debug_no_run" {
   description = "If set, this module will not execute the tests so that you can still access environment variables"
   type        = bool
-  default     = false
-}
-variable "test_package" {
-  description = "Name of Go test package to run"
-  type        = string
+  default     = true
 }
 variable "alb_boundary_api_addr" {
   description = "URL of the Boundary instance"
@@ -40,6 +36,10 @@ variable "auth_password" {
 }
 variable "local_boundary_dir" {
   description = "Local Path to boundary executable"
+  type        = string
+}
+variable "local_boundary_ui_dir" {
+  description = "Local Path to boundary-ui directory"
   type        = string
 }
 variable "target_user" {
@@ -119,12 +119,10 @@ locals {
   vault_addr_internal      = var.vault_addr_internal != "" ? "http://${var.vault_addr_internal}:8200" : local.vault_addr
   aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
   aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)
-  package_name             = reverse(split("/", var.test_package))[0]
 }
 
-resource "enos_local_exec" "run_e2e_test" {
+resource "enos_local_exec" "run_e2e_ui_test" {
   environment = {
-    E2E_TESTS                     = "true",
     BOUNDARY_ADDR                 = var.alb_boundary_api_addr,
     E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id,
     E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name,
@@ -144,9 +142,9 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
   }
 
-  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json | tparse -follow -format plain 2>&1 | tee ${path.module}/../../test-e2e-${local.package_name}.log"]
+  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" yarn --cwd ${var.local_boundary_ui_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]
 }
 
 output "test_results" {
-  value = enos_local_exec.run_e2e_test.stdout
+  value = enos_local_exec.run_e2e_ui_test.stdout
 }

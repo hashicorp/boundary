@@ -90,6 +90,10 @@ module "test_e2e" {
   source = "./modules/test_e2e"
 }
 
+module "test_e2e_ui" {
+  source = "./modules/test_e2e_ui"
+}
+
 module "test_smoke" {
   source = "./modules/test_smoke"
 }
