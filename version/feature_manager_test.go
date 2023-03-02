@@ -11,21 +11,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHasFeature(t *testing.T) {
+func TestHasFeature_AllMetaData(t *testing.T) {
 	DeprecatedFeature := Feature(999)
-	HCPOnlyFeature := Feature(998)
+	ActiveFeature := Feature(998)
 
 	deprecatedFeatureConstraint, _ := gvers.NewConstraint(">= 0.10.0, < 0.10.1")
 	featureMap[DeprecatedFeature] = MetadataConstraint{
-		MetaInfo:    []Metadata{OSS, HCP},
 		Constraints: deprecatedFeatureConstraint,
 	}
-
-	hcpOnlyFeature, _ := gvers.NewConstraint(">= 0.12.0+hcp")
-	featureMap[HCPOnlyFeature] = MetadataConstraint{
-		MetaInfo:    []Metadata{HCP},
-		Constraints: hcpOnlyFeature,
+	activeFeatureConstraint, _ := gvers.NewConstraint("> 0.10.0")
+	featureMap[ActiveFeature] = MetadataConstraint{
+		Constraints: activeFeatureConstraint,
 	}
+	t.Cleanup(func() {
+		delete(featureMap, DeprecatedFeature)
+		_, ok := featureMap[DeprecatedFeature]
+		require.False(t, ok)
+
+		delete(featureMap, ActiveFeature)
+		_, ok = featureMap[ActiveFeature]
+		require.False(t, ok)
+	})
 
 	tests := []struct {
 		name       string
@@ -34,28 +40,16 @@ func TestHasFeature(t *testing.T) {
 		wantResult bool
 	}{
 		{
-			name:       "does-not-have-multihop-ENT",
-			version:    "0.11.1+hcp",
-			feature:    HCPOnlyFeature,
+			name:       "active-feature-before-active",
+			version:    "0.10.0",
+			feature:    ActiveFeature,
 			wantResult: false,
 		},
 		{
-			name:       "has-multihop-ENT",
-			version:    "0.12.0+hcp",
-			feature:    HCPOnlyFeature,
-			wantResult: true,
-		},
-		{
-			name:       "has-multihop-worker-ENT",
-			version:    "0.12.0+hcp.int",
-			feature:    HCPOnlyFeature,
-			wantResult: true,
-		},
-		{
-			name:       "does-not-have-multihop-OSS",
+			name:       "active-feature-after-active",
 			version:    "0.12.0",
-			feature:    HCPOnlyFeature,
-			wantResult: false,
+			feature:    ActiveFeature,
+			wantResult: true,
 		},
 		{
 			name:       "deprecated-feature-before-deprecation",
@@ -85,23 +79,20 @@ func TestHasFeature(t *testing.T) {
 			require.Equal(tt.wantResult, got)
 		})
 	}
-	delete(featureMap, DeprecatedFeature)
-	_, ok := featureMap[DeprecatedFeature]
-	require.False(t, ok)
-
-	delete(featureMap, HCPOnlyFeature)
-	_, ok = featureMap[HCPOnlyFeature]
-	require.False(t, ok)
 }
 
-func TestEnableFeatureOnVersionForTest(t *testing.T) {
+func TestEnableFeatureOnVersionForTest_AllMetaData(t *testing.T) {
 	FutureFeature := Feature(997)
 
-	futureVersionFeature, _ := gvers.NewConstraint(">= 99.99.99+hcp")
+	futureVersionFeature, _ := gvers.NewConstraint(">= 99.99.99")
 	featureMap[FutureFeature] = MetadataConstraint{
-		MetaInfo:    []Metadata{HCP},
 		Constraints: futureVersionFeature,
 	}
+	t.Cleanup(func() {
+		delete(featureMap, FutureFeature)
+		_, ok := featureMap[FutureFeature]
+		require.False(t, ok)
+	})
 
 	tests := []struct {
 		name       string
@@ -112,7 +103,7 @@ func TestEnableFeatureOnVersionForTest(t *testing.T) {
 	}{
 		{
 			name:       "has-future-feature",
-			version:    "0.11.1+hcp",
+			version:    "0.11.1",
 			feature:    FutureFeature,
 			wantResult: true,
 		},
@@ -133,37 +124,31 @@ func TestEnableFeatureOnVersionForTest(t *testing.T) {
 			require.Equal(tt.wantResult, got)
 		})
 	}
-	delete(featureMap, FutureFeature)
-	_, ok := featureMap[FutureFeature]
-	require.False(t, ok)
 }
 
-func TestEnableFeatureForTest(t *testing.T) {
+func TestEnableFeatureForTest_AllMetaData(t *testing.T) {
 	FutureFeature := Feature(997)
 
-	futureVersionFeature, _ := gvers.NewConstraint(">= 99.99.99+hcp")
+	futureVersionFeature, _ := gvers.NewConstraint(">= 99.99.99")
 	featureMap[FutureFeature] = MetadataConstraint{
-		MetaInfo:    []Metadata{HCP},
 		Constraints: futureVersionFeature,
 	}
+	t.Cleanup(func() {
+		delete(featureMap, FutureFeature)
+		_, ok := featureMap[FutureFeature]
+		require.False(t, ok)
+	})
 
 	// modify the globals that set which version the current binary is
 	prevVer := Version
-	prevMd := VersionMetadata
 	defer func() {
 		Version = prevVer
-		VersionMetadata = prevMd
 	}()
 	Version = "0.11.0"
-	VersionMetadata = "hcp"
 
 	EnableFeatureForTest(t, FutureFeature)
 
-	semVer, err := gvers.NewVersion("0.11.0+hcp")
+	semVer, err := gvers.NewVersion("0.11.0")
 	require.NoError(t, err)
 	assert.True(t, SupportsFeature(semVer, FutureFeature))
-
-	delete(featureMap, FutureFeature)
-	_, ok := featureMap[FutureFeature]
-	require.False(t, ok)
 }
