@@ -1,0 +1,29 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.resources.storagebuckets.v1;
+
+import "controller/custom_options/v1/options.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets;storagebuckets";
+
+// TODO: this definition is not complete and
+// is empty because the message is being used in
+// plugin/v1/storage_plugin_service.proto
+// StorageBucket manages external object stores
+message StorageBucket {
+  // The name of the resource that is managed by an external object store service.
+  string bucket_name = 10; // @gotags: `class:"public"`
+
+  // The prefix used to organize the data held within the external object store.
+  string bucket_prefix = 20; // @gotags: `class:"public"`
+
+  // Attributes specific to the storage bucket type.
+  google.protobuf.Struct attributes = 30 [(custom_options.v1.generate_sdk_option) = true]; // @gotags: `class:"public"`
+
+  // Secrets specific to the storage bucket type. These are never output.
+  google.protobuf.Struct secrets = 40 [(custom_options.v1.generate_sdk_option) = true];
+}
