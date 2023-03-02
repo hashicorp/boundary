@@ -17,6 +17,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   correctly parsed. This fallback parsing is now fixed, but in order to support
   older clients, credential libraries will need to be recreated with a
   credential type. [PR](https://github.com/hashicorp/boundary/pull/2989)
+* ui: Fix credential library not saving correctly when trying to save it as a
+  generic secrets type. ([PR](https://github.com/hashicorp/boundary-ui/pull/1640))
 
 ## 0.12.0 (2023/01/24)
 
