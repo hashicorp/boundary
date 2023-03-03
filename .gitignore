@@ -143,3 +143,5 @@ enos/ci/*/.terraform.lock.hcl
 !.release/ci.hcl
 dist
 out
+
+.schema-diff/
