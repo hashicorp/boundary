@@ -10,7 +10,7 @@ replace github.com/hashicorp/boundary/sdk => ./sdk
 
 require (
 	github.com/armon/go-metrics v0.3.9 // indirect
-	github.com/fatih/color v1.13.0
+	github.com/fatih/color v1.14.1
 	github.com/fatih/structs v1.1.0
 	github.com/favadi/protoc-go-inject-tag v1.3.0
 	github.com/godbus/dbus/v5 v5.0.6 // indirect
@@ -25,14 +25,14 @@ require (
 	github.com/hashicorp/cap v0.1.1
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/dbassert v0.0.0-20210708202608-ecf920cf1ed8
-	github.com/hashicorp/eventlogger v0.1.1-0.20211106154408-4ff8da3a890c
-	github.com/hashicorp/eventlogger/filters/encrypt v0.1.7
+	github.com/hashicorp/eventlogger v0.1.2-0.20230227112545-f26a3bdf6871
+	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20230227112545-f26a3bdf6871
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/hashicorp/go-hclog v1.2.2
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.6-0.20221122211539-47c893099f13
+	github.com/hashicorp/go-hclog v1.4.0
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230228185604-529de2006180
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/go-retryablehttp v0.7.0
+	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.7
@@ -42,7 +42,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.1
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7
 	github.com/hashicorp/go-secure-stdlib/password v0.1.1
-	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.2
+	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.3
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/go-sockaddr v1.0.2
@@ -55,12 +55,12 @@ require (
 	github.com/jefferai/keyring v1.1.7-0.20220316160357-58a74bb55891
 	github.com/kr/pretty v0.3.0
 	github.com/kr/text v0.2.0
-	github.com/mattn/go-colorable v0.1.12
-	github.com/mitchellh/cli v1.1.2
+	github.com/mattn/go-colorable v0.1.13
+	github.com/mitchellh/cli v1.1.5
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-wordwrap v1.0.1
-	github.com/mitchellh/mapstructure v1.4.2
-	github.com/mitchellh/pointerstructure v1.2.0
+	github.com/mitchellh/mapstructure v1.5.0
+	github.com/mitchellh/pointerstructure v1.2.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/oligot/go-mod-upgrade v0.6.1
 	github.com/ory/dockertest/v3 v3.9.1
@@ -69,16 +69,16 @@ require (
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.12.1
 	github.com/ryanuber/go-glob v1.0.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.2
 	github.com/zalando/go-keyring v0.2.1
 	go.uber.org/atomic v1.9.0
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
+	golang.org/x/crypto v0.6.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	golang.org/x/sys v0.5.0
 	golang.org/x/term v0.5.0
 	golang.org/x/tools v0.1.12
-	google.golang.org/genproto v0.0.0-20220805133916-01dd62135a58
-	google.golang.org/grpc v1.48.0
+	google.golang.org/genproto v0.0.0-20230303212802-e74f57abe488
+	google.golang.org/grpc v1.53.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.28.1
 	gorm.io/driver/postgres v1.3.8
@@ -107,9 +107,8 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.9 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/Masterminds/semver/v3 v3.1.1 // indirect
-	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
+	github.com/Masterminds/semver/v3 v3.2.0 // indirect
+	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/alessio/shellescape v1.4.1 // indirect
@@ -118,7 +117,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/coreos/go-oidc/v3 v3.0.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
@@ -136,14 +135,14 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.3 // indirect
-	github.com/hashicorp/go-plugin v1.4.3 // indirect
-	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.1 // indirect
+	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.4-0.20230228185604-529de2006180 // indirect
+	github.com/hashicorp/go-plugin v1.4.9 // indirect
+	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/vault/sdk v0.3.0 // indirect
-	github.com/hashicorp/yamux v0.1.0 // indirect
-	github.com/huandu/xstrings v1.3.2 // indirect
-	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/hashicorp/yamux v0.1.1 // indirect
+	github.com/huandu/xstrings v1.4.0 // indirect
+	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -158,16 +157,16 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/lib/pq v1.10.2 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
+	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
-	github.com/oklog/run v1.0.0 // indirect
+	github.com/oklog/run v1.1.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opencontainers/runc v1.1.2 // indirect
@@ -179,8 +178,10 @@ require (
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/sethvargo/go-diceware v0.3.0 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/spf13/cast v1.5.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
@@ -188,9 +189,9 @@ require (
 	github.com/xo/dburl v0.11.0 // indirect
 	go.uber.org/goleak v1.1.10 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c // indirect
+	golang.org/x/oauth2 v0.4.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
-	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
+	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
