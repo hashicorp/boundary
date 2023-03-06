@@ -17,8 +17,49 @@ env:
   PKG_NAME: boundary
 
 jobs:
+  setup:
+    outputs:
+      cache-go-build: ${{ steps.go-cache-paths.outputs.go-build }}
+      cache-go-mod: ${{ steps.go-cache-paths.outputs.go-mod }}
+      cache-go-bin: ${{ steps.go-cache-paths.outputs.go-bin }}
+      go-cache-key: ${{ steps.go-cache-key.outputs.key }}
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+        with:
+          fetch-depth: '0'
+      - name: Set up Go
+        uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613 # v3.4.0
+        with:
+          go-version: ${{ inputs.go-version }}
+      - name: Determine go cache key
+        id: go-cache-key
+        run: |
+          echo "key=${{ runner.os }}-go-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}" >> "$GITHUB_OUTPUT"
+      - name: Determine Go cache paths
+        id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
+      - name: Set up Go modules cache
+        uses: actions/cache@627f0f41f6904a5b1efbaed9f96d9eb58e92e920 # v3.2.4
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+            ${{ steps.go-cache-paths.outputs.go-bin }}
+          key: ${{ steps.go-cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+      - name: Install Tools
+        run: |
+          go mod download
+          make tools
   enos:
     name: Integration
+    needs:
+      - setup
     # Enos jobs are still a bit flaky, ensure they don't fail the workflow.
     continue-on-error: true
     strategy:
@@ -40,8 +81,17 @@ jobs:
         uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613 # v3.4.0
         with:
           go-version: ${{ inputs.go-version }}
-      - name: Install tools to get tparse
-        run: make tools
+      - name: Set up Go modules cache
+        uses: actions/cache@627f0f41f6904a5b1efbaed9f96d9eb58e92e920 # v3.2.4
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-build }}
+            ${{ needs.setup.outputs.cache-go-mod }}
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+          fail-on-cache-miss: true
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1  # TSCCR: could not find tsccr entry for hashicorp/setup-terraform
         with:
