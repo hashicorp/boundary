@@ -256,3 +256,44 @@ data "aws_iam_policy_document" "aws_nuke_policy_document" {
     resources = ["*"]
   }
 }
+
+resource "aws_iam_policy" "demo_user" {
+  count       = local.is_ent ? 0 : 1 // only create a policy for the OSS repositories
+  name        = "BoundaryDemoPermissionsBoundary"
+  path        = "/"
+  description = "Used to allow temporary IAM user creation for end-to-end tests"
+  policy      = data.aws_iam_policy_document.demo_user_policy_document.json
+}
+
+data "aws_iam_policy_document" "demo_user_policy_document" {
+  statement {
+    sid = "DemoUserEC2Permissions"
+    actions = [
+      "ec2:DescribeInstances*"
+    ]
+    resources = ["*"]
+  }
+  statement {
+    sid = "DemoUserIAMPermissions"
+    actions = [
+      "iam:CreateAccessKey",
+      "iam:DeleteAccessKey",
+      "iam:ListAccessKeys",
+      "iam:UpdateAccessKey"
+    ]
+    resources = ["arn:aws:iam::147451547303:user/&{aws:username}"]
+
+  }
+  statement {
+    sid       = "ExplicitDeny"
+    effect    = "Deny"
+    resources = ["*"]
+    not_actions = [
+      "ec2:DescribeInstances",
+      "iam:CreateAccessKey",
+      "iam:DeleteAccessKey",
+      "iam:ListAccessKeys",
+      "iam:UpdateAccessKey"
+    ]
+  }
+}
