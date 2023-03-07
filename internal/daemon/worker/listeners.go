@@ -230,14 +230,9 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	ln.GrpcServer = downstreamServer
 
-	eventingListener, err := common.NewEventingListener(cancelCtx, nodeeAuthListener)
-	if err != nil {
-		return nil, fmt.Errorf("%s: error creating eventing listener: %w", op, err)
-	}
-
 	// This wraps the normal pki worker connections with a listener which adds
 	// the worker key id of the  connections to the worker's pkiConnManager.
-	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(cancelCtx, eventingListener, w.pkiConnManager, sourcePurpose(grpcListenerPurpose))
+	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(cancelCtx, nodeeAuthListener, w.pkiConnManager, sourcePurpose(grpcListenerPurpose))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating pki worker tracking listener: %w", op, err)
 	}

@@ -20,13 +20,16 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/go-hclog"
@@ -129,6 +132,26 @@ func (tc *TestController) ConnectionsRepo() *session.ConnectionRepository {
 		tc.t.Fatal(err)
 	}
 	return repo
+}
+
+func (tc *TestController) PluginHostRepo() *plugin.Repository {
+	repo, err := tc.c.PluginHostRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
+}
+
+func (tc *TestController) VaultCredentialRepo() *vault.Repository {
+	repo, err := tc.c.VaultCredentialRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
+}
+
+func (tc *TestController) Scheduler() *scheduler.Scheduler {
+	return tc.Controller().scheduler
 }
 
 func (tc *TestController) Cancel() {

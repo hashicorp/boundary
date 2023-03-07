@@ -34,6 +34,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+var extraParsingFuncs []func(*Config) error
+
 const (
 	desktopCorsOrigin = "serve://boundary"
 
@@ -185,6 +187,9 @@ type Controller struct {
 	//
 	// TODO: This field is currently internal.
 	SchedulerRunJobInterval time.Duration `hcl:"-"`
+
+	// License is the license used by HCP builds
+	License string `hcl:"license"`
 }
 
 func (c *Controller) InitNameIfEmpty() error {
@@ -848,6 +853,12 @@ func Parse(d string) (*Config, error) {
 		result.Plugins.ExecutionDir, err = parseutil.ParsePath(result.Plugins.ExecutionDir)
 		if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
 			return nil, fmt.Errorf("Error parsing plugins execution dir: %w", err)
+		}
+	}
+
+	for _, f := range extraParsingFuncs {
+		if err := f(result); err != nil {
+			return nil, err
 		}
 	}
 
