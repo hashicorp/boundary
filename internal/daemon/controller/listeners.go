@@ -162,16 +162,10 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating node enrollment authed split listener: %w", err)
 	}
-	// This wraps the normal worker connections with something that events with
-	// the worker ID on successful auth/connection
-	eventingAuthedListener, err := common.NewEventingListener(c.baseContext, nodeeAuthedListener)
-	if err != nil {
-		return nil, fmt.Errorf("%s: error creating eventing listener: %w", op, err)
-	}
 
 	// This wraps the normal pki worker connections with a listener which adds
 	// the worker key id of the connections to the controller's pkiConnManager.
-	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, eventingAuthedListener, c.pkiConnManager, sourcePurpose(grpcListenerPurpose))
+	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, nodeeAuthedListener, c.pkiConnManager, sourcePurpose(grpcListenerPurpose))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating pki worker tracking listener: %w", op, err)
 	}

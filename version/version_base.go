@@ -13,8 +13,12 @@ var (
 	Version = "0.12.0"
 
 	// VersionPrerelease is also set at compile time, similarly to Version.
-	VersionPrerelease = ""
+	VersionPrerelease string
 
 	// VersionMetadata is also set at compile time.
-	VersionMetadata = ""
+	VersionMetadata string
+
+	// BuildDate is the date of the build, which corresponds to the timestamp of
+	// the most recent commit
+	BuildDate string
 )

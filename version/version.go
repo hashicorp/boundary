@@ -16,6 +16,7 @@ type Info struct {
 	Version           string `json:"version,omitempty"`
 	VersionPrerelease string `json:"version_prerelease,omitempty"`
 	VersionMetadata   string `json:"version_metadata,omitempty"`
+	BuildDate         string `json:"build_date,omitempty"`
 	CgoEnabled        bool   `json:"cgo_enabled,omitempty"`
 }
 
@@ -23,6 +24,7 @@ func Get() *Info {
 	ver := Version
 	rel := VersionPrerelease
 	md := VersionMetadata
+	bd := BuildDate
 	if GitDescribe != "" {
 		ver = GitDescribe
 	}
@@ -39,6 +41,7 @@ func Get() *Info {
 		Version:           ver,
 		VersionPrerelease: rel,
 		VersionMetadata:   md,
+		BuildDate:         bd,
 	}
 }
 
