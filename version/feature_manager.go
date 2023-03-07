@@ -19,6 +19,7 @@ const (
 	IncludeStatusInCli
 	CredentialLibraryVaultSubtype
 	UseTargetIdForHostId
+	RequireVersionInWorkerInfo
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -61,6 +62,11 @@ func init() {
 	// when calling "boundary connect ssh..."
 	featureMap[UseTargetIdForHostId] = MetadataConstraint{
 		Constraints: mustNewConstraints("< 0.14.0"),
+	}
+	// RequireVersionInWorkerInfo allows us to take action on various workers
+	// based on their version, e.g. to prevent incompatibilities
+	featureMap[RequireVersionInWorkerInfo] = MetadataConstraint{
+		Constraints: mustNewConstraints(">= 0.13.0"),
 	}
 }
 

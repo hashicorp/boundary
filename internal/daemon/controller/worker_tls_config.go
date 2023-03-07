@@ -15,7 +15,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/version"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"google.golang.org/protobuf/proto"
 )
@@ -71,6 +73,7 @@ func (c Controller) validateWorkerTls(hello *tls.ClientHelloInfo) (*tls.Config, 
 // * Ensures that the nonce is unique to prevent replay attacks
 // * Returns the shared TLS configuration that is used to establish the connection
 func (c Controller) v1WorkerAuthConfig(protos []string) (*tls.Config, *base.WorkerAuthInfo, error) {
+	const op = "controller.(Controller).v1WorkerAuthConfig"
 	var firstMatchProto string
 	var encString string
 	for _, p := range protos {
@@ -103,6 +106,14 @@ func (c Controller) v1WorkerAuthConfig(protos []string) (*tls.Config, *base.Work
 	info := new(base.WorkerAuthInfo)
 	if err := json.Unmarshal(marshaledInfo, info); err != nil {
 		return nil, nil, err
+	}
+	if version.Get().VersionMetadata != "" {
+		incomingVer := version.FromVersionString(info.BoundaryVersion)
+		if (incomingVer == nil || incomingVer.VersionMetadata == "") && version.SupportsFeature(version.Binary, version.RequireVersionInWorkerInfo) {
+			err := errors.New("build contains version with metadata, incoming worker version is nil or has mismatched metadata")
+			event.WriteError(c.baseContext, op, err)
+			return nil, nil, err
+		}
 	}
 
 	// Check for replays
