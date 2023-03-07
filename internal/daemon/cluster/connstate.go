@@ -5,6 +5,7 @@ package cluster
 
 import (
 	"context"
+	stderror "errors"
 	"net"
 
 	"github.com/fatih/structs"
@@ -12,6 +13,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+var errStateNotFound = stderror.New("no state attached to the connection")
 
 // WorkerConnectionInfo contains information about a worker that gets attached
 // to outgoing connections to an upstream worker or the controller through the
@@ -48,11 +51,11 @@ func GetWorkerInfoFromStateMap(ctx context.Context, c net.Conn) (*WorkerConnecti
 	var downstreamInfo WorkerConnectionInfo
 	pc, ok := c.(stateProvider)
 	if !ok {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "connection does not provide a State structpb.Struct")
+		return nil, errors.Wrap(ctx, errStateNotFound, op, errors.WithMsg("conn is not a state provider"))
 	}
 	st := pc.State()
 	if st == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no state attached to connection")
+		return nil, errors.Wrap(ctx, errStateNotFound, op, errors.WithMsg("no state attached to connection"))
 	}
 	if err := mapstructure.Decode(st.AsMap(), &downstreamInfo); err != nil {
 		return nil, errors.Wrap(ctx, err, op)

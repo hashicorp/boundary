@@ -73,6 +73,9 @@ func (c *Command) Run(args []string) int {
 	if verInfo.VersionMetadata != "" {
 		nonAttributeMap["Metadata"] = verInfo.VersionMetadata
 	}
+	if verInfo.BuildDate != "" {
+		nonAttributeMap["Build Date"] = verInfo.BuildDate
+	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, nil, nil)
 

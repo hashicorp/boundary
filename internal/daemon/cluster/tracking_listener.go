@@ -6,11 +6,13 @@ package cluster
 import (
 	"context"
 	"crypto/tls"
+	stderrors "errors"
 	"fmt"
 	"net"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/version"
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/protocol"
 )
@@ -65,8 +67,31 @@ func (e *trackingListener) Accept() (net.Conn, error) {
 	case *protocol.Conn:
 		tlsConn = c.Conn
 		wi, err := GetWorkerInfoFromStateMap(e.ctx, c)
-		if err != nil || wi == nil || len(wi.WorkerId) == 0 {
-			event.WriteSysEvent(e.ctx, op, "did not get worker information from state map")
+		switch {
+		case err != nil && errors.Is(err, errStateNotFound) && !version.SupportsFeature(version.Binary, version.RequireVersionInWorkerInfo):
+			// This will cause us to break below
+			wi = new(WorkerConnectionInfo)
+		case err != nil:
+			// We want to check that if we are supporting metadata that it is supplied
+			innerErr := fmt.Errorf("error trying to get worker information from state map: %w", err)
+			event.WriteError(e.ctx, op, innerErr)
+			conn.Close()
+			return conn, nil
+		case wi == nil:
+			event.WriteError(e.ctx, op, stderrors.New("nil worker info in state map"))
+			conn.Close()
+			return conn, nil
+		case version.Get().VersionMetadata != "":
+			incomingVer := version.FromVersionString(wi.BoundaryVersion)
+			if (incomingVer == nil || incomingVer.VersionMetadata == "") && version.SupportsFeature(version.Binary, version.RequireVersionInWorkerInfo) {
+				err := stderrors.New("build contains version with metadata, incoming worker version is nil or has mismatched metadata")
+				event.WriteError(e.ctx, op, err)
+				conn.Close()
+				return conn, nil
+			}
+		}
+		if len(wi.WorkerId) == 0 {
+			event.WriteSysEvent(e.ctx, op, "did not find worker id in state map")
 			break
 		}
 		workerId = wi.WorkerId
@@ -75,15 +100,18 @@ func (e *trackingListener) Accept() (net.Conn, error) {
 		tlsConn = c
 	default:
 		event.WriteError(e.ctx, op, fmt.Errorf("unexpected connection type: %T", c), event.WithInfo(eventingOpts...))
+		conn.Close()
 		return conn, nil
 	}
 
 	if tlsConn == nil {
 		event.WriteError(e.ctx, op, fmt.Errorf("nil tlsConn"), event.WithInfo(eventingOpts...))
+		conn.Close()
 		return conn, nil
 	}
 	if len(tlsConn.ConnectionState().PeerCertificates) == 0 {
 		event.WriteError(e.ctx, op, fmt.Errorf("tls conn without any peer certificates"), event.WithInfo(eventingOpts...))
+		conn.Close()
 		return conn, nil
 	}
 
@@ -93,7 +121,7 @@ func (e *trackingListener) Accept() (net.Conn, error) {
 	}
 	if keyId == "" {
 		// No key id means there is nothing to track.
-		event.WriteError(e.ctx, op, fmt.Errorf("no key id found for connection"), event.WithInfo(eventingOpts...))
+		event.WriteError(e.ctx, op, stderrors.New("no key id found for connection"), event.WithInfo(eventingOpts...))
 		return conn, nil
 	}
 	eventingOpts = append(eventingOpts, "key_id", keyId)

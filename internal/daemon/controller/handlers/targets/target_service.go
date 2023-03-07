@@ -95,6 +95,7 @@ var (
 		action.List,
 	}
 
+	validateCredentialSourcesFn    = func(context.Context, subtypes.Subtype, []target.CredentialSource) error { return nil }
 	ValidateIngressWorkerFilterFn  = IngressWorkerFilterUnsupported
 	AuthorizeSessionWorkerFilterFn = AuthorizeSessionWithWorkerFilter
 	WorkerFilterDeprecationMessage = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
@@ -720,6 +721,11 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 	if t == nil {
 		return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
+	}
+	if len(credSources) > 0 {
+		if err := validateCredentialSourcesFn(ctx, t.GetType(), credSources); err != nil {
+			return nil, err
+		}
 	}
 
 	// Instantiate some repos

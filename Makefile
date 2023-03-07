@@ -36,16 +36,12 @@ golangci-lint:
 	$(eval GOLINT_INSTALLED := $(shell which golangci-lint))
 
 	if [ "$(GOLINT_INSTALLED)" = "" ]; then \
-		sh scripts/install-golangci-lint.sh -b $(GO_PATH)/bin v1.51.0; \
+		sh scripts/install-golangci-lint.sh -b $(GO_PATH)/bin v1.51.2; \
 	fi;
 
 .PHONY: cleangen
 cleangen:
 	@rm -f $(shell  find ${THIS_DIR} -name '*.gen.go' && find ${THIS_DIR} -name '*.pb.go' && find ${THIS_DIR} -name '*.pb.gw.go')
-
-.PHONY: install-no-plugins
-install-no-plugins: export SKIP_PLUGIN_BUILD=1
-install-no-plugins: install
 
 .PHONY: dev
 dev:
@@ -64,6 +60,10 @@ build: build-ui-ifne
 .PHONY: install
 install: export BOUNDARY_INSTALL_BINARY=1
 install: build
+
+.PHONY: install-no-plugins
+install-no-plugins: export SKIP_PLUGIN_BUILD=1
+install-no-plugins: install
 
 .PHONY: build-memprof
 build-memprof: BUILD_TAGS+=memprofiler
@@ -283,7 +283,7 @@ generate-database-dumps:
 test-ci: export CI_BUILD=1
 test-ci:
 	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
-	go test "$(TEST_PACKAGE)" -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
+	go test "$(TEST_PACKAGE)" -tags="$(BUILD_TAGS)" -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
 
 .PHONY: test-sql
 test-sql:
@@ -291,7 +291,7 @@ test-sql:
 
 .PHONY: test
 test:
-	go test "$(TEST_PACKAGE)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) | tparse -follow
+	go test "$(TEST_PACKAGE)" -tags="$(BUILD_TAGS)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) | tparse -follow
 
 .PHONY: test-sdk
 test-sdk:
