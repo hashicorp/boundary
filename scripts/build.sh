@@ -16,10 +16,6 @@ DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 # Change into that directory
 cd "$DIR"
 
-if [ "${CI_BUILD}x" != "x" ]; then
-    [[ -f /home/circleci/.bashrc ]] && source /home/circleci/.bashrc
-fi
-
 # Set build tags
 BUILD_TAGS="${BUILD_TAGS:-"boundary"}"
 echo "==> Build tags: ${BUILD_TAGS}"
@@ -60,10 +56,6 @@ fi
 # Build needed plugins first
 if [ "${SKIP_PLUGIN_BUILD}x" == "x" ]; then
     $DIR/scripts/plugins.sh
-fi
-
-if [ "${CI_BUILD}x" != "x" ]; then
-    exit
 fi
 
 BASE_PRODUCT_VERSION=${BASE_PRODUCT_VERSION:=$(cat version/VERSION)}

@@ -1,5 +1,5 @@
 # Boundary
-![](boundary.png) [![CircleCI](https://circleci.com/gh/hashicorp/boundary/tree/main.svg?style=svg)](https://circleci.com/gh/hashicorp/boundary/tree/main)
+
 ----
 
 **Please note**: We take Boundary's security and our users' trust very
