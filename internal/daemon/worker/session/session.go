@@ -217,7 +217,7 @@ func (s *sess) GetLocalConnections() map[string]ConnInfo {
 func (s *sess) GetTofuToken() string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return s.tofuToken
+	return s.resp.GetTofuToken()
 }
 
 func (s *sess) GetConnectionLimit() int32 {
