@@ -218,7 +218,10 @@ func (s *sess) GetTofuToken() string {
 	if len(s.tofuToken) > 0 {
 		return s.tofuToken
 	}
-	return s.resp.GetTofuToken()
+	if s.resp != nil {
+		return s.resp.GetTofuToken()
+	}
+	return ""
 }
 
 func (s *sess) GetConnectionLimit() int32 {
