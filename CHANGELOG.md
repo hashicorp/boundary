@@ -19,6 +19,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   credential type. [PR](https://github.com/hashicorp/boundary/pull/2989)
 * ui: Fix credential library not saving correctly when trying to save it as a
   generic secrets type. ([PR](https://github.com/hashicorp/boundary-ui/pull/1640))
+* sessions: Fix tofu token retreival. ([PR](https://github.com/hashicorp/boundary/pull/3064))
 
 ## 0.12.0 (2023/01/24)
 
