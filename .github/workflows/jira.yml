@@ -33,7 +33,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.JIRA_SYNC_GITHUB_TOKEN }}
 
     - name: Login
-      uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c  # TSCCR: could not find tsccr entry for atlassian/gajira-login
+      uses: atlassian/gajira-login@45fd029b9f1d6d8926c6f04175aa80c0e42c9026  # TSCCR: could not find tsccr entry for atlassian/gajira-login
       env:
         JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
         JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
