@@ -281,12 +281,6 @@ test-database-down:
 generate-database-dumps:
 	@$(MAKE) -C testing/dbtest/docker generate-database-dumps
 
-.PHONY: test-ci
-test-ci: export CI_BUILD=1
-test-ci:
-	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
-	go test "$(TEST_PACKAGE)" -tags="$(BUILD_TAGS)" -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
-
 .PHONY: test-sql
 test-sql:
 	$(MAKE) -C internal/db/sqltest/ test
@@ -376,14 +370,6 @@ docker-build-dev: build
 	@echo "Successfully built $(IMAGE_TAG_DEV)"
 
 .NOTPARALLEL:
-
-.PHONY: ci-config
-ci-config:
-	@$(MAKE) -C .circleci ci-config
-
-.PHONY: ci-verify
-ci-verify:
-	@$(MAKE) -C .circleci ci-verify
 
 .PHONY: version
 # This is used for release builds by .github/workflows/build.yml
