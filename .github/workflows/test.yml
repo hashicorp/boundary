@@ -105,6 +105,7 @@ jobs:
           key: ${{ needs.setup.outputs.go-cache-key }}
           restore-keys: |
             ${{ runner.os }}-go
+          fail-on-cache-miss: true
       - name: Test ${{ matrix.module }} Module
         run: |
           make test-${{ matrix.module }}
