@@ -42,7 +42,8 @@ extract() {
         "${tmp_dir}/tables_${suffix}" \
         "${tmp_dir}/views_${suffix}" \
         "${tmp_dir}/triggers_${suffix}" \
-        "${tmp_dir}/indexes_${suffix}"
+        "${tmp_dir}/indexes_${suffix}" \
+        "${tmp_dir}/constraints_${suffix}"
 
     echo "extracting function definitions from ${dump}"
     while read -r f; do
@@ -74,8 +75,10 @@ extract() {
         pg_restore -s -O -I "${d}" -f - "${dump}" | tr '[:upper:]' '[:lower:]' > "${tmp_dir}/indexes_${suffix}/${dname}.sql"
     done < <(pg_restore -l "${dump}" -f - | awk '$4 == "INDEX" {for(i=6;i<NF;i++) printf $i" "; print ""}')
 
-    echo "extracting post-data from ${dump}"
-    pg_restore --section=post-data -O -f - "${dump}" | tr '[:upper:]' '[:lower:]' > "${tmp_dir}/post_data_${suffix}.sql"
+    while read -r c; do
+        cName="${c#* }"
+        pg_restore --section=post-data -O -f - "${dump}" | grep ${cName} | tr '[:upper:]' '[:lower:]' > "${tmp_dir}/constraints_${suffix}/${cName}.sql"
+    done < <(pg_restore -l "${dump}" -f - | awk '$4 == "CONSTRAINT" {for(i=6;i<NF;i++) printf $i" "; print ""}')
 }
 
 dump() {
@@ -122,8 +125,6 @@ else
     git checkout "${new_branch}"
 fi
 
-for t in "funcs" "tables" "views" "triggers" "indexes"; do
+for t in "funcs" "tables" "views" "triggers" "indexes" "constraints"; do
     git diff --no-index "${tmp_dir}/${t}_${base_commit}" "${tmp_dir}/${t}_${new_commit}" | tee "${tmp_dir}/${t}.diff"
 done
-
-git diff --no-index "${tmp_dir}/post_data_${base_commit}.sql" "${tmp_dir}/post_data_${new_commit}.sql" | tee "${tmp_dir}/post_data.diff"
