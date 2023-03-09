@@ -41,6 +41,12 @@ const (
 	// RolePrefix is the prefix for roles
 	RolePrefix = "r"
 
+	// StaticCredentialStorePrefix is the prefix for static credential stores
+	StaticCredentialStorePrefix = "csst"
+	// StaticPreviousCredentialStorePrefix is the previous prefix for static
+	// credential stores
+	StaticCredentialStorePreviousPrefix = "cs"
+
 	// VaultCredentialStorePrefix is the prefix for Vault credential stores
 	VaultCredentialStorePrefix = "csvlt"
 	// VaultCredentialLibraryPrefix is the prefix for Vault credential libraries

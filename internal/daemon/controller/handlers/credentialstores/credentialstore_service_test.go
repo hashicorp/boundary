@@ -629,7 +629,7 @@ func TestCreateStatic(t *testing.T) {
 			name: "Can't specify Id",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Id:      credstatic.CredentialStorePrefix + "_notallowed",
+				Id:      globals.StaticCredentialStorePrefix + "_notallowed",
 				Type:    credstatic.Subtype.String(),
 			}},
 			res: nil,
@@ -669,9 +669,9 @@ func TestCreateStatic(t *testing.T) {
 				ScopeId: prj.GetPublicId(),
 				Type:    credstatic.Subtype.String(),
 			}},
-			idPrefix: credstatic.CredentialStorePrefix + "_",
+			idPrefix: globals.StaticCredentialStorePrefix + "_",
 			res: &pbs.CreateCredentialStoreResponse{
-				Uri: fmt.Sprintf("credential-stores/%s_", credstatic.CredentialStorePrefix),
+				Uri: fmt.Sprintf("credential-stores/%s_", globals.StaticCredentialStorePrefix),
 				Item: &pb.CredentialStore{
 					ScopeId:                     prj.GetPublicId(),
 					Scope:                       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
@@ -690,9 +690,9 @@ func TestCreateStatic(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 				Type:        credstatic.Subtype.String(),
 			}},
-			idPrefix: credstatic.CredentialStorePrefix + "_",
+			idPrefix: globals.StaticCredentialStorePrefix + "_",
 			res: &pbs.CreateCredentialStoreResponse{
-				Uri: fmt.Sprintf("credential-stores/%s_", credstatic.CredentialStorePrefix),
+				Uri: fmt.Sprintf("credential-stores/%s_", globals.StaticCredentialStorePrefix),
 				Item: &pb.CredentialStore{
 					ScopeId:                     prj.GetPublicId(),
 					Scope:                       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
@@ -774,7 +774,7 @@ func TestGet(t *testing.T) {
 
 	vaultStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	staticStorePrev := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId(), credstatic.WithPublicId(fmt.Sprintf("%s_1234567890", credstatic.PreviousCredentialStorePrefix)))
+	staticStorePrev := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId(), credstatic.WithPublicId(fmt.Sprintf("%s_1234567890", globals.StaticCredentialStorePreviousPrefix)))
 	s, err := NewService(ctx, vaultRepoFn, staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
@@ -851,7 +851,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "static not found error",
-			id:   fmt.Sprintf("%s_1234567890", credstatic.CredentialStorePrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.StaticCredentialStorePrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
@@ -932,7 +932,7 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "static not found error",
-			id:   fmt.Sprintf("%s_1234567890", credstatic.CredentialStorePrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.StaticCredentialStorePrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{

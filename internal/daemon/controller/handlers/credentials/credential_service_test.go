@@ -372,7 +372,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "bad prefix",
-			id:   fmt.Sprintf("%s_1234567890", static.CredentialStorePrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.StaticCredentialStorePrefix),
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
@@ -455,7 +455,7 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "bad prefix",
-			id:   fmt.Sprintf("%s_1234567890", static.CredentialStorePrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.StaticCredentialStorePrefix),
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}

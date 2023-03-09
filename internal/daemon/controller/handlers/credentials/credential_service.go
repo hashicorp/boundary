@@ -738,7 +738,7 @@ func validateGetRequest(req *pbs.GetCredentialRequest) error {
 func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(handlers.Id(req.Item.GetCredentialStoreId()), static.CredentialStorePrefix, static.PreviousCredentialStorePrefix) {
+		if !handlers.ValidId(handlers.Id(req.Item.GetCredentialStoreId()), globals.StaticCredentialStorePrefix, globals.StaticCredentialStorePreviousPrefix) {
 			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 		}
 
@@ -889,7 +889,7 @@ func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
 
 func validateListRequest(req *pbs.ListCredentialsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), static.CredentialStorePrefix, static.PreviousCredentialStorePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), globals.StaticCredentialStorePrefix, globals.StaticCredentialStorePreviousPrefix) {
 		badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
