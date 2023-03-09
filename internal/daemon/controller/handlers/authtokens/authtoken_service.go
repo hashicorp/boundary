@@ -369,11 +369,11 @@ func toProto(ctx context.Context, in *authtoken.AuthToken, opt ...handlers.Optio
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetAuthTokenRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, authtoken.AuthTokenPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.AuthTokenPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, authtoken.AuthTokenPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.AuthTokenPrefix)
 }
 
 func validateListRequest(req *pbs.ListAuthTokensRequest) error {

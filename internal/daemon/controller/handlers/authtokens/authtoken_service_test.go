@@ -162,7 +162,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non existing auth token",
-			req:  &pbs.GetAuthTokenRequest{Id: authtoken.AuthTokenPrefix + "_DoesntExis"},
+			req:  &pbs.GetAuthTokenRequest{Id: globals.AuthTokenPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -174,7 +174,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetAuthTokenRequest{Id: authtoken.AuthTokenPrefix + "_1 23456789"},
+			req:  &pbs.GetAuthTokenRequest{Id: globals.AuthTokenPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -544,7 +544,7 @@ func TestDelete(t *testing.T) {
 			name:  "Delete bad token id",
 			scope: org.GetPublicId(),
 			req: &pbs.DeleteAuthTokenRequest{
-				Id: authtoken.AuthTokenPrefix + "_doesntexis",
+				Id: globals.AuthTokenPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},

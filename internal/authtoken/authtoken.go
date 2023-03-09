@@ -98,7 +98,6 @@ func (at *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 }
 
 const (
-	AuthTokenPrefix = "at"
 	// The version prefix is used to differentiate token versions just for future proofing.
 	TokenValueVersionPrefix = "0"
 	tokenLength             = 24

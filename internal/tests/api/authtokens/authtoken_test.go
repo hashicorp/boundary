@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
@@ -157,7 +156,7 @@ func TestErrors(t *testing.T) {
 	client.SetToken(token.Token)
 	tokens := authtokens.NewClient(client)
 
-	_, err := tokens.Read(tc.Context(), authtoken.AuthTokenPrefix+"_doesntexis")
+	_, err := tokens.Read(tc.Context(), globals.AuthTokenPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr := api.AsServerError(err)
 	require.NotNil(apiErr)

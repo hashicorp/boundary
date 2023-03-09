@@ -9,6 +9,9 @@ package globals
 // clients or test writers.
 
 const (
+	// AuthTokenPrefix is the prefix for auth tokens
+	AuthTokenPrefix = "at"
+
 	// OldPasswordAccountPrefix is the previously-used account prefix
 	OldPasswordAccountPrefix = "apw"
 	// NewPasswordAccountPrefix is the new account prefix

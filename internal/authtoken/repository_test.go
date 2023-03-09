@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -276,7 +277,7 @@ func TestRepository_CreateAuthToken(t *testing.T) {
 			}
 			require.NoError(err, "Got error for CreateAuthToken(ctx, %v, %v)", tt.iamUser, tt.authAcctId)
 			assert.NotNil(got)
-			db.AssertPublicId(t, AuthTokenPrefix, got.PublicId)
+			db.AssertPublicId(t, globals.AuthTokenPrefix, got.PublicId)
 			assert.Equal(tt.authAcctId, got.GetAuthAccountId())
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.Equal(got.CreateTime, got.ApproximateLastAccessTime)
