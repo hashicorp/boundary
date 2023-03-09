@@ -32,8 +32,14 @@ function cleanup {
 
 trap cleanup EXIT
 
+max=120
+c=0
 until boundary scopes list; do
     echo 'waiting for boundary to be up'
+    ((c+=1))
+    if [[ $c -ge $max ]]; then
+        die "timeout waiting for boundary controller to get healthy"
+    fi
     sleep 1
 done
 
