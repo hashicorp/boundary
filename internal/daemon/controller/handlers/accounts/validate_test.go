@@ -40,7 +40,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "mismatched pw authmethod oidc type",
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.PasswordAuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
 		},
@@ -97,7 +97,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "missing password attributes",
 			item: &pb.Account{
 				Type:         password.Subtype.String(),
-				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.PasswordAuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(attributesField, "This is a required field."),
 		},
@@ -105,7 +105,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "missing login name for password type",
 			item: &pb.Account{
 				Type:         password.Subtype.String(),
-				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.PasswordAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_PasswordAccountAttributes{
 					PasswordAccountAttributes: &pb.PasswordAccountAttributes{},
 				},
@@ -116,7 +116,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "no error",
 			item: &pb.Account{
 				Type:         password.Subtype.String(),
-				AuthMethodId: password.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.PasswordAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_PasswordAccountAttributes{
 					PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 						LoginName: "something",

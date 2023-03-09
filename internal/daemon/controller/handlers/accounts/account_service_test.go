@@ -328,7 +328,7 @@ func TestListPassword(t *testing.T) {
 		},
 		{
 			name: "Unfound Auth Method",
-			req:  &pbs.ListAccountsRequest{AuthMethodId: password.AuthMethodPrefix + "_DoesntExis"},
+			req:  &pbs.ListAccountsRequest{AuthMethodId: globals.PasswordAuthMethodPrefix + "_DoesntExis"},
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{

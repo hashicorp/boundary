@@ -94,7 +94,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		return nil, nil, fmt.Errorf("error creating new in memory auth method: %w", err)
 	}
 	if b.DevPasswordAuthMethodId == "" {
-		b.DevPasswordAuthMethodId, err = db.NewPublicId(password.AuthMethodPrefix)
+		b.DevPasswordAuthMethodId, err = db.NewPublicId(globals.PasswordAuthMethodPrefix)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating initial auth method id: %w", err)
 		}

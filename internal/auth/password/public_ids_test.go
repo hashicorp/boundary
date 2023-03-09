@@ -16,7 +16,7 @@ func Test_PublicIds(t *testing.T) {
 	t.Run("authMethod", func(t *testing.T) {
 		id, err := newAuthMethodId()
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, AuthMethodPrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, globals.PasswordAuthMethodPrefix+"_"))
 	})
 	t.Run("account", func(t *testing.T) {
 		id, err := newAccountId()

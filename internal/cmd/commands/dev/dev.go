@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/cmd/ops"
@@ -446,7 +445,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error("Invalid ID suffix, must be in the set A-Za-z0-9")
 			return base.CommandUserError
 		}
-		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
+		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", globals.PasswordAuthMethodPrefix, c.flagIdSuffix)
 		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", globals.OidcAuthMethodPrefix, c.flagIdSuffix)
 		c.DevUserId = fmt.Sprintf("%s_%s", globals.UserPrefix, c.flagIdSuffix)
 		c.DevPasswordAccountId = fmt.Sprintf("%s_%s", globals.NewPasswordAccountPrefix, c.flagIdSuffix)

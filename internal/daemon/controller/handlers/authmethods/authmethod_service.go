@@ -829,7 +829,7 @@ func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, globals.OidcAuthMethodPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.PasswordAuthMethodPrefix, globals.OidcAuthMethodPrefix)
 }
 
 func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest) error {
@@ -1055,7 +1055,7 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 			badFields["id"] = "Incorrectly formatted identifier."
 		}
 		return badFields
-	}, password.AuthMethodPrefix, globals.OidcAuthMethodPrefix)
+	}, globals.PasswordAuthMethodPrefix, globals.OidcAuthMethodPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
@@ -1063,7 +1063,7 @@ func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
 	}
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, password.AuthMethodPrefix, globals.OidcAuthMethodPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.PasswordAuthMethodPrefix, globals.OidcAuthMethodPrefix)
 }
 
 func validateListRequest(req *pbs.ListAuthMethodsRequest) error {

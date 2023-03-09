@@ -12,17 +12,19 @@ const (
 	// AuthTokenPrefix is the prefix for auth tokens
 	AuthTokenPrefix = "at"
 
+	// PasswordAuthMethodPrefix is the prefix for the password auth method
+	PasswordAuthMethodPrefix = "ampw"
 	// OldPasswordAccountPrefix is the previously-used account prefix
 	OldPasswordAccountPrefix = "apw"
 	// NewPasswordAccountPrefix is the new account prefix
 	NewPasswordAccountPrefix = "acctpw"
 
-	// OidcAuthMethodPrefix defines the prefix for AuthMethod public ids.
+	// OidcAuthMethodPrefix defines the prefix for OIDC AuthMethod public ids
 	OidcAuthMethodPrefix = "amoidc"
-	// OidcAccountPrefix defines the prefix for Account public ids.
+	// OidcAccountPrefix defines the prefix for OIDC Account public ids
 	OidcAccountPrefix = "acctoidc"
-	// OidcManagedGroupPrefix defines the prefix for ManagedGroup public ids
-	// from the OIDC auth method.
+	// OidcManagedGroupPrefix defines the prefix for OIDC ManagedGroup public
+	// ids
 	OidcManagedGroupPrefix = "mgoidc"
 
 	// ProjectPrefix is the prefix for project scopes

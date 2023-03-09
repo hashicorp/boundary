@@ -1055,7 +1055,7 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix, globals.OidcAuthMethodPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), globals.PasswordAuthMethodPrefix, globals.OidcAuthMethodPrefix) {
 		badFields[authMethodIdField] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

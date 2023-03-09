@@ -14,7 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
-	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/observability/event"
@@ -348,7 +348,7 @@ func TestErrors(t *testing.T) {
 
 	// TODO: Confirm that we can't create an oidc auth method with the same name.
 
-	_, err = amClient.Read(tc.Context(), password.AuthMethodPrefix+"_doesntexis")
+	_, err = amClient.Read(tc.Context(), globals.PasswordAuthMethodPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)

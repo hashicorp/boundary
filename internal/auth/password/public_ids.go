@@ -12,21 +12,19 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, Subtype, globals.PasswordAuthMethodPrefix, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix); err != nil {
 		panic(err)
 	}
 }
 
 // PublicId prefixes for the resources in the password package.
 const (
-	AuthMethodPrefix = "ampw"
-
 	Subtype = subtypes.Subtype("password")
 )
 
 func newAuthMethodId() (string, error) {
 	const op = "password.newAuthMethodId"
-	id, err := db.NewPublicId(AuthMethodPrefix)
+	id, err := db.NewPublicId(globals.PasswordAuthMethodPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, op)
 	}

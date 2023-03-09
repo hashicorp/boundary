@@ -10,7 +10,6 @@ import (
 
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -100,7 +99,7 @@ func (c *Command) Run(args []string) int {
 	c.FlagAuthMethodId = pri
 
 	switch {
-	case strings.HasPrefix(c.FlagAuthMethodId, password.AuthMethodPrefix):
+	case strings.HasPrefix(c.FlagAuthMethodId, globals.PasswordAuthMethodPrefix):
 		cmd := PasswordCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
 		cmd.Run([]string{})
 
