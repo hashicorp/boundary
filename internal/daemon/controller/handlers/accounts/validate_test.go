@@ -161,7 +161,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "password to oidc change type, old prefix",
 			req: &pbs.UpdateAccountRequest{
-				Id: globals.OldPasswordAccountPrefix + "_1234567890",
+				Id: globals.PasswordAccountPreviousPrefix + "_1234567890",
 				Item: &pb.Account{
 					Type: oidc.Subtype.String(),
 				},
@@ -171,7 +171,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "password to oidc change type, new prefix",
 			req: &pbs.UpdateAccountRequest{
-				Id: globals.NewPasswordAccountPrefix + "_1234567890",
+				Id: globals.PasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Type: oidc.Subtype.String(),
 				},

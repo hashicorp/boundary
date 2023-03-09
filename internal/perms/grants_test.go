@@ -682,25 +682,25 @@ func Test_Parse(t *testing.T) {
 		{
 			name:      "bad old account id template",
 			input:     `id={{superman}};actions=read`,
-			accountId: fmt.Sprintf("%s_1234567890", globals.OldPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix),
 			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
 		},
 		{
 			name:      "bad new account id template",
 			input:     `id={{superman}};actions=read`,
-			accountId: fmt.Sprintf("%s_1234567890", globals.NewPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix),
 			err:       `perms.Parse: unknown template "{{superman}}" in grant "id" value: parameter violation: error #100`,
 		},
 		{
 			name:      "good old account id template",
 			input:     `id={{    account.id}};actions=update,read`,
-			accountId: fmt.Sprintf("%s_1234567890", globals.OldPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix),
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
-				id: fmt.Sprintf("%s_1234567890", globals.OldPasswordAccountPrefix),
+				id: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix),
 				actions: map[action.Type]bool{
 					action.Update: true,
 					action.Read:   true,
@@ -710,13 +710,13 @@ func Test_Parse(t *testing.T) {
 		{
 			name:      "good new account id template",
 			input:     `id={{    account.id}};actions=update,read`,
-			accountId: fmt.Sprintf("%s_1234567890", globals.NewPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix),
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
-				id: fmt.Sprintf("%s_1234567890", globals.NewPasswordAccountPrefix),
+				id: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix),
 				actions: map[action.Type]bool{
 					action.Update: true,
 					action.Read:   true,

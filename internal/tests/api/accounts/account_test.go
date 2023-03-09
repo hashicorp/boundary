@@ -309,13 +309,13 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 
-	_, err = accountClient.Read(tc.Context(), globals.OldPasswordAccountPrefix+"_doesntexis")
+	_, err = accountClient.Read(tc.Context(), globals.PasswordAccountPreviousPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
-	_, err = accountClient.Read(tc.Context(), globals.NewPasswordAccountPrefix+"_doesntexis")
+	_, err = accountClient.Read(tc.Context(), globals.PasswordAccountPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)

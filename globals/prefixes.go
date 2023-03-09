@@ -14,10 +14,10 @@ const (
 
 	// PasswordAuthMethodPrefix is the prefix for the password auth method
 	PasswordAuthMethodPrefix = "ampw"
-	// OldPasswordAccountPrefix is the previously-used account prefix
-	OldPasswordAccountPrefix = "apw"
-	// NewPasswordAccountPrefix is the new account prefix
-	NewPasswordAccountPrefix = "acctpw"
+	// PasswordAccountPreviousPrefix is the previously-used account prefix
+	PasswordAccountPreviousPrefix = "apw"
+	// PasswordAccountPrefix is the new account prefix
+	PasswordAccountPrefix = "acctpw"
 
 	// OidcAuthMethodPrefix defines the prefix for OIDC AuthMethod public ids
 	OidcAuthMethodPrefix = "amoidc"

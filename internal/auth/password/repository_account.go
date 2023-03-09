@@ -64,7 +64,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 
 	a = a.clone()
 	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, globals.NewPasswordAccountPrefix+"_") {
+		if !strings.HasPrefix(opts.withPublicId, globals.PasswordAccountPrefix+"_") {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "chosen account id does not have a valid prefix")
 		}
 		a.PublicId = opts.withPublicId

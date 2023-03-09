@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, globals.PasswordAuthMethodPrefix, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, Subtype, globals.PasswordAuthMethodPrefix, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix); err != nil {
 		panic(err)
 	}
 }
@@ -33,7 +33,7 @@ func newAuthMethodId() (string, error) {
 
 func newAccountId() (string, error) {
 	const op = "password.newAccountId"
-	id, err := db.NewPublicId(globals.NewPasswordAccountPrefix)
+	id, err := db.NewPublicId(globals.PasswordAccountPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, op)
 	}

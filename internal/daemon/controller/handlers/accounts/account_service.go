@@ -946,7 +946,7 @@ func validateGetRequest(req *pbs.GetAccountRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix, globals.OidcAccountPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix, globals.OidcAccountPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
@@ -1038,7 +1038,7 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			}
 		}
 		return badFields
-	}, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix, globals.OidcAccountPrefix)
+	}, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix, globals.OidcAccountPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
@@ -1046,7 +1046,7 @@ func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix, globals.OidcAccountPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix, globals.OidcAccountPrefix)
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
@@ -1073,7 +1073,7 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix) {
 		badFields[idField] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1097,7 +1097,7 @@ func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix) {
 		badFields[idField] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

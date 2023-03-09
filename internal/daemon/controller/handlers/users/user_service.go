@@ -717,8 +717,8 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			globals.OldPasswordAccountPrefix,
-			globals.NewPasswordAccountPrefix,
+			globals.PasswordAccountPreviousPrefix,
+			globals.PasswordAccountPrefix,
 			globals.OidcAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
@@ -742,8 +742,8 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			globals.OldPasswordAccountPrefix,
-			globals.NewPasswordAccountPrefix,
+			globals.PasswordAccountPreviousPrefix,
+			globals.PasswordAccountPrefix,
 			globals.OidcAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
@@ -770,8 +770,8 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			globals.OldPasswordAccountPrefix,
-			globals.NewPasswordAccountPrefix,
+			globals.PasswordAccountPreviousPrefix,
+			globals.PasswordAccountPrefix,
 			globals.OidcAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."

@@ -54,9 +54,9 @@ const (
 	DefaultTestUnprivilegedLoginName         = "user"
 	DefaultTestPassword                      = "passpass"
 	DefaultTestUserId                        = "u_1234567890"
-	DefaultTestPasswordAccountId             = globals.NewPasswordAccountPrefix + "_1234567890"
+	DefaultTestPasswordAccountId             = globals.PasswordAccountPrefix + "_1234567890"
 	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
-	DefaultTestUnprivilegedPasswordAccountId = globals.NewPasswordAccountPrefix + "_0987654321"
+	DefaultTestUnprivilegedPasswordAccountId = globals.PasswordAccountPrefix + "_0987654321"
 	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
 	DefaultTestPluginId                      = "pl_1234567890"
 )
