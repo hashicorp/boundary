@@ -207,7 +207,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non existing oidc account",
-			req:  &pbs.GetAccountRequest{Id: oidc.AccountPrefix + "_DoesntExis"},
+			req:  &pbs.GetAccountRequest{Id: globals.OidcAccountPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -483,7 +483,7 @@ func TestListOidc(t *testing.T) {
 		},
 		{
 			name: "Unfound Auth Method",
-			req:  &pbs.ListAccountsRequest{AuthMethodId: oidc.AuthMethodPrefix + "_DoesntExis"},
+			req:  &pbs.ListAccountsRequest{AuthMethodId: globals.OidcAuthMethodPrefix + "_DoesntExis"},
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
@@ -616,7 +616,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad oidc account id",
 			req: &pbs.DeleteAccountRequest{
-				Id: oidc.AccountPrefix + "_doesntexis",
+				Id: globals.OidcAccountPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -970,7 +970,7 @@ func TestCreateOidc(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.OidcAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
@@ -1001,7 +1001,7 @@ func TestCreateOidc(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.OidcAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
@@ -1033,7 +1033,7 @@ func TestCreateOidc(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.OidcAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
@@ -1071,7 +1071,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Id:           oidc.AccountPrefix + "_notallowed",
+					Id:           globals.OidcAccountPrefix + "_notallowed",
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
@@ -1141,7 +1141,7 @@ func TestCreateOidc(t *testing.T) {
 			require.NoError(gErr)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), oidc.AccountPrefix+"_"))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.OidcAccountPrefix+"_"))
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
 				got.Item.Id, tc.res.Item.Id = "", ""

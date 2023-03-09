@@ -9,13 +9,16 @@ package globals
 // clients or test writers.
 
 const (
+	// OldPasswordAccountPrefix is the previously-used account prefix
+	OldPasswordAccountPrefix = "apw"
+	// NewPasswordAccountPrefix is the new account prefix
+	NewPasswordAccountPrefix = "acctpw"
+
+	// OidcAuthMethodPrefix defines the prefix for AuthMethod public ids.
+	OidcAuthMethodPrefix = "amoidc"
+	// OidcAccountPrefix defines the prefix for Account public ids.
+	OidcAccountPrefix = "acctoidc"
 	// OidcManagedGroupPrefix defines the prefix for ManagedGroup public ids
 	// from the OIDC auth method.
 	OidcManagedGroupPrefix = "mgoidc"
-
-	// OldPasswordAccountPrefix is the previously-used account prefix
-	OldPasswordAccountPrefix = "apw"
-
-	// NewPasswordAccountPrefix is the new account prefix
-	NewPasswordAccountPrefix = "acctpw"
 )

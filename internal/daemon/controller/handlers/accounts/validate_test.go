@@ -48,7 +48,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "mismatched oidc authmethod pw type",
 			item: &pb.Account{
 				Type:         password.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(typeField, "Doesn't match the parent resource's type."),
 		},
@@ -56,7 +56,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "missing oidc attributes",
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(attributesField, "This is a required field."),
 		},
@@ -64,7 +64,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "missing oidc subject",
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_OidcAccountAttributes{
 					OidcAccountAttributes: &pb.OidcAccountAttributes{},
 				},
@@ -75,7 +75,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "read only name claim field",
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_OidcAccountAttributes{
 					OidcAccountAttributes: &pb.OidcAccountAttributes{FullName: "something"},
 				},
@@ -86,7 +86,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "read only email claim field",
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_OidcAccountAttributes{
 					OidcAccountAttributes: &pb.OidcAccountAttributes{Email: "something"},
 				},
@@ -128,7 +128,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "no oidc errors",
 			item: &pb.Account{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.Account_OidcAccountAttributes{
 					OidcAccountAttributes: &pb.OidcAccountAttributes{Subject: "no oidc errors"},
 				},
@@ -181,7 +181,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "oidc to password change type",
 			req: &pbs.UpdateAccountRequest{
-				Id: oidc.AccountPrefix + "_1234567890",
+				Id: globals.OidcAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Type: password.Subtype.String(),
 				},
@@ -191,7 +191,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "no error",
 			req: &pbs.UpdateAccountRequest{
-				Id:         oidc.AccountPrefix + "_1234567890",
+				Id:         globals.OidcAccountPrefix + "_1234567890",
 				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{}},
 				Item: &pb.Account{
 					Version: 1,
@@ -220,7 +220,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			nameClaimField,
 		}
 		err := validateUpdateRequest(&pbs.UpdateAccountRequest{
-			Id:         oidc.AccountPrefix + "_1234567890",
+			Id:         globals.OidcAccountPrefix + "_1234567890",
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
 		})
 
@@ -238,7 +238,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			subjectField,
 		}
 		err := validateUpdateRequest(&pbs.UpdateAccountRequest{
-			Id:         oidc.AccountPrefix + "_1234567890",
+			Id:         globals.OidcAccountPrefix + "_1234567890",
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
 		})
 

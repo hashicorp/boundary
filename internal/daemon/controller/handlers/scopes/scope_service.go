@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -574,7 +573,7 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, sc
 		opts = append(opts, iam.WithName(scopeName))
 	}
 	if primaryAuthMethodId := item.GetPrimaryAuthMethodId(); primaryAuthMethodId != nil {
-		if !handlers.ValidId(handlers.Id(primaryAuthMethodId.GetValue()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+		if !handlers.ValidId(handlers.Id(primaryAuthMethodId.GetValue()), password.AuthMethodPrefix, globals.OidcAuthMethodPrefix) {
 			return nil, handlers.InvalidArgumentErrorf("Error in provided request.", map[string]string{"primary_auth_method_id": "Improperly formatted identifier"})
 		}
 		scopePrimaryAuthMethodId = primaryAuthMethodId.GetValue()
@@ -931,7 +930,7 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	if item.GetUpdatedTime() != nil {
 		badFields["updated_time"] = "This is a read only field and cannot be specified in an update request."
 	}
-	if item.GetPrimaryAuthMethodId().GetValue() != "" && !handlers.ValidId(handlers.Id(item.GetPrimaryAuthMethodId().GetValue()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+	if item.GetPrimaryAuthMethodId().GetValue() != "" && !handlers.ValidId(handlers.Id(item.GetPrimaryAuthMethodId().GetValue()), password.AuthMethodPrefix, globals.OidcAuthMethodPrefix) {
 		badFields["primary_auth_method_id"] = "Improperly formatted identifier."
 	}
 	if len(badFields) > 0 {

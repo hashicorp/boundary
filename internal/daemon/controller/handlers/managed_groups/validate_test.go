@@ -40,7 +40,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "mismatched oidc authmethod pw type",
 			item: &pb.ManagedGroup{
 				Type:         "ldap",
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(globals.TypeField, "Doesn't match the parent resource's type."),
 		},
@@ -48,7 +48,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "missing oidc attributes",
 			item: &pb.ManagedGroup{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs:        nil,
 			},
 			errContains: fieldError(globals.AttributesField, "Attribute fields is required."),
@@ -57,7 +57,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "bad oidc attributes",
 			item: &pb.ManagedGroup{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 					OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 						Filter: "foobar",
@@ -70,7 +70,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "no oidc errors",
 			item: &pb.ManagedGroup{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 					OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 						Filter: `"/foo/bar" == "zipzap"`,

@@ -598,9 +598,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: oidc.AuthMethodPrefix + "_",
+			idPrefix: globals.OidcAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     o.GetPublicId(),
@@ -673,9 +673,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: oidc.AuthMethodPrefix + "_",
+			idPrefix: globals.OidcAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     scope.Global.String(),
@@ -772,7 +772,7 @@ func TestCreate(t *testing.T) {
 				},
 			}},
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     o.GetPublicId(),

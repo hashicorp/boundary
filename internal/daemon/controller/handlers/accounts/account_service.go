@@ -946,7 +946,7 @@ func validateGetRequest(req *pbs.GetAccountRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix, oidc.AccountPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix, globals.OidcAccountPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
@@ -1038,7 +1038,7 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			}
 		}
 		return badFields
-	}, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix, oidc.AccountPrefix)
+	}, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix, globals.OidcAccountPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
@@ -1046,7 +1046,7 @@ func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix, oidc.AccountPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix, globals.OidcAccountPrefix)
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
@@ -1055,7 +1055,7 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix, globals.OidcAuthMethodPrefix) {
 		badFields[authMethodIdField] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

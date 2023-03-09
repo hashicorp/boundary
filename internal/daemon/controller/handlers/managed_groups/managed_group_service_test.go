@@ -275,7 +275,7 @@ func TestListOidc(t *testing.T) {
 		},
 		{
 			name: "Unfound Auth Method",
-			req:  &pbs.ListManagedGroupsRequest{AuthMethodId: oidc.AuthMethodPrefix + "_DoesntExis"},
+			req:  &pbs.ListManagedGroupsRequest{AuthMethodId: globals.OidcAuthMethodPrefix + "_DoesntExis"},
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{

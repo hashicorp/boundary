@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
@@ -720,7 +719,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 		if !handlers.ValidId(handlers.Id(a),
 			globals.OldPasswordAccountPrefix,
 			globals.NewPasswordAccountPrefix,
-			oidc.AccountPrefix,
+			globals.OidcAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
@@ -745,7 +744,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 		if !handlers.ValidId(handlers.Id(a),
 			globals.OldPasswordAccountPrefix,
 			globals.NewPasswordAccountPrefix,
-			oidc.AccountPrefix,
+			globals.OidcAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
@@ -773,7 +772,7 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 		if !handlers.ValidId(handlers.Id(a),
 			globals.OldPasswordAccountPrefix,
 			globals.NewPasswordAccountPrefix,
-			oidc.AccountPrefix,
+			globals.OidcAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break

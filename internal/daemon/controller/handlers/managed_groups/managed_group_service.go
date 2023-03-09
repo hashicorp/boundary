@@ -667,7 +667,7 @@ func validateListRequest(req *pbs.ListManagedGroupsRequest) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), oidc.AuthMethodPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), globals.OidcAuthMethodPrefix) {
 		badFields[globals.AuthMethodIdField] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

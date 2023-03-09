@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -449,13 +448,13 @@ func (c *Command) Run(args []string) int {
 			return base.CommandUserError
 		}
 		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
-		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", oidc.AuthMethodPrefix, c.flagIdSuffix)
+		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", globals.OidcAuthMethodPrefix, c.flagIdSuffix)
 		c.DevUserId = fmt.Sprintf("%s_%s", iam.UserPrefix, c.flagIdSuffix)
 		c.DevPasswordAccountId = fmt.Sprintf("%s_%s", globals.NewPasswordAccountPrefix, c.flagIdSuffix)
-		c.DevOidcAccountId = fmt.Sprintf("%s_%s", oidc.AccountPrefix, c.flagIdSuffix)
+		c.DevOidcAccountId = fmt.Sprintf("%s_%s", globals.OidcAccountPrefix, c.flagIdSuffix)
 		c.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(c.DevUserId, "u_"))
 		c.DevUnprivilegedPasswordAccountId = fmt.Sprintf("%s_", globals.NewPasswordAccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevPasswordAccountId, fmt.Sprintf("%s_", globals.NewPasswordAccountPrefix)))
-		c.DevUnprivilegedOidcAccountId = fmt.Sprintf("%s_", oidc.AccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevOidcAccountId, fmt.Sprintf("%s_", oidc.AccountPrefix)))
+		c.DevUnprivilegedOidcAccountId = fmt.Sprintf("%s_", globals.OidcAccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevOidcAccountId, fmt.Sprintf("%s_", globals.OidcAccountPrefix)))
 		c.DevOrgId = fmt.Sprintf("%s_%s", scope.Org.Prefix(), c.flagIdSuffix)
 		c.DevProjectId = fmt.Sprintf("%s_%s", scope.Project.Prefix(), c.flagIdSuffix)
 		c.DevHostCatalogId = fmt.Sprintf("%s_%s", static.HostCatalogPrefix, c.flagIdSuffix)

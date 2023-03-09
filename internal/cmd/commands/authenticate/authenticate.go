@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/api/authmethods"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
@@ -104,7 +104,7 @@ func (c *Command) Run(args []string) int {
 		cmd := PasswordCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
 		cmd.Run([]string{})
 
-	case strings.HasPrefix(c.FlagAuthMethodId, oidc.AuthMethodPrefix):
+	case strings.HasPrefix(c.FlagAuthMethodId, globals.OidcAuthMethodPrefix):
 		cmd := OidcCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
 		cmd.Run([]string{})
 
