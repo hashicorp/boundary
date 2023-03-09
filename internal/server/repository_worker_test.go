@@ -13,6 +13,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -944,7 +945,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			setup: func() *server.Worker {
 				w := server.NewWorker(scope.Global.String())
 				var err error
-				w.PublicId, err = db.NewPublicId(server.WorkerPrefix)
+				w.PublicId, err = db.NewPublicId(globals.WorkerPrefix)
 				require.NoError(t, err)
 				return w
 			},

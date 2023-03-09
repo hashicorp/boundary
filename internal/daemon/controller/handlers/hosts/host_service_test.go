@@ -166,7 +166,7 @@ func TestGet_Plugin(t *testing.T) {
 	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	h := plugin.TestHost(t, conn, hc.GetPublicId(), "test")
-	hPrev := plugin.TestHost(t, conn, hc.GetPublicId(), "test-prev", plugin.WithPublicId(fmt.Sprintf("%s_1234567890", plugin.PreviousHostPrefix)))
+	hPrev := plugin.TestHost(t, conn, hc.GetPublicId(), "test-prev", plugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostPreviousPrefix)))
 	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm)
 	plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h, hPrev})
 
@@ -212,7 +212,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "non existing",
-			req:  &pbs.GetHostRequest{Id: plugin.HostPrefix + "_DoesntExis"},
+			req:  &pbs.GetHostRequest{Id: globals.PluginHostPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -224,7 +224,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostRequest{Id: plugin.HostPrefix + "_1 23456789"},
+			req:  &pbs.GetHostRequest{Id: globals.PluginHostPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},

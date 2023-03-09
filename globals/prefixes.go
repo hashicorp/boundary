@@ -94,4 +94,7 @@ const (
 	TcpTargetPrefix = "ttcp"
 	// SshTargetPrefix is the prefix for TCP targets
 	SshTargetPrefix = "tssh"
+
+	// WorkerPrefix is the prefix for workers
+	WorkerPrefix = "w"
 )
