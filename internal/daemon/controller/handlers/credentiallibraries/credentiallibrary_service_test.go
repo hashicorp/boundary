@@ -321,7 +321,7 @@ func TestCreate(t *testing.T) {
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{},
 				},
 			}},
-			idPrefix: vault.CredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			wantErr:  true,
 		},
 		{
@@ -329,7 +329,7 @@ func TestCreate(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.GenericLibrarySubtype.String(),
-				Id:                vault.CredentialLibraryPrefix + "_notallowed",
+				Id:                globals.VaultCredentialLibraryPrefix + "_notallowed",
 				Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
 					VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
@@ -493,9 +493,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -528,9 +528,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -563,9 +563,9 @@ func TestCreate(t *testing.T) {
 				},
 				CredentialType: string(credential.UsernamePasswordType),
 			}},
-			idPrefix: vault.CredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -605,9 +605,9 @@ func TestCreate(t *testing.T) {
 				}(),
 				CredentialType: string(credential.UsernamePasswordType),
 			}},
-			idPrefix: vault.CredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -656,9 +656,9 @@ func TestCreate(t *testing.T) {
 				}(),
 				CredentialType: string(credential.UsernamePasswordType),
 			}},
-			idPrefix: vault.CredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -699,9 +699,9 @@ func TestCreate(t *testing.T) {
 				},
 				CredentialType: string(credential.SshPrivateKeyType),
 			}},
-			idPrefix: vault.CredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -743,9 +743,9 @@ func TestCreate(t *testing.T) {
 				}(),
 				CredentialType: string(credential.SshPrivateKeyType),
 			}},
-			idPrefix: vault.CredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -786,9 +786,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -822,9 +822,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			},
-			idPrefix: vault.CredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.CredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -1055,7 +1055,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "not found error",
-			id:   fmt.Sprintf("%s_1234567890", vault.CredentialLibraryPrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.VaultCredentialLibraryPrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
@@ -1126,7 +1126,7 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "not found error",
-			id:   fmt.Sprintf("%s_1234567890", vault.CredentialLibraryPrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.VaultCredentialLibraryPrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
@@ -1961,7 +1961,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.SSHCertificateCredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultSshCertificateCredentialLibraryPrefix + "_",
 			wantErr:  true,
 		},
 		{
@@ -1975,7 +1975,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.SSHCertificateCredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultSshCertificateCredentialLibraryPrefix + "_",
 			wantErr:  true,
 		},
 		{
@@ -1983,7 +1983,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.SSHCertificateLibrarySubtype.String(),
-				Id:                vault.SSHCertificateCredentialLibraryPrefix + "_notallowed",
+				Id:                globals.VaultSshCertificateCredentialLibraryPrefix + "_notallowed",
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
 						Path:     wrapperspb.String("something"),
@@ -2102,9 +2102,9 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.SSHCertificateCredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultSshCertificateCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.SSHCertificateCredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultSshCertificateCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -2141,9 +2141,9 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.SSHCertificateCredentialLibraryPrefix + "_",
+			idPrefix: globals.VaultSshCertificateCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", vault.SSHCertificateCredentialLibraryPrefix),
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultSshCertificateCredentialLibraryPrefix),
 				Item: &pb.CredentialLibrary{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),

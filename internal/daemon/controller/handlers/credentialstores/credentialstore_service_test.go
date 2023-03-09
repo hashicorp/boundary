@@ -268,7 +268,7 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			wantErr:  true,
 		},
 		{
@@ -286,7 +286,7 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			wantErr:  true,
 		},
 		{
@@ -303,7 +303,7 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			err:      handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
@@ -320,7 +320,7 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			err:      handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
@@ -338,14 +338,14 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			err:      handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Id:      vault.CredentialStorePrefix + "_notallowed",
+				Id:      globals.VaultCredentialStorePrefix + "_notallowed",
 				Type:    vault.Subtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
@@ -463,9 +463,9 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			res: &pbs.CreateCredentialStoreResponse{
-				Uri: fmt.Sprintf("credential-stores/%s_", vault.CredentialStorePrefix),
+				Uri: fmt.Sprintf("credential-stores/%s_", globals.VaultCredentialStorePrefix),
 				Item: &pb.CredentialStore{
 					ScopeId: prj.GetPublicId(),
 					Scope:   &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
@@ -503,9 +503,9 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			res: &pbs.CreateCredentialStoreResponse{
-				Uri: fmt.Sprintf("credential-stores/%s_", vault.CredentialStorePrefix),
+				Uri: fmt.Sprintf("credential-stores/%s_", globals.VaultCredentialStorePrefix),
 				Item: &pb.CredentialStore{
 					ScopeId:     prj.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
@@ -846,7 +846,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "vault not found error",
-			id:   fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.VaultCredentialStorePrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
@@ -927,7 +927,7 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "vault not found error",
-			id:   fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.VaultCredentialStorePrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{

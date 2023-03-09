@@ -40,4 +40,12 @@ const (
 	GroupPrefix = "g"
 	// RolePrefix is the prefix for roles
 	RolePrefix = "r"
+
+	// VaultCredentialStorePrefix is the prefix for Vault credential stores
+	VaultCredentialStorePrefix = "csvlt"
+	// VaultCredentialLibraryPrefix is the prefix for Vault credential libraries
+	VaultCredentialLibraryPrefix = "clvlt"
+	// VaultSshCertificateCredentialLibraryPrefix is the prefix for Vault SSH
+	// certificate credential libraries
+	VaultSshCertificateCredentialLibraryPrefix = "clvsclt"
 )

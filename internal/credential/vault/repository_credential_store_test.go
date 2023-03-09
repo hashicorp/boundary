@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -57,7 +58,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialStorePrefix, got.PublicId)
+		assertPublicId(t, globals.VaultCredentialStorePrefix, got.PublicId)
 
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
@@ -91,7 +92,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		got1, err := repo.CreateCredentialStore(ctx, in1)
 		require.NoError(err)
 		require.NotNil(got1)
-		assertPublicId(t, CredentialStorePrefix, got1.PublicId)
+		assertPublicId(t, globals.VaultCredentialStorePrefix, got1.PublicId)
 		assert.NotSame(in1, got1)
 		assert.Equal(in1.Name, got1.Name)
 		assert.Equal(in1.Description, got1.Description)
@@ -106,7 +107,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		got2, err := repo.CreateCredentialStore(ctx, in2)
 		require.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, CredentialStorePrefix, got2.PublicId)
+		assertPublicId(t, globals.VaultCredentialStorePrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -214,7 +215,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(credStoreIn.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, CredentialStorePrefix, got.PublicId)
+			assertPublicId(t, globals.VaultCredentialStorePrefix, got.PublicId)
 			assert.NotSame(credStoreIn, got)
 			assert.Equal(got.CreateTime, got.UpdateTime)
 			assert.NoError(db.TestVerifyOplog(t, rw, got.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_CREATE), db.WithCreateNotBefore(10*time.Second)))
@@ -777,7 +778,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, CredentialStorePrefix, got.PublicId)
+			assertPublicId(t, globals.VaultCredentialStorePrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.ProjectId, got.ProjectId)
@@ -981,7 +982,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		got, err := repo.CreateCredentialStore(ctx, in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialStorePrefix, got.PublicId)
+		assertPublicId(t, globals.VaultCredentialStorePrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)

@@ -17,7 +17,6 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
-	"github.com/hashicorp/boundary/internal/credential/vault"
 	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -1788,7 +1787,7 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	// TODO: Application Credentials are deprecated, remove when field removed.
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
-			vault.CredentialLibraryPrefix,
+			globals.VaultCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix,
@@ -1799,7 +1798,7 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	}
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
-			vault.CredentialLibraryPrefix,
+			globals.VaultCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix,
@@ -1810,8 +1809,8 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	}
 	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
-			vault.CredentialLibraryPrefix,
-			vault.SSHCertificateCredentialLibraryPrefix,
+			globals.VaultCredentialLibraryPrefix,
+			globals.VaultSshCertificateCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix) {
@@ -1836,7 +1835,7 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	// TODO: Application Credentials are deprecated, remove when field removed.
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
-			vault.CredentialLibraryPrefix,
+			globals.VaultCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix,
@@ -1847,7 +1846,7 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	}
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
-			vault.CredentialLibraryPrefix,
+			globals.VaultCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix,
@@ -1858,8 +1857,8 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	}
 	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
-			vault.CredentialLibraryPrefix,
-			vault.SSHCertificateCredentialLibraryPrefix,
+			globals.VaultCredentialLibraryPrefix,
+			globals.VaultSshCertificateCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix) {
@@ -1888,7 +1887,7 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	// TODO: Application Credentials are deprecated, remove when field removed.
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
-			vault.CredentialLibraryPrefix,
+			globals.VaultCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix,
@@ -1899,7 +1898,7 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	}
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
-			vault.CredentialLibraryPrefix,
+			globals.VaultCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix,
@@ -1910,8 +1909,8 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	}
 	for _, cl := range req.GetInjectedApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
-			vault.CredentialLibraryPrefix,
-			vault.SSHCertificateCredentialLibraryPrefix,
+			globals.VaultCredentialLibraryPrefix,
+			globals.VaultSshCertificateCredentialLibraryPrefix,
 			credential.UsernamePasswordCredentialPrefix,
 			credential.PreviousUsernamePasswordCredentialPrefix,
 			credential.SshPrivateKeyCredentialPrefix,

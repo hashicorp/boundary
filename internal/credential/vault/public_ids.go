@@ -4,6 +4,7 @@
 package vault
 
 import (
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -11,23 +12,21 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, CredentialStorePrefix, DynamicCredentialPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, Subtype, globals.VaultCredentialStorePrefix, DynamicCredentialPrefix); err != nil {
 		panic(err)
 	}
-	if err := subtypes.Register(credential.Domain, GenericLibrarySubtype, CredentialLibraryPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, GenericLibrarySubtype, globals.VaultCredentialLibraryPrefix); err != nil {
 		panic(err)
 	}
-	if err := subtypes.Register(credential.Domain, SSHCertificateLibrarySubtype, SSHCertificateCredentialLibraryPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, SSHCertificateLibrarySubtype, globals.VaultSshCertificateCredentialLibraryPrefix); err != nil {
 		panic(err)
 	}
 }
 
 // PublicId prefixes for the resources in the vault package.
 const (
-	CredentialStorePrefix                 = "csvlt"
-	CredentialLibraryPrefix               = "clvlt"
-	DynamicCredentialPrefix               = "cdvlt"
-	SSHCertificateCredentialLibraryPrefix = "clvsclt"
+	// DynamicCredentialPrefix is the prefix for Vault dynamic credentials
+	DynamicCredentialPrefix = "cdvlt"
 
 	Subtype                      = subtypes.Subtype("vault")
 	GenericLibrarySubtype        = subtypes.Subtype("vault-generic")
@@ -35,7 +34,7 @@ const (
 )
 
 func newCredentialStoreId() (string, error) {
-	id, err := db.NewPublicId(CredentialStorePrefix)
+	id, err := db.NewPublicId(globals.VaultCredentialStorePrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "vault.newCredentialStoreId")
 	}
@@ -51,7 +50,7 @@ func newCredentialId() (string, error) {
 }
 
 func newCredentialLibraryId() (string, error) {
-	id, err := db.NewPublicId(CredentialLibraryPrefix)
+	id, err := db.NewPublicId(globals.VaultCredentialLibraryPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "vault.newCredentialLibraryId")
 	}
@@ -59,7 +58,7 @@ func newCredentialLibraryId() (string, error) {
 }
 
 func newSSHCertificateCredentialLibraryId() (string, error) {
-	id, err := db.NewPublicId(SSHCertificateCredentialLibraryPrefix)
+	id, err := db.NewPublicId(globals.VaultSshCertificateCredentialLibraryPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "vault.newSSHCertificateCredentialLibraryPrefix")
 	}
