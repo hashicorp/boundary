@@ -4,15 +4,15 @@
 package password
 
 import (
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, globals.OldPasswordAccountPrefix, globals.NewPasswordAccountPrefix); err != nil {
 		panic(err)
 	}
 }
@@ -35,7 +35,7 @@ func newAuthMethodId() (string, error) {
 
 func newAccountId() (string, error) {
 	const op = "password.newAccountId"
-	id, err := db.NewPublicId(intglobals.NewPasswordAccountPrefix)
+	id, err := db.NewPublicId(globals.NewPasswordAccountPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, op)
 	}

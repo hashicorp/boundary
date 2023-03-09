@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/managedgroups"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -106,7 +105,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "oidc to password change type",
 			req: &pbs.UpdateManagedGroupRequest{
-				Id: intglobals.OidcManagedGroupPrefix + "_1234567890",
+				Id: globals.OidcManagedGroupPrefix + "_1234567890",
 				Item: &pb.ManagedGroup{
 					Type: password.Subtype.String(),
 				},
@@ -116,7 +115,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "no error",
 			req: &pbs.UpdateManagedGroupRequest{
-				Id:         intglobals.OidcManagedGroupPrefix + "_1234567890",
+				Id:         globals.OidcManagedGroupPrefix + "_1234567890",
 				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{}},
 				Item: &pb.ManagedGroup{
 					Version: 1,

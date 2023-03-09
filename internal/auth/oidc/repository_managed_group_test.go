@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/stretchr/testify/assert"
@@ -202,7 +202,7 @@ func TestRepository_CreateManagedGroup(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, intglobals.OidcManagedGroupPrefix, got.PublicId)
+			assertPublicId(t, globals.OidcManagedGroupPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -951,7 +951,7 @@ func TestRepository_UpdateManagedGroup(t *testing.T) {
 				return
 			}
 			require.NotNil(got)
-			assertPublicId(t, intglobals.OidcManagedGroupPrefix, got.PublicId)
+			assertPublicId(t, globals.OidcManagedGroupPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.AuthMethodId, got.AuthMethodId)

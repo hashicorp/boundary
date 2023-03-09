@@ -6,15 +6,15 @@ package oidc
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, AccountPrefix, intglobals.OidcManagedGroupPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, AccountPrefix, globals.OidcManagedGroupPrefix); err != nil {
 		panic(err)
 	}
 }
@@ -57,7 +57,7 @@ func newAccountId(ctx context.Context, authMethodId, issuer, sub string) (string
 
 func newManagedGroupId(ctx context.Context) (string, error) {
 	const op = "oidc.newManagedGroupId"
-	id, err := db.NewPublicId(intglobals.OidcManagedGroupPrefix)
+	id, err := db.NewPublicId(globals.OidcManagedGroupPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

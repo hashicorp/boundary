@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -161,7 +161,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "password to oidc change type, old prefix",
 			req: &pbs.UpdateAccountRequest{
-				Id: intglobals.OldPasswordAccountPrefix + "_1234567890",
+				Id: globals.OldPasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Type: oidc.Subtype.String(),
 				},
@@ -171,7 +171,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "password to oidc change type, new prefix",
 			req: &pbs.UpdateAccountRequest{
-				Id: intglobals.NewPasswordAccountPrefix + "_1234567890",
+				Id: globals.NewPasswordAccountPrefix + "_1234567890",
 				Item: &pb.Account{
 					Type: oidc.Subtype.String(),
 				},

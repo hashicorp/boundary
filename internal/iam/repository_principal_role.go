@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -605,7 +605,7 @@ func splitPrincipals(ctx context.Context, principals []string) (users, groups, m
 				groups = make([]string, 0, len(principals))
 			}
 			groups = append(groups, principal)
-		case strings.HasPrefix(principal, intglobals.OidcManagedGroupPrefix):
+		case strings.HasPrefix(principal, globals.OidcManagedGroupPrefix):
 			if managedGroups == nil {
 				managedGroups = make([]string, 0, len(principals))
 			}

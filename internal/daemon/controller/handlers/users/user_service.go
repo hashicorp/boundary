@@ -17,7 +17,6 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -719,8 +718,8 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			intglobals.OldPasswordAccountPrefix,
-			intglobals.NewPasswordAccountPrefix,
+			globals.OldPasswordAccountPrefix,
+			globals.NewPasswordAccountPrefix,
 			oidc.AccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
@@ -744,8 +743,8 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			intglobals.OldPasswordAccountPrefix,
-			intglobals.NewPasswordAccountPrefix,
+			globals.OldPasswordAccountPrefix,
+			globals.NewPasswordAccountPrefix,
 			oidc.AccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
@@ -772,8 +771,8 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			intglobals.OldPasswordAccountPrefix,
-			intglobals.NewPasswordAccountPrefix,
+			globals.OldPasswordAccountPrefix,
+			globals.NewPasswordAccountPrefix,
 			oidc.AccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."

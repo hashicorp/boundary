@@ -11,9 +11,9 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/managedgroups"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -214,7 +214,7 @@ func TestErrorsOidc(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 
-	_, err = managedgroupClient.Read(tc.Context(), intglobals.OidcManagedGroupPrefix+"_doesntexis")
+	_, err = managedgroupClient.Read(tc.Context(), globals.OidcManagedGroupPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
