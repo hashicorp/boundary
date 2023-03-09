@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -77,7 +78,7 @@ func TestTarget_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := db.NewPublicId(tcp.TargetPrefix)
+				id, err := db.NewPublicId(globals.TcpTargetPrefix)
 				require.NoError(err)
 				got.SetPublicId(ctx, id)
 				err = db.New(conn).Create(ctx, got)
@@ -118,7 +119,7 @@ func TestTarget_Delete(t *testing.T) {
 			target: func() target.Target {
 				tar, _ := target.New(ctx, tcp.Subtype, proj.PublicId)
 
-				id, err := db.NewPublicId(tcp.TargetPrefix)
+				id, err := db.NewPublicId(globals.TcpTargetPrefix)
 				require.NoError(t, err)
 				tar.SetPublicId(ctx, id)
 				tar.SetName(tcp.TestTargetName(t, proj.PublicId))

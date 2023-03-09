@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -234,7 +235,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			name: "not-found",
 			args: args{
 				target: func() target.Target {
-					id, err := db.NewPublicId(tcp.TargetPrefix)
+					id, err := db.NewPublicId(globals.TcpTargetPrefix)
 					require.NoError(t, err)
 					tar, _ := target.New(ctx, tcp.Subtype, proj.PublicId)
 					tar.SetPublicId(ctx, id)

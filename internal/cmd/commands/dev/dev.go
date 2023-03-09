@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
-	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -457,7 +456,7 @@ func (c *Command) Run(args []string) int {
 		c.DevHostCatalogId = fmt.Sprintf("%s_%s", globals.StaticHostCatalogPrefix, c.flagIdSuffix)
 		c.DevHostSetId = fmt.Sprintf("%s_%s", globals.StaticHostSetPrefix, c.flagIdSuffix)
 		c.DevHostId = fmt.Sprintf("%s_%s", globals.StaticHostPrefix, c.flagIdSuffix)
-		c.DevTargetId = fmt.Sprintf("%s_%s", tcp.TargetPrefix, c.flagIdSuffix)
+		c.DevTargetId = fmt.Sprintf("%s_%s", globals.TcpTargetPrefix, c.flagIdSuffix)
 	}
 	if c.flagSecondaryIdSuffix != "" {
 		if len(c.flagSecondaryIdSuffix) != 10 {
@@ -468,7 +467,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error("Invalid secondary ID suffix, must be in the set A-Za-z0-9")
 			return base.CommandUserError
 		}
-		c.DevSecondaryTargetId = fmt.Sprintf("%s_%s", tcp.TargetPrefix, c.flagSecondaryIdSuffix)
+		c.DevSecondaryTargetId = fmt.Sprintf("%s_%s", globals.TcpTargetPrefix, c.flagSecondaryIdSuffix)
 	}
 
 	if c.flagIdSuffix != "" && c.flagSecondaryIdSuffix != "" &&

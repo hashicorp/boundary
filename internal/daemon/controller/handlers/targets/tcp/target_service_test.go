@@ -199,7 +199,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non existing Target",
-			req:  &pbs.GetTargetRequest{Id: tcp.TargetPrefix + "_DoesntExis"},
+			req:  &pbs.GetTargetRequest{Id: globals.TcpTargetPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -211,7 +211,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetTargetRequest{Id: tcp.TargetPrefix + "_1 23456789"},
+			req:  &pbs.GetTargetRequest{Id: globals.TcpTargetPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -459,7 +459,7 @@ func TestDelete(t *testing.T) {
 			name:    "Delete Not Existing Target",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteTargetRequest{
-				Id: tcp.TargetPrefix + "_doesntexis",
+				Id: globals.TcpTargetPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -467,7 +467,7 @@ func TestDelete(t *testing.T) {
 			name:    "Bad target id formatting",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteTargetRequest{
-				Id: tcp.TargetPrefix + "_bad_format",
+				Id: globals.TcpTargetPrefix + "_bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -591,7 +591,7 @@ func TestCreate(t *testing.T) {
 				EgressWorkerFilter: wrapperspb.String(`type == "bar"`),
 			}},
 			res: &pbs.CreateTargetResponse{
-				Uri: fmt.Sprintf("targets/%s_", tcp.TargetPrefix),
+				Uri: fmt.Sprintf("targets/%s_", globals.TcpTargetPrefix),
 				Item: &pb.Target{
 					ScopeId:     proj.GetPublicId(),
 					Scope:       &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -755,7 +755,7 @@ func TestCreate(t *testing.T) {
 
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), tcp.TargetPrefix), got.GetItem().GetId())
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.TcpTargetPrefix), got.GetItem().GetId())
 
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
@@ -1093,7 +1093,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing Target",
 			req: &pbs.UpdateTargetRequest{
-				Id: tcp.TargetPrefix + "_DoesntExis",
+				Id: globals.TcpTargetPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},

@@ -437,7 +437,7 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 	// When this function is not called as part of boundary dev (eg: as part of
 	// boundary database init or tests), generate random target ids.
 	if len(b.DevTargetId) == 0 {
-		b.DevTargetId, err = db.NewPublicId(tcp.TargetPrefix)
+		b.DevTargetId, err = db.NewPublicId(globals.TcpTargetPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate initial target id: %w", err)
 		}
@@ -504,7 +504,7 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	// When this function is not called as part of boundary dev (eg: as part of
 	// boundary database init or tests), generate random target ids.
 	if len(b.DevSecondaryTargetId) == 0 {
-		b.DevSecondaryTargetId, err = db.NewPublicId(tcp.TargetPrefix)
+		b.DevSecondaryTargetId, err = db.NewPublicId(globals.TcpTargetPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate initial secondary target id: %w", err)
 		}

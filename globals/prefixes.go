@@ -89,4 +89,9 @@ const (
 
 	// SessionPrefix is the prefix for sessions
 	SessionPrefix = "s"
+
+	// TcpTargetPrefix is the prefix for TCP targets
+	TcpTargetPrefix = "ttcp"
+	// SshTargetPrefix is the prefix for TCP targets
+	SshTargetPrefix = "tssh"
 )

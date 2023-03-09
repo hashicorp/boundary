@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
@@ -131,7 +132,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 						target.WithDefaultPort(uint32(22)),
 					)
 					require.NoError(t, err)
-					id, err := db.NewPublicId(tcp.TargetPrefix)
+					id, err := db.NewPublicId(globals.TcpTargetPrefix)
 					require.NoError(t, err)
 					tar.SetPublicId(ctx, id)
 					return tar
