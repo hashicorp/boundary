@@ -590,11 +590,11 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 		ctx := w.baseContext
 		var sessionId string
 		switch {
-		case strings.HasPrefix(hello.ServerName, globals.SessionPrefix):
+		case strings.HasPrefix(hello.ServerName,fmt.Sprintf("%s_", globals.SessionPrefix))):
 			sessionId = hello.ServerName
 		default:
 			for _, proto := range hello.SupportedProtos {
-				if strings.HasPrefix(proto, globals.SessionPrefix) {
+				if strings.HasPrefix(proto, fmt.Sprintf("%s_", globals.SessionPrefix))) {
 					sessionId = proto
 					break
 				}

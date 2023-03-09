@@ -86,4 +86,7 @@ const (
 	PluginHostPrefix = "hplg"
 	// PluginHostPreviousPrefix is the previous prefix for plugin hosts
 	PluginHostPreviousPrefix = "h"
+
+	// SessionPrefix is the prefix for sessions
+	SessionPrefix = "s"
 )
