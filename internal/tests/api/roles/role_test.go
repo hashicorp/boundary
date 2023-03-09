@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/api/groups"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/users"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
@@ -310,7 +311,7 @@ func TestErrors(t *testing.T) {
 			apiErr = api.AsServerError(err)
 			assert.NotNil(apiErr)
 
-			_, err = roleClient.Read(tc.Context(), iam.RolePrefix+"_doesntexis")
+			_, err = roleClient.Read(tc.Context(), globals.RolePrefix+"_doesntexis")
 			require.Error(err)
 			apiErr = api.AsServerError(err)
 			assert.NotNil(apiErr)

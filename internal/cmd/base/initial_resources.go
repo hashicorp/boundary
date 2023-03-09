@@ -239,7 +239,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		}
 	}
 	if b.DevUserId == "" {
-		b.DevUserId, err = db.NewPublicId(iam.UserPrefix)
+		b.DevUserId, err = db.NewPublicId(globals.UserPrefix)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating initial user id: %w", err)
 		}

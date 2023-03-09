@@ -6,6 +6,7 @@ package scope
 import (
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,19 +21,19 @@ func Test_Map(t *testing.T) {
 			name:       "global",
 			s:          "global",
 			want:       Global,
-			wantPrefix: "global",
+			wantPrefix: globals.GlobalPrefix,
 		},
 		{
 			name:       "org",
 			s:          "org",
 			want:       Org,
-			wantPrefix: "o",
+			wantPrefix: globals.OrgPrefix,
 		},
 		{
 			name:       "proj",
 			s:          "project",
 			want:       Project,
-			wantPrefix: "p",
+			wantPrefix: globals.ProjectPrefix,
 		},
 		{
 			name:       "unknown",

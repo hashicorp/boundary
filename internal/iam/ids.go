@@ -6,20 +6,19 @@ package iam
 import (
 	"fmt"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 const (
-	UserPrefix      = "u"
-	GroupPrefix     = "g"
-	RolePrefix      = "r"
+	// RoleGrantPrefix is the prefix for role grants
 	RoleGrantPrefix = "rg"
 )
 
 func newRoleId() (string, error) {
-	id, err := db.NewPublicId(RolePrefix)
+	id, err := db.NewPublicId(globals.RolePrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "iam.newRoleId")
 	}
@@ -27,7 +26,7 @@ func newRoleId() (string, error) {
 }
 
 func newUserId() (string, error) {
-	id, err := db.NewPublicId(UserPrefix)
+	id, err := db.NewPublicId(globals.UserPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "iam.newUserId")
 	}
@@ -35,7 +34,7 @@ func newUserId() (string, error) {
 }
 
 func newGroupId() (string, error) {
-	id, err := db.NewPublicId(GroupPrefix)
+	id, err := db.NewPublicId(globals.GroupPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "iam.newGroupId")
 	}

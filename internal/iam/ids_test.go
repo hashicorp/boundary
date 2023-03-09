@@ -18,17 +18,17 @@ func Test_PublicIds(t *testing.T) {
 	t.Run("role", func(t *testing.T) {
 		id, err := newRoleId()
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, RolePrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, globals.RolePrefix+"_"))
 	})
 	t.Run("user", func(t *testing.T) {
 		id, err := newUserId()
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, UserPrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, globals.UserPrefix+"_"))
 	})
 	t.Run("group", func(t *testing.T) {
 		id, err := newGroupId()
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, GroupPrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, globals.GroupPrefix+"_"))
 	})
 	t.Run("oidc managed group", func(t *testing.T) {
 		assert.True(t, strings.HasPrefix("mgoidc_1234567890", globals.OidcManagedGroupPrefix+"_"))

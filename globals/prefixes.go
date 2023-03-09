@@ -24,4 +24,18 @@ const (
 	// OidcManagedGroupPrefix defines the prefix for ManagedGroup public ids
 	// from the OIDC auth method.
 	OidcManagedGroupPrefix = "mgoidc"
+
+	// ProjectPrefix is the prefix for project scopes
+	ProjectPrefix = "p"
+	// OrgPrefix is the prefix for org scopes
+	OrgPrefix = "o"
+	// GlobalPrefix is the prefix for the global scope
+	GlobalPrefix = "global"
+
+	// UserPrefix is the prefix for users
+	UserPrefix = "u"
+	// GroupPrefix is the prefix for non-managed groups
+	GroupPrefix = "g"
+	// RolePrefix is the prefix for roles
+	RolePrefix = "r"
 )

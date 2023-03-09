@@ -666,7 +666,7 @@ func toProto(ctx context.Context, in *iam.User, accts []string, opt ...handlers.
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetUserRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.UserPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateUserRequest) error {
@@ -681,11 +681,11 @@ func validateCreateRequest(req *pbs.CreateUserRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
-	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, iam.UserPrefix)
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, globals.UserPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.UserPrefix)
 }
 
 func validateListRequest(req *pbs.ListUsersRequest) error {
@@ -705,7 +705,7 @@ func validateListRequest(req *pbs.ListUsersRequest) error {
 
 func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -733,7 +733,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 
 func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -758,7 +758,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 
 func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

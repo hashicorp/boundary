@@ -149,7 +149,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non existant Group",
-			req:  &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis"},
+			req:  &pbs.GetGroupRequest{Id: globals.GroupPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -161,7 +161,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_1 23456789"},
+			req:  &pbs.GetGroupRequest{Id: globals.GroupPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -174,7 +174,7 @@ func TestGet(t *testing.T) {
 		{
 			name:    "Project Scoped Get a non existant Group",
 			scopeId: pg.GetScopeId(),
-			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_DoesntExis"},
+			req:     &pbs.GetGroupRequest{Id: globals.GroupPrefix + "_DoesntExis"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -188,7 +188,7 @@ func TestGet(t *testing.T) {
 		{
 			name:    "Project Scoped space in id",
 			scopeId: pg.GetScopeId(),
-			req:     &pbs.GetGroupRequest{Id: iam.GroupPrefix + "_1 23456789"},
+			req:     &pbs.GetGroupRequest{Id: globals.GroupPrefix + "_1 23456789"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -371,7 +371,7 @@ func TestDelete(t *testing.T) {
 			name:    "Delete bad group id",
 			scopeId: og.GetScopeId(),
 			req: &pbs.DeleteGroupRequest{
-				Id: iam.GroupPrefix + "_doesntexis",
+				Id: globals.GroupPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -394,7 +394,7 @@ func TestDelete(t *testing.T) {
 			name:    "Project Scoped Delete bad group id",
 			scopeId: pg.GetScopeId(),
 			req: &pbs.DeleteGroupRequest{
-				Id: iam.GroupPrefix + "_doesntexis",
+				Id: globals.GroupPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -460,7 +460,7 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateGroupResponse{
-				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
+				Uri: fmt.Sprintf("groups/%s_", globals.GroupPrefix),
 				Item: &pb.Group{
 					ScopeId:           defaultOGroup.GetScopeId(),
 					Scope:             &scopes.ScopeInfo{Id: defaultOGroup.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
@@ -479,7 +479,7 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateGroupResponse{
-				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
+				Uri: fmt.Sprintf("groups/%s_", globals.GroupPrefix),
 				Item: &pb.Group{
 					ScopeId:           scope.Global.String(),
 					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
@@ -500,7 +500,7 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateGroupResponse{
-				Uri: fmt.Sprintf("groups/%s_", iam.GroupPrefix),
+				Uri: fmt.Sprintf("groups/%s_", globals.GroupPrefix),
 				Item: &pb.Group{
 					ScopeId:           defaultPGroup.GetScopeId(),
 					Scope:             &scopes.ScopeInfo{Id: defaultPGroup.GetScopeId(), Type: scope.Project.String(), ParentScopeId: defaultOGroup.GetScopeId()},
@@ -514,7 +514,7 @@ func TestCreate(t *testing.T) {
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateGroupRequest{Item: &pb.Group{
-				Id: iam.GroupPrefix + "_notallowed",
+				Id: globals.GroupPrefix + "_notallowed",
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -552,7 +552,7 @@ func TestCreate(t *testing.T) {
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.GroupPrefix+"_"))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.GroupPrefix+"_"))
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a group created after the test setup's default group
@@ -873,7 +873,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing Group",
 			req: &pbs.UpdateGroupRequest{
-				Id: iam.GroupPrefix + "_DoesntExis",
+				Id: globals.GroupPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -892,7 +892,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.Group{
-					Id:          iam.GroupPrefix + "_somethinge",
+					Id:          globals.GroupPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},

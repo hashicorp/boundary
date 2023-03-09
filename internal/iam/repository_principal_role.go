@@ -595,12 +595,12 @@ func splitPrincipals(ctx context.Context, principals []string) (users, groups, m
 	const op = "iam.splitPrincipals"
 	for _, principal := range principals {
 		switch {
-		case strings.HasPrefix(principal, UserPrefix):
+		case strings.HasPrefix(principal, globals.UserPrefix):
 			if users == nil {
 				users = make([]string, 0, len(principals))
 			}
 			users = append(users, principal)
-		case strings.HasPrefix(principal, GroupPrefix):
+		case strings.HasPrefix(principal, globals.GroupPrefix):
 			if groups == nil {
 				groups = make([]string, 0, len(principals))
 			}
