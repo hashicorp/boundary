@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -47,25 +48,25 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 	blueSet2 := TestSet(t, conn, kms, sched, blueCat, plgm)
 	blueSet3 := TestSet(t, conn, kms, sched, blueCat, plgm)
 
-	hostId, err := db.NewPublicId(HostPrefix)
+	hostId, err := db.NewPublicId(globals.PluginHostPrefix)
 	require.NoError(t, err)
 	blueHost1 := NewHost(ctx, blueCat.PublicId, "blue1", withPluginId(plg.GetPublicId()))
 	blueHost1.PublicId = hostId
 	require.NoError(t, rw.Create(ctx, blueHost1))
 
-	hostId, err = db.NewPublicId(HostPrefix)
+	hostId, err = db.NewPublicId(globals.PluginHostPrefix)
 	require.NoError(t, err)
 	blueHost2 := NewHost(ctx, blueCat.PublicId, "blue2", withPluginId(plg.GetPublicId()))
 	blueHost2.PublicId = hostId
 	require.NoError(t, rw.Create(ctx, blueHost2))
 
-	hostId, err = db.NewPublicId(HostPrefix)
+	hostId, err = db.NewPublicId(globals.PluginHostPrefix)
 	require.NoError(t, err)
 	blueHost3 := NewHost(ctx, blueCat.PublicId, "blue3", withPluginId(plg.GetPublicId()))
 	blueHost3.PublicId = hostId
 	require.NoError(t, rw.Create(ctx, blueHost3))
 
-	hostId, err = db.NewPublicId(HostPrefix)
+	hostId, err = db.NewPublicId(globals.PluginHostPrefix)
 	require.NoError(t, err)
 	blueHost4 := NewHost(ctx, blueCat.PublicId, "blue4", withPluginId(plg.GetPublicId()))
 	blueHost4.PublicId = hostId

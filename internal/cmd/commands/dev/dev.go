@@ -23,7 +23,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
@@ -455,9 +454,9 @@ func (c *Command) Run(args []string) int {
 		c.DevUnprivilegedOidcAccountId = fmt.Sprintf("%s_", globals.OidcAccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevOidcAccountId, fmt.Sprintf("%s_", globals.OidcAccountPrefix)))
 		c.DevOrgId = fmt.Sprintf("%s_%s", scope.Org.Prefix(), c.flagIdSuffix)
 		c.DevProjectId = fmt.Sprintf("%s_%s", scope.Project.Prefix(), c.flagIdSuffix)
-		c.DevHostCatalogId = fmt.Sprintf("%s_%s", static.HostCatalogPrefix, c.flagIdSuffix)
-		c.DevHostSetId = fmt.Sprintf("%s_%s", static.HostSetPrefix, c.flagIdSuffix)
-		c.DevHostId = fmt.Sprintf("%s_%s", static.HostPrefix, c.flagIdSuffix)
+		c.DevHostCatalogId = fmt.Sprintf("%s_%s", globals.StaticHostCatalogPrefix, c.flagIdSuffix)
+		c.DevHostSetId = fmt.Sprintf("%s_%s", globals.StaticHostSetPrefix, c.flagIdSuffix)
+		c.DevHostId = fmt.Sprintf("%s_%s", globals.StaticHostPrefix, c.flagIdSuffix)
 		c.DevTargetId = fmt.Sprintf("%s_%s", tcp.TargetPrefix, c.flagIdSuffix)
 	}
 	if c.flagSecondaryIdSuffix != "" {

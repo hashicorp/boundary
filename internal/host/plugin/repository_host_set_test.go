@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -320,7 +321,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
+			assert.True(strings.HasPrefix(got.GetPublicId(), globals.PluginHostSetPrefix))
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.GetName())
 			assert.Equal(tt.want.Description, got.GetDescription())
@@ -379,7 +380,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(got)
 		assert.True(pluginCalled)
-		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
+		assert.True(strings.HasPrefix(got.GetPublicId(), globals.PluginHostSetPrefix))
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.GetName())
 		assert.Equal(in.Description, got.GetDescription())
@@ -427,7 +428,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert.True(pluginCalled)
 		require.NoError(err)
 		require.NotNil(got)
-		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
+		assert.True(strings.HasPrefix(got.GetPublicId(), globals.PluginHostSetPrefix))
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.GetName())
 		assert.Equal(in.Description, got.GetDescription())
@@ -441,7 +442,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		require.NoError(err)
 		require.NotNil(got2)
 		assert.True(pluginCalled)
-		assert.True(strings.HasPrefix(got.GetPublicId(), HostSetPrefix))
+		assert.True(strings.HasPrefix(got.GetPublicId(), globals.PluginHostSetPrefix))
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.GetName())
 		assert.Equal(in2.Description, got2.GetDescription())

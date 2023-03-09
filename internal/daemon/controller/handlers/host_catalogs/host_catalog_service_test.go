@@ -127,7 +127,7 @@ func TestGet_Static(t *testing.T) {
 		},
 		{
 			name: "Get a non existing Host Catalog",
-			req:  &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_DoesntExis"},
+			req:  &pbs.GetHostCatalogRequest{Id: globals.StaticHostCatalogPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -139,7 +139,7 @@ func TestGet_Static(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostCatalogRequest{Id: static.HostCatalogPrefix + "_1 23456789"},
+			req:  &pbs.GetHostCatalogRequest{Id: globals.StaticHostCatalogPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -190,7 +190,7 @@ func TestGet_Plugin(t *testing.T) {
 	name := "test"
 	plg := host.TestPlugin(t, conn, name)
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac([]byte("foobar")))
-	hcPrev := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac([]byte("foobar")), plugin.WithPublicId(fmt.Sprintf("%s_1234567890", plugin.PreviousHostCatalogPrefix)))
+	hcPrev := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac([]byte("foobar")), plugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostCatalogPreviousPrefix)))
 
 	toMerge := &pbs.GetHostCatalogRequest{
 		Id: hc.GetPublicId(),
@@ -242,7 +242,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "Get a non existing Host Catalog",
-			req:  &pbs.GetHostCatalogRequest{Id: plugin.HostCatalogPrefix + "_DoesntExis"},
+			req:  &pbs.GetHostCatalogRequest{Id: globals.PluginHostCatalogPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -254,7 +254,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostCatalogRequest{Id: plugin.HostCatalogPrefix + "_1 23456789"},
+			req:  &pbs.GetHostCatalogRequest{Id: globals.PluginHostCatalogPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -529,7 +529,7 @@ func TestDelete_Static(t *testing.T) {
 			name:    "Delete bad id HostCatalog",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostCatalogRequest{
-				Id: static.HostCatalogPrefix + "_doesntexis",
+				Id: globals.StaticHostCatalogPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -537,7 +537,7 @@ func TestDelete_Static(t *testing.T) {
 			name:    "Bad HostCatalog Id formatting",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostCatalogRequest{
-				Id: static.HostCatalogPrefix + "_bad_format",
+				Id: globals.StaticHostCatalogPrefix + "_bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -600,7 +600,7 @@ func TestDelete_Plugin(t *testing.T) {
 			name:    "Delete bad id HostCatalog",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostCatalogRequest{
-				Id: plugin.HostCatalogPrefix + "_doesntexis",
+				Id: globals.PluginHostCatalogPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -608,7 +608,7 @@ func TestDelete_Plugin(t *testing.T) {
 			name:    "Bad HostCatalog Id formatting",
 			scopeId: proj.GetPublicId(),
 			req: &pbs.DeleteHostCatalogRequest{
-				Id: plugin.HostCatalogPrefix + "_bad_format",
+				Id: globals.PluginHostCatalogPrefix + "_bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -703,7 +703,7 @@ func TestCreate_Static(t *testing.T) {
 				Type:        "static",
 			}},
 			res: &pbs.CreateHostCatalogResponse{
-				Uri: fmt.Sprintf("host-catalogs/%s_", static.HostCatalogPrefix),
+				Uri: fmt.Sprintf("host-catalogs/%s_", globals.StaticHostCatalogPrefix),
 				Item: &pb.HostCatalog{
 					ScopeId:                     proj.GetPublicId(),
 					Scope:                       &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
@@ -793,7 +793,7 @@ func TestCreate_Static(t *testing.T) {
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostCatalogPrefix))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.StaticHostCatalogPrefix))
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -865,7 +865,7 @@ func TestCreate_Plugin(t *testing.T) {
 				PluginId:    plg.GetPublicId(),
 			}},
 			res: &pbs.CreateHostCatalogResponse{
-				Uri: fmt.Sprintf("host-catalogs/%s_", plugin.HostCatalogPrefix),
+				Uri: fmt.Sprintf("host-catalogs/%s_", globals.PluginHostCatalogPrefix),
 				Item: &pb.HostCatalog{
 					ScopeId:  proj.GetPublicId(),
 					Scope:    &scopepb.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: proj.GetParentId()},
@@ -970,7 +970,7 @@ func TestCreate_Plugin(t *testing.T) {
 			require.NoError(gErr)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), fmt.Sprintf("%s_", plugin.HostCatalogPrefix)))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), fmt.Sprintf("%s_", globals.PluginHostCatalogPrefix)))
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -1241,7 +1241,7 @@ func TestUpdate_Static(t *testing.T) {
 		{
 			name: "Update a Non Existing HostCatalog",
 			req: &pbs.UpdateHostCatalogRequest{
-				Id: static.HostCatalogPrefix + "_DoesntExis",
+				Id: globals.StaticHostCatalogPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},

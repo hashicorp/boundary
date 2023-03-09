@@ -342,7 +342,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 
 	// Host Catalog
 	if b.DevHostCatalogId == "" {
-		b.DevHostCatalogId, err = db.NewPublicId(static.HostCatalogPrefix)
+		b.DevHostCatalogId, err = db.NewPublicId(globals.StaticHostCatalogPrefix)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("error generating initial host catalog id: %w", err)
 		}
@@ -364,7 +364,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 
 	// Host
 	if b.DevHostId == "" {
-		b.DevHostId, err = db.NewPublicId(static.HostPrefix)
+		b.DevHostId, err = db.NewPublicId(globals.StaticHostPrefix)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("error generating initial host id: %w", err)
 		}
@@ -390,7 +390,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 
 	// Host Set
 	if b.DevHostSetId == "" {
-		b.DevHostSetId, err = db.NewPublicId(static.HostSetPrefix)
+		b.DevHostSetId, err = db.NewPublicId(globals.StaticHostSetPrefix)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("error generating initial host set id: %w", err)
 		}

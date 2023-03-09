@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -317,7 +318,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			assert.NotNil(got)
-			assertPluginBasedPublicId(t, HostCatalogPrefix, got.PublicId)
+			assertPluginBasedPublicId(t, globals.PluginHostCatalogPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -398,7 +399,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(got)
 		assert.True(pluginCalled)
-		assertPluginBasedPublicId(t, HostCatalogPrefix, got.PublicId)
+		assertPluginBasedPublicId(t, globals.PluginHostCatalogPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -446,7 +447,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(got)
 		assert.True(pluginCalled)
-		assertPluginBasedPublicId(t, HostCatalogPrefix, got.PublicId)
+		assertPluginBasedPublicId(t, globals.PluginHostCatalogPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -458,7 +459,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		assert.NoError(err)
 		assert.NotNil(got2)
 		assert.True(pluginCalled)
-		assertPluginBasedPublicId(t, HostCatalogPrefix, got2.PublicId)
+		assertPluginBasedPublicId(t, globals.PluginHostCatalogPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)

@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
@@ -856,7 +855,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "bad prefix",
-			id:   fmt.Sprintf("%s_1234567890", static.HostPrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.StaticHostPrefix),
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
@@ -937,7 +936,7 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "bad prefix",
-			id:   fmt.Sprintf("%s_1234567890", static.HostPrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.StaticHostPrefix),
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}

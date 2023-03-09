@@ -65,4 +65,25 @@ const (
 	SshPrivateKeyCredentialPrefix = "credspk"
 	// JsonCredentialPrefix is the prefix for generic JSON creds
 	JsonCredentialPrefix = "credjson"
+
+	// StaticHostCatalogPrefix is the prefix for static host catalogs
+	StaticHostCatalogPrefix = "hcst"
+	// StaticHostSetPrefix is the prefix for static host sets
+	StaticHostSetPrefix = "hsst"
+	// StaticHostPrefix is the prefix for static hosts
+	StaticHostPrefix = "hst"
+
+	// PluginHostCatalogPrefix is the prefix for plugin host catalogs
+	PluginHostCatalogPrefix = "hcplg"
+	// PluginHostCatalogPreviousPrefix is the previous prefix for plugin host
+	// catalogs
+	PluginHostCatalogPreviousPrefix = "hc"
+	// PluginHostSetPrefix is the prefix for plugin host sets
+	PluginHostSetPrefix = "hsplg"
+	// PluginHostSetPreviousPrefix is the previous prefix for plugin host sets
+	PluginHostSetPreviousPrefix = "hs"
+	// PluginHostPrefix is the prefix for plugin hosts
+	PluginHostPrefix = "hplg"
+	// PluginHostPreviousPrefix is the previous prefix for plugin hosts
+	PluginHostPreviousPrefix = "h"
 )
