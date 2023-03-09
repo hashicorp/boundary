@@ -54,4 +54,15 @@ const (
 	// VaultSshCertificateCredentialLibraryPrefix is the prefix for Vault SSH
 	// certificate credential libraries
 	VaultSshCertificateCredentialLibraryPrefix = "clvsclt"
+
+	// UsernamePasswordCredentialPrefix is the prefix for username/password
+	// creds
+	UsernamePasswordCredentialPrefix = "credup"
+	// UsernamePasswordCredentialPreviousPrefix is the previous prefix for
+	// username/password creds
+	UsernamePasswordCredentialPreviousPrefix = "cred"
+	// SshPrivateKeyCredentialPrefix is the prefix for SSH private key creds
+	SshPrivateKeyCredentialPrefix = "credspk"
+	// JsonCredentialPrefix is the prefix for generic JSON creds
+	JsonCredentialPrefix = "credjson"
 )

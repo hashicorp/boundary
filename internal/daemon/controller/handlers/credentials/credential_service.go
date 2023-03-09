@@ -728,10 +728,10 @@ func validateGetRequest(req *pbs.GetCredentialRequest) error {
 	return handlers.ValidateGetRequest(
 		handlers.NoopValidatorFn,
 		req,
-		credential.UsernamePasswordCredentialPrefix,
-		credential.PreviousUsernamePasswordCredentialPrefix,
-		credential.SshPrivateKeyCredentialPrefix,
-		credential.JsonCredentialPrefix,
+		globals.UsernamePasswordCredentialPrefix,
+		globals.UsernamePasswordCredentialPreviousPrefix,
+		globals.SshPrivateKeyCredentialPrefix,
+		globals.JsonCredentialPrefix,
 	)
 }
 
@@ -869,10 +869,10 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 
 		return badFields
 	},
-		credential.UsernamePasswordCredentialPrefix,
-		credential.PreviousUsernamePasswordCredentialPrefix,
-		credential.SshPrivateKeyCredentialPrefix,
-		credential.JsonCredentialPrefix,
+		globals.UsernamePasswordCredentialPrefix,
+		globals.UsernamePasswordCredentialPreviousPrefix,
+		globals.SshPrivateKeyCredentialPrefix,
+		globals.JsonCredentialPrefix,
 	)
 }
 
@@ -880,10 +880,10 @@ func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
 	return handlers.ValidateDeleteRequest(
 		handlers.NoopValidatorFn,
 		req,
-		credential.UsernamePasswordCredentialPrefix,
-		credential.PreviousUsernamePasswordCredentialPrefix,
-		credential.SshPrivateKeyCredentialPrefix,
-		credential.JsonCredentialPrefix,
+		globals.UsernamePasswordCredentialPrefix,
+		globals.UsernamePasswordCredentialPreviousPrefix,
+		globals.SshPrivateKeyCredentialPrefix,
+		globals.JsonCredentialPrefix,
 	)
 }
 

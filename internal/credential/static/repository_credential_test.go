@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -128,7 +129,7 @@ func TestRepository_CreateUsernamePasswordCredential(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assertPublicId(t, credential.UsernamePasswordCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.UsernamePasswordCredentialPrefix, got.PublicId)
 			assert.Equal(tt.cred.Username, got.Username)
 			assert.Nil(got.Password)
 			assert.Nil(got.CtPassword)
@@ -323,7 +324,7 @@ func TestRepository_CreateSshPrivateKeyCredential(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assertPublicId(t, credential.SshPrivateKeyCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.SshPrivateKeyCredentialPrefix, got.PublicId)
 			assert.Equal(tt.cred.Username, got.Username)
 			assert.Nil(got.PrivateKey)
 			assert.Nil(got.PrivateKeyEncrypted)
@@ -494,7 +495,7 @@ func TestRepository_CreateJsonCredential(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assertPublicId(t, credential.JsonCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.JsonCredentialPrefix, got.PublicId)
 			assert.Nil(got.Object)
 			assert.Nil(got.ObjectEncrypted)
 
@@ -1303,7 +1304,7 @@ func TestRepository_UpdateUsernamePasswordCredential(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, credential.UsernamePasswordCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.UsernamePasswordCredentialPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.StoreId, got.StoreId)
@@ -1894,7 +1895,7 @@ Hdtbe1Kk0rHxN0yIKqXNAAAACWplZmZAYXJjaAECAwQ=
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, credential.SshPrivateKeyCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.SshPrivateKeyCredentialPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.StoreId, got.StoreId)
@@ -2406,7 +2407,7 @@ func TestRepository_UpdateJsonCredential(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, credential.JsonCredentialPrefix, got.PublicId)
+			assertPublicId(t, globals.JsonCredentialPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.StoreId, got.StoreId)

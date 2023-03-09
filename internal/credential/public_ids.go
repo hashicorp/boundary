@@ -6,37 +6,34 @@ package credential
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register(Domain, UsernamePasswordSubtype, UsernamePasswordCredentialPrefix, PreviousUsernamePasswordCredentialPrefix); err != nil {
+	if err := subtypes.Register(Domain, UsernamePasswordSubtype, globals.UsernamePasswordCredentialPrefix, globals.UsernamePasswordCredentialPreviousPrefix); err != nil {
 		panic(err)
 	}
-	if err := subtypes.Register(Domain, SshPrivateKeySubtype, SshPrivateKeyCredentialPrefix); err != nil {
+	if err := subtypes.Register(Domain, SshPrivateKeySubtype, globals.SshPrivateKeyCredentialPrefix); err != nil {
 		panic(err)
 	}
-	if err := subtypes.Register(Domain, JsonSubtype, JsonCredentialPrefix); err != nil {
+	if err := subtypes.Register(Domain, JsonSubtype, globals.JsonCredentialPrefix); err != nil {
 		panic(err)
 	}
 }
 
 const (
-	UsernamePasswordCredentialPrefix         = "credup"
-	PreviousUsernamePasswordCredentialPrefix = "cred"
-	UsernamePasswordSubtype                  = subtypes.Subtype("username_password")
+	UsernamePasswordSubtype = subtypes.Subtype("username_password")
 
-	SshPrivateKeyCredentialPrefix = "credspk"
-	SshPrivateKeySubtype          = subtypes.Subtype("ssh_private_key")
+	SshPrivateKeySubtype = subtypes.Subtype("ssh_private_key")
 
-	JsonCredentialPrefix = "credjson"
-	JsonSubtype          = subtypes.Subtype("json")
+	JsonSubtype = subtypes.Subtype("json")
 )
 
 func NewUsernamePasswordCredentialId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(UsernamePasswordCredentialPrefix)
+	id, err := db.NewPublicId(globals.UsernamePasswordCredentialPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "credential.NewUsernamePasswordCredentialId")
 	}
@@ -44,7 +41,7 @@ func NewUsernamePasswordCredentialId(ctx context.Context) (string, error) {
 }
 
 func NewSshPrivateKeyCredentialId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(SshPrivateKeyCredentialPrefix)
+	id, err := db.NewPublicId(globals.SshPrivateKeyCredentialPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "credential.NewSshPrivateKeyCredentialId")
 	}
@@ -52,7 +49,7 @@ func NewSshPrivateKeyCredentialId(ctx context.Context) (string, error) {
 }
 
 func NewJsonCredentialId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(JsonCredentialPrefix)
+	id, err := db.NewPublicId(globals.JsonCredentialPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "credential.NewJsonCredentialId")
 	}

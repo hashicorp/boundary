@@ -1788,10 +1788,10 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
-			credential.UsernamePasswordCredentialPrefix,
-			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix,
-			credential.JsonCredentialPrefix) {
+			globals.UsernamePasswordCredentialPrefix,
+			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.SshPrivateKeyCredentialPrefix,
+			globals.JsonCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1799,10 +1799,10 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
-			credential.UsernamePasswordCredentialPrefix,
-			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix,
-			credential.JsonCredentialPrefix) {
+			globals.UsernamePasswordCredentialPrefix,
+			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.SshPrivateKeyCredentialPrefix,
+			globals.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1811,9 +1811,9 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
 			globals.VaultSshCertificateCredentialLibraryPrefix,
-			credential.UsernamePasswordCredentialPrefix,
-			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix) {
+			globals.UsernamePasswordCredentialPrefix,
+			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1836,10 +1836,10 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
-			credential.UsernamePasswordCredentialPrefix,
-			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix,
-			credential.JsonCredentialPrefix) {
+			globals.UsernamePasswordCredentialPrefix,
+			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.SshPrivateKeyCredentialPrefix,
+			globals.JsonCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1847,10 +1847,10 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
-			credential.UsernamePasswordCredentialPrefix,
-			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix,
-			credential.JsonCredentialPrefix) {
+			globals.UsernamePasswordCredentialPrefix,
+			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.SshPrivateKeyCredentialPrefix,
+			globals.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1859,9 +1859,9 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
 			globals.VaultSshCertificateCredentialLibraryPrefix,
-			credential.UsernamePasswordCredentialPrefix,
-			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix) {
+			globals.UsernamePasswordCredentialPrefix,
+			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.SshPrivateKeyCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1888,10 +1888,10 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	for _, cl := range req.GetApplicationCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
-			credential.UsernamePasswordCredentialPrefix,
-			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix,
-			credential.JsonCredentialPrefix) {
+			globals.UsernamePasswordCredentialPrefix,
+			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.SshPrivateKeyCredentialPrefix,
+			globals.JsonCredentialPrefix) {
 			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1899,10 +1899,10 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
-			credential.UsernamePasswordCredentialPrefix,
-			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix,
-			credential.JsonCredentialPrefix) {
+			globals.UsernamePasswordCredentialPrefix,
+			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.SshPrivateKeyCredentialPrefix,
+			globals.JsonCredentialPrefix) {
 			badFields[globals.BrokeredCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}
@@ -1911,10 +1911,10 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
 			globals.VaultSshCertificateCredentialLibraryPrefix,
-			credential.UsernamePasswordCredentialPrefix,
-			credential.PreviousUsernamePasswordCredentialPrefix,
-			credential.SshPrivateKeyCredentialPrefix,
-			credential.JsonCredentialPrefix) {
+			globals.UsernamePasswordCredentialPrefix,
+			globals.UsernamePasswordCredentialPreviousPrefix,
+			globals.SshPrivateKeyCredentialPrefix,
+			globals.JsonCredentialPrefix) {
 			badFields[globals.InjectedApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
 			break
 		}

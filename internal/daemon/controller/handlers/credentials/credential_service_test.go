@@ -226,7 +226,7 @@ func TestGet(t *testing.T) {
 	require.NoError(t, err)
 
 	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
-	upCredPrev := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), static.WithPublicId(fmt.Sprintf("%s_1234567890", credential.PreviousUsernamePasswordCredentialPrefix)))
+	upCredPrev := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId(), static.WithPublicId(fmt.Sprintf("%s_1234567890", globals.UsernamePasswordCredentialPreviousPrefix)))
 	upHm, err := crypto.HmacSha256(context.Background(), []byte("pass"), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 	require.NoError(t, err)
 
@@ -367,7 +367,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "not found error",
-			id:   fmt.Sprintf("%s_1234567890", credential.UsernamePasswordCredentialPrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.UsernamePasswordCredentialPrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
@@ -450,7 +450,7 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "not found error",
-			id:   fmt.Sprintf("%s_1234567890", credential.UsernamePasswordCredentialPrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.UsernamePasswordCredentialPrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
@@ -508,7 +508,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Id",
 			req: &pbs.CreateCredentialRequest{Item: &pb.Credential{
 				CredentialStoreId: store.GetPublicId(),
-				Id:                credential.UsernamePasswordCredentialPrefix + "_notallowed",
+				Id:                globals.UsernamePasswordCredentialPrefix + "_notallowed",
 				Type:              credential.UsernamePasswordSubtype.String(),
 				Attrs: &pb.Credential_UsernamePasswordAttributes{
 					UsernamePasswordAttributes: &pb.UsernamePasswordAttributes{
@@ -646,9 +646,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: credential.UsernamePasswordCredentialPrefix + "_",
+			idPrefix: globals.UsernamePasswordCredentialPrefix + "_",
 			res: &pbs.CreateCredentialResponse{
-				Uri: fmt.Sprintf("credentials/%s_", credential.UsernamePasswordCredentialPrefix),
+				Uri: fmt.Sprintf("credentials/%s_", globals.UsernamePasswordCredentialPrefix),
 				Item: &pb.Credential{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -673,9 +673,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: credential.SshPrivateKeyCredentialPrefix + "_",
+			idPrefix: globals.SshPrivateKeyCredentialPrefix + "_",
 			res: &pbs.CreateCredentialResponse{
-				Uri: fmt.Sprintf("credentials/%s_", credential.SshPrivateKeyCredentialPrefix),
+				Uri: fmt.Sprintf("credentials/%s_", globals.SshPrivateKeyCredentialPrefix),
 				Item: &pb.Credential{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -701,9 +701,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: credential.SshPrivateKeyCredentialPrefix + "_",
+			idPrefix: globals.SshPrivateKeyCredentialPrefix + "_",
 			res: &pbs.CreateCredentialResponse{
-				Uri: fmt.Sprintf("credentials/%s_", credential.SshPrivateKeyCredentialPrefix),
+				Uri: fmt.Sprintf("credentials/%s_", globals.SshPrivateKeyCredentialPrefix),
 				Item: &pb.Credential{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
@@ -727,9 +727,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: credential.JsonCredentialPrefix + "_",
+			idPrefix: globals.JsonCredentialPrefix + "_",
 			res: &pbs.CreateCredentialResponse{
-				Uri: fmt.Sprintf("credentials/%s_", credential.JsonCredentialPrefix),
+				Uri: fmt.Sprintf("credentials/%s_", globals.JsonCredentialPrefix),
 				Item: &pb.Credential{
 					Id:                store.GetPublicId(),
 					CredentialStoreId: store.GetPublicId(),
