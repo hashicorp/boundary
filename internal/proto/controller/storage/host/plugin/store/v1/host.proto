@@ -165,6 +165,10 @@ message Host {
   // @inject_tag: `gorm:"not_null"`
   string external_id = 2;
 
+  // external_name is an optional name provided by the plugin.
+  // @inject_tag: `gorm:"default:null"`
+  string external_name = 11;
+
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 3;

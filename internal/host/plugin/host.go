@@ -34,11 +34,12 @@ func NewHost(ctx context.Context, catalogId, externalId string, opt ...Option) *
 	h := &Host{
 		PluginId: opts.withPluginId,
 		Host: &store.Host{
-			PublicId:    opts.withPublicId,
-			CatalogId:   catalogId,
-			ExternalId:  externalId,
-			Name:        opts.withName,
-			Description: opts.withDescription,
+			PublicId:     opts.withPublicId,
+			CatalogId:    catalogId,
+			ExternalId:   externalId,
+			ExternalName: opts.withExternalName,
+			Name:         opts.withName,
+			Description:  opts.withDescription,
 		},
 	}
 	if len(opts.withIpAddresses) > 0 {
@@ -115,19 +116,20 @@ func (h *Host) GetSetIds() []string {
 // hostAgg is a view that aggregates the host's value objects in to
 // string fields delimited with the aggregateDelimiter of "|"
 type hostAgg struct {
-	PublicId    string `gorm:"primary_key"`
-	CatalogId   string
-	ProjectId   string
-	ExternalId  string
-	PluginId    string
-	Name        string
-	Description string
-	CreateTime  *timestamp.Timestamp
-	UpdateTime  *timestamp.Timestamp
-	Version     uint32
-	IpAddresses string
-	DnsNames    string
-	SetIds      string
+	PublicId     string `gorm:"primary_key"`
+	CatalogId    string
+	ProjectId    string
+	ExternalId   string
+	ExternalName string
+	PluginId     string
+	Name         string
+	Description  string
+	CreateTime   *timestamp.Timestamp
+	UpdateTime   *timestamp.Timestamp
+	Version      uint32
+	IpAddresses  string
+	DnsNames     string
+	SetIds       string
 }
 
 func (agg *hostAgg) toHost() *Host {
@@ -136,6 +138,7 @@ func (agg *hostAgg) toHost() *Host {
 	h.PublicId = agg.PublicId
 	h.CatalogId = agg.CatalogId
 	h.ExternalId = agg.ExternalId
+	h.ExternalName = agg.ExternalName
 	h.PluginId = agg.PluginId
 	h.Name = agg.Name
 	h.Description = agg.Description

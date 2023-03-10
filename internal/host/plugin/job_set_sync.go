@@ -396,7 +396,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				var hOplogMsg oplog.Message
 				onConflict := &db.OnConflict{
 					Target: db.Constraint("host_plugin_host_pkey"),
-					Action: db.SetColumns([]string{"name", "description", "version"}),
+					Action: db.SetColumns([]string{"name", "external_name", "description", "version"}),
 				}
 				var rowsAffected int64
 				dbOpts := []db.Option{

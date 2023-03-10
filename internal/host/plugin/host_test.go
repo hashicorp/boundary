@@ -137,6 +137,23 @@ func TestHost_Create(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-with-external-name",
+			args: args{
+				catalogId:  cat.GetPublicId(),
+				externalId: "valid-with-external-name",
+				opts: []Option{
+					WithExternalName("valid-with-external-name"),
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId:    cat.GetPublicId(),
+					ExternalId:   "valid-with-external-name",
+					ExternalName: "valid-with-external-name",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

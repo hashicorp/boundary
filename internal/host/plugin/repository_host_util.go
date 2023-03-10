@@ -58,6 +58,7 @@ func createNewHostMap(ctx context.Context,
 			catalog.GetPublicId(),
 			ph.GetExternalId(),
 			WithName(ph.GetName()),
+			WithExternalName(ph.GetExternalName()),
 			WithDescription(ph.GetDescription()),
 			withIpAddresses(ph.GetIpAddresses()),
 			withDnsNames(ph.GetDnsNames()),
@@ -85,7 +86,8 @@ func createNewHostMap(ctx context.Context,
 		switch {
 		case currHost == nil,
 			currHost.Name != newHost.Name,
-			currHost.Description != newHost.Description:
+			currHost.Description != newHost.Description,
+			currHost.ExternalName != newHost.ExternalName:
 			hi.dirtyHost = true
 		}
 

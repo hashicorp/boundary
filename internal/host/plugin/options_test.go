@@ -77,4 +77,10 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withSecretsHmac = []byte("secrets-hmac")
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithExternalName", func(t *testing.T) {
+		opts := getOpts(WithExternalName("external-name"))
+		testOpts := getDefaultOptions()
+		testOpts.withExternalName = "external-name"
+		assert.Equal(t, opts, testOpts)
+	})
 }
