@@ -45,7 +45,7 @@ var (
 	_ cli.CommandAutocomplete = (*Command)(nil)
 )
 
-var extraSelfTerminationConditionFuncs []func(context.Context, chan struct{})
+var extraSelfTerminationConditionFuncs []func(*Command, chan struct{})
 
 type Command struct {
 	*base.Server
@@ -921,7 +921,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	for _, f := range extraSelfTerminationConditionFuncs {
-		f(c.Context, c.ServerSideShutdownCh)
+		f(c, c.ServerSideShutdownCh)
 	}
 
 	for !errorEncountered.Load() && !shutdownCompleted.Load() {
