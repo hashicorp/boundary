@@ -98,6 +98,7 @@ begin;
     'host plugin catalog with its associated persisted data';
 
   -- Replaces view from 20/08_plugin_host_views.up.sql
+  -- Replaced in 67/01_plugin_host_external_name.up.sql
   drop view host_plugin_host_with_value_obj_and_set_memberships;
   create view host_plugin_host_with_value_obj_and_set_memberships as
   select

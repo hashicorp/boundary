@@ -193,6 +193,10 @@ message ListHostsResponseHost {
   // useful, ie: a compute instance ID.
   string external_id = 10;
 
+  // If supplied, will be set as the external name of the host and will be
+  // available on Boundary's host listing and reading API.
+  string external_name = 70;
+
   // If supplied, will be set as the managed name of the host
   string name = 20;
 

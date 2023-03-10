@@ -18,6 +18,7 @@ import (
 	hcpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	ua "go.uber.org/atomic"
 )
 
@@ -396,7 +397,7 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				var hOplogMsg oplog.Message
 				onConflict := &db.OnConflict{
 					Target: db.Constraint("host_plugin_host_pkey"),
-					Action: db.SetColumns([]string{"name", "description", "version"}),
+					Action: db.SetColumns([]string{"name", "external_name", "description", "version"}),
 				}
 				var rowsAffected int64
 				dbOpts := []db.Option{
@@ -408,6 +409,18 @@ func (r *SetSyncJob) upsertAndCleanHosts(
 				if version > 0 {
 					dbOpts = append(dbOpts, db.WithVersion(&version))
 					ret.Version += 1
+				}
+				// This check is the logical counterpart of the database
+				// constraints on the external_name field. By replicating the
+				// checks as closely as possible in code, we reduce the risk of
+				// this transaction failing due to a bad external name.
+				if !strutil.Printable(ret.ExternalName) || len(ret.ExternalName) > 256 {
+					event.WriteError(ctx, op,
+						fmt.Errorf("ignoring host id %q external name %q due to its length (greater than 256 characters) or the presence of unsupported unicode characters",
+							ret.PublicId,
+							ret.ExternalName),
+					)
+					ret.ExternalName = ""
 				}
 				if err := w.Create(ctx, ret, dbOpts...); err != nil {
 					return errors.Wrap(ctx, err, op)

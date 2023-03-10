@@ -22,6 +22,7 @@ type options struct {
 	withPublicId            string
 	withPluginId            string
 	withName                string
+	withExternalName        string
 	withDescription         string
 	withAttributes          *structpb.Struct
 	withSecrets             *structpb.Struct
@@ -65,6 +66,13 @@ func WithDescription(desc string) Option {
 func WithName(name string) Option {
 	return func(o *options) {
 		o.withName = name
+	}
+}
+
+// WithExternalName provides an optional external name for the plugin host.
+func WithExternalName(externalName string) Option {
+	return func(o *options) {
+		o.withExternalName = externalName
 	}
 }
 

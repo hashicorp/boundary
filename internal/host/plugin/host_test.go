@@ -137,6 +137,67 @@ func TestHost_Create(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid-with-external-name",
+			args: args{
+				catalogId:  cat.GetPublicId(),
+				externalId: "valid-with-external-name",
+				opts: []Option{
+					WithExternalName("valid-with-external-name"),
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId:    cat.GetPublicId(),
+					ExternalId:   "valid-with-external-name",
+					ExternalName: "valid-with-external-name",
+				},
+			},
+		},
+		{
+			name: "external-name-too-long",
+			args: args{
+				catalogId:  cat.GetPublicId(),
+				externalId: "external-name-too-long",
+				opts: []Option{
+					WithExternalName(
+						"this_is_a_string_with_32_chars__" +
+							"this_is_a_string_with_32_chars__" +
+							"this_is_a_string_with_32_chars__" +
+							"this_is_a_string_with_32_chars__" +
+							"this_is_a_string_with_32_chars__" +
+							"this_is_a_string_with_32_chars__" +
+							"this_is_a_string_with_32_chars__" +
+							"this_is_a_string_with_32_chars__" +
+							"_oops_too_many",
+					),
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId:    cat.GetPublicId(),
+					ExternalId:   "external-name-too-long",
+					ExternalName: "",
+				},
+			},
+		},
+		{
+			name: "non-printable-external-name",
+			args: args{
+				catalogId:  cat.GetPublicId(),
+				externalId: "non-printable-external-name",
+				opts: []Option{
+					WithExternalName("this_is_printable_but_this\u0000_and_this\u000D_isnt_"),
+				},
+			},
+			want: &Host{
+				Host: &store.Host{
+					CatalogId:    cat.GetPublicId(),
+					ExternalId:   "non-printable-external-name",
+					ExternalName: "",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
