@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
@@ -45,11 +46,11 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 	opts := getOpts(opt...)
 
 	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, HostSetPrefix+"_") {
+		if !strings.HasPrefix(opts.withPublicId, globals.StaticHostSetPrefix+"_") {
 			return nil, errors.New(ctx,
 				errors.InvalidPublicId,
 				op,
-				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, HostSetPrefix),
+				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, globals.StaticHostSetPrefix),
 			)
 		}
 		s.PublicId = opts.withPublicId

@@ -880,7 +880,7 @@ func tagsToMapProto(in map[string][]string) (map[string]*structpb.ListValue, err
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetWorkerRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, server.WorkerPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.WorkerPrefix)
 }
 
 func validateListRequest(req *pbs.ListWorkersRequest) error {
@@ -898,7 +898,7 @@ func validateListRequest(req *pbs.ListWorkersRequest) error {
 }
 
 func validateDeleteRequest(req *pbs.DeleteWorkerRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, server.WorkerPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.WorkerPrefix)
 }
 
 func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
@@ -925,7 +925,7 @@ func validateUpdateRequest(req *pbs.UpdateWorkerRequest) error {
 			badFields[globals.DescriptionField] = "Contains non-printable characters."
 		}
 		return badFields
-	}, server.WorkerPrefix)
+	}, globals.WorkerPrefix)
 }
 
 func validateCreateRequest(item *pb.Worker, act action.Type) error {
@@ -1001,7 +1001,7 @@ func validateStringForDb(str string) string {
 
 func validateAddTagsRequest(req *pbs.AddWorkerTagsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), server.WorkerPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.WorkerPrefix) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1038,7 +1038,7 @@ func validateAddTagsRequest(req *pbs.AddWorkerTagsRequest) error {
 
 func validateSetTagsRequest(req *pbs.SetWorkerTagsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), server.WorkerPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.WorkerPrefix) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1072,7 +1072,7 @@ func validateSetTagsRequest(req *pbs.SetWorkerTagsRequest) error {
 
 func validateRemoveTagsRequest(req *pbs.RemoveWorkerTagsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), server.WorkerPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.WorkerPrefix) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

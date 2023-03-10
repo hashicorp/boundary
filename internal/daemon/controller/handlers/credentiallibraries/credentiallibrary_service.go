@@ -861,9 +861,9 @@ func validateGetRequest(req *pbs.GetCredentialLibraryRequest) error {
 	prefix := ""
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
 	case vault.SSHCertificateLibrarySubtype:
-		prefix = vault.SSHCertificateCredentialLibraryPrefix
+		prefix = globals.VaultSshCertificateCredentialLibraryPrefix
 	default:
-		prefix = vault.CredentialLibraryPrefix
+		prefix = globals.VaultCredentialLibraryPrefix
 	}
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, prefix)
 }
@@ -984,9 +984,9 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 	st := subtypes.SubtypeFromId(domain, req.GetId())
 	switch st {
 	case vault.GenericLibrarySubtype:
-		prefix = vault.CredentialLibraryPrefix
+		prefix = globals.VaultCredentialLibraryPrefix
 	case vault.SSHCertificateLibrarySubtype:
-		prefix = vault.SSHCertificateCredentialLibraryPrefix
+		prefix = globals.VaultSshCertificateCredentialLibraryPrefix
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -1041,12 +1041,12 @@ func validateUpdateRequest(req *pbs.UpdateCredentialLibraryRequest, currentCrede
 }
 
 func validateDeleteRequest(req *pbs.DeleteCredentialLibraryRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, vault.CredentialLibraryPrefix, vault.SSHCertificateCredentialLibraryPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.VaultCredentialLibraryPrefix, globals.VaultSshCertificateCredentialLibraryPrefix)
 }
 
 func validateListRequest(req *pbs.ListCredentialLibrariesRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), vault.CredentialStorePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), globals.VaultCredentialStorePrefix) {
 		badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

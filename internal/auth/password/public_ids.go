@@ -4,29 +4,27 @@
 package password
 
 import (
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, Subtype, globals.PasswordAuthMethodPrefix, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix); err != nil {
 		panic(err)
 	}
 }
 
 // PublicId prefixes for the resources in the password package.
 const (
-	AuthMethodPrefix = "ampw"
-
 	Subtype = subtypes.Subtype("password")
 )
 
 func newAuthMethodId() (string, error) {
 	const op = "password.newAuthMethodId"
-	id, err := db.NewPublicId(AuthMethodPrefix)
+	id, err := db.NewPublicId(globals.PasswordAuthMethodPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, op)
 	}
@@ -35,7 +33,7 @@ func newAuthMethodId() (string, error) {
 
 func newAccountId() (string, error) {
 	const op = "password.newAccountId"
-	id, err := db.NewPublicId(intglobals.NewPasswordAccountPrefix)
+	id, err := db.NewPublicId(globals.PasswordAccountPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, op)
 	}

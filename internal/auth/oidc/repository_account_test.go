@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -214,7 +215,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, AccountPrefix, got.PublicId)
+			assertPublicId(t, globals.OidcAccountPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -265,7 +266,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
+		assertPublicId(t, globals.OidcAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -312,7 +313,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
+		assertPublicId(t, globals.OidcAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -322,7 +323,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, AccountPrefix, got2.PublicId)
+		assertPublicId(t, globals.OidcAccountPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -357,7 +358,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
+		assertPublicId(t, globals.OidcAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -403,7 +404,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
+		assertPublicId(t, globals.OidcAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -415,7 +416,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, AccountPrefix, got2.PublicId)
+		assertPublicId(t, globals.OidcAccountPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -452,7 +453,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AccountPrefix, got.PublicId)
+		assertPublicId(t, globals.OidcAccountPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -467,7 +468,7 @@ func TestRepository_CreateAccount_DuplicateFields(t *testing.T) {
 		got2, err := repo.CreateAccount(context.Background(), org.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, AccountPrefix, got2.PublicId)
+		assertPublicId(t, globals.OidcAccountPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -1159,7 +1160,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 				return
 			}
 			require.NotNil(got)
-			assertPublicId(t, AccountPrefix, got.PublicId)
+			assertPublicId(t, globals.OidcAccountPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.AuthMethodId, got.AuthMethodId)

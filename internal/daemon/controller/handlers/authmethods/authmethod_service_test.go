@@ -175,7 +175,7 @@ func TestGet(t *testing.T) {
 		{
 			name:    "Get a non existant AuthMethod",
 			scopeId: o.GetPublicId(),
-			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_DoesntExis"},
+			req:     &pbs.GetAuthMethodRequest{Id: globals.PasswordAuthMethodPrefix + "_DoesntExis"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -189,7 +189,7 @@ func TestGet(t *testing.T) {
 		{
 			name:    "space in id",
 			scopeId: o.GetPublicId(),
-			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_1 23456789"},
+			req:     &pbs.GetAuthMethodRequest{Id: globals.PasswordAuthMethodPrefix + "_1 23456789"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -456,7 +456,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad auth_method id",
 			req: &pbs.DeleteAuthMethodRequest{
-				Id: password.AuthMethodPrefix + "_doesntexis",
+				Id: globals.PasswordAuthMethodPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -557,9 +557,9 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 				Type:        "password",
 			}},
-			idPrefix: password.AuthMethodPrefix + "_",
+			idPrefix: globals.PasswordAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", password.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.PasswordAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     o.GetPublicId(),
@@ -598,9 +598,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: oidc.AuthMethodPrefix + "_",
+			idPrefix: globals.OidcAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     o.GetPublicId(),
@@ -635,9 +635,9 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 				Type:        "password",
 			}},
-			idPrefix: password.AuthMethodPrefix + "_",
+			idPrefix: globals.PasswordAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", password.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.PasswordAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     scope.Global.String(),
@@ -673,9 +673,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: oidc.AuthMethodPrefix + "_",
+			idPrefix: globals.OidcAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     scope.Global.String(),
@@ -702,7 +702,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Id",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Id:      password.AuthMethodPrefix + "_notallowed",
+				Id:      globals.PasswordAuthMethodPrefix + "_notallowed",
 				Type:    "password",
 			}},
 			res: nil,
@@ -772,7 +772,7 @@ func TestCreate(t *testing.T) {
 				},
 			}},
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     o.GetPublicId(),

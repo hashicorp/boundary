@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/groups"
 	"github.com/hashicorp/boundary/api/users"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
@@ -218,7 +219,7 @@ func TestErrors(t *testing.T) {
 			_, err = groupClient.Create(tc.Context(), tt.scopeId, groups.WithName("first"))
 			require.Error(err)
 
-			_, err = groupClient.Read(tc.Context(), iam.GroupPrefix+"_doesntexis")
+			_, err = groupClient.Read(tc.Context(), globals.GroupPrefix+"_doesntexis")
 			require.Error(err)
 			apiErr = api.AsServerError(err)
 			require.NotNil(apiErr)

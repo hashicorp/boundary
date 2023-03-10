@@ -81,7 +81,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 	outerCertLoop:
 		for _, cert := range r.TLS.PeerCertificates {
 			for _, name := range cert.DNSNames {
-				if strings.HasPrefix(name, globals.SessionPrefix) {
+				if strings.HasPrefix(name, fmt.Sprintf("%s_", globals.SessionPrefix)) {
 					sessionId = name
 					break outerCertLoop
 				}

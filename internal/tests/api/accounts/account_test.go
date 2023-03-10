@@ -11,10 +11,9 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/api/authmethods"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -310,13 +309,13 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 
-	_, err = accountClient.Read(tc.Context(), intglobals.OldPasswordAccountPrefix+"_doesntexis")
+	_, err = accountClient.Read(tc.Context(), globals.PasswordAccountPreviousPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 	assert.EqualValues(http.StatusNotFound, apiErr.Response().StatusCode())
 
-	_, err = accountClient.Read(tc.Context(), intglobals.NewPasswordAccountPrefix+"_doesntexis")
+	_, err = accountClient.Read(tc.Context(), globals.PasswordAccountPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
@@ -376,7 +375,7 @@ func TestErrorsOidc(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)
 
-	_, err = accountClient.Read(tc.Context(), oidc.AccountPrefix+"_doesntexis")
+	_, err = accountClient.Read(tc.Context(), globals.OidcAccountPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)

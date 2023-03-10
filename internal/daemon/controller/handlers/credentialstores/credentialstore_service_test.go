@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
@@ -268,7 +267,7 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			wantErr:  true,
 		},
 		{
@@ -286,7 +285,7 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			wantErr:  true,
 		},
 		{
@@ -303,7 +302,7 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			err:      handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
@@ -320,7 +319,7 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			err:      handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
@@ -338,14 +337,14 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			err:      handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 		{
 			name: "Can't specify Id",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Id:      vault.CredentialStorePrefix + "_notallowed",
+				Id:      globals.VaultCredentialStorePrefix + "_notallowed",
 				Type:    vault.Subtype.String(),
 				Attrs: &pb.CredentialStore_VaultCredentialStoreAttributes{
 					VaultCredentialStoreAttributes: &pb.VaultCredentialStoreAttributes{
@@ -463,9 +462,9 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			res: &pbs.CreateCredentialStoreResponse{
-				Uri: fmt.Sprintf("credential-stores/%s_", vault.CredentialStorePrefix),
+				Uri: fmt.Sprintf("credential-stores/%s_", globals.VaultCredentialStorePrefix),
 				Item: &pb.CredentialStore{
 					ScopeId: prj.GetPublicId(),
 					Scope:   &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
@@ -503,9 +502,9 @@ func TestCreateVault(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: vault.CredentialStorePrefix + "_",
+			idPrefix: globals.VaultCredentialStorePrefix + "_",
 			res: &pbs.CreateCredentialStoreResponse{
-				Uri: fmt.Sprintf("credential-stores/%s_", vault.CredentialStorePrefix),
+				Uri: fmt.Sprintf("credential-stores/%s_", globals.VaultCredentialStorePrefix),
 				Item: &pb.CredentialStore{
 					ScopeId:     prj.GetPublicId(),
 					Name:        &wrapperspb.StringValue{Value: "name"},
@@ -629,7 +628,7 @@ func TestCreateStatic(t *testing.T) {
 			name: "Can't specify Id",
 			req: &pbs.CreateCredentialStoreRequest{Item: &pb.CredentialStore{
 				ScopeId: prj.GetPublicId(),
-				Id:      credstatic.CredentialStorePrefix + "_notallowed",
+				Id:      globals.StaticCredentialStorePrefix + "_notallowed",
 				Type:    credstatic.Subtype.String(),
 			}},
 			res: nil,
@@ -669,9 +668,9 @@ func TestCreateStatic(t *testing.T) {
 				ScopeId: prj.GetPublicId(),
 				Type:    credstatic.Subtype.String(),
 			}},
-			idPrefix: credstatic.CredentialStorePrefix + "_",
+			idPrefix: globals.StaticCredentialStorePrefix + "_",
 			res: &pbs.CreateCredentialStoreResponse{
-				Uri: fmt.Sprintf("credential-stores/%s_", credstatic.CredentialStorePrefix),
+				Uri: fmt.Sprintf("credential-stores/%s_", globals.StaticCredentialStorePrefix),
 				Item: &pb.CredentialStore{
 					ScopeId:                     prj.GetPublicId(),
 					Scope:                       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
@@ -690,9 +689,9 @@ func TestCreateStatic(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 				Type:        credstatic.Subtype.String(),
 			}},
-			idPrefix: credstatic.CredentialStorePrefix + "_",
+			idPrefix: globals.StaticCredentialStorePrefix + "_",
 			res: &pbs.CreateCredentialStoreResponse{
-				Uri: fmt.Sprintf("credential-stores/%s_", credstatic.CredentialStorePrefix),
+				Uri: fmt.Sprintf("credential-stores/%s_", globals.StaticCredentialStorePrefix),
 				Item: &pb.CredentialStore{
 					ScopeId:                     prj.GetPublicId(),
 					Scope:                       &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
@@ -774,7 +773,7 @@ func TestGet(t *testing.T) {
 
 	vaultStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	staticStorePrev := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId(), credstatic.WithPublicId(fmt.Sprintf("%s_1234567890", credstatic.PreviousCredentialStorePrefix)))
+	staticStorePrev := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId(), credstatic.WithPublicId(fmt.Sprintf("%s_1234567890", globals.StaticCredentialStorePreviousPrefix)))
 	s, err := NewService(ctx, vaultRepoFn, staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
@@ -846,17 +845,17 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "vault not found error",
-			id:   fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.VaultCredentialStorePrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
 			name: "static not found error",
-			id:   fmt.Sprintf("%s_1234567890", credstatic.CredentialStorePrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.StaticCredentialStorePrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
 			name: "bad prefix",
-			id:   fmt.Sprintf("%s_1234567890", static.HostPrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.StaticHostPrefix),
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}
@@ -927,17 +926,17 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "vault not found error",
-			id:   fmt.Sprintf("%s_1234567890", vault.CredentialStorePrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.VaultCredentialStorePrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
 			name: "static not found error",
-			id:   fmt.Sprintf("%s_1234567890", credstatic.CredentialStorePrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.StaticCredentialStorePrefix),
 			err:  handlers.NotFoundError(),
 		},
 		{
 			name: "bad prefix",
-			id:   fmt.Sprintf("%s_1234567890", static.HostPrefix),
+			id:   fmt.Sprintf("%s_1234567890", globals.StaticHostPrefix),
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
 	}

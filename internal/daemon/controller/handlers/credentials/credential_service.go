@@ -728,17 +728,17 @@ func validateGetRequest(req *pbs.GetCredentialRequest) error {
 	return handlers.ValidateGetRequest(
 		handlers.NoopValidatorFn,
 		req,
-		credential.UsernamePasswordCredentialPrefix,
-		credential.PreviousUsernamePasswordCredentialPrefix,
-		credential.SshPrivateKeyCredentialPrefix,
-		credential.JsonCredentialPrefix,
+		globals.UsernamePasswordCredentialPrefix,
+		globals.UsernamePasswordCredentialPreviousPrefix,
+		globals.SshPrivateKeyCredentialPrefix,
+		globals.JsonCredentialPrefix,
 	)
 }
 
 func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(handlers.Id(req.Item.GetCredentialStoreId()), static.CredentialStorePrefix, static.PreviousCredentialStorePrefix) {
+		if !handlers.ValidId(handlers.Id(req.Item.GetCredentialStoreId()), globals.StaticCredentialStorePrefix, globals.StaticCredentialStorePreviousPrefix) {
 			badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 		}
 
@@ -869,10 +869,10 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 
 		return badFields
 	},
-		credential.UsernamePasswordCredentialPrefix,
-		credential.PreviousUsernamePasswordCredentialPrefix,
-		credential.SshPrivateKeyCredentialPrefix,
-		credential.JsonCredentialPrefix,
+		globals.UsernamePasswordCredentialPrefix,
+		globals.UsernamePasswordCredentialPreviousPrefix,
+		globals.SshPrivateKeyCredentialPrefix,
+		globals.JsonCredentialPrefix,
 	)
 }
 
@@ -880,16 +880,16 @@ func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
 	return handlers.ValidateDeleteRequest(
 		handlers.NoopValidatorFn,
 		req,
-		credential.UsernamePasswordCredentialPrefix,
-		credential.PreviousUsernamePasswordCredentialPrefix,
-		credential.SshPrivateKeyCredentialPrefix,
-		credential.JsonCredentialPrefix,
+		globals.UsernamePasswordCredentialPrefix,
+		globals.UsernamePasswordCredentialPreviousPrefix,
+		globals.SshPrivateKeyCredentialPrefix,
+		globals.JsonCredentialPrefix,
 	)
 }
 
 func validateListRequest(req *pbs.ListCredentialsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), static.CredentialStorePrefix, static.PreviousCredentialStorePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), globals.StaticCredentialStorePrefix, globals.StaticCredentialStorePreviousPrefix) {
 		badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

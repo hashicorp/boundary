@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
@@ -17,7 +16,6 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -668,7 +666,7 @@ func toProto(ctx context.Context, in *iam.User, accts []string, opt ...handlers.
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetUserRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.UserPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateUserRequest) error {
@@ -683,11 +681,11 @@ func validateCreateRequest(req *pbs.CreateUserRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateUserRequest) error {
-	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, iam.UserPrefix)
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, globals.UserPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, iam.UserPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.UserPrefix)
 }
 
 func validateListRequest(req *pbs.ListUsersRequest) error {
@@ -707,7 +705,7 @@ func validateListRequest(req *pbs.ListUsersRequest) error {
 
 func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -719,9 +717,9 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			intglobals.OldPasswordAccountPrefix,
-			intglobals.NewPasswordAccountPrefix,
-			oidc.AccountPrefix,
+			globals.PasswordAccountPreviousPrefix,
+			globals.PasswordAccountPrefix,
+			globals.OidcAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
@@ -735,7 +733,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 
 func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -744,9 +742,9 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			intglobals.OldPasswordAccountPrefix,
-			intglobals.NewPasswordAccountPrefix,
-			oidc.AccountPrefix,
+			globals.PasswordAccountPreviousPrefix,
+			globals.PasswordAccountPrefix,
+			globals.OidcAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
@@ -760,7 +758,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 
 func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.UserPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.UserPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -772,9 +770,9 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 	for _, a := range req.GetAccountIds() {
 		// TODO: Increase the type of auth accounts that can be added to a user.
 		if !handlers.ValidId(handlers.Id(a),
-			intglobals.OldPasswordAccountPrefix,
-			intglobals.NewPasswordAccountPrefix,
-			oidc.AccountPrefix,
+			globals.PasswordAccountPreviousPrefix,
+			globals.PasswordAccountPrefix,
+			globals.OidcAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break

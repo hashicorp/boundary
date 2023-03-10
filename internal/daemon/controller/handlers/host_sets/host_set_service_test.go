@@ -103,7 +103,7 @@ func TestGet_Static(t *testing.T) {
 		},
 		{
 			name: "Get a non existing Host Set",
-			req:  &pbs.GetHostSetRequest{Id: static.HostSetPrefix + "_DoesntExis"},
+			req:  &pbs.GetHostSetRequest{Id: globals.StaticHostSetPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -115,7 +115,7 @@ func TestGet_Static(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostSetRequest{Id: static.HostPrefix + "_1 23456789"},
+			req:  &pbs.GetHostSetRequest{Id: globals.StaticHostPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -174,7 +174,7 @@ func TestGet_Plugin(t *testing.T) {
 
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1))
-	hsPrev := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1), plugin.WithPublicId(fmt.Sprintf("%s_1234567890", plugin.PreviousHostSetPrefix)))
+	hsPrev := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1), plugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostSetPreviousPrefix)))
 
 	toMerge := &pbs.GetHostSetRequest{}
 
@@ -219,7 +219,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "Get a non existing Host Set",
-			req:  &pbs.GetHostSetRequest{Id: plugin.HostSetPrefix + "_DoesntExis"},
+			req:  &pbs.GetHostSetRequest{Id: globals.PluginHostSetPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -231,7 +231,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostSetRequest{Id: plugin.HostSetPrefix + "_1 23456789"},
+			req:  &pbs.GetHostSetRequest{Id: globals.PluginHostSetPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -518,7 +518,7 @@ func TestDelete_Static(t *testing.T) {
 			name:      "Delete bad id Host Set",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				Id: static.HostSetPrefix + "_doesntexis",
+				Id: globals.StaticHostSetPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -526,7 +526,7 @@ func TestDelete_Static(t *testing.T) {
 			name:      "Bad Host Id formatting",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				Id: static.HostSetPrefix + "_bad_format",
+				Id: globals.StaticHostSetPrefix + "_bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -595,7 +595,7 @@ func TestDelete_Plugin(t *testing.T) {
 			name:      "Delete bad id Host Set",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				Id: plugin.HostSetPrefix + "_doesntexis",
+				Id: globals.PluginHostSetPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -603,7 +603,7 @@ func TestDelete_Plugin(t *testing.T) {
 			name:      "Bad Host Id formatting",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostSetRequest{
-				Id: plugin.HostSetPrefix + "_bad_format",
+				Id: globals.PluginHostSetPrefix + "_bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -700,7 +700,7 @@ func TestCreate_Static(t *testing.T) {
 				Type:          "static",
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", static.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.StaticHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -740,7 +740,7 @@ func TestCreate_Static(t *testing.T) {
 				Description:   &wrappers.StringValue{Value: "no type desc"},
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", static.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.StaticHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId:     hc.GetPublicId(),
 					Scope:             &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -793,7 +793,7 @@ func TestCreate_Static(t *testing.T) {
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostSetPrefix), got.GetItem().GetId())
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.StaticHostSetPrefix), got.GetItem().GetId())
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -894,7 +894,7 @@ func TestCreate_Plugin(t *testing.T) {
 				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.PluginHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -924,7 +924,7 @@ func TestCreate_Plugin(t *testing.T) {
 				},
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.PluginHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -954,7 +954,7 @@ func TestCreate_Plugin(t *testing.T) {
 				PreferredEndpoints: prefEndpoints,
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.PluginHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -1000,7 +1000,7 @@ func TestCreate_Plugin(t *testing.T) {
 				Description:   &wrappers.StringValue{Value: "no type desc"},
 			}},
 			res: &pbs.CreateHostSetResponse{
-				Uri: fmt.Sprintf("host-sets/%s_", plugin.HostSetPrefix),
+				Uri: fmt.Sprintf("host-sets/%s_", globals.PluginHostSetPrefix),
 				Item: &pb.HostSet{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -1060,7 +1060,7 @@ func TestCreate_Plugin(t *testing.T) {
 			require.NoError(gErr)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), plugin.HostSetPrefix), got.GetItem().GetId())
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.PluginHostSetPrefix), got.GetItem().GetId())
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
@@ -1338,7 +1338,7 @@ func TestUpdate_Static(t *testing.T) {
 		{
 			name: "Update a Non Existing Host Set",
 			req: &pbs.UpdateHostSetRequest{
-				Id: static.HostSetPrefix + "_DoesntExis",
+				Id: globals.StaticHostSetPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},

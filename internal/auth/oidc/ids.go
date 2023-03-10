@@ -6,31 +6,26 @@ package oidc
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, AuthMethodPrefix, AccountPrefix, intglobals.OidcManagedGroupPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, Subtype, globals.OidcAuthMethodPrefix, globals.OidcAccountPrefix, globals.OidcManagedGroupPrefix); err != nil {
 		panic(err)
 	}
 }
 
 const (
-	// AuthMethodPrefix defines the prefix for AuthMethod public ids.
-	AuthMethodPrefix = "amoidc"
-	// AccountPrefix defines the prefix for Account public ids.
-	AccountPrefix = "acctoidc"
-
 	Subtype = subtypes.Subtype("oidc")
 )
 
 func newAuthMethodId(ctx context.Context) (string, error) {
 	const op = "oidc.newAuthMethodId"
-	id, err := db.NewPublicId(AuthMethodPrefix)
+	id, err := db.NewPublicId(globals.OidcAuthMethodPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
@@ -48,7 +43,7 @@ func newAccountId(ctx context.Context, authMethodId, issuer, sub string) (string
 	if sub == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing subject")
 	}
-	id, err := db.NewPublicId(AccountPrefix, db.WithPrngValues([]string{authMethodId, issuer, sub}))
+	id, err := db.NewPublicId(globals.OidcAccountPrefix, db.WithPrngValues([]string{authMethodId, issuer, sub}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
@@ -57,7 +52,7 @@ func newAccountId(ctx context.Context, authMethodId, issuer, sub string) (string
 
 func newManagedGroupId(ctx context.Context) (string, error) {
 	const op = "oidc.newManagedGroupId"
-	id, err := db.NewPublicId(intglobals.OidcManagedGroupPrefix)
+	id, err := db.NewPublicId(globals.OidcManagedGroupPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

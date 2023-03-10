@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
@@ -44,7 +45,7 @@ func (h hooks) VetCredentialSources(ctx context.Context, cls []*target.Credentia
 }
 
 func TestRepository_SetTargetCredentialSources(t *testing.T) {
-	target.Register(targettest.Subtype, hooks{}, targettest.TargetPrefix)
+	target.Register(targettest.Subtype, hooks{}, globals.TcpTargetPrefix)
 
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")

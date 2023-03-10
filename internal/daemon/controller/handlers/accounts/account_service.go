@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -947,7 +946,7 @@ func validateGetRequest(req *pbs.GetAccountRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix, oidc.AccountPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix, globals.OidcAccountPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateAccountRequest) error {
@@ -1039,7 +1038,7 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 			}
 		}
 		return badFields
-	}, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix, oidc.AccountPrefix)
+	}, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix, globals.OidcAccountPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
@@ -1047,7 +1046,7 @@ func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix, oidc.AccountPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix, globals.OidcAccountPrefix)
 }
 
 func validateListRequest(req *pbs.ListAccountsRequest) error {
@@ -1056,7 +1055,7 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), password.AuthMethodPrefix, oidc.AuthMethodPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), globals.PasswordAuthMethodPrefix, globals.OidcAuthMethodPrefix) {
 		badFields[authMethodIdField] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
@@ -1074,7 +1073,7 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix) {
 		badFields[idField] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1098,7 +1097,7 @@ func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), intglobals.OldPasswordAccountPrefix, intglobals.NewPasswordAccountPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix) {
 		badFields[idField] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
-	"github.com/hashicorp/boundary/internal/authtoken"
 	requestauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -23,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -196,19 +194,19 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non existing old password account",
-			req:  &pbs.GetAccountRequest{Id: intglobals.OldPasswordAccountPrefix + "_DoesntExis"},
+			req:  &pbs.GetAccountRequest{Id: globals.PasswordAccountPreviousPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Get a non existing new password account",
-			req:  &pbs.GetAccountRequest{Id: intglobals.NewPasswordAccountPrefix + "_DoesntExis"},
+			req:  &pbs.GetAccountRequest{Id: globals.PasswordAccountPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Get a non existing oidc account",
-			req:  &pbs.GetAccountRequest{Id: oidc.AccountPrefix + "_DoesntExis"},
+			req:  &pbs.GetAccountRequest{Id: globals.OidcAccountPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -220,7 +218,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetAccountRequest{Id: authtoken.AuthTokenPrefix + "_1 23456789"},
+			req:  &pbs.GetAccountRequest{Id: globals.AuthTokenPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -330,7 +328,7 @@ func TestListPassword(t *testing.T) {
 		},
 		{
 			name: "Unfound Auth Method",
-			req:  &pbs.ListAccountsRequest{AuthMethodId: password.AuthMethodPrefix + "_DoesntExis"},
+			req:  &pbs.ListAccountsRequest{AuthMethodId: globals.PasswordAuthMethodPrefix + "_DoesntExis"},
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
@@ -484,7 +482,7 @@ func TestListOidc(t *testing.T) {
 		},
 		{
 			name: "Unfound Auth Method",
-			req:  &pbs.ListAccountsRequest{AuthMethodId: oidc.AuthMethodPrefix + "_DoesntExis"},
+			req:  &pbs.ListAccountsRequest{AuthMethodId: globals.OidcAuthMethodPrefix + "_DoesntExis"},
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
@@ -603,21 +601,21 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad old pw account id",
 			req: &pbs.DeleteAccountRequest{
-				Id: intglobals.OldPasswordAccountPrefix + "_doesntexis",
+				Id: globals.PasswordAccountPreviousPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Delete bad new pw account id",
 			req: &pbs.DeleteAccountRequest{
-				Id: intglobals.NewPasswordAccountPrefix + "_doesntexis",
+				Id: globals.PasswordAccountPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
 			name: "Delete bad oidc account id",
 			req: &pbs.DeleteAccountRequest{
-				Id: oidc.AccountPrefix + "_doesntexis",
+				Id: globals.OidcAccountPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -723,7 +721,7 @@ func TestCreatePassword(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", intglobals.NewPasswordAccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.PasswordAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
@@ -755,7 +753,7 @@ func TestCreatePassword(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", intglobals.NewPasswordAccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.PasswordAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
@@ -787,7 +785,7 @@ func TestCreatePassword(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", intglobals.NewPasswordAccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.PasswordAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Name:         &wrapperspb.StringValue{Value: "name_with_password"},
@@ -827,7 +825,7 @@ func TestCreatePassword(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
-					Id:           intglobals.NewPasswordAccountPrefix + "_notallowed",
+					Id:           globals.PasswordAccountPrefix + "_notallowed",
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
 						&pb.PasswordAccountAttributes{
@@ -900,7 +898,7 @@ func TestCreatePassword(t *testing.T) {
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), intglobals.NewPasswordAccountPrefix+"_"))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.PasswordAccountPrefix+"_"))
 				gotCreateTime := got.GetItem().GetCreatedTime()
 				require.NoError(err, "Error converting proto to timestamp.")
 				gotUpdateTime := got.GetItem().GetUpdatedTime()
@@ -971,7 +969,7 @@ func TestCreateOidc(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.OidcAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
@@ -1002,7 +1000,7 @@ func TestCreateOidc(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.OidcAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
@@ -1034,7 +1032,7 @@ func TestCreateOidc(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateAccountResponse{
-				Uri: fmt.Sprintf("accounts/%s_", oidc.AccountPrefix),
+				Uri: fmt.Sprintf("accounts/%s_", globals.OidcAccountPrefix),
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
@@ -1072,7 +1070,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateAccountRequest{
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
-					Id:           oidc.AccountPrefix + "_notallowed",
+					Id:           globals.OidcAccountPrefix + "_notallowed",
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
 						&pb.OidcAccountAttributes{
@@ -1142,7 +1140,7 @@ func TestCreateOidc(t *testing.T) {
 			require.NoError(gErr)
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), oidc.AccountPrefix+"_"))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.OidcAccountPrefix+"_"))
 				// Clear all values which are hard to compare against.
 				got.Uri, tc.res.Uri = "", ""
 				got.Item.Id, tc.res.Item.Id = "", ""
@@ -1409,7 +1407,7 @@ func TestUpdatePassword(t *testing.T) {
 		{
 			name: "Update a Non Existing Old ID Account",
 			req: &pbs.UpdateAccountRequest{
-				Id: intglobals.OldPasswordAccountPrefix + "_DoesntExis",
+				Id: globals.PasswordAccountPreviousPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{globals.DescriptionField},
 				},
@@ -1423,7 +1421,7 @@ func TestUpdatePassword(t *testing.T) {
 		{
 			name: "Update a Non Existing New ID Account",
 			req: &pbs.UpdateAccountRequest{
-				Id: intglobals.NewPasswordAccountPrefix + "_DoesntExis",
+				Id: globals.PasswordAccountPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{globals.DescriptionField},
 				},
@@ -1441,7 +1439,7 @@ func TestUpdatePassword(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.Account{
-					Id:          intglobals.NewPasswordAccountPrefix + "_somethinge",
+					Id:          globals.PasswordAccountPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -1786,7 +1784,7 @@ func TestUpdateOidc(t *testing.T) {
 		{
 			name: "Update a Non Existing Account",
 			req: &pbs.UpdateAccountRequest{
-				Id: intglobals.NewPasswordAccountPrefix + "_DoesntExis",
+				Id: globals.PasswordAccountPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{globals.DescriptionField},
 				},
@@ -1804,7 +1802,7 @@ func TestUpdateOidc(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.Account{
-					Id:          intglobals.NewPasswordAccountPrefix + "_somethinge",
+					Id:          globals.PasswordAccountPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -2033,13 +2031,13 @@ func TestSetPassword(t *testing.T) {
 		},
 		{
 			name:      "notfound old account id",
-			accountId: intglobals.OldPasswordAccountPrefix + "_DoesntExis",
+			accountId: globals.PasswordAccountPreviousPrefix + "_DoesntExis",
 			version:   defaultAcct.GetVersion(),
 			password:  "anewpassword",
 		},
 		{
 			name:      "notfound new account id",
-			accountId: intglobals.NewPasswordAccountPrefix + "_DoesntExis",
+			accountId: globals.PasswordAccountPrefix + "_DoesntExis",
 			version:   defaultAcct.GetVersion(),
 			password:  "anewpassword",
 		},
@@ -2200,7 +2198,7 @@ func TestChangePassword(t *testing.T) {
 		{
 			name:         "notfound old account id",
 			authMethodId: defaultAcct.GetAuthMethodId(),
-			accountId:    intglobals.OldPasswordAccountPrefix + "_DoesntExis",
+			accountId:    globals.PasswordAccountPreviousPrefix + "_DoesntExis",
 			version:      defaultAcct.GetVersion(),
 			oldPW:        "somepassword",
 			newPW:        "anewpassword",
@@ -2208,7 +2206,7 @@ func TestChangePassword(t *testing.T) {
 		{
 			name:         "notfound new account id",
 			authMethodId: defaultAcct.GetAuthMethodId(),
-			accountId:    intglobals.NewPasswordAccountPrefix + "_DoesntExis",
+			accountId:    globals.PasswordAccountPrefix + "_DoesntExis",
 			version:      defaultAcct.GetVersion(),
 			oldPW:        "somepassword",
 			newPW:        "anewpassword",

@@ -98,7 +98,6 @@ func (at *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 }
 
 const (
-	AuthTokenPrefix = "at"
 	// The version prefix is used to differentiate token versions just for future proofing.
 	TokenValueVersionPrefix = "0"
 	tokenLength             = 24
@@ -107,7 +106,7 @@ const (
 // NewAuthTokenId creates a new id for an auth token.
 func NewAuthTokenId() (string, error) {
 	const op = "authtoken.newAuthTokenId"
-	id, err := db.NewPublicId(AuthTokenPrefix)
+	id, err := db.NewPublicId(globals.AuthTokenPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, op)
 	}

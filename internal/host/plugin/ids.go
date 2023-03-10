@@ -6,6 +6,7 @@ package plugin
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
@@ -13,25 +14,18 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(host.Domain, Subtype, HostCatalogPrefix, PreviousHostCatalogPrefix, HostSetPrefix, PreviousHostSetPrefix, HostPrefix, PreviousHostPrefix); err != nil {
+	if err := subtypes.Register(host.Domain, Subtype, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix, globals.PluginHostSetPrefix, globals.PluginHostSetPreviousPrefix, globals.PluginHostPrefix, globals.PluginHostPreviousPrefix); err != nil {
 		panic(err)
 	}
 }
 
 // PublicId prefixes for the resources in the plugin package.
 const (
-	HostCatalogPrefix         = "hcplg"
-	PreviousHostCatalogPrefix = "hc"
-	HostSetPrefix             = "hsplg"
-	PreviousHostSetPrefix     = "hs"
-	HostPrefix                = "hplg"
-	PreviousHostPrefix        = "h"
-
 	Subtype = subtypes.Subtype("plugin")
 )
 
 func newHostCatalogId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(HostCatalogPrefix)
+	id, err := db.NewPublicId(globals.PluginHostCatalogPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "plugin.newHostCatalogId")
 	}
@@ -39,7 +33,7 @@ func newHostCatalogId(ctx context.Context) (string, error) {
 }
 
 func newHostSetId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(HostSetPrefix)
+	id, err := db.NewPublicId(globals.PluginHostSetPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "plugin.newHostSetId")
 	}
@@ -54,7 +48,7 @@ func newHostId(ctx context.Context, catalogId, externalId string) (string, error
 	if externalId == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing external id")
 	}
-	id, err := db.NewPublicId(HostPrefix, db.WithPrngValues([]string{catalogId, externalId}))
+	id, err := db.NewPublicId(globals.PluginHostPrefix, db.WithPrngValues([]string{catalogId, externalId}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

@@ -4,14 +4,12 @@
 package session
 
 import (
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
 const (
-	// SessionPrefix for session PK ids
-	SessionPrefix = "s"
-
 	// StatePrefix for state PK ids
 	StatePrefix = "ss"
 
@@ -24,7 +22,7 @@ const (
 
 func newId() (string, error) {
 	const op = "session.newId"
-	id, err := db.NewPublicId(SessionPrefix)
+	id, err := db.NewPublicId(globals.SessionPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, op)
 	}

@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -31,7 +32,7 @@ func Test_TestCatalogs(t *testing.T) {
 
 	cs := TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(cs.GetPublicId())
-	db.AssertPublicId(t, HostCatalogPrefix, cs.GetPublicId())
+	db.AssertPublicId(t, globals.PluginHostCatalogPrefix, cs.GetPublicId())
 	assert.Equal("foo", cs.GetName())
 	assert.Equal("bar", cs.GetDescription())
 }
@@ -53,7 +54,7 @@ func Test_TestSet(t *testing.T) {
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	set := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{})}, WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(set.GetPublicId())
-	db.AssertPublicId(t, HostSetPrefix, set.GetPublicId())
+	db.AssertPublicId(t, globals.PluginHostSetPrefix, set.GetPublicId())
 	assert.Equal("foo", set.GetName())
 	assert.Equal("bar", set.GetDescription())
 }

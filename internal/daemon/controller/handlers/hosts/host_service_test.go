@@ -101,7 +101,7 @@ func TestGet_Static(t *testing.T) {
 		},
 		{
 			name: "Get a non existing Host Set",
-			req:  &pbs.GetHostRequest{Id: static.HostPrefix + "_DoesntExis"},
+			req:  &pbs.GetHostRequest{Id: globals.StaticHostPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -113,7 +113,7 @@ func TestGet_Static(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostRequest{Id: static.HostPrefix + "_1 23456789"},
+			req:  &pbs.GetHostRequest{Id: globals.StaticHostPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -166,7 +166,7 @@ func TestGet_Plugin(t *testing.T) {
 	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	h := plugin.TestHost(t, conn, hc.GetPublicId(), "test")
-	hPrev := plugin.TestHost(t, conn, hc.GetPublicId(), "test-prev", plugin.WithPublicId(fmt.Sprintf("%s_1234567890", plugin.PreviousHostPrefix)))
+	hPrev := plugin.TestHost(t, conn, hc.GetPublicId(), "test-prev", plugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostPreviousPrefix)))
 	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm)
 	plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h, hPrev})
 
@@ -212,7 +212,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "non existing",
-			req:  &pbs.GetHostRequest{Id: plugin.HostPrefix + "_DoesntExis"},
+			req:  &pbs.GetHostRequest{Id: globals.PluginHostPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -224,7 +224,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetHostRequest{Id: plugin.HostPrefix + "_1 23456789"},
+			req:  &pbs.GetHostRequest{Id: globals.PluginHostPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -548,7 +548,7 @@ func TestDelete(t *testing.T) {
 			name:      "Delete bad id Host",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostRequest{
-				Id: static.HostPrefix + "_doesntexis",
+				Id: globals.StaticHostPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -556,7 +556,7 @@ func TestDelete(t *testing.T) {
 			name:      "Bad Host Id formatting",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostRequest{
-				Id: static.HostPrefix + "_bad_format",
+				Id: globals.StaticHostPrefix + "_bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -661,7 +661,7 @@ func TestCreate(t *testing.T) {
 				},
 			}},
 			res: &pbs.CreateHostResponse{
-				Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
+				Uri: fmt.Sprintf("hosts/%s_", globals.StaticHostPrefix),
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -749,7 +749,7 @@ func TestCreate(t *testing.T) {
 				},
 			}},
 			res: &pbs.CreateHostResponse{
-				Uri: fmt.Sprintf("hosts/%s_", static.HostPrefix),
+				Uri: fmt.Sprintf("hosts/%s_", globals.StaticHostPrefix),
 				Item: &pb.Host{
 					HostCatalogId: hc.GetPublicId(),
 					Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
@@ -828,7 +828,7 @@ func TestCreate(t *testing.T) {
 
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.GetUri())
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), static.HostPrefix))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.StaticHostPrefix))
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a set created after the test setup's default set
@@ -1142,7 +1142,7 @@ func TestUpdate_Static(t *testing.T) {
 		{
 			name: "Update a Non Existing Host",
 			req: &pbs.UpdateHostRequest{
-				Id: static.HostPrefix + "_DoesntExis",
+				Id: globals.StaticHostPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},

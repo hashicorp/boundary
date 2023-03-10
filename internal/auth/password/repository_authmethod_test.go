@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -156,7 +157,7 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, AuthMethodPrefix, got.PublicId)
+			assertPublicId(t, globals.PasswordAuthMethodPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -189,7 +190,7 @@ func TestRepository_CreateAuthMethod_DupeNames(t *testing.T) {
 		got, err := repo.CreateAuthMethod(context.Background(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AuthMethodPrefix, got.PublicId)
+		assertPublicId(t, globals.PasswordAuthMethodPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -218,7 +219,7 @@ func TestRepository_CreateAuthMethod_DupeNames(t *testing.T) {
 		got, err := repo.CreateAuthMethod(context.Background(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, AuthMethodPrefix, got.PublicId)
+		assertPublicId(t, globals.PasswordAuthMethodPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -229,7 +230,7 @@ func TestRepository_CreateAuthMethod_DupeNames(t *testing.T) {
 		got2, err := repo.CreateAuthMethod(context.Background(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, AuthMethodPrefix, got2.PublicId)
+		assertPublicId(t, globals.PasswordAuthMethodPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)

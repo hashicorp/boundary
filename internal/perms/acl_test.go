@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -245,17 +244,17 @@ func Test_ACLAllowed(t *testing.T) {
 				{action: action.Authenticate},
 				{action: action.Delete},
 			},
-			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix),
 		},
 		{
 			name:        "good templated old account id",
-			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix)},
+			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix)},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.ChangePassword, authorized: true},
 				{action: action.Update},
 			},
-			accountId: fmt.Sprintf("%s_1234567890", intglobals.OldPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix),
 		},
 		{
 			name:        "bad templated new account id",
@@ -266,17 +265,17 @@ func Test_ACLAllowed(t *testing.T) {
 				{action: action.Authenticate},
 				{action: action.Delete},
 			},
-			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix),
 		},
 		{
 			name:        "good templated new account id",
-			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix)},
+			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix)},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.ChangePassword, authorized: true},
 				{action: action.Update},
 			},
-			accountId: fmt.Sprintf("%s_1234567890", intglobals.NewPasswordAccountPrefix),
+			accountId: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix),
 		},
 		{
 			name:        "all type",

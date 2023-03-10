@@ -202,7 +202,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non-existent Worker",
-			req:  &pbs.GetWorkerRequest{Id: server.WorkerPrefix + "_DoesntExis"},
+			req:  &pbs.GetWorkerRequest{Id: globals.WorkerPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -214,7 +214,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Space in id",
-			req:  &pbs.GetWorkerRequest{Id: server.WorkerPrefix + "_1 23456789"},
+			req:  &pbs.GetWorkerRequest{Id: globals.WorkerPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -430,7 +430,7 @@ func TestDelete(t *testing.T) {
 			name:    "Delete bad worker id",
 			scopeId: w.GetScopeId(),
 			req: &pbs.DeleteWorkerRequest{
-				Id: server.WorkerPrefix + "_doesntexis",
+				Id: globals.WorkerPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -719,7 +719,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing Worker",
 			req: &pbs.UpdateWorkerRequest{
-				Id: server.WorkerPrefix + "_DoesntExis",
+				Id: globals.WorkerPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},

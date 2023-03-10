@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +17,7 @@ func Test_Ids(t *testing.T) {
 	t.Run("s", func(t *testing.T) {
 		id, err := newId()
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, SessionPrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, globals.SessionPrefix+"_"))
 	})
 	t.Run("ss", func(t *testing.T) {
 		id, err := newStateId()

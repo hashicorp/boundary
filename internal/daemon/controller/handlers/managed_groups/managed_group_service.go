@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -583,7 +582,7 @@ func validateGetRequest(req *pbs.GetManagedGroupRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.OidcManagedGroupPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
@@ -651,7 +650,7 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 			badFields[globals.IdField] = "Unrecognized resource type."
 		}
 		return badFields
-	}, intglobals.OidcManagedGroupPrefix)
+	}, globals.OidcManagedGroupPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
@@ -659,7 +658,7 @@ func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
 	if req == nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, intglobals.OidcManagedGroupPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.OidcManagedGroupPrefix)
 }
 
 func validateListRequest(req *pbs.ListManagedGroupsRequest) error {
@@ -668,7 +667,7 @@ func validateListRequest(req *pbs.ListManagedGroupsRequest) error {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), oidc.AuthMethodPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), globals.OidcAuthMethodPrefix) {
 		badFields[globals.AuthMethodIdField] = "Invalid formatted identifier."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

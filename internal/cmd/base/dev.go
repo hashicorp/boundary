@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/cmd/base/internal/docker"
 	"github.com/hashicorp/boundary/internal/db"
@@ -194,7 +195,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 	var err error
 
 	if b.DevOidcAuthMethodId == "" {
-		b.DevOidcAuthMethodId, err = db.NewPublicId(oidc.AuthMethodPrefix)
+		b.DevOidcAuthMethodId, err = db.NewPublicId(globals.OidcAuthMethodPrefix)
 		if err != nil {
 			return fmt.Errorf("error generating initial oidc auth method id: %w", err)
 		}
@@ -371,7 +372,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 		return nil, fmt.Errorf("error creating new in memory oidc auth method: %w", err)
 	}
 	if b.DevOidcAuthMethodId == "" {
-		b.DevOidcAuthMethodId, err = db.NewPublicId(oidc.AuthMethodPrefix)
+		b.DevOidcAuthMethodId, err = db.NewPublicId(globals.OidcAuthMethodPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("error generating initial oidc auth method id: %w", err)
 		}

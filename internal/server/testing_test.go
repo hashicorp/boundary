@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -26,7 +27,7 @@ func TestTestKmsWorker(t *testing.T) {
 	)
 	tWorker := TestKmsWorker(t, conn, wrapper, WithName(name), WithDescription(description), WithAddress(address), WithOperationalState(ShutdownOperationalState.String()))
 	assert.NotNil(t, tWorker)
-	assert.True(t, strings.HasPrefix(tWorker.GetPublicId(), WorkerPrefix))
+	assert.True(t, strings.HasPrefix(tWorker.GetPublicId(), globals.WorkerPrefix))
 
 	lkpWorker := NewWorker(scope.Global.String())
 	lkpWorker.PublicId = tWorker.GetPublicId()
@@ -52,7 +53,7 @@ func TestTestPkiWorker(t *testing.T) {
 	)
 	tWorker := TestPkiWorker(t, conn, wrapper, WithName(name), WithDescription(description))
 	assert.NotNil(t, tWorker)
-	assert.True(t, strings.HasPrefix(tWorker.GetPublicId(), WorkerPrefix))
+	assert.True(t, strings.HasPrefix(tWorker.GetPublicId(), globals.WorkerPrefix))
 
 	lkpWorker := NewWorker(scope.Global.String())
 	lkpWorker.PublicId = tWorker.GetPublicId()
@@ -67,6 +68,6 @@ func TestTestPkiWorker(t *testing.T) {
 	var keyId string
 	authorizedWorker := TestPkiWorker(t, conn, wrapper, WithTestPkiWorkerAuthorizedKeyId(&keyId))
 	assert.NotNil(t, authorizedWorker)
-	assert.True(t, strings.HasPrefix(authorizedWorker.GetPublicId(), WorkerPrefix))
+	assert.True(t, strings.HasPrefix(authorizedWorker.GetPublicId(), globals.WorkerPrefix))
 	assert.NotEmpty(t, keyId)
 }

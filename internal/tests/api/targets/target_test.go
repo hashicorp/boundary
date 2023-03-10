@@ -18,10 +18,10 @@ import (
 	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -684,7 +684,7 @@ func TestSet_Errors(t *testing.T) {
 	assert.NotNil(apiErr)
 	assert.Nil(tar)
 
-	_, err = tarClient.Read(tc.Context(), tcp.TargetPrefix+"_doesntexis")
+	_, err = tarClient.Read(tc.Context(), globals.TcpTargetPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
