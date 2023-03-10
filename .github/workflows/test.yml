@@ -57,6 +57,7 @@ jobs:
           key: ${{ steps.go-cache-key.outputs.key }}
           restore-keys: |
             ${{ runner.os }}-go
+          fail-on-cache-miss: true
       - name: Install Tools
         run: |
           go mod download
@@ -132,6 +133,7 @@ jobs:
           key: ${{ needs.setup.outputs.go-cache-key }}
           restore-keys: |
             ${{ runner.os }}-go
+          fail-on-cache-miss: true
       - id: set-matrix
         run: ./.github/scripts/set-test-package-matrix.sh
 
@@ -166,6 +168,7 @@ jobs:
           key: ${{ needs.setup.outputs.go-cache-key }}
           restore-keys: |
             ${{ runner.os }}-go
+          fail-on-cache-miss: true
       - name: Set up plugin cache
         id: plugin-cache
         uses: actions/cache@627f0f41f6904a5b1efbaed9f96d9eb58e92e920 # v3.2.4
