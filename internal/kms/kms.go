@@ -104,6 +104,11 @@ func (k *Kms) AddExternalWrappers(ctx context.Context, opt ...Option) error {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add recovery wrapper"))
 		}
 	}
+	if opts.withBsrWrapper != nil {
+		if err := k.underlying.AddExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeBsr.String()), opts.withBsrWrapper); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add bsr wrapper"))
+		}
+	}
 	return nil
 }
 
@@ -139,6 +144,9 @@ func (k *Kms) GetExternalWrappers(ctx context.Context) *ExternalWrappers {
 	}
 	if recovery, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeRecovery.String())); err == nil {
 		ret.recovery = recovery
+	}
+	if bsr, err := k.underlying.GetExternalWrapper(ctx, wrappingKms.KeyPurpose(KeyPurposeBsr.String())); err == nil {
+		ret.bsr = bsr
 	}
 	return ret
 }
@@ -594,8 +602,12 @@ func stdNewKmsPurposes() []wrappingKms.KeyPurpose {
 	for _, p := range ValidDekPurposes() {
 		purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
 	}
-	purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()), wrappingKms.KeyPurpose(KeyPurposeWorkerAuthStorage.String()),
-		wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
+	purposes = append(purposes,
+		wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()),
+		wrappingKms.KeyPurpose(KeyPurposeWorkerAuthStorage.String()),
+		wrappingKms.KeyPurpose(KeyPurposeRecovery.String()),
+		wrappingKms.KeyPurpose(KeyPurposeBsr.String()),
+	)
 	return purposes
 }
 

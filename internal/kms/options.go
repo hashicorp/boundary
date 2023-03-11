@@ -29,6 +29,7 @@ type options struct {
 	withWorkerAuthWrapper        wrapping.Wrapper
 	withWorkerAuthStorageWrapper wrapping.Wrapper
 	withRecoveryWrapper          wrapping.Wrapper
+	withBsrWrapper               wrapping.Wrapper
 	withOrderByVersion           db.OrderBy
 	withKeyId                    string
 	withScopeIds                 []string
@@ -78,6 +79,13 @@ func WithWorkerAuthStorageWrapper(w wrapping.Wrapper) Option {
 func WithRecoveryWrapper(w wrapping.Wrapper) Option {
 	return func(o *options) {
 		o.withRecoveryWrapper = w
+	}
+}
+
+// WithBsrWrapper sets the external Bsr wrapper for a KMS
+func WithBsrWrapper(w wrapping.Wrapper) Option {
+	return func(o *options) {
+		o.withBsrWrapper = w
 	}
 }
 

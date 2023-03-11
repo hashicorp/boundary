@@ -56,8 +56,12 @@ func Test_New(t *testing.T) {
 					for _, p := range ValidDekPurposes() {
 						purposes = append(purposes, wrappingKms.KeyPurpose(p.String()))
 					}
-					purposes = append(purposes, wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()),
-						wrappingKms.KeyPurpose(KeyPurposeWorkerAuthStorage.String()), wrappingKms.KeyPurpose(KeyPurposeRecovery.String()))
+					purposes = append(purposes,
+						wrappingKms.KeyPurpose(KeyPurposeWorkerAuth.String()),
+						wrappingKms.KeyPurpose(KeyPurposeWorkerAuthStorage.String()),
+						wrappingKms.KeyPurpose(KeyPurposeRecovery.String()),
+						wrappingKms.KeyPurpose(KeyPurposeBsr.String()),
+					)
 
 					wrapped, err := wrappingKms.New(db.NewChangeSafeDbwReader(rw), db.NewChangeSafeDbwWriter(rw), purposes)
 					require.NoError(t, err)
