@@ -170,10 +170,10 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			found = true
 
 		// Case 3: type=<resource.type>;actions=<action> when action is list or
-		// create. Must be a top level collection, otherwise must be one of the
-		// two formats specified in cases 4 or 5. Or,
-		// type=resource.type;output_fields=<fields> and no action. This is more
-		// of a semantic difference compared to 4 more than a security
+		// create (cannot be a wildcard). Must be a top level collection,
+		// otherwise must be one of the two formats specified in cases 4 or 5.
+		// Or, type=resource.type;output_fields=<fields> and no action. This is
+		// more of a semantic difference compared to 4 more than a security
 		// difference; this type is for clarity as it ties more closely to the
 		// concept of create and list as actions on a collection, operating on a
 		// collection directly. The format in case 4 will still work for
@@ -188,7 +188,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			r.Id == "" &&
 			grant.typ == r.Type &&
 			grant.typ != resource.Unknown &&
-			topLevelType(r.Type) &&
+			resource.TopLevelType(r.Type) &&
 			(action.List.IsActionOrParent(aType) ||
 				action.Create.IsActionOrParent(aType)):
 
@@ -213,7 +213,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 			grant.id == r.Pin &&
 			grant.typ != resource.Unknown &&
 			(grant.typ == r.Type || grant.typ == resource.All) &&
-			!topLevelType(r.Type):
+			!resource.TopLevelType(r.Type):
 
 			found = true
 		}
@@ -308,22 +308,4 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
 	}
 
 	return perms
-}
-
-func topLevelType(typ resource.Type) bool {
-	switch typ {
-	case resource.AuthMethod,
-		resource.AuthToken,
-		resource.CredentialStore,
-		resource.Group,
-		resource.HostCatalog,
-		resource.Role,
-		resource.Scope,
-		resource.Session,
-		resource.Target,
-		resource.User,
-		resource.Worker:
-		return true
-	}
-	return false
 }

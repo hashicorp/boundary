@@ -3,7 +3,11 @@
 
 package globals
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/hashicorp/boundary/internal/types/resource"
+)
 
 // This set of consts is intended to be a place to collect commonly-used
 // prefixes. This can avoid some cross-package dependency issues. Unlike the
@@ -101,33 +105,48 @@ const (
 	WorkerPrefix = "w"
 )
 
-var topLevelPrefixes = map[string]bool{
-	AuthTokenPrefix:                     true,
-	PasswordAuthMethodPrefix:            true,
-	OidcAuthMethodPrefix:                true,
-	ProjectPrefix:                       true,
-	OrgPrefix:                           true,
-	UserPrefix:                          true,
-	GroupPrefix:                         true,
-	RolePrefix:                          true,
-	StaticCredentialStorePrefix:         true,
-	StaticCredentialStorePreviousPrefix: true,
-	VaultCredentialStorePrefix:          true,
-	StaticHostCatalogPrefix:             true,
-	PluginHostCatalogPrefix:             true,
-	PluginHostCatalogPreviousPrefix:     true,
-	SessionPrefix:                       true,
-	TcpTargetPrefix:                     true,
-	SshTargetPrefix:                     true,
-	WorkerPrefix:                        true,
+var prefixToResourceType = map[string]resource.Type{
+	AuthTokenPrefix:                            resource.AuthToken,
+	PasswordAuthMethodPrefix:                   resource.AuthMethod,
+	PasswordAccountPrefix:                      resource.Account,
+	PasswordAccountPreviousPrefix:              resource.Account,
+	OidcAuthMethodPrefix:                       resource.AuthMethod,
+	OidcAccountPrefix:                          resource.Account,
+	OidcManagedGroupPrefix:                     resource.ManagedGroup,
+	GlobalPrefix:                               resource.Scope,
+	ProjectPrefix:                              resource.Scope,
+	OrgPrefix:                                  resource.Scope,
+	UserPrefix:                                 resource.User,
+	GroupPrefix:                                resource.Group,
+	RolePrefix:                                 resource.Role,
+	StaticCredentialStorePrefix:                resource.CredentialStore,
+	StaticCredentialStorePreviousPrefix:        resource.CredentialStore,
+	VaultCredentialStorePrefix:                 resource.CredentialStore,
+	VaultCredentialLibraryPrefix:               resource.CredentialLibrary,
+	VaultSshCertificateCredentialLibraryPrefix: resource.CredentialLibrary,
+	UsernamePasswordCredentialPrefix:           resource.Credential,
+	UsernamePasswordCredentialPreviousPrefix:   resource.Credential,
+	SshPrivateKeyCredentialPrefix:              resource.Credential,
+	JsonCredentialPrefix:                       resource.Credential,
+	StaticHostCatalogPrefix:                    resource.HostCatalog,
+	StaticHostSetPrefix:                        resource.HostSet,
+	StaticHostPrefix:                           resource.Host,
+	PluginHostCatalogPrefix:                    resource.HostCatalog,
+	PluginHostCatalogPreviousPrefix:            resource.HostCatalog,
+	PluginHostSetPrefix:                        resource.HostSet,
+	PluginHostSetPreviousPrefix:                resource.HostSet,
+	PluginHostPrefix:                           resource.Host,
+	PluginHostPreviousPrefix:                   resource.Host,
+	SessionPrefix:                              resource.Session,
+	TcpTargetPrefix:                            resource.Target,
+	SshTargetPrefix:                            resource.Target,
+	WorkerPrefix:                               resource.Worker,
 }
 
-// IsTopLevelResourcePrefix takes in a resource ID (or a prefix) and indicates
-// via the result whether the ID/prefix corresponds to a top-level resource;
-// that is, one (like auth method) that does not have a parent (like account or
-// managed group)
-func IsTopLevelResourcePrefix(in string) bool {
+// ResourceTypeFromPrefix takes in a resource ID (or a prefix) and returns the
+// corresponding resource typ
+func ResourceTypeFromPrefix(in string) resource.Type {
 	// If full ID, trim to just prefix
 	in, _, _ = strings.Cut(in, "_")
-	return topLevelPrefixes[in]
+	return prefixToResourceType[in]
 }

@@ -44,8 +44,8 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			scope: "o_a",
 			grants: []string{
-				"id=a_bar;actions=read,update",
-				"id=a_baz;actions=read:self,update",
+				"id=ampw_bar;actions=read,update",
+				"id=ampw_baz;actions=read:self,update",
 				"type=host-catalog;actions=create",
 				"type=target;actions=list",
 				"id=*;type=host-set;actions=list,create",
@@ -55,16 +55,9 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_b",
 			grants: []string{
 				"id=*;type=host-set;actions=list,create",
-				"id=mypin;type=host;actions=*;output_fields=name,description",
+				"id=hcst_mypin;type=host;actions=*;output_fields=name,description",
 				"id=*;type=*;actions=authenticate",
 				"id=*;type=*;output_fields=id",
-			},
-		},
-		{
-			scope: "o_c",
-			grants: []string{
-				"id={{user.id }};actions=read,update",
-				"id={{ account.id}};actions=change-password",
 			},
 		},
 		{
@@ -73,6 +66,15 @@ func Test_ACLAllowed(t *testing.T) {
 				"id=*;type=*;actions=create,update",
 				"id=*;type=session;actions=*",
 				"id=*;type=account;actions=update;output_fields=id,version",
+			},
+		},
+	}
+	templateGrants := []scopeGrant{
+		{
+			scope: "o_c",
+			grants: []string{
+				"id={{user.id }};actions=read,update",
+				"id={{ account.id}};actions=change-password",
 			},
 		},
 	}
@@ -117,7 +119,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and id and matching action",
-			resource:    Resource{ScopeId: "o_a", Id: "a_bar"},
+			resource:    Resource{ScopeId: "o_a", Id: "ampw_bar"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true},
@@ -127,7 +129,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope and type and all action with valid pin",
-			resource:    Resource{ScopeId: "o_b", Pin: "mypin", Type: resource.Host},
+			resource:    Resource{ScopeId: "o_b", Pin: "hcst_mypin", Type: resource.Host},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true, outputFields: []string{"description", "id", "name"}},
@@ -186,7 +188,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "matching scope, type, action, random id and bad pin",
-			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "a_bar"},
+			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "ampw_bar"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Update},
@@ -217,7 +219,7 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			name:        "bad templated user id",
 			resource:    Resource{ScopeId: "o_c"},
-			scopeGrants: commonGrants,
+			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List},
 				{action: action.Authenticate},
@@ -228,7 +230,7 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			name:        "good templated user id",
 			resource:    Resource{ScopeId: "o_c", Id: "u_abcd1234"},
-			scopeGrants: commonGrants,
+			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true},
 				{action: action.Update, authorized: true},
@@ -238,7 +240,7 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			name:        "bad templated old account id",
 			resource:    Resource{ScopeId: "o_c"},
-			scopeGrants: commonGrants,
+			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List},
 				{action: action.Authenticate},
@@ -249,7 +251,7 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			name:        "good templated old account id",
 			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPreviousPrefix)},
-			scopeGrants: commonGrants,
+			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.ChangePassword, authorized: true},
 				{action: action.Update},
@@ -259,7 +261,7 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			name:        "bad templated new account id",
 			resource:    Resource{ScopeId: "o_c"},
-			scopeGrants: commonGrants,
+			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.List},
 				{action: action.Authenticate},
@@ -270,7 +272,7 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			name:        "good templated new account id",
 			resource:    Resource{ScopeId: "o_c", Id: fmt.Sprintf("%s_1234567890", globals.PasswordAccountPrefix)},
-			scopeGrants: commonGrants,
+			scopeGrants: append(commonGrants, templateGrants...),
 			actionsAuthorized: []actionAuthorized{
 				{action: action.ChangePassword, authorized: true},
 				{action: action.Update},
@@ -305,7 +307,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "read self with top level read",
-			resource:    Resource{ScopeId: "o_a", Id: "a_bar"},
+			resource:    Resource{ScopeId: "o_a", Id: "ampw_bar"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true},
@@ -314,7 +316,7 @@ func Test_ACLAllowed(t *testing.T) {
 		},
 		{
 			name:        "read self only",
-			resource:    Resource{ScopeId: "o_a", Id: "a_baz"},
+			resource:    Resource{ScopeId: "o_a", Id: "ampw_baz"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read},
