@@ -36,6 +36,7 @@ const (
 	// * The scopes service collection actions for appropriate scopes
 	// * The Test_AnonRestrictions test: update the following line to include the last resource:
 	//      for i := resource.Type(1); i <= resource.<Resource>; i++ {
+	// * The prefixes and top level prefixes in globals/prefixes.go
 )
 
 func (r Type) MarshalJSON() ([]byte, error) {

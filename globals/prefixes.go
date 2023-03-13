@@ -3,6 +3,8 @@
 
 package globals
 
+import "strings"
+
 // This set of consts is intended to be a place to collect commonly-used
 // prefixes. This can avoid some cross-package dependency issues. Unlike the
 // top-level globals package, these are not currently meant to be available to
@@ -98,3 +100,34 @@ const (
 	// WorkerPrefix is the prefix for workers
 	WorkerPrefix = "w"
 )
+
+var topLevelPrefixes = map[string]bool{
+	AuthTokenPrefix:                     true,
+	PasswordAuthMethodPrefix:            true,
+	OidcAuthMethodPrefix:                true,
+	ProjectPrefix:                       true,
+	OrgPrefix:                           true,
+	UserPrefix:                          true,
+	GroupPrefix:                         true,
+	RolePrefix:                          true,
+	StaticCredentialStorePrefix:         true,
+	StaticCredentialStorePreviousPrefix: true,
+	VaultCredentialStorePrefix:          true,
+	StaticHostCatalogPrefix:             true,
+	PluginHostCatalogPrefix:             true,
+	PluginHostCatalogPreviousPrefix:     true,
+	SessionPrefix:                       true,
+	TcpTargetPrefix:                     true,
+	SshTargetPrefix:                     true,
+	WorkerPrefix:                        true,
+}
+
+// IsTopLevelResourcePrefix takes in a resource ID (or a prefix) and indicates
+// via the result whether the ID/prefix corresponds to a top-level resource;
+// that is, one (like auth method) that does not have a parent (like account or
+// managed group)
+func IsTopLevelResourcePrefix(in string) bool {
+	// If full ID, trim to just prefix
+	in, _, _ = strings.Cut(in, "_")
+	return topLevelPrefixes[in]
+}
