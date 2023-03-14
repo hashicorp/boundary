@@ -74,8 +74,8 @@ jobs:
           #### Indexes
           $(getdiff .schema-diff/indexes.diff)
 
-          #### Post Data
-          $(getdiff .schema-diff/post_data.diff)
+          #### Constraints
+          $(getdiff .schema-diff/constraints.diff)
           EOF
 
           # Parse it through jq to build a valid json object.
