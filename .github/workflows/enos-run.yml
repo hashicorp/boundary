@@ -164,11 +164,6 @@ jobs:
         if: matrix.filter == 'e2e_docker builder:crt'
         run: |
           sudo echo "127.0.0.1 localhost boundary" | sudo tee -a /etc/hosts
-      - name: Open up permissions for docker mounted directory
-        # Without this, the docker container would have permissions issues trying to write to audit.log
-        if: matrix.filter == 'e2e_docker builder:crt'
-        run: |
-          chmod 777 enos/modules/docker_boundary/auditlogs
       - name: Download Boundary Linux AMD64 bundle
         id: download
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
