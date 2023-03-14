@@ -22,4 +22,4 @@ docker run \
     --mount type=bind,src=$SOURCE,dst=/boundary/ \
     --network e2e_network \
     $TEST_BOUNDARY_IMAGE \
-    boundary database init -config /boundary/boundary-config.hcl -format json \
+    boundary database init -config /boundary/boundary-config.hcl -format json
