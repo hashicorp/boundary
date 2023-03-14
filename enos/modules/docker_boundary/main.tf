@@ -48,10 +48,10 @@ resource "enos_local_exec" "init_database" {
 }
 
 locals {
-  test           = jsondecode(enos_local_exec.init_database.stdout)
-  auth_method_id = local.test["auth_method"]["auth_method_id"]
-  login_name     = local.test["auth_method"]["login_name"]
-  password       = local.test["auth_method"]["password"]
+  db_init_info   = jsondecode(enos_local_exec.init_database.stdout)
+  auth_method_id = local.db_init_info["auth_method"]["auth_method_id"]
+  login_name     = local.db_init_info["auth_method"]["login_name"]
+  password       = local.db_init_info["auth_method"]["password"]
 }
 
 resource "docker_container" "boundary" {

@@ -34,10 +34,6 @@ variable "private_key_file_path" {
   type        = string
 }
 
-locals {
-  is_openssh = length(regexall(".*OPENSSH.*", file(var.private_key_file_path))) > 0
-}
-
 data "tls_public_key" "host_key_openssh" {
   private_key_openssh = file(var.private_key_file_path)
 }

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
 
@@ -14,7 +14,7 @@ TEST_CONTAINER_NAME=boundary-init
 SOURCE=$(realpath $(dirname ${BASH_SOURCE[0]})) # get directory of this script
 
 docker run \
-    -d \
+    --rm \
     --name $TEST_CONTAINER_NAME \
     -e "BOUNDARY_POSTGRES_URL=$TEST_DATABASE_ADDRESS" \
     -e "SKIP_CHOWN=true" \
@@ -23,8 +23,3 @@ docker run \
     --network e2e_network \
     $TEST_BOUNDARY_IMAGE \
     boundary database init -config /boundary/boundary-config.hcl -format json \
-    >/dev/null 2>&1 # suppresses output
-
-docker wait $TEST_CONTAINER_NAME >/dev/null 2>&1
-echo $(docker logs $TEST_CONTAINER_NAME)
-docker rm -v $TEST_CONTAINER_NAME >/dev/null 2>&1 || true

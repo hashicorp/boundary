@@ -55,7 +55,7 @@ scenario "e2e_docker" {
       step.create_docker_network
     ]
     variables {
-      image_name   = "docker.io/hashicorp/vault:1.12.2"
+      image_name   = "docker.io/hashicorp/vault:${var.vault_version}"
       network_name = step.create_docker_network.network_name
     }
   }
