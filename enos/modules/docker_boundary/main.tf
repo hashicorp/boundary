@@ -89,10 +89,6 @@ resource "docker_container" "boundary" {
     host_path      = abspath(path.module)
     container_path = "/boundary/"
   }
-  volumes {
-    host_path      = "${abspath(path.module)}/auditlogs"
-    container_path = "/logs"
-  }
   healthcheck {
     test     = ["CMD", "wget", "--quiet", "-O", "/dev/null", "http://boundary:9203/health"]
     interval = "3s"
