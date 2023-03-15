@@ -165,8 +165,11 @@ func TestGet_Plugin(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	h := plugin.TestHost(t, conn, hc.GetPublicId(), "test")
-	hPrev := plugin.TestHost(t, conn, hc.GetPublicId(), "test-prev", plugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostPreviousPrefix)))
+	h := plugin.TestHost(t, conn, hc.GetPublicId(), "test", plugin.WithExternalName("test-ext-name"))
+	hPrev := plugin.TestHost(t, conn, hc.GetPublicId(), "test-prev",
+		plugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostPreviousPrefix)),
+		plugin.WithExternalName("test-prev-name"),
+	)
 	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm)
 	plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h, hPrev})
 
@@ -184,6 +187,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		HostSetIds:        []string{hs.GetPublicId()},
 		ExternalId:        "test",
+		ExternalName:      "test-ext-name",
 		AuthorizedActions: testAuthorizedActions[plugin.Subtype],
 	}
 
@@ -207,6 +211,7 @@ func TestGet_Plugin(t *testing.T) {
 				resp.CreatedTime = hPrev.CreateTime.GetTimestamp()
 				resp.UpdatedTime = hPrev.UpdateTime.GetTimestamp()
 				resp.ExternalId = "test-prev"
+				resp.ExternalName = "test-prev-name"
 				return &pbs.GetHostResponse{Item: resp}
 			}(),
 		},
@@ -397,7 +402,7 @@ func TestList_Plugin(t *testing.T) {
 	var wantHs []*pb.Host
 	for i := 0; i < 10; i++ {
 		extId := fmt.Sprintf("host %d", i)
-		h := plugin.TestHost(t, conn, hc.GetPublicId(), extId)
+		h := plugin.TestHost(t, conn, hc.GetPublicId(), extId, plugin.WithExternalName(fmt.Sprintf("ext-name-%d", i)))
 		plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
 		wantHs = append(wantHs, &pb.Host{
 			Id:            h.GetPublicId(),
@@ -413,6 +418,7 @@ func TestList_Plugin(t *testing.T) {
 			HostSetIds:        []string{hs.GetPublicId()},
 			Version:           1,
 			ExternalId:        extId,
+			ExternalName:      fmt.Sprintf("ext-name-%d", i),
 			Type:              plugin.Subtype.String(),
 			AuthorizedActions: testAuthorizedActions[plugin.Subtype],
 		})

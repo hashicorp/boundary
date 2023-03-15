@@ -598,6 +598,9 @@ func toProto(ctx context.Context, in host.Host, opt ...handlers.Option) (*pb.Hos
 		if outputFields.Has(globals.ExternalIdField) {
 			out.ExternalId = h.ExternalId
 		}
+		if outputFields.Has(globals.ExternalNameField) {
+			out.ExternalName = h.ExternalName
+		}
 	}
 	return &out, nil
 }

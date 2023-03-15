@@ -4711,6 +4711,11 @@
           "description": "Output only. The external ID of the host, if any.",
           "readOnly": true
         },
+        "external_name": {
+          "type": "string",
+          "description": "Output only. Refers to the name for a given host provided by the plugin enabled backing service.",
+          "readOnly": true
+        },
         "authorized_actions": {
           "type": "array",
           "items": {

@@ -88,6 +88,9 @@ message Host {
   // Output only. The external ID of the host, if any.
   string external_id = 140; // @gotags: `class:"public"`
 
+  // Output only. Refers to the name for a given host provided by the plugin enabled backing service.
+  string external_name = 150; // @gotags: `class:"public"`
+
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }
