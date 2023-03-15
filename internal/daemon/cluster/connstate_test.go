@@ -18,7 +18,7 @@ type testConn struct {
 	st *structpb.Struct
 }
 
-func (c *testConn) State() *structpb.Struct {
+func (c *testConn) ClientState() *structpb.Struct {
 	return c.st
 }
 
