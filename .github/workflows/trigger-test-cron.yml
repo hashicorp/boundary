@@ -14,7 +14,7 @@ jobs:
 
       - name: Trigger test workflow
         run: |
-          run=5
+          run=20
           for i in $(seq $run); do
             gh workflow run test.yml
           done
