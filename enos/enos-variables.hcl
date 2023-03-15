@@ -25,10 +25,16 @@ variable "enos_user" {
 }
 
 # Test configs
-variable "boundary_docker_image" {
-  description = "Name of Docker Image to use"
+variable "boundary_docker_image_name" {
+  description = "Name of Docker image to use"
   type        = string
   default     = "docker.io/hashicorp/boundary:latest"
+}
+
+variable "boundary_docker_image_file" {
+  description = "Path to Boundary Docker image"
+  type        = string
+  default     = ""
 }
 
 variable "worker_instance_type" {

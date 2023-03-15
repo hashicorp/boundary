@@ -12,9 +12,14 @@ scenario "e2e_docker" {
     provider.enos.default
   ]
 
+  matrix {
+    builder = ["local", "crt"]
+  }
+
   locals {
-    aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
-    local_boundary_dir       = abspath(var.local_boundary_dir)
+    aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
+    local_boundary_dir         = abspath(var.local_boundary_dir)
+    boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     tags = merge({
       "Project Name" : var.project_name
       "Project" : "Enos",
@@ -36,14 +41,27 @@ scenario "e2e_docker" {
     module = module.docker_postgres
   }
 
+  // step "build_boundary_docker_image" {
+
+  // }
+
+  step "load_boundary_docker_image" {
+    module = module.load_docker_image
+
+    variables {
+      path = local.boundary_docker_image_file
+    }
+  }
+
   step "create_boundary" {
     module = module.docker_boundary
     depends_on = [
       step.create_docker_network,
-      step.create_boundary_database
+      step.create_boundary_database,
+      step.load_boundary_docker_image
     ]
     variables {
-      image_name       = var.boundary_docker_image
+      image_name       = var.boundary_docker_image_name
       network_name     = step.create_docker_network.network_name
       postgres_address = step.create_boundary_database.address
     }

@@ -12,6 +12,12 @@ on:
       go-version:
         required: true
         type: string
+      docker-image-name:
+        required: true
+        type: string
+      docker-image-file:
+        required: true
+        type: string
 
 env:
   PKG_NAME: boundary
@@ -177,6 +183,17 @@ jobs:
         run: |
           unzip ${{steps.download.outputs.download-path}}/*.zip -d enos/support/boundary
           mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
+      - name: Download Boundary Linux AMD64 docker image
+        if: matrix.filter == 'e2e_docker builder:crt'
+        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+        id: download-docker
+        with:
+          name: ${{ inputs.docker-image-file }}
+          path: ./enos/support/downloads
+      - name: Rename docker image file
+        if: matrix.filter == 'e2e_docker builder:crt'
+        run: |
+          mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
       - name: Set up Node.js
         uses: actions/setup-node@v3
         if: matrix.filter == 'e2e_ui builder:crt'
@@ -206,6 +223,8 @@ jobs:
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
+          ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
+          ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
@@ -224,6 +243,8 @@ jobs:
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
+          ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
+          ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
@@ -253,6 +274,8 @@ jobs:
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
+          ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
+          ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
@@ -267,6 +290,8 @@ jobs:
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
+          ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
+          ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}

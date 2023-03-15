@@ -357,6 +357,8 @@ jobs:
     strategy:
       matrix:
         arch: ["arm", "arm64", "386", "amd64"]
+    outputs:
+      tag: docker.io/hashicorppreview/${{ env.repo }}:${{ env.minor-version }}-dev-${{ github.sha }}
     env:
       repo: ${{ github.event.repository.name }}
       version: ${{ needs.set-product-version.outputs.product-version }}
@@ -394,6 +396,8 @@ jobs:
     with:
       artifact-name: "boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip"
       go-version: ${{ needs.product-metadata.outputs.go-version }}
+      docker-image-name: ${{ needs.build-docker.outputs.tag }}
+      docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.dev.tar"
     secrets: inherit
 
   bats:

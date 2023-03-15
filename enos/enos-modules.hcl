@@ -117,3 +117,7 @@ module "docker_openssh_server" {
 module "docker_network" {
   source = "./modules/docker_network"
 }
+
+module "load_docker_image" {
+  source = "./modules/load_docker_image"
+}
