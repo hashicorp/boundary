@@ -5,7 +5,6 @@ disable_mlock = true
 
 controller {
   name        = "docker-controller"
-  description = "A controller for a docker demo!"
 
   database {
     url = "env://BOUNDARY_POSTGRES_URL"
@@ -78,28 +77,5 @@ events {
       "\"/data/request_info/method\" contains \"Status\"",
       "\"/data/request_info/path\" contains \"/health\"",
     ]
-  }
-
-  sink {
-    name        = "audit-sink"
-    description = "Audit sent to a file"
-    event_types = ["audit"]
-    format      = "cloudevents-json"
-
-    deny_filters = [
-      "\"/data/request_info/method\" contains \"Status\"",
-    ]
-
-    file {
-      path      = "/logs"
-      file_name = "audit.log"
-    }
-
-    audit_config {
-      audit_filter_overrides {
-        secret    = "encrypt"
-        sensitive = "hmac-sha256"
-      }
-    }
   }
 }
