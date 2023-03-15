@@ -133,7 +133,7 @@ func NewConnectionTrackingListener(l net.Listener, ac prometheus.Counter, cc pro
 
 type stateProvidingConn interface {
 	net.Conn
-	State() *structpb.Struct
+	ClientState() *structpb.Struct
 }
 
 // connectionTrackingListenerStateConn wraps connections that expose

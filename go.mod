@@ -96,7 +96,7 @@ require (
 	github.com/hashicorp/cap/ldap v0.0.0-20230123181313-9c0fb924b0d9
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c893099f13
 	github.com/hashicorp/go-version v1.3.0
-	github.com/hashicorp/nodeenrollment v0.1.18
+	github.com/hashicorp/nodeenrollment v0.1.19
 	github.com/jimlambrt/gldap v0.1.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
