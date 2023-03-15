@@ -72,6 +72,7 @@ const (
 	DnsNamesField                               = "dns_names"
 	SecretsHmacField                            = "secrets_hmac"
 	ExternalIdField                             = "external_id"
+	ExternalNameField                           = "external_name"
 	InjectedApplicationCredentialSourceIdsField = "injected_application_credential_source_ids"
 	InjectedApplicationCredentialSourcesField   = "injected_application_credential_sources"
 	ConnectionsField                            = "connections"

@@ -29,6 +29,7 @@ type Host struct {
 	IpAddresses       []string               `json:"ip_addresses,omitempty"`
 	DnsNames          []string               `json:"dns_names,omitempty"`
 	ExternalId        string                 `json:"external_id,omitempty"`
+	ExternalName      string                 `json:"external_name,omitempty"`
 	AuthorizedActions []string               `json:"authorized_actions,omitempty"`
 
 	response *api.Response
