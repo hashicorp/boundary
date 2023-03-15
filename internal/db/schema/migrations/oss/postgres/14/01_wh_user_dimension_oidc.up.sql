@@ -39,6 +39,7 @@ begin;
     alter column auth_account_email       type wh_dim_text
   ;
 
+-- Replaced in 64/01_wh_user_dimension_ldap.up.sql
   drop view whx_user_dimension_source;
   create view whx_user_dimension_source as
        select -- id is the first column in the target view
