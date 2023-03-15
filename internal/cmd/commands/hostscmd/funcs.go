@@ -85,6 +85,11 @@ func (c *Command) printListTable(items []*hosts.Host) string {
 				fmt.Sprintf("    External ID:         %s", item.ExternalId),
 			)
 		}
+		if item.ExternalName != "" {
+			output = append(output,
+				fmt.Sprintf("    External Name:       %s", item.ExternalName),
+			)
+		}
 		if item.Version > 0 {
 			output = append(output,
 				fmt.Sprintf("    Version:             %d", item.Version),
@@ -144,6 +149,9 @@ func printItemTable(item *hosts.Host, resp *api.Response) string {
 	}
 	if item.ExternalId != "" {
 		nonAttributeMap["External ID"] = item.ExternalId
+	}
+	if item.ExternalName != "" {
+		nonAttributeMap["External Name"] = item.ExternalName
 	}
 
 	maxLength := base.MaxAttributesLength(nonAttributeMap, item.Attributes, keySubstMap)
