@@ -5,8 +5,7 @@ package bsr
 
 import (
 	"context"
-
-	"github.com/hashicorp/boundary/internal/errors"
+	"fmt"
 )
 
 // sizes
@@ -16,7 +15,8 @@ const (
 	chunkTypeSize = 4
 	directionSize = 1
 
-	chunkBaseSize = lengthSize + protocolSize + chunkTypeSize + directionSize + timestampSize
+	crcDataSize   = protocolSize + chunkTypeSize + directionSize + timestampSize
+	chunkBaseSize = lengthSize + crcDataSize
 	crcSize       = 4
 )
 
@@ -65,16 +65,16 @@ type BaseChunk struct {
 func NewBaseChunk(ctx context.Context, p Protocol, d Direction, t *Timestamp, typ ChunkType) (*BaseChunk, error) {
 	const op = "bsr.NewBaseChunk"
 	if !ValidProtocol(p) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "protocol name cannot be greater than 4 characters")
+		return nil, fmt.Errorf("%s: protocol name cannot be greater than 4 characters: %w", op, ErrInvalidParameter)
 	}
 	if !ValidDirection(d) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid direction")
+		return nil, fmt.Errorf("%s: invalid direction: %w", op, ErrInvalidParameter)
 	}
 	if t == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "timestamp must not be nil")
+		return nil, fmt.Errorf("%s: timestamp must not be nil: %w", op, ErrInvalidParameter)
 	}
 	if !ValidChunkType(typ) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "chunk type cannot be greater than 4 characters")
+		return nil, fmt.Errorf("%s: chunk type cannot be greater than 4 characters: %w", op, ErrInvalidParameter)
 	}
 
 	return &BaseChunk{

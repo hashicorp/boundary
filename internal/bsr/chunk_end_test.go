@@ -5,11 +5,11 @@ package bsr_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/bsr"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,7 +62,7 @@ func TestNewEndChunk(t *testing.T) {
 			bsr.Inbound,
 			bsr.NewTimestamp(now),
 			nil,
-			errors.New(ctx, errors.InvalidParameter, "bsr.NewBaseChunk", "protocol name cannot be greater than 4 characters"),
+			errors.New("bsr.NewBaseChunk: protocol name cannot be greater than 4 characters: invalid parameter"),
 		},
 		{
 			"invalid-direction",
@@ -70,7 +70,7 @@ func TestNewEndChunk(t *testing.T) {
 			bsr.UnknownDirection,
 			bsr.NewTimestamp(now),
 			nil,
-			errors.New(ctx, errors.InvalidParameter, "bsr.NewBaseChunk", "invalid direction"),
+			errors.New("bsr.NewBaseChunk: invalid direction: invalid parameter"),
 		},
 		{
 			"invalid-timestamp",
@@ -78,7 +78,7 @@ func TestNewEndChunk(t *testing.T) {
 			bsr.Inbound,
 			nil,
 			nil,
-			errors.New(ctx, errors.InvalidParameter, "bsr.NewBaseChunk", "timestamp must not be nil"),
+			errors.New("bsr.NewBaseChunk: timestamp must not be nil: invalid parameter"),
 		},
 	}
 

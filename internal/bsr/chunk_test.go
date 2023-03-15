@@ -5,11 +5,11 @@ package bsr_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/bsr"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,7 +48,7 @@ func TestNewBaseChunk(t *testing.T) {
 			bsr.NewTimestamp(now),
 			bsr.ChunkType("TEST"),
 			nil,
-			errors.New(ctx, errors.InvalidParameter, "bsr.NewBaseChunk", "protocol name cannot be greater than 4 characters"),
+			errors.New("bsr.NewBaseChunk: protocol name cannot be greater than 4 characters: invalid parameter"),
 		},
 		{
 			"invalid-direction",
@@ -57,7 +57,7 @@ func TestNewBaseChunk(t *testing.T) {
 			bsr.NewTimestamp(now),
 			bsr.ChunkType("TEST"),
 			nil,
-			errors.New(ctx, errors.InvalidParameter, "bsr.NewBaseChunk", "invalid direction"),
+			errors.New("bsr.NewBaseChunk: invalid direction: invalid parameter"),
 		},
 		{
 			"invalid-timestamp",
@@ -66,7 +66,7 @@ func TestNewBaseChunk(t *testing.T) {
 			nil,
 			bsr.ChunkType("TEST"),
 			nil,
-			errors.New(ctx, errors.InvalidParameter, "bsr.NewBaseChunk", "timestamp must not be nil"),
+			errors.New("bsr.NewBaseChunk: timestamp must not be nil: invalid parameter"),
 		},
 		{
 			"invalid-chunk-type",
@@ -75,7 +75,7 @@ func TestNewBaseChunk(t *testing.T) {
 			bsr.NewTimestamp(now),
 			bsr.ChunkType("TEST_INVALID"),
 			nil,
-			errors.New(ctx, errors.InvalidParameter, "bsr.NewBaseChunk", "chunk type cannot be greater than 4 characters"),
+			errors.New("bsr.NewBaseChunk: chunk type cannot be greater than 4 characters: invalid parameter"),
 		},
 	}
 

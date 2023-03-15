@@ -5,8 +5,7 @@ package bsr
 
 import (
 	"context"
-
-	"github.com/hashicorp/boundary/internal/errors"
+	"fmt"
 )
 
 // HeaderChunk is the first chunk in a BSR data file.
@@ -47,11 +46,11 @@ func NewHeader(ctx context.Context, p Protocol, d Direction, t *Timestamp, c Com
 	}
 
 	if !ValidCompression(c) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid compression")
+		return nil, fmt.Errorf("%s: invalid compression: %w", op, ErrInvalidParameter)
 	}
 
 	if !ValidEncryption(e) {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid encryption")
+		return nil, fmt.Errorf("%s: invalid encryption: %w", op, ErrInvalidParameter)
 	}
 
 	return &HeaderChunk{
