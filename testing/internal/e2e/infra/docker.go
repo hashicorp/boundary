@@ -239,7 +239,7 @@ func StartOpenSshServer(t testing.TB, pool *dockertest.Pool, network *dockertest
 
 	networkAlias := "target"
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "lscr.io/linuxserver/openssh-server",
+		Repository: "docker.mirror.hashicorp.services/linuxserver/openssh-server",
 		Env: []string{
 			"PUID=1000",
 			"PGID=1000",
