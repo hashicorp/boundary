@@ -212,10 +212,11 @@ func TestGet(t *testing.T) {
 			res:  &pbs.GetManagedGroupResponse{Item: &ldapWireManagedGroup},
 		},
 		{
-			name: "space in id",
-			req:  &pbs.GetManagedGroupRequest{Id: globals.AuthTokenPrefix + "_1 23456789"},
-			res:  nil,
-			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
+			name:        "space in id",
+			req:         &pbs.GetManagedGroupRequest{Id: globals.AuthTokenPrefix + "_1 23456789"},
+			res:         nil,
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "Invalid formatted identifier",
 		},
 		{
 			name:        "Get a non existing ldap managed group",
