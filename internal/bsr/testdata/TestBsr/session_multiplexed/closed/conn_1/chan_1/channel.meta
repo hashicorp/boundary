@@ -1,0 +1,5 @@
+id: chan_1
+messages: inbound
+requests: inbound
+messages: outbound
+requests: outbound

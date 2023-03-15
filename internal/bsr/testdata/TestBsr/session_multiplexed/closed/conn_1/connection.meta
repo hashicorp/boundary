@@ -1,0 +1,4 @@
+id: conn_1
+requests: inbound
+requests: outbound
+channel: chan_1.channel
