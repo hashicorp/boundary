@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -83,6 +84,8 @@ type Server struct {
 	Kms                  *kms.Kms
 	SecureRandomReader   io.Reader
 
+	WorkerAuthDebuggingEnabled *atomic.Bool
+
 	PrometheusRegisterer prometheus.Registerer
 
 	ReloadFuncsLock *sync.RWMutex
@@ -118,10 +121,6 @@ type Server struct {
 	DevTargetSessionConnectionLimit  int
 	DevLoopbackHostPluginId          string
 
-	// DevUsePkiForUpstream is a hint that we are in dev mode and have a worker
-	// auth KMS but want to use PKI for upstream connections
-	DevUsePkiForUpstream bool
-
 	EnabledPlugins []EnabledPlugin
 	HostPlugins    map[string]plgpb.HostPluginServiceClient
 
@@ -140,15 +139,16 @@ type Server struct {
 // NewServer creates a new Server.
 func NewServer(cmd *Command) *Server {
 	return &Server{
-		Command:              cmd,
-		ServerSideShutdownCh: make(chan struct{}),
-		InfoKeys:             make([]string, 0, 20),
-		Info:                 make(map[string]string),
-		SecureRandomReader:   rand.Reader,
-		ReloadFuncsLock:      new(sync.RWMutex),
-		ReloadFuncs:          make(map[string][]reloadutil.ReloadFunc),
-		StderrLock:           new(sync.Mutex),
-		PrometheusRegisterer: prometheus.DefaultRegisterer,
+		Command:                    cmd,
+		ServerSideShutdownCh:       make(chan struct{}),
+		InfoKeys:                   make([]string, 0, 20),
+		Info:                       make(map[string]string),
+		SecureRandomReader:         rand.Reader,
+		ReloadFuncsLock:            new(sync.RWMutex),
+		ReloadFuncs:                make(map[string][]reloadutil.ReloadFunc),
+		StderrLock:                 new(sync.Mutex),
+		WorkerAuthDebuggingEnabled: new(atomic.Bool),
+		PrometheusRegisterer:       prometheus.DefaultRegisterer,
 	}
 }
 

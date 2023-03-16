@@ -98,8 +98,6 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	switch {
 	case wStat.GetName() == "" && wStat.GetKeyId() == "":
 		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are not set in the request; one is required.")
-	case wStat.GetName() != "" && wStat.GetKeyId() != "":
-		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Name and keyId are both set in the request; only one is allowed.")
 	case wStat.GetAddress() == "":
 		return &pbs.StatusResponse{}, status.Error(codes.InvalidArgument, "Address is not set but is required.")
 	}

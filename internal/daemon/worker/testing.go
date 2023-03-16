@@ -215,6 +215,9 @@ type TestWorkerOpts struct {
 
 	// If set, override the normal auth rotation period
 	AuthRotationPeriod time.Duration
+
+	// If set, will use the deprecated KMS auth method
+	UseDeprecatedKmsAuthMethod bool
 }
 
 func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
@@ -252,6 +255,9 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		}
 	}
 
+	if opts.UseDeprecatedKmsAuthMethod {
+		opts.Config.Worker.UseDeprecatedKmsAuthMethod = true
+	}
 	if len(opts.InitialUpstreams) > 0 {
 		opts.Config.Worker.InitialUpstreams = opts.InitialUpstreams
 	}
@@ -273,7 +279,6 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	}
 	if opts.WorkerAuthStoragePath != "" {
 		opts.Config.Worker.AuthStoragePath = opts.WorkerAuthStoragePath
-		tw.b.DevUsePkiForUpstream = true
 	}
 	tw.name = opts.Config.Worker.Name
 

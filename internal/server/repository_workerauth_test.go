@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/storage/file"
+	"github.com/hashicorp/nodeenrollment/storage/inmem"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mr-tron/base58"
@@ -314,8 +315,6 @@ func TestStoreNodeInformationTx(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, testWrapper)
 	// Ensures the global scope contains a valid root key
 	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
-	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), scope.Global.String(), kms.KeyPurposeDatabase)
-	require.NoError(t, err)
 
 	testRootStorage, err := NewRepositoryStorage(testCtx, rw, rw, kmsCache)
 	require.NoError(t, err)
@@ -332,9 +331,9 @@ func TestStoreNodeInformationTx(t *testing.T) {
 
 	testNodeInfoFn := func() *types.NodeInformation {
 		// This happens on the worker
-		fileStorage, err := file.New(testCtx)
+		storage, err := inmem.New(testCtx)
 		require.NoError(t, err)
-		nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
+		nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
 		require.NoError(t, err)
 
 		nodePubKey, err := curve25519.X25519(nodeCreds.EncryptionPrivateKeyBytes, curve25519.Basepoint)
@@ -353,10 +352,33 @@ func TestStoreNodeInformationTx(t *testing.T) {
 		return nodeInfo
 	}
 
+	// For swapping out key ID for wrapping registration flow
+	wrappingRegFlowStorage, err := inmem.New(testCtx)
+	require.NoError(t, err)
+	wrappingRegFlowNodeCreds, err := types.NewNodeCredentials(testCtx, wrappingRegFlowStorage)
+	require.NoError(t, err)
+	wrappingRegFlowNodeInfoFn := func() *types.NodeInformation {
+		ni := testNodeInfoFn()
+		wci, err := structpb.NewStruct(map[string]any{
+			"name":             "regflow-worker-name",
+			"description":      "regflow-worker-description",
+			"boundary_version": "0.13.0",
+		})
+		require.NoError(t, err)
+		ni.WrappingRegistrationFlowInfo = &types.WrappingRegistrationFlowInfo{
+			Nonce:                     ni.RegistrationNonce,
+			CertificatePublicKeyPkix:  ni.CertificatePublicKeyPkix,
+			ApplicationSpecificParams: wci,
+		}
+		return ni
+	}
+
 	tests := []struct {
 		name            string
+		reader          db.Reader
 		writer          db.Writer
-		databaseWrapper wrapping.Wrapper
+		scope           string
+		kms             *kms.Kms
 		node            *types.NodeInformation
 		wantErr         bool
 		wantErrIs       errors.Code
@@ -364,61 +386,70 @@ func TestStoreNodeInformationTx(t *testing.T) {
 	}{
 		{
 			name:            "missing-writer",
-			databaseWrapper: databaseWrapper,
+			reader:          rw,
+			scope:           scope.Global.String(),
+			kms:             kmsCache,
 			node:            testNodeInfoFn(),
 			wantErr:         true,
 			wantErrIs:       errors.InvalidParameter,
 			wantErrContains: "missing writer",
 		},
 		{
-			name:            "missing-wrapper",
+			name:            "missing-reader",
 			writer:          rw,
+			scope:           scope.Global.String(),
+			kms:             kmsCache,
 			node:            testNodeInfoFn(),
 			wantErr:         true,
 			wantErrIs:       errors.InvalidParameter,
-			wantErrContains: "missing database wrapper",
+			wantErrContains: "missing reader",
+		},
+		{
+			name:            "missing-scope",
+			reader:          rw,
+			writer:          rw,
+			kms:             kmsCache,
+			node:            testNodeInfoFn(),
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "missing scope",
+		},
+		{
+			name:            "missing-kms",
+			reader:          rw,
+			writer:          rw,
+			scope:           scope.Global.String(),
+			node:            testNodeInfoFn(),
+			wantErr:         true,
+			wantErrIs:       errors.InvalidParameter,
+			wantErrContains: "missing kms",
 		},
 		{
 			name:            "missing-node",
+			reader:          rw,
 			writer:          rw,
-			databaseWrapper: databaseWrapper,
+			scope:           scope.Global.String(),
+			kms:             kmsCache,
 			wantErr:         true,
 			wantErrIs:       errors.InvalidParameter,
 			wantErrContains: "missing NodeInformation",
 		},
 		{
-			name:            "key-id-error",
-			writer:          rw,
-			databaseWrapper: &mockTestWrapper{err: errors.New(testCtx, errors.Internal, "testing", "key-id-error")},
-			node:            testNodeInfoFn(),
-			wantErr:         true,
-			wantErrIs:       errors.Encrypt,
-			wantErrContains: "reading cipher key id",
-		},
-		{
-			name:   "encrypt-error",
-			writer: rw,
-			databaseWrapper: &mockTestWrapper{
-				encryptError: true,
-				err:          errors.New(testCtx, errors.Encrypt, "testing", "encrypt-error"),
-			},
-			node:            testNodeInfoFn(),
-			wantErr:         true,
-			wantErrIs:       errors.Encrypt,
-			wantErrContains: "encrypt-error",
-		},
-		{
 			name:            "create-error-no-db",
+			reader:          rw,
+			scope:           scope.Global.String(),
 			writer:          &db.Db{},
-			databaseWrapper: databaseWrapper,
+			kms:             kmsCache,
 			node:            testNodeInfoFn(),
 			wantErr:         true,
 			wantErrContains: "db.Create",
 		},
 		{
-			name:            "create-error-validation",
-			writer:          rw,
-			databaseWrapper: databaseWrapper,
+			name:   "create-error-validation",
+			reader: rw,
+			writer: rw,
+			scope:  scope.Global.String(),
+			kms:    kmsCache,
 			node: func() *types.NodeInformation {
 				ni := testNodeInfoFn()
 				ni.State = nil
@@ -428,16 +459,69 @@ func TestStoreNodeInformationTx(t *testing.T) {
 			wantErrContains: "missing WorkerId",
 		},
 		{
-			name:            "success",
-			writer:          rw,
-			databaseWrapper: databaseWrapper,
-			node:            testNodeInfoFn(),
+			name:   "wrapflow-no-name",
+			reader: rw,
+			writer: rw,
+			scope:  scope.Global.String(),
+			kms:    kmsCache,
+			node: func() *types.NodeInformation {
+				ni := wrappingRegFlowNodeInfoFn()
+				ni.WrappingRegistrationFlowInfo.ApplicationSpecificParams.Fields["name"] = nil
+				ni.CertificatePublicKeyPkix = wrappingRegFlowNodeCreds.CertificatePublicKeyPkix
+				keyId, err := nodeenrollment.KeyIdFromPkix(ni.CertificatePublicKeyPkix)
+				require.NoError(t, err)
+				ni.Id = keyId
+				return ni
+			}(),
+			wantErr:         true,
+			wantErrContains: "in wrapping registration flow but worker name not provided",
+		},
+		{
+			name:   "wrapflow-no-version",
+			reader: rw,
+			writer: rw,
+			scope:  scope.Global.String(),
+			kms:    kmsCache,
+			node: func() *types.NodeInformation {
+				ni := wrappingRegFlowNodeInfoFn()
+				ni.WrappingRegistrationFlowInfo.ApplicationSpecificParams.Fields["boundary_version"] = nil
+				ni.CertificatePublicKeyPkix = wrappingRegFlowNodeCreds.CertificatePublicKeyPkix
+				keyId, err := nodeenrollment.KeyIdFromPkix(ni.CertificatePublicKeyPkix)
+				require.NoError(t, err)
+				ni.Id = keyId
+				return ni
+			}(),
+			wantErr:         true,
+			wantErrContains: "in wrapping registration flow but boundary version not provided",
+		},
+		{
+			name:   "success",
+			reader: rw,
+			writer: rw,
+			scope:  scope.Global.String(),
+			kms:    kmsCache,
+			node:   testNodeInfoFn(),
+		},
+		{
+			name:   "success-wrapflow",
+			reader: rw,
+			writer: rw,
+			scope:  scope.Global.String(),
+			kms:    kmsCache,
+			node: func() *types.NodeInformation {
+				ni := wrappingRegFlowNodeInfoFn()
+				ni.CertificatePublicKeyPkix = wrappingRegFlowNodeCreds.CertificatePublicKeyPkix
+				keyId, err := nodeenrollment.KeyIdFromPkix(ni.CertificatePublicKeyPkix)
+				require.NoError(t, err)
+				ni.Id = keyId
+				return ni
+			}(),
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			err := StoreNodeInformationTx(testCtx, tc.writer, tc.databaseWrapper, tc.node)
+			err := StoreNodeInformationTx(testCtx, tc.reader, tc.writer, tc.kms, tc.scope, tc.node)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != errors.Unknown {

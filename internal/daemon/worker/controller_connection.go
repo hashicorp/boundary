@@ -28,11 +28,13 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
 	"github.com/hashicorp/nodeenrollment/protocol"
+	"github.com/hashicorp/nodeenrollment/util/toggledlogger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/credentials/insecure"
@@ -93,22 +95,34 @@ func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Cont
 	const op = "worker.(Worker).upstreamDialerFunc"
 	return func(ctx context.Context, addr string) (net.Conn, error) {
 		var conn net.Conn
-		var err error
+		eventLogger, err := event.NewHclogLogger(w.baseContext, w.conf.Eventer)
+		if err != nil {
+			event.WriteError(w.baseContext, op, err)
+			return nil, errors.Wrap(w.baseContext, err, op)
+		}
+		// Give the log a prefix
+		eventLogger = eventLogger.Named(fmt.Sprintf("workerauth_dialer"))
+		// Wrap the log in a toggle so we can turn it on and off via config and
+		// SIGHUP
+		eventLogger = toggledlogger.NewToggledLogger(eventLogger, w.conf.WorkerAuthDebuggingEnabled)
+		st, err := w.workerConnectionInfo(addr)
+		if err != nil {
+			event.WriteError(w.baseContext, op, err)
+			return nil, errors.Wrap(w.baseContext, err, op)
+		}
 		switch {
-		case w.conf.WorkerAuthKms != nil && !w.conf.DevUsePkiForUpstream:
+		case w.conf.RawConfig.Worker.UseDeprecatedKmsAuthMethod:
 			conn, err = w.v1KmsAuthDialFn(ctx, addr, extraAlpnProtos...)
 		default:
-			var st *structpb.Struct
-			st, err = w.workerConnectionInfo(addr)
-			if err != nil {
-				event.WriteError(w.baseContext, op, err)
-			}
 			conn, err = protocol.Dial(
 				ctx,
 				w.WorkerAuthStorage,
 				addr,
+				nodeenrollment.WithLogger(eventLogger),
 				nodeenrollment.WithState(st),
-				nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
+				nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
+				nodeenrollment.WithRegistrationWrapper(w.conf.WorkerAuthKms),
+				nodeenrollment.WithWrappingRegistrationFlowApplicationSpecificParams(st),
 				nodeenrollment.WithExtraAlpnProtos(extraAlpnProtos),
 				// If the activation token hasn't been populated, this won't do
 				// anything, and it won't do anything if it's already been used
@@ -117,8 +131,8 @@ func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Cont
 			// No error and a valid connection means the WorkerAuthRegistrationRequest was populated
 			// We can remove the stored workerAuthRequest file
 			if err == nil && conn != nil {
-				if w.WorkerAuthStorage.BaseDir() != "" {
-					workerAuthReqFilePath := filepath.Join(w.WorkerAuthStorage.BaseDir(), base.WorkerAuthReqFile)
+				if w.conf.RawConfig.Worker.AuthStoragePath != "" {
+					workerAuthReqFilePath := filepath.Join(w.conf.RawConfig.Worker.AuthStoragePath, base.WorkerAuthReqFile)
 					// Intentionally ignoring any error removing this file
 					_ = os.Remove(workerAuthReqFilePath)
 				}
@@ -134,18 +148,21 @@ func (w *Worker) upstreamDialerFunc(extraAlpnProtos ...string) func(context.Cont
 				// We don't event in this case, because the function retries
 				// often and will spam the logs while waiting on the user to
 				// transfer the worker-generated request over
+				return nil, errors.Wrap(w.baseContext, err, op)
 
 			default:
 				// In this case, event, so that the operator can understand that
 				// it was rejected
 				event.WriteError(ctx, op, fmt.Errorf("controller rejected activation token as invalid"))
+				return nil, errors.Wrap(w.baseContext, err, op)
 			}
 
 		default:
 			event.WriteError(ctx, op, err)
+			return nil, errors.Wrap(w.baseContext, err, op)
 		}
 
-		if err == nil && conn != nil {
+		if conn != nil {
 			if w.everAuthenticated.Load() == authenticationStatusNeverAuthenticated {
 				w.everAuthenticated.Store(authenticationStatusFirstAuthentication)
 			}
@@ -361,8 +378,12 @@ func (w *Worker) workerAuthTLSConfig(extraAlpnProtos ...string) (*tls.Config, *b
 func (w *Worker) workerConnectionInfo(addr string) (*structpb.Struct, error) {
 	const op = "worker.(Worker).workerConnectionInfo"
 	wci := &cluster.WorkerConnectionInfo{
-		UpstreamAddress: addr,
-		BoundaryVersion: version.Get().VersionNumber(),
+		UpstreamAddress:  addr,
+		BoundaryVersion:  version.Get().VersionNumber(),
+		Name:             w.conf.RawConfig.Worker.Name,
+		Description:      w.conf.RawConfig.Worker.Description,
+		PublicAddr:       w.conf.RawConfig.Worker.PublicAddr,
+		OperationalState: w.operationalState.Load().(server.OperationalState).String(),
 	}
 	if w.LastStatusSuccess() != nil && len(w.LastStatusSuccess().GetWorkerId()) > 0 {
 		// even though we wont have the worker the first time we dial, any

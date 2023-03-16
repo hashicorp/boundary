@@ -381,18 +381,6 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "name and key id provided",
-			repo: repo,
-			status: server.NewWorker(scope.Global.String(),
-				server.WithName("name and key id provided"),
-				server.WithAddress("someaddress")),
-			options: []server.Option{server.WithKeyId(pkiWorkerKeyId)},
-			errAssert: func(t *testing.T, err error) {
-				t.Helper()
-				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err), err)
-			},
-		},
-		{
 			name: "no name or key id",
 			repo: repo,
 			status: server.NewWorker(scope.Global.String(),
@@ -1044,7 +1032,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 					// This happens on the worker
 					fileStorage, err := file.New(testCtx)
 					require.NoError(t, err)
-					defer fileStorage.Cleanup()
+					defer func() { fileStorage.Cleanup(testCtx) }()
 
 					nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
 					require.NoError(t, err)
@@ -1136,7 +1124,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 					// This happens on the worker
 					fileStorage, err := file.New(testCtx)
 					require.NoError(t, err)
-					defer fileStorage.Cleanup()
+					defer func() { fileStorage.Cleanup(testCtx) }()
 
 					nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
 					require.NoError(t, err)

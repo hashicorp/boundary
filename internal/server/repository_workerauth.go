@@ -14,14 +14,15 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-dbw"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/nodeenrollment"
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -80,12 +81,9 @@ func (r *WorkerAuthRepositoryStorage) Store(ctx context.Context, msg nodee.Messa
 	switch t := msg.(type) {
 	case *types.NodeInformation:
 		// Encrypt the private key
-		databaseWrapper, err := r.kms.GetWrapper(ctx, scope.Global.String(), kms.KeyPurposeDatabase)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
+
 		if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(read db.Reader, w db.Writer) error {
-			return StoreNodeInformationTx(ctx, w, databaseWrapper, t)
+			return StoreNodeInformationTx(ctx, read, w, r.kms, scope.Global.String(), t)
 		}); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -114,16 +112,75 @@ func (r *WorkerAuthRepositoryStorage) Store(ctx context.Context, msg nodee.Messa
 // Node information is stored in two parts:
 // * the workerAuth record is stored with a reference to a worker
 // * certificate bundles are stored with a reference to the workerAuth record and issuing root certificate
-func StoreNodeInformationTx(ctx context.Context, writer db.Writer, databaseWrapper wrapping.Wrapper, node *types.NodeInformation, _ ...Option) error {
+func StoreNodeInformationTx(ctx context.Context, reader db.Reader, writer db.Writer, kmsCache *kms.Kms, scopeId string, node *types.NodeInformation, _ ...Option) error {
 	const op = "server.(WorkerAuthRepositoryStorage).storeNodeInformation"
+	if isNil(reader) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing reader")
+	}
 	if isNil(writer) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing writer")
 	}
-	if isNil(databaseWrapper) {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing database wrapper")
+	if isNil(kmsCache) {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing kms")
+	}
+	if scopeId == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	if node == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing NodeInformation")
+	}
+
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeDatabase)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	var workerId string
+	if node.WrappingRegistrationFlowInfo != nil {
+		if util.IsNil(node.WrappingRegistrationFlowInfo.ApplicationSpecificParams) {
+			return errors.New(ctx, errors.InvalidParameter, op, "in wrapping registration flow but application specific parameters not provided")
+		}
+		// In this case we are using the wrapping registration flow and it's
+		// been validated; we need to upsert first to ensure that the worker
+		// exists in the database.
+		wci := new(cluster.WorkerConnectionInfo)
+		if err := mapstructure.Decode(node.WrappingRegistrationFlowInfo.ApplicationSpecificParams.AsMap(), wci); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if wci.Name == "" {
+			return errors.New(ctx, errors.InvalidParameter, op, "in wrapping registration flow but worker name not provided")
+		}
+		if wci.BoundaryVersion == "" {
+			return errors.New(ctx, errors.InvalidParameter, op, "in wrapping registration flow but boundary version not provided")
+		}
+		wConf := NewWorker(scopeId,
+			WithName(wci.Name),
+			WithDescription(wci.Description),
+			WithReleaseVersion(fmt.Sprintf("Boundary v%s", wci.BoundaryVersion)),
+		)
+		wConf.Type = PkiWorkerType.String()
+		wConf.PublicId, err = newWorkerIdFromScopeAndName(ctx, scopeId, wci.Name)
+		if err != nil || wConf.PublicId == "" {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker id"))
+		}
+		workerCreateConflict := &db.OnConflict{
+			Target: db.Columns{"public_id"},
+			Action: db.SetColumns([]string{"release_version", "name", "description"}),
+		}
+		var withRowsAffected int64
+		err = writer.Create(
+			ctx,
+			wConf,
+			db.WithOnConflict(workerCreateConflict),
+			db.WithReturnRowsAffected(&withRowsAffected),
+		)
+		switch {
+		case err != nil:
+			return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker"))
+		case withRowsAffected == 0:
+			return errors.New(ctx, errors.NotUnique, op, "error updating worker")
+		}
+		workerId = wConf.PublicId
 	}
 
 	nodeAuth := allocWorkerAuth()
@@ -137,12 +194,15 @@ func StoreNodeInformationTx(ctx context.Context, writer db.Writer, databaseWrapp
 		return errors.Wrap(ctx, err, op)
 	}
 
-	// Get workerId from state passed in
-	var result workerAuthWorkerId
-	if err := mapstructure.Decode(node.State.AsMap(), &result); err != nil {
-		return errors.Wrap(ctx, err, op)
+	if workerId == "" {
+		// Get workerId from state passed in
+		var result workerAuthWorkerId
+		if err := mapstructure.Decode(node.State.AsMap(), &result); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		workerId = result.WorkerId
 	}
-	nodeAuth.WorkerId = result.WorkerId
+	nodeAuth.WorkerId = workerId
 
 	if err := nodeAuth.ValidateNewWorkerAuth(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)

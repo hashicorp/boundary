@@ -24,6 +24,7 @@ import (
 	nodee "github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/hashicorp/nodeenrollment/protocol"
+	"github.com/hashicorp/nodeenrollment/util/toggledlogger"
 	"google.golang.org/grpc"
 )
 
@@ -133,6 +134,17 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		return nil, fmt.Errorf("error fetching worker auth storage: %w", err)
 	}
 
+	eventLogger, err := event.NewHclogLogger(c.baseContext, c.conf.Eventer)
+	if err != nil {
+		event.WriteError(c.baseContext, op, err)
+		return nil, errors.Wrap(c.baseContext, err, op)
+	}
+	// Give the log a prefix
+	eventLogger = eventLogger.Named(fmt.Sprintf("workerauth_listener"))
+	// Wrap the log in a toggle so we can turn it on and off via config and
+	// SIGHUP
+	eventLogger = toggledlogger.NewToggledLogger(eventLogger, c.conf.WorkerAuthDebuggingEnabled)
+
 	// The cluster listener is shut down at server shutdown time so we do not
 	// need to handle individual listener shutdown.
 	var l net.Listener
@@ -143,6 +155,10 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 			BaseListener: ln.ClusterListener,
 			BaseTlsConfiguration: &tls.Config{
 				GetConfigForClient: c.validateWorkerTls,
+			},
+			Options: []nodee.Option{
+				nodee.WithLogger(eventLogger),
+				nodee.WithRegistrationWrapper(c.conf.WorkerAuthKms),
 			},
 		})
 	if err != nil {

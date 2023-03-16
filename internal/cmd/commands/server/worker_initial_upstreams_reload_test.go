@@ -7,7 +7,6 @@ package server
 
 import (
 	"fmt"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -41,7 +40,6 @@ worker {
 	tags {
 		type = ["dev", "local"]
 	}
-	auth_storage_path = "%s"
 }
 `
 
@@ -57,18 +55,26 @@ func TestServer_ReloadInitialUpstreams(t *testing.T) {
 	// would be odd to have separate databases, but it makes it easy for the
 	// test to assert that the worker has connected to the second controller
 	// after a reload signal is sent.
-	testController := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
+	testController := controller.NewTestController(
+		t,
+		controller.WithWorkerAuthKms(workerAuthWrapper),
+		controller.WithRootKms(rootWrapper),
+		controller.WithRecoveryKms(recoveryWrapper),
+	)
 	defer testController.Shutdown()
-	testController2 := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
+	testController2 := controller.NewTestController(
+		t,
+		controller.WithWorkerAuthKms(workerAuthWrapper),
+		controller.WithRootKms(rootWrapper),
+		controller.WithRecoveryKms(recoveryWrapper),
+	)
 	defer testController2.Shutdown()
 	require.NotEqual(testController.Config().DatabaseUrl, testController2.Config().DatabaseUrl)
-
-	authStoragePath := t.TempDir()
 
 	wg := &sync.WaitGroup{}
 
 	cmd := testServerCommand(t, testServerCommandOpts{})
-	cmd.presetConfig = atomic.NewString(fmt.Sprintf(initialUpstreamConfig, key, testController.ClusterAddrs()[0], filepath.Join(authStoragePath, t.Name())))
+	cmd.presetConfig = atomic.NewString(fmt.Sprintf(initialUpstreamConfig, key, testController.ClusterAddrs()[0]))
 
 	wg.Add(1)
 	go func() {
@@ -108,7 +114,7 @@ pollFirstController:
 	}
 
 	// Reload the config after changing initial_upstreams to the second controller
-	cmd.presetConfig.Store(fmt.Sprintf(initialUpstreamConfig, key, testController2.ClusterAddrs()[0], filepath.Join(authStoragePath, t.Name())))
+	cmd.presetConfig.Store(fmt.Sprintf(initialUpstreamConfig, key, testController2.ClusterAddrs()[0]))
 	cmd.SighupCh <- struct{}{}
 	select {
 	case <-cmd.reloadedCh:
@@ -126,6 +132,7 @@ pollSecondController:
 			t.Fatalf("timeout wait for worker to connect to second controller")
 		case <-poll.C:
 			serversRepo, err := testController2.Controller().ServersRepoFn()
+			require.NoError(err)
 			w, err = serversRepo.LookupWorkerByName(testController2.Context(), "test")
 			require.NoError(err)
 			if w != nil {
