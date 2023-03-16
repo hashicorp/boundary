@@ -3,6 +3,23 @@
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 ## Next
 
+### Deprecations/Changes
+
+* When grants are added to roles additional validity checking is now performed.
+  This extra validity checking is designed to reject grants that are not
+  [documented grant
+  formats](https://developer.hashicorp.com/boundary/docs/concepts/security/permissions/permission-grant-formats)
+  or are for combinations of IDs and types that cannot actually be used
+  together. These previously would have been accepted without error but would
+  never result in permissions being granted, causing confusion. As a result,
+  attempting to write such grants into roles may now result in an error; the
+  error message gives hints for resolution.
+
+### New and Improved
+
+* roles: Perform additional validity checking on grants at submission time
+  ([PR](https://github.com/hashicorp/boundary/pull/3081))
+
 ## 0.12.1 (2023/03/13)
 
 ### Bug Fixes
