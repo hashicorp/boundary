@@ -38,7 +38,7 @@ jobs:
           echo "Building with Go $(cat .go-version)"
           echo "go-version=$(cat .go-version)" >> $GITHUB_OUTPUT
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
       - name: Determine Go cache paths
@@ -128,7 +128,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go }}
       - name: Determine Go cache paths
@@ -201,7 +201,7 @@ jobs:
       - name: Set up Git
         run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go }}
       - name: Determine Go cache paths
@@ -299,7 +299,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go }}
       - name: Determine Go cache paths

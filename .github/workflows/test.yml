@@ -34,7 +34,7 @@ jobs:
           echo "Building with Go $(cat .go-version)"
           echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Go
-        uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613 # v3.4.0
+        uses: actions/setup-go@v4 # v3.4.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
       - name: Determine go cache key
@@ -93,7 +93,7 @@ jobs:
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - name: Set up go
-        uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613 # v3.4.0
+        uses: actions/setup-go@v4 # v3.4.0
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
       - name: Set up Go modules cache
@@ -120,7 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - name: Set up go
-        uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613 # v3.4.0
+        uses: actions/setup-go@v4 # v3.4.0
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
       - name: Set up Go modules cache
@@ -155,7 +155,7 @@ jobs:
           ulimit -Ha
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - name: Set up go
-        uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613 # v3.4.0
+        uses: actions/setup-go@v4 # v3.4.0
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
       - name: Set up Go modules cache
