@@ -179,14 +179,14 @@ func TestRoleGrant_Delete(t *testing.T) {
 			name: "invalid",
 			args: args{
 				roleId: projRole.PublicId,
-				grant:  "id=a_edcb;actions=read,update",
+				grant:  "id=u_edcb;actions=read,update",
 			},
 		},
 		{
 			name: "valid",
 			args: args{
 				roleId: projRole.PublicId,
-				grant:  "id=a_bcde;actions=read,update",
+				grant:  "id=u_bcde;actions=read,update",
 			},
 			deletedRows: 1,
 		},
@@ -196,10 +196,10 @@ func TestRoleGrant_Delete(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			r := allocRoleGrant()
 			db.TestDeleteWhere(t, conn, &r, "1=1")
-			rg, err := NewRoleGrant(projRole.PublicId, "id=a_bcde;actions=read,update")
+			rg, err := NewRoleGrant(projRole.PublicId, "id=u_bcde;actions=read,update")
 			require.NoError(err)
 			require.NoError(rw.Create(context.Background(), rg))
-			rg, err = NewRoleGrant(projRole.PublicId, "id=a_cdef;actions=read,update")
+			rg, err = NewRoleGrant(projRole.PublicId, "id=u_cdef;actions=read,update")
 			require.NoError(err)
 			require.NoError(rw.Create(context.Background(), rg))
 
@@ -242,21 +242,21 @@ func TestRoleGrant_Clone(t *testing.T) {
 		assert.True(proto.Equal(cp.(*RoleGrant).RoleGrant, g.RoleGrant))
 	})
 	t.Run("not-equal", func(t *testing.T) {
-		assert := assert.New(t)
+		require, assert := require.New(t), assert.New(t)
 		s := testOrg(t, repo, "", "")
 		role := TestRole(t, conn, s.PublicId)
 
 		g, err := NewRoleGrant(role.PublicId, "id=*;type=*;actions=*")
 		assert.NoError(err)
-		assert.NotNil(g)
+		require.NotNil(g)
 		assert.Equal(g.RoleId, role.PublicId)
 		assert.Equal(g.RawGrant, "id=*;type=*;actions=*")
 
-		g2, err := NewRoleGrant(role.PublicId, "id=foo;actions=read")
+		g2, err := NewRoleGrant(role.PublicId, "id=u_foo;actions=read")
 		assert.NoError(err)
-		assert.NotNil(g2)
+		require.NotNil(g2)
 		assert.Equal(g2.RoleId, role.PublicId)
-		assert.Equal(g2.RawGrant, "id=foo;actions=read")
+		assert.Equal(g2.RawGrant, "id=u_foo;actions=read")
 
 		cp := g.Clone()
 		assert.True(!proto.Equal(cp.(*RoleGrant).RoleGrant, g2.RoleGrant))

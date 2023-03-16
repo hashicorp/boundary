@@ -146,24 +146,24 @@ func Test_ACLOutputFields(t *testing.T) {
 	tests := []input{
 		{
 			name:       "default",
-			resource:   Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource:   Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
 			action:     action.Read,
-			grants:     []string{"id=bar;actions=read,update"},
+			grants:     []string{"id=u_bar;actions=read,update"},
 			authorized: true,
 		},
 		{
 			name:       "single value",
-			resource:   Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
-			grants:     []string{"id=bar;actions=read,update;output_fields=id"},
+			resource:   Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
+			grants:     []string{"id=u_bar;actions=read,update;output_fields=id"},
 			action:     action.Read,
 			fields:     []string{"id"},
 			authorized: true,
 		},
 		{
 			name:     "compound no overlap",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read,update;output_fields=id",
+				"id=u_bar;actions=read,update;output_fields=id",
 				"id=*;type=host-catalog;actions=read,update;output_fields=version",
 			},
 			action:     action.Read,
@@ -172,9 +172,9 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "compound",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read,update;output_fields=id",
+				"id=u_bar;actions=read,update;output_fields=id",
 				"id=*;type=role;output_fields=version",
 			},
 			action:     action.Read,
@@ -183,9 +183,9 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "wildcard with type",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read,update;output_fields=read",
+				"id=u_bar;actions=read,update;output_fields=read",
 				"id=*;type=role;output_fields=*",
 			},
 			action:     action.Read,
@@ -194,9 +194,9 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "wildcard with wildcard type",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read,update;output_fields=read",
+				"id=u_bar;actions=read,update;output_fields=read",
 				"id=*;type=*;output_fields=*",
 			},
 			action:     action.Read,
@@ -205,9 +205,9 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "subaction exact",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read:self,update;output_fields=version",
+				"id=u_bar;actions=read:self,update;output_fields=version",
 			},
 			action:     action.ReadSelf,
 			fields:     []string{"version"},
@@ -217,10 +217,10 @@ func Test_ACLOutputFields(t *testing.T) {
 			// If the action is a subaction, parent output fields will apply, in
 			// addition to subaction. This matches authorization.
 			name:     "subaction parent action",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read,update;output_fields=version",
-				"id=bar;actions=read:self;output_fields=id",
+				"id=u_bar;actions=read,update;output_fields=version",
+				"id=u_bar;actions=read:self;output_fields=id",
 			},
 			action:     action.ReadSelf,
 			fields:     []string{"id", "version"},
@@ -232,10 +232,10 @@ func Test_ACLOutputFields(t *testing.T) {
 			// non-self actions. This is useful to allow more visibility to self
 			// actions and less in the general case.
 			name:     "subaction child action",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;actions=read:self,update;output_fields=version",
-				"id=bar;actions=read;output_fields=id",
+				"id=u_bar;actions=read:self,update;output_fields=version",
+				"id=u_bar;actions=read;output_fields=id",
 			},
 			action:     action.Read,
 			fields:     []string{"id"},
@@ -243,10 +243,10 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "initial grant unauthorized with star",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;output_fields=*",
-				"id=bar;actions=delete;output_fields=id",
+				"id=u_bar;output_fields=*",
+				"id=u_bar;actions=delete;output_fields=id",
 			},
 			action:     action.Delete,
 			fields:     []string{"*"},
@@ -254,9 +254,9 @@ func Test_ACLOutputFields(t *testing.T) {
 		},
 		{
 			name:     "unauthorized id only",
-			resource: Resource{ScopeId: "o_myorg", Id: "bar", Type: resource.Role},
+			resource: Resource{ScopeId: "o_myorg", Id: "u_bar", Type: resource.Role},
 			grants: []string{
-				"id=bar;output_fields=name",
+				"id=u_bar;output_fields=name",
 			},
 			action: action.Delete,
 			fields: []string{"name"},

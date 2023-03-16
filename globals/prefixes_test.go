@@ -7,22 +7,22 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsTopLevelResourcePrefix(t *testing.T) {
+func TestResourceTypeFromPrefix(t *testing.T) {
 	// Test a random sampling
-	topLevel := []string{VaultCredentialStorePrefix, StaticCredentialStorePrefix, GroupPrefix, TcpTargetPrefix}
-	child := []string{VaultCredentialLibraryPrefix, OidcManagedGroupPrefix, StaticHostSetPrefix, JsonCredentialPrefix}
-
-	for _, prefix := range topLevel {
-		assert.True(t, IsTopLevelResourcePrefix(prefix))
-		assert.True(t, IsTopLevelResourcePrefix(fmt.Sprintf("%s_foobar", prefix)))
-		assert.False(t, IsTopLevelResourcePrefix(fmt.Sprintf("%sfoobar", prefix)))
+	vals := map[string]resource.Type{
+		VaultCredentialLibraryPrefix: resource.CredentialLibrary,
+		OidcManagedGroupPrefix:       resource.ManagedGroup,
+		StaticHostSetPrefix:          resource.HostSet,
+		JsonCredentialPrefix:         resource.Credential,
 	}
-	for _, prefix := range child {
-		assert.False(t, IsTopLevelResourcePrefix(prefix))
-		assert.False(t, IsTopLevelResourcePrefix(fmt.Sprintf("%s_foobar", prefix)))
-		assert.False(t, IsTopLevelResourcePrefix(fmt.Sprintf("%sfoobar", prefix)))
+
+	for prefix, typ := range vals {
+		assert.Equal(t, typ, ResourceTypeFromPrefix(prefix))
+		assert.Equal(t, typ, ResourceTypeFromPrefix(fmt.Sprintf("%s_foobar", prefix)))
+		assert.Equal(t, resource.Unknown, ResourceTypeFromPrefix(fmt.Sprintf("%sfoobar", prefix)))
 	}
 }

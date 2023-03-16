@@ -386,7 +386,7 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:  "bad type",
-			input: "id=foobar;type=barfoo;actions=create,read",
+			input: "id=foobar;type=barfoo;actions=read",
 			err:   `perms.Parse: unable to parse grant string: perms.(Grant).unmarshalText: unknown type specifier "barfoo": parameter violation: error #100`,
 		},
 		{
@@ -395,44 +395,74 @@ func Test_Parse(t *testing.T) {
 			err:   `perms.Parse: perms.(Grant).parseAndValidateActions: unknown action "createread": parameter violation: error #100`,
 		},
 		{
-			name:  "bad create action for id",
+			name:  "bad id type",
 			input: "id=foobar;actions=create",
-			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
+			err:   `perms.Parse: parsed grant string "id=foobar;actions=create" contains an id "foobar" of an unknown resource type: parameter violation: error #100`,
+		},
+		{
+			name:  "bad create action for id",
+			input: "id=u_foobar;actions=create",
+			err:   `perms.Parse: parsed grant string "id=u_foobar;actions=create" contains create or list action in a format that does not allow these: parameter violation: error #100`,
 		},
 		{
 			name:  "bad create action for id with other perms",
-			input: "id=foobar;actions=read,create",
-			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
+			input: "id=u_foobar;actions=read,create",
+			err:   `perms.Parse: parsed grant string "id=u_foobar;actions=create,read" contains create or list action in a format that does not allow these: parameter violation: error #100`,
 		},
 		{
 			name:  "bad list action for id",
-			input: "id=foobar;actions=list",
-			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
+			input: "id=u_foobar;actions=list",
+			err:   `perms.Parse: parsed grant string "id=u_foobar;actions=list" contains create or list action in a format that does not allow these: parameter violation: error #100`,
 		},
 		{
 			name:  "bad list action for id with other perms",
 			input: "type=host-catalog;actions=list,read",
-			err:   `perms.Parse: parsed grant string contains non-create or non-list action in a format that only allows these: parameter violation: error #100`,
+			err:   `perms.Parse: parsed grant string "type=host-catalog;actions=list,read" contains non-create or non-list action in a format that only allows these: parameter violation: error #100`,
 		},
 		{
 			name:  "wildcard id and actions without collection",
 			input: "id=*;actions=read",
-			err:   `perms.Parse: parsed grant string would not result in any action being authorized: parameter violation: error #100`,
+			err:   `perms.Parse: parsed grant string "id=*;actions=read" contains wildcard id and no specified type: parameter violation: error #100`,
 		},
 		{
 			name:  "wildcard id and actions with list",
 			input: "id=*;actions=read,list",
-			err:   `perms.Parse: parsed grant string contains create or list action in a format that does not allow these: parameter violation: error #100`,
+			err:   `perms.Parse: parsed grant string "id=*;actions=list,read" contains wildcard id and no specified type: parameter violation: error #100`,
 		},
 		{
 			name:  "wildcard type with no id",
 			input: "type=*;actions=read,list",
-			err:   `perms.Parse: parsed grant string contains wildcard type with no id value: parameter violation: error #100`,
+			err:   `perms.Parse: parsed grant string "type=*;actions=list,read" contains wildcard type with no id value: parameter violation: error #100`,
 		},
 		{
 			name:  "empty id and type",
 			input: "actions=create",
-			err:   `perms.Parse: parsed grant string contains no id or type: parameter violation: error #100`,
+			err:   `perms.Parse: parsed grant string "actions=create" contains no id or type: parameter violation: error #100`,
+		},
+		{
+			name:  "wildcard type non child id",
+			input: "id=ttcp_1234567890;type=*;actions=create",
+			err:   `perms.Parse: parsed grant string "id=ttcp_1234567890;type=*;actions=create" contains an id that does not support child types: parameter violation: error #100`,
+		},
+		{
+			name:  "specified resource type non child",
+			input: "id=hcst_1234567890;type=account;actions=read",
+			err:   `perms.Parse: parsed grant string "id=hcst_1234567890;type=account;actions=read" contains type account that is not a child type of the type (host-catalog) of the specified id: parameter violation: error #100`,
+		},
+		{
+			name:  "no id with one bad action",
+			input: "type=host-set;actions=read",
+			err:   `perms.Parse: parsed grant string "type=host-set;actions=read" contains non-create or non-list action in a format that only allows these: parameter violation: error #100`,
+		},
+		{
+			name:  "no id with two bad action",
+			input: "type=host-set;actions=read,create",
+			err:   `perms.Parse: parsed grant string "type=host-set;actions=create,read" contains non-create or non-list action in a format that only allows these: parameter violation: error #100`,
+		},
+		{
+			name:  "no id with three bad action",
+			input: "type=host-set;actions=list,read,create",
+			err:   `perms.Parse: parsed grant string "type=host-set;actions=create,list,read" contains non-create or non-list action in a format that only allows these: parameter violation: error #100`,
 		},
 		{
 			name:  "empty output fields",
@@ -504,13 +534,13 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:  "good json id",
-			input: `{"id":"foobar","actions":["read"]}`,
+			input: `{"id":"u_foobar","actions":["read"]}`,
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
-				id:  "foobar",
+				id:  "u_foobar",
 				typ: resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
@@ -519,13 +549,13 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:  "good json output fields",
-			input: `{"id":"foobar","actions":["read"],"output_fields":["version","id","name"]}`,
+			input: `{"id":"u_foobar","actions":["read"],"output_fields":["version","id","name"]}`,
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
-				id:  "foobar",
+				id:  "u_foobar",
 				typ: resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
@@ -541,13 +571,13 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:  "good json output fields no action",
-			input: `{"id":"foobar","output_fields":["version","id","name"]}`,
+			input: `{"id":"u_foobar","output_fields":["version","id","name"]}`,
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
-				id:  "foobar",
+				id:  "u_foobar",
 				typ: resource.Unknown,
 				OutputFields: &OutputFields{
 					fields: map[string]bool{
@@ -574,13 +604,13 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:  "good text id",
-			input: `id=foobar;actions=read`,
+			input: `id=u_foobar;actions=read`,
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
-				id:  "foobar",
+				id:  "u_foobar",
 				typ: resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
@@ -589,13 +619,13 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:  "good output fields",
-			input: `id=foobar;actions=read;output_fields=version,id,name`,
+			input: `id=u_foobar;actions=read;output_fields=version,id,name`,
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_scope",
 					Type: scope.Org,
 				},
-				id:  "foobar",
+				id:  "u_foobar",
 				typ: resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
@@ -611,14 +641,14 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:          "default project scope",
-			input:         `id=foobar;actions=read`,
+			input:         `id=hcst_foobar;actions=read`,
 			scopeOverride: "p_1234",
 			expected: Grant{
 				scope: Scope{
 					Id:   "p_1234",
 					Type: scope.Project,
 				},
-				id:  "foobar",
+				id:  "hcst_foobar",
 				typ: resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
@@ -627,14 +657,14 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:          "default org scope",
-			input:         `id=foobar;actions=read`,
+			input:         `id=acctpw_foobar;actions=read`,
 			scopeOverride: "o_1234",
 			expected: Grant{
 				scope: Scope{
 					Id:   "o_1234",
 					Type: scope.Org,
 				},
-				id:  "foobar",
+				id:  "acctpw_foobar",
 				typ: resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
@@ -643,14 +673,14 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			name:          "default global scope",
-			input:         `id=foobar;actions=read`,
+			input:         `id=acctpw_foobar;actions=read`,
 			scopeOverride: "global",
 			expected: Grant{
 				scope: Scope{
 					Id:   "global",
 					Type: scope.Global,
 				},
-				id:  "foobar",
+				id:  "acctpw_foobar",
 				typ: resource.Unknown,
 				actions: map[action.Type]bool{
 					action.Read: true,
