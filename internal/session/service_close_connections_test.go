@@ -56,7 +56,7 @@ func TestServiceCloseConnections(t *testing.T) {
 
 		targetRepo, err := target.NewRepository(ctx, rw, rw, testKms)
 		require.NoError(t, err)
-		_, _, _, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
+		_, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
 		require.NoError(t, err)
 
 		authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]

@@ -22,35 +22,35 @@ import (
 // The target and the list of credential sources attached to the target, after ids are added,
 // will be returned on success.
 // The targetVersion must match the current version of the targetId in the repository.
-func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, idsByPurpose CredentialSources, _ ...Option) (Target, []HostSource, []CredentialSource, error) {
+func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId string, targetVersion uint32, idsByPurpose CredentialSources, _ ...Option) (Target, error) {
 	const op = "target.(Repository).AddTargetCredentialSources"
 	if targetId == "" {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 
 	t := allocTargetView()
 	t.PublicId = targetId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
 
 	alloc, ok := subtypeRegistry.allocFunc(t.Subtype())
 	if !ok {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 
 	addCredLibs, addStaticCreds, err := r.createSources(ctx, targetId, t.Subtype(), idsByPurpose)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	target := alloc()
 	if err := target.SetPublicId(ctx, t.PublicId); err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	target.SetVersion(targetVersion + 1)
 	metadata = target.Oplog(oplog.OpType_OP_TYPE_UPDATE)
@@ -58,11 +58,9 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var hostSources []HostSource
-	var credSources []CredentialSource
 	var updatedTarget Target
 	_, err = r.writer.DoTx(
 		ctx,
@@ -116,14 +114,18 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, targetTicket, metadata, msgs); err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
-			hostSources, err = fetchHostSources(ctx, reader, targetId)
+			hostSources, err := fetchHostSources(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve host sources after adding"))
 			}
-			credSources, err = fetchCredentialSources(ctx, reader, targetId)
+			updatedTarget.SetHostSources(hostSources)
+
+			credSources, err := fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve credential sources after adding"))
 			}
+			updatedTarget.SetCredentialSources(credSources)
+
 			address, err := fetchAddress(ctx, reader, targetId)
 			if err != nil && !errors.IsNotFoundError(err) {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve target address after adding"))
@@ -135,9 +137,9 @@ func (r *Repository) AddTargetCredentialSources(ctx context.Context, targetId st
 		},
 	)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	return updatedTarget.(Target), hostSources, credSources, nil
+	return updatedTarget, nil
 }
 
 // DeleteTargetCredentialSources deletes credential sources from a target in the repository.
@@ -334,8 +336,6 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 	}
 
 	var rowsAffected int
-	var hostSources []HostSource
-	var credSources []CredentialSource
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -432,21 +432,25 @@ func (r *Repository) SetTargetCredentialSources(ctx context.Context, targetId st
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 
-			hostSources, err = fetchHostSources(ctx, reader, targetId)
+			hostSources, err := fetchHostSources(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current target host sets after add/delete"))
 			}
-			credSources, err = fetchCredentialSources(ctx, reader, targetId)
+			updatedTarget.SetHostSources(hostSources)
+
+			credSources, err := fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current target credential sources after add/delete"))
 			}
+			updatedTarget.SetCredentialSources(credSources)
+
 			return nil
 		},
 	)
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	return hostSources, credSources, rowsAffected, nil
+	return t.HostSource, t.CredentialSources, rowsAffected, nil
 }
 
 type changeQueryResult struct {

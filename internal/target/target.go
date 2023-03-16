@@ -33,6 +33,8 @@ type Target interface {
 	GetEgressWorkerFilter() string
 	GetIngressWorkerFilter() string
 	GetAddress() string
+	GetHostSources() []HostSource
+	GetCredentialSources() []CredentialSource
 	Clone() Target
 	SetPublicId(context.Context, string) error
 	SetProjectId(string)
@@ -48,6 +50,8 @@ type Target interface {
 	SetEgressWorkerFilter(string)
 	SetIngressWorkerFilter(string)
 	SetAddress(string)
+	SetHostSources([]HostSource)
+	SetCredentialSources([]CredentialSource)
 	Oplog(op oplog.OpType) oplog.Metadata
 }
 
@@ -66,8 +70,10 @@ var (
 type targetView struct {
 	*store.TargetView
 	// Network address assigned to the Target.
-	Address   string `json:"address,omitempty" gorm:"-"`
-	tableName string `gorm:"-"`
+	Address           string             `json:"address,omitempty" gorm:"-"`
+	tableName         string             `gorm:"-"`
+	HostSource        []HostSource       `gorm:"-"`
+	CredentialSources []CredentialSource `gorm:"-"`
 }
 
 // allocTargetView will allocate a target view
@@ -96,6 +102,14 @@ func (t *targetView) SetTableName(n string) {
 	}
 }
 
+func (t *targetView) SetHostSources(hs []HostSource) {
+	t.HostSource = hs
+}
+
+func (t *targetView) SetCredentialSources(cs []CredentialSource) {
+	t.CredentialSources = cs
+}
+
 // GetPublicId satisfies boundary.AuthzProtectedEntity
 func (t targetView) GetPublicId() string {
 	return t.PublicId
@@ -104,6 +118,14 @@ func (t targetView) GetPublicId() string {
 // GetProjectId satisfies boundary.AuthzProtectedEntity
 func (t targetView) GetProjectId() string {
 	return t.ProjectId
+}
+
+func (t *targetView) GetHostSources() []HostSource {
+	return t.HostSource
+}
+
+func (t *targetView) GetCredentialSources() []CredentialSource {
+	return t.CredentialSources
 }
 
 // GetUserId satisfies boundary.AuthzProtectedEntity; targets are not associated
@@ -147,5 +169,7 @@ func (t *targetView) targetSubtype(ctx context.Context, address string) (Target,
 	tt.SetEgressWorkerFilter(t.EgressWorkerFilter)
 	tt.SetIngressWorkerFilter(t.IngressWorkerFilter)
 	tt.SetAddress(address)
+	tt.SetHostSources(t.HostSource)
+	tt.SetCredentialSources(t.CredentialSources)
 	return tt, nil
 }

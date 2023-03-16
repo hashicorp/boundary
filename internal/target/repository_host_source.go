@@ -18,35 +18,35 @@ import (
 // targetVersion or an error will be returned.  The target and a list of current
 // host source ids will be returned on success. Zero is not a valid value for the
 // WithVersion option and will return an error.
-func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, targetVersion uint32, hostSourceIds []string, _ ...Option) (Target, []HostSource, []CredentialSource, error) {
+func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, targetVersion uint32, hostSourceIds []string, _ ...Option) (Target, error) {
 	const op = "target.(Repository).AddTargetHostSources"
 	if targetId == "" {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	if targetVersion == 0 {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 	if len(hostSourceIds) == 0 {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing host source ids")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host source ids")
 	}
 	newHostSources := make([]any, 0, len(hostSourceIds))
 	for _, id := range hostSourceIds {
 		ths, err := NewTargetHostSet(targetId, id)
 		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target host set"))
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
 		newHostSources = append(newHostSources, ths)
 	}
 	t := allocTargetView()
 	t.PublicId = targetId
 	if err := r.reader.LookupByPublicId(ctx, &t); err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", targetId)))
 	}
 	var metadata oplog.Metadata
 
 	alloc, ok := subtypeRegistry.allocFunc(t.Subtype())
 	if !ok {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is an unsupported target type %s", t.PublicId, t.Type))
 	}
 
 	target := alloc()
@@ -57,7 +57,7 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, t.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 	var currentHostSources []HostSource
 	var currentCredSources []CredentialSource
@@ -113,10 +113,13 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 		},
 	)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating sets"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating sets"))
 	}
 
-	return updatedTarget, currentHostSources, currentCredSources, nil
+	updatedTarget.SetHostSources(currentHostSources)
+	updatedTarget.SetCredentialSources(currentCredSources)
+
+	return updatedTarget, nil
 }
 
 // DeleteTargeHostSources deletes host sources from a target (targetId). The
@@ -290,8 +293,6 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 	}
 
 	var totalRowsAffected int
-	var currentHostSources []HostSource
-	var currentCredSources []CredentialSource
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -350,14 +351,17 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
 			}
 
-			currentHostSources, err = fetchHostSources(ctx, reader, targetId)
+			currentHostSources, err := fetchHostSources(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current target host sources after set"))
 			}
-			currentCredSources, err = fetchCredentialSources(ctx, reader, targetId)
+			t.SetHostSources(currentHostSources)
+
+			currentCredSources, err := fetchCredentialSources(ctx, reader, targetId)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current target credential sources after set"))
 			}
+			t.SetCredentialSources(currentCredSources)
 
 			return nil
 		},
@@ -365,7 +369,7 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 	if err != nil {
 		return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
-	return currentHostSources, currentCredSources, totalRowsAffected, nil
+	return t.HostSource, t.CredentialSources, totalRowsAffected, nil
 }
 
 func fetchHostSources(ctx context.Context, r db.Reader, targetId string) ([]HostSource, error) {

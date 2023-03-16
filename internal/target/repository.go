@@ -87,12 +87,12 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 // LookupTarget will look up a target in the repository and return the target
 // with its host source ids and credential source ids.  If the target is not
 // found, it will return nil, nil, nil, nil. No options are currently supported.
-func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, []HostSource, []CredentialSource, error) {
+func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, opt ...Option) (Target, error) {
 	const op = "target.(Repository).LookupTarget"
 	opts := GetOpts(opt...)
 
 	if publicIdOrName == "" {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 
 	var where []string
@@ -102,27 +102,27 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	projectNameEmpty := opts.WithProjectName == ""
 	if !nameEmpty {
 		if opts.WithName != publicIdOrName {
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "name passed in but does not match publicId")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "name passed in but does not match publicId")
 		}
 		where, whereArgs = append(where, "lower(name) = lower(?)"), append(whereArgs, opts.WithName)
 		switch {
 		case projectIdEmpty && projectNameEmpty:
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "using name but both project ID and project name are empty")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "using name but both project ID and project name are empty")
 		case !projectIdEmpty && !projectNameEmpty:
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "using name but both project ID and project name are set")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "using name but both project ID and project name are set")
 		case !projectIdEmpty:
 			where, whereArgs = append(where, "project_id = ?"), append(whereArgs, opts.WithProjectId)
 		case !projectNameEmpty:
 			where, whereArgs = append(where, "project_id = (select public_id from iam_scope where lower(name) = lower(?))"), append(whereArgs, opts.WithProjectName)
 		default:
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "unknown combination of parameters")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown combination of parameters")
 		}
 	} else {
 		switch {
 		case !projectIdEmpty:
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "passed in project ID when using target ID for lookup")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "passed in project ID when using target ID for lookup")
 		case !projectNameEmpty:
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "passed in project name when using target ID for lookup")
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "passed in project name when using target ID for lookup")
 		}
 	}
 
@@ -166,15 +166,18 @@ func (r *Repository) LookupTarget(ctx context.Context, publicIdOrName string, op
 	)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, nil, nil, nil
+			return nil, nil
 		}
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	subtype, err := target.targetSubtype(ctx, address)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	return subtype, hostSources, credSources, nil
+	subtype.SetHostSources(hostSources)
+	subtype.SetCredentialSources(credSources)
+
+	return subtype, nil
 }
 
 // FetchAuthzProtectedEntitiesByScope implements boundary.AuthzProtectedEntityProvider
@@ -375,44 +378,44 @@ func (r *Repository) DeleteTarget(ctx context.Context, publicId string, _ ...Opt
 // CreateTarget inserts into the repository and returns the new Target with
 // its list of host sets and credential libraries.
 // WithPublicId is the only supported option.
-func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Option) (Target, []HostSource, []CredentialSource, error) {
+func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Option) (Target, error) {
 	const op = "target.(Repository).CreateTarget"
 	opts := GetOpts(opt...)
 	if target == nil {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing target")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target")
 	}
 
 	vet, ok := subtypeRegistry.vetFunc(target.GetType())
 	if !ok {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
+		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
 	}
 	if err := vet(ctx, target); err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	if target.GetProjectId() == "" {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	if target.GetName() == "" {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing name")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing name")
 	}
 	if target.GetPublicId() != "" {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
 
 	t := target.Clone()
 
 	if opts.WithPublicId != "" {
 		if err := t.SetPublicId(ctx, opts.WithPublicId); err != nil {
-			return nil, nil, nil, err
+			return nil, err
 		}
 	} else {
 		prefix, ok := subtypeRegistry.idPrefix(target.GetType())
 		if !ok {
-			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
 		}
 		id, err := db.NewPublicId(prefix)
 		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 		t.SetPublicId(ctx, id)
 	}
@@ -423,19 +426,17 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		t.SetAddress(strings.TrimSpace(t.GetAddress()))
 		address, err = NewAddress(t.GetPublicId(), t.GetAddress())
 		if err != nil {
-			return nil, nil, nil, errors.Wrap(ctx, err, op)
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	metadata := t.Oplog(oplog.OpType_OP_TYPE_CREATE)
 	var returnedTarget any
-	var returnedHostSources []HostSource
-	var returnedCredSources []CredentialSource
 	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -469,9 +470,9 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		},
 	)
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s target id", t.GetPublicId())))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s target id", t.GetPublicId())))
 	}
-	return returnedTarget.(Target), returnedHostSources, returnedCredSources, nil
+	return returnedTarget.(Target), nil
 }
 
 // UpdateTarget will update a target in the repository and return the written
@@ -480,26 +481,26 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 // included in fieldMask. Name, Description, and WorkerFilter are the only
 // updatable fields. If no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
-func (r *Repository) UpdateTarget(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, _ ...Option) (Target, []HostSource, []CredentialSource, int, error) {
+func (r *Repository) UpdateTarget(ctx context.Context, target Target, version uint32, fieldMaskPaths []string, _ ...Option) (Target, int, error) {
 	const op = "target.(Repository).UpdateTarget"
 	if target == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target")
 	}
 	if target.GetPublicId() == "" {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target public id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing target public id")
 	}
 	if target.GetProjectId() == "" {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	if version == 0 {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing version")
 	}
 	vet, ok := subtypeRegistry.vetForUpdateFunc(target.GetType())
 	if !ok {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
 	}
 	if err := vet(ctx, target, fieldMaskPaths); err != nil {
-		return nil, nil, nil, db.NoRowsAffected, err
+		return nil, db.NoRowsAffected, err
 	}
 
 	var addressEndpoint string
@@ -517,7 +518,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 			target.SetAddress(strings.TrimSpace(target.GetAddress()))
 			addressEndpoint = target.GetAddress()
 		default:
-			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 
@@ -538,7 +539,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		[]string{"SessionMaxSeconds", "SessionConnectionLimit"},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
+		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")
 	}
 
 	// The Address field is not apart of the target schema in the database.
@@ -573,7 +574,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, target.GetProjectId(), kms.KeyPurposeOplog)
 	if err != nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
 	var rowsUpdated int
@@ -653,9 +654,13 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("target %s already exists in project %s", target.GetName(), target.GetProjectId()))
+			return nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("target %s already exists in project %s", target.GetName(), target.GetProjectId()))
 		}
-		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", target.GetPublicId())))
+		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("failed for %s", target.GetPublicId())))
 	}
-	return returnedTarget, hostSources, credSources, rowsUpdated, nil
+
+	returnedTarget.SetHostSources(hostSources)
+	returnedTarget.SetCredentialSources(credSources)
+
+	return returnedTarget, rowsUpdated, nil
 }
