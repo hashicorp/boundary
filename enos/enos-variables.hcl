@@ -26,7 +26,7 @@ variable "enos_user" {
 
 # Test configs
 variable "boundary_docker_image_name" {
-  description = "Name of Docker image to use"
+  description = "Name:Tag of Docker image to use"
   type        = string
   default     = "docker.io/hashicorp/boundary:latest"
 }

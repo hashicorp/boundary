@@ -10,10 +10,10 @@ terraform {
 }
 
 variable "path" {
-  description = "Path to Docker image file"
+  description = "Path of boundary docker image file to load"
   type        = string
 }
 
-resource "enos_local_exec" "load" {
+resource "enos_local_exec" "load_docker_image" {
   inline = ["docker load -i ${var.path}"]
 }

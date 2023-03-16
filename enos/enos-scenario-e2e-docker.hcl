@@ -20,11 +20,23 @@ scenario "e2e_docker" {
     aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
     local_boundary_dir         = abspath(var.local_boundary_dir)
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
+    build_path = {
+      "local" = "/tmp",
+      "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
+    }
     tags = merge({
       "Project Name" : var.project_name
       "Project" : "Enos",
       "Environment" : "ci"
     }, var.tags)
+  }
+
+  step "build_boundary_docker_image" {
+    module = matrix.builder == "crt" ? module.build_boundary_docker_crt : module.build_boundary_docker_local
+
+    variables {
+      path = matrix.builder == "crt" ? local.boundary_docker_image_file : "/tmp/boundary_docker_image.tar"
+    }
   }
 
   step "create_docker_network" {
@@ -36,21 +48,10 @@ scenario "e2e_docker" {
       step.create_docker_network
     ]
     variables {
+      image_name   = "docker.mirror.hashicorp.services/library/postgres:latest"
       network_name = step.create_docker_network.network_name
     }
     module = module.docker_postgres
-  }
-
-  // step "build_boundary_docker_image" {
-
-  // }
-
-  step "load_boundary_docker_image" {
-    module = module.load_docker_image
-
-    variables {
-      path = local.boundary_docker_image_file
-    }
   }
 
   step "create_boundary" {
@@ -58,10 +59,10 @@ scenario "e2e_docker" {
     depends_on = [
       step.create_docker_network,
       step.create_boundary_database,
-      step.load_boundary_docker_image
+      step.build_boundary_docker_image
     ]
     variables {
-      image_name       = var.boundary_docker_image_name
+      image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
       network_name     = step.create_docker_network.network_name
       postgres_address = step.create_boundary_database.address
     }
@@ -73,7 +74,7 @@ scenario "e2e_docker" {
       step.create_docker_network
     ]
     variables {
-      image_name   = "docker.io/hashicorp/vault:${var.vault_version}"
+      image_name   = "docker.mirror.hashicorp.services/hashicorp/vault:${var.vault_version}"
       network_name = step.create_docker_network.network_name
     }
   }
@@ -84,6 +85,7 @@ scenario "e2e_docker" {
       step.create_docker_network
     ]
     variables {
+      image_name            = "docker.mirror.hashicorp.services/linuxserver/openssh-server"
       network_name          = step.create_docker_network.network_name
       private_key_file_path = local.aws_ssh_private_key_path
     }
