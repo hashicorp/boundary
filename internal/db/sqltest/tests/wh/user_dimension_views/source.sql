@@ -3,7 +3,7 @@
 
 -- source tests the whx_user_dimension_source view.
 begin;
-  select plan(5);
+  select plan(7);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets');
 
   -- auth_password_account
@@ -67,6 +67,31 @@ begin;
     from whx_user_dimension_source as s
    where s.user_id         = 'u_____warren'
      and s.auth_account_id = 'aoa___warren';
+
+-- auth_ldap_account
+  select is(s.*, row(
+    'u_____walter',             'Walter',            'None',
+    'ala___walter',             'ldap auth account', 'walter account',     'Walter LDAP Account',
+    'walter',                   'Walter',            'walter@widget.test',
+    'alm___widget',             'ldap auth method',  'Widget LDAP',        'None',
+    'Not Applicable',
+    'o_____widget',             'Widget Inc',        'None'
+  )::whx_user_dimension_source)
+    from whx_user_dimension_source as s
+   where s.user_id         = 'u_____walter'
+     and s.auth_account_id = 'ala___walter';
+
+  select is(s.*, row(
+    'u_____warren',             'Warren',            'None',
+    'ala___warren',             'ldap auth account', 'warren account', 'Warren LDAP Account',
+    'warren',                   'None',              'None',
+    'alm___widget',             'ldap auth method',  'Widget LDAP',    'None',
+    'Not Applicable',
+    'o_____widget',             'Widget Inc',        'None'
+  )::whx_user_dimension_source)
+    from whx_user_dimension_source as s
+   where s.user_id         = 'u_____warren'
+     and s.auth_account_id = 'ala___warren';
 
   select * from finish();
 rollback;

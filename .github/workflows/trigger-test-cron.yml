@@ -4,7 +4,7 @@ name: trigger-test-cron
 on:
   schedule:
     # * is a special character in YAML so you have to quote this string
-    - cron:  '0 */2 * * *'
+    - cron:  '0 * * * *'
 
 jobs:
   trigger-test:
@@ -13,6 +13,10 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Trigger test workflow
-        run: gh workflow run test.yml
+        run: |
+          run=5
+          for i in $(seq $run); do
+            gh workflow run test.yml
+          done
         env:
           GITHUB_TOKEN: ${{ github.token }}

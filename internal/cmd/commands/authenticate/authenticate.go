@@ -49,6 +49,10 @@ func (c *Command) Help() string {
 		"",
 		"      $ boundary authenticate oidc -auth-method-id amoidc_1234567890",
 		"",
+		"    Authenticate with an LDAP auth method:",
+		"",
+		"      $ boundary authenticate ldap -auth-method-id amldap_1234567890",
+		"",
 		"  Please see the auth method subcommand help for detailed usage information.",
 	}) + c.Flags().Help()
 }
@@ -107,8 +111,12 @@ func (c *Command) Run(args []string) int {
 		cmd := OidcCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
 		cmd.Run([]string{})
 
+	case strings.HasPrefix(c.FlagAuthMethodId, globals.LdapAuthMethodPrefix):
+		cmd := LdapCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
+		cmd.Run([]string{})
+
 	default:
-		c.PrintCliError(fmt.Errorf("The primary auth method was of an unsupported type. The given ID was %s; only 'ampw' (password) and 'amoidc' (OIDC) auth method prefixes are supported.", c.FlagAuthMethodId))
+		c.PrintCliError(fmt.Errorf("The primary auth method was of an unsupported type. The given ID was %s; only 'ampw' (password), 'amoidc' (OIDC) and 'amldap' (LDAP) auth method prefixes are supported.", c.FlagAuthMethodId))
 		return cli.RunResultHelp
 	}
 

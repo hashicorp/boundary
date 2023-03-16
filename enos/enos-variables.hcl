@@ -25,6 +25,12 @@ variable "enos_user" {
 }
 
 # Test configs
+variable "boundary_docker_image" {
+  description = "Name of Docker Image to use"
+  type        = string
+  default     = "docker.io/hashicorp/boundary:latest"
+}
+
 variable "worker_instance_type" {
   description = "EC2 Instance type"
   type        = string

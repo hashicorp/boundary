@@ -1,0 +1,592 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+// Package store provides protobufs for storing types in the ldap package.
+package controller.storage.auth.ldap.store.v1;
+
+import "controller/custom_options/v1/options.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/auth/ldap/store;store";
+
+// AuthMethod represents an LDAP auth method.
+message AuthMethod {
+  // public_id is the PK and is the external public identifier of the auth
+  // method.
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 20;
+
+  // update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 30;
+
+  // name is optional. If set, it must be unique within scope_id.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 40 [(custom_options.v1.mask_mapping) = {
+    this: "Name"
+    that: "name"
+  }];
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 50 [(custom_options.v1.mask_mapping) = {
+    this: "Description"
+    that: "description"
+  }];
+
+  // The scope_id of the owning scope. Must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string scope_id = 60;
+
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 70;
+
+  // operational_state is the current state of the auth_ldap_method (inactive,
+  // active-private, or active-public).
+  // @inject_tag: `gorm:"column:state;not_null"`
+  string operational_state = 80 [(custom_options.v1.mask_mapping) = {
+    this: "OperationalState"
+    that: "attributes.state"
+  }];
+
+  // start_tls if true, issues a StartTLS command after establishing an
+  // unencrypted connection. Defaults to false.
+  // @inject_tag: `gorm:"not_null"`
+  bool start_tls = 90 [(custom_options.v1.mask_mapping) = {
+    this: "StartTls"
+    that: "attributes.start_tls"
+  }];
+
+  // insecure_tls if true, skips LDAP server SSL certificate validation -
+  // insecure and use with caution. Defaults to false.
+  // @inject_tag: `gorm:"not_null;default:false"`
+  bool insecure_tls = 100 [(custom_options.v1.mask_mapping) = {
+    this: "InsecureTls"
+    that: "attributes.insecure_tls"
+  }];
+
+  // discover_dn if true, use anon bind to discover the bind DN of a user.
+  // Defaults to false.
+  // @inject_tag: `gorm:"not_null;default:false"`
+  bool discover_dn = 110 [(custom_options.v1.mask_mapping) = {
+    this: "DiscoverDn"
+    that: "attributes.discover_dn"
+  }];
+
+  // anon_group_search if true, use anon bind when performing LDAP group
+  // searches. Defaults to false.
+  // @inject_tag: `gorm:"not_null;default:false"`
+  bool anon_group_search = 120 [(custom_options.v1.mask_mapping) = {
+    this: "AnonGroupSearch"
+    that: "attributes.anon_group_search"
+  }];
+
+  // upn_domain is the userPrincipalDomain used to construct the UPN string for
+  // the authenticating user. The constructed UPN will appear as
+  // [username]@UPNDomain  Example: example.com, which will cause Boundary to
+  // bind as username@example.com when authenticating the user.
+  // @inject_tag: `gorm:"default:null"`
+  string upn_domain = 130 [(custom_options.v1.mask_mapping) = {
+    this: "UpnDomain"
+    that: "attributes.upn_domain"
+  }];
+
+  // urls are the LDAP URLS that specify LDAP servers to connection to.  There
+  // must be at lease on URL for each LDAP auth method. When attempting to
+  // connect, the URLs are tried in the order specified. These are Value Objects
+  // that will be stored as Url messages, and are operated on as a complete set
+  // (not individually).
+  // @inject_tag: `gorm:"-"`
+  repeated string urls = 140 [(custom_options.v1.mask_mapping) = {
+    this: "Urls"
+    that: "attributes.urls"
+  }];
+
+  // user_dn (optional) is the base DN under which to perform user search.
+  // Example: ou=Users,dc=example,dc=com
+  // @inject_tag: `gorm:"-"`
+  string user_dn = 150 [(custom_options.v1.mask_mapping) = {
+    this: "UserDn"
+    that: "attributes.user_dn"
+  }];
+
+  // user_attr (optional) is the attribute on user's entry matching the username
+  // passed when authenticating.  Examples: cn, uid
+  // @inject_tag: `gorm:"-"`
+  string user_attr = 160 [(custom_options.v1.mask_mapping) = {
+    this: "UserAttr"
+    that: "attributes.user_attr"
+  }];
+
+  // user_filter (optional) is a go template used to construct a LDAP user
+  // search filter. The template can access the following context variables:
+  // [UserAttr, Username]. The default userfilter is
+  // ({{.UserAttr}}={{.Username}}) or
+  // (userPrincipalName={{.Username}}@UPNDomain) if the upndomain parameter is
+  // set.
+  // @inject_tag: `gorm:"-"`
+  string user_filter = 170 [(custom_options.v1.mask_mapping) = {
+    this: "UserFilter"
+    that: "attributes.user_filter"
+  }];
+
+  // enable_groups if true, an authenticated user's groups will be found during
+  // authentication. Defaults to false.
+  // @inject_tag: `gorm:"not_null;default:false"`
+  bool enable_groups = 175 [(custom_options.v1.mask_mapping) = {
+    this: "EnableGroups"
+    that: "attributes.enable_groups"
+  }];
+
+  // group_dn (optional) is the base DN under which to perform group search.
+  // Example: ou=Groups,dc=example,dc=com
+  //
+  // Note: there is no default, so no base dn will be used for group searches if
+  // it's not specified.
+  // @inject_tag: `gorm:"-"`
+  string group_dn = 180 [(custom_options.v1.mask_mapping) = {
+    this: "GroupDn"
+    that: "attributes.group_dn"
+  }];
+
+  // group_attr (optional) is the LDAP attribute to follow on objects returned
+  // by GroupFilter in order to enumerate user group membership. Examples: for
+  // GroupFilter queries returning group objects, use: cn. For queries returning
+  // user objects, use: memberOf. The default is cn.
+  // @inject_tag: `gorm:"-"`
+  string group_attr = 190 [(custom_options.v1.mask_mapping) = {
+    this: "GroupAttr"
+    that: "attributes.group_attr"
+  }];
+
+  // group_filter (optional) is a Go template used when constructing the group
+  // membership query. The template can access the following context variables:
+  // [UserDN, Username]. The default is
+  // (|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}})),
+  // which is compatible with several common directory schemas.
+  // @inject_tag: `gorm:"-"`
+  string group_filter = 200 [(custom_options.v1.mask_mapping) = {
+    this: "GroupFilter"
+    that: "attributes.group_filter"
+  }];
+
+  // certificates are optional PEM encoded x509 certificates in ASN.1 DER form
+  // that can be used as trust anchors when connecting to an LDAP provider.
+  // These are Value Objects that will be stored as Certificate messages, and
+  // are operated on as a complete set (not individually).
+  // @inject_tag: `gorm:"-"`
+  repeated string certificates = 210 [(custom_options.v1.mask_mapping) = {
+    this: "Certificates"
+    that: "attributes.certificates"
+  }];
+
+  // client_certificate is the certificate in ASN.1 DER form encoded as PEM. It
+  // must be set.
+  // @inject_tag: `gorm:"-"`
+  string client_certificate = 220 [(custom_options.v1.mask_mapping) = {
+    this: "ClientCertificate"
+    that: "attributes.client_certificate"
+  }];
+
+  // client_certificate_key (optional) is the plain-text of the certificate key
+  // data in PKCS #8, ASN.1 DER form. We are not storing this plain-text key in
+  // the database.
+  // @inject_tag: `gorm:"-"`
+  bytes client_certificate_key = 230 [(custom_options.v1.mask_mapping) = {
+    this: "ClientCertificateKey"
+    that: "attributes.client_certificate_key"
+  }];
+
+  // client_certificate_key_hmac is a sha256-hmac of the unencrypted
+  // client_certificate_key_hmac that is returned from the API for read.  It is
+  // recalculated everytime the raw client_certificate_key_hmac is updated in
+  // the database.
+  // @inject_tag: `gorm:"-"`
+  bytes client_certificate_key_hmac = 240;
+
+  // bind_dn (optional) is the distinguished name of entry to bind when
+  // performing user and group search. Example:
+  // cn=vault,ou=Users,dc=example,dc=com
+  // @inject_tag: `gorm:"-"`
+  string bind_dn = 250 [(custom_options.v1.mask_mapping) = {
+    this: "BindDn"
+    that: "attributes.bind_dn"
+  }];
+
+  // bind_password (optional) is the password to use along with binddn when
+  // performing user search. (This plaintext is not stored in the database)
+  // @inject_tag: `gorm:"-"`
+  string bind_password = 260 [(custom_options.v1.mask_mapping) = {
+    this: "BindPassword"
+    that: "attributes.bind_password"
+  }];
+
+  // bind_password_hmac is a sha256-hmac of the unencrypted bind_password that
+  // is returned from the API for read.  It is recalculated everytime the raw
+  // password is updated in the database.
+  // @inject_tag: `gorm:"-"`
+  bytes bind_password_hmac = 270;
+
+  // is_primary_auth_method is a read-only output field which indicates if the
+  // auth method is set as the scope's primary auth method.
+  // @inject_tag: `gorm:"-"`
+  bool is_primary_auth_method = 280;
+
+  // use_token_groups if true, use the Active Directory tokenGroups constructed
+  // attribute of the user to find the group memberships. This will find all
+  // security groups including nested ones.
+  // @inject_tag: `gorm:"not_null;default:false"`
+  bool use_token_groups = 290 [(custom_options.v1.mask_mapping) = {
+    this: "UseTokenGroups"
+    that: "attributes.use_token_groups"
+  }];
+
+  // account_attribute_maps are optional attribute maps from custom attributes
+  // to the standard attributes of fullname and email.  These maps are
+  // represented as key=value where the key equals the from_attribute and the
+  // value equals the to_attribute.  For example "preferredName=fullName".  All
+  // attribute names are case insensitive.
+  // @inject_tag: `gorm:"-"`
+  repeated string account_attribute_maps = 300 [(custom_options.v1.mask_mapping) = {
+    this: "AccountAttributeMaps"
+    that: "attributes.account_attribute_maps"
+  }];
+}
+
+// Url represents LDAP URLs that specify LDAP servers to connection to.  There
+// must be at lease on URL for each LDAP auth method.
+message Url {
+  // create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 10;
+
+  // ldap_method_id is the FK to the URL's LDAP auth method.
+  // @inject_tag: `gorm:"primary_key"`
+  string ldap_method_id = 20;
+
+  // connection_priority represents the priority (aka order) of the url in the
+  // list of ldap urls for the auth method.
+  // @inject_tag: `gorm:"primary_key"`
+  uint32 connection_priority = 30;
+
+  // server_url is the LDAP server URL. The URL scheme must be either ldap or ldaps.
+  // The port is optional.If no port is specified, then a default of 389 is used
+  // for ldap and a default of 689 is used for ldaps. (see rfc4516 for more
+  // information about LDAP URLs)
+  // @inject_tag: `gorm:"column:url;not_null"`
+  string server_url = 40;
+}
+
+// UserEntrySearchConf represent a set of optional configuration fields used to
+// search for user entries.
+message UserEntrySearchConf {
+  // create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 10;
+
+  // ldap_method_id is the FK to the UserEntrySearchConf's LDAP auth method.
+  // @inject_tag: `gorm:"primary_key"`
+  string ldap_method_id = 20;
+
+  // user_dn is the base DN under which to perform user search. Example:
+  // ou=Users,dc=example,dc=com
+  // @inject_tag: `gorm:"default:null"`
+  string user_dn = 30;
+
+  // user_attr is the attribute on user attribute entry matching the username
+  // passed when authenticating.  Examples: cn, uid
+  // @inject_tag: `gorm:"default:null"`
+  string user_attr = 40;
+
+  // user_filter is a go template used to construct a LDAP user search filter.
+  // The template can access the following context variables: [UserAttr,
+  // Username]. The default userfilter is ({{.UserAttr}}={{.Username}}) or
+  // (userPrincipalName={{.Username}}@UPNDomain) if the upndomain parameter is
+  // set.
+  // @inject_tag: `gorm:"default:null"`
+  string user_filter = 50;
+}
+
+// GroupEntrySearchConf represent a set of optional configuration fields used to
+// search for group entries.
+message GroupEntrySearchConf {
+  // create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 10;
+
+  // ldap_method_id is the FK to the GroupEntrySearchConf's LDAP auth method.
+  // @inject_tag: `gorm:"primary_key"`
+  string ldap_method_id = 20;
+
+  // group_dn is the base DN under which to perform user search. Example:
+  // ou=Groups,dc=example,dc=com
+  // @inject_tag: `gorm:"default:null"`
+  string group_dn = 30;
+
+  // group_attr is the LDAP attribute to follow on objects returned by
+  // GroupFilter in order to enumerate user group membership. Examples: for
+  // GroupFilter queries returning group objects, use: cn. For queries returning
+  // user objects, use: memberOf. The default is cn.
+  // @inject_tag: `gorm:"default:null"`
+  string group_attr = 40;
+
+  // user_filter is a Go template used when constructing the group membership
+  // query. The template can access the following context variables: [UserDN,
+  // Username]. The default is
+  // (|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}})),
+  // which is compatible with several common directory schemas.
+  // @inject_tag: `gorm:"default:null"`
+  string group_filter = 50;
+}
+
+// Certificate entries are optional PEM encoded x509 certificates. Each entry is
+// a single certificate.  An ldap auth method may have 0 or more of these
+// optional x509s.  If an auth method has any cert entries, they are used as
+// trust anchors when connecting to the auth method's ldap provider (instead of
+// the host system's cert chain).
+message Certificate {
+  // create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 10;
+
+  // ldap_method_id is the FK to the Certificate's LDAP auth method.
+  // @inject_tag: `gorm:"primary_key"`
+  string ldap_method_id = 20;
+
+  // certificate is a PEM encoded x509 in ASN.1 DER form.
+  // @inject_tag: `gorm:"column:certificate;primary_key"`
+  string cert = 30;
+}
+
+// ClientCertificate represent a set of optional configuration fields used for
+// specifying a mTLS client cert for LDAP connections.
+message ClientCertificate {
+  // create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 10;
+
+  // ldap_method_id is the FK to the ClientCertificate's LDAP auth method.
+  // @inject_tag: `gorm:"primary_key"`
+  string ldap_method_id = 20;
+
+  // certificate is the PEM encoded certificate in ASN.1 DER.
+  // It must be set.
+  // @inject_tag: `gorm:"not_null"`
+  bytes certificate = 30;
+
+  // certificate_key is the plain-text of the certificate key data in PKCS #8,
+  // ASN.1 DER form. We are not storing this plain-text key in the database.
+  // @inject_tag: `gorm:"-" wrapping:"pt,certificate_key_data"`
+  bytes certificate_key = 40;
+
+  // ct_certificate_key is the ciphertext of the certificate key data. It
+  // is stored in the database.
+  // @inject_tag: `gorm:"column:certificate_key;not_null" wrapping:"ct,certificate_key_data"`
+  bytes ct_certificate_key = 50;
+
+  // certificate_key_hmac is a sha256-hmac of the unencrypted certificate_key that
+  // is returned from the API for read.  It is recalculated everytime the raw
+  // certificate_key is updated.
+  // @inject_tag: `gorm:"not_null"`
+  bytes certificate_key_hmac = 60;
+
+  // The key_id of the kms database key used for encrypting this entry.
+  // It must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 70;
+}
+
+// BindCredentail (optional) represent parameters which allow Boundary to bind
+// (aka authenticate) using the credentials provided when searching for the user
+// entry used to authenticate the end user.
+message BindCredential {
+  // create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 10;
+
+  // ldap_method_id is the FK to the BindCredential's LDAP auth method.
+  // @inject_tag: `gorm:"primary_key"`
+  string ldap_method_id = 20;
+
+  // dn is the distinguished name of the entry to bind when performing
+  // user and group search. Example: cn=vault,ou=Users,dc=example,dc=com
+  // @inject_tag: `gorm:"not_null"`
+  string dn = 30;
+
+  // password is the plain-text password to use along with dn. We are not
+  // storing this plain-text key in the database.
+  // @inject_tag: `gorm:"-" wrapping:"pt,password_data"`
+  bytes password = 40;
+
+  // ct_password_key is the ciphertext of the password. It is stored in the database.
+  // @inject_tag: `gorm:"column:password;not_null" wrapping:"ct,password_data"`
+  bytes ct_password = 50;
+
+  // password_hmac is a sha256-hmac of the unencrypted password that is returned
+  // from the API for read.  It is recalculated everytime the raw password is
+  // updated.
+  // @inject_tag: `gorm:"not_null"`
+  bytes password_hmac = 60;
+
+  // The key_id of the kms database key used for encrypting this entry.
+  // It must be set.
+  // @inject_tag: `gorm:"not_null"`
+  string key_id = 70;
+}
+
+// Account respresent Accounts associated with an LDAP auth method.
+message Account {
+  // public_id is the PK and is the external public identifier of the account
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 20;
+
+  // update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 30;
+
+  // auth_method_id is the FK to the Account's LDAP auth method.
+  // @inject_tag: `gorm:"not_null"`
+  string auth_method_id = 40;
+
+  // name is optional. If set, it must be unique within scope_id.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 50 [(custom_options.v1.mask_mapping) = {
+    this: "Name"
+    that: "name"
+  }];
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 60 [(custom_options.v1.mask_mapping) = {
+    this: "Description"
+    that: "description"
+  }];
+
+  // The scope_id of the owning scope. Must be set. The scope_id column is not
+  // included here as it is used only to ensure data integrity in the database
+  // between iam users and auth methods.
+  // @inject_tag: `gorm:"not_null"`
+  string scope_id = 70;
+
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 80;
+
+  // login_name of the authenticated user.  This is the login_name (or username)
+  // entered by the user when authenticating (typically the uid or cn
+  // attribute).  Account login names must be lower case.
+  // @inject_tag: `gorm:"not_null"`
+  string login_name = 90;
+
+  // full_name is a string that maps to the name attribute for the authenticated
+  // user.  This attribute is updated every time a user successfully
+  // authenticates.
+  // @inject_tag: `gorm:"default:null"`
+  string full_name = 100;
+
+  // email is a string that maps to the email address attribute for the
+  // authenticated user.  This attribute is updated every time a user
+  // successfully authenticates.
+  // @inject_tag: `gorm:"default:null"`
+  string email = 110;
+
+  // dn is the distinguished name authenticated user's entry.  Will be null until
+  // the user's first successful authentication.  This attribute is updated
+  // every time a user successfully authenticates.
+  // @inject_tag: `gorm:"default:null"`
+  string dn = 120;
+
+  // member_of_groups are the json marshalled groups the authenticated user is a
+  // member of. Will be null until the user's first successful authentication.
+  // This attribute is updated every time a user successfully authenticates.
+  // @inject_tag: `gorm:"default:null"`
+  string member_of_groups = 140;
+}
+
+// AccountAttributeMap entries are optional from/to account attribute maps.
+message AccountAttributeMap {
+  // @inject_tag: `gorm:"primary_key"`
+  string ldap_method_id = 10;
+
+  // from_attribute is the attribute from the user's entry that you need to map
+  // to a standard account attribute.
+  // @inject_tag: `gorm:"not_null"`
+  string from_attribute = 20;
+
+  // to_attribute is the standard account attribute to map the from_attribute
+  // to.  Valid values are: fullname, email
+  // @inject_tag: `gorm:"column:to_attribute;primary_key"`
+  string to_attribute = 30;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 40;
+}
+
+// ManagedGroup entries provide an LDAP auth method implementation of managed
+// groups.
+message ManagedGroup {
+  // @inject_tag: `gorm:"primary_key"`
+  string public_id = 10;
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 20;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 30;
+
+  // name is optional. If set, it must be unique within auth_method_id.
+  // @inject_tag: `gorm:"default:null"`
+  string name = 40 [(custom_options.v1.mask_mapping) = {
+    this: "Name"
+    that: "name"
+  }];
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 50 [(custom_options.v1.mask_mapping) = {
+    this: "Description"
+    that: "description"
+  }];
+
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 60;
+
+  // auth_method_id is the fk to the account's auth method.
+  // @inject_tag: `gorm:"not_null"`
+  string auth_method_id = 70;
+
+  // groups is json marshalled list of groups that make up the ManagedGroup
+  // @inject_tag: `gorm:"not_null"`
+  string group_names = 80 [(custom_options.v1.mask_mapping) = {
+    this: "GroupNames"
+    that: "attributes.group_names"
+  }];
+}
+
+// ManagedGroupMemberAccount contains a mapping between a managed group and a
+// member account.
+message ManagedGroupMemberAccount {
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 10;
+
+  // managed_group_id is the fk to the oidc managed group public id
+  // @inject_tag: `gorm:"primary_key"`
+  string managed_group_id = 20;
+
+  // member_id is the fk to the oidc account public id
+  // @inject_tag: `gorm:"primary_key"`
+  string member_id = 30;
+}

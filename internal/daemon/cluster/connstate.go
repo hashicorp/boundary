@@ -40,7 +40,7 @@ func (w *WorkerConnectionInfo) AsConnectionStateStruct() (*structpb.Struct, erro
 }
 
 type stateProvider interface {
-	State() *structpb.Struct
+	ClientState() *structpb.Struct
 }
 
 // GetWorkerInfoFromStateMap returns the WorkerConnectionInfo for the provided
@@ -53,7 +53,7 @@ func GetWorkerInfoFromStateMap(ctx context.Context, c net.Conn) (*WorkerConnecti
 	if !ok {
 		return nil, errors.Wrap(ctx, errStateNotFound, op, errors.WithMsg("conn is not a state provider"))
 	}
-	st := pc.State()
+	st := pc.ClientState()
 	if st == nil {
 		return nil, errors.Wrap(ctx, errStateNotFound, op, errors.WithMsg("no state attached to connection"))
 	}

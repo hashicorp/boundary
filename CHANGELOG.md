@@ -1,8 +1,9 @@
 # Boundary CHANGELOG
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
-
 ## Next
+
+## 0.12.1 (2023/03/13)
 
 ### Bug Fixes
 
