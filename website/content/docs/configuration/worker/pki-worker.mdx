@@ -102,8 +102,6 @@ ingress and egress for session traffic to a [target][]. Ingress worker filters d
 workers you connect with to initiate a session, and egress worker filters determine which workers are
 used to access targets.
 
-Refer to the [Manage Multi-Hop Sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-multi-hop) tutorial for a hands-on example of configuring a multi-hop session.
-
 ### Multi-hop worker requirements
 
 When you configure multi-hop sessions, there is an "ingress" worker, an "egress" worker, and any number of intermediary workers.
@@ -127,6 +125,10 @@ Any downstream intermediary worker needs eventual connectivity to an egress work
 
 To proxy target connections, egress workers require outbound access to an upstream worker and outbound access to the destination host.
 Inbound session connections from clients reach the egress worker via reverse proxy; the ingress worker is initiated from the egress worker.
+
+### Multi-hop session tutorial
+
+Refer to the [Manage Multi-Hop Sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-multi-hop) tutorial to learn how to configure a multi-hop session.
 
 ## Complete configuration example
 
