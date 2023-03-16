@@ -445,6 +445,26 @@ func Test_Parse(t *testing.T) {
 			err:   `perms.Parse: parsed grant string "id=ttcp_1234567890;type=*;actions=create" contains an id that does not support child types: parameter violation: error #100`,
 		},
 		{
+			name:  "specified resource type non child",
+			input: "id=hcst_1234567890;type=account;actions=read",
+			err:   `perms.Parse: parsed grant string "id=hcst_1234567890;type=account;actions=read" contains type account that is not a child type of the type (host-catalog) of the specified id: parameter violation: error #100`,
+		},
+		{
+			name:  "no id with one bad action",
+			input: "type=host-set;actions=read",
+			err:   `perms.Parse: parsed grant string "type=host-set;actions=read" contains non-create or non-list action in a format that only allows these: parameter violation: error #100`,
+		},
+		{
+			name:  "no id with two bad action",
+			input: "type=host-set;actions=read,create",
+			err:   `perms.Parse: parsed grant string "type=host-set;actions=create,read" contains non-create or non-list action in a format that only allows these: parameter violation: error #100`,
+		},
+		{
+			name:  "no id with three bad action",
+			input: "type=host-set;actions=list,read,create",
+			err:   `perms.Parse: parsed grant string "type=host-set;actions=create,list,read" contains non-create or non-list action in a format that only allows these: parameter violation: error #100`,
+		},
+		{
 			name:  "empty output fields",
 			input: "id=*;type=*;actions=read,list;output_fields=",
 			expected: Grant{
