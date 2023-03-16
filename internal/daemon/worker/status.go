@@ -165,9 +165,9 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	defer statusCancel()
 
 	keyId := w.WorkerAuthCurrentKeyId.Load()
-
-	if w.conf.RawConfig.Worker.Name == "" && keyId == "" {
-		event.WriteError(cancelCtx, op, errors.New("worker name and keyId are both empty; one is needed to identify a worker"),
+	switch {
+	case w.conf.RawConfig.Worker.Name == "" && keyId == "":
+		event.WriteError(cancelCtx, op, errors.New("worker name and keyId are both empty; at least one is needed to identify a worker"),
 			event.WithInfoMsg("error making status request to controller"))
 	}
 	versionInfo := version.Get()

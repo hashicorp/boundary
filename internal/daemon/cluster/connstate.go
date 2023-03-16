@@ -26,6 +26,14 @@ type WorkerConnectionInfo struct {
 	WorkerId string `mapstructure:"worker_id,omitempty"`
 	// The version of the worker that is dialing
 	BoundaryVersion string `mapstructure:"boundary_version,omitempty"`
+	// The name, used for wrapping registration flow
+	Name string `mapstructure:"name,omitempty"`
+	// The description, used for wrapping registration flow
+	Description string `mapstructure:"description,omitempty"`
+	// The public address, used for wrapping registration flow
+	PublicAddr string `mapstructure:"public_addr,omitempty"`
+	// The operational state, used for wrapping registration flow
+	OperationalState string `mapstructure:"operational_state,omitempty"`
 }
 
 // AsConnectionStateStruct builds a structPb in the format that is expected for

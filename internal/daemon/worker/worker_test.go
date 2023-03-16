@@ -172,7 +172,7 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 	// Get an initial set of authorized node credentials
 	initStorage, err := nodeefile.New(ctx)
 	require.NoError(t, err)
-	t.Cleanup(initStorage.Cleanup)
+	t.Cleanup(func() { initStorage.Cleanup(ctx) })
 	_, err = rotation.RotateRootCertificates(ctx, initStorage)
 	require.NoError(t, err)
 	initNodeCreds, err := types.NewNodeCredentials(ctx, initStorage)

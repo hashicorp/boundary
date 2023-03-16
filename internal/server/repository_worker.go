@@ -262,8 +262,6 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker id is not empty")
 	case worker.GetName() == "" && opts.withKeyId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both empty; one is required")
-	case worker.GetName() != "" && opts.withKeyId != "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker keyId and reported name are both set; no more than one is allowed")
 	case worker.OperationalState == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "worker operational state is empty")
 	}
@@ -300,17 +298,16 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			workerClone.PublicId = workerId
 			switch {
 			case opts.withKeyId != "":
-				// This case goes first in case we want to relax the restriction
-				// around both name and key ID being supplied to account for
-				// e.g. config processing bugs. In that case, a key ID being
-				// supplied should be a clear indicator that we are working with
-				// a PKI workerClone, and a lack of one a clear indication we are
+				// This case goes first because a key ID being supplied should
+				// be a clear indicator that we are working with a PKI
+				// workerClone, and a lack of one a clear indication we are
 				// working with a KMS workerClone.
 				//
 				// Note: unlike in the below case, this purposefully leaves out
-				// "description" since we want description changes for PKI-based
-				// workers to come via API only. We can't really guard on this
-				// in the DB so we need to be sure to not include it here.
+				// "description" since we want description changes for (non
+				// KMS-PKI) PKI-based workers to come via API only. We can't
+				// really guard on this in the DB so we need to be sure to not
+				// include it here.
 				n, err := w.Update(ctx, workerClone, []string{"address", "ReleaseVersion", "OperationalState"}, nil)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update status of pki worker"))
@@ -583,7 +580,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to authorize node"))
 				}
 				nodeInfo.State = state
-				if err := StoreNodeInformationTx(ctx, w, databaseWrapper, nodeInfo); err != nil {
+				if err := StoreNodeInformationTx(ctx, read, w, r.kms, worker.ScopeId, nodeInfo); err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to store node information"))
 				}
 
