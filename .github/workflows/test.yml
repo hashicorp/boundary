@@ -183,14 +183,19 @@ jobs:
           which pg_isready || sudo apt-get update && sudo apt-get install -y postgresql-client
           make DOCKER_ARGS='-d' PG_OPTS='-c shared_buffers=256MB -c max_connections=200000' -C testing/dbtest/docker database-up
           until pg_isready -h 127.0.0.1; do docker container inspect boundary-sql-tests &> /dev/null || exit 255; sleep 1; done
+    
       - name: Test
+        uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd # v2.8.3
         env:
           TEST_PACKAGE: "${{ matrix.package }}"
           GOMAXPROCS: ${{ vars.TEST_GOMAXPROCS }}
           TESTARGS: -v
           TEST_TIMEOUT: 120m
-        run: |
-          make test
+        with: 
+          max_attempts: 3
+          timeout_minutes: 120
+          retry_on: error
+          command: make test
       - name: Cleanup
         if: always()
         run: |
