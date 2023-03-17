@@ -90,6 +90,30 @@ module "test_e2e" {
   source = "./modules/test_e2e"
 }
 
+module "test_e2e_ui" {
+  source = "./modules/test_e2e_ui"
+}
+
 module "test_smoke" {
   source = "./modules/test_smoke"
+}
+
+module "docker_postgres" {
+  source = "./modules/docker_postgres"
+}
+
+module "docker_vault" {
+  source = "./modules/docker_vault"
+}
+
+module "docker_boundary" {
+  source = "./modules/docker_boundary"
+}
+
+module "docker_openssh_server" {
+  source = "./modules/docker_openssh_server"
+}
+
+module "docker_network" {
+  source = "./modules/docker_network"
 }

@@ -18,7 +18,7 @@ type testConn struct {
 	st *structpb.Struct
 }
 
-func (c *testConn) State() *structpb.Struct {
+func (c *testConn) ClientState() *structpb.Struct {
 	return c.st
 }
 
@@ -43,7 +43,7 @@ func TestWorkerConnectionInfo_errors(t *testing.T) {
 	t.Run("wrong connection type", func(t *testing.T) {
 		c, _ := net.Pipe()
 		got, err := GetWorkerInfoFromStateMap(context.Background(), c)
-		assert.ErrorContains(t, err, "connection does not provide a State structpb.Struct")
+		assert.ErrorContains(t, err, "conn is not a state provider")
 		assert.Nil(t, got)
 	})
 	t.Run("no state on connection", func(t *testing.T) {

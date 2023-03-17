@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/managedgroups"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,7 +41,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "mismatched oidc authmethod pw type",
 			item: &pb.ManagedGroup{
 				Type:         "ldap",
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 			},
 			errContains: fieldError(globals.TypeField, "Doesn't match the parent resource's type."),
 		},
@@ -49,7 +49,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "missing oidc attributes",
 			item: &pb.ManagedGroup{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs:        nil,
 			},
 			errContains: fieldError(globals.AttributesField, "Attribute fields is required."),
@@ -58,7 +58,7 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "bad oidc attributes",
 			item: &pb.ManagedGroup{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 					OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 						Filter: "foobar",
@@ -71,10 +71,52 @@ func TestValidateCreateRequest(t *testing.T) {
 			name: "no oidc errors",
 			item: &pb.ManagedGroup{
 				Type:         oidc.Subtype.String(),
-				AuthMethodId: oidc.AuthMethodPrefix + "_1234567890",
+				AuthMethodId: globals.OidcAuthMethodPrefix + "_1234567890",
 				Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 					OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 						Filter: `"/foo/bar" == "zipzap"`,
+					},
+				},
+			},
+		},
+		{
+			name: "mismatched ldap authmethod pw type",
+			item: &pb.ManagedGroup{
+				Type:         "oidc",
+				AuthMethodId: globals.LdapAuthMethodPrefix + "_1234567890",
+			},
+			errContains: fieldError(globals.TypeField, "Doesn't match the parent resource's type."),
+		},
+		{
+			name: "missing ldap attributes",
+			item: &pb.ManagedGroup{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: globals.LdapAuthMethodPrefix + "_1234567890",
+				Attrs:        nil,
+			},
+			errContains: fieldError(globals.AttributesField, "Attribute fields is required."),
+		},
+		{
+			name: "bad ldap attributes",
+			item: &pb.ManagedGroup{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: globals.LdapAuthMethodPrefix + "_1234567890",
+				Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
+					LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
+						GroupNames: []string{},
+					},
+				},
+			},
+			errContains: "name: \"attributes.group_names\", desc: \"This field is required.",
+		},
+		{
+			name: "no ldap errors",
+			item: &pb.ManagedGroup{
+				Type:         ldap.Subtype.String(),
+				AuthMethodId: globals.LdapAuthMethodPrefix + "_1234567890",
+				Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
+					LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
+						GroupNames: []string{"admin"},
 					},
 				},
 			},
@@ -106,7 +148,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		{
 			name: "oidc to password change type",
 			req: &pbs.UpdateManagedGroupRequest{
-				Id: intglobals.OidcManagedGroupPrefix + "_1234567890",
+				Id: globals.OidcManagedGroupPrefix + "_1234567890",
 				Item: &pb.ManagedGroup{
 					Type: password.Subtype.String(),
 				},
@@ -114,15 +156,40 @@ func TestValidateUpdateRequest(t *testing.T) {
 			errContains: fieldError(globals.TypeField, "Cannot modify the resource type."),
 		},
 		{
-			name: "no error",
+			name: "oidc no error",
 			req: &pbs.UpdateManagedGroupRequest{
-				Id:         intglobals.OidcManagedGroupPrefix + "_1234567890",
+				Id:         globals.OidcManagedGroupPrefix + "_1234567890",
 				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{}},
 				Item: &pb.ManagedGroup{
 					Version: 1,
 					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 							Filter: `"/foo/bar" == "zipzap"`,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "ldap to password change type",
+			req: &pbs.UpdateManagedGroupRequest{
+				Id: globals.LdapManagedGroupPrefix + "_1234567890",
+				Item: &pb.ManagedGroup{
+					Type: password.Subtype.String(),
+				},
+			},
+			errContains: fieldError(globals.TypeField, "Cannot modify the resource type."),
+		},
+		{
+			name: "ldap no error",
+			req: &pbs.UpdateManagedGroupRequest{
+				Id:         globals.LdapManagedGroupPrefix + "_1234567890",
+				UpdateMask: &fieldmaskpb.FieldMask{Paths: []string{}},
+				Item: &pb.ManagedGroup{
+					Version: 1,
+					Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
+						LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
+							GroupNames: []string{"admin"},
 						},
 					},
 				},

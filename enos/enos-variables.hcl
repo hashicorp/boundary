@@ -25,6 +25,12 @@ variable "enos_user" {
 }
 
 # Test configs
+variable "boundary_docker_image" {
+  description = "Name of Docker Image to use"
+  type        = string
+  default     = "docker.io/hashicorp/boundary:latest"
+}
+
 variable "worker_instance_type" {
   description = "EC2 Instance type"
   type        = string
@@ -84,6 +90,12 @@ variable "local_boundary_dir" {
   type        = string
 }
 
+variable "local_boundary_ui_dir" {
+  description = "Path to local boundary-ui directory"
+  type        = string
+  default     = null
+}
+
 variable "crt_bundle_path" {
   description = "Path to CRT generated boundary bundle"
   type        = string
@@ -123,4 +135,10 @@ variable "local_build_target" {
   description = "Which make build target(s) to use for the local builder variant"
   type        = string
   default     = "build-ui build"
+}
+
+variable "e2e_debug_no_run" {
+  description = "If set, this will prevent test suites from running"
+  type        = bool
+  default     = false
 }

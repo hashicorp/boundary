@@ -126,7 +126,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non existant Role",
-			req:  &pbs.GetRoleRequest{Id: iam.RolePrefix + "_DoesntExis"},
+			req:  &pbs.GetRoleRequest{Id: globals.RolePrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -138,7 +138,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetRoleRequest{Id: iam.RolePrefix + "_1 23456789"},
+			req:  &pbs.GetRoleRequest{Id: globals.RolePrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -151,7 +151,7 @@ func TestGet(t *testing.T) {
 		{
 			name:    "Project Scoped Get a non existant Role",
 			scopeId: pr.GetScopeId(),
-			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_DoesntExis"},
+			req:     &pbs.GetRoleRequest{Id: globals.RolePrefix + "_DoesntExis"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -165,7 +165,7 @@ func TestGet(t *testing.T) {
 		{
 			name:    "Project Scoped space in id",
 			scopeId: pr.GetScopeId(),
-			req:     &pbs.GetRoleRequest{Id: iam.RolePrefix + "_1 23456789"},
+			req:     &pbs.GetRoleRequest{Id: globals.RolePrefix + "_1 23456789"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -352,7 +352,7 @@ func TestDelete(t *testing.T) {
 			name:    "Delete bad role id",
 			scopeId: or.GetScopeId(),
 			req: &pbs.DeleteRoleRequest{
-				Id: iam.RolePrefix + "_doesntexis",
+				Id: globals.RolePrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -375,7 +375,7 @@ func TestDelete(t *testing.T) {
 			name:    "Project Scoped Delete bad Role id",
 			scopeId: pr.GetScopeId(),
 			req: &pbs.DeleteRoleRequest{
-				Id: iam.RolePrefix + "_doesntexis",
+				Id: globals.RolePrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -440,7 +440,7 @@ func TestCreate(t *testing.T) {
 				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 			}},
 			res: &pbs.CreateRoleResponse{
-				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
+				Uri: fmt.Sprintf("roles/%s_", globals.RolePrefix),
 				Item: &pb.Role{
 					ScopeId:           defaultOrgRole.GetScopeId(),
 					Scope:             &scopes.ScopeInfo{Id: defaultOrgRole.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
@@ -461,7 +461,7 @@ func TestCreate(t *testing.T) {
 				GrantScopeId: &wrapperspb.StringValue{Value: defaultProjRole.ScopeId},
 			}},
 			res: &pbs.CreateRoleResponse{
-				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
+				Uri: fmt.Sprintf("roles/%s_", globals.RolePrefix),
 				Item: &pb.Role{
 					ScopeId:           scope.Global.String(),
 					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
@@ -483,7 +483,7 @@ func TestCreate(t *testing.T) {
 				},
 			},
 			res: &pbs.CreateRoleResponse{
-				Uri: fmt.Sprintf("roles/%s_", iam.RolePrefix),
+				Uri: fmt.Sprintf("roles/%s_", globals.RolePrefix),
 				Item: &pb.Role{
 					ScopeId:           defaultProjRole.GetScopeId(),
 					Scope:             &scopes.ScopeInfo{Id: defaultProjRole.GetScopeId(), Type: scope.Project.String(), ParentScopeId: defaultOrgRole.GetScopeId()},
@@ -512,7 +512,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Id",
 			req: &pbs.CreateRoleRequest{Item: &pb.Role{
 				ScopeId: defaultProjRole.GetScopeId(),
-				Id:      iam.RolePrefix + "_notallowed",
+				Id:      globals.RolePrefix + "_notallowed",
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -552,7 +552,7 @@ func TestCreate(t *testing.T) {
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.RolePrefix+"_"), "Expected %q to have the prefix %q", got.GetItem().GetId(), iam.RolePrefix+"_")
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.RolePrefix+"_"), "Expected %q to have the prefix %q", got.GetItem().GetId(), globals.RolePrefix+"_")
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a role created after the test setup's default role
@@ -882,7 +882,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing Role",
 			req: &pbs.UpdateRoleRequest{
-				Id: iam.RolePrefix + "_DoesntExis",
+				Id: globals.RolePrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -900,7 +900,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.Role{
-					Id:          iam.RolePrefix + "_somethinge",
+					Id:          globals.RolePrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -1671,25 +1671,25 @@ func TestAddGrants(t *testing.T) {
 		},
 		{
 			name:     "Add grant on role with grant",
-			existing: []string{"id=1;actions=read"},
+			existing: []string{"id=u_foo;actions=read"},
 			add:      []string{"id=*;type=*;actions=delete"},
-			result:   []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			result:   []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add duplicate grant on role with grant",
-			existing: []string{"id=aA1;actions=read"},
+			existing: []string{"id=u_fooaA1;actions=read"},
 			add:      []string{"id=*;type=*;actions=delete", "id=*;type=*;actions=delete"},
-			result:   []string{"id=aA1;actions=read", "id=*;type=*;actions=delete"},
+			result:   []string{"id=u_fooaA1;actions=read", "id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add grant matching existing grant",
-			existing: []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
 			add:      []string{"id=*;type=*;actions=delete"},
 			wantErr:  true,
 		},
 		{
 			name:            "Check deprecation",
-			existing:        []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			existing:        []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
 			add:             []string{"id=*;type=target;actions=add-host-sets"},
 			wantErr:         true,
 			wantErrContains: "Use \\\"add-host-sources\\\" instead",
@@ -1810,31 +1810,31 @@ func TestSetGrants(t *testing.T) {
 		},
 		{
 			name:     "Set grant on role with grant",
-			existing: []string{"id=1;actions=read"},
+			existing: []string{"id=u_foo;actions=read"},
 			set:      []string{"id=*;type=*;actions=delete"},
 			result:   []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set grant matching existing grant",
-			existing: []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
 			set:      []string{"id=*;type=*;actions=delete"},
 			result:   []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set duplicate grant matching existing grant",
-			existing: []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
 			set:      []string{"id=*;type=*;actions=delete", "id=*;type=*;actions=delete"},
 			result:   []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set empty on role",
-			existing: []string{"id=1;type=*;actions=read", "id=*;type=*;actions=delete"},
+			existing: []string{"id=hcst_foo;type=*;actions=read", "id=*;type=*;actions=delete"},
 			set:      nil,
 			result:   nil,
 		},
 		{
 			name:            "Check deprecation",
-			existing:        []string{"id=1;actions=read", "id=*;type=*;actions=delete"},
+			existing:        []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
 			set:             []string{"id=*;type=target;actions=add-host-sets"},
 			wantErr:         true,
 			wantErrContains: "Use \\\"add-host-sources\\\" instead",
@@ -1940,31 +1940,31 @@ func TestRemoveGrants(t *testing.T) {
 	}{
 		{
 			name:     "Remove all",
-			existing: []string{"id=1;type=*;actions=read"},
-			remove:   []string{"id=1;type=*;actions=read"},
+			existing: []string{"id=hcst_1;type=*;actions=read"},
+			remove:   []string{"id=hcst_1;type=*;actions=read"},
 		},
 		{
 			name:     "Remove partial",
-			existing: []string{"id=1;type=*;actions=read", "id=2;type=*;actions=delete"},
-			remove:   []string{"id=1;type=*;actions=read"},
-			result:   []string{"id=2;type=*;actions=delete"},
+			existing: []string{"id=hcst_1;type=*;actions=read", "id=hcst_2;type=*;actions=delete"},
+			remove:   []string{"id=hcst_1;type=*;actions=read"},
+			result:   []string{"id=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove duplicate",
-			existing: []string{"id=1;type=*;actions=read", "id=2;type=*;actions=delete"},
-			remove:   []string{"id=1;type=*;actions=read", "id=1;type=*;actions=read"},
-			result:   []string{"id=2;type=*;actions=delete"},
+			existing: []string{"id=hcst_1;type=*;actions=read", "id=hcst_2;type=*;actions=delete"},
+			remove:   []string{"id=hcst_1;type=*;actions=read", "id=hcst_1;type=*;actions=read"},
+			result:   []string{"id=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove non existant",
-			existing: []string{"id=2;type=*;actions=delete"},
-			remove:   []string{"id=1;type=*;actions=read"},
-			result:   []string{"id=2;type=*;actions=delete"},
+			existing: []string{"id=hcst_2;type=*;actions=delete"},
+			remove:   []string{"id=hcst_1;type=*;actions=read"},
+			result:   []string{"id=hcst_2;type=*;actions=delete"},
 		},
 		{
 			name:     "Remove from empty role",
 			existing: []string{},
-			remove:   []string{"id=1;type=*;actions=read"},
+			remove:   []string{"id=hcst_1;type=*;actions=read"},
 			result:   nil,
 		},
 	}
@@ -2012,7 +2012,7 @@ func TestRemoveGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.RemoveRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"id=2;type=*;actions=create"},
+				GrantStrings: []string{"id=hcst_2;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),

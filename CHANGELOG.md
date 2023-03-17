@@ -1,8 +1,26 @@
 # Boundary CHANGELOG
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
-
 ## Next
+
+### Deprecations/Changes
+
+* When grants are added to roles additional validity checking is now performed.
+  This extra validity checking is designed to reject grants that are not
+  [documented grant
+  formats](https://developer.hashicorp.com/boundary/docs/concepts/security/permissions/permission-grant-formats)
+  or are for combinations of IDs and types that cannot actually be used
+  together. These previously would have been accepted without error but would
+  never result in permissions being granted, causing confusion. As a result,
+  attempting to write such grants into roles may now result in an error; the
+  error message gives hints for resolution.
+
+### New and Improved
+
+* roles: Perform additional validity checking on grants at submission time
+  ([PR](https://github.com/hashicorp/boundary/pull/3081))
+
+## 0.12.1 (2023/03/13)
 
 ### Bug Fixes
 
@@ -17,6 +35,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   correctly parsed. This fallback parsing is now fixed, but in order to support
   older clients, credential libraries will need to be recreated with a
   credential type. [PR](https://github.com/hashicorp/boundary/pull/2989)
+* ui: Fix credential library not saving correctly when trying to save it as a
+  generic secrets type. ([PR](https://github.com/hashicorp/boundary-ui/pull/1640))
+* sessions: Fix tofu token retreival. ([PR](https://github.com/hashicorp/boundary/pull/3064))
 
 ## 0.12.0 (2023/01/24)
 

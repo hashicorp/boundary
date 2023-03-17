@@ -3,12 +3,13 @@ on:
 - pull_request_target
 
 permissions:
-  content: read
+  contents: read
+  pull-requests: write
 
 jobs:
   triage:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-    - uses: actions/labeler@main
+    - uses: actions/labeler@ba790c862c380240c6d5e7427be5ace9a05c754b  # TSCCR: could not find tsccr entry for actions/labeler
       with:
         repo-token: "${{ secrets.GITHUB_TOKEN }}"

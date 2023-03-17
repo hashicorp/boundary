@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -598,7 +599,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+			assertPublicId(t, globals.VaultSshCertificateCredentialLibraryPrefix, got.GetPublicId())
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -638,7 +639,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultSshCertificateCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -677,7 +678,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultSshCertificateCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -687,7 +688,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		got2, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got2.GetPublicId())
+		assertPublicId(t, globals.VaultSshCertificateCredentialLibraryPrefix, got2.GetPublicId())
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -1591,7 +1592,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(ttOrig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+			assertPublicId(t, globals.VaultSshCertificateCredentialLibraryPrefix, got.GetPublicId())
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(ttOrig, got)
 			assert.Equal(ttOrig.StoreId, got.StoreId)
@@ -1729,7 +1730,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultSshCertificateCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -1855,7 +1856,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		require.NoError(err)
 		assert.Empty(in.PublicId)
 		require.NotNil(got)
-		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultSshCertificateCredentialLibraryPrefix, got.GetPublicId())
 		assert.Equal(1, gotCount, "row count")
 		assert.NotSame(orig, got)
 		assert.Equal(orig.StoreId, got.StoreId)
@@ -1866,7 +1867,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		got, gotCount, err = repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 2, []string{keyTypeField, keyBitsField})
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultSshCertificateCredentialLibraryPrefix, got.GetPublicId())
 		assert.Equal(1, gotCount, "row count")
 		assert.NotSame(orig, got)
 		assert.Equal(orig.StoreId, got.StoreId)
@@ -1876,7 +1877,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		got, gotCount, err = repo.UpdateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), orig, 3, []string{keyTypeField})
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, SSHCertificateCredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultSshCertificateCredentialLibraryPrefix, got.GetPublicId())
 		assert.Equal(1, gotCount, "row count")
 		assert.NotSame(orig, got)
 		assert.Equal(orig.StoreId, got.StoreId)

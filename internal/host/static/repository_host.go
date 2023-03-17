@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -50,11 +51,11 @@ func (r *Repository) CreateHost(ctx context.Context, projectId string, h *Host, 
 	opts := getOpts(opt...)
 
 	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, HostPrefix+"_") {
+		if !strings.HasPrefix(opts.withPublicId, globals.StaticHostPrefix+"_") {
 			return nil, errors.New(ctx,
 				errors.InvalidPublicId,
 				op,
-				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, HostPrefix),
+				fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, globals.StaticHostPrefix),
 			)
 		}
 		h.PublicId = opts.withPublicId

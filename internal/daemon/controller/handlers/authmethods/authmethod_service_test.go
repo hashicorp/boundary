@@ -5,6 +5,10 @@ package authmethods_test
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"regexp"
 	"strings"
@@ -12,6 +16,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -27,7 +32,9 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -58,6 +65,13 @@ var (
 		action.ChangeState.String(),
 		action.Authenticate.String(),
 	}
+	ldapAuthorizedActions = []string{
+		action.NoOp.String(),
+		action.Read.String(),
+		action.Update.String(),
+		action.Delete.String(),
+		action.Authenticate.String(),
+	}
 )
 
 var authorizedCollectionActions = map[string]*structpb.ListValue{
@@ -86,6 +100,9 @@ func TestGet(t *testing.T) {
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
@@ -153,6 +170,32 @@ func TestGet(t *testing.T) {
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldaps://ldap1"}, ldap.WithAccountAttributeMap(ctx, map[string]ldap.AccountToAttribute{
+		"mail": ldap.ToEmailAttribute,
+	}))
+	wantLdap := &pb.AuthMethod{
+		Id:          ldapAm.GetPublicId(),
+		ScopeId:     ldapAm.GetScopeId(),
+		CreatedTime: ldapAm.CreateTime.GetTimestamp(),
+		UpdatedTime: ldapAm.UpdateTime.GetTimestamp(),
+		Type:        ldap.Subtype.String(),
+		Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+			LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+				State:                string(ldap.InactiveState),
+				Urls:                 []string{"ldaps://ldap1"},
+				AccountAttributeMaps: []string{"mail=email"},
+			},
+		},
+		Version: 1,
+		Scope: &scopepb.ScopeInfo{
+			Id:            o.GetPublicId(),
+			Type:          o.GetType(),
+			ParentScopeId: scope.Global.String(),
+		},
+		AuthorizedActions:           ldapAuthorizedActions,
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	}
+
 	cases := []struct {
 		name    string
 		scopeId string
@@ -173,9 +216,15 @@ func TestGet(t *testing.T) {
 			res:     &pbs.GetAuthMethodResponse{Item: wantOidc},
 		},
 		{
-			name:    "Get a non existant AuthMethod",
+			name:    "Get an Existing LDAP AuthMethod",
 			scopeId: o.GetPublicId(),
-			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_DoesntExis"},
+			req:     &pbs.GetAuthMethodRequest{Id: ldapAm.GetPublicId()},
+			res:     &pbs.GetAuthMethodResponse{Item: wantLdap},
+		},
+		{
+			name:    "Get a non existent AuthMethod",
+			scopeId: o.GetPublicId(),
+			req:     &pbs.GetAuthMethodRequest{Id: globals.PasswordAuthMethodPrefix + "_DoesntExis"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -189,7 +238,7 @@ func TestGet(t *testing.T) {
 		{
 			name:    "space in id",
 			scopeId: o.GetPublicId(),
-			req:     &pbs.GetAuthMethodRequest{Id: password.AuthMethodPrefix + "_1 23456789"},
+			req:     &pbs.GetAuthMethodRequest{Id: globals.PasswordAuthMethodPrefix + "_1 23456789"},
 			res:     nil,
 			err:     handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -198,7 +247,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			got, gErr := s.GetAuthMethod(requestauth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
@@ -227,6 +276,9 @@ func TestList(t *testing.T) {
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
@@ -293,6 +345,42 @@ func TestList(t *testing.T) {
 		})
 	}
 
+	sorterFn := func(a *pb.AuthMethod, b *pb.AuthMethod) bool {
+		switch {
+		case a.GetId() > b.GetId():
+			return true
+		default:
+			return false
+		}
+	}
+	cpSorted := func(ams []*pb.AuthMethod) []*pb.AuthMethod {
+		cp := make([]*pb.AuthMethod, 0, len(ams))
+		for _, a := range ams {
+			cp = append(cp, proto.Clone(a).(*pb.AuthMethod))
+		}
+		slices.SortFunc(cp, sorterFn)
+		return cp
+	}
+
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), []string{"ldaps://ldap1"}, ldap.WithOperationalState(ctx, ldap.ActivePublicState))
+	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
+		Id:          ldapAm.GetPublicId(),
+		ScopeId:     oWithAuthMethods.GetPublicId(),
+		CreatedTime: ldapAm.GetCreateTime().GetTimestamp(),
+		UpdatedTime: ldapAm.GetUpdateTime().GetTimestamp(),
+		Scope:       &scopepb.ScopeInfo{Id: oWithAuthMethods.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:     1,
+		Type:        ldap.Subtype.String(),
+		Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+			LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+				State: string(ldap.ActivePublicState),
+				Urls:  []string{"ldaps://ldap1"},
+			},
+		},
+		AuthorizedActions:           ldapAuthorizedActions,
+		AuthorizedCollectionActions: authorizedCollectionActions,
+	})
+
 	var wantOtherAuthMethods []*pb.AuthMethod
 	for _, aa := range password.TestAuthMethods(t, conn, oWithOtherAuthMethods.GetPublicId(), 3) {
 		wantOtherAuthMethods = append(wantOtherAuthMethods, &pb.AuthMethod{
@@ -323,12 +411,12 @@ func TestList(t *testing.T) {
 		{
 			name: "List Some Auth Methods",
 			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithAuthMethods.GetPublicId()},
-			res:  &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
+			res:  &pbs.ListAuthMethodsResponse{Items: cpSorted(wantSomeAuthMethods)},
 		},
 		{
 			name: "List Other Auth Methods",
 			req:  &pbs.ListAuthMethodsRequest{ScopeId: oWithOtherAuthMethods.GetPublicId()},
-			res:  &pbs.ListAuthMethodsResponse{Items: wantOtherAuthMethods},
+			res:  &pbs.ListAuthMethodsResponse{Items: cpSorted(wantOtherAuthMethods)},
 		},
 		{
 			name: "List No Auth Methods",
@@ -344,7 +432,9 @@ func TestList(t *testing.T) {
 			name: "List All Auth Methods Recursively",
 			req:  &pbs.ListAuthMethodsRequest{ScopeId: "global", Recursive: true},
 			res: &pbs.ListAuthMethodsResponse{
-				Items: append(wantSomeAuthMethods, wantOtherAuthMethods...),
+				Items: func() []*pb.AuthMethod {
+					return cpSorted(append(wantSomeAuthMethods, wantOtherAuthMethods...))
+				}(),
 			},
 		},
 		{
@@ -353,7 +443,7 @@ func TestList(t *testing.T) {
 				ScopeId: "global", Recursive: true,
 				Filter: fmt.Sprintf(`"/item/scope/id"==%q`, oWithAuthMethods.GetPublicId()),
 			},
-			res: &pbs.ListAuthMethodsResponse{Items: wantSomeAuthMethods},
+			res: &pbs.ListAuthMethodsResponse{Items: cpSorted(wantSomeAuthMethods)},
 		},
 		{
 			name: "Filter All Auth Methods",
@@ -369,7 +459,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			// First check with non-anonymous user
@@ -385,7 +475,11 @@ func TestList(t *testing.T) {
 					assert.NotEqual("secret", oidcAttrs.ClientSecretHmac)
 				}
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac")),
+
+			slices.SortFunc(got.Items, sorterFn)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(),
+				protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac"),
+				protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac")),
 				"ListAuthMethods() for scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
 
 			// Now check with anonymous user
@@ -414,6 +508,9 @@ func TestDelete(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kmsCache)
 	}
@@ -430,7 +527,9 @@ func TestDelete(t *testing.T) {
 	oidcam := oidc.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), oidc.InactiveState, "alice_rp", "my-dogs-name",
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://alice.com")[0]), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://api.com")[0]))
 
-	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldaps://ldap1"})
+
+	s, err := authmethods.NewService(kmsCache, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	cases := []struct {
@@ -454,9 +553,16 @@ func TestDelete(t *testing.T) {
 			res: &pbs.DeleteAuthMethodResponse{},
 		},
 		{
+			name: "Delete an Existing LDAP AuthMethod",
+			req: &pbs.DeleteAuthMethodRequest{
+				Id: ldapAm.GetPublicId(),
+			},
+			res: &pbs.DeleteAuthMethodResponse{},
+		},
+		{
 			name: "Delete bad auth_method id",
 			req: &pbs.DeleteAuthMethodRequest{
-				Id: password.AuthMethodPrefix + "_doesntexis",
+				Id: globals.PasswordAuthMethodPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -494,6 +600,9 @@ func TestDelete_twice(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -505,7 +614,7 @@ func TestDelete_twice(t *testing.T) {
 	o, _ := iam.TestScopes(t, iamRepo)
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
-	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(err, "Error when getting new auth_method service.")
 
 	req := &pbs.DeleteAuthMethodRequest{
@@ -523,18 +632,21 @@ func TestCreate(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
-	kms := kms.TestKms(t, conn, wrapper)
+	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(rw, rw, testKms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
-		return oidc.NewRepository(ctx, rw, rw, kms)
+		return oidc.NewRepository(ctx, rw, rw, testKms)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, testKms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, testKms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -542,12 +654,20 @@ func TestCreate(t *testing.T) {
 	defaultAm := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	defaultCreated := defaultAm.GetCreateTime().GetTimestamp()
 
+	_, testEncodedCert := ldap.TestGenerateCA(t, "localhost")
+	_, privKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	derEncodedKey, err := x509.MarshalPKCS8PrivateKey(privKey)
+	require.NoError(t, err)
+	testEncodedKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: derEncodedKey})
+
 	cases := []struct {
-		name     string
-		req      *pbs.CreateAuthMethodRequest
-		res      *pbs.CreateAuthMethodResponse
-		idPrefix string
-		err      error
+		name        string
+		req         *pbs.CreateAuthMethodRequest
+		res         *pbs.CreateAuthMethodResponse
+		idPrefix    string
+		err         error
+		errContains string
 	}{
 		{
 			name: "Create a valid Password AuthMethod",
@@ -557,9 +677,9 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 				Type:        "password",
 			}},
-			idPrefix: password.AuthMethodPrefix + "_",
+			idPrefix: globals.PasswordAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", password.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.PasswordAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     o.GetPublicId(),
@@ -598,9 +718,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: oidc.AuthMethodPrefix + "_",
+			idPrefix: globals.OidcAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     o.GetPublicId(),
@@ -628,6 +748,74 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		{
+			name: "create-a-valid-ldap-auth-method",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						StartTls:             true,
+						InsecureTls:          true,
+						DiscoverDn:           true,
+						AnonGroupSearch:      true,
+						UpnDomain:            wrapperspb.String("upn_domain"),
+						Urls:                 []string{"ldap://ldap1", "ldaps://ldap1"},
+						BindDn:               wrapperspb.String("bind-dn"),
+						BindPassword:         wrapperspb.String("bind-password"),
+						UserDn:               wrapperspb.String("user-dn"),
+						UserAttr:             wrapperspb.String("user-attr"),
+						UserFilter:           wrapperspb.String("user-filter"),
+						EnableGroups:         true,
+						GroupDn:              wrapperspb.String("group-dn"),
+						GroupAttr:            wrapperspb.String("group-attr"),
+						GroupFilter:          wrapperspb.String("group-filter"),
+						Certificates:         []string{testEncodedCert},
+						ClientCertificate:    wrapperspb.String(testEncodedCert),
+						ClientCertificateKey: wrapperspb.String(string(testEncodedKey)),
+						UseTokenGroups:       true,
+						AccountAttributeMaps: []string{"mail=email"},
+					},
+				},
+			}},
+			idPrefix: globals.LdapAuthMethodPrefix + "_",
+			res: &pbs.CreateAuthMethodResponse{
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.LdapAuthMethodPrefix),
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
+					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
+					Scope:       &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()},
+					Version:     1,
+					Type:        ldap.Subtype.String(),
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							State:                string(ldap.InactiveState),
+							StartTls:             true,
+							InsecureTls:          true,
+							DiscoverDn:           true,
+							AnonGroupSearch:      true,
+							UpnDomain:            wrapperspb.String("upn_domain"),
+							Urls:                 []string{"ldap://ldap1", "ldaps://ldap1"},
+							BindDn:               wrapperspb.String("bind-dn"),
+							UserDn:               wrapperspb.String("user-dn"),
+							UserAttr:             wrapperspb.String("user-attr"),
+							UserFilter:           wrapperspb.String("user-filter"),
+							EnableGroups:         true,
+							GroupDn:              wrapperspb.String("group-dn"),
+							GroupAttr:            wrapperspb.String("group-attr"),
+							GroupFilter:          wrapperspb.String("group-filter"),
+							Certificates:         []string{testEncodedCert},
+							ClientCertificate:    wrapperspb.String(testEncodedCert),
+							UseTokenGroups:       true,
+							AccountAttributeMaps: []string{"mail=email"},
+						},
+					},
+					AuthorizedActions:           ldapAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
 			name: "Create a global Password AuthMethod",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId:     scope.Global.String(),
@@ -635,9 +823,9 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 				Type:        "password",
 			}},
-			idPrefix: password.AuthMethodPrefix + "_",
+			idPrefix: globals.PasswordAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", password.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.PasswordAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     scope.Global.String(),
@@ -673,9 +861,9 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			idPrefix: oidc.AuthMethodPrefix + "_",
+			idPrefix: globals.OidcAuthMethodPrefix + "_",
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     scope.Global.String(),
@@ -699,10 +887,46 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		{
+			name: "create-a-global-ldap-auth-method",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: scope.Global.String(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:         []string{"ldap://ldap1", "ldaps://ldap1"},
+						EnableGroups: true,
+						GroupDn:      wrapperspb.String("group-dn"),
+					},
+				},
+			}},
+			idPrefix: globals.LdapAuthMethodPrefix + "_",
+			res: &pbs.CreateAuthMethodResponse{
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.LdapAuthMethodPrefix),
+				Item: &pb.AuthMethod{
+					ScopeId:     scope.Global.String(),
+					CreatedTime: defaultAm.GetCreateTime().GetTimestamp(),
+					UpdatedTime: defaultAm.GetUpdateTime().GetTimestamp(),
+					Scope:       &scopepb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+					Version:     1,
+					Type:        ldap.Subtype.String(),
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							State:        string(ldap.InactiveState),
+							Urls:         []string{"ldap://ldap1", "ldaps://ldap1"},
+							EnableGroups: true,
+							GroupDn:      wrapperspb.String("group-dn"),
+						},
+					},
+					AuthorizedActions:           ldapAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
 			name: "Can't specify Id",
 			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 				ScopeId: o.GetPublicId(),
-				Id:      password.AuthMethodPrefix + "_notallowed",
+				Id:      globals.PasswordAuthMethodPrefix + "_notallowed",
 				Type:    "password",
 			}},
 			res: nil,
@@ -772,7 +996,7 @@ func TestCreate(t *testing.T) {
 				},
 			}},
 			res: &pbs.CreateAuthMethodResponse{
-				Uri: fmt.Sprintf("auth-methods/%s_", oidc.AuthMethodPrefix),
+				Uri: fmt.Sprintf("auth-methods/%s_", globals.OidcAuthMethodPrefix),
 				Item: &pb.AuthMethod{
 					Id:          defaultAm.GetPublicId(),
 					ScopeId:     o.GetPublicId(),
@@ -955,18 +1179,186 @@ func TestCreate(t *testing.T) {
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
+		{
+			name: "ldap-auth-method-requires-urls",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "At least one URL is required",
+		},
+		{
+			name: "ldap-auth-method-invalid-urls",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls: []string{"ldap://ldap1", "not-ldap-scheme://ldap2"},
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "is not either ldap or ldaps",
+		},
+		{
+			name: "ldap-auth-method-invalid-cert",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:         []string{"ldap://ldap1"},
+						Certificates: []string{"invalid-cert"},
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "failed to parse certificate: invalid PEM encoding",
+		},
+		{
+			name: "ldap-auth-method-missing-bind-dn",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:         []string{"ldap://ldap1"},
+						BindPassword: wrapperspb.String("pass"),
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "attributes.bind_password is missing required attributes.bind_dn field",
+		},
+		{
+			name: "ldap-auth-method-missing-bind-password",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:   []string{"ldap://ldap1"},
+						BindDn: wrapperspb.String("bind-dn"),
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "attributes.bind_dn is missing required attributes.bind_password field",
+		},
+		{
+			name: "ldap-auth-method-invalid-client-cert",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:                 []string{"ldap://ldap1"},
+						ClientCertificate:    wrapperspb.String("invalid-cert"),
+						ClientCertificateKey: wrapperspb.String(string(testEncodedKey)),
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "failed to parse certificate: invalid PEM encoding",
+		},
+		{
+			name: "ldap-auth-method-invalid-client-cert-key",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:                 []string{"ldap://ldap1"},
+						ClientCertificate:    wrapperspb.String(testEncodedCert),
+						ClientCertificateKey: wrapperspb.String("invalid-key"),
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "attributes.client_certificate_key is not encoded as a valid pem",
+		},
+		{
+			name: "ldap-auth-method-client-cert-key-not-a-key",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:                 []string{"ldap://ldap1"},
+						ClientCertificate:    wrapperspb.String(testEncodedCert),
+						ClientCertificateKey: wrapperspb.String(testEncodedCert),
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "attributes.client_certificate_key is not a valid private key",
+		},
+		{
+			name: "ldap-auth-method-missing-client-cert-key",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:              []string{"ldap://ldap1"},
+						ClientCertificate: wrapperspb.String(testEncodedCert),
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "attributes.client_certificate is missing required attributes.client_certificate_key field",
+		},
+		{
+			name: "ldap-auth-method-missing-client-cert",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:                 []string{"ldap://ldap1"},
+						ClientCertificateKey: wrapperspb.String(string(testEncodedKey)),
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "attributes.client_certificate_key is missing required attributes.client_certificate field",
+		},
+		{
+			name: "ldap-auth-method-invalid-attribute-map",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:                 []string{"ldap://ldap1"},
+						AccountAttributeMaps: []string{"invalid-map"},
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "invalid attributes.account_attribute_maps (unable to parse)",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 			require.NoError(err, "Error when getting new auth_method service.")
 
+			conn.Debug(true)
 			got, gErr := s.CreateAuthMethod(requestauth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+				if tc.errContains != "" {
+					assert.Contains(gErr.Error(), tc.errContains)
+				}
 				return
 			}
 			require.NoError(gErr)
@@ -1001,6 +1393,14 @@ func TestCreate(t *testing.T) {
 						cmpOptions,
 						protocmp.SortRepeatedFields(&pb.OidcAuthMethodAttributes{}, "account_claim_maps"),
 						protocmp.IgnoreFields(&pb.OidcAuthMethodAttributes{}, "client_secret_hmac", "callback_url"),
+					)
+				}
+				if ldapAttrs := got.Item.GetLdapAuthMethodsAttributes(); ldapAttrs != nil {
+					assert.NotEqual(ldapAttrs.BindPassword, ldapAttrs.BindPasswordHmac)
+					cmpOptions = append(
+						cmpOptions,
+						protocmp.SortRepeatedFields(&pb.LdapAuthMethodAttributes{}, "account_attribute_maps", "urls", "certificates"),
+						protocmp.IgnoreFields(&pb.LdapAuthMethodAttributes{}, "bind_password_hmac", "client_certificate_key_hmac"),
 					)
 				}
 			}

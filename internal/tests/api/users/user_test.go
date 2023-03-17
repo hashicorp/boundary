@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/users"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
@@ -206,7 +207,7 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 
-	_, err = userClient.Read(tc.Context(), iam.UserPrefix+"_doesntexis")
+	_, err = userClient.Read(tc.Context(), globals.UserPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

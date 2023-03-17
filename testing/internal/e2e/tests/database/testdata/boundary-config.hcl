@@ -15,7 +15,7 @@ controller {
 worker {
   name        = "boundary-colocated-worker"
   description = "A worker that runs alongside the controller in the same process"
-  address     = "boundary:9201"
+  address     = "boundary:9202"
 }
 
 listener "tcp" {

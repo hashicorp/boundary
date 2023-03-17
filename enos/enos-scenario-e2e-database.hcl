@@ -32,6 +32,9 @@ scenario "e2e_database" {
 
   step "create_base_infra" {
     module = module.infra
+    depends_on = [
+      step.find_azs,
+    ]
 
     variables {
       availability_zones = step.find_azs.availability_zones
@@ -97,6 +100,7 @@ scenario "e2e_database" {
 
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/database"
+      debug_no_run             = var.e2e_debug_no_run
       local_boundary_dir       = local.local_boundary_dir
       target_user              = "ubuntu"
       aws_ssh_private_key_path = local.aws_ssh_private_key_path

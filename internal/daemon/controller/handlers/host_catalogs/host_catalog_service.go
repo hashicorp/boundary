@@ -823,7 +823,7 @@ func toStoragePluginCatalog(ctx context.Context, projectId, plgId string, item *
 //   - The type asserted by the ID and/or field is known
 //   - If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostCatalogRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix, plugin.HostCatalogPrefix, plugin.PreviousHostCatalogPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.StaticHostCatalogPrefix, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
@@ -879,11 +879,11 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 			}
 		}
 		return badFields
-	}, static.HostCatalogPrefix, plugin.HostCatalogPrefix, plugin.PreviousHostCatalogPrefix)
+	}, globals.StaticHostCatalogPrefix, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.HostCatalogPrefix, plugin.HostCatalogPrefix, plugin.PreviousHostCatalogPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.StaticHostCatalogPrefix, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix)
 }
 
 func validateListRequest(req *pbs.ListHostCatalogsRequest) error {

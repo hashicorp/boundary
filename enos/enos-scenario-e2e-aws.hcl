@@ -54,6 +54,9 @@ scenario "e2e_aws" {
 
   step "create_base_infra" {
     module = module.infra
+    depends_on = [
+      step.find_azs,
+    ]
 
     variables {
       availability_zones = step.find_azs.availability_zones
@@ -65,6 +68,7 @@ scenario "e2e_aws" {
     module = module.boundary
     depends_on = [
       step.create_base_infra,
+      step.create_db_password,
       step.build_boundary
     ]
 
@@ -172,6 +176,7 @@ scenario "e2e_aws" {
 
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/aws"
+      debug_no_run             = var.e2e_debug_no_run
       alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
       auth_method_id           = step.create_boundary_cluster.auth_method_id
       auth_login_name          = step.create_boundary_cluster.auth_login_name

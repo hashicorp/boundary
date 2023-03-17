@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -30,8 +31,8 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 	opts := getOpts(opt...)
 
 	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, UserPrefix+"_") {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, UserPrefix))
+		if !strings.HasPrefix(opts.withPublicId, globals.UserPrefix+"_") {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, globals.UserPrefix))
 		}
 		u.PublicId = opts.withPublicId
 	} else {

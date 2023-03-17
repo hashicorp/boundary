@@ -345,8 +345,11 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 
 	opts := getOpts(opt...)
 
-	// Check for templated values ID, and substitute in with the authenticated values
-	// if so
+	// Check for templated values ID, and substitute in with the authenticated
+	// values if so. If we are using a dummy user or account ID, store the
+	// original ID and return it at the end; this is usually the case when
+	// validating grant formats.
+	var origId string
 	if grant.id != "" && strings.HasPrefix(grant.id, "{{") {
 		id := strings.TrimSuffix(strings.TrimPrefix(grant.id, "{{"), "}}")
 		id = strings.TrimSpace(id)
@@ -355,10 +358,15 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 			if opts.withUserId != "" {
 				grant.id = strings.ToValidUTF8(opts.withUserId, string(unicode.ReplacementChar))
 			}
+			// Otherwise, substitute in a dummy value
+			origId = grant.id
+			grant.id = "u_dummy"
 		case "account.id", ".Account.Id":
 			if opts.withAccountId != "" {
 				grant.id = strings.ToValidUTF8(opts.withAccountId, string(unicode.ReplacementChar))
 			}
+			origId = grant.id
+			grant.id = "acctoidc_dummy"
 		default:
 			return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown template %q in grant %q value", grant.id, "id"))
 		}
@@ -373,50 +381,83 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 	}
 
 	if !opts.withSkipFinalValidation {
-		// Filter out some forms that don't make sense
-
-		// First up, an ID is given, no type, and actions contains "create" or
-		// "list". Note wildcard for actions is still okay.
-		if grant.id != "" && grant.typ == resource.Unknown {
-			if grant.actions[action.Create] ||
-				grant.actions[action.List] {
-				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains create or list action in a format that does not allow these")
+		switch {
+		case grant.id == "*":
+			// Matches
+			//   id=*;type=sometype;actions=foo,bar
+			// or
+			//   id=*;type=*;actions=foo,bar
+			// This can be a non-unknown type or wildcard
+			if grant.typ == resource.Unknown {
+				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains wildcard id and no specified type", grant.CanonicalString()))
 			}
-		}
-		// If no ID is given...
-		if grant.id == "" {
-			// Check the type
+		case grant.id != "":
+			// Non-wildcard but specified ID. This can match
+			//   id=foo_bar;actions=foo,bar
+			// or
+			//   id=foo_bar;type=sometype;actions=foo,bar
+			// or
+			//   id=foo_bar;type=*;actions=foo,bar
+			// but notably the specified types have to actually make sense: in
+			// the second example the type corresponding to the ID must have the
+			// specified type as a child type; in the third the ID must be a
+			// type that has child types.
+			idType := globals.ResourceTypeFromPrefix(grant.id)
+			if idType == resource.Unknown {
+				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains an id %q of an unknown resource type", grant.CanonicalString(), grant.id))
+			}
+			switch grant.typ {
+			case resource.Unknown:
+				// This is fine as-is but we do not support collection actions
+				// without a type (either directly specified or wildcard) so
+				// check that
+				if grant.actions[action.Create] ||
+					grant.actions[action.List] {
+					return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains create or list action in a format that does not allow these", grant.CanonicalString()))
+				}
+			case resource.All:
+				// Verify that the ID is a type that has child types
+				if !resource.HasChildTypes(idType) {
+					return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains an id that does not support child types", grant.CanonicalString()))
+				}
+			default:
+				// Specified resource type, verify it's a child
+				if resource.Parent(grant.typ) != idType {
+					return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains type %s that is not a child type of the type (%s) of the specified id", grant.CanonicalString(), grant.typ.String(), idType.String()))
+				}
+			}
+		default: // no specified id
 			switch grant.typ {
 			case resource.Unknown:
 				// Error -- no ID or type isn't valid (although we should never
 				// get to this point because original parsing should error)
-				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no id or type")
+				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains no id or type", grant.CanonicalString()))
 			case resource.All:
 				// "type=*;actions=..." is not supported -- we require you to
 				// explicitly set a pin or set the ID to *
-				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains wildcard type with no id value")
+				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains wildcard type with no id value", grant.CanonicalString()))
 			default:
 				// Here we have type=something,actions=<something else>. This
-				// means we're operating on collections. Note that wildcard
-				// actions are not okay here; that uses the format
-				// id=*;type=<something>;actions=*
+				// means we're operating on collections and support only create
+				// or list. Note that wildcard actions are not okay here; that
+				// uses the format id=*;type=<something>;actions=*
 				switch len(grant.actions) {
 				case 0:
 					// It's okay to have no actions if only output fields are being defined
 					if _, hasSetFields := grant.OutputFields.Fields(); !hasSetFields {
-						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains no actions or output fields")
+						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains no actions or output fields", grant.CanonicalString()))
 					}
 				case 1:
 					if !grant.hasActionOrSubaction(action.Create) &&
 						!grant.hasActionOrSubaction(action.List) {
-						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
+						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains non-create or non-list action in a format that only allows these", grant.CanonicalString()))
 					}
 				case 2:
 					if !grant.hasActionOrSubaction(action.Create) || !grant.hasActionOrSubaction(action.List) {
-						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
+						return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains non-create or non-list action in a format that only allows these", grant.CanonicalString()))
 					}
 				default:
-					return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string contains non-create or non-list action in a format that only allows these")
+					return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q contains non-create or non-list action in a format that only allows these", grant.CanonicalString()))
 				}
 			}
 		}
@@ -430,7 +471,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				Id:      grant.id,
 				Type:    grant.typ,
 			}
-			if !topLevelType(grant.typ) {
+			if !resource.TopLevelType(grant.typ) {
 				r.Pin = grant.id
 			}
 			var allowed bool
@@ -445,6 +486,11 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string would not result in any action being authorized")
 			}
 		}
+	}
+
+	// If we substituted in a dummy value, replace with the original now
+	if origId != "" {
+		grant.id = origId
 	}
 
 	return grant, nil

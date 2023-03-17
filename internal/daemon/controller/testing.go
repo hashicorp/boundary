@@ -20,16 +20,19 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
+	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/go-hclog"
@@ -51,9 +54,9 @@ const (
 	DefaultTestUnprivilegedLoginName         = "user"
 	DefaultTestPassword                      = "passpass"
 	DefaultTestUserId                        = "u_1234567890"
-	DefaultTestPasswordAccountId             = intglobals.NewPasswordAccountPrefix + "_1234567890"
+	DefaultTestPasswordAccountId             = globals.PasswordAccountPrefix + "_1234567890"
 	DefaultTestOidcAccountId                 = "acctoidc_1234567890"
-	DefaultTestUnprivilegedPasswordAccountId = intglobals.NewPasswordAccountPrefix + "_0987654321"
+	DefaultTestUnprivilegedPasswordAccountId = globals.PasswordAccountPrefix + "_0987654321"
 	DefaultTestUnprivilegedOidcAccountId     = "acctoidc_0987654321"
 	DefaultTestPluginId                      = "pl_1234567890"
 )
@@ -132,6 +135,26 @@ func (tc *TestController) ConnectionsRepo() *session.ConnectionRepository {
 		tc.t.Fatal(err)
 	}
 	return repo
+}
+
+func (tc *TestController) PluginHostRepo() *plugin.Repository {
+	repo, err := tc.c.PluginHostRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
+}
+
+func (tc *TestController) VaultCredentialRepo() *vault.Repository {
+	repo, err := tc.c.VaultCredentialRepoFn()
+	if err != nil {
+		tc.t.Fatal(err)
+	}
+	return repo
+}
+
+func (tc *TestController) Scheduler() *scheduler.Scheduler {
+	return tc.Controller().scheduler
 }
 
 func (tc *TestController) Cancel() {

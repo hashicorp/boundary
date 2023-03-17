@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -23,8 +24,7 @@ import (
 )
 
 const (
-	Subtype      = subtypes.Subtype("tcp")
-	TargetPrefix = "ttcp"
+	Subtype = subtypes.Subtype("tcp")
 )
 
 // Target is a target.Target used for tests.
@@ -296,7 +296,7 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 	rw := db.New(conn)
 	tar, err := New(projectId, opt...)
 	require.NoError(err)
-	id, err := db.NewPublicId(TargetPrefix)
+	id, err := db.NewPublicId(globals.TcpTargetPrefix)
 	require.NoError(err)
 	tar.SetPublicId(ctx, id)
 	err = rw.Create(context.Background(), tar)

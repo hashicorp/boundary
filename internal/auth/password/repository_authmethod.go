@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -44,8 +45,8 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	opts := GetOpts(opt...)
 
 	if opts.withPublicId != "" {
-		if !strings.HasPrefix(opts.withPublicId, AuthMethodPrefix+"_") {
-			return nil, errors.New(ctx, errors.InvalidPublicId, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, AuthMethodPrefix))
+		if !strings.HasPrefix(opts.withPublicId, globals.PasswordAuthMethodPrefix+"_") {
+			return nil, errors.New(ctx, errors.InvalidPublicId, op, fmt.Sprintf("passed-in public ID %q has wrong prefix, should be %q", opts.withPublicId, globals.PasswordAuthMethodPrefix))
 		}
 		m.PublicId = opts.withPublicId
 	} else {

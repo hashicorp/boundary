@@ -253,9 +253,10 @@ func (w *Worker) createClientConn(addr string) error {
 func (w *Worker) workerAuthTLSConfig(extraAlpnProtos ...string) (*tls.Config, *base.WorkerAuthInfo, error) {
 	var err error
 	info := &base.WorkerAuthInfo{
-		Name:         w.conf.RawConfig.Worker.Name,
-		Description:  w.conf.RawConfig.Worker.Description,
-		ProxyAddress: w.conf.RawConfig.Worker.PublicAddr,
+		Name:            w.conf.RawConfig.Worker.Name,
+		Description:     w.conf.RawConfig.Worker.Description,
+		ProxyAddress:    w.conf.RawConfig.Worker.PublicAddr,
+		BoundaryVersion: version.Get().VersionNumber(),
 	}
 
 	info.ConnectionNonce, err = w.nonceFn(20)

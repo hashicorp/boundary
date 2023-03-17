@@ -16,7 +16,6 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -887,7 +886,7 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetRoleRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.RolePrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.RolePrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateRoleRequest) error {
@@ -935,13 +934,13 @@ func validateUpdateRequest(req *pbs.UpdateRoleRequest) error {
 			}
 		}
 		return badFields
-	}, iam.RolePrefix)
+	}, globals.RolePrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
 	return handlers.ValidateDeleteRequest(func() map[string]string {
 		return nil
-	}, req, iam.RolePrefix)
+	}, req, globals.RolePrefix)
 }
 
 func validateListRequest(req *pbs.ListRolesRequest) error {
@@ -962,7 +961,7 @@ func validateListRequest(req *pbs.ListRolesRequest) error {
 
 func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -972,9 +971,9 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 		badFields["principal_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) &&
-			!handlers.ValidId(handlers.Id(id), iam.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), intglobals.OidcManagedGroupPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.GroupPrefix) &&
+			!handlers.ValidId(handlers.Id(id), globals.UserPrefix) &&
+			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
@@ -991,16 +990,16 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 
 func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) &&
-			!handlers.ValidId(handlers.Id(id), iam.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), intglobals.OidcManagedGroupPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.GroupPrefix) &&
+			!handlers.ValidId(handlers.Id(id), globals.UserPrefix) &&
+			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
@@ -1017,7 +1016,7 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 
 func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1027,9 +1026,9 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 		badFields["principal_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetPrincipalIds() {
-		if !handlers.ValidId(handlers.Id(id), iam.GroupPrefix) &&
-			!handlers.ValidId(handlers.Id(id), iam.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), intglobals.OidcManagedGroupPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.GroupPrefix) &&
+			!handlers.ValidId(handlers.Id(id), globals.UserPrefix) &&
+			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
@@ -1042,7 +1041,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 
 func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1076,7 +1075,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 
 func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1107,7 +1106,7 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 
 func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.RolePrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

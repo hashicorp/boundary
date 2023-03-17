@@ -9,6 +9,11 @@ terraform {
   }
 }
 
+variable "debug_no_run" {
+  description = "If set, this module will not execute the tests so that you can still access environment variables"
+  type        = bool
+  default     = false
+}
 variable "test_package" {
   description = "Name of Go test package to run"
   type        = string
@@ -139,7 +144,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
   }
 
-  inline = ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json | tparse -follow -format plain 2>&1 | tee ${path.module}/../../test-e2e-${local.package_name}.out"]
+  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json | tparse -follow -format plain 2>&1 | tee ${path.module}/../../test-e2e-${local.package_name}.log"]
 }
 
 output "test_results" {

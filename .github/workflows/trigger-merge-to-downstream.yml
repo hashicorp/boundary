@@ -1,0 +1,24 @@
+name: trigger-merge-to-downstream
+
+on:
+  push:
+    branches:
+      - main
+      - release/**
+
+permissions:
+  contents: read
+
+jobs:
+  trigger-merge:
+    if: github.repository == 'hashicorp/boundary'
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    env:
+      DOWNSTREAM_SLUG: ${{ vars.DOWNSTREAM_SLUG }}
+      DOWNSTREAM_TOK: ${{ secrets.DOWNSTREAM_TOK }}
+      DOWNSTREAM_WORKFLOW: ${{ vars.DOWNSTREAM_WORKFLOW }}
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      - name: Trigger Merge
+        run: |
+          ./scripts/trigger-merge-to-downstream-gha ${{ github.ref_name }}

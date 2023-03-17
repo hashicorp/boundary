@@ -214,10 +214,17 @@ func (s *sess) GetLocalConnections() map[string]ConnInfo {
 	return res
 }
 
+// Return local tofu token, if availble; otherwise return the tofu token from the resp
 func (s *sess) GetTofuToken() string {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	return s.tofuToken
+	if len(s.tofuToken) > 0 {
+		return s.tofuToken
+	}
+	if s.resp != nil {
+		return s.resp.GetTofuToken()
+	}
+	return ""
 }
 
 func (s *sess) GetConnectionLimit() int32 {

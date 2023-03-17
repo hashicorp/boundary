@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/auth/store"
@@ -540,7 +541,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 				user: func() *iam.User {
 					u, err := iam.NewUser(org.PublicId)
 					require.NoError(t, err)
-					id, err := db.NewPublicId(iam.UserPrefix)
+					id, err := db.NewPublicId(globals.UserPrefix)
 					require.NoError(t, err)
 					u.PublicId = id
 					return u

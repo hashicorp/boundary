@@ -1,0 +1,92 @@
+name: schema-diff
+
+on:
+  pull_request:
+    paths:
+      - 'internal/db/schema/migrations/**/*.sql'
+      - 'scripts/schema-diff.sh'
+      - '.github/scripts/schema-diff-hide-gh-comments.sh'
+      - '.github/workflows/schema-diff.yml'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  schema-diff:
+    name: "Schema Diff"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+        with:
+          fetch-depth: '0'
+      - name: Generate Schema Diff
+        env:
+          PGPASSWORD: boundary
+        run: |
+          # Run schema-diff between the code in the PR and its base.
+          ./scripts/schema-diff.sh "origin/${GITHUB_BASE_REF}"
+
+          gh_comment_prefix='Database schema diff between'
+          gh_user_login='github-actions[bot]'
+
+          # Hide previous schema-diff comments we've posted.
+          echo 'Hiding previous PR comments'
+          ./.github/scripts/schema-diff-hide-gh-comments.sh \
+            "$GITHUB_API_URL" \
+            "$GITHUB_GRAPHQL_URL" \
+            "${{ secrets.GITHUB_TOKEN }}" \
+            "$GITHUB_REPOSITORY" \
+            "${{ github.event.pull_request.number }}" \
+            "$gh_comment_prefix" \
+            "$gh_user_login"
+
+          # getdiff echoes the diff in GitHub markdown syntax or "Unchanged" if
+          # the file is empty.
+          getdiff() {
+            if [[ -s $1 ]]; then
+              echo \`\`\`diff
+              echo "$(cat $1)"
+              echo \`\`\`
+            else
+              echo "Unchanged"
+            fi
+          }
+
+          # Build heredoc with all the diffs the schema diff tool generated.
+          echo 'Building new GitHub schema-diff comment'
+          cat << EOF > github-comment.txt
+          $gh_comment_prefix \`${GITHUB_BASE_REF}\` and \`${GITHUB_HEAD_REF}\` @ ${{ github.event.pull_request.head.sha }}
+
+          #### Functions
+          $(getdiff .schema-diff/funcs.diff)
+
+          #### Tables
+          $(getdiff .schema-diff/tables.diff)
+
+          #### Views
+          $(getdiff .schema-diff/views.diff)
+
+          #### Triggers
+          $(getdiff .schema-diff/triggers.diff)
+
+          #### Indexes
+          $(getdiff .schema-diff/indexes.diff)
+
+          #### Constraints
+          $(getdiff .schema-diff/constraints.diff)
+          EOF
+
+          # Parse it through jq to build a valid json object.
+          jq --null-input \
+            --arg comment "$(cat github-comment.txt)" \
+            '{"body": $comment}' > body.json
+
+          # Post comment on PR.
+          echo "Posting new GitHub schema-diff comment under PR #${{ github.event.pull_request.number }}"
+          curl -sX POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -d @body.json \
+            $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number }}/comments

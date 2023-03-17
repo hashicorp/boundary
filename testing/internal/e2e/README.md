@@ -84,10 +84,10 @@ export VAULT_TOKEN=
 
 Then, run...
 ```shell
-go test github.com/hashicorp/boundary/testing/e2e/target // run target tests
+go test github.com/hashicorp/boundary/testing/internal/e2e/tests/static
 go test ./target/ // run target tests if running from this directory
-go test github.com/hashicorp/boundary/testing/e2e/target -v // verbose
-go test github.com/hashicorp/boundary/testing/e2e/target -v -run '^TestCreateTargetApi$' // run a specific test
+go test github.com/hashicorp/boundary/testing/internal/e2e/tests/static -v // verbose
+go test github.com/hashicorp/boundary/testing/internal/e2e/tests/static -v -run '^TestCreateTargetApi$' // run a specific test
 ```
 
 ## Adding Tests
@@ -110,11 +110,7 @@ Launch an enos scenario and print out the environment variables
 ```
 cd enos
 enos scenario launch e2e_{scenario} builder:local
-enos scenario output
-cd .enos
-ls -ltr
-cd <most_recent_directory> # bottom of list
-terraform show -json terraform.tfstate | jq -r '.values.root_module.child_modules[].resources[] | select(.address=="module.run_e2e_test.enos_local_exec.run_e2e_test") | .values.environment | to_entries[] | "export \(.key)=\(.value)"'
+bash scripts/test_e2e_env.sh
 ```
 
 Take the printed environment variable information and export them into another terminal session

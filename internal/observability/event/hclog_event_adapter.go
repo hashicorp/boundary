@@ -218,6 +218,11 @@ func (h *HclogLoggerAdapter) ResetNamed(name string) hclog.Logger {
 	}
 }
 
+// GetLevel returns the current level
+func (h *HclogLoggerAdapter) GetLevel() hclog.Level {
+	return h.level
+}
+
 // Updates the level. This should affect all related loggers as well,
 // unless they were created with IndependentLevels. If an
 // implementation cannot update the level on the fly, it should no-op.

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,14 +16,14 @@ import (
 func Test_Ids(t *testing.T) {
 	t.Parallel()
 	ctx := context.TODO()
-	t.Run(AuthMethodPrefix, func(t *testing.T) {
+	t.Run(globals.OidcAuthMethodPrefix, func(t *testing.T) {
 		id, err := newAuthMethodId(ctx)
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, AuthMethodPrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, globals.OidcAuthMethodPrefix+"_"))
 	})
-	t.Run(AccountPrefix, func(t *testing.T) {
+	t.Run(globals.OidcAccountPrefix, func(t *testing.T) {
 		id, err := newAccountId(ctx, "public-id", "test-issuer", "test-subject")
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, AccountPrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, globals.OidcAccountPrefix+"_"))
 	})
 }

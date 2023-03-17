@@ -658,7 +658,7 @@ func toProto(ctx context.Context, in *iam.Group, members []*iam.GroupMember, opt
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetGroupRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, iam.GroupPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.GroupPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateGroupRequest) error {
@@ -674,11 +674,11 @@ func validateCreateRequest(req *pbs.CreateGroupRequest) error {
 }
 
 func validateUpdateRequest(req *pbs.UpdateGroupRequest) error {
-	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, iam.GroupPrefix)
+	return handlers.ValidateUpdateRequest(req, req.GetItem(), handlers.NoopValidatorFn, globals.GroupPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, iam.GroupPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.GroupPrefix)
 }
 
 func validateListRequest(req *pbs.ListGroupsRequest) error {
@@ -699,7 +699,7 @@ func validateListRequest(req *pbs.ListGroupsRequest) error {
 
 func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.GroupPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.GroupPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -709,7 +709,7 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetMemberIds() {
-		if !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.UserPrefix) {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
@@ -726,14 +726,14 @@ func validateAddGroupMembersRequest(req *pbs.AddGroupMembersRequest) error {
 
 func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.GroupPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.GroupPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields["version"] = "Required field."
 	}
 	for _, id := range req.GetMemberIds() {
-		if !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.UserPrefix) {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}
@@ -750,7 +750,7 @@ func validateSetGroupMembersRequest(req *pbs.SetGroupMembersRequest) error {
 
 func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), iam.GroupPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.GroupPrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -760,7 +760,7 @@ func validateRemoveGroupMembersRequest(req *pbs.RemoveGroupMembersRequest) error
 		badFields["member_ids"] = "Must be non-empty."
 	}
 	for _, id := range req.GetMemberIds() {
-		if !handlers.ValidId(handlers.Id(id), iam.UserPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.UserPrefix) {
 			badFields["member_ids"] = fmt.Sprintf("Must only contain valid user ids but found %q.", id)
 			break
 		}

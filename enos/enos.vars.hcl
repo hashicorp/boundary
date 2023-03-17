@@ -29,6 +29,9 @@
 // similar to what is listed below.
 // local_boundary_dir = "/Users/<user>/.go/bin"
 
+// The directory that contains the copy of boundary-ui you want to use for UI tests
+// local_boundary_ui_dir = "/Users/<user>/Developer/boundary-ui"
+
 // The path to the installation bundle for the target machines. The existing
 // scenarios all use linux/amd64 architecture so bundle ought to match that
 // architecture. This is only used for variants which use the `crt` builder
@@ -40,3 +43,8 @@
 // The port the ALB will listen on to proxy controller API requests. This defaults
 // to 9200
 // alb_listener_api_port = 9200
+
+// Generally, if there's failure in the test suite for any reason, enos/terraform will throw an error and you
+// would not be able to access the environment variables needed to test locally. Enabling this
+// will ensure that the enos scenario passes.
+// e2e_debug_no_run = true

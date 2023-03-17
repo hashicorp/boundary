@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -201,7 +202,7 @@ func TestSession_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := db.NewPublicId(SessionPrefix)
+				id, err := db.NewPublicId(globals.SessionPrefix)
 				require.NoError(err)
 				got.PublicId = id
 				privKey, certBytes, err := newCert(ctx, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime(), rand.Reader)
@@ -256,7 +257,7 @@ func TestSession_Delete(t *testing.T) {
 			name: "bad-id",
 			session: func() *Session {
 				s := AllocSession()
-				id, err := db.NewPublicId(SessionPrefix)
+				id, err := db.NewPublicId(globals.SessionPrefix)
 				require.NoError(t, err)
 				s.PublicId = id
 				return &s

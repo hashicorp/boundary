@@ -9,8 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/api/authmethods"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
-	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -49,6 +48,10 @@ func (c *Command) Help() string {
 		"    Authenticate with an OIDC auth method using a specific auth method ID:",
 		"",
 		"      $ boundary authenticate oidc -auth-method-id amoidc_1234567890",
+		"",
+		"    Authenticate with an LDAP auth method:",
+		"",
+		"      $ boundary authenticate ldap -auth-method-id amldap_1234567890",
 		"",
 		"  Please see the auth method subcommand help for detailed usage information.",
 	}) + c.Flags().Help()
@@ -100,16 +103,20 @@ func (c *Command) Run(args []string) int {
 	c.FlagAuthMethodId = pri
 
 	switch {
-	case strings.HasPrefix(c.FlagAuthMethodId, password.AuthMethodPrefix):
+	case strings.HasPrefix(c.FlagAuthMethodId, globals.PasswordAuthMethodPrefix):
 		cmd := PasswordCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
 		cmd.Run([]string{})
 
-	case strings.HasPrefix(c.FlagAuthMethodId, oidc.AuthMethodPrefix):
+	case strings.HasPrefix(c.FlagAuthMethodId, globals.OidcAuthMethodPrefix):
 		cmd := OidcCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
 		cmd.Run([]string{})
 
+	case strings.HasPrefix(c.FlagAuthMethodId, globals.LdapAuthMethodPrefix):
+		cmd := LdapCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
+		cmd.Run([]string{})
+
 	default:
-		c.PrintCliError(fmt.Errorf("The primary auth method was of an unsupported type. The given ID was %s; only 'ampw' (password) and 'amoidc' (OIDC) auth method prefixes are supported.", c.FlagAuthMethodId))
+		c.PrintCliError(fmt.Errorf("The primary auth method was of an unsupported type. The given ID was %s; only 'ampw' (password), 'amoidc' (OIDC) and 'amldap' (LDAP) auth method prefixes are supported.", c.FlagAuthMethodId))
 		return cli.RunResultHelp
 	}
 

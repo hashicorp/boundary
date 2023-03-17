@@ -36,6 +36,7 @@ const (
 	// * The scopes service collection actions for appropriate scopes
 	// * The Test_AnonRestrictions test: update the following line to include the last resource:
 	//      for i := resource.Type(1); i <= resource.<Resource>; i++ {
+	// * The prefixes and mappings in globals/prefixes.go
 )
 
 func (r Type) MarshalJSON() ([]byte, error) {
@@ -97,4 +98,48 @@ var Map = map[string]Type{
 	CredentialStore.String():   CredentialStore,
 	CredentialLibrary.String(): CredentialLibrary,
 	Credential.String():        Credential,
+}
+
+// Parent returns the parent type for a given type; if there is no parent, it
+// returns the incoming type
+func Parent(in Type) Type {
+	switch in {
+	case Account, ManagedGroup:
+		return AuthMethod
+	case HostSet, Host:
+		return HostCatalog
+	case CredentialLibrary, Credential:
+		return CredentialStore
+	}
+	return in
+}
+
+// HasChildTypes indicates whether this is a type that has child resource types;
+// it's essentially the inverse of Parent
+func HasChildTypes(in Type) bool {
+	switch in {
+	case AuthMethod, HostCatalog, CredentialStore:
+		return true
+	}
+	return false
+}
+
+// TopLevelType indicates whether this is a type that supports collection
+// actions, e.g. Create/List
+func TopLevelType(typ Type) bool {
+	switch typ {
+	case AuthMethod,
+		AuthToken,
+		CredentialStore,
+		Group,
+		HostCatalog,
+		Role,
+		Scope,
+		Session,
+		Target,
+		User,
+		Worker:
+		return true
+	}
+	return false
 }

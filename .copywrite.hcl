@@ -5,7 +5,6 @@ project {
   copyright_year = 2023
 
   header_ignore = [
-    ".circleci/**",
     ".github/**",
     ".golangci.yml",
     ".release/linux/**",

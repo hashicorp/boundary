@@ -617,13 +617,13 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
-	}, req, static.HostPrefix, plugin.HostPrefix, plugin.PreviousHostPrefix)
+	}, req, globals.StaticHostPrefix, globals.PluginHostPrefix, globals.PluginHostPreviousPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), static.HostCatalogPrefix) {
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), globals.StaticHostCatalogPrefix) {
 			badFields["host_catalog_id"] = "The field is incorrectly formatted."
 		}
 		switch subtypes.SubtypeFromId(domain, req.GetItem().GetHostCatalogId()) {
@@ -702,7 +702,7 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
-	}, static.HostPrefix)
+	}, globals.StaticHostPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
@@ -713,12 +713,12 @@ func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 			badFields[globals.IdField] = "Cannot manually delete this type of host."
 		}
 		return badFields
-	}, req, static.HostPrefix)
+	}, req, globals.StaticHostPrefix)
 }
 
 func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix, plugin.HostCatalogPrefix, plugin.PreviousHostCatalogPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), globals.StaticHostCatalogPrefix, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

@@ -17,8 +17,49 @@ env:
   PKG_NAME: boundary
 
 jobs:
+  setup:
+    outputs:
+      cache-go-build: ${{ steps.go-cache-paths.outputs.go-build }}
+      cache-go-mod: ${{ steps.go-cache-paths.outputs.go-mod }}
+      cache-go-bin: ${{ steps.go-cache-paths.outputs.go-bin }}
+      go-cache-key: ${{ steps.go-cache-key.outputs.key }}
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+        with:
+          fetch-depth: '0'
+      - name: Set up Go
+        uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613 # v3.4.0
+        with:
+          go-version: ${{ inputs.go-version }}
+      - name: Determine go cache key
+        id: go-cache-key
+        run: |
+          echo "key=${{ runner.os }}-go-${{ hashFiles('**/go.sum', './Makefile', './tools/tools.go') }}" >> "$GITHUB_OUTPUT"
+      - name: Determine Go cache paths
+        id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
+      - name: Set up Go modules cache
+        uses: actions/cache@627f0f41f6904a5b1efbaed9f96d9eb58e92e920 # v3.2.4
+        with:
+          path: |
+            ${{ steps.go-cache-paths.outputs.go-build }}
+            ${{ steps.go-cache-paths.outputs.go-mod }}
+            ${{ steps.go-cache-paths.outputs.go-bin }}
+          key: ${{ steps.go-cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+      - name: Install Tools
+        run: |
+          go mod download
+          make tools
   enos:
     name: Integration
+    needs:
+      - setup
     # Enos jobs are still a bit flaky, ensure they don't fail the workflow.
     continue-on-error: true
     strategy:
@@ -29,27 +70,37 @@ jobs:
           - filter: 'e2e_database'
           - filter: 'e2e_static builder:crt'
           - filter: 'e2e_static_with_vault builder:crt'
+          # - filter: 'e2e_ui builder:crt' # Don't run UI tests yet. takes too long.
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@d0a58c1c4d2b25278816e339b944508c875f3613 # v3.4.0
         with:
           go-version: ${{ inputs.go-version }}
-      - name: Install tools to get tparse
-        run: make tools
+      - name: Set up Go modules cache
+        uses: actions/cache@627f0f41f6904a5b1efbaed9f96d9eb58e92e920 # v3.2.4
+        with:
+          path: |
+            ${{ needs.setup.outputs.cache-go-build }}
+            ${{ needs.setup.outputs.cache-go-mod }}
+            ${{ needs.setup.outputs.cache-go-bin }}
+          key: ${{ needs.setup.outputs.go-cache-key }}
+          restore-keys: |
+            ${{ runner.os }}-go
+          fail-on-cache-miss: true
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1  # TSCCR: could not find tsccr entry for hashicorp/setup-terraform
         with:
           # the terraform wrapper will break Terraform execution in enos because
           # it changes the output to text when we expect it to be JSON.
           terraform_wrapper: false
       - name: Import GPG key for Boundary pass keystore
         id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v5
+        uses: crazy-max/ghaction-import-gpg@111c56156bcc6918c056dbef52164cfa583dc549  # TSCCR: could not find tsccr entry for crazy-max/ghaction-import-gpg
         with:
           gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
@@ -60,7 +111,7 @@ jobs:
           echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
           cat ~/.gnupg/gpg.conf
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1-node16
+        uses: aws-actions/configure-aws-credentials@e1e17a757e536f70e52b5a12b2e8d1d1c60e04ef  # TSCCR: could not find tsccr entry for aws-actions/configure-aws-credentials
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
@@ -69,7 +120,7 @@ jobs:
           role-skip-session-tagging: true
           role-duration-seconds: 3600
       - name: Set up Enos
-        uses: hashicorp/action-setup-enos@v1
+        uses: hashicorp/action-setup-enos@v1  # TSCCR: could not find tsccr entry for hashicorp/action-setup-enos
         with:
           github-token: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
       - name: Set up AWS SSH private key
@@ -79,7 +130,7 @@ jobs:
           chmod 600 ./enos/support/private_key.pem
       - name: Set up dependency cache
         id: dep-cache
-        uses: actions/cache@v3
+        uses: actions/cache@627f0f41f6904a5b1efbaed9f96d9eb58e92e920 # v3.2.4
         with:
           path: /tmp/test-deps
           key: enos-test-deps-password-store-1.7.4-vault-1.12.2
@@ -100,31 +151,55 @@ jobs:
           cd /tmp/test-deps/pass/password-store-1.7.4
           sudo make install
           pass init ${{ secrets.ENOS_GPG_UID }}
-      - name: Download Vault AMD64 binary for integration testing
+      - name: Download Vault AMD64 binary
         if: steps.dep-cache.outputs.cache-hit != 'true'
         run: |
           wget https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip -O /tmp/test-deps/vault.zip
-      - name: Install Vault for integration testing
-        if: matrix.filter == 'e2e_static_with_vault builder:crt' || matrix.filter == 'e2e_database'
+      - name: Install Vault CLI
+        if: matrix.filter == 'e2e_static_with_vault builder:crt' || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui builder:crt' || matrix.filter == 'e2e_docker builder:crt'
         run: |
           unzip /tmp/test-deps/vault.zip -d /usr/local/bin
-      - name: Download Linux AMD64 Boundary bundle
+      - name: Add hosts to /etc/hosts
+        # This enables the use of `boundary connect` with docker containers
+        if: matrix.filter == 'e2e_docker builder:crt'
+        run: |
+          sudo echo "127.0.0.1 localhost boundary" | sudo tee -a /etc/hosts
+      - name: Download Boundary Linux AMD64 bundle
         id: download
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
         with:
           name: ${{ inputs.artifact-name }}
           path: ./enos/support/downloads
       - name: Unzip and rename Boundary bundle
         run: |
-          unzip ${{steps.download.outputs.download-path}}/*.zip -d enos/support
+          unzip ${{steps.download.outputs.download-path}}/*.zip -d enos/support/boundary
           mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        if: matrix.filter == 'e2e_ui builder:crt'
+        with:
+          node-version: '16.x'
+      - name: Checkout boundary-ui
+        uses: actions/checkout@v3
+        if: matrix.filter == 'e2e_ui builder:crt'
+        with:
+          repository: hashicorp/boundary-ui
+          path: enos/support/boundary-ui
+      - name: Install boundary-ui dependencies
+        if: matrix.filter == 'e2e_ui builder:crt'
+        run: yarn --cwd enos/support/boundary-ui install
+      - name: Install playwright dependencies (i.e. browsers)
+        if: matrix.filter == 'e2e_ui builder:crt'
+        run: npx playwright install --with-deps
+        working-directory: enos/support/boundary-ui
       - name: Output Terraform version info
         # Use the same env vars from the following step
         env:
           ENOS_VAR_aws_region: us-east-1
           ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/
+          ENOS_VAR_local_boundary_dir: ./support/boundary
+          ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
@@ -141,7 +216,8 @@ jobs:
           ENOS_VAR_aws_region: us-east-1
           ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/
+          ENOS_VAR_local_boundary_dir: ./support/boundary
+          ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
@@ -150,10 +226,17 @@ jobs:
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Upload e2e tests output
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        with:
+          name: test-e2e-output
+          path: enos/test*.log
+          retention-days: 5
+      - name: Upload e2e UI tests debug info
+        if: matrix.filter == 'e2e_ui builder:crt' && steps.run.outcome == 'failure'
         uses: actions/upload-artifact@v3
         with:
-          name: test-e2e-output.zip
-          path: enos/test*.out
+          name: test-e2e-ui-debug
+          path: enos/support/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
           retention-days: 5
       - name: Retry Enos scenario
         id: run_retry
@@ -162,7 +245,8 @@ jobs:
           ENOS_VAR_aws_region: us-east-1
           ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/
+          ENOS_VAR_local_boundary_dir: ./support/boundary
+          ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
@@ -175,14 +259,15 @@ jobs:
           ENOS_VAR_aws_region: us-east-1
           ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
           ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/
+          ENOS_VAR_local_boundary_dir: ./support/boundary
+          ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
-      - name: Output debug information on failure
+      - name: Output Enos debug information on failure
         if: ${{ failure() }}
         run: |
           env

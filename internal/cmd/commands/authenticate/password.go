@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -138,7 +139,7 @@ func (c *PasswordCommand) Run(args []string) int {
 			c.FlagScopeId = "global"
 		}
 
-		pri, err := getPrimaryAuthMethodId(c.Context, aClient, c.FlagScopeId, "ampw")
+		pri, err := getPrimaryAuthMethodId(c.Context, aClient, c.FlagScopeId, globals.PasswordAuthMethodPrefix)
 		if err != nil {
 			c.PrintCliError(err)
 			return base.CommandUserError

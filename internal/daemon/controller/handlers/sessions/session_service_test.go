@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -116,7 +117,7 @@ func TestGetSession(t *testing.T) {
 		},
 		{
 			name: "Get a non existent Session",
-			req:  &pbs.GetSessionRequest{Id: session.SessionPrefix + "_DoesntExis"},
+			req:  &pbs.GetSessionRequest{Id: globals.SessionPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -128,7 +129,7 @@ func TestGetSession(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetSessionRequest{Id: session.SessionPrefix + "_1 23456789"},
+			req:  &pbs.GetSessionRequest{Id: globals.SessionPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -690,7 +691,7 @@ func TestCancel(t *testing.T) {
 		},
 		{
 			name: "Cancel a non existing Session",
-			req:  &pbs.CancelSessionRequest{Id: session.SessionPrefix + "_DoesntExis"},
+			req:  &pbs.CancelSessionRequest{Id: globals.SessionPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -702,7 +703,7 @@ func TestCancel(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.CancelSessionRequest{Id: session.SessionPrefix + "_1 23456789"},
+			req:  &pbs.CancelSessionRequest{Id: globals.SessionPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},

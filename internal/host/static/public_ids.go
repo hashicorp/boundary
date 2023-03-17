@@ -4,6 +4,7 @@
 package static
 
 import (
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
@@ -11,22 +12,18 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(host.Domain, Subtype, HostCatalogPrefix, HostSetPrefix, HostPrefix); err != nil {
+	if err := subtypes.Register(host.Domain, Subtype, globals.StaticHostCatalogPrefix, globals.StaticHostSetPrefix, globals.StaticHostPrefix); err != nil {
 		panic(err)
 	}
 }
 
 // PublicId prefixes for the resources in the static package.
 const (
-	HostCatalogPrefix = "hcst"
-	HostSetPrefix     = "hsst"
-	HostPrefix        = "hst"
-
 	Subtype = subtypes.Subtype("static")
 )
 
 func newHostCatalogId() (string, error) {
-	id, err := db.NewPublicId(HostCatalogPrefix)
+	id, err := db.NewPublicId(globals.StaticHostCatalogPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "static.newHostCatalogId")
 	}
@@ -34,7 +31,7 @@ func newHostCatalogId() (string, error) {
 }
 
 func newHostId() (string, error) {
-	id, err := db.NewPublicId(HostPrefix)
+	id, err := db.NewPublicId(globals.StaticHostPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "static.newHostId")
 	}
@@ -42,7 +39,7 @@ func newHostId() (string, error) {
 }
 
 func newHostSetId() (string, error) {
-	id, err := db.NewPublicId(HostSetPrefix)
+	id, err := db.NewPublicId(globals.StaticHostSetPrefix)
 	if err != nil {
 		return "", errors.WrapDeprecated(err, "static.newHostSetId")
 	}

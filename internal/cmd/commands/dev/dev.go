@@ -17,21 +17,15 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/cmd/ops"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/host/static"
-	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/intglobals"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
-	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -47,6 +41,8 @@ var (
 	_ cli.Command             = (*Command)(nil)
 	_ cli.CommandAutocomplete = (*Command)(nil)
 )
+
+var extraSelfTerminationConditionFuncs []func(*Command, chan struct{})
 
 type Command struct {
 	*base.Server
@@ -447,20 +443,20 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error("Invalid ID suffix, must be in the set A-Za-z0-9")
 			return base.CommandUserError
 		}
-		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", password.AuthMethodPrefix, c.flagIdSuffix)
-		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", oidc.AuthMethodPrefix, c.flagIdSuffix)
-		c.DevUserId = fmt.Sprintf("%s_%s", iam.UserPrefix, c.flagIdSuffix)
-		c.DevPasswordAccountId = fmt.Sprintf("%s_%s", intglobals.NewPasswordAccountPrefix, c.flagIdSuffix)
-		c.DevOidcAccountId = fmt.Sprintf("%s_%s", oidc.AccountPrefix, c.flagIdSuffix)
+		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", globals.PasswordAuthMethodPrefix, c.flagIdSuffix)
+		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", globals.OidcAuthMethodPrefix, c.flagIdSuffix)
+		c.DevUserId = fmt.Sprintf("%s_%s", globals.UserPrefix, c.flagIdSuffix)
+		c.DevPasswordAccountId = fmt.Sprintf("%s_%s", globals.PasswordAccountPrefix, c.flagIdSuffix)
+		c.DevOidcAccountId = fmt.Sprintf("%s_%s", globals.OidcAccountPrefix, c.flagIdSuffix)
 		c.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(c.DevUserId, "u_"))
-		c.DevUnprivilegedPasswordAccountId = fmt.Sprintf("%s_", intglobals.NewPasswordAccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevPasswordAccountId, fmt.Sprintf("%s_", intglobals.NewPasswordAccountPrefix)))
-		c.DevUnprivilegedOidcAccountId = fmt.Sprintf("%s_", oidc.AccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevOidcAccountId, fmt.Sprintf("%s_", oidc.AccountPrefix)))
+		c.DevUnprivilegedPasswordAccountId = fmt.Sprintf("%s_", globals.PasswordAccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevPasswordAccountId, fmt.Sprintf("%s_", globals.PasswordAccountPrefix)))
+		c.DevUnprivilegedOidcAccountId = fmt.Sprintf("%s_", globals.OidcAccountPrefix) + strutil.Reverse(strings.TrimPrefix(c.DevOidcAccountId, fmt.Sprintf("%s_", globals.OidcAccountPrefix)))
 		c.DevOrgId = fmt.Sprintf("%s_%s", scope.Org.Prefix(), c.flagIdSuffix)
 		c.DevProjectId = fmt.Sprintf("%s_%s", scope.Project.Prefix(), c.flagIdSuffix)
-		c.DevHostCatalogId = fmt.Sprintf("%s_%s", static.HostCatalogPrefix, c.flagIdSuffix)
-		c.DevHostSetId = fmt.Sprintf("%s_%s", static.HostSetPrefix, c.flagIdSuffix)
-		c.DevHostId = fmt.Sprintf("%s_%s", static.HostPrefix, c.flagIdSuffix)
-		c.DevTargetId = fmt.Sprintf("%s_%s", tcp.TargetPrefix, c.flagIdSuffix)
+		c.DevHostCatalogId = fmt.Sprintf("%s_%s", globals.StaticHostCatalogPrefix, c.flagIdSuffix)
+		c.DevHostSetId = fmt.Sprintf("%s_%s", globals.StaticHostSetPrefix, c.flagIdSuffix)
+		c.DevHostId = fmt.Sprintf("%s_%s", globals.StaticHostPrefix, c.flagIdSuffix)
+		c.DevTargetId = fmt.Sprintf("%s_%s", globals.TcpTargetPrefix, c.flagIdSuffix)
 	}
 	if c.flagSecondaryIdSuffix != "" {
 		if len(c.flagSecondaryIdSuffix) != 10 {
@@ -471,7 +467,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error("Invalid secondary ID suffix, must be in the set A-Za-z0-9")
 			return base.CommandUserError
 		}
-		c.DevSecondaryTargetId = fmt.Sprintf("%s_%s", tcp.TargetPrefix, c.flagSecondaryIdSuffix)
+		c.DevSecondaryTargetId = fmt.Sprintf("%s_%s", globals.TcpTargetPrefix, c.flagSecondaryIdSuffix)
 	}
 
 	if c.flagIdSuffix != "" && c.flagSecondaryIdSuffix != "" &&
@@ -919,6 +915,10 @@ func (c *Command) Run(args []string) int {
 				os.Exit(base.CommandCliError)
 			}()
 		}
+	}
+
+	for _, f := range extraSelfTerminationConditionFuncs {
+		f(c, c.ServerSideShutdownCh)
 	}
 
 	for !errorEncountered.Load() && !shutdownCompleted.Load() {

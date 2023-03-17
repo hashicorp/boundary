@@ -14,7 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
-	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/observability/event"
@@ -147,6 +147,43 @@ func TestCrud(t *testing.T) {
 	oidc, err = amClient.Update(tc.Context(), oidc.Item.Id, oidc.Item.Version, authmethods.DefaultName())
 	require.NoError(err)
 	checkAuthMethod("update", oidc.Item, "", 3)
+
+	_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
+	// ldap auth methods
+	ldap, err := amClient.Create(tc.Context(), "ldap", global,
+		authmethods.WithName("ldap-foo"),
+		authmethods.WithLdapAuthMethodUrls([]string{"ldaps://ldap1"}),
+		authmethods.WithLdapAuthMethodBindDn("bind-dn"),
+		authmethods.WithLdapAuthMethodBindPassword("pass"))
+	require.NoError(err)
+	t.Cleanup(func() {
+		_, err = amClient.Delete(tc.Context(), ldap.Item.Id)
+		require.NoError(err)
+	})
+	checkAuthMethod("create", ldap.Item, "ldap-foo", 1)
+	got = tests_api.CloudEventFromFile(t, eventConfig.AuditEvents.Name())
+
+	reqItem = tests_api.GetEventDetails(t, got, "request")["item"].(map[string]any)
+	tests_api.AssertRedactedValues(t, reqItem)
+	tests_api.AssertRedactedValues(t, reqItem["Attrs"])
+	tests_api.AssertRedactedValues(t, reqItem["Attrs"].(map[string]any)["LdapAuthMethodsAttributes"])
+
+	respItem = tests_api.GetEventDetails(t, got, "response")["item"].(map[string]any)
+	tests_api.AssertRedactedValues(t, respItem)
+	tests_api.AssertRedactedValues(t, respItem["Attrs"])
+	tests_api.AssertRedactedValues(t, respItem["Attrs"].(map[string]any)["LdapAuthMethodsAttributes"])
+
+	ldap, err = amClient.Read(tc.Context(), ldap.Item.Id)
+	require.NoError(err)
+	checkAuthMethod("read", ldap.Item, "ldap-foo", 1)
+
+	ldap, err = amClient.Update(tc.Context(), ldap.Item.Id, ldap.Item.Version, authmethods.WithName("ldap-bar"))
+	require.NoError(err)
+	checkAuthMethod("update", ldap.Item, "ldap-bar", 2)
+
+	ldap, err = amClient.Update(tc.Context(), ldap.Item.Id, ldap.Item.Version, authmethods.DefaultName())
+	require.NoError(err)
+	checkAuthMethod("update", ldap.Item, "", 3)
 }
 
 func TestList(t *testing.T) {
@@ -211,6 +248,29 @@ func TestList(t *testing.T) {
 		cmp.Diff(
 			result.Items,
 			[]*authmethods.AuthMethod{genOIDCAM, genPWAM, pwAM.Item, oidcAM.Item},
+			cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
+			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
+				return a.Name < b.Name
+			}),
+		),
+	)
+
+	ldapAm, err := amClient.Create(tc.Context(), "ldap", global,
+		authmethods.WithName("ldap-foo"),
+		authmethods.WithLdapAuthMethodUrls([]string{"ldaps://ldap1"}))
+	require.NoError(err)
+	t.Cleanup(func() {
+		_, err = amClient.Delete(tc.Context(), ldapAm.Item.Id)
+		require.NoError(err)
+	})
+
+	result, err = amClient.List(tc.Context(), global)
+	require.NoError(err)
+	require.Len(result.Items, 5)
+	assert.Empty(
+		cmp.Diff(
+			result.Items,
+			[]*authmethods.AuthMethod{genOIDCAM, genPWAM, pwAM.Item, oidcAM.Item, ldapAm.Item},
 			cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
@@ -348,7 +408,7 @@ func TestErrors(t *testing.T) {
 
 	// TODO: Confirm that we can't create an oidc auth method with the same name.
 
-	_, err = amClient.Read(tc.Context(), password.AuthMethodPrefix+"_doesntexis")
+	_, err = amClient.Read(tc.Context(), globals.PasswordAuthMethodPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	require.NotNil(apiErr)

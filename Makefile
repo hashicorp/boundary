@@ -36,16 +36,12 @@ golangci-lint:
 	$(eval GOLINT_INSTALLED := $(shell which golangci-lint))
 
 	if [ "$(GOLINT_INSTALLED)" = "" ]; then \
-		sh scripts/install-golangci-lint.sh -b $(GO_PATH)/bin v1.51.0; \
+		sh scripts/install-golangci-lint.sh -b $(GO_PATH)/bin v1.51.2; \
 	fi;
 
 .PHONY: cleangen
 cleangen:
 	@rm -f $(shell  find ${THIS_DIR} -name '*.gen.go' && find ${THIS_DIR} -name '*.pb.go' && find ${THIS_DIR} -name '*.pb.gw.go')
-
-.PHONY: install-no-plugins
-install-no-plugins: export SKIP_PLUGIN_BUILD=1
-install-no-plugins: install
 
 .PHONY: dev
 dev:
@@ -64,6 +60,10 @@ build: build-ui-ifne
 .PHONY: install
 install: export BOUNDARY_INSTALL_BINARY=1
 install: build
+
+.PHONY: install-no-plugins
+install-no-plugins: export SKIP_PLUGIN_BUILD=1
+install-no-plugins: install
 
 .PHONY: build-memprof
 build-memprof: BUILD_TAGS+=memprofiler
@@ -95,7 +95,6 @@ UI_TARGETS := update-ui-version build-ui build-ui-ifne clean-ui
 $(UI_TARGETS): export UI_CLONE_DIR      := internal/ui/.tmp/boundary-ui
 $(UI_TARGETS): export UI_VERSION_FILE   := internal/ui/VERSION
 $(UI_TARGETS): export UI_DEFAULT_BRANCH := main
-$(UI_TARGETS): export UI_CURRENT_COMMIT := $(shell head -n1 < "$(UI_VERSION_FILE)" | cut -d' ' -f1)
 $(UI_TARGETS): export UI_COMMITISH ?=
 
 .PHONY: update-ui-version
@@ -110,12 +109,6 @@ update-ui-version:
 
 .PHONY: build-ui
 build-ui:
-	@if [ -z "$(UI_COMMITISH)" ]; then \
-		echo "==> Building default UI version from $(UI_VERSION_FILE): $(UI_CURRENT_COMMIT)"; \
-		export UI_COMMITISH="$(UI_CURRENT_COMMIT)"; \
-	else \
-		echo "==> Building custom UI version $(UI_COMMITISH)"; \
-	fi; \
 	./scripts/build-ui.sh
 
 .PHONY: build-plugins
@@ -198,6 +191,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/credential/vault/store/vault.pb.go
 	@protoc-go-inject-tag -input=./internal/credential/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
+	@protoc-go-inject-tag -input=./internal/auth/ldap/store/ldap.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go
@@ -286,19 +280,13 @@ test-database-down:
 generate-database-dumps:
 	@$(MAKE) -C testing/dbtest/docker generate-database-dumps
 
-.PHONY: test-ci
-test-ci: export CI_BUILD=1
-test-ci:
-	CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
-	go test "$(TEST_PACKAGE)" -v $(TESTARGS) -json -cover -timeout 120m | tparse -follow
-
 .PHONY: test-sql
 test-sql:
 	$(MAKE) -C internal/db/sqltest/ test
 
 .PHONY: test
 test:
-	go test "$(TEST_PACKAGE)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) | tparse -follow
+	go test "$(TEST_PACKAGE)" -tags="$(BUILD_TAGS)" $(TESTARGS) -json -cover -timeout $(TEST_TIMEOUT) | tparse -follow
 
 .PHONY: test-sdk
 test-sdk:
@@ -381,14 +369,6 @@ docker-build-dev: build
 	@echo "Successfully built $(IMAGE_TAG_DEV)"
 
 .NOTPARALLEL:
-
-.PHONY: ci-config
-ci-config:
-	@$(MAKE) -C .circleci ci-config
-
-.PHONY: ci-verify
-ci-verify:
-	@$(MAKE) -C .circleci ci-verify
 
 .PHONY: version
 # This is used for release builds by .github/workflows/build.yml

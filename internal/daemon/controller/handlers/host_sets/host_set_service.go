@@ -946,13 +946,13 @@ func toStoragePluginSet(ctx context.Context, catalogId string, item *pb.HostSet)
 //   - The type asserted by the ID and/or field is known
 //   - If relevant, the type derived from the id prefix matches what is claimed by the type field
 func validateGetRequest(req *pbs.GetHostSetRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.StaticHostSetPrefix, globals.PluginHostSetPrefix, globals.PluginHostSetPreviousPrefix)
 }
 
 func validateCreateRequest(ctx context.Context, req *pbs.CreateHostSetRequest) error {
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
-		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), static.HostCatalogPrefix, plugin.HostCatalogPrefix, plugin.PreviousHostCatalogPrefix) {
+		if !handlers.ValidId(handlers.Id(req.GetItem().GetHostCatalogId()), globals.StaticHostCatalogPrefix, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix) {
 			badFields[globals.HostCatalogIdField] = "The field is incorrectly formatted."
 		}
 		if len(req.GetItem().GetPreferredEndpoints()) > 0 {
@@ -1005,16 +1005,16 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateHostSetRequest) e
 			}
 		}
 		return badFields
-	}, static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix)
+	}, globals.StaticHostSetPrefix, globals.PluginHostSetPrefix, globals.PluginHostSetPreviousPrefix)
 }
 
 func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
-	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, static.HostSetPrefix, plugin.HostSetPrefix, plugin.PreviousHostSetPrefix)
+	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.StaticHostSetPrefix, globals.PluginHostSetPrefix, globals.PluginHostSetPreviousPrefix)
 }
 
 func validateListRequest(req *pbs.ListHostSetsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix, plugin.HostCatalogPrefix, plugin.PreviousHostCatalogPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), globals.StaticHostCatalogPrefix, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix) {
 		badFields[globals.HostCatalogIdField] = "The field is incorrectly formatted."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
@@ -1028,7 +1028,7 @@ func validateListRequest(req *pbs.ListHostSetsRequest) error {
 
 func validateAddRequest(req *pbs.AddHostSetHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), static.HostSetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.StaticHostSetPrefix) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1038,7 +1038,7 @@ func validateAddRequest(req *pbs.AddHostSetHostsRequest) error {
 		badFields[globals.HostIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.StaticHostPrefix) {
 			badFields[globals.HostIdsField] = "Incorrectly formatted host identifier."
 			break
 		}
@@ -1051,14 +1051,14 @@ func validateAddRequest(req *pbs.AddHostSetHostsRequest) error {
 
 func validateSetRequest(req *pbs.SetHostSetHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), static.HostSetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.StaticHostSetPrefix) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
 	for _, id := range req.GetHostIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.StaticHostPrefix) {
 			badFields[globals.HostIdsField] = "Incorrectly formatted host identifier."
 			break
 		}
@@ -1071,7 +1071,7 @@ func validateSetRequest(req *pbs.SetHostSetHostsRequest) error {
 
 func validateRemoveRequest(req *pbs.RemoveHostSetHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), static.HostSetPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.StaticHostSetPrefix) {
 		badFields[globals.IdField] = "Incorrectly formatted identifier."
 	}
 	if req.GetVersion() == 0 {
@@ -1081,7 +1081,7 @@ func validateRemoveRequest(req *pbs.RemoveHostSetHostsRequest) error {
 		badFields[globals.HostIdsField] = "Must be non-empty."
 	}
 	for _, id := range req.GetHostIds() {
-		if !handlers.ValidId(handlers.Id(id), static.HostPrefix) {
+		if !handlers.ValidId(handlers.Id(id), globals.StaticHostPrefix) {
 			badFields[globals.HostIdsField] = "Incorrectly formatted host identifier."
 			break
 		}

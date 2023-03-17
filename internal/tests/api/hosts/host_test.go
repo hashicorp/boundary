@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/api/hostsets"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
-	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -223,7 +223,7 @@ func TestErrors(t *testing.T) {
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)
 
-	_, err = hClient.Read(tc.Context(), static.HostPrefix+"_doesntexis")
+	_, err = hClient.Read(tc.Context(), globals.StaticHostPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

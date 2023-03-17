@@ -46,7 +46,7 @@ func closeListener(_ context.Context, l net.Listener, _ any) error {
 func (c *Controller) startListeners() error {
 	servers := make([]func(), 0, len(c.conf.Listeners))
 
-	grpcServer, gwTicket, err := newGrpcServer(c.baseContext, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.PasswordAuthRepoFn, c.OidcRepoFn, c.kms, c.conf.Eventer)
+	grpcServer, gwTicket, err := newGrpcServer(c.baseContext, c.IamRepoFn, c.AuthTokenRepoFn, c.ServersRepoFn, c.PasswordAuthRepoFn, c.OidcRepoFn, c.LdapRepoFn, c.kms, c.conf.Eventer)
 	if err != nil {
 		return fmt.Errorf("failed to create new grpc server: %w", err)
 	}
@@ -162,16 +162,10 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating node enrollment authed split listener: %w", err)
 	}
-	// This wraps the normal worker connections with something that events with
-	// the worker ID on successful auth/connection
-	eventingAuthedListener, err := common.NewEventingListener(c.baseContext, nodeeAuthedListener)
-	if err != nil {
-		return nil, fmt.Errorf("%s: error creating eventing listener: %w", op, err)
-	}
 
 	// This wraps the normal pki worker connections with a listener which adds
 	// the worker key id of the connections to the controller's pkiConnManager.
-	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, eventingAuthedListener, c.pkiConnManager, sourcePurpose(grpcListenerPurpose))
+	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, nodeeAuthedListener, c.pkiConnManager, sourcePurpose(grpcListenerPurpose))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error creating pki worker tracking listener: %w", op, err)
 	}
@@ -254,7 +248,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 
 	return func() {
 		err := handleSecondaryConnection(c.baseContext, metric.InstrumentClusterTrackingListener(multiplexingReverseGrpcListener, reverseGrpcListenerPurpose),
-			c.downstreamRoutes)
+			c.downstreamConns)
 		if err != nil {
 			event.WriteError(c.baseContext, op, err, event.WithInfoMsg("handleSecondaryConnection error"))
 		}

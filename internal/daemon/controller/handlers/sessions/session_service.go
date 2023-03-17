@@ -467,7 +467,7 @@ func toProto(ctx context.Context, in *session.Session, opt ...handlers.Option) (
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
 func validateGetRequest(req *pbs.GetSessionRequest) error {
-	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, session.SessionPrefix)
+	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.SessionPrefix)
 }
 
 func validateListRequest(req *pbs.ListSessionsRequest) error {
@@ -487,7 +487,7 @@ func validateListRequest(req *pbs.ListSessionsRequest) error {
 
 func validateCancelRequest(req *pbs.CancelSessionRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetId()), session.SessionPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetId()), globals.SessionPrefix) {
 		badFields["id"] = "Improperly formatted identifier."
 	}
 	if req.GetVersion() == 0 {

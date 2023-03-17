@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -44,6 +46,9 @@ func TestUpdate_Password(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -53,7 +58,7 @@ func TestUpdate_Password(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	tested, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -284,7 +289,7 @@ func TestUpdate_Password(t *testing.T) {
 		{
 			name: "Update a Non Existing AuthMethod",
 			req: &pbs.UpdateAuthMethodRequest{
-				Id: password.AuthMethodPrefix + "_DoesntExis",
+				Id: globals.PasswordAuthMethodPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -302,7 +307,7 @@ func TestUpdate_Password(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.AuthMethod{
-					Id:          password.AuthMethodPrefix + "_somethinge",
+					Id:          globals.PasswordAuthMethodPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},
@@ -481,6 +486,9 @@ func TestAuthenticate_Password(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -616,7 +624,7 @@ func TestAuthenticate_Password(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+			s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 			require.NoError(err)
 
 			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
@@ -659,6 +667,9 @@ func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kms)
+	}
 	pwRepoFn := func() (*password.Repository, error) {
 		return password.NewRepository(rw, rw, kms)
 	}
@@ -682,7 +693,7 @@ func TestAuthenticate_AuthAccountConnectedToIamUser_Password(t *testing.T) {
 	iamUser, err := iamRepo.LookupUserWithLogin(context.Background(), acct.GetPublicId())
 	require.NoError(err)
 
-	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn)
+	s, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(err)
 	resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), &pbs.AuthenticateRequest{
 		AuthMethodId: am.GetPublicId(),

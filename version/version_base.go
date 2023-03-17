@@ -13,11 +13,15 @@ var (
 
 	// Version is the base version
 	// Default values - set when building locally (at build time)
-	Version = "0.12.0"
+	Version = "0.12.1"
 
 	// VersionPrerelease is also set at compile time, similarly to Version.
-	VersionPrerelease = ""
+	VersionPrerelease string
 
 	// VersionMetadata is also set at compile time.
-	VersionMetadata = ""
+	VersionMetadata string
+
+	// BuildDate is the date of the build, which corresponds to the timestamp of
+	// the most recent commit
+	BuildDate string
 )

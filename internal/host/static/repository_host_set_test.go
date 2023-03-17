@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -125,7 +126,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, HostSetPrefix, got.PublicId)
+			assertPublicId(t, globals.StaticHostSetPrefix, got.PublicId)
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -153,7 +154,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, HostSetPrefix, got.PublicId)
+		assertPublicId(t, globals.StaticHostSetPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -186,7 +187,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, HostSetPrefix, got.PublicId)
+		assertPublicId(t, globals.StaticHostSetPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -196,7 +197,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, HostSetPrefix, got2.PublicId)
+		assertPublicId(t, globals.StaticHostSetPrefix, got2.PublicId)
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -493,7 +494,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			assert.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, HostSetPrefix, got.PublicId)
+			assertPublicId(t, globals.StaticHostSetPrefix, got.PublicId)
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.CatalogId, got.CatalogId)
@@ -577,7 +578,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, HostSetPrefix, got.PublicId)
+		assertPublicId(t, globals.StaticHostSetPrefix, got.PublicId)
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)

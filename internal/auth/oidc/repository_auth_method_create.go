@@ -7,6 +7,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -45,7 +46,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 		}
 		am.PublicId = id
 	} else {
-		if !strings.HasPrefix(am.PublicId, AuthMethodPrefix+"_") {
+		if !strings.HasPrefix(am.PublicId, globals.OidcAuthMethodPrefix+"_") {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "wrong auth method id prefix")
 		}
 	}

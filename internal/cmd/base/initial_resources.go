@@ -94,7 +94,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		return nil, nil, fmt.Errorf("error creating new in memory auth method: %w", err)
 	}
 	if b.DevPasswordAuthMethodId == "" {
-		b.DevPasswordAuthMethodId, err = db.NewPublicId(password.AuthMethodPrefix)
+		b.DevPasswordAuthMethodId, err = db.NewPublicId(globals.PasswordAuthMethodPrefix)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating initial auth method id: %w", err)
 		}
@@ -239,7 +239,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		}
 	}
 	if b.DevUserId == "" {
-		b.DevUserId, err = db.NewPublicId(iam.UserPrefix)
+		b.DevUserId, err = db.NewPublicId(globals.UserPrefix)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating initial user id: %w", err)
 		}
@@ -342,7 +342,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 
 	// Host Catalog
 	if b.DevHostCatalogId == "" {
-		b.DevHostCatalogId, err = db.NewPublicId(static.HostCatalogPrefix)
+		b.DevHostCatalogId, err = db.NewPublicId(globals.StaticHostCatalogPrefix)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("error generating initial host catalog id: %w", err)
 		}
@@ -364,7 +364,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 
 	// Host
 	if b.DevHostId == "" {
-		b.DevHostId, err = db.NewPublicId(static.HostPrefix)
+		b.DevHostId, err = db.NewPublicId(globals.StaticHostPrefix)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("error generating initial host id: %w", err)
 		}
@@ -390,7 +390,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 
 	// Host Set
 	if b.DevHostSetId == "" {
-		b.DevHostSetId, err = db.NewPublicId(static.HostSetPrefix)
+		b.DevHostSetId, err = db.NewPublicId(globals.StaticHostSetPrefix)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("error generating initial host set id: %w", err)
 		}
@@ -437,7 +437,7 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 	// When this function is not called as part of boundary dev (eg: as part of
 	// boundary database init or tests), generate random target ids.
 	if len(b.DevTargetId) == 0 {
-		b.DevTargetId, err = db.NewPublicId(tcp.TargetPrefix)
+		b.DevTargetId, err = db.NewPublicId(globals.TcpTargetPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate initial target id: %w", err)
 		}
@@ -504,7 +504,7 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	// When this function is not called as part of boundary dev (eg: as part of
 	// boundary database init or tests), generate random target ids.
 	if len(b.DevSecondaryTargetId) == 0 {
-		b.DevSecondaryTargetId, err = db.NewPublicId(tcp.TargetPrefix)
+		b.DevSecondaryTargetId, err = db.NewPublicId(globals.TcpTargetPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate initial secondary target id: %w", err)
 		}

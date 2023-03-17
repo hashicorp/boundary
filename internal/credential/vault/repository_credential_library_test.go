@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
@@ -458,7 +459,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.in.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+			assertPublicId(t, globals.VaultCredentialLibraryPrefix, got.GetPublicId())
 			assert.NotSame(tt.in, got)
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
@@ -521,7 +522,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -559,7 +560,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)
@@ -569,7 +570,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		got2, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
-		assertPublicId(t, CredentialLibraryPrefix, got2.GetPublicId())
+		assertPublicId(t, globals.VaultCredentialLibraryPrefix, got2.GetPublicId())
 		assert.NotSame(in2, got2)
 		assert.Equal(in2.Name, got2.Name)
 		assert.Equal(in2.Description, got2.Description)
@@ -1496,7 +1497,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			require.NoError(err)
 			assert.Empty(tt.orig.PublicId)
 			require.NotNil(got)
-			assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+			assertPublicId(t, globals.VaultCredentialLibraryPrefix, got.GetPublicId())
 			assert.Equal(tt.wantCount, gotCount, "row count")
 			assert.NotSame(tt.orig, got)
 			assert.Equal(tt.orig.StoreId, got.StoreId)
@@ -1603,7 +1604,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		got, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
-		assertPublicId(t, CredentialLibraryPrefix, got.GetPublicId())
+		assertPublicId(t, globals.VaultCredentialLibraryPrefix, got.GetPublicId())
 		assert.NotSame(in, got)
 		assert.Equal(in.Name, got.Name)
 		assert.Equal(in.Description, got.Description)

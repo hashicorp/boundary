@@ -202,6 +202,14 @@ message OidcStartAttributes {
   string cached_roundtrip_payload = 2; // @gotags: `class:"sensitive"`
 }
 
+// The layout of the struct for "attributes" field in AuthenticateRequest for an
+// ldap type. This message isn't directly referenced anywhere but is used here
+// to define the expected field names and types.
+message LdapLoginAttributes {
+  string login_name = 10 [json_name = "login_name"]; // @gotags: `class:"sensitive"`
+  string password = 20; // @gotags: `class:"secret"`
+}
+
 message AuthenticateRequest {
   // The ID of the Auth Method in the system that should be used for authentication.
   string auth_method_id = 1 [json_name = "auth_method_id"]; // @gotags: `class:"public"`
@@ -223,6 +231,7 @@ message AuthenticateRequest {
     OidcStartAttributes oidc_start_attributes = 8 [(google.api.field_visibility).restriction = "INTERNAL"];
     controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateCallbackRequest oidc_auth_method_authenticate_callback_request = 9 [(google.api.field_visibility).restriction = "INTERNAL"];
     controller.api.resources.authmethods.v1.OidcAuthMethodAuthenticateTokenRequest oidc_auth_method_authenticate_token_request = 10 [(google.api.field_visibility).restriction = "INTERNAL"];
+    LdapLoginAttributes ldap_login_attributes = 11 [(google.api.field_visibility).restriction = "INTERNAL"];
   }
   // The command to perform.
   string command = 5 [json_name = "command"]; // @gotags: `class:"public"`

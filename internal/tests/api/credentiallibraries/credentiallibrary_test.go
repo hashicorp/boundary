@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/api/credentialstores"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -188,7 +189,7 @@ func TestErrors(t *testing.T) {
 	assert.NotNil(apiErr)
 	assert.Nil(l)
 
-	_, err = lClient.Read(tc.Context(), vault.CredentialLibraryPrefix+"_doesntexis")
+	_, err = lClient.Read(tc.Context(), globals.VaultCredentialLibraryPrefix+"_doesntexis")
 	require.Error(err)
 	apiErr = api.AsServerError(err)
 	assert.NotNil(apiErr)

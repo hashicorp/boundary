@@ -163,7 +163,7 @@ jobs:
           CGO_ENABLED: "0"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
           METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
-        uses: hashicorp/actions-go-build@v0.1.7
+        uses: hashicorp/actions-go-build@v0.1.9
         with:
           product_name: ${{ env.PKG_NAME }}
           product_version: ${{ needs.set-product-version. outputs.product-version }}
@@ -234,7 +234,7 @@ jobs:
           CGO_ENABLED: "0"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
           METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
-        uses: hashicorp/actions-go-build@v0.1.7
+        uses: hashicorp/actions-go-build@v0.1.9
         with:
           product_name: ${{ env.PKG_NAME }}
           product_version: ${{ needs.set-product-version. outputs.product-version }}
@@ -332,7 +332,7 @@ jobs:
           CGO_ENABLED: "0"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
           METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
-        uses: hashicorp/actions-go-build@v0.1.7
+        uses: hashicorp/actions-go-build@v0.1.9
         with:
           product_name: ${{ env.PKG_NAME }}
           product_version: ${{ needs.set-product-version. outputs.product-version }}

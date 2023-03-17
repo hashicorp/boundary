@@ -120,7 +120,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "Get a non existant User",
-			req:  &pbs.GetUserRequest{Id: iam.UserPrefix + "_DoesntExis"},
+			req:  &pbs.GetUserRequest{Id: globals.UserPrefix + "_DoesntExis"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -132,7 +132,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "space in id",
-			req:  &pbs.GetUserRequest{Id: iam.UserPrefix + "_1 23456789"},
+			req:  &pbs.GetUserRequest{Id: globals.UserPrefix + "_1 23456789"},
 			res:  nil,
 			err:  handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},
@@ -349,7 +349,7 @@ func TestDelete(t *testing.T) {
 		{
 			name: "Delete bad user id",
 			req: &pbs.DeleteUserRequest{
-				Id: iam.UserPrefix + "_doesntexis",
+				Id: globals.UserPrefix + "_doesntexis",
 			},
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
@@ -409,7 +409,7 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateUserResponse{
-				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
+				Uri: fmt.Sprintf("users/%s_", globals.UserPrefix),
 				Item: &pb.User{
 					ScopeId:           defaultUser.GetScopeId(),
 					Scope:             &scopes.ScopeInfo{Id: defaultUser.GetScopeId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
@@ -428,7 +428,7 @@ func TestCreate(t *testing.T) {
 				Description: &wrapperspb.StringValue{Value: "desc"},
 			}},
 			res: &pbs.CreateUserResponse{
-				Uri: fmt.Sprintf("users/%s_", iam.UserPrefix),
+				Uri: fmt.Sprintf("users/%s_", globals.UserPrefix),
 				Item: &pb.User{
 					ScopeId:           scope.Global.String(),
 					Scope:             &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
@@ -443,7 +443,7 @@ func TestCreate(t *testing.T) {
 			name: "Can't specify Id",
 			req: &pbs.CreateUserRequest{Item: &pb.User{
 				ScopeId: defaultUser.GetScopeId(),
-				Id:      iam.UserPrefix + "_notallowed",
+				Id:      globals.UserPrefix + "_notallowed",
 			}},
 			res: nil,
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -480,7 +480,7 @@ func TestCreate(t *testing.T) {
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
-				assert.True(strings.HasPrefix(got.GetItem().GetId(), iam.UserPrefix+"_"))
+				assert.True(strings.HasPrefix(got.GetItem().GetId(), globals.UserPrefix+"_"))
 				gotCreateTime := got.GetItem().GetCreatedTime().AsTime()
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify it is a user created after the test setup's default user
@@ -672,7 +672,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "Update a Non Existing User",
 			req: &pbs.UpdateUserRequest{
-				Id: iam.UserPrefix + "_DoesntExis",
+				Id: globals.UserPrefix + "_DoesntExis",
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"description"},
 				},
@@ -691,7 +691,7 @@ func TestUpdate(t *testing.T) {
 					Paths: []string{"id"},
 				},
 				Item: &pb.User{
-					Id:          iam.UserPrefix + "_somethinge",
+					Id:          globals.UserPrefix + "_somethinge",
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "new desc"},
 				},

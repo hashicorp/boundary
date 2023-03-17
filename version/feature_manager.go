@@ -4,20 +4,10 @@
 package version
 
 import (
-	"strings"
-
 	gvers "github.com/hashicorp/go-version"
 )
 
-type Metadata int
-
-const (
-	OSS Metadata = iota
-	HCP
-)
-
 type MetadataConstraint struct {
-	MetaInfo    []Metadata
 	Constraints gvers.Constraints
 }
 
@@ -29,6 +19,7 @@ const (
 	IncludeStatusInCli
 	CredentialLibraryVaultSubtype
 	UseTargetIdForHostId
+	RequireVersionInWorkerInfo
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -59,11 +50,9 @@ func init() {
 		}
 	*/
 	featureMap[IncludeStatusInCli] = MetadataConstraint{
-		MetaInfo:    []Metadata{OSS, HCP},
 		Constraints: mustNewConstraints("< 0.14.0"),
 	}
 	featureMap[CredentialLibraryVaultSubtype] = MetadataConstraint{
-		MetaInfo:    []Metadata{OSS, HCP},
 		Constraints: mustNewConstraints("< 0.14.0"),
 	}
 
@@ -72,17 +61,13 @@ func init() {
 	// and the SessionAuthroizationData so the CLI can properly build the ssh command
 	// when calling "boundary connect ssh..."
 	featureMap[UseTargetIdForHostId] = MetadataConstraint{
-		MetaInfo:    []Metadata{OSS, HCP},
 		Constraints: mustNewConstraints("< 0.14.0"),
 	}
-}
-
-func metadataStringToMetadata(m string) Metadata {
-	if strings.Contains(strings.ToLower(m), "hcp") {
-		return HCP
+	// RequireVersionInWorkerInfo allows us to take action on various workers
+	// based on their version, e.g. to prevent incompatibilities
+	featureMap[RequireVersionInWorkerInfo] = MetadataConstraint{
+		Constraints: mustNewConstraints(">= 0.13.0"),
 	}
-
-	return OSS
 }
 
 func mustNewConstraints(v string) gvers.Constraints {
@@ -93,29 +78,18 @@ func mustNewConstraints(v string) gvers.Constraints {
 	return c
 }
 
-// Check returns a bool indicating if a version meets the metadata constraint
+// Check returns a bool indicating if a version meets the constraints
 // for a feature. Check returns false if version is nil.
 func (m MetadataConstraint) Check(version *gvers.Version) bool {
 	if version == nil {
 		return false
 	}
-	binaryMeta := metadataStringToMetadata(version.Metadata())
-
-	for _, v := range m.MetaInfo {
-		if v == binaryMeta {
-			return true
-		}
-	}
-	return false
+	return m.Constraints.Check(version)
 }
 
 // Check returns a bool indicating if a version satisfies the feature constraints
 func Check(binaryVersion *gvers.Version, featureConstraint MetadataConstraint) bool {
-	if !featureConstraint.Check(binaryVersion) {
-		return false
-	}
-
-	return featureConstraint.Constraints.Check(binaryVersion)
+	return featureConstraint.Check(binaryVersion)
 }
 
 // SupportsFeature return a bool indicating whether or not this version supports the given feature
