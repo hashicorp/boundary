@@ -143,6 +143,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "error occurred during certification generation",
 		Kind:    Encryption,
 	},
+	Sign: {
+		Message: "error occurred during signing",
+		Kind:    Encryption,
+	},
+	Verify: {
+		Message: "error occurred during verification",
+		Kind:    Encryption,
+	},
 	Internal: {
 		Message: "internal error",
 		Kind:    Other,

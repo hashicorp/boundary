@@ -77,6 +77,8 @@ const (
 	Decode  Code = 303 // Decode represents an error occurred during the underlying decoding/unmarshaling process
 	GenKey  Code = 304 // GenKey represents an error occurred during the underlying key generation process
 	GenCert Code = 305 // GenCert represents an error occurred during the underlying certificate generation process
+	Sign    Code = 306 // Sign represents an error occurred during the underlying signing process
+	Verify  Code = 307 // Verify represents an error occurred during the underlying verification process
 
 	// General system errors are reserved Codes 400-599 and align with http
 	// client and server error codes
