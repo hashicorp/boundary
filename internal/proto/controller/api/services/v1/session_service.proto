@@ -21,9 +21,7 @@ service SessionService {
       get: "/v1/sessions/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Session."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Session."};
   }
 
   // ListSessions returns a list of stored Sessions which exist inside the scope
@@ -31,12 +29,8 @@ service SessionService {
   // the Sessions being retrieved. If the scope ID is missing, malformed, or
   // reference a non existing scope, an error is returned.
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse) {
-    option (google.api.http) = {
-      get: "/v1/sessions"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Sessions."
-    };
+    option (google.api.http) = {get: "/v1/sessions"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Sessions."};
   }
 
   // CancelSession cancels an existing Session in boundary.  An error
@@ -48,9 +42,7 @@ service SessionService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Cancels a Session."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Cancels a Session."};
   }
 }
 

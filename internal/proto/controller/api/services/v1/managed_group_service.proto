@@ -23,9 +23,7 @@ service ManagedGroupService {
       get: "/v1/managed-groups/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single ManagedGroup."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single ManagedGroup."};
   }
 
   // ListManagedGroups returns a list of stored ManagedGroups which exist inside the
@@ -33,12 +31,8 @@ service ManagedGroupService {
   // contains the ManagedGroups being listed. If missing or malformed an error
   // is returned.
   rpc ListManagedGroups(ListManagedGroupsRequest) returns (ListManagedGroupsResponse) {
-    option (google.api.http) = {
-      get: "/v1/managed-groups"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all ManagedGroups in a specific Auth Method."
-    };
+    option (google.api.http) = {get: "/v1/managed-groups"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all ManagedGroups in a specific Auth Method."};
   }
 
   // CreateManagedGroup creates and stores a ManagedGroup. The provided request
@@ -53,9 +47,7 @@ service ManagedGroupService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single ManagedGroup in the provided Auth Method."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single ManagedGroup in the provided Auth Method."};
   }
 
   // UpdateManagedGroup updates an existing ManagedGroup. The provided
@@ -72,20 +64,14 @@ service ManagedGroupService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a ManagedGroup."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a ManagedGroup."};
   }
 
   // DeleteManagedGroup removes a ManagedGroup. If the provided ManagedGroup Id
   // is malformed or not provided an error is returned.
   rpc DeleteManagedGroup(DeleteManagedGroupRequest) returns (DeleteManagedGroupResponse) {
-    option (google.api.http) = {
-      delete: "/v1/managed-groups/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a ManagedGroup."
-    };
+    option (google.api.http) = {delete: "/v1/managed-groups/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a ManagedGroup."};
   }
 }
 

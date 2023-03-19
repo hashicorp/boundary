@@ -21,21 +21,15 @@ service GroupService {
       get: "/v1/groups/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Group."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Group."};
   }
 
   // ListGroups returns a list of stored Groups which exist inside the
   // provided scope id. If that id is missing, malformed, or
   // references a non-existing scope, an error is returned.
   rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse) {
-    option (google.api.http) = {
-      get: "/v1/groups"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Groups."
-    };
+    option (google.api.http) = {get: "/v1/groups"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Groups."};
   }
 
   // CreateGroup creates and stores a Group in boundary. The provided
@@ -49,9 +43,7 @@ service GroupService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Group."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Group."};
   }
 
   // UpdateGroup updates an existing Group in boundary. The provided Group
@@ -68,20 +60,14 @@ service GroupService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Group."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Group."};
   }
 
   // DeleteGroup removes a Group from Boundary. If the provided Group
   // ID is malformed or not provided an error is returned.
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse) {
-    option (google.api.http) = {
-      delete: "/v1/groups/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Group."
-    };
+    option (google.api.http) = {delete: "/v1/groups/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Group."};
   }
 
   // AddGroupMembers adds members to a Group.  The provided request must include
@@ -94,9 +80,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds members to a Group."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds members to a Group."};
   }
 
   // SetGroupMembers sets the Group's members.  Any existing members on
@@ -110,9 +94,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set a Group's members to exactly the list of provided in the request, removing any members that are not specified."};
   }
 
   // RemoveGroupMembers removes members from the specified Group.
@@ -126,9 +108,7 @@ service GroupService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes the specified members from a Group."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes the specified members from a Group."};
   }
 }
 

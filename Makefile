@@ -25,7 +25,7 @@ cli:
 .PHONY: tools
 tools: golangci-lint
 	go generate -tags tools tools/tools.go
-	go install github.com/bufbuild/buf/cmd/buf@v1.3.1
+	go install github.com/bufbuild/buf/cmd/buf@v1.15.1
 	go install github.com/mfridman/tparse@v0.10.3
 	go install github.com/hashicorp/copywrite@v0.15.0
 

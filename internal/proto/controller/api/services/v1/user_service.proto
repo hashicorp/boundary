@@ -22,9 +22,7 @@ service UserService {
       get: "/v1/users/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single User."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single User."};
   }
 
   // ListUsers returns a list of stored Users which exist inside the provided
@@ -32,12 +30,8 @@ service UserService {
   // If the scope ID is missing, malformed, or reference a non existing scope,
   // an error is returned.
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {
-    option (google.api.http) = {
-      get: "/v1/users"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Users."
-    };
+    option (google.api.http) = {get: "/v1/users"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Users."};
   }
 
   // CreateUser creates and stores a User in boundary.  The provided
@@ -51,9 +45,7 @@ service UserService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single User."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single User."};
   }
 
   // UpdateUser updates an existing User in boundary.  The provided
@@ -70,20 +62,14 @@ service UserService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a User."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a User."};
   }
 
   // DeleteUser removes a User from Boundary. If the provided User ID
   // is malformed or not provided an error is returned.
   rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
-    option (google.api.http) = {
-      delete: "/v1/users/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a User."
-    };
+    option (google.api.http) = {delete: "/v1/users/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a User."};
   }
 
   // AddUserAccounts adds Users as members to a group.  The provided request
@@ -97,9 +83,7 @@ service UserService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Associates an Account to a User."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Associates an Account to a User."};
   }
 
   // SetUserAccounts sets the Accounts associated with this User.
@@ -116,9 +100,7 @@ service UserService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Set the Accounts associated to the User to exactly the list of provided in the request, removing any Accounts that are not specified."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set the Accounts associated to the User to exactly the list of provided in the request, removing any Accounts that are not specified."};
   }
 
   // RemoveUserAccounts removes Accounts from the specified User.
@@ -131,9 +113,7 @@ service UserService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes the specified Accounts from being associated with the provided User."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes the specified Accounts from being associated with the provided User."};
   }
 }
 

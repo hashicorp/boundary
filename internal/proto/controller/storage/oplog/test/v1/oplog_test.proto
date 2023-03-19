@@ -20,6 +20,7 @@ message TestUser {
   // @inject_tag: gorm:"-" json:"-"
   string table = 7;
 }
+
 // TestCar for gorm test car model
 message TestCar {
   // @inject_tag: gorm:"primary_key"
@@ -29,6 +30,7 @@ message TestCar {
   // @inject_tag: gorm:"-" json:"-"
   string table = 6;
 }
+
 // TestRental for gorm test rental model
 message TestRental {
   uint32 user_id = 1;

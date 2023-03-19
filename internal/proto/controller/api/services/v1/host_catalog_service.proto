@@ -24,9 +24,7 @@ service HostCatalogService {
       get: "/v1/host-catalogs/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Host Catalog."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Host Catalog."};
   }
 
   // ListHostCatalogs returns a list of stored Host Catalogs which exist inside
@@ -34,12 +32,8 @@ service HostCatalogService {
   // ID and if it is  missing, malformed, or references a non-existing resource
   // an error is returned.
   rpc ListHostCatalogs(ListHostCatalogsRequest) returns (ListHostCatalogsResponse) {
-    option (google.api.http) = {
-      get: "/v1/host-catalogs"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a list of Host Catalogs."
-    };
+    option (google.api.http) = {get: "/v1/host-catalogs"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a list of Host Catalogs."};
   }
 
   // CreateHostCatalog creates and stores a Host Catalog in boundary.  The
@@ -53,9 +47,7 @@ service HostCatalogService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a Host Catalog"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a Host Catalog"};
   }
 
   // UpdateHostCatalog updates an existing Host Catalog in Boundary. The
@@ -69,21 +61,15 @@ service HostCatalogService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Host Catalog"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Host Catalog"};
   }
 
   // DeleteHostCatalog removes a Host Catalog and all associated Hosts and Host
   // sets from Boundary. If the provided Host Catalog IDs is malformed or not
   // provided DeleteHostCatalog returns an error.
   rpc DeleteHostCatalog(DeleteHostCatalogRequest) returns (DeleteHostCatalogResponse) {
-    option (google.api.http) = {
-      delete: "/v1/host-catalogs/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Host Catalog"
-    };
+    option (google.api.http) = {delete: "/v1/host-catalogs/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Host Catalog"};
   }
 }
 
