@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/api
 
-go 1.19
+go 1.20
 
 require (
 	github.com/hashicorp/go-cleanhttp v0.5.2

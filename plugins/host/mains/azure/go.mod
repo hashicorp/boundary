@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/plugins/host/mains/azure
 
-go 1.19
+go 1.20
 
 require (
 	github.com/hashicorp/boundary-plugin-host-azure v0.1.1
