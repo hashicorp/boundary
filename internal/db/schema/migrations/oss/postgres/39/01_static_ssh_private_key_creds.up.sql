@@ -63,7 +63,7 @@ begin;
     -- is 67 characters.
     --
     -- https://www.postgresql.org/docs/current/limits.html
-    -- Constraint renamed in 65/01_rename_constraints.up.sql
+    -- Constraint renamed in 66/01_rename_constraints.up.sql
     constraint credential_static_ssh_private_key_store_id_public_id_uq
       unique(store_id, public_id)
   );
