@@ -26,21 +26,15 @@ service AuthMethodService {
       get: "/v1/auth-methods/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Auth Method."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Auth Method."};
   }
 
   // ListAuthMethods returns a list of stored Auth Methods which are in the
   // provided scope. The request must include the scope id and if missing,
   // malformed, or referencing a non existing scope, an error is returned.
   rpc ListAuthMethods(ListAuthMethodsRequest) returns (ListAuthMethodsResponse) {
-    option (google.api.http) = {
-      get: "/v1/auth-methods"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Auth Methods."
-    };
+    option (google.api.http) = {get: "/v1/auth-methods"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Auth Methods."};
   }
 
   // CreateAuthMethod creates and stores an Auth Method in boundary.  The
@@ -54,9 +48,7 @@ service AuthMethodService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Auth Method."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Auth Method."};
   }
 
   // UpdateAuthMethod updates an existing Auth Method in boundary.  The provided
@@ -73,20 +65,14 @@ service AuthMethodService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates an Auth Method."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates an Auth Method."};
   }
 
   // DeleteAuthMethod removes an Auth Method from Boundary. If the Auth Method id
   // is malformed or not provided an error is returned.
   rpc DeleteAuthMethod(DeleteAuthMethodRequest) returns (DeleteAuthMethodResponse) {
-    option (google.api.http) = {
-      delete: "/v1/auth-methods/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes an AuthMethod"
-    };
+    option (google.api.http) = {delete: "/v1/auth-methods/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes an AuthMethod"};
   }
 
   // ChangeState changes the state of an Auth Method from Boundary.
@@ -96,9 +82,7 @@ service AuthMethodService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Changes the state of an OIDC AuthMethod"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Changes the state of an OIDC AuthMethod"};
   }
 
   // Authenticate validates credentials provided and returns an Auth Token.
@@ -107,9 +91,7 @@ service AuthMethodService {
       post: "/v1/auth-methods/{auth_method_id}:authenticate"
       body: "*"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Authenticate a user to an scope and retrieve an authentication token."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Authenticate a user to an scope and retrieve an authentication token."};
   }
 }
 

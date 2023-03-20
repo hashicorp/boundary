@@ -12,9 +12,7 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/ops/services;ser
 
 service HealthService {
   rpc GetHealth(GetHealthRequest) returns (GetHealthResponse) {
-    option (google.api.http) = {
-      get: "/health"
-    };
+    option (google.api.http) = {get: "/health"};
   }
 }
 

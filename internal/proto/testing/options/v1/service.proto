@@ -16,9 +16,7 @@ service TestService {
     option (google.api.http) = {
       get: "/v1/test/{id}"
       response_body: "item"
-      additional_bindings {
-        get: "/v2/test"
-      }
+      additional_bindings {get: "/v2/test"}
     };
   }
 }

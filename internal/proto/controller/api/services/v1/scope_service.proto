@@ -12,9 +12,7 @@ import "protoc-gen-openapiv2/options/annotations.proto";
 
 option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
-  info: {
-    title: "Boundary Controller HTTP API"
-  }
+  info: {title: "Boundary Controller HTTP API"}
   schemes: HTTPS
   schemes: HTTP
 };
@@ -29,20 +27,14 @@ service ScopeService {
       get: "/v1/scopes/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Scope."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Scope."};
   }
 
   // ListScopes returns a list of stored Scopes which exist inside the provided
   // parent Scope id.
   rpc ListScopes(ListScopesRequest) returns (ListScopesResponse) {
-    option (google.api.http) = {
-      get: "/v1/scopes"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Scopes within the Scope provided in the request."
-    };
+    option (google.api.http) = {get: "/v1/scopes"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Scopes within the Scope provided in the request."};
   }
 
   // CreateScope creates and stores a Scope in boundary.  The provided request
@@ -56,9 +48,7 @@ service ScopeService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Scope."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Scope."};
   }
 
   // UpdateScope updates an existing Scope in boundary.  The provided
@@ -75,31 +65,21 @@ service ScopeService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Scope."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Scope."};
   }
 
   // DeleteScope remotes a Scope and all child resources from Boundary. If the
   // provided Scope IDs are malformed or not provided an error is returned.
   rpc DeleteScope(DeleteScopeRequest) returns (DeleteScopeResponse) {
-    option (google.api.http) = {
-      delete: "/v1/scopes/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Scope."
-    };
+    option (google.api.http) = {delete: "/v1/scopes/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Scope."};
   }
 
   // ListKeys lists all the keys found in the scope specified. If the scope
   // is not found an error is returned.
   rpc ListKeys(ListKeysRequest) returns (ListKeysResponse) {
-    option (google.api.http) = {
-      get: "/v1/scopes/{id}:list-keys"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "List all keys in a Scope."
-    };
+    option (google.api.http) = {get: "/v1/scopes/{id}:list-keys"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "List all keys in a Scope."};
   }
 
   // RotateKeys rotates and optionally rewraps all the keys found in the
@@ -110,19 +90,13 @@ service ScopeService {
       post: "/v1/scopes:rotate-keys"
       body: "*"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Rotate all keys in a Scope."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Rotate all keys in a Scope."};
   }
 
   // ListKeyVersionDestructionJobs lists any pending key version destruction jobs in the scope.
   rpc ListKeyVersionDestructionJobs(ListKeyVersionDestructionJobsRequest) returns (ListKeyVersionDestructionJobsResponse) {
-    option (google.api.http) = {
-      get: "/v1/scopes/{scope_id}:list-key-version-destruction-jobs"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all pending key version destruction jobs in a Scope."
-    };
+    option (google.api.http) = {get: "/v1/scopes/{scope_id}:list-key-version-destruction-jobs"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all pending key version destruction jobs in a Scope."};
   }
 
   // DestroyKeyVersion destroys the specified key version. If this requires re-encrypting
@@ -133,9 +107,7 @@ service ScopeService {
       post: "/v1/scopes:destroy-key-version"
       body: "*"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Destroy the specified key version in a Scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Destroy the specified key version in a Scope. This may start an asynchronous job that re-encrypts all data encrypted by the specified key version. Use GET /v1/scopes/{scope_id}:list-key-version-destruction-jobs to monitor pending destruction jobs."};
   }
 }
 

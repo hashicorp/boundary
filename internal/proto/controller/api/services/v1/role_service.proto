@@ -21,9 +21,7 @@ service RoleService {
       get: "/v1/roles/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Role."};
   }
 
   // ListRoles returns a list of stored Roles which exist inside the scope
@@ -31,12 +29,8 @@ service RoleService {
   // the Roles being retrieved. If the scope ID is missing, malformed, or
   // reference a non-existing scope, an error is returned.
   rpc ListRoles(ListRolesRequest) returns (ListRolesResponse) {
-    option (google.api.http) = {
-      get: "/v1/roles"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Roles."
-    };
+    option (google.api.http) = {get: "/v1/roles"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Roles."};
   }
 
   // CreateRole creates and stores a Role. The provided request must include the
@@ -50,9 +44,7 @@ service RoleService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Role."};
   }
 
   // UpdateRole updates an existing Role in boundary.  The provided
@@ -69,20 +61,14 @@ service RoleService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Role."};
   }
 
   // DeleteRole removes a Role from Boundary. If the provided scope or Role IDs
   // are malformed, or not provided an error is returned.
   rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse) {
-    option (google.api.http) = {
-      delete: "/v1/roles/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Role."
-    };
+    option (google.api.http) = {delete: "/v1/roles/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Role."};
   }
 
   // AddRolePrincipals adds users and/or groups to a Role. The provided request
@@ -96,9 +82,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds Users and/or Groups to a Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds Users and/or Groups to a Role."};
   }
 
   // SetRolePrincipals sets the Role's users and/or groups. Any existing
@@ -113,9 +97,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Set Users and/or Groups to a Role, removing any principals that are not specified in the request."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set Users and/or Groups to a Role, removing any principals that are not specified in the request."};
   }
 
   // RemoveRolePrincipals removes the users and/or groups from the specified
@@ -130,9 +112,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes the specified Users and/or Groups from a Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes the specified Users and/or Groups from a Role."};
   }
 
   // AddRoleGrants adds grants to a Role. The provided request must include
@@ -144,9 +124,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds grants to a Role"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds grants to a Role"};
   }
 
   // SetRoleGrants sets the Role's grants. Any existing grants on the Role are
@@ -159,9 +137,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Set grants for a Role, removing any grants that are not specified in the request."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set grants for a Role, removing any grants that are not specified in the request."};
   }
 
   // RemoveRoleGrants removes the grants from the specified Role.
@@ -174,9 +150,7 @@ service RoleService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes grants from a Role."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes grants from a Role."};
   }
 }
 
