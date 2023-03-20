@@ -776,8 +776,14 @@ func (c *Command) Run(args []string) int {
 				return base.CommandCliError
 			}
 
-			// Set the activation token in the config
+			// Set the activation token in the config and nil out the worker
+			// auth KMS so we don't use it via PKI-KMS
+			c.WorkerAuthKms = nil
 			conf.RawConfig.Worker.ControllerGeneratedActivationToken = worker.ControllerGeneratedActivationToken
+
+		case "pki-worker-led":
+			// Clear this out as presence of it causes PKI-KMS behavior
+			c.WorkerAuthKms = nil
 
 		case "pki-kms", "kms":
 			if c.WorkerAuthKms == nil {
