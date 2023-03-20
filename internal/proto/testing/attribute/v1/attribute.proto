@@ -54,12 +54,8 @@ message TestCustomTransformation {
 
 service TestResourceService {
   rpc TestListResource(TestListResourceRequest) returns (TestListResourceResponse) {
-    option (google.api.http) = {
-      get: "/v1/test-resources"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Test list"
-    };
+    option (google.api.http) = {get: "/v1/test-resources"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Test list"};
   }
 
   rpc TestCreateResource(TestCreateResourceRequest) returns (TestCreateResourceResponse) {
@@ -68,9 +64,7 @@ service TestResourceService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Test create"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Test create"};
   }
 
   rpc TestUpdateResource(TestUpdateResourceRequest) returns (TestUpdateResourceResponse) {
@@ -79,9 +73,7 @@ service TestResourceService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Test update"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Test update"};
   }
 
   rpc TestGetResource(TestGetResourceRequest) returns (TestGetResourceResponse) {
@@ -89,9 +81,7 @@ service TestResourceService {
       get: "/v1/test-resources/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Test get"
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Test get"};
   }
 }
 

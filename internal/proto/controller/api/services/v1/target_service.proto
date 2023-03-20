@@ -24,9 +24,7 @@ service TargetService {
       get: "/v1/targets/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Target."};
   }
 
   // ListTargets returns a list of stored Targets which exist inside the project
@@ -34,12 +32,8 @@ service TargetService {
   // the Targets being retrieved. If the scope ID is missing, malformed, or
   // reference a non existing scope, an error is returned.
   rpc ListTargets(ListTargetsRequest) returns (ListTargetsResponse) {
-    option (google.api.http) = {
-      get: "/v1/targets"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Targets."
-    };
+    option (google.api.http) = {get: "/v1/targets"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Targets."};
   }
 
   // CreateTarget creates and stores a Target in boundary.  The provided
@@ -53,9 +47,7 @@ service TargetService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Creates a single Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a single Target."};
   }
 
   // UpdateTarget updates an existing Target in boundary.  The provided
@@ -72,20 +64,14 @@ service TargetService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Updates a Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Target."};
   }
 
   // DeleteTarget removes a Target from Boundary. If the provided Target ID
   // is malformed or not provided an error is returned.
   rpc DeleteTarget(DeleteTargetRequest) returns (DeleteTargetResponse) {
-    option (google.api.http) = {
-      delete: "/v1/targets/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes a Target."
-    };
+    option (google.api.http) = {delete: "/v1/targets/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Target."};
   }
 
   // AuthorizeSession creates authorization information from a given Target.
@@ -95,9 +81,7 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Authorizes a Session."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Authorizes a Session."};
   }
 
   // AddTargetHostSources adds Host Sources to this Target. The provided request
@@ -114,9 +98,7 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds existing Host Sources to a Target. Cannot be used on targets that have their address field set."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds existing Host Sources to a Target. Cannot be used on targets that have their address field set."};
   }
 
   // SetTargetHostSources sets the Target's Host Sources. Any existing Host
@@ -133,9 +115,7 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Sources the Host Sources on the Target. Cannot be used on targets that have their address field set."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sources the Host Sources on the Target. Cannot be used on targets that have their address field set."};
   }
 
   // RemoveTargetHostSources removes the Host Sources from the specified Target.
@@ -150,9 +130,7 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes Host Sources from the Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes Host Sources from the Target."};
   }
 
   // AddTargetCredentialSources adds Credential Sources to this Target.
@@ -169,9 +147,7 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds existing Credential Sources to a Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds existing Credential Sources to a Target."};
   }
 
   // SetTargetCredentialSources sets the Target's Credential Sources.
@@ -187,9 +163,7 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Sets the Credential Sources on the Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sets the Credential Sources on the Target."};
   }
 
   // RemoveTargetCredentialSources removes the Credential Sources from the
@@ -204,9 +178,7 @@ service TargetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes Credential Sources from the Target."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes Credential Sources from the Target."};
   }
 }
 

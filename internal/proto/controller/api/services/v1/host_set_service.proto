@@ -23,21 +23,15 @@ service HostSetService {
       get: "/v1/host-sets/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Get a single Host Set."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Get a single Host Set."};
   }
 
   // ListHostSets returns a list of stored Host Sets which exist inside the
   // Host Catalog provided. The request must include a properly formatted
   // Host Catalog id or an error is returned.
   rpc ListHostSets(ListHostSetsRequest) returns (ListHostSetsResponse) {
-    option (google.api.http) = {
-      get: "/v1/host-sets"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "List all Host Sets under the specific Catalog."
-    };
+    option (google.api.http) = {get: "/v1/host-sets"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "List all Host Sets under the specific Catalog."};
   }
 
   // CreateHostSet creates and stores a Host Set in boundary.  The provided
@@ -52,9 +46,7 @@ service HostSetService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Create a Host Set."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Create a Host Set."};
   }
 
   // UpdateHostSet updates an existing Host Set in boundary.  The provided
@@ -71,20 +63,14 @@ service HostSetService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Update a Host Set."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Update a Host Set."};
   }
 
   // DeleteHostSet removes a Host Set from Boundary. If the provided
   // Host Set id is malformed or not provided an error is returned.
   rpc DeleteHostSet(DeleteHostSetRequest) returns (DeleteHostSetResponse) {
-    option (google.api.http) = {
-      delete: "/v1/host-sets/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Delete a Host Set."
-    };
+    option (google.api.http) = {delete: "/v1/host-sets/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Delete a Host Set."};
   }
 
   // AddHostSetHosts adds a Host to a Host Set. The provided request must
@@ -100,9 +86,7 @@ service HostSetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Adds existing Hosts to a Host Set."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Adds existing Hosts to a Host Set."};
   }
 
   // SetHostSetHosts sets the Host Set's hosts. Any existing hosts on the
@@ -117,9 +101,7 @@ service HostSetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Sets the Hosts on the Host Set."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Sets the Hosts on the Host Set."};
   }
 
   // RemoveHostSetHosts removes the Hosts from the specified Host Set. The
@@ -133,9 +115,7 @@ service HostSetService {
       body: "*"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Removes Hosts from the Host Set."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes Hosts from the Host Set."};
   }
 }
 

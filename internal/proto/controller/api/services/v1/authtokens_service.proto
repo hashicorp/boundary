@@ -20,9 +20,7 @@ service AuthTokenService {
       get: "/v1/auth-tokens/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Auth Token."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Auth Token."};
   }
 
   // ListAuthTokens returns a list of stored Auth Tokens which exist inside
@@ -30,23 +28,15 @@ service AuthTokenService {
   // the Auth Tokens being listed.  If the scope id is missing, malformed, or
   // referencing a non existing resource, an error is returned.
   rpc ListAuthTokens(ListAuthTokensRequest) returns (ListAuthTokensResponse) {
-    option (google.api.http) = {
-      get: "/v1/auth-tokens"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Lists all Auth Tokens."
-    };
+    option (google.api.http) = {get: "/v1/auth-tokens"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Lists all Auth Tokens."};
   }
 
   // DeleteAuthToken removes a Auth Token from Boundary. If the provided
   // Auth Token id is malformed or not provided an error is returned.
   rpc DeleteAuthToken(DeleteAuthTokenRequest) returns (DeleteAuthTokenResponse) {
-    option (google.api.http) = {
-      delete: "/v1/auth-tokens/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Deletes an Auth Token."
-    };
+    option (google.api.http) = {delete: "/v1/auth-tokens/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes an Auth Token."};
   }
 }
 

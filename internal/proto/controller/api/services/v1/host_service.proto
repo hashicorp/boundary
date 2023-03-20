@@ -24,9 +24,7 @@ service HostService {
       get: "/v1/hosts/{id}"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Gets a single Host."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Host."};
   }
 
   // ListHosts returns a list of stored hosts which exist inside the provided
@@ -34,12 +32,8 @@ service HostService {
   // Hosts being listed.  If the id is missing, malformed, or reference a
   // non-existing resource, an error is returned.
   rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
-    option (google.api.http) = {
-      get: "/v1/hosts"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "List all Hosts for the specified Catalog."
-    };
+    option (google.api.http) = {get: "/v1/hosts"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "List all Hosts for the specified Catalog."};
   }
 
   // CreateHost creates and stores a Host in boundary.  The provided
@@ -53,9 +47,7 @@ service HostService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Create a single Host."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Create a single Host."};
   }
 
   // UpdateHost updates an existing Host in boundary.  The provided
@@ -72,20 +64,14 @@ service HostService {
       body: "item"
       response_body: "item"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Update a Host."
-    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Update a Host."};
   }
 
   // DeleteHost removes a Host from Boundary. If the provided Host ID
   // is malformed or not provided an error is returned.
   rpc DeleteHost(DeleteHostRequest) returns (DeleteHostResponse) {
-    option (google.api.http) = {
-      delete: "/v1/hosts/{id}"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
-      summary: "Delete a Host."
-    };
+    option (google.api.http) = {delete: "/v1/hosts/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Delete a Host."};
   }
 }
 

@@ -56,7 +56,6 @@ message Metadata {
   timestamp.v1.Timestamp create_time = 2;
   // @inject_tag: gorm:"not_nul
 
-
   uint32 entry_id = 3;
   // @inject_tag: gorm:"foreignkey:EntryId"
   Entry entry = 4;
