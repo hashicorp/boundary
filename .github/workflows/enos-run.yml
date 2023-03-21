@@ -13,10 +13,10 @@ on:
         required: true
         type: string
       docker-image-name:
-        required: true
+        required: false
         type: string
       docker-image-file:
-        required: true
+        required: false
         type: string
 
 env:
