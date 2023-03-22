@@ -8,9 +8,11 @@ load _targets
 load _host_catalogs
 load _host_sets
 
-export NEW_HOST='test-for-add-host-source'
+export NEW_HOST1='test-for-add-host-source-1'
+export NEW_HOST2='test-for-add-host-source-2'
 export NEW_HOST_CATALOG='test-host-catalog'
-export NEW_HOST_SET='test-host-set'
+export NEW_HOST_SET1='test-host-set-1'
+export NEW_HOST_SET2='test-host-set-2'
 export TGT_NAME='test-target'
 export TGT_DEFAULT_PORT='22'
 
@@ -31,95 +33,166 @@ export TGT_DEFAULT_PORT='22'
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/hosts: can create $NEW_HOST host in created host catalog" {
+@test "boundary/hosts: can multiple hosts in created host catalog" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    run create_host $NEW_HOST $hcid
+    run create_host $NEW_HOST1 $hcid
+    echo "$output"
+    [ "$status" -eq 0 ]
+
+    run create_host $NEW_HOST2 $hcid
     echo "$output"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/host-sets: can add $NEW_HOST_SET host set to created host catalog" {
+@test "boundary/host-sets: can add multiple hosts to a created host catalog" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    run create_host_set $hcid $NEW_HOST_SET
+    run create_host_set $hcid $NEW_HOST_SET1
+    echo "$output"
+    [ "$status" -eq 0 ]
+
+    run create_host_set $hcid $NEW_HOST_SET2
     echo "$output"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/host-set/add-host: can associate $NEW_HOST_SET host set with created host" {
+@test "boundary/host-set/add-host: can associate multiple host sets with created hosts" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    local hid=$(host_id $NEW_HOST $hcid)
-    local hsid=$(host_set_id $NEW_HOST_SET $hcid)
-    run assoc_host_set_host $hid $hsid
+    local hid1=$(host_id $NEW_HOST1 $hcid)
+    local hid2=$(host_id $NEW_HOST2 $hcid)
+
+    local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
+    run assoc_host_set_host $hid1 $hsid1
+    echo "$output"
+    [ "$status" -eq 0 ]
+
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
+    run assoc_host_set_host $hid2 $hsid2
     echo "$output"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/host-set/add-host: $NEW_HOST_SET host set contains created host" {
+@test "boundary/host-set/add-host: verify all host sets contain created hosts" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    local hid=$(host_id $NEW_HOST $hcid)
-    local hsid=$(host_set_id $NEW_HOST_SET $hcid)
-    run host_set_has_host_id $hid $hsid
+    local hid1=$(host_id $NEW_HOST1 $hcid)
+    local hid2=$(host_id $NEW_HOST2 $hcid)
+
+    local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
+    run host_set_has_host_id $hid1 $hsid1
+    echo "$output"
+    [ "$status" -eq 0 ]
+
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
+    run host_set_has_host_id $hid2 $hsid2
     echo "$output"
     [ "$status" -eq 0 ]
 }
 
 @test "boundary/target: can add created host set to created target" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    local hsid=$(host_set_id $NEW_HOST_SET $hcid)
+    local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run assoc_host_sources $tid $hsid
+    run assoc_host_sources $tid $hsid1
     echo "$output"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/target: validate only $NEW_HOST host source present - JSON" {
+@test "boundary/target: validate only $NEW_HOST1 host source present - JSON" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    local hsid=$(host_set_id $NEW_HOST_SET $hcid)
+    local hsid=$(host_set_id $NEW_HOST_SET1 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
     run validate_host_sources $tid $hsid "json"
     echo "$output"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/target: validate only $NEW_HOST host source present - Table" {
+@test "boundary/target: validate only $NEW_HOST1 host source present - Table" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    local hsid=$(host_set_id $NEW_HOST_SET $hcid)
+    local hsid=$(host_set_id $NEW_HOST_SET1 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
     run validate_host_sources $tid $hsid "table"
     echo "$output"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/target: can remove $NEW_HOST_SET host set from created target" {
+@test "boundary/target: can add another host set to created target" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    local hsid=$(host_set_id $NEW_HOST_SET $hcid)
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run remove_host_sources $tid $hsid
+    run assoc_host_sources $tid $hsid2
+    echo "$output"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/target: validate $NEW_HOST host source is not present on target" {
+@test "boundary/target: validate only $NEW_HOST2 host source present - Table" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    local hsid=$(host_set_id $NEW_HOST_SET $hcid)
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run validate_host_sources $tid $hsid "table"
+    run validate_host_sources $tid $hsid2 "table"
+    echo "$output"
+    [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: can remove $NEW_HOST_SET1 host set from created target" {
+    local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
+    local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
+    local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
+    run remove_host_sources $tid $hsid1
+    [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: validate $NEW_HOST1 host source is not present on target" {
+    local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
+    local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
+    local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
+    run validate_host_sources $tid $hsid1 "table"
     echo "$output"
     [ "$status" -eq 1 ]
 }
 
-@test "boundary/host: can delete $NEW_HOST host" {
+@test "boundary/target: can remove $NEW_HOST_SET2 host set from created target" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    local hid=$(host_id $NEW_HOST $hcid)
-    run delete_host $hid
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
+    local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
+    run remove_host_sources $tid $hsid2
+    [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: validate $NEW_HOST2 host source is not present on target" {
+    local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
+    local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
+    run validate_host_sources $tid $hsid2 "json"
+    echo "$output"
+    [ "$status" -eq 1 ]
+}
+
+@test "boundary/host: can delete all created hosts" {
+    local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
+    local hid1=$(host_id $NEW_HOST1 $hcid)
+    local hid2=$(host_id $NEW_HOST2 $hcid)
+
+    run delete_host $hid1
+    echo "$output"
+    run has_status_code "$output" "204"
+    [ "$status" -eq 0 ]
+
+    run delete_host $hid2
     echo "$output"
     run has_status_code "$output" "204"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/host-set: can delete $NEW_HOST_SET host set" {
+@test "boundary/host-set: can delete all created host sets" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
-    local hsid=$(host_set_id $NEW_HOST_SET $hcid)
-    run delete_host_set $hsid
+
+    local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
+    run delete_host_set $hsid1
+    echo "$output"
+    run has_status_code "$output" "204"
+    [ "$status" -eq 0 ]
+
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
+    run delete_host_set $hsid2
     echo "$output"
     run has_status_code "$output" "204"
     [ "$status" -eq 0 ]

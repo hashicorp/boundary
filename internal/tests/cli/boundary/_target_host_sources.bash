@@ -28,7 +28,6 @@ function set_target_host_sources_sources() {
 }
 
 function validate_host_sources() {
-    echo $3
     targetData=$(boundary targets read -id $1 -format $3)
     if [[ "$3" == "json" ]]; then
         for i in "${@:2}"; do
