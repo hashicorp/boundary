@@ -30,7 +30,7 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.10
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.4.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230228185604-529de2006180
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230316234854-f5e78cca83a8
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/hashicorp/go-rootcerts v1.0.2
@@ -80,7 +80,7 @@ require (
 	google.golang.org/genproto v0.0.0-20230303212802-e74f57abe488
 	google.golang.org/grpc v1.53.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.30.0
 	gorm.io/driver/postgres v1.3.8
 	gorm.io/gorm v1.23.8 // indirect
 	mvdan.cc/gofumpt v0.3.1
@@ -100,7 +100,7 @@ require (
 	github.com/jimlambrt/gldap v0.1.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
-	golang.org/x/exp v0.0.0-20221230185412-738e83a70c30
+	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2
 	golang.org/x/net v0.7.0
 )
 
