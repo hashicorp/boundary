@@ -818,7 +818,9 @@ func Parse(d string) (*Config, error) {
 		}
 	}
 
-	sharedConfig, err := configutil.ParseConfig(d)
+	// Now that we can have multiple KMSes for downstream workers, allow an
+	// unlimited number of KMS blocks as we don't know how many might be defined
+	sharedConfig, err := configutil.ParseConfig(d, configutil.WithMaxKmsBlocks(-1))
 	if err != nil {
 		return nil, err
 	}
