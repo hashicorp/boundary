@@ -782,7 +782,7 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 
 		case credential.JsonSubtype.String():
 			object := req.GetItem().GetJsonAttributes().GetObject()
-			if object == nil && len(object.AsMap()) <= 0 {
+			if object == nil || len(object.AsMap()) <= 0 {
 				badFields[objectField] = "Field required for creating a json credential."
 			}
 			objectBytes, err := json.Marshal(object)
