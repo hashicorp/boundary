@@ -10,6 +10,11 @@ terraform {
   }
 }
 
+variable "image_name" {
+  description = "Name of Docker Image"
+  type        = string
+  default     = "docker.mirror.hashicorp.services/library/postgres:latest"
+}
 variable "network_name" {
   description = "Name of Docker Network"
   type        = string
@@ -36,7 +41,7 @@ variable "database_name" {
 }
 
 resource "docker_image" "postgres" {
-  name         = "postgres:latest"
+  name         = var.image_name
   keep_locally = true
 }
 

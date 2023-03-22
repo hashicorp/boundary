@@ -36,6 +36,14 @@ module "build_local" {
   build_target = var.local_build_target
 }
 
+module "build_boundary_docker_crt" {
+  source = "./modules/build_boundary_docker_crt"
+}
+
+module "build_boundary_docker_local" {
+  source = "./modules/build_boundary_docker_local"
+}
+
 module "generate_aws_host_tag_vars" {
   source = "./modules/generate_aws_host_tag_vars"
 }
