@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/plugins/kms/mains/alicloudkms
 
-go 1.19
+go 1.20
 
 require (
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.4-0.20230228185604-529de2006180

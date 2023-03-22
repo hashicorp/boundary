@@ -1,6 +1,6 @@
 module github.com/hashicorp/boundary/plugins/host/mains/aws
 
-go 1.19
+go 1.20
 
 require (
 	github.com/hashicorp/boundary-plugin-host-aws v0.1.3

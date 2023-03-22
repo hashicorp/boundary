@@ -15,6 +15,11 @@ terraform {
   }
 }
 
+variable "image_name" {
+  description = "Name of Docker Image"
+  type        = string
+  default     = "docker.mirror.hashicorp.services/linuxserver/openssh-server"
+}
 variable "network_name" {
   description = "Name of Docker Network"
   type        = string
@@ -43,7 +48,7 @@ locals {
 }
 
 resource "docker_image" "openssh_server" {
-  name         = "lscr.io/linuxserver/openssh-server"
+  name         = var.image_name
   keep_locally = true
 }
 
