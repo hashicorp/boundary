@@ -42,7 +42,7 @@ worker {
 }
 ```
 
-Once the worker starts, it will read this token and use it to authorize to the
+Once the worker starts, it reads this token and uses it to authorize to the
 cluster. Note that this token is one-time-use; it is safe to keep it here even
 after the worker has successfully authorized and authenticated, as it will be
 unusable at that point.
