@@ -140,7 +140,7 @@ jobs:
     needs:
       - setup
       #- set-test-package-matrix
-    runs-on: "linux-latest-32-boundary"
+    runs-on: "linux-latest-64-boundary"
     # strategy:
     #   fail-fast: false
     #   matrix:
