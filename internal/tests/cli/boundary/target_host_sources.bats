@@ -33,7 +33,7 @@ export TGT_DEFAULT_PORT='22'
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/hosts: can multiple hosts in created host catalog" {
+@test "boundary/hosts: can create multiple hosts in created host catalog" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     run create_host $NEW_HOST1 $hcid
     echo "$output"
@@ -44,7 +44,7 @@ export TGT_DEFAULT_PORT='22'
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/host-sets: can add multiple hosts to a created host catalog" {
+@test "boundary/host-sets: can create add multiple host sets to a created host catalog" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     run create_host_set $hcid $NEW_HOST_SET1
     echo "$output"
@@ -59,13 +59,13 @@ export TGT_DEFAULT_PORT='22'
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hid1=$(host_id $NEW_HOST1 $hcid)
     local hid2=$(host_id $NEW_HOST2 $hcid)
-
     local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
+
     run assoc_host_set_host $hid1 $hsid1
     echo "$output"
     [ "$status" -eq 0 ]
 
-    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
     run assoc_host_set_host $hid2 $hsid2
     echo "$output"
     [ "$status" -eq 0 ]
@@ -75,14 +75,34 @@ export TGT_DEFAULT_PORT='22'
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hid1=$(host_id $NEW_HOST1 $hcid)
     local hid2=$(host_id $NEW_HOST2 $hcid)
-
     local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
+
     run host_set_has_host_id $hid1 $hsid1
     echo "$output"
     [ "$status" -eq 0 ]
 
-    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
     run host_set_has_host_id $hid2 $hsid2
+    echo "$output"
+    [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: can set host sources on a created target" {
+    local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
+    local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
+    local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
+    run set_target_host_sources $tid $hsid1 $hsid2
+    echo "$output"
+    [ "$status" -eq 0 ]
+}
+
+@test "boundary/target: can remove host sources on a created target" {
+    local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
+    local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
+    local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
+    local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
+    run remove_target_host_sources $tid $hsid1 $hsid2
     echo "$output"
     [ "$status" -eq 0 ]
 }
@@ -91,25 +111,27 @@ export TGT_DEFAULT_PORT='22'
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run assoc_host_sources $tid $hsid1
+    run add_target_host_sources $tid $hsid1
     echo "$output"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/target: validate only $NEW_HOST1 host source present - JSON" {
+@test "boundary/target: validate $NEW_HOST1 host source present - JSON" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hsid=$(host_set_id $NEW_HOST_SET1 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run validate_host_sources $tid $hsid "json"
+    local format="json"
+    run target_has_host_source_id $tid $format $hsid
     echo "$output"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/target: validate only $NEW_HOST1 host source present - Table" {
+@test "boundary/target: validate $NEW_HOST1 host source present - Table" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hsid=$(host_set_id $NEW_HOST_SET1 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run validate_host_sources $tid $hsid "table"
+    local format="table"
+    run target_has_host_source_id $tid $format $hsid
     echo "$output"
     [ "$status" -eq 0 ]
 }
@@ -118,16 +140,17 @@ export TGT_DEFAULT_PORT='22'
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run assoc_host_sources $tid $hsid2
+    run add_target_host_sources $tid $hsid2
     echo "$output"
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/target: validate only $NEW_HOST2 host source present - Table" {
+@test "boundary/target: validate $NEW_HOST2 host source present - Table" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run validate_host_sources $tid $hsid2 "table"
+    local format="table"
+    run target_has_host_source_id $tid $format $hsid2
     echo "$output"
     [ "$status" -eq 0 ]
 }
@@ -136,7 +159,7 @@ export TGT_DEFAULT_PORT='22'
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run remove_host_sources $tid $hsid1
+    run remove_target_host_sources $tid $hsid1
     [ "$status" -eq 0 ]
 }
 
@@ -144,7 +167,8 @@ export TGT_DEFAULT_PORT='22'
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hsid1=$(host_set_id $NEW_HOST_SET1 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run validate_host_sources $tid $hsid1 "table"
+    local format="table"
+    run target_has_host_source_id $tid $format $hsid1
     echo "$output"
     [ "$status" -eq 1 ]
 }
@@ -153,7 +177,7 @@ export TGT_DEFAULT_PORT='22'
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run remove_host_sources $tid $hsid2
+    run remove_target_host_sources $tid $hsid2
     [ "$status" -eq 0 ]
 }
 
@@ -161,7 +185,8 @@ export TGT_DEFAULT_PORT='22'
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     local hsid2=$(host_set_id $NEW_HOST_SET2 $hcid)
     local tid=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
-    run validate_host_sources $tid $hsid2 "json"
+    local format="json"
+    run target_has_host_source_id $tid $format $hsid2
     echo "$output"
     [ "$status" -eq 1 ]
 }

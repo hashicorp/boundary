@@ -3,23 +3,7 @@
 
 load _authorized_actions
 
-function add_target_host_sources_sources() {
-    for i in "${@:2}"; do
-        hostSource+="-host-source $i "
-    done
-
-    boundary targets add-host-sources -id $1 $hostSource
-}
-
-function remove_target_host_sources_sources() {
-    for i in "${@:2}"; do
-        hostSource+="-host-source $i "
-    done
-
-    boundary targets remove-host-sources -id $1 $hostSource
-}
-
-function set_target_host_sources_sources() {
+function set_target_host_sources() {
     for i in "${@:2}"; do
         hostSource+="-host-source $i "
     done
@@ -27,20 +11,40 @@ function set_target_host_sources_sources() {
     boundary targets set-host-sources -id $1 $hostSource
 }
 
-function validate_host_sources() {
-    targetData=$(boundary targets read -id $1 -format $3)
-    if [[ "$3" == "json" ]]; then
-        for i in "${@:2}"; do
-            if ! echo "$targetData" | jq ".item.host_sources[]"; then
-                echo "Host source id '$i' not found on target"
-                echo "$targetData"
-                exit 1
-            fi
+function add_target_host_sources() {
+    for i in "${@:2}"; do
+        hostSource+="-host-source $i "
+    done
+
+    boundary targets add-host-sources -id $1 $hostSource
+}
+
+function remove_target_host_sources() {
+    for i in "${@:2}"; do
+        hostSource+="-host-source $i "
+    done
+
+    boundary targets remove-host-sources -id $1 $hostSource
+}
+
+function target_has_host_source_id() {
+    local tid=$1
+    ids=$(boundary targets read -id $tid -format json | jq '.item.host_sources[].id')
+
+    if [[ "$2" == "json" ]]; then
+        for i in "${@:3}"; do
+            local hsid=$i
+            for id in $ids; do
+                if [ $(strip "$id") == "$hsid" ]; then
+                    return 0
+                fi
+            done
         done
-    elif [[ "$3" == "table" ]]; then
-        for i in "${@:2}"; do
-            pattern="Host Sources:.*ID:.*$2*"
-            OUTPUT=$(echo $targetData)
+        return 1
+    elif [[ "$2" == "table" ]]; then
+        for i in "${@:3}"; do
+            pattern="Host Sources:.*ID:.*$i*"
+            OUTPUT=$(boundary targets read -id $1 -format table)
             if ! [[ $OUTPUT =~ $pattern ]]; then
                 echo "Host source id '$i' not found on target"
                 exit 1
