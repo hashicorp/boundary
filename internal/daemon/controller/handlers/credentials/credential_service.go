@@ -783,13 +783,9 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 		case credential.JsonSubtype.String():
 			object := req.GetItem().GetJsonAttributes().GetObject()
 			if object == nil || len(object.AsMap()) <= 0 {
-				badFields[objectField] = "Field required for creating a json credential."
-			}
-			objectBytes, err := json.Marshal(object)
-			if err != nil {
+				badFields[objectField] = "This is a required field and cannot be set to empty."
+			} else if _, err := json.Marshal(object); err != nil {
 				badFields[objectField] = "Unable to parse given json value"
-			} else if len(objectBytes) <= 0 {
-				badFields[objectField] = "Field required for creating a json credential."
 			}
 
 		default:
