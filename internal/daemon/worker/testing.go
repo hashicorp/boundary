@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	"github.com/prometheus/client_golang/prometheus"
@@ -188,6 +190,9 @@ type TestWorkerOpts struct {
 	// The worker auth KMS to use, or one will be created
 	WorkerAuthKms wrapping.Wrapper
 
+	// The downstream worker auth KMS to use, or one will be created
+	DownstreamWorkerAuthKms *multi.PooledWrapper
+
 	// The worker credential storage KMS to use, or one will be created
 	WorkerAuthStorageKms wrapping.Wrapper
 
@@ -218,6 +223,9 @@ type TestWorkerOpts struct {
 
 	// If set, will use the deprecated KMS auth method
 	UseDeprecatedKmsAuthMethod bool
+
+	// Toggle worker auth debugging
+	WorkerAuthDebuggingEnabled *atomic.Bool
 }
 
 func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
@@ -238,6 +246,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 
 	// Base server
 	tw.b = base.NewServer(nil)
+	tw.b.WorkerAuthDebuggingEnabled = opts.WorkerAuthDebuggingEnabled
 	tw.b.Command = &base.Command{
 		Context:    ctx,
 		ShutdownCh: make(chan struct{}),
@@ -296,15 +305,17 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	}
 
 	// Set up KMSes
-	switch {
-	case opts.WorkerAuthKms != nil:
+	if err := tw.b.SetupKMSes(tw.b.Context, nil, opts.Config); err != nil {
+		t.Fatal(err)
+	}
+	if opts.WorkerAuthKms != nil {
 		tw.b.WorkerAuthKms = opts.WorkerAuthKms
-	case opts.WorkerAuthStorageKms != nil:
+	}
+	if opts.WorkerAuthStorageKms != nil {
 		tw.b.WorkerAuthStorageKms = opts.WorkerAuthStorageKms
-	default:
-		if err := tw.b.SetupKMSes(tw.b.Context, nil, opts.Config); err != nil {
-			t.Fatal(err)
-		}
+	}
+	if opts.DownstreamWorkerAuthKms != nil {
+		tw.b.DownstreamWorkerAuthKms = opts.DownstreamWorkerAuthKms
 	}
 
 	// Ensure the listeners use random port allocation
@@ -367,11 +378,13 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 	}
 	nextOpts := &TestWorkerOpts{
 		WorkerAuthKms:                       tw.w.conf.WorkerAuthKms,
+		DownstreamWorkerAuthKms:             tw.w.conf.DownstreamWorkerAuthKms,
 		WorkerAuthStorageKms:                tw.w.conf.WorkerAuthStorageKms,
 		Name:                                opts.Name,
 		InitialUpstreams:                    tw.UpstreamAddrs(),
 		Logger:                              tw.w.conf.Logger,
 		SuccessfulStatusGracePeriodDuration: opts.SuccessfulStatusGracePeriodDuration,
+		WorkerAuthDebuggingEnabled:          tw.w.conf.WorkerAuthDebuggingEnabled,
 	}
 	if nextOpts.Name == "" {
 		var err error
@@ -388,15 +401,32 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 // NewTestMultihopWorkers creates a KMS and PKI worker with the controller as an upstream, and a
 // child PKI worker as a downstream of the PKI worker connected to the controller.
 // Tags for the PKI and child PKI worker can be passed in, if desired
-func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext context.Context, clusterAddrs []string,
-	workerAuthKms wrapping.Wrapper, serversRepoFn common.ServersRepoFactory, pkiTags,
-	childPkiTags map[string][]string,
-) (kmsWorker *TestWorker, pkiWorker *TestWorker, childPkiWorker *TestWorker) {
+func NewTestMultihopWorkers(t testing.TB,
+	logger hclog.Logger,
+	controllerContext context.Context,
+	clusterAddrs []string,
+	workerAuthKms wrapping.Wrapper,
+	serversRepoFn common.ServersRepoFactory,
+	pkiTags, childPkiTags, childKmsTags map[string][]string,
+	enableAuthDebugging *atomic.Bool,
+) (kmsWorker, pkiWorker, childPkiWorker, childKmsWorker *TestWorker) {
 	require := require.New(t)
+
+	// Create a few test wrappers for the child KMS worker to use
+	childDownstreamWrapper1 := db.TestWrapper(t)
+	childDownstreamWrapper2 := db.TestWrapper(t)
+	childDownstreamWrapper, err := multi.NewPooledWrapper(context.Background(), childDownstreamWrapper1)
+	require.NoError(err)
+	added, err := childDownstreamWrapper.AddWrapper(context.Background(), childDownstreamWrapper2)
+	require.NoError(err)
+	require.True(added)
+
 	kmsWorker = NewTestWorker(t, &TestWorkerOpts{
-		WorkerAuthKms:    workerAuthKms,
-		InitialUpstreams: clusterAddrs,
-		Logger:           logger.Named("kmsWorker"),
+		WorkerAuthKms:              workerAuthKms,
+		InitialUpstreams:           clusterAddrs,
+		Logger:                     logger.Named("kmsWorker"),
+		WorkerAuthDebuggingEnabled: enableAuthDebugging,
+		DownstreamWorkerAuthKms:    childDownstreamWrapper,
 	})
 
 	// names should not be set when using pki workers
@@ -408,9 +438,11 @@ func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext
 	}
 	pkiWorkerConf.Worker.InitialUpstreams = clusterAddrs
 	pkiWorker = NewTestWorker(t, &TestWorkerOpts{
-		InitialUpstreams: clusterAddrs,
-		Logger:           logger.Named("pkiWorker"),
-		Config:           pkiWorkerConf,
+		InitialUpstreams:           clusterAddrs,
+		Logger:                     logger.Named("pkiWorker"),
+		Config:                     pkiWorkerConf,
+		DownstreamWorkerAuthKms:    childDownstreamWrapper,
+		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 	})
 	t.Cleanup(pkiWorker.Shutdown)
 
@@ -441,9 +473,10 @@ func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext
 	childPkiWorkerConf.Worker.InitialUpstreams = kmsWorker.ProxyAddrs()
 
 	childPkiWorker = NewTestWorker(t, &TestWorkerOpts{
-		InitialUpstreams: kmsWorker.ProxyAddrs(),
-		Logger:           logger.Named("childPkiWorker"),
-		Config:           childPkiWorkerConf,
+		InitialUpstreams:           kmsWorker.ProxyAddrs(),
+		Logger:                     logger.Named("childPkiWorker"),
+		Config:                     childPkiWorkerConf,
+		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 	})
 
 	// Perform initial authentication of worker to controller
@@ -460,10 +493,28 @@ func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext
 	}, server.WithFetchNodeCredentialsRequest(childPkiWorkerReq))
 	require.NoError(err)
 
+	childKmsWorkerConf, err := config.DevWorker()
+	require.NoError(err)
+	childKmsWorkerConf.Worker.Name = "child-kms-worker"
+	childKmsWorkerConf.Worker.Description = "child-kms-worker description"
+	// Set tags the same
+	if childKmsTags != nil {
+		childKmsWorkerConf.Worker.Tags = childKmsTags
+	}
+	childKmsWorkerConf.Worker.InitialUpstreams = kmsWorker.ProxyAddrs()
+
+	childKmsWorker = NewTestWorker(t, &TestWorkerOpts{
+		InitialUpstreams:           kmsWorker.ProxyAddrs(),
+		Logger:                     logger.Named("childKmsWorker"),
+		Config:                     childKmsWorkerConf,
+		WorkerAuthKms:              childDownstreamWrapper2,
+		WorkerAuthDebuggingEnabled: enableAuthDebugging,
+	})
+
 	// Sleep so that workers can startup and connect.
 	time.Sleep(10 * time.Second)
 
-	return kmsWorker, pkiWorker, childPkiWorker
+	return kmsWorker, pkiWorker, childPkiWorker, childKmsWorker
 }
 
 // NewAuthorizedPkiTestWorker creates a new test worker with the provided upstreams

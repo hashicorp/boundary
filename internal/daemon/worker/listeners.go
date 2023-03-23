@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
@@ -191,6 +192,11 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	// SIGHUP
 	eventLogger = toggledlogger.NewToggledLogger(eventLogger, w.conf.WorkerAuthDebuggingEnabled)
 
+	wrapperToUse := w.conf.WorkerAuthKms
+	if !util.IsNil(w.conf.DownstreamWorkerAuthKms) {
+		wrapperToUse = w.conf.DownstreamWorkerAuthKms
+	}
+
 	interceptingListener, err := protocol.NewInterceptingListener(
 		&protocol.InterceptingListenerConfiguration{
 			Context:      w.baseContext,
@@ -203,7 +209,7 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 			GenerateServerCertificatesFunc: generateServerCertificatesFn,
 			Options: []nodee.Option{
 				nodee.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
-				nodee.WithRegistrationWrapper(w.conf.WorkerAuthKms),
+				nodee.WithRegistrationWrapper(wrapperToUse),
 				nodee.WithLogger(eventLogger),
 			},
 		})

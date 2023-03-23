@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
@@ -145,10 +146,14 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	// SIGHUP
 	eventLogger = toggledlogger.NewToggledLogger(eventLogger, c.conf.WorkerAuthDebuggingEnabled)
 
+	wrapperToUse := c.conf.WorkerAuthKms
+	if !util.IsNil(c.conf.DownstreamWorkerAuthKms) {
+		wrapperToUse = c.conf.DownstreamWorkerAuthKms
+	}
+
 	// The cluster listener is shut down at server shutdown time so we do not
 	// need to handle individual listener shutdown.
-	var l net.Listener
-	l, err = protocol.NewInterceptingListener(
+	interceptingListener, err := protocol.NewInterceptingListener(
 		&protocol.InterceptingListenerConfiguration{
 			Context:      c.baseContext,
 			Storage:      workerAuthStorage,
@@ -158,7 +163,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 			},
 			Options: []nodee.Option{
 				nodee.WithLogger(eventLogger),
-				nodee.WithRegistrationWrapper(c.conf.WorkerAuthKms),
+				nodee.WithRegistrationWrapper(wrapperToUse),
 			},
 		})
 	if err != nil {
@@ -166,7 +171,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	}
 
 	// Create split listener
-	splitListener, err := nodeenet.NewSplitListener(l)
+	splitListener, err := nodeenet.NewSplitListener(interceptingListener)
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating split listener: %w", err)
 	}
