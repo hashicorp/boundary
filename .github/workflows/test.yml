@@ -139,12 +139,12 @@ jobs:
   test:
     needs:
       - setup
-      - set-test-package-matrix
-    runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.set-test-package-matrix.outputs.package-matrix) }}
+      #- set-test-package-matrix
+    runs-on: "linux-latest-32-boundary"
+    # strategy:
+    #   fail-fast: false
+    #   matrix:
+    #     package: ${{ fromJson(needs.set-test-package-matrix.outputs.package-matrix) }}
     steps:
       - name: ulimit
         run: |
@@ -186,8 +186,8 @@ jobs:
       - name: Test
         uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd # v2.8.3
         env:
-          TEST_PACKAGE: "${{ matrix.package }}"
-          GOMAXPROCS: ${{ vars.TEST_GOMAXPROCS }}
+          TEST_PACKAGE: "./..."
+          #GOMAXPROCS: ${{ vars.TEST_GOMAXPROCS }}
           TESTARGS: -v
           TEST_TIMEOUT: 120m
         with:
