@@ -6,7 +6,7 @@ description: |-
 ---
 
 
-# PKI Worker Configuration
+# PKI worker configuration
 PKI Workers authenticate to Boundary using a certificate-based method, allowing
 for worker deployment without using a shared KMS.
 
@@ -42,7 +42,7 @@ worker {
 }
 ```
 
-Once the worker starts, it will read this token and use it to authorize to the
+Once the worker starts, it reads this token and uses it to authorize to the
 cluster. Note that this token is one-time-use; it is safe to keep it here even
 after the worker has successfully authorized and authenticated, as it will be
 unusable at that point.
@@ -169,6 +169,8 @@ kms "aead" {
 [target]: /boundary/docs/concepts/domain-model/targets
 [target worker filters]: /boundary/docs/concepts/filtering/worker-tags#target-worker-filtering
 
-## Tutorial
+## Tutorials
 
 Refer to the [Self-Managed Worker Registration with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial to learn how to register and manage PKI workers.
+
+Refer to the [Manage Multi-Hop Sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-multi-hop) tutorial to learn how to configure a multi-hop session.
