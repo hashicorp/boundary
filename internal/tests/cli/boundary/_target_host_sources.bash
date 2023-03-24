@@ -4,35 +4,43 @@
 load _authorized_actions
 
 function set_target_host_sources() {
-    for i in "${@:2}"; do
+    local tid=$1
+    local hostSources=${@:2}
+    for i in "${hostSources}"; do
         hostSource+="-host-source $i "
     done
 
-    boundary targets set-host-sources -id $1 $hostSource
+    boundary targets set-host-sources -id $tid $hostSource
 }
 
 function add_target_host_sources() {
-    for i in "${@:2}"; do
+    local tid=$1
+    local hostSources=${@:2}
+    for i in "${hostSources}"; do
         hostSource+="-host-source $i "
     done
 
-    boundary targets add-host-sources -id $1 $hostSource
+    boundary targets add-host-sources -id $tid $hostSource
 }
 
 function remove_target_host_sources() {
-    for i in "${@:2}"; do
+    local tid=$1
+    local hostSources=${@:2}
+    for i in "${hostSources}"; do
         hostSource+="-host-source $i "
     done
 
-    boundary targets remove-host-sources -id $1 $hostSource
+    boundary targets remove-host-sources -id $tid $hostSource
 }
 
 function target_has_host_source_id() {
     local tid=$1
-    ids=$(boundary targets read -id $tid -format json | jq '.item.host_sources[].id')
+    local format=$2
+    local hostSources=${@:3}
 
-    if [[ "$2" == "json" ]]; then
-        for i in "${@:3}"; do
+    if [[ "$format" == "json" ]]; then
+        ids=$(boundary targets read -id $tid -format json | jq '.item.host_sources[].id')
+        for i in "${hostSources}"; do
             local hsid=$i
             for id in $ids; do
                 if [ $(strip "$id") == "$hsid" ]; then
@@ -41,14 +49,16 @@ function target_has_host_source_id() {
             done
         done
         return 1
-    elif [[ "$2" == "table" ]]; then
-        for i in "${@:3}"; do
+    elif [[ "$format" == "table" ]]; then
+        for i in "${hostSources}"; do
             pattern="Host Sources:.*ID:.*$i*"
             OUTPUT=$(boundary targets read -id $1 -format table)
             if ! [[ $OUTPUT =~ $pattern ]]; then
                 echo "Host source id '$i' not found on target"
-                exit 1
+                return 1
             fi
         done
+        return 0
     fi
+    return 1
 }
