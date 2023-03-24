@@ -52,7 +52,7 @@ function target_has_host_source_id() {
     elif [[ "$format" == "table" ]]; then
         for i in "${hostSources}"; do
             pattern="Host Sources:.*ID:.*$i*"
-            OUTPUT=$(boundary targets read -id $1 -format table)
+            OUTPUT=$(boundary targets read -id $tid -format table)
             if ! [[ $OUTPUT =~ $pattern ]]; then
                 echo "Host source id '$i' not found on target"
                 return 1

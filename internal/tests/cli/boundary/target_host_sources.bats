@@ -44,7 +44,7 @@ export TGT_DEFAULT_PORT='22'
     [ "$status" -eq 0 ]
 }
 
-@test "boundary/host-sets: can create add multiple host sets to a created host catalog" {
+@test "boundary/host-sets: can create multiple host sets in a host catalog" {
     local hcid=$(host_catalog_id $NEW_HOST_CATALOG $DEFAULT_P_ID)
     run create_host_set $hcid $NEW_HOST_SET1
     echo "$output"
