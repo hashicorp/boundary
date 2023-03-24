@@ -2,7 +2,6 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
 
-
 die() {
     echo "$@"
     exit 255
@@ -43,7 +42,8 @@ extract() {
         "${tmp_dir}/views_${suffix}" \
         "${tmp_dir}/triggers_${suffix}" \
         "${tmp_dir}/indexes_${suffix}" \
-        "${tmp_dir}/constraints_${suffix}"
+        "${tmp_dir}/constraints_${suffix}" \
+        "${tmp_dir}/fk_constraints_${suffix}"
 
     echo "extracting function definitions from ${dump}"
     while read -r f; do
@@ -79,6 +79,11 @@ extract() {
         cName="${c#* }"
         pg_restore --section=post-data -O -f - "${dump}" | grep ${cName} | tr '[:upper:]' '[:lower:]' > "${tmp_dir}/constraints_${suffix}/${cName}.sql"
     done < <(pg_restore -l "${dump}" -f - | awk '$4 == "CONSTRAINT" {for(i=6;i<NF;i++) printf $i" "; print ""}')
+
+    while read -r c; do
+        cName="${c#* }"
+        pg_restore --section=post-data -O -f - "${dump}" | grep ${cName} | tr '[:upper:]' '[:lower:]' > "${tmp_dir}/fk_constraints_${suffix}/${cName}.sql"
+    done < <(pg_restore -l "${dump}" -f - | awk '$4 == "FK" && $5 == "CONSTRAINT" {for(i=7;i<NF;i++) printf $i" "; print ""}')
 }
 
 dump() {
@@ -125,6 +130,6 @@ else
     git checkout "${new_branch}"
 fi
 
-for t in "funcs" "tables" "views" "triggers" "indexes" "constraints"; do
+for t in "funcs" "tables" "views" "triggers" "indexes" "constraints" "fk_constraints"; do
     git diff --no-index "${tmp_dir}/${t}_${base_commit}" "${tmp_dir}/${t}_${new_commit}" | tee "${tmp_dir}/${t}.diff"
 done

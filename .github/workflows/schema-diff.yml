@@ -76,6 +76,9 @@ jobs:
 
           #### Constraints
           $(getdiff .schema-diff/constraints.diff)
+
+          #### Foreign Key Constraints
+          $(getdiff .schema-diff/fk_constraints.diff)
           EOF
 
           # Parse it through jq to build a valid json object.
