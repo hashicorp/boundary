@@ -78,7 +78,7 @@ load _target_host_sources
 @test "boundary/target: created target has default host set" {
   local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
   local format="json"
-  run target_has_host_source_id $id $DEFAULT_HOST_SET $format
+  run target_has_host_source_id $id $format $DEFAULT_HOST_SET
   echo "$output"
   [ "$status" -eq 0 ]
 }
