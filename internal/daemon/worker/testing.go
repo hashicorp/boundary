@@ -398,9 +398,10 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 	return NewTestWorker(t, nextOpts)
 }
 
-// NewTestMultihopWorkers creates a KMS and PKI worker with the controller as an upstream, and a
-// child PKI worker as a downstream of the PKI worker connected to the controller.
-// Tags for the PKI and child PKI worker can be passed in, if desired
+// NewTestMultihopWorkers creates a KMS and PKI worker with the controller as an
+// upstream, and two child workers (one PKI, one KMS) as downstreams of the KMS
+// worker connected to the controller. Tags for the PKI and child PKI/KMS
+// workers can be passed in, if desired.
 func NewTestMultihopWorkers(t testing.TB,
 	logger hclog.Logger,
 	controllerContext context.Context,

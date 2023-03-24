@@ -38,6 +38,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	PkiControllerLedWorkerAuthMechanism = "pki-controller-led"
+	PkiWorkerLedWorkerAuthMechanism     = "pki-worker-led"
+	PkiKmsWorkerAuthMechanism           = "pki-kms"
+	PkiRandomWorkerAuthMechanism        = "pki"
+)
+
 var (
 	_ cli.Command             = (*Command)(nil)
 	_ cli.CommandAutocomplete = (*Command)(nil)
@@ -352,7 +359,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:    "worker-auth-method",
 		Target:  &c.flagWorkerAuthMethod,
-		Default: "pki",
+		Default: PkiRandomWorkerAuthMechanism,
 		Usage:   `Allows specifying how the generated worker will authenticate to the controller. Valid values are "kms" for the deprecated KMS-based mechanism; "pki-kms" for the new-style KMS mechanism; "pki-controller-led" for the PKI mechanism via the server-led authorization flow; "pki-worker-led" for the PKI mechanism via the worker-led authorization flow; and "pki" to randomly choose one of the PKI methods.`,
 	})
 	f.StringVar(&base.StringVar{
@@ -737,21 +744,21 @@ func (c *Command) Run(args []string) int {
 			c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthRotationInterval
 		}
 
-		if c.flagWorkerAuthMethod == "pki" {
+		if c.flagWorkerAuthMethod == PkiRandomWorkerAuthMechanism {
 			// Flip a coin. Use one method or the other; it's transparent to
 			// users, but keeps both exercised.
 			randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(3)
 			switch randPki {
 			case 0:
-				c.flagWorkerAuthMethod = "pki-controller-led"
+				c.flagWorkerAuthMethod = PkiControllerLedWorkerAuthMechanism
 			case 1:
-				c.flagWorkerAuthMethod = "pki-worker-led"
+				c.flagWorkerAuthMethod = PkiWorkerLedWorkerAuthMechanism
 			default:
-				c.flagWorkerAuthMethod = "pki-kms"
+				c.flagWorkerAuthMethod = PkiKmsWorkerAuthMechanism
 			}
 		}
 		switch c.flagWorkerAuthMethod {
-		case "pki-controller-led":
+		case PkiControllerLedWorkerAuthMechanism:
 			// Controller-led
 			serversRepo, err := c.controller.ServersRepoFn()
 			if err != nil {
@@ -781,11 +788,11 @@ func (c *Command) Run(args []string) int {
 			c.WorkerAuthKms = nil
 			conf.RawConfig.Worker.ControllerGeneratedActivationToken = worker.ControllerGeneratedActivationToken
 
-		case "pki-worker-led":
+		case PkiWorkerLedWorkerAuthMechanism:
 			// Clear this out as presence of it causes PKI-KMS behavior
 			c.WorkerAuthKms = nil
 
-		case "pki-kms", "kms":
+		case PkiKmsWorkerAuthMechanism, "kms":
 			if c.WorkerAuthKms == nil {
 				c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 				return base.CommandUserError
@@ -817,7 +824,7 @@ func (c *Command) Run(args []string) int {
 				c.Info["worker auth storage path"] = "(in-memory)"
 			}
 
-			if c.flagWorkerAuthMethod == "pki-worker-led" {
+			if c.flagWorkerAuthMethod == PkiWorkerLedWorkerAuthMechanism {
 				req := c.worker.WorkerAuthRegistrationRequest
 				if req == "" {
 					c.UI.Error("No worker auth registration request found at worker start time")
