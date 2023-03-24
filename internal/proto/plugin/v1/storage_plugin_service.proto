@@ -7,6 +7,7 @@ package plugin.v1;
 
 import "controller/api/resources/storagebuckets/v1/storage_bucket.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/plugin;plugin";
 
@@ -23,6 +24,9 @@ service StoragePluginService {
   // OnDeleteStorageBucket is a hook that runs when a storage bucket is
   // deleted.
   rpc OnDeleteStorageBucket(OnDeleteStorageBucketRequest) returns (OnDeleteStorageBucketResponse);
+
+  // HeadObject is a hook that retrieves metadata about an object.
+  rpc HeadObject(HeadObjectRequest) returns (HeadObjectResponse);
 
   // GetObject is a hook that retrieves objects.
   rpc GetObject(GetObjectRequest) returns (stream GetObjectResponse);
@@ -71,6 +75,22 @@ message OnDeleteStorageBucketRequest {
 }
 
 message OnDeleteStorageBucketResponse {}
+
+message HeadObjectRequest {
+  // Required. The existing state of the storage bucket.
+  controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
+
+  // Required. The path of the object.
+  string key = 20;
+}
+
+message HeadObjectResponse {
+  // The size of the object in bytes.
+  int64 content_length = 10;
+
+  // Creation date of the object.
+  google.protobuf.Timestamp last_modified = 20;
+}
 
 message GetObjectRequest {
   // Required. The existing state of the storage bucket.

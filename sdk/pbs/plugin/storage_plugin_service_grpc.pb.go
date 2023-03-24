@@ -27,6 +27,8 @@ type StoragePluginServiceClient interface {
 	// OnDeleteStorageBucket is a hook that runs when a storage bucket is
 	// deleted.
 	OnDeleteStorageBucket(ctx context.Context, in *OnDeleteStorageBucketRequest, opts ...grpc.CallOption) (*OnDeleteStorageBucketResponse, error)
+	// HeadObject is a hook that retrieves metadata about an object.
+	HeadObject(ctx context.Context, in *HeadObjectRequest, opts ...grpc.CallOption) (*HeadObjectResponse, error)
 	// GetObject is a hook that retrieves objects.
 	GetObject(ctx context.Context, in *GetObjectRequest, opts ...grpc.CallOption) (StoragePluginService_GetObjectClient, error)
 	// PutObject is a hook that streams chunks of a file to be stored
@@ -63,6 +65,15 @@ func (c *storagePluginServiceClient) OnUpdateStorageBucket(ctx context.Context, 
 func (c *storagePluginServiceClient) OnDeleteStorageBucket(ctx context.Context, in *OnDeleteStorageBucketRequest, opts ...grpc.CallOption) (*OnDeleteStorageBucketResponse, error) {
 	out := new(OnDeleteStorageBucketResponse)
 	err := c.cc.Invoke(ctx, "/plugin.v1.StoragePluginService/OnDeleteStorageBucket", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storagePluginServiceClient) HeadObject(ctx context.Context, in *HeadObjectRequest, opts ...grpc.CallOption) (*HeadObjectResponse, error) {
+	out := new(HeadObjectResponse)
+	err := c.cc.Invoke(ctx, "/plugin.v1.StoragePluginService/HeadObject", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +159,8 @@ type StoragePluginServiceServer interface {
 	// OnDeleteStorageBucket is a hook that runs when a storage bucket is
 	// deleted.
 	OnDeleteStorageBucket(context.Context, *OnDeleteStorageBucketRequest) (*OnDeleteStorageBucketResponse, error)
+	// HeadObject is a hook that retrieves metadata about an object.
+	HeadObject(context.Context, *HeadObjectRequest) (*HeadObjectResponse, error)
 	// GetObject is a hook that retrieves objects.
 	GetObject(*GetObjectRequest, StoragePluginService_GetObjectServer) error
 	// PutObject is a hook that streams chunks of a file to be stored
@@ -168,6 +181,9 @@ func (UnimplementedStoragePluginServiceServer) OnUpdateStorageBucket(context.Con
 }
 func (UnimplementedStoragePluginServiceServer) OnDeleteStorageBucket(context.Context, *OnDeleteStorageBucketRequest) (*OnDeleteStorageBucketResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnDeleteStorageBucket not implemented")
+}
+func (UnimplementedStoragePluginServiceServer) HeadObject(context.Context, *HeadObjectRequest) (*HeadObjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HeadObject not implemented")
 }
 func (UnimplementedStoragePluginServiceServer) GetObject(*GetObjectRequest, StoragePluginService_GetObjectServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetObject not implemented")
@@ -242,6 +258,24 @@ func _StoragePluginService_OnDeleteStorageBucket_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StoragePluginService_HeadObject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HeadObjectRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoragePluginServiceServer).HeadObject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/plugin.v1.StoragePluginService/HeadObject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoragePluginServiceServer).HeadObject(ctx, req.(*HeadObjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _StoragePluginService_GetObject_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(GetObjectRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -307,6 +341,10 @@ var StoragePluginService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "OnDeleteStorageBucket",
 			Handler:    _StoragePluginService_OnDeleteStorageBucket_Handler,
+		},
+		{
+			MethodName: "HeadObject",
+			Handler:    _StoragePluginService_HeadObject_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
