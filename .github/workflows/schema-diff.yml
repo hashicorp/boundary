@@ -59,6 +59,9 @@ jobs:
           cat << EOF > github-comment.txt
           $gh_comment_prefix \`${GITHUB_BASE_REF}\` and \`${GITHUB_HEAD_REF}\` @ ${{ github.event.pull_request.head.sha }}
 
+          To understand how these diffs are generated and some limitations see the
+          [documentation](https://github.com/hashicorp/boundary/blob/main/scripts/schema-diff.sh) of the script.
+
           #### Functions
           $(getdiff .schema-diff/funcs.diff)
 
@@ -76,6 +79,9 @@ jobs:
 
           #### Constraints
           $(getdiff .schema-diff/constraints.diff)
+
+          #### Foreign Key Constraints
+          $(getdiff .schema-diff/fk_constraints.diff)
           EOF
 
           # Parse it through jq to build a valid json object.
