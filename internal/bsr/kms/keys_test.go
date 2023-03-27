@@ -1014,7 +1014,7 @@ func TestBsrKeys_VerifyPubBsrSignature(t *testing.T) {
 			},
 			wantErr:         true,
 			wantErrMatch:    kms.ErrInvalidParameter,
-			wantErrContains: "pub signature key id \"session-id\" doesn't match verifying key id \"mismatched-key-id\"",
+			wantErrContains: "signature key id \"session-id\" doesn't match verifying key id \"mismatched-key-id\"",
 		},
 	}
 	for _, tc := range tests {

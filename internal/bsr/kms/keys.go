@@ -284,78 +284,19 @@ func (k *Keys) UnwrapPrivKey(ctx context.Context, bsrWrapper wrapping.Wrapper) (
 // This is a concurrently safe operation.
 func (k *Keys) VerifyPubKeyBsrSignature(ctx context.Context, opt ...Option) (bool, error) {
 	const op = "kms.(BsrKeys).VerifyPubKeyBsrSignature"
-	if k == nil {
-		return false, fmt.Errorf("%s: nil bsr keys: %w", op, ErrInvalidParameter)
-	}
-	// needs a write lock since it may need to UnwrapBsrKey(...)
-	k.l.Lock()
-	defer k.l.Unlock()
-
 	switch {
-	case k.BsrKey == nil && k.WrappedBsrKey == nil:
-		return false, fmt.Errorf("%s: missing bsr key and wrapped bsr key: %w", op, ErrInvalidParameter)
-	case k.BsrKey != nil && k.BsrKey.Key == nil:
-		return false, fmt.Errorf("%s: missing bsr key bytes: %w", op, ErrInvalidParameter)
-	case k.WrappedBsrKey != nil && k.WrappedBsrKey.WrappedKey == nil:
-		return false, fmt.Errorf("%s: missing wrapped bsr key bytes: %w", op, ErrInvalidParameter)
+	case k == nil:
+		return false, fmt.Errorf("%s: nil bsr keys: %w", op, ErrInvalidParameter)
 	case k.PubKey == nil:
 		return false, fmt.Errorf("%s: missing pub key: %w", op, ErrInvalidParameter)
 	case k.PubKeyBsrSignature == nil:
 		return false, fmt.Errorf("%s: missing pub key signature: %w", op, ErrInvalidParameter)
 	}
-
-	opts := getOpts(opt...)
-	var bsrKeyWrapper *aead.Wrapper
-	switch {
-	case k.BsrKey != nil:
-		switch {
-		case k.BsrKey.KeyType != wrapping.KeyType_Aes256:
-			return false, keyTypeError(ctx, op, wrapping.KeyType_Aes256, k.BsrKey.KeyType)
-		case k.BsrKey.KeyEncoding != wrapping.KeyEncoding_Bytes:
-			return false, keyEncodingError(ctx, op, wrapping.KeyEncoding_Bytes, k.BsrKey.KeyEncoding)
-		}
-		bsrKeyWrapper = aead.NewWrapper()
-		if _, err := bsrKeyWrapper.SetConfig(ctx, wrapping.WithKeyId(k.BsrKey.KeyId)); err != nil {
-			return false, fmt.Errorf("%s: error setting config on bsr key wrapper %w: %w", op, err, ErrUnknown)
-		}
-		if err := bsrKeyWrapper.SetAesGcmKeyBytes(k.BsrKey.Key); err != nil {
-			return false, fmt.Errorf("%s: error setting key bytes on bsr key wrapper %w: %w", op, err, ErrUnknown)
-		}
-	case k.WrappedBsrKey != nil:
-		switch {
-		case util.IsNil(opts.withBsrWrapper):
-			return false, fmt.Errorf("%s: missing bsr wrapper: %w", op, ErrInvalidParameter)
-		case k.WrappedBsrKey.KeyType != wrapping.KeyType_Aes256:
-			return false, keyTypeError(ctx, op, wrapping.KeyType_Aes256, k.WrappedBsrKey.KeyType)
-		case k.WrappedBsrKey.KeyEncoding != wrapping.KeyEncoding_Bytes:
-			return false, keyEncodingError(ctx, op, wrapping.KeyEncoding_Bytes, k.WrappedBsrKey.KeyEncoding)
-		}
-		var err error
-		if bsrKeyWrapper, err = k.UnwrapBsrKey(ctx, opts.withBsrWrapper, withAlreadyLocked(true)); err != nil {
-			return false, fmt.Errorf("%s: error unwrapping bsr key: %w", op, err)
-		}
-	default:
-		return false, fmt.Errorf("%s: missing bsr key and wrapped bsr key: %w", op, ErrInvalidParameter)
-	}
-	marshaledSigInfo, err := crypto.HmacSha256(ctx, ed25519.PublicKey(k.PubKey.Key), bsrKeyWrapper, crypto.WithMarshaledSigInfo())
+	ok, err := k.VerifySignatureWithBsrKey(ctx, k.PubKeyBsrSignature, ed25519.PublicKey(k.PubKey.Key), opt...)
 	if err != nil {
-		return false, fmt.Errorf("%s: error signing pub key %w: %w", op, err, ErrSign)
+		return ok, fmt.Errorf("%s: %w", op, err)
 	}
-	var sigInfo wrapping.SigInfo
-	if err = proto.Unmarshal([]byte(marshaledSigInfo), &sigInfo); err != nil {
-		return false, fmt.Errorf("%s: error unmarshaling sig info %w: %w", op, err, ErrDecode)
-	}
-	bsrKeyId, err := bsrKeyWrapper.KeyId(ctx)
-	if err != nil {
-		return false, fmt.Errorf("%s: error getting bsr key id %w: %w", op, err, ErrUnknown)
-	}
-	if k.PubKeyBsrSignature.KeyInfo.KeyId != bsrKeyId {
-		return false, fmt.Errorf("%s: pub signature key id %q doesn't match verifying key id %q: %w", op, k.PubKeyBsrSignature.KeyInfo.KeyId, bsrKeyId, ErrInvalidParameter)
-	}
-	if bytes.Compare(k.PubKeyBsrSignature.Signature, sigInfo.Signature) == 0 {
-		return true, nil
-	}
-	return false, nil
+	return ok, err
 }
 
 // VerifyPubKeySelfSignature will verify the self-signed pub key signature using
@@ -444,6 +385,80 @@ func (k *Keys) SignWithPrivKey(ctx context.Context, msg []byte) (*wrapping.SigIn
 		return nil, fmt.Errorf("%s: %w: %w", op, err, ErrSign)
 	}
 	return si, nil
+}
+
+func (k *Keys) VerifySignatureWithBsrKey(ctx context.Context, sig *wrapping.SigInfo, msg []byte, opt ...Option) (bool, error) {
+	const op = "kms.(BsrKeys).VerifySignatureWithBsrKey"
+	if k == nil {
+		return false, fmt.Errorf("%s: nil bsr keys: %w", op, ErrInvalidParameter)
+	}
+	// needs a write lock since it may need to UnwrapBsrKey(...)
+	k.l.Lock()
+	defer k.l.Unlock()
+
+	switch {
+	case k.BsrKey == nil && k.WrappedBsrKey == nil:
+		return false, fmt.Errorf("%s: missing bsr key and wrapped bsr key: %w", op, ErrInvalidParameter)
+	case k.BsrKey != nil && k.BsrKey.Key == nil:
+		return false, fmt.Errorf("%s: missing bsr key bytes: %w", op, ErrInvalidParameter)
+	case k.WrappedBsrKey != nil && k.WrappedBsrKey.WrappedKey == nil:
+		return false, fmt.Errorf("%s: missing wrapped bsr key bytes: %w", op, ErrInvalidParameter)
+	case len(msg) == 0:
+		return false, fmt.Errorf("%s: missing msg: %w", op, ErrInvalidParameter)
+	}
+
+	opts := getOpts(opt...)
+	var bsrKeyWrapper *aead.Wrapper
+	switch {
+	case k.BsrKey != nil:
+		switch {
+		case k.BsrKey.KeyType != wrapping.KeyType_Aes256:
+			return false, keyTypeError(ctx, op, wrapping.KeyType_Aes256, k.BsrKey.KeyType)
+		case k.BsrKey.KeyEncoding != wrapping.KeyEncoding_Bytes:
+			return false, keyEncodingError(ctx, op, wrapping.KeyEncoding_Bytes, k.BsrKey.KeyEncoding)
+		}
+		bsrKeyWrapper = aead.NewWrapper()
+		if _, err := bsrKeyWrapper.SetConfig(ctx, wrapping.WithKeyId(k.BsrKey.KeyId)); err != nil {
+			return false, fmt.Errorf("%s: error setting config on bsr key wrapper %w: %w", op, err, ErrUnknown)
+		}
+		if err := bsrKeyWrapper.SetAesGcmKeyBytes(k.BsrKey.Key); err != nil {
+			return false, fmt.Errorf("%s: error setting key bytes on bsr key wrapper %w: %w", op, err, ErrUnknown)
+		}
+	case k.WrappedBsrKey != nil:
+		switch {
+		case util.IsNil(opts.withBsrWrapper):
+			return false, fmt.Errorf("%s: missing bsr wrapper: %w", op, ErrInvalidParameter)
+		case k.WrappedBsrKey.KeyType != wrapping.KeyType_Aes256:
+			return false, keyTypeError(ctx, op, wrapping.KeyType_Aes256, k.WrappedBsrKey.KeyType)
+		case k.WrappedBsrKey.KeyEncoding != wrapping.KeyEncoding_Bytes:
+			return false, keyEncodingError(ctx, op, wrapping.KeyEncoding_Bytes, k.WrappedBsrKey.KeyEncoding)
+		}
+		var err error
+		if bsrKeyWrapper, err = k.UnwrapBsrKey(ctx, opts.withBsrWrapper, withAlreadyLocked(true)); err != nil {
+			return false, fmt.Errorf("%s: error unwrapping bsr key: %w", op, err)
+		}
+	default:
+		return false, fmt.Errorf("%s: missing bsr key and wrapped bsr key: %w", op, ErrInvalidParameter)
+	}
+	marshaledSigInfo, err := crypto.HmacSha256(ctx, msg, bsrKeyWrapper, crypto.WithMarshaledSigInfo())
+	if err != nil {
+		return false, fmt.Errorf("%s: error signing msg %w: %w", op, err, ErrSign)
+	}
+	var sigInfo wrapping.SigInfo
+	if err = proto.Unmarshal([]byte(marshaledSigInfo), &sigInfo); err != nil {
+		return false, fmt.Errorf("%s: error unmarshaling sig info %w: %w", op, err, ErrDecode)
+	}
+	bsrKeyId, err := bsrKeyWrapper.KeyId(ctx)
+	if err != nil {
+		return false, fmt.Errorf("%s: error getting bsr key id %w: %w", op, err, ErrUnknown)
+	}
+	if sig.KeyInfo.KeyId != bsrKeyId {
+		return false, fmt.Errorf("%s: signature key id %q doesn't match verifying key id %q: %w", op, k.PubKeyBsrSignature.KeyInfo.KeyId, bsrKeyId, ErrInvalidParameter)
+	}
+	if bytes.Equal(sig.Signature, sigInfo.Signature) {
+		return true, nil
+	}
+	return false, nil
 }
 
 func keyTypeError(ctx context.Context, fromOp string, want wrapping.KeyType, got wrapping.KeyType) error {
