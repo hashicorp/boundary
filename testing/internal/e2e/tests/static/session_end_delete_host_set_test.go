@@ -5,14 +5,10 @@ package static_test
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
-	"github.com/hashicorp/boundary/api/sessions"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
@@ -91,9 +87,10 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-	session := boundary.WaitForSessionToBeActiveCli(t, ctx, newProjectId)
-	assert.Equal(t, newTargetId, session.TargetId)
-	assert.Equal(t, newHostId, session.HostId)
+	s := boundary.WaitForSessionCli(t, ctx, newProjectId)
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
+	assert.Equal(t, newTargetId, s.TargetId)
+	assert.Equal(t, newHostId, s.HostId)
 
 	// Delete Host Set
 	t.Log("Deleting host set...")
@@ -101,7 +98,6 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Check if session has terminated
-	t.Log("Waiting for session to be canceling/terminated...")
 	select {
 	case output := <-errChan:
 		// `boundary connect` returns a 255 when cancelled
@@ -110,36 +106,6 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 		t.Fatal("Timed out waiting for session command to exit")
 	}
 
-	err = backoff.RetryNotify(
-		func() error {
-			// Check that session has been canceled or terminated
-			output = e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
-			)
-			if output.Err != nil {
-				return backoff.Permanent(errors.New(string(output.Stderr)))
-			}
-
-			var sessionReadResult sessions.SessionReadResult
-			err = json.Unmarshal(output.Stdout, &sessionReadResult)
-			if err != nil {
-				return backoff.Permanent(err)
-			}
-
-			if sessionReadResult.Item.Status != "canceling" && sessionReadResult.Item.Status != "terminated" {
-				return errors.New(fmt.Sprintf("Session has unexpected status. Expected: %s, Actual: %s",
-					"`canceling` or `terminated`",
-					sessionReadResult.Item.Status,
-				))
-			}
-
-			return nil
-		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
-		func(err error, td time.Duration) {
-			t.Logf("%s. Retrying...", err.Error())
-		},
-	)
-	require.NoError(t, err)
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusTerminated.String())
 	t.Log("Session successfully ended after host set was deleted")
 }

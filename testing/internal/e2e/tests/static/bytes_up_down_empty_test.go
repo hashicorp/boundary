@@ -80,12 +80,17 @@ func TestCliBytesUpDownEmpty(t *testing.T) {
 		var newSessionReadResult sessions.SessionReadResult
 		err = json.Unmarshal(output.Stdout, &newSessionReadResult)
 		require.NoError(t, err)
-		bytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
-		bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
-		t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
 
-		if bytesUp > 0 && bytesDown > 0 {
-			break
+		if len(newSessionReadResult.Item.Connections) > 0 {
+			bytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
+			bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
+			t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
+
+			if bytesUp > 0 && bytesDown > 0 {
+				break
+			}
+		} else {
+			t.Log("No connections found in session. Retrying...")
 		}
 
 		time.Sleep(2 * time.Second)

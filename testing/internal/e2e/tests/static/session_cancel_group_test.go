@@ -14,8 +14,8 @@ import (
 	"github.com/hashicorp/boundary/api/groups"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/scopes"
-	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/users"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
@@ -127,27 +127,18 @@ func TestCliSessionCancelGroup(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-	session := boundary.WaitForSessionToBeActiveCli(t, ctx, newProjectId)
-	assert.Equal(t, newTargetId, session.TargetId)
-	assert.Equal(t, newHostId, session.HostId)
+	s := boundary.WaitForSessionCli(t, ctx, newProjectId)
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
+	assert.Equal(t, newTargetId, s.TargetId)
+	assert.Equal(t, newHostId, s.HostId)
 
 	// Cancel session
 	t.Log("Canceling session...")
 	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("sessions", "cancel", "-id", session.Id),
+		e2e.WithArgs("sessions", "cancel", "-id", s.Id),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newSessionReadResult sessions.SessionReadResult
-	err = json.Unmarshal(output.Stdout, &newSessionReadResult)
-	require.NoError(t, err)
-	require.Condition(t, func() bool {
-		return newSessionReadResult.Item.Status == "canceling" || newSessionReadResult.Item.Status == "terminated"
-	})
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusTerminated.String())
 
 	// Check output from session
 	select {
