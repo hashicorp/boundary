@@ -17,6 +17,11 @@ func init() {
 	handleUi = handleUiWithAssets
 }
 
+// serveMetadata provides controller metadata to the UI for licensed versions of Boundary.
+var serveMetadata = noopServeMetadata
+
+func noopServeMetadata(w http.ResponseWriter) {}
+
 func handleUiWithAssets(c *Controller) http.Handler {
 	var nextHandler http.Handler
 	if c.conf.RawConfig.DevUiPassthroughDir != "" {
@@ -40,7 +45,9 @@ func handleUiWithAssets(c *Controller) http.Handler {
 		default:
 			switch r.URL.Path {
 			case "/", "/favicon.png", "/assets/styles.css":
-
+			case "/controller-metadata.json":
+				serveMetadata(w)
+				return
 			default:
 				for i := dotIndex + 1; i < len(r.URL.Path); i++ {
 					intVal := r.URL.Path[i]
