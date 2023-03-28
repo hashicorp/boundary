@@ -48,10 +48,20 @@ const (
 	CycleFound                         = 121 // CycleFound represents an error when a cycle is found between a parent and child worker
 	WorkerConnNotFound                 = 122 // WorkerConnNotFound represents an error when a connection to a worker is not found
 	KmsWorkerUnsupportedOperation      = 123 // KmsWorkerUnsupportedOperation represents an error when a KMS worker is not supported for an operation
+
 	// Note: Currently unused in OSS
 	RetryLimitExceeded = 124 // RetryLimitExceeded represents an error when a retry limit is exceeded
 	// Note: Currently unused in OSS
 	QueueIsFull = 125 // QueueIsFull results in attempting to add an item to a queue which is full
+
+	// Note: Storage errors are currently unused in OSS
+	StorageFileClosed         = 126 // StorageFileClose represents an error when a file has been closed and a read/write operation is attempted on it
+	StorageContainerClosed    = 127 // StorageContainerClosed represents an error when a container has been closed and a read/write operation is attempted on it
+	StorageFileReadOnly       = 128 // StorageFileReadOnly represents an error when a file is readonly and a write operation is attempted on it
+	StorageFileWriteOnly      = 129 // StorageFileWriteOnly represents an error when a file is write only and a read operation is attempted on it
+	StorageFileAlreadyExists  = 130 // StorageFileAlreadyExists represents an error when a file already exists during an attempt to create it
+	StorageContainerReadOnly  = 131 // StorageContainerReadOnly represents an error when a container is readonly and a write operation is attempted on it
+	StorageContainerWriteOnly = 132 // StorageContainerWriteOnly represents an error when a container is write only and a read operation is attempted on it
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.

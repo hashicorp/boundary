@@ -29,6 +29,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/storage"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
@@ -76,6 +77,8 @@ type recorderCache any
 // reverseConnReceiverFactory provides a simple factory which a Worker can use to
 // create its reverseConnReceiver
 var reverseConnReceiverFactory func() reverseConnReceiver
+
+var recordingStorageFactory func(ctx context.Context, path string) (storage.RecordingStorage, error)
 
 var recorderCacheFactory func() recorderCache
 
@@ -137,6 +140,9 @@ type Worker struct {
 	WorkerAuthCurrentKeyId        *ua.String
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *nodeenet.SplitListener
+
+	// The storage for session recording
+	RecordingStorage storage.RecordingStorage
 
 	// downstream workers and routes to those workers
 	downstreamWorkers  downstreamers
@@ -201,6 +207,14 @@ func New(conf *Config) (*Worker, error) {
 
 	if conf.RawConfig.Worker == nil {
 		conf.RawConfig.Worker = new(config.Worker)
+	}
+
+	if w.conf.RawConfig.Worker.RecordingStoragePath != "" && recordingStorageFactory != nil {
+		s, err := recordingStorageFactory(w.baseContext, w.conf.RawConfig.Worker.RecordingStoragePath)
+		if err != nil {
+			return nil, fmt.Errorf("error create recording storage: %w", err)
+		}
+		w.RecordingStorage = s
 	}
 
 	w.parseAndStoreTags(conf.RawConfig.Worker.Tags)

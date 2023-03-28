@@ -299,4 +299,32 @@ var errorCodeInfo = map[Code]Info{
 		Message: "not found",
 		Kind:    State,
 	},
+	StorageFileClosed: {
+		Message: "file is closed",
+		Kind:    State,
+	},
+	StorageContainerClosed: {
+		Message: "container is closed",
+		Kind:    State,
+	},
+	StorageFileReadOnly: {
+		Message: "file is read only",
+		Kind:    State,
+	},
+	StorageFileWriteOnly: {
+		Message: "file is write only",
+		Kind:    State,
+	},
+	StorageFileAlreadyExists: {
+		Message: "file already exists",
+		Kind:    State,
+	},
+	StorageContainerReadOnly: {
+		Message: "container is read only",
+		Kind:    State,
+	},
+	StorageContainerWriteOnly: {
+		Message: "container is write only",
+		Kind:    State,
+	},
 }

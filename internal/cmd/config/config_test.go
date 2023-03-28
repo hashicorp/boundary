@@ -494,7 +494,7 @@ func TestDevCombined(t *testing.T) {
 	assert.Equal(t, exp, actual)
 }
 
-func TestDevWorkerCredentialStorageDir(t *testing.T) {
+func TestDevWorkerCredentialStoragePath(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name                           string
@@ -545,6 +545,62 @@ func TestDevWorkerCredentialStorageDir(t *testing.T) {
 			parsed, err := Parse(devConfig + tt.devWorkerProvidedConfiguration)
 			require.NoError(t, err)
 			require.Equal(t, tt.storagePath, parsed.Worker.AuthStoragePath)
+		})
+	}
+}
+
+func TestDevWorkerRecordingStoragePath(t *testing.T) {
+	t.Parallel()
+	td := t.TempDir()
+	tests := []struct {
+		name                           string
+		devWorkerProvidedConfiguration string
+		storagePath                    string
+	}{
+		{
+			name: "Relative Storage Directory",
+			devWorkerProvidedConfiguration: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = ".."
+			}
+			`,
+			storagePath: "..",
+		},
+		{
+			name: "temp dir",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+			}
+			`, td),
+			storagePath: td,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := Parse(devConfig + tt.devWorkerProvidedConfiguration)
+			require.NoError(t, err)
+			require.Equal(t, tt.storagePath, parsed.Worker.RecordingStoragePath)
 		})
 	}
 }

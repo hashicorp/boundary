@@ -264,6 +264,10 @@ type Worker struct {
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
 
+	// RecordingStoragePath represents the location a worker caches session recordings before
+	// they are sync'ed to the corresponding storage bucket. The path must already exist.
+	RecordingStoragePath string `hcl:"recording_storage_path"`
+
 	// ControllerGeneratedActivationToken is a controller-generated activation
 	// token used to register this worker to the cluster. It can be a path, env
 	// var, or direct value.

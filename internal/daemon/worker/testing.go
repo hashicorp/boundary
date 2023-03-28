@@ -199,6 +199,9 @@ type TestWorkerOpts struct {
 	// The location of the worker's auth storage
 	WorkerAuthStoragePath string
 
+	// The location of the worker's recording storage
+	WorkerRecordingStoragePath string
+
 	// The name to use for the worker, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
 	Name string
@@ -304,6 +307,9 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	}
 	if opts.WorkerAuthStoragePath != "" {
 		opts.Config.Worker.AuthStoragePath = opts.WorkerAuthStoragePath
+	}
+	if opts.WorkerRecordingStoragePath != "" {
+		opts.Config.Worker.RecordingStoragePath = opts.WorkerRecordingStoragePath
 	}
 	tw.name = opts.Config.Worker.Name
 
@@ -500,6 +506,7 @@ func NewTestMultihopWorkers(t testing.TB,
 		InitialUpstreams:           kmsWorker.ProxyAddrs(),
 		Logger:                     logger.Named("childPkiWorker"),
 		Config:                     childPkiWorkerConf,
+		WorkerRecordingStoragePath: t.TempDir(),
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 	})
 	t.Cleanup(childPkiWorker.Shutdown)

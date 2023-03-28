@@ -355,6 +355,41 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    NotFound,
 			want: NotFound,
 		},
+		{
+			name: "StorageFileClose",
+			c:    StorageFileClosed,
+			want: StorageFileClosed,
+		},
+		{
+			name: "StorageContainerClosed",
+			c:    StorageContainerClosed,
+			want: StorageContainerClosed,
+		},
+		{
+			name: "StorageFileReadOnly",
+			c:    StorageFileReadOnly,
+			want: StorageFileReadOnly,
+		},
+		{
+			name: "StorageFileWriteOnly",
+			c:    StorageFileWriteOnly,
+			want: StorageFileWriteOnly,
+		},
+		{
+			name: "StorageFileAlreadyExists",
+			c:    StorageFileAlreadyExists,
+			want: StorageFileAlreadyExists,
+		},
+		{
+			name: "StorageContainerReadOnly",
+			c:    StorageContainerReadOnly,
+			want: StorageContainerReadOnly,
+		},
+		{
+			name: "StorageContainerWriteOnly",
+			c:    StorageContainerWriteOnly,
+			want: StorageContainerWriteOnly,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

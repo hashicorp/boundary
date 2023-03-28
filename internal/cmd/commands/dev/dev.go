@@ -105,6 +105,7 @@ type Command struct {
 	flagWorkerAuthWorkerRotationInterval time.Duration
 	flagWorkerAuthCaCertificateLifetime  time.Duration
 	flagWorkerAuthDebuggingEnabled       bool
+	flagWorkerRecordingStorageDir        string
 }
 
 func (c *Command) Synopsis() string {
@@ -368,6 +369,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Target: &c.flagWorkerAuthStorageDir,
 		Usage:  "Specifies the directory to store worker authentication credentials in dev mode. Setting this will make use of file storage at the specified location; otherwise in-memory storage or a temporary directory will be used.",
 	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "worker-recording-storage-dir",
+		Target: &c.flagWorkerRecordingStorageDir,
+		Usage:  "Specifies the directory to store worker session recordings in dev mode.",
+	})
+
 	f.BoolVar(&base.BoolVar{
 		Name:   "worker-auth-storage-skip-cleanup",
 		Target: &c.flagWorkerAuthStorageSkipCleanup,
@@ -455,6 +463,7 @@ func (c *Command) Run(args []string) int {
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
 	c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
+	c.Config.Worker.RecordingStoragePath = c.flagWorkerRecordingStorageDir
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")

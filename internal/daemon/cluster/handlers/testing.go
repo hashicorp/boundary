@@ -35,7 +35,7 @@ func TestUpstreamService(t *testing.T) (UpstreamMessageServiceClientProducer, *t
 	// sending upstream requests
 	initStorage, err := nodeefile.New(testCtx)
 	require.NoError(t, err)
-	t.Cleanup(initStorage.Cleanup)
+	t.Cleanup(func() { initStorage.Cleanup(testCtx) })
 	_, err = rotation.RotateRootCertificates(testCtx, initStorage)
 	require.NoError(t, err)
 	initNodeCreds, err := types.NewNodeCredentials(testCtx, initStorage)
