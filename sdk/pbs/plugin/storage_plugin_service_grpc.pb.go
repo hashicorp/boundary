@@ -27,6 +27,9 @@ type StoragePluginServiceClient interface {
 	// OnDeleteStorageBucket is a hook that runs when a storage bucket is
 	// deleted.
 	OnDeleteStorageBucket(ctx context.Context, in *OnDeleteStorageBucketRequest, opts ...grpc.CallOption) (*OnDeleteStorageBucketResponse, error)
+	// ValidatePermissions is a hook that checks if the secrets associated with
+	// the storage bucket meet the requirements of the plugin.
+	ValidatePermissions(ctx context.Context, in *ValidatePermissionsRequest, opts ...grpc.CallOption) (*ValidatePermissionsResponse, error)
 	// HeadObject is a hook that retrieves metadata about an object.
 	HeadObject(ctx context.Context, in *HeadObjectRequest, opts ...grpc.CallOption) (*HeadObjectResponse, error)
 	// GetObject is a hook that retrieves objects.
@@ -65,6 +68,15 @@ func (c *storagePluginServiceClient) OnUpdateStorageBucket(ctx context.Context, 
 func (c *storagePluginServiceClient) OnDeleteStorageBucket(ctx context.Context, in *OnDeleteStorageBucketRequest, opts ...grpc.CallOption) (*OnDeleteStorageBucketResponse, error) {
 	out := new(OnDeleteStorageBucketResponse)
 	err := c.cc.Invoke(ctx, "/plugin.v1.StoragePluginService/OnDeleteStorageBucket", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storagePluginServiceClient) ValidatePermissions(ctx context.Context, in *ValidatePermissionsRequest, opts ...grpc.CallOption) (*ValidatePermissionsResponse, error) {
+	out := new(ValidatePermissionsResponse)
+	err := c.cc.Invoke(ctx, "/plugin.v1.StoragePluginService/ValidatePermissions", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -159,6 +171,9 @@ type StoragePluginServiceServer interface {
 	// OnDeleteStorageBucket is a hook that runs when a storage bucket is
 	// deleted.
 	OnDeleteStorageBucket(context.Context, *OnDeleteStorageBucketRequest) (*OnDeleteStorageBucketResponse, error)
+	// ValidatePermissions is a hook that checks if the secrets associated with
+	// the storage bucket meet the requirements of the plugin.
+	ValidatePermissions(context.Context, *ValidatePermissionsRequest) (*ValidatePermissionsResponse, error)
 	// HeadObject is a hook that retrieves metadata about an object.
 	HeadObject(context.Context, *HeadObjectRequest) (*HeadObjectResponse, error)
 	// GetObject is a hook that retrieves objects.
@@ -181,6 +196,9 @@ func (UnimplementedStoragePluginServiceServer) OnUpdateStorageBucket(context.Con
 }
 func (UnimplementedStoragePluginServiceServer) OnDeleteStorageBucket(context.Context, *OnDeleteStorageBucketRequest) (*OnDeleteStorageBucketResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OnDeleteStorageBucket not implemented")
+}
+func (UnimplementedStoragePluginServiceServer) ValidatePermissions(context.Context, *ValidatePermissionsRequest) (*ValidatePermissionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ValidatePermissions not implemented")
 }
 func (UnimplementedStoragePluginServiceServer) HeadObject(context.Context, *HeadObjectRequest) (*HeadObjectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HeadObject not implemented")
@@ -254,6 +272,24 @@ func _StoragePluginService_OnDeleteStorageBucket_Handler(srv interface{}, ctx co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StoragePluginServiceServer).OnDeleteStorageBucket(ctx, req.(*OnDeleteStorageBucketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StoragePluginService_ValidatePermissions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ValidatePermissionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoragePluginServiceServer).ValidatePermissions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/plugin.v1.StoragePluginService/ValidatePermissions",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoragePluginServiceServer).ValidatePermissions(ctx, req.(*ValidatePermissionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -341,6 +377,10 @@ var StoragePluginService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "OnDeleteStorageBucket",
 			Handler:    _StoragePluginService_OnDeleteStorageBucket_Handler,
+		},
+		{
+			MethodName: "ValidatePermissions",
+			Handler:    _StoragePluginService_ValidatePermissions_Handler,
 		},
 		{
 			MethodName: "HeadObject",
