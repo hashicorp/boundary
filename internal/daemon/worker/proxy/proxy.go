@@ -31,6 +31,9 @@ var (
 	GetHandler = tcpOnly
 )
 
+// RecordingManager allows a handler for a protocol that supports recording.
+type RecordingManager any
+
 // DecryptFn decrypts the provided bytes into a proto.Message
 type DecryptFn func(ctx context.Context, from []byte, to proto.Message) error
 
@@ -43,7 +46,7 @@ type ProxyConnFn func(ctx context.Context)
 // be nil. If there is no error ProxyConnFn must be set.  When Handler has
 // returned, it is expected that the initial connection to the endpoint has been
 // established.
-type Handler func(context.Context, DecryptFn, net.Conn, *ProxyDialer, string, *anypb.Any) (ProxyConnFn, error)
+type Handler func(context.Context, DecryptFn, net.Conn, *ProxyDialer, string, *anypb.Any, RecordingManager) (ProxyConnFn, error)
 
 func RegisterHandler(protocol string, handler Handler) error {
 	_, loaded := handlers.LoadOrStore(protocol, handler)

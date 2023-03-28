@@ -27,7 +27,7 @@ func init() {
 // handleProxy returns a ProxyConnFn which starts the copy between the
 // connections and blocks until an error (EOF on happy path) is received on
 // either connection.
-func handleProxy(ctx context.Context, _ proxy.DecryptFn, conn net.Conn, out *proxy.ProxyDialer, connId string, _ *anypb.Any) (proxy.ProxyConnFn, error) {
+func handleProxy(ctx context.Context, _ proxy.DecryptFn, conn net.Conn, out *proxy.ProxyDialer, connId string, _ *anypb.Any, _ proxy.RecordingManager) (proxy.ProxyConnFn, error) {
 	const op = "tcp.HandleProxy"
 	switch {
 	case conn == nil:

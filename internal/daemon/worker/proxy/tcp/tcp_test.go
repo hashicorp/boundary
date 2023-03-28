@@ -88,7 +88,7 @@ func TestHandleProxy_Errors(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			fn, err := handleProxy(context.Background(), nil, tc.conn, tc.dialer, tc.connId, tc.protocolCtx)
+			fn, err := handleProxy(context.Background(), nil, tc.conn, tc.dialer, tc.connId, tc.protocolCtx, nil)
 			if tc.wantError {
 				assert.Error(t, err)
 				assert.Nil(t, fn)
@@ -166,7 +166,7 @@ func TestHandleTcpProxyV1(t *testing.T) {
 	conn := websocket.NetConn(ctx, proxyConn, websocket.MessageBinary)
 
 	go func() {
-		fn, err := handleProxy(ctx, nil, conn, tDial, resp.GetConnectionId(), resp.GetProtocolContext())
+		fn, err := handleProxy(ctx, nil, conn, tDial, resp.GetConnectionId(), resp.GetProtocolContext(), nil)
 		t.Cleanup(func() {
 			// Use of the t.Cleanup is so we can check the state of the returned
 			// error since it isn't valid to call `t.FailNow()` from a goroutine.

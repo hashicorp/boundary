@@ -69,9 +69,15 @@ type downstreamers interface {
 	RootId() string
 }
 
+// recorderCache updates the status updates with relevant recording
+// information
+type recorderCache any
+
 // reverseConnReceiverFactory provides a simple factory which a Worker can use to
 // create its reverseConnReceiver
 var reverseConnReceiverFactory func() reverseConnReceiver
+
+var recorderCacheFactory func() recorderCache
 
 var initializeReverseGrpcClientCollectors = noopInitializePromCollectors
 
@@ -102,6 +108,8 @@ type Worker struct {
 	addressReceivers []addressReceiver
 
 	sessionManager session.Manager
+
+	recorderCache recorderCache
 
 	controllerStatusConn *atomic.Value
 	everAuthenticated    *ua.Uint32
@@ -180,6 +188,10 @@ func New(conf *Config) (*Worker, error) {
 
 	if reverseConnReceiverFactory != nil {
 		w.downstreamReceiver = reverseConnReceiverFactory()
+	}
+
+	if recorderCacheFactory != nil {
+		w.recorderCache = recorderCacheFactory()
 	}
 
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
