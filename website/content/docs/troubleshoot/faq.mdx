@@ -37,7 +37,7 @@ from an IDP to Boundary to assign role assignments dynamically. See Boundary's [
 #### Q: Does Boundary automate the discovery and configuration of new targets (e.g. servers)? What happens if a host IP address changes?
 Yes, this is one of the core competencies of Boundary. Boundary can discover new targets in two primary ways
 1. Boundary's [Terraform provider](https://registry.terraform.io/providers/hashicorp/boundary/latest/docs) supports discovery of targets provisioned by Terraform
-2. Boundary's [dynamic host catalog](/boundary/tutorials/oss-access-management/aws-host-catalogs)
+2. Boundary's [dynamic host catalog](/boundary/tutorials/access-management/aws-host-catalogs)
 agentlessly queries infrastructure providers to automate the onboarding and configuration of hosts
 
 All of these methods will automate the discovery and configuration of targets when their ip addresses change. Of course, static hosts can still be manually added via Boundary admin UI and CLI.
