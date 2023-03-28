@@ -67,6 +67,8 @@ begin;
   -- and an update contains a value for delete_time different from the current
   -- value, this trigger will raise an error with error code 23602 which is a
   -- class 23 integrity constraint violation: set_once_violation.
+  --
+  -- Deleted in 66/02_use_set_once_columns.up.sql
   create function before_soft_delete_credential_vault_store() returns trigger
   as $$
   begin
@@ -83,6 +85,7 @@ begin;
   end;
   $$ language plpgsql;
 
+  -- Replaced in 66/02_use_set_once_columns.up.sql
   create trigger before_soft_delete_credential_vault_store before update on credential_vault_store
     for each row execute procedure before_soft_delete_credential_vault_store();
 
