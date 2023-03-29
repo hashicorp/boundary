@@ -8,6 +8,10 @@ on:
 env:
   PKG_NAME: "boundary"
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   set-product-version:
     runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
