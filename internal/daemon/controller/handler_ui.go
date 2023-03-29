@@ -18,9 +18,7 @@ func init() {
 }
 
 // serveMetadata provides controller metadata to the UI for licensed versions of Boundary.
-var serveMetadata = noopServeMetadata
-
-func noopServeMetadata(w http.ResponseWriter) {}
+var serveMetadata = func(w http.ResponseWriter) {}
 
 func handleUiWithAssets(c *Controller) http.Handler {
 	var nextHandler http.Handler
