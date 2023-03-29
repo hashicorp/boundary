@@ -10,6 +10,6 @@ jobs:
   triage:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-    - uses: actions/labeler@5c7539237e04b714afd8ad9b4aed733815b9fab4  # TSCCR: could not find tsccr entry for actions/labeler
+    - uses: actions/labeler@ba790c862c380240c6d5e7427be5ace9a05c754b # v4.0.3
       with:
         repo-token: "${{ secrets.GITHUB_TOKEN }}"

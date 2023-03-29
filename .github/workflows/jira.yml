@@ -33,7 +33,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.JIRA_SYNC_GITHUB_TOKEN }}
 
     - name: Login
-      uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c  # TSCCR: could not find tsccr entry for atlassian/gajira-login
+      uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c # v3
       env:
         JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
         JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
@@ -51,7 +51,7 @@ jobs:
 
     - name: Create ticket
       if: github.event.action == 'opened' && !steps.boundary-team-role.outputs.role
-      uses: tomhjp/gh-action-jira-create@3ed1789cad3521292e591a7cfa703215ec1348bf  # TSCCR: could not find tsccr entry for tomhjp/gh-action-jira-create
+      uses: tomhjp/gh-action-jira-create@3ed1789cad3521292e591a7cfa703215ec1348bf # v0.2.1
       with:
         project: ICU
         issuetype: "GH Issue"
@@ -63,28 +63,28 @@ jobs:
     - name: Search
       if: github.event.action != 'opened'
       id: search
-      uses: tomhjp/gh-action-jira-search@04700b457f317c3e341ce90da5a3ff4ce058f2fa  # TSCCR: could not find tsccr entry for tomhjp/gh-action-jira-search
+      uses: tomhjp/gh-action-jira-search@04700b457f317c3e341ce90da5a3ff4ce058f2fa # v0.2.2
       with:
         # cf[10089] is Issue Link custom field
         jql: 'issuetype = "GH Issue" and cf[10089]="${{ github.event.issue.html_url || github.event.pull_request.html_url }}"'
 
     - name: Sync comment
       if: github.event.action == 'created' && steps.search.outputs.issue
-      uses: tomhjp/gh-action-jira-comment@6eb6b9ead70221916b6badd118c24535ed220bd9  # TSCCR: could not find tsccr entry for tomhjp/gh-action-jira-comment
+      uses: tomhjp/gh-action-jira-comment@6eb6b9ead70221916b6badd118c24535ed220bd9 # v0.2.0
       with:
         issue: ${{ steps.search.outputs.issue }}
         comment: "${{ github.actor }} ${{ github.event.review.state || 'commented' }}:\n\n${{ github.event.comment.body || github.event.review.body }}\n\n${{ github.event.comment.html_url || github.event.review.html_url }}"
 
     - name: Close ticket
       if: (github.event.action == 'closed' || github.event.action == 'deleted') && steps.search.outputs.issue
-      uses: atlassian/gajira-transition@4749176faf14633954d72af7a44d7f2af01cc92b  # TSCCR: could not find tsccr entry for atlassian/gajira-transition
+      uses: atlassian/gajira-transition@4749176faf14633954d72af7a44d7f2af01cc92b # v3
       with:
         issue: ${{ steps.search.outputs.issue }}
         transition: Done
 
     - name: Reopen ticket
       if: github.event.action == 'reopened' && steps.search.outputs.issue
-      uses: atlassian/gajira-transition@4749176faf14633954d72af7a44d7f2af01cc92b  # TSCCR: could not find tsccr entry for atlassian/gajira-transition
+      uses: atlassian/gajira-transition@4749176faf14633954d72af7a44d7f2af01cc92b # v3
       with:
         issue: ${{ steps.search.outputs.issue }}
         transition: "To Do"
