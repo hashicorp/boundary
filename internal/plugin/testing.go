@@ -44,10 +44,10 @@ func (c *plugin) SetTableName(n string) {
 	c.tableName = n
 }
 
-func testPlugin(t testing.TB, conn *db.DB, name string) *plugin {
+func TestPlugin(t testing.TB, conn *db.DB, name string) *Plugin {
 	t.Helper()
-	p := newPlugin(name)
-	id, err := db.NewPublicId("plg")
+	p := NewPlugin(WithName(name))
+	id, err := newPluginId()
 	require.NoError(t, err)
 	p.PublicId = id
 

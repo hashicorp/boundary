@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package host
+package plugin
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/plugin/host/store"
+	"github.com/hashicorp/boundary/internal/plugin/store"
 )
 
 func TestPlugin_Create(t *testing.T) {
@@ -121,7 +121,7 @@ func TestPlugin_Delete(t *testing.T) {
 }
 
 func TestPlugin_SetTableName(t *testing.T) {
-	defaultTableName := "plugin_host"
+	defaultTableName := "plugin"
 	tests := []struct {
 		name        string
 		initialName string

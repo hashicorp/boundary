@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +19,7 @@ func TestHost_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	cat2 := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 

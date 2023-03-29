@@ -14,13 +14,13 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/host/plugin"
+	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	plugstore "github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/host/static"
 	staticstore "github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/perms"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -49,7 +49,7 @@ var (
 			action.SetHosts,
 			action.RemoveHosts,
 		},
-		plugin.Subtype: {
+		hostplugin.Subtype: {
 			action.NoOp,
 			action.Read,
 			action.Update,
@@ -72,7 +72,7 @@ func init() {
 	if maskManager[static.Subtype], err = handlers.NewMaskManager(handlers.MaskDestination{&staticstore.HostSet{}, &staticstore.UnimplementedSetFields{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
 		panic(err)
 	}
-	if maskManager[plugin.Subtype], err = handlers.NewMaskManager(handlers.MaskDestination{&plugstore.HostSet{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
+	if maskManager[hostplugin.Subtype], err = handlers.NewMaskManager(handlers.MaskDestination{&plugstore.HostSet{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
 		panic(err)
 	}
 }
@@ -94,7 +94,7 @@ func NewService(staticRepoFn common.StaticRepoFactory, pluginRepoFn common.Plugi
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
 	if pluginRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing plugin repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing hostplugin repository")
 	}
 	return Service{staticRepoFn: staticRepoFn, pluginRepoFn: pluginRepoFn}, nil
 }
@@ -451,7 +451,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 			hl = append(hl, h)
 		}
 		hs = hset
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return nil, nil, nil, err
@@ -466,7 +466,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Set, []host.H
 		hs = hset
 		plg = toPluginInfo(hsplg)
 		for _, h := range hset.HostIds {
-			hl = append(hl, &plugin.Host{
+			hl = append(hl, &hostplugin.Host{
 				Host: &plugstore.Host{
 					PublicId:  h,
 					CatalogId: hset.CatalogId,
@@ -502,7 +502,7 @@ func (s Service) createInRepo(ctx context.Context, projectId, catalogId string, 
 			return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create host set but no error returned from repository.")
 		}
 		hSet = out
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		h, err := toStoragePluginSet(ctx, catalogId, item)
 		if err != nil {
 			return nil, nil, err
@@ -564,7 +564,7 @@ func (s Service) updatePluginInRepo(ctx context.Context, projectId string, req *
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for update"))
 	}
 	h.PublicId = req.GetId()
-	dbMask := maskManager[plugin.Subtype].Translate(req.GetUpdateMask().GetPaths(), "attributes")
+	dbMask := maskManager[hostplugin.Subtype].Translate(req.GetUpdateMask().GetPaths(), "attributes")
 	if len(dbMask) == 0 {
 		return nil, nil, nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 	}
@@ -591,7 +591,7 @@ func (s Service) updateInRepo(ctx context.Context, projectId, catalogId string, 
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
 	case static.Subtype:
 		hs, hosts, err = s.updateStaticInRepo(ctx, projectId, catalogId, req)
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		hs, hosts, plg, err = s.updatePluginInRepo(ctx, projectId, req)
 	}
 	return
@@ -610,7 +610,7 @@ func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool
 		if err != nil {
 			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 		}
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return false, err
@@ -640,7 +640,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, opt ...host
 		for _, a := range sl {
 			sets = append(sets, a)
 		}
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -763,7 +763,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 				return nil, res
 			}
 			set = ss
-		case plugin.Subtype:
+		case hostplugin.Subtype:
 			ps, _, err := pluginRepo.LookupSet(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -792,7 +792,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		cat = cs
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		pc, _, err := pluginRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -808,7 +808,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return cat, auth.Verify(ctx, opts...)
 }
 
-func toPluginInfo(plg *hostplugin.Plugin) *plugins.PluginInfo {
+func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {
 	if plg == nil {
 		return nil
 	}
@@ -838,8 +838,8 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 		switch in.(type) {
 		case *static.HostSet:
 			out.Type = static.Subtype.String()
-		case *plugin.HostSet:
-			out.Type = plugin.Subtype.String()
+		case *hostplugin.HostSet:
+			out.Type = hostplugin.Subtype.String()
 		}
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
@@ -873,7 +873,7 @@ func toProto(ctx context.Context, in host.Set, hosts []host.Host, opt ...handler
 	}
 
 	switch h := in.(type) {
-	case *plugin.HostSet:
+	case *hostplugin.HostSet:
 		if outputFields.Has(globals.PreferredEndpointsField) {
 			out.PreferredEndpoints = h.PreferredEndpoints
 		}
@@ -913,25 +913,25 @@ func toStorageStaticSet(ctx context.Context, catalogId string, item *pb.HostSet)
 	return hs, nil
 }
 
-func toStoragePluginSet(ctx context.Context, catalogId string, item *pb.HostSet) (*plugin.HostSet, error) {
+func toStoragePluginSet(ctx context.Context, catalogId string, item *pb.HostSet) (*hostplugin.HostSet, error) {
 	const op = "host_set_service.toStoragePluginSet"
-	var opts []plugin.Option
+	var opts []hostplugin.Option
 	if item.GetName() != nil {
-		opts = append(opts, plugin.WithName(item.GetName().GetValue()))
+		opts = append(opts, hostplugin.WithName(item.GetName().GetValue()))
 	}
 	if item.GetDescription() != nil {
-		opts = append(opts, plugin.WithDescription(item.GetDescription().GetValue()))
+		opts = append(opts, hostplugin.WithDescription(item.GetDescription().GetValue()))
 	}
 	if item.GetAttributes() != nil {
-		opts = append(opts, plugin.WithAttributes(item.GetAttributes()))
+		opts = append(opts, hostplugin.WithAttributes(item.GetAttributes()))
 	}
 	if item.GetPreferredEndpoints() != nil {
-		opts = append(opts, plugin.WithPreferredEndpoints(item.GetPreferredEndpoints()))
+		opts = append(opts, hostplugin.WithPreferredEndpoints(item.GetPreferredEndpoints()))
 	}
 	if item.GetSyncIntervalSeconds() != nil {
-		opts = append(opts, plugin.WithSyncIntervalSeconds(item.GetSyncIntervalSeconds().GetValue()))
+		opts = append(opts, hostplugin.WithSyncIntervalSeconds(item.GetSyncIntervalSeconds().GetValue()))
 	}
-	hs, err := plugin.NewHostSet(ctx, catalogId, opts...)
+	hs, err := hostplugin.NewHostSet(ctx, catalogId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for creation"))
 	}
@@ -969,8 +969,8 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateHostSetRequest) e
 			if len(req.GetItem().PreferredEndpoints) > 0 {
 				badFields[globals.PreferredEndpointsField] = "This field is not yet supported for static host sets."
 			}
-		case plugin.Subtype:
-			if req.GetItem().GetType() != "" && req.GetItem().GetType() != plugin.Subtype.String() {
+		case hostplugin.Subtype:
+			if req.GetItem().GetType() != "" && req.GetItem().GetType() != hostplugin.Subtype.String() {
 				badFields[globals.TypeField] = "Doesn't match the parent resource's type."
 			}
 			if val := req.GetItem().GetSyncIntervalSeconds(); val != nil {
@@ -997,7 +997,7 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateHostSetRequest) e
 			if req.GetItem().GetType() != "" && req.GetItem().GetType() != static.Subtype.String() {
 				badFields[globals.TypeField] = "Cannot modify the resource type."
 			}
-		case plugin.Subtype:
+		case hostplugin.Subtype:
 			if val := req.GetItem().GetSyncIntervalSeconds(); val != nil {
 				if val.GetValue() == 0 || val.GetValue() < -1 {
 					badFields[globals.SyncIntervalSecondsField] = "Must be -1 or a positive integer."

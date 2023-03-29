@@ -6,10 +6,11 @@ syntax = "proto3";
 // Package store provides protobufs for storing types in the host package.
 package controller.storage.plugin.store.v1;
 
+import "controller/custom_options/v1/options.proto";
+import "controller/storage/timestamp/v1/timestamp.proto";
+
 option go_package = "github.com/hashicorp/boundary/internal/plugin/store;store";
 
-// This is a typeless plugin.  In practice this should never be used directly.
-// This is included for testing purposes only.
 message Plugin {
   // public_id is a surrogate key suitable for use in a public API.
   // @inject_tag: `gorm:"primary_key"`
@@ -21,5 +22,26 @@ message Plugin {
 
   // name is optional. If set, it must be unique within scope_id.
   // @inject_tag: `gorm:"default:null"`
-  string name = 30;
+  string name = 30 [(custom_options.v1.mask_mapping) = {
+    this: "Name"
+    that: "name"
+  }];
+
+  // description is optional.
+  // @inject_tag: `gorm:"default:null"`
+  string description = 40 [(custom_options.v1.mask_mapping) = {
+    this: "Description"
+    that: "description"
+  }];
+
+  // The create_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp create_time = 50;
+
+  // The update_time is set by the database.
+  // @inject_tag: `gorm:"default:current_timestamp"`
+  timestamp.v1.Timestamp update_time = 60;
+
+  // @inject_tag: `gorm:"default:null"`
+  uint32 version = 70;
 }
