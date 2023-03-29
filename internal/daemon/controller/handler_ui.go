@@ -45,7 +45,7 @@ func handleUiWithAssets(c *Controller) http.Handler {
 			switch r.URL.Path {
 			case "/", "/favicon.png", "/assets/styles.css":
 			case "/controller-metadata.json":
-				serveMetadata(w)
+				serveMetadata(c.baseContext, w)
 				return
 			default:
 				for i := dotIndex + 1; i < len(r.URL.Path); i++ {
