@@ -10,7 +10,7 @@ env:
 
 jobs:
   set-product-version:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     outputs:
       product-version: ${{ steps.set-product-version.outputs.product-version }}
       base-product-version: $${{ steps.set-product-version.outputs.base-product-version }}
@@ -23,7 +23,7 @@ jobs:
 
   product-metadata:
     needs: set-product-version
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     outputs:
       product-minor-version: ${{ steps.get-product-minor-version.outputs.product-minor-version }}
       product-edition: ${{ steps.get-product-edition.outputs.product-edition }}
@@ -36,7 +36,7 @@ jobs:
         # version, because "goenv" can react to it automatically.
         run: |
           echo "Building with Go $(cat .go-version)"
-          echo "::set-output name=go-version::$(cat .go-version)"
+          echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
@@ -44,8 +44,8 @@ jobs:
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
         uses: actions/cache@v3
         with:
@@ -60,19 +60,19 @@ jobs:
         # Run make edition twice to ensure that extra go output isn't included
         run: |
           make edition
-          echo "::set-output name=product-edition::$(make edition)"
+          echo "product-edition=$(make edition)" >> "$GITHUB_OUTPUT"
       - name: Determine minor product version
         id: get-product-minor-version
         run: |
           VERSION=${{ needs.set-product-version.outputs.product-version }}
           MINOR_VERSION=$(echo $VERSION | cut -d. -f-2)
-          echo "::set-output name=product-minor-version::$MINOR_VERSION"
+          echo "product-minor-version=$MINOR_VERSION" >> "$GITHUB_OUTPUT"
 
   verify-product-metadata:
     needs:
     - set-product-version
     - product-metadata
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     steps:
       - name: 'Checkout directory'
         uses: actions/checkout@v3
@@ -84,7 +84,7 @@ jobs:
 
   generate-metadata-file:
     needs: set-product-version
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     outputs:
       filepath: ${{ steps.generate-metadata-file.outputs.filepath }}
     steps:
@@ -106,7 +106,7 @@ jobs:
     needs:
       - product-metadata
       - set-product-version
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
         goos: [ freebsd, windows, netbsd, openbsd, solaris ]
@@ -134,8 +134,8 @@ jobs:
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
         uses: actions/cache@v3
         with:
@@ -149,7 +149,7 @@ jobs:
         run: git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN }}:@github.com".insteadOf "https://github.com"
       - name: Determine SHA
         id: set-sha
-        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+        run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
         uses: dawidd6/action-download-artifact@v2
         with:
@@ -182,7 +182,7 @@ jobs:
     needs:
       - product-metadata
       - set-product-version
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
         goos: [linux]
@@ -207,8 +207,8 @@ jobs:
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
         uses: actions/cache@v3
         with:
@@ -220,7 +220,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Determine SHA
         id: set-sha
-        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+        run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
         uses: dawidd6/action-download-artifact@v2
         with:
@@ -266,8 +266,8 @@ jobs:
           postremove: ".release/linux/postrm"
       - name: Add Linux Package names to env
         run: |
-          echo "RPM_PACKAGE=$(basename out/*.rpm)" >> $GITHUB_ENV
-          echo "DEB_PACKAGE=$(basename out/*.deb)" >> $GITHUB_ENV
+          echo "RPM_PACKAGE=$(basename out/*.rpm)" >> "$GITHUB_ENV"
+          echo "DEB_PACKAGE=$(basename out/*.deb)" >> "$GITHUB_ENV"
       - name: Upload RPM package
         uses: actions/upload-artifact@v3
         with:
@@ -283,7 +283,7 @@ jobs:
     needs:
       - product-metadata
       - set-product-version
-    runs-on: macos-latest
+    runs-on: ${{ fromJSON(vars.BUILDER_MACOS) }}
     strategy:
       matrix:
         goos: [ darwin ]
@@ -305,8 +305,8 @@ jobs:
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
-          echo "::set-output name=go-build::$(go env GOCACHE)"
-          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
         uses: actions/cache@v3
         with:
@@ -318,7 +318,7 @@ jobs:
             ${{ runner.os }}-go-
       - name: Determine SHA
         id: set-sha
-        run: echo "::set-output name=sha::$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)"
+        run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
         uses: dawidd6/action-download-artifact@v2
         with:
@@ -390,6 +390,7 @@ jobs:
       - set-product-version
       - product-metadata
       - build-linux
+      - build-docker
     uses: ./.github/workflows/enos-run.yml
     with:
       artifact-name: "boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip"
