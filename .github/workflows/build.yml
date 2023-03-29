@@ -404,3 +404,12 @@ jobs:
       docker-image-name: ${{ needs.build-docker.outputs.name }}
       docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.dev.tar"
     secrets: inherit
+  bats:
+    uses: ./.github/workflows/test-cli-ui.yml
+    if: "! github.event.pull_request.head.repo.fork"
+    needs:
+      - set-product-version
+      - build-linux
+    with:
+      product-version: ${{ needs.set-product-version.outputs.product-version }}
+    secrets: inherit
