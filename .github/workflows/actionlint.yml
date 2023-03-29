@@ -1,0 +1,18 @@
+name: Lint GitHub Actions workflows
+on:
+  push:
+    paths:
+      - ".github/workflows/*.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    steps:
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      - name: Check workflow files
+        uses: docker://docker.mirror.hashicorp.services/rhysd/actionlint@sha256:02ccb6d91e4cb4a7b21eb99d5274d257e81ae667688d730e89d7ea0d6d35db91
+        with:
+          args: -color -ignore SC2129 -ignore "'property \"download-path\" is not defined in object type'"
