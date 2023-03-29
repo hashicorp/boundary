@@ -45,9 +45,9 @@ jobs:
           # getdiff echoes the diff in GitHub markdown syntax or "Unchanged" if
           # the file is empty.
           getdiff() {
-            if [[ -s $1 ]]; then
+            if [[ -s "$1" ]]; then
               echo \`\`\`diff
-              echo "$(cat $1)"
+              cat "$1"
               echo \`\`\`
             else
               echo "Unchanged"
@@ -95,4 +95,4 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -d @body.json \
-            $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number }}/comments
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number }}/comments"
