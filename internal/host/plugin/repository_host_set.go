@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/endpoint"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	iplugin "github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
@@ -68,7 +68,7 @@ func normalizeSetAttributes(ctx context.Context, plgClient plgpb.HostPluginServi
 //
 // Both s.Name and s.Description are optional. If s.Name is set, it must be
 // unique within s.CatalogId.
-func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet, _ ...Option) (*HostSet, *hostplugin.Plugin, error) {
+func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet, _ ...Option) (*HostSet, *iplugin.Plugin, error) {
 	const op = "plugin.(Repository).CreateSet"
 	if s == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -239,7 +239,7 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 // record written, but some plugins may perform some actions on this
 // call. Update of the record in the database is aborted if this call
 // fails.
-func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet, version uint32, fieldMask []string, opt ...Option) (*HostSet, []*Host, *hostplugin.Plugin, int, error) {
+func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet, version uint32, fieldMask []string, opt ...Option) (*HostSet, []*Host, *iplugin.Plugin, int, error) {
 	const op = "plugin.(Repository).UpdateSet"
 	if s == nil {
 		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostSet")
@@ -572,7 +572,7 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 // LookupSet will look up a host set in the repository and return the host set,
 // as well as host IDs that match. If the host set is not found, it will return
 // nil, nil, nil. No options are currently supported.
-func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...host.Option) (*HostSet, *hostplugin.Plugin, error) {
+func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...host.Option) (*HostSet, *iplugin.Plugin, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
@@ -595,7 +595,7 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...host.O
 
 // ListSets returns a slice of HostSets for the catalogId. WithLimit is the
 // only option supported.
-func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...host.Option) ([]*HostSet, *hostplugin.Plugin, error) {
+func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...host.Option) ([]*HostSet, *iplugin.Plugin, error) {
 	const op = "plugin.(Repository).ListSets"
 	if catalogId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
@@ -683,7 +683,7 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 	return rowsDeleted, nil
 }
 
-func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, *hostplugin.Plugin, error) {
+func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, *iplugin.Plugin, error) {
 	const op = "plugin.(Repository).getSets"
 	if publicId == "" && catalogId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing search criteria: both host set id and catalog id are empty")
@@ -741,7 +741,7 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		}
 		sets = append(sets, hs)
 	}
-	var plg *hostplugin.Plugin
+	var plg *iplugin.Plugin
 	if plgId != "" {
 		plg, err = r.getPlugin(ctx, plgId)
 		if err != nil {

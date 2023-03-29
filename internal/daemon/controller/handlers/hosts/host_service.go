@@ -16,11 +16,11 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/host/plugin"
+	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	plugin "github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -43,7 +43,7 @@ var (
 			action.Update,
 			action.Delete,
 		},
-		plugin.Subtype: {
+		hostplugin.Subtype: {
 			action.NoOp,
 			action.Read,
 		},
@@ -310,7 +310,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Host, *plugin
 		if h == nil {
 			return nil, nil, handlers.NotFoundErrorf("Host %q doesn't exist.", id)
 		}
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -425,7 +425,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Hos
 		for _, h := range hl {
 			hosts = append(hosts, h)
 		}
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -473,7 +473,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 				return nil, res
 			}
 			parentId = h.GetCatalogId()
-		case plugin.Subtype:
+		case hostplugin.Subtype:
 			h, _, err := pluginRepo.LookupHost(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -501,7 +501,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 			return nil, res
 		}
 		cat = stcat
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		plcat, _, err := pluginRepo.LookupCatalog(ctx, parentId)
 		if err != nil {
 			res.Error = err
@@ -517,7 +517,7 @@ func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Ty
 	return cat, auth.Verify(ctx, opts...)
 }
 
-func toPluginInfo(plg *hostplugin.Plugin) *plugins.PluginInfo {
+func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {
 	if plg == nil {
 		return nil
 	}
@@ -546,8 +546,8 @@ func toProto(ctx context.Context, in host.Host, opt ...handlers.Option) (*pb.Hos
 		switch in.(type) {
 		case *static.Host:
 			out.Type = static.Subtype.String()
-		case *plugin.Host:
-			out.Type = plugin.Subtype.String()
+		case *hostplugin.Host:
+			out.Type = hostplugin.Subtype.String()
 		}
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
@@ -588,7 +588,7 @@ func toProto(ctx context.Context, in host.Host, opt ...handlers.Option) (*pb.Hos
 		out.Plugin = opts.WithPlugin
 	}
 	switch h := in.(type) {
-	case *plugin.Host:
+	case *hostplugin.Host:
 		if outputFields.Has(globals.IpAddressesField) {
 			out.IpAddresses = h.IpAddresses
 		}
@@ -617,7 +617,7 @@ func validateGetRequest(req *pbs.GetHostRequest) error {
 			badFields["id"] = "Improperly formatted identifier used."
 		}
 		return badFields
-	}, req, static.HostPrefix, plugin.HostPrefix, plugin.PreviousHostPrefix)
+	}, req, static.HostPrefix, hostplugin.HostPrefix, hostplugin.PreviousHostPrefix)
 }
 
 func validateCreateRequest(req *pbs.CreateHostRequest) error {
@@ -658,7 +658,7 @@ func validateCreateRequest(req *pbs.CreateHostRequest) error {
 					}
 				}
 			}
-		case plugin.Subtype:
+		case hostplugin.Subtype:
 			badFields[globals.HostCatalogIdField] = "Cannot manually create hosts for this type of catalog."
 		}
 		return badFields
@@ -696,7 +696,7 @@ func validateUpdateRequest(req *pbs.UpdateHostRequest) error {
 					}
 				}
 			}
-		case plugin.Subtype:
+		case hostplugin.Subtype:
 			badFields[globals.IdField] = "Cannot modify this type of host."
 		default:
 			badFields["id"] = "Improperly formatted identifier used."
@@ -709,7 +709,7 @@ func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 	return handlers.ValidateDeleteRequest(func() map[string]string {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
-		case plugin.Subtype:
+		case hostplugin.Subtype:
 			badFields[globals.IdField] = "Cannot manually delete this type of host."
 		}
 		return badFields
@@ -718,7 +718,7 @@ func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 
 func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
-	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix, plugin.HostCatalogPrefix, plugin.PreviousHostCatalogPrefix) {
+	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), static.HostCatalogPrefix, hostplugin.HostCatalogPrefix, hostplugin.PreviousHostCatalogPrefix) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
 	}
 	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {

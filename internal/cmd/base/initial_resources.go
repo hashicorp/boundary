@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -554,7 +554,7 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 // It also registers the plugin in the shared map of running plugins.  Since
 // all boundary provided host plugins must have a name, a name is required
 // when calling RegisterHostPlugin and will be used even if WithName is provided.
-func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.HostPluginServiceClient, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
+func (b *Server) RegisterHostPlugin(ctx context.Context, name string, hostClient plgpb.HostPluginServiceClient, opt ...plugin.Option) (*plugin.Plugin, error) {
 	if name == "" {
 		return nil, fmt.Errorf("no name provided when creating plugin.")
 	}
@@ -571,31 +571,33 @@ func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	hpRepo, err := hostplugin.NewRepository(rw, rw, kmsCache)
+	hpRepo, err := plugin.NewRepository(rw, rw, kmsCache)
 	if err != nil {
 		return nil, fmt.Errorf("error creating host plugin repository: %w", err)
 	}
 
-	plugin, err := hpRepo.LookupPluginByName(ctx, name)
+	plg, err := hpRepo.LookupPluginByName(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("error looking up host plugin by name: %w", err)
 	}
 
-	if plugin == nil {
-		opt = append(opt, hostplugin.WithName(name))
-		plugin = hostplugin.NewPlugin(opt...)
-		plugin, err = hpRepo.CreatePlugin(ctx, plugin, opt...)
+	if plg == nil {
+		opt = append(opt, plugin.WithName(name))
+		plg = plugin.NewPlugin(opt...)
+		plg, err = hpRepo.CreatePlugin(ctx, plg, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error creating host plugin: %w", err)
 		}
 	}
 
+	hpRepo.AddSupportFlag(ctx, plg, plugin.PluginTypeHost)
+
 	if b.HostPlugins == nil {
 		b.HostPlugins = make(map[string]plgpb.HostPluginServiceClient)
 	}
-	b.HostPlugins[plugin.GetPublicId()] = plg
+	b.HostPlugins[plg.GetPublicId()] = hostClient
 
-	return plugin, nil
+	return plg, nil
 }
 
 // unprivilegedDevUserRoleSetup adds dev user to the role that grants

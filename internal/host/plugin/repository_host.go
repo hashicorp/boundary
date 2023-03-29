@@ -9,12 +9,12 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 )
 
 // LookupHost will look up a host in the repository. If the host is not
 // found, it will return nil, nil. All options are ignored.
-func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Option) (*Host, *hostplugin.Plugin, error) {
+func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Option) (*Host, *plugin.Plugin, error) {
 	const op = "plugin.(Repository).LookupHost"
 	if publicId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
@@ -37,7 +37,7 @@ func (r *Repository) LookupHost(ctx context.Context, publicId string, opt ...Opt
 
 // ListHostsByCatalogId returns a slice of Hosts for the catalogId.
 // WithLimit is the only option supported.
-func (r *Repository) ListHostsByCatalogId(ctx context.Context, catalogId string, opt ...Option) ([]*Host, *hostplugin.Plugin, error) {
+func (r *Repository) ListHostsByCatalogId(ctx context.Context, catalogId string, opt ...Option) ([]*Host, *plugin.Plugin, error) {
 	const op = "plugin.(Repository).ListHostsByCatalogId"
 	if catalogId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
