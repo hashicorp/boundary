@@ -651,6 +651,8 @@ func (c *Command) Run(args []string) int {
 	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
 	c.InfoKeys = append(c.InfoKeys, "[Recovery] AEAD Key Bytes")
 	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
+	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
+	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 
 	// Initialize the listeners
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {
@@ -797,8 +799,6 @@ func (c *Command) Run(args []string) int {
 				c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 				return base.CommandUserError
 			}
-			c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
-			c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 		}
 
 		if err := c.worker.Start(); err != nil {
