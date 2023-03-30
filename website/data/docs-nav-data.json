@@ -212,6 +212,10 @@
         "path": "concepts/service-discovery"
       },
       {
+        "title": "Credential Management",
+        "path": "concepts/credential-management"
+      },
+      {
         "title": "Security",
         "routes": [
           {
