@@ -350,6 +350,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    QueueIsFull,
 			want: QueueIsFull,
 		},
+		{
+			name: "NotFound",
+			c:    NotFound,
+			want: NotFound,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

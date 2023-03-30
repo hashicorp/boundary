@@ -295,4 +295,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "retry limit exceeded",
 		Kind:    State,
 	},
+	NotFound: {
+		Message: "not found",
+		Kind:    State,
+	},
 }
