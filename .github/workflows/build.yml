@@ -400,3 +400,12 @@ jobs:
       artifact-name: "boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip"
       go-version: ${{ needs.product-metadata.outputs.go-version }}
     secrets: inherit
+  bats:
+    uses: ./.github/workflows/test-cli-ui.yml
+    if: "! github.event.pull_request.head.repo.fork"
+    needs:
+      - set-product-version
+      - build-linux
+    with:
+      product-version: ${{ needs.set-product-version.outputs.product-version }}
+    secrets: inherit
