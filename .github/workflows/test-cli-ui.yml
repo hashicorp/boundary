@@ -3,7 +3,7 @@ name: test-cli-ui
 on:
   workflow_call:
     inputs:
-      product-version:
+      artifact-name:
         type: string
         required: true
 
@@ -73,16 +73,14 @@ jobs:
         run: |
           unzip /tmp/bats-cli-ui-deps/vault.zip -d /usr/local/bin
       - name: Download Linux AMD64 Boundary bundle
-        uses: dawidd6/action-download-artifact@5e780fc7bbd0cac69fc73271ed86edf5dcb72d67 # v2.26.0
+        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
         with:
-          workflow: build.yml
-          commit: ${{ github.event.workflow_run.head_sha }}
-          name: boundary_${{ inputs.product-version }}_linux_amd64.zip
+          name: ${{ inputs.artifact-name }}
           path: /tmp
       - name: Unpack boundary bundle
         run: |
-          unzip /tmp/boundary_${{ inputs.product-version }}_linux_amd64.zip -d /usr/local/bin
-          rm /tmp/boundary_${{ inputs.product-version }}_linux_amd64.zip
+          unzip /tmp/${{ inputs.artifact-name }} -d /usr/local/bin
+          rm /tmp/${{ inputs.artifact-name }}
       - name: Versions
         run: |
           echo "go version:"
