@@ -222,6 +222,7 @@ jobs:
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
           ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
           ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
+          ENOS_DEBUG_DATA_ROOT_DIR: ./support/debug-data
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
@@ -242,10 +243,19 @@ jobs:
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
           ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
           ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
+          ENOS_DEBUG_DATA_ROOT_DIR: ./support/debug-data
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Upload Debug Data
+        if: steps.run.outcome == 'failure'
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        with:
+          # The name of the artifact is the same as the matrix scenario name with the spaces replaced with underscores.
+          name: ${${{ matrix.filter }}// /_}_run.zip
+          path: $ENOS_DEBUG_DATA_ROOT_DIR
+          retention-days: 30
       - name: Upload e2e tests output
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
