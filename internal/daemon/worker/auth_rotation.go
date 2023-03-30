@@ -17,8 +17,9 @@ import (
 
 func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 	const op = "worker.(Worker).startAuthRotationTicking"
-	if w.conf.WorkerAuthKms != nil && !w.conf.DevUsePkiForUpstream {
-		event.WriteSysEvent(cancelCtx, op, "using kms worker authentication; pki auth rotation ticking not running")
+
+	if w.conf.RawConfig.Worker.UseDeprecatedKmsAuthMethod {
+		event.WriteSysEvent(cancelCtx, op, "using deprecated kms worker authentication method; pki auth rotation ticking not running")
 		return
 	}
 
@@ -47,7 +48,12 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			resetDuration = defaultResetDuration
 
 			// Check if it's time to rotate and if not don't do anything
-			currentNodeCreds, err := types.LoadNodeCredentials(cancelCtx, w.WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+			currentNodeCreds, err := types.LoadNodeCredentials(
+				cancelCtx,
+				w.WorkerAuthStorage,
+				nodeenrollment.CurrentId,
+				nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
+			)
 			if err != nil {
 				if errors.Is(err, nodeenrollment.ErrNotFound) {
 					// Be silent
@@ -139,7 +145,7 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 		ctx,
 		w.WorkerAuthStorage,
 		randReaderOpt,
-		nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
+		nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
 		nodeenrollment.WithSkipStorage(true),
 	)
 	if err != nil {
@@ -189,7 +195,7 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 		ctx,
 		w.WorkerAuthStorage,
 		fetchResp,
-		nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
+		nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
 	)
 	if err != nil {
 		return berrors.Wrap(ctx, err, op)

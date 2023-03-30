@@ -6,7 +6,7 @@ package worker
 import (
 	"context"
 	"crypto/tls"
-	stderrers "errors"
+	stderrors "errors"
 	"fmt"
 	"log"
 	"math"
@@ -22,14 +22,18 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/hashicorp/nodeenrollment/protocol"
+	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/hashicorp/nodeenrollment/util/temperror"
+	"github.com/hashicorp/nodeenrollment/util/toggledlogger"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -113,17 +117,49 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 
 	fetchCredsFn := func(
 		ctx context.Context,
-		_ nodee.Storage,
+		storage nodee.Storage,
 		req *types.FetchNodeCredentialsRequest,
-		_ ...nodee.Option,
+		opt ...nodee.Option,
 	) (*types.FetchNodeCredentialsResponse, error) {
+		switch {
+		case req == nil:
+			return nil, temperror.New(stderrors.New("nil request in multi-hop fetch function"))
+		case len(req.Bundle) == 0:
+			return nil, temperror.New(stderrors.New("empty bundle in multi-hop fetch function"))
+		}
+		// Check to see if there is encrypted registration info, if so we need
+		// to use our wrapper to decrypt it
+		reqInfo := new(types.FetchNodeCredentialsInfo)
+		if err := proto.Unmarshal(req.Bundle, reqInfo); err != nil {
+			return nil, temperror.New(fmt.Errorf("error unmarshaling request bundle in multi-hop fetch function: %w", err))
+		}
+		if len(reqInfo.WrappedRegistrationInfo) > 0 {
+			regInfo, err := registration.DecryptWrappedRegistrationInfo(ctx, reqInfo, opt...)
+			if err != nil {
+				return nil, temperror.New(fmt.Errorf("error during decryption of wrapped registration info in multi-hop fetch function: %w", err))
+			}
+			// We've successfully decrypted it using our registration wrapper;
+			// now we need to encrypt it to the server
+			nodeCreds, err := types.LoadNodeCredentials(ctx, storage, nodee.CurrentId, opt...)
+			if err != nil {
+				return nil, temperror.New(fmt.Errorf("error loading node credentials in multi-hop fetch function: %w", err))
+			}
+			req.RewrappingKeyId, err = nodee.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+			if err != nil {
+				return nil, temperror.New(fmt.Errorf("error deriving node credentials key id in multi-hop fetch function: %w", err))
+			}
+			req.RewrappedWrappingRegistrationFlowInfo, err = nodee.EncryptMessage(ctx, regInfo, nodeCreds)
+			if err != nil {
+				return nil, temperror.New(fmt.Errorf("error rewrapping registration information in multi-hop fetch function: %w", err))
+			}
+		}
 		client := w.controllerMultihopConn.Load()
 		if client == nil {
-			return nil, temperror.New(stderrers.New("error fetching controller connection, client is nil"))
+			return nil, temperror.New(stderrors.New("error fetching controller connection, client is nil"))
 		}
 		multihopClient, ok := client.(multihop.MultihopServiceClient)
 		if !ok {
-			return nil, temperror.New(stderrers.New("client could not be understood as a multihop service client"))
+			return nil, temperror.New(stderrors.New("client could not be understood as a multihop service client"))
 		}
 		return multihopClient.FetchNodeCredentials(ctx, req)
 	}
@@ -136,13 +172,29 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 	) (*types.GenerateServerCertificatesResponse, error) {
 		client := w.controllerMultihopConn.Load()
 		if client == nil {
-			return nil, temperror.New(stderrers.New("error fetching controller connection, client is nil"))
+			return nil, temperror.New(stderrors.New("error fetching controller connection, client is nil"))
 		}
 		multihopClient, ok := client.(multihop.MultihopServiceClient)
 		if !ok {
-			return nil, temperror.New(stderrers.New("client could not be understood as a multihop service client"))
+			return nil, temperror.New(stderrors.New("client could not be understood as a multihop service client"))
 		}
 		return multihopClient.GenerateServerCertificates(ctx, req)
+	}
+
+	eventLogger, err := event.NewHclogLogger(w.baseContext, w.conf.Eventer)
+	if err != nil {
+		event.WriteError(w.baseContext, op, err)
+		return nil, errors.Wrap(w.baseContext, err, op)
+	}
+	// Give the log a prefix
+	eventLogger = eventLogger.Named(fmt.Sprintf("workerauth_listener"))
+	// Wrap the log in a toggle so we can turn it on and off via config and
+	// SIGHUP
+	eventLogger = toggledlogger.NewToggledLogger(eventLogger, w.conf.WorkerAuthDebuggingEnabled)
+
+	wrapperToUse := w.conf.WorkerAuthKms
+	if !util.IsNil(w.conf.DownstreamWorkerAuthKms) {
+		wrapperToUse = w.conf.DownstreamWorkerAuthKms
 	}
 
 	interceptingListener, err := protocol.NewInterceptingListener(
@@ -155,6 +207,11 @@ func (w *Worker) configureForWorker(ln *base.ServerListener, logger *log.Logger,
 			},
 			FetchCredsFunc:                 fetchCredsFn,
 			GenerateServerCertificatesFunc: generateServerCertificatesFn,
+			Options: []nodee.Option{
+				nodee.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
+				nodee.WithRegistrationWrapper(wrapperToUse),
+				nodee.WithLogger(eventLogger),
+			},
 		})
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)

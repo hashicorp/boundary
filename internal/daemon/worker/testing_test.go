@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"math/big"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -165,15 +166,19 @@ func TestNewTestMultihopWorkers(t *testing.T) {
 	t.Cleanup(c.Shutdown)
 	pkiTags := map[string][]string{"connected": {"directly"}}
 	childPkiTags := map[string][]string{"connected": {"multihop"}}
+	childKmsTags := map[string][]string{"connected": {"multihop"}}
 
-	kmsWorker, pkiWorker, childPkiWorker := NewTestMultihopWorkers(t, logger, c.Context(), c.ClusterAddrs(),
-		c.Config().WorkerAuthKms, c.Controller().ServersRepoFn, pkiTags, childPkiTags)
+	enableAuthDebugging := new(atomic.Bool)
+	enableAuthDebugging.Store(true)
+	kmsWorker, pkiWorker, childPkiWorker, childKmsWorker := NewTestMultihopWorkers(t, logger, c.Context(), c.ClusterAddrs(),
+		c.Config().WorkerAuthKms, c.Controller().ServersRepoFn, pkiTags, childPkiTags, childKmsTags, enableAuthDebugging)
 
 	srvRepo, err := c.Controller().ServersRepoFn()
-	workers, err := srvRepo.ListWorkers(ctx, []string{"global"})
-	assert.Len(t, workers, 3)
 	require.NoError(t, err)
-	var kmsW, pkiW, childPkiW *server.Worker
+	workers, err := srvRepo.ListWorkers(ctx, []string{"global"})
+	assert.Len(t, workers, 4)
+	require.NoError(t, err)
+	var kmsW, pkiW, childPkiW, childKmsW *server.Worker
 	for _, w := range workers {
 		switch w.GetAddress() {
 		case kmsWorker.ProxyAddrs()[0]:
@@ -182,18 +187,23 @@ func TestNewTestMultihopWorkers(t *testing.T) {
 			pkiW = w
 		case childPkiWorker.ProxyAddrs()[0]:
 			childPkiW = w
+		case childKmsWorker.ProxyAddrs()[0]:
+			childKmsW = w
 		}
 	}
-	assert.NotNil(t, kmsW)
-	assert.NotNil(t, pkiW)
-	assert.NotNil(t, childPkiW)
+	require.NotNil(t, kmsW)
+	require.NotNil(t, pkiW)
+	require.NotNil(t, childPkiW)
+	require.NotNil(t, childKmsW)
 
 	assert.NotZero(t, kmsW.GetLastStatusTime())
 	assert.NotZero(t, pkiW.GetLastStatusTime())
 	assert.NotZero(t, childPkiW.GetLastStatusTime())
+	assert.NotZero(t, childKmsW.GetLastStatusTime())
 
 	assert.Equal(t, pkiTags, pkiW.GetConfigTags())
 	assert.Equal(t, childPkiTags, childPkiW.GetConfigTags())
+	assert.Equal(t, childKmsTags, childKmsW.GetConfigTags())
 }
 
 func createTestCert(t *testing.T) ([]byte, ed25519.PublicKey, ed25519.PrivateKey) {

@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -76,12 +77,18 @@ type Server struct {
 	StderrLock *sync.Mutex
 	Eventer    *event.Eventer
 
-	RootKms              wrapping.Wrapper
-	WorkerAuthKms        wrapping.Wrapper
-	WorkerAuthStorageKms wrapping.Wrapper
-	RecoveryKms          wrapping.Wrapper
-	Kms                  *kms.Kms
-	SecureRandomReader   io.Reader
+	// NOTE: Unlike the other wrappers below, if set, DownstreamWorkerAuthKms
+	// should always be a PooledWrapper, so that we can allow multiple KMSes to
+	// accept downstream connections. As such it's made explicit here.
+	DownstreamWorkerAuthKms *multi.PooledWrapper
+	RootKms                 wrapping.Wrapper
+	WorkerAuthKms           wrapping.Wrapper
+	WorkerAuthStorageKms    wrapping.Wrapper
+	RecoveryKms             wrapping.Wrapper
+	Kms                     *kms.Kms
+	SecureRandomReader      io.Reader
+
+	WorkerAuthDebuggingEnabled *atomic.Bool
 
 	PrometheusRegisterer prometheus.Registerer
 
@@ -118,10 +125,6 @@ type Server struct {
 	DevTargetSessionConnectionLimit  int
 	DevLoopbackHostPluginId          string
 
-	// DevUsePkiForUpstream is a hint that we are in dev mode and have a worker
-	// auth KMS but want to use PKI for upstream connections
-	DevUsePkiForUpstream bool
-
 	EnabledPlugins []EnabledPlugin
 	HostPlugins    map[string]plgpb.HostPluginServiceClient
 
@@ -140,15 +143,16 @@ type Server struct {
 // NewServer creates a new Server.
 func NewServer(cmd *Command) *Server {
 	return &Server{
-		Command:              cmd,
-		ServerSideShutdownCh: make(chan struct{}),
-		InfoKeys:             make([]string, 0, 20),
-		Info:                 make(map[string]string),
-		SecureRandomReader:   rand.Reader,
-		ReloadFuncsLock:      new(sync.RWMutex),
-		ReloadFuncs:          make(map[string][]reloadutil.ReloadFunc),
-		StderrLock:           new(sync.Mutex),
-		PrometheusRegisterer: prometheus.DefaultRegisterer,
+		Command:                    cmd,
+		ServerSideShutdownCh:       make(chan struct{}),
+		InfoKeys:                   make([]string, 0, 20),
+		Info:                       make(map[string]string),
+		SecureRandomReader:         rand.Reader,
+		ReloadFuncsLock:            new(sync.RWMutex),
+		ReloadFuncs:                make(map[string][]reloadutil.ReloadFunc),
+		StderrLock:                 new(sync.Mutex),
+		WorkerAuthDebuggingEnabled: new(atomic.Bool),
+		PrometheusRegisterer:       prometheus.DefaultRegisterer,
 	}
 }
 
@@ -546,25 +550,22 @@ func (b *Server) SetupListeners(ui cli.Ui, config *configutil.SharedConfig, allo
 // SetupKMSes takes in a parsed config, does some minor checking on purposes,
 // and sends each off to configutil to instantiate a wrapper.
 func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Config, opt ...Option) error {
-	opts := getOpts(opt...)
-
 	sharedConfig := config.SharedConfig
 	var pluginLogger hclog.Logger
 	var err error
 	var previousRootKms wrapping.Wrapper
+	purposeCount := map[string]uint{}
 	for _, kms := range sharedConfig.Seals {
 		for _, purpose := range kms.Purpose {
 			purpose = strings.ToLower(purpose)
+			purposeCount[purpose] = purposeCount[purpose] + 1
 			switch purpose {
 			case "":
 				return errors.New("KMS block missing 'purpose'")
-			case globals.KmsPurposeWorkerAuth:
-				if opts.withSkipWorkerAuthKmsInstantiation {
-					continue
-				}
 			case globals.KmsPurposeRoot,
 				globals.KmsPurposePreviousRoot,
 				globals.KmsPurposeConfig,
+				globals.KmsPurposeWorkerAuth,
 				globals.KmsPurposeWorkerAuthStorage:
 			case globals.KmsPurposeRecovery:
 				if config.Controller != nil && config.DevRecoveryKey != "" {
@@ -595,7 +596,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 					pluginutil.WithPluginsFilesystem(kms_plugin_assets.KmsPluginPrefix, kms_plugin_assets.FileSystem()),
 					pluginutil.WithPluginExecutionDirectory(config.Plugins.ExecutionDir),
 				),
-				configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", purpose)),
+				configutil.WithLogger(pluginLogger.Named(kms.Type).With("purpose", fmt.Sprintf("%s-%d", purpose, purposeCount[purpose]))),
 			)
 			if wrapperConfigError != nil {
 				return fmt.Errorf(
@@ -641,6 +642,21 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)
 				}
 				b.WorkerAuthKms = wrapper
+			case globals.KmsPurposeDownstreamWorkerAuth:
+				if b.DownstreamWorkerAuthKms == nil {
+					b.DownstreamWorkerAuthKms, err = multi.NewPooledWrapper(ctx, wrapper)
+					if err != nil {
+						return fmt.Errorf("Error instantiating pooled wrapper for downstream worker auth: %w.", err)
+					}
+				} else {
+					added, err := b.DownstreamWorkerAuthKms.AddWrapper(ctx, wrapper)
+					if err != nil {
+						return fmt.Errorf("Error adding additional wrapper to downstream worker auth wrapper pool: %w.", err)
+					}
+					if !added {
+						return fmt.Errorf("Wrapper already added to downstream worker auth wrapper pool.")
+					}
+				}
 			case globals.KmsPurposeWorkerAuthStorage:
 				if b.WorkerAuthStorageKms != nil {
 					return fmt.Errorf("Duplicate KMS block for purpose '%s'. You may need to remove all but the last KMS block for this purpose.", purpose)

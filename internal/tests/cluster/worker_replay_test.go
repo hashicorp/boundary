@@ -46,6 +46,7 @@ func TestWorkerReplay(t *testing.T) {
 		NonceFn: func(length int) (string, error) {
 			return "test_noncetest_nonce", nil
 		},
+		UseDeprecatedKmsAuthMethod: true,
 	})
 
 	// Give time for it to connect
@@ -72,6 +73,7 @@ func TestWorkerReplay(t *testing.T) {
 		NonceFn: func(length int) (string, error) {
 			return "test_noncetest_nonce", nil
 		},
+		UseDeprecatedKmsAuthMethod: true,
 	})
 
 	// Give time for it to connect

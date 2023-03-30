@@ -6,23 +6,39 @@ description: |-
 ---
 
 # `worker` Stanza
+The `worker` stanza configures Boundary worker-specific parameters.
 
-The `worker` stanza configures Boundary worker-specific parameters. Boundary
-supports two different types of workers, differentiated by their means of
-authentication to Boundary:
+All workers within Boundary use certificates and encryption keys to identify
+themselves and protect data in transit. However, there are multiple different
+ways to register them so that registration of workers can fit into any workflow.
+Registration methods are referred to as `pki` and `kms` registration methods and
+the differences in how they are configured are in the sub-pages linked at the
+bottom of this page.
 
-- [PKI Workers][] use certificates issued by Boundary to authenticate with controllers
-- [KMS Workers][] use a shared KMS to authenticate with controllers
+Workers registered via the `pki` method ("PKI Workers") must be registered in
+the system via an API call, and require storage on disk to store the current set
+of credentials. Workers registering via the `kms` method ("KMS Workers")
+auto-register after successful authentication, making them an easy mechanism to
+use for automatic scaling, and meaning they are not required to store
+credentials locally; each time they connect the KMS is used to reauthenticate
+them.
 
-Different worker types have different configuration requirements, but share the common worker parameters listed below.
+~> Prior to version 0.13 of Boundary, workers had different properties and
+capabilities depending on the registration method. If you are using pre-0.13
+workers, with pre-0.13 upstreams please be sure to switch the documentation
+version to `0.12.x` for correct information. If you are using 0.13 workers with
+KMS-based authentication with pre-0.13 controllers, you _must_ set the
+`use_deprecated_kms_auth_method` value in the worker configuration. See the KMS
+page for more information.
 
 ## Common Worker Parameters
-The following fields are supported for all worker types:
+Regardless of registration mechanism, the following fields are supported.
 
 ```hcl
 worker {
   public_addr = "5.1.23.198"
 
+  # Mutually exclusive with hcp_boundary_cluster_id
   initial_upstreams = [
     "10.0.0.1",
     "10.0.0.2",
@@ -32,14 +48,17 @@ worker {
     type   = ["prod", "webservers"]
     region = ["us-east-1"]
   }
+
+  # HCP Boundary only
+  # hcp_boundary_cluster_id = "....."
 }
 ```
 
 - `public_addr` - Specifies the public host or IP address (and optionally port)
   at which the worker can be reached _by clients for proxying_. This defaults to
   the address of the listener marked for `proxy` purpose. This is especially
-  useful for cloud environments that do not bind a publicly accessible IP to a NIC
-  on the host directly, such as an Amazon EIP. 
+  useful for cloud environments that do not bind a publicly accessible IP to a
+  NIC on the host directly, such as an Amazon EIP. 
   
   This value can reference any of the following:
   - a direct address string
@@ -50,15 +69,118 @@ worker {
   reaching the boundary cluster. The port will default to `:9201` if not
   specified. This value can be a direct access string array with the addresses,
   or it can refer to a file on disk (`file://`) from which the addresses will be
-  read, or an env var (`env://`) from which the addresses will be read. When using
-  env or file, their contents must formatted as a JSON array: `["127.0.0.1",
-  "192.168.0.1", "10.0.0.1"]`
+  read, or an env var (`env://`) from which the addresses will be read. When
+  using env or file, their contents must formatted as a JSON array:
+  `["127.0.0.1", "192.168.0.1", "10.0.0.1"]`
 
 - `tags` - A map of key-value pairs where values are an array of strings. Most
-  commonly used for [filtering](/boundary/docs/concepts/filtering) targets a worker can
-  proxy via [worker tags](/boundary/docs/concepts/filtering/worker-tags). On `SIGHUP`, the
-  tags set here will be re-parsed and new values used. It can also be a string
+  commonly used for [filtering](/boundary/docs/concepts/filtering) targets a
+  worker can proxy via [worker
+  tags](/boundary/docs/concepts/filtering/worker-tags). On `SIGHUP`, the tags
+  set here will be re-parsed and new values used. It can also be a string
   referring to a file on disk (`file://`) or an env var (`env://`).
+
+- `hcp_boundary_cluster_id` - A string that can be used to configure PKI workers
+  to connect to your HCP Boundary cluster rather than specifying
+  `initial_upstreams`. This is currently only valid for workers using the PKI
+  registration method and for workers directly connected to HCP Boundary.
+
+## Multi-hop worker capabilities <sup>HCP only</sup>
+Multi-hop capabilities, including multi-hop sessions and Vault private access,
+is when a session or Vault credential request goes through more than one worker.
+To enable this, two or more workers must be connected to each other in some
+configuration. There are no limits on the amount of workers allowed in a
+multi-hop session configuration.
+
+It helps to think of “upstream” and “downstream” nodes in the context of
+multi-hope. If you view controllers as the “top” node of a multi-hop chain, any
+worker connected to a node is a "downstream" of that node; the node that any
+particular worker connects to (whether another worker or a controller) is the
+"upstream" of that node. For example, in the diagram below, Worker 2’s upstream
+is Worker 1, and its downstream is Worker 3.
+
+![multi-hop workers](/img/multi-hop-workers.png)
+
+You can deploy multi-hop workers in scenarios where inbound network traffic is
+not allowed. A worker in a private network can send outbound communication to
+its upstream worker, and create a reverse proxy to establish a session.
+
+You can configure [target worker filters][] with multi-hop workers to allow for
+fine-grained control on which workers handle ingress and egress for session
+traffic to a [target][]. Ingress worker filters determine which workers you
+connect with to initiate a session, and egress worker filters determine which
+workers are used to access targets.
+
+### Multi-hop worker requirements
+
+When you configure multi-hop sessions, there is an "ingress" worker, an "egress"
+worker, and any number of intermediary workers. Ingress, egress, and
+intermediary workers have the following requirements.
+
+#### Ingress worker requirements
+
+To proxy target connections, ingress workers require outbound access to the
+Boundary control plane and inbound access from clients.
+
+#### Intermediary worker requirements
+
+Intermediary workers require outbound access to an upstream worker. The upstream
+worker may be an ingress worker or another intermediary worker. Intermediary
+workers also require inbound access from a downstream worker. The downstream
+worker may be an egress worker or another intermediary worker.
+
+#### Egress worker requirements
+
+To proxy target connections, egress workers require outbound access to an
+upstream worker and outbound access to the destination host or service.
+
+## Complete configuration example
+
+```hcl
+listener "tcp" {
+	purpose = "proxy"
+	tls_disable = true
+	address = "127.0.0.1"
+}
+
+worker {
+  # Path for worker storage, assuming PKI registration. Must be unique across workers
+  auth_storage_path="/boundary/demo-worker-1"
+
+  # Workers typically need to reach upstreams on :9201
+  initial_upstreams = [
+    "10.0.0.1",
+    "10.0.0.2",
+    "10.0.0.3",
+  ]
+
+  public_addr = "myhost.mycompany.com"
+
+  tags {
+    type   = ["prod", "webservers"]
+    region = ["us-east-1"]
+  }
+}
+
+# The following KMS config is an example only
+# Use a production KMS such as AWS KMS for production installs
+kms "aead" {
+  purpose = "worker-auth-storage"
+	aead_type = "aes-gcm"
+	key = "X+IJMVT6OnsrIR6G/9OTcJSX+lM9FSPN"
+	key_id = "worker-auth-storage"
+}
+
+
+```
+
+## Tutorials
+
+Refer to the [Self-Managed Worker Registration with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial to learn how to register and manage PKI workers.
+
+Refer to the [Manage Multi-Hop Sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-multi-hop) tutorial to learn how to configure a multi-hop session.
 
 [kms workers]: /boundary/docs/configuration/worker/kms-worker
 [pki workers]: /boundary/docs/configuration/worker/pki-worker
+[target]: /boundary/docs/concepts/domain-model/targets
+[target worker filters]: /boundary/docs/concepts/filtering/worker-tags#target-worker-filtering

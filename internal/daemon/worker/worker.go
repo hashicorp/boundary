@@ -36,6 +36,7 @@ import (
 	"github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	nodeefile "github.com/hashicorp/nodeenrollment/storage/file"
+	nodeeinmem "github.com/hashicorp/nodeenrollment/storage/inmem"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mr-tron/base58"
 	"github.com/prometheus/client_golang/prometheus"
@@ -124,7 +125,7 @@ type Worker struct {
 	updateTags *ua.Bool
 
 	// The storage for node enrollment
-	WorkerAuthStorage             *nodeefile.Storage
+	WorkerAuthStorage             nodeenrollment.Storage
 	WorkerAuthCurrentKeyId        *ua.String
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *nodeenet.SplitListener
@@ -285,35 +286,50 @@ func (w *Worker) Start() error {
 		return nil
 	}
 
-	if w.conf.WorkerAuthKms == nil || w.conf.DevUsePkiForUpstream {
+	w.operationalState.Store(server.UnknownOperationalState)
+
+	if !w.conf.RawConfig.Worker.UseDeprecatedKmsAuthMethod {
 		// In this section, we look for existing worker credentials. The two
-		// variables below store whether to create new credentials and whether
-		// to create a fetch request so it can be displayed in the worker
-		// startup info. These may be different because if initial creds have
-		// been generated on the worker side but not yet authorized/fetched from
-		// the controller, we don't want to invalidate that request on restart
-		// by generating a new set of credentials. However it's safe to output a
-		// new fetch request so we do in fact do that.
+		// variables below store whether to create new credentials and whether to
+		// create a fetch request so it can be displayed in the worker startup info.
+		// These may be different because if initial creds have been generated on
+		// the worker side but not yet authorized/fetched from the controller, we
+		// don't want to invalidate that request on restart by generating a new set
+		// of credentials. However it's safe to output a new fetch request so we do
+		// in fact do that.
 		//
-		// Note that if a controller-generated activation token has been
-		// supplied, we do not output a fetch request; we attempt to use that
-		// directly later.
+		// Note that if a controller-generated activation token has been supplied,
+		// we do not output a fetch request; we attempt to use that directly later.
+		//
+		// If we have a stable storage path we use that; if no path is supplied
+		// (e.g. when using KMS) we use inmem storage.
 		var err error
-		w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
-			nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
-		if err != nil {
-			return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error loading worker auth storage directory"))
+		if w.conf.RawConfig.Worker.AuthStoragePath != "" {
+			w.WorkerAuthStorage, err = nodeefile.New(w.baseContext,
+				nodeefile.WithBaseDirectory(w.conf.RawConfig.Worker.AuthStoragePath))
+			if err != nil {
+				return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error loading worker auth storage directory"))
+			}
+		} else {
+			w.WorkerAuthStorage, err = nodeeinmem.New(w.baseContext)
+			if err != nil {
+				return errors.Wrap(w.baseContext, err, op, errors.WithMsg("error loading in-mem worker auth storage"))
+			}
 		}
 
 		var createNodeAuthCreds bool
 		var createFetchRequest bool
-		nodeCreds, err := types.LoadNodeCredentials(w.baseContext, w.WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+		nodeCreds, err := types.LoadNodeCredentials(
+			w.baseContext,
+			w.WorkerAuthStorage,
+			nodeenrollment.CurrentId,
+			nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms))
 		switch {
 		case err == nil:
-			// It's unclear why this would ever happen -- it shouldn't -- so
-			// this is simply safety against panics if something goes
-			// catastrophically wrong
 			if nodeCreds == nil {
+				// It's unclear why this would ever happen -- it shouldn't -- so
+				// this is simply safety against panics if something goes
+				// catastrophically wrong
 				event.WriteSysEvent(w.baseContext, op, "no error loading worker auth creds but nil creds, creating new creds for registration")
 				createNodeAuthCreds = true
 				createFetchRequest = true
@@ -374,7 +390,7 @@ func (w *Worker) Start() error {
 				w.baseContext,
 				w.WorkerAuthStorage,
 				nodeenrollment.WithRandomReader(w.conf.SecureRandomReader),
-				nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms),
+				nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms),
 			)
 			if err != nil {
 				return fmt.Errorf("error generating new worker auth creds: %w", err)

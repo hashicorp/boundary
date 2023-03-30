@@ -1047,7 +1047,7 @@ func TestCreateWorkerLed(t *testing.T) {
 		// This happens on the worker
 		fileStorage, err := file.New(testCtx)
 		require.NoError(t, err)
-		defer fileStorage.Cleanup()
+		defer func() { fileStorage.Cleanup(testCtx) }()
 
 		nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
 		require.NoError(t, err)
@@ -1430,7 +1430,7 @@ func TestCreateControllerLed(t *testing.T) {
 		// This happens on the worker
 		fileStorage, err := file.New(testCtx)
 		require.NoError(t, err)
-		defer fileStorage.Cleanup()
+		defer func() { fileStorage.Cleanup(testCtx) }()
 
 		nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
 		require.NoError(t, err)

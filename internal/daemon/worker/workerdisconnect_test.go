@@ -29,24 +29,27 @@ func TestDeleteConnectedWorkers(t *testing.T) {
 		Logger: logger.Named("controller"),
 	})
 	t.Cleanup(c.Shutdown)
-	_, directPkiWorker, multiHoppedPkiWorker := NewTestMultihopWorkers(t, logger, c.Context(), c.ClusterAddrs(),
-		c.Config().WorkerAuthKms, c.Controller().ServersRepoFn, nil, nil)
+	_, directPkiWorker, multiHoppedPkiWorker, multiHoppedKmsWorker := NewTestMultihopWorkers(t, logger, c.Context(), c.ClusterAddrs(),
+		c.Config().WorkerAuthKms, c.Controller().ServersRepoFn, nil, nil, nil, nil)
 
 	serverRepo, err := c.Controller().ServersRepoFn()
 	require.NoError(t, err)
 	workers, err := serverRepo.ListWorkers(ctx, []string{"global"}, server.WithLiveness(-1))
 	require.NoError(t, err)
-	var childWorker *server.Worker
-	var pkiWorker *server.Worker
+	var pkiWorker, childPkiWorker, childKmsWorker *server.Worker
 	for _, w := range workers {
 		if w.Type == "pki" && w.GetAddress() == multiHoppedPkiWorker.ProxyAddrs()[0] {
-			childWorker = w
+			childPkiWorker = w
+		}
+		if w.Type == "pki" && w.GetAddress() == multiHoppedKmsWorker.ProxyAddrs()[0] {
+			childKmsWorker = w
 		}
 		if w.Type == "pki" && w.GetAddress() == directPkiWorker.ProxyAddrs()[0] {
 			pkiWorker = w
 		}
 	}
-	require.NotNil(t, childWorker)
+	require.NotNil(t, childKmsWorker)
+	require.NotNil(t, childPkiWorker)
 	require.NotNil(t, pkiWorker)
 
 	cases := []struct {
@@ -55,9 +58,14 @@ func TestDeleteConnectedWorkers(t *testing.T) {
 		testWorker *TestWorker
 	}{
 		{
-			name:       "multi hop worker",
-			workerId:   childWorker.GetPublicId(),
+			name:       "multi hop pki worker",
+			workerId:   childPkiWorker.GetPublicId(),
 			testWorker: multiHoppedPkiWorker,
+		},
+		{
+			name:       "multi hop kms worker",
+			workerId:   childKmsWorker.GetPublicId(),
+			testWorker: multiHoppedKmsWorker,
 		},
 		{
 			name:       "directly connected worker",

@@ -27,7 +27,19 @@ func TestWorkerConnectionInfo(t *testing.T) {
 		{WorkerId: "something"},
 		{UpstreamAddress: "something"},
 		{BoundaryVersion: "something"},
-		{WorkerId: "something", UpstreamAddress: "something else", BoundaryVersion: "something yet more"},
+		{Name: "something"},
+		{Description: "something"},
+		{PublicAddr: "something"},
+		{OperationalState: "something"},
+		{
+			WorkerId:         "something",
+			UpstreamAddress:  "something else",
+			BoundaryVersion:  "something yet more",
+			Name:             "some name",
+			Description:      "some description",
+			PublicAddr:       "some addr",
+			OperationalState: "some state",
+		},
 	}
 	for _, c := range connInfo {
 		st, err := c.AsConnectionStateStruct()

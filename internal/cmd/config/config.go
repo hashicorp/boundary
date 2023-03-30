@@ -139,8 +139,15 @@ type Config struct {
 	// Plugin-related options
 	Plugins Plugins `hcl:"plugins"`
 
-	// Internal field for use with HCP deployments. Used if controllers/ initial_upstreams is not set
+	// Internal field for use with HCP deployments. Used if controllers/
+	// initial_upstreams is not set.
 	HcpbClusterId string `hcl:"hcp_boundary_cluster_id"`
+
+	// Whether to log information from the worker authentication process. This
+	// shouldn't divulge any secrets but may contain information considered
+	// sensitive. This should only be enabled for debugging purposes, and can be
+	// toggled with SIGHUP.
+	EnableWorkerAuthDebugging bool `hcl:"enable_worker_auth_debugging"`
 }
 
 type Controller struct {
@@ -258,6 +265,11 @@ type Worker struct {
 	// token used to register this worker to the cluster. It can be a path, env
 	// var, or direct value.
 	ControllerGeneratedActivationToken string `hcl:"controller_generated_activation_token"`
+
+	// UseDeprecatedKmsAuthMethod indicates that the worker should use the pre-0.13
+	// method of using KMSes to authenticate. This should not be used when the
+	// controller version supports the new style.
+	UseDeprecatedKmsAuthMethod bool `hcl:"use_deprecated_kms_auth_method"`
 }
 
 type Database struct {
@@ -806,7 +818,9 @@ func Parse(d string) (*Config, error) {
 		}
 	}
 
-	sharedConfig, err := configutil.ParseConfig(d)
+	// Now that we can have multiple KMSes for downstream workers, allow an
+	// unlimited number of KMS blocks as we don't know how many might be defined
+	sharedConfig, err := configutil.ParseConfig(d, configutil.WithMaxKmsBlocks(-1))
 	if err != nil {
 		return nil, err
 	}

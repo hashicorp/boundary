@@ -381,18 +381,6 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			},
 		},
 		{
-			name: "name and key id provided",
-			repo: repo,
-			status: server.NewWorker(scope.Global.String(),
-				server.WithName("name and key id provided"),
-				server.WithAddress("someaddress")),
-			options: []server.Option{server.WithKeyId(pkiWorkerKeyId)},
-			errAssert: func(t *testing.T, err error) {
-				t.Helper()
-				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err), err)
-			},
-		},
-		{
 			name: "no name or key id",
 			repo: repo,
 			status: server.NewWorker(scope.Global.String(),
@@ -469,6 +457,20 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Len(t, workers, 3)
 	})
 
+	t.Run("name and key id provided", func(t *testing.T) {
+		anotherStatus := server.NewWorker(scope.Global.String(),
+			server.WithName("name-and-keyid"),
+			server.WithAddress("address2"),
+			server.WithReleaseVersion("Boundary v0.11.0"),
+			server.WithKeyId(pkiWorkerKeyId))
+		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
+		require.NoError(t, err)
+
+		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
+		require.NoError(t, err)
+		assert.Len(t, workers, 4)
+	})
+
 	t.Run("send shutdown status", func(t *testing.T) {
 		anotherStatus := server.NewWorker(scope.Global.String(),
 			server.WithName("another_test_worker"),
@@ -478,10 +480,10 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
 
-		// Filtering out shutdown workers will remove the shutdown KMS and this shutdown worker, resulting in 1
+		// Filtering out shutdown workers will remove the shutdown KMS and this shutdown worker, resulting in 2
 		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
 		require.NoError(t, err)
-		assert.Len(t, workers, 1)
+		assert.Len(t, workers, 2)
 	})
 }
 
@@ -1044,7 +1046,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 					// This happens on the worker
 					fileStorage, err := file.New(testCtx)
 					require.NoError(t, err)
-					defer fileStorage.Cleanup()
+					defer func() { fileStorage.Cleanup(testCtx) }()
 
 					nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
 					require.NoError(t, err)
@@ -1136,7 +1138,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 					// This happens on the worker
 					fileStorage, err := file.New(testCtx)
 					require.NoError(t, err)
-					defer fileStorage.Cleanup()
+					defer func() { fileStorage.Cleanup(testCtx) }()
 
 					nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
 					require.NoError(t, err)
