@@ -8,7 +8,6 @@ alter table plugin add column create_time wt_timestamp;
 alter table plugin add column update_time wt_timestamp;
 alter table plugin add column version wt_version;
 
--- TODO: check if this needs to be an update or an insert
 update plugin as p
 set description = ph.description,
     create_time = ph.create_time,
@@ -31,7 +30,6 @@ drop trigger immutable_columns on plugin;
 create trigger immutable_columns before update on plugin
   for each row execute procedure immutable_columns('public_id', 'create_time');
 
--- TODO: should these functions be deleted entirely (not dropped as functions)?
 drop trigger insert_plugin_subtype on plugin_host;
 drop trigger update_plugin_subtype on plugin_host;
 drop trigger delete_plugin_subtype on plugin_host;
@@ -60,6 +58,6 @@ alter table host_plugin_catalog
     on delete cascade
     on update cascade;
 
-drop table plugin_host; -- TODO: cascade?
+drop table plugin_host;
 
 commit;

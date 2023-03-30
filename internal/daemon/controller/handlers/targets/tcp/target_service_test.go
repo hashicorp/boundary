@@ -37,7 +37,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	iplugin "github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
@@ -1354,7 +1354,7 @@ func TestAddTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := iplugin.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
@@ -1516,7 +1516,7 @@ func TestSetTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := iplugin.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
@@ -1666,7 +1666,7 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := iplugin.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
@@ -2443,7 +2443,7 @@ func TestAuthorizeSession(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := iplugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(plugin.TestPluginServer{
 			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {

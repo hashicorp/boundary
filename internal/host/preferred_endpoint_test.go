@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	iplugin "github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +30,7 @@ func TestPreferredEndpoint_Create(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "create")
+	plg := iplugin.TestPlugin(t, conn, "create")
 	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	set := plugin.TestSet(t, conn, kmsCache, sched, catalog, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
@@ -161,7 +161,7 @@ func TestPreferredEndpoint_Delete(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "create")
+	plg := iplugin.TestPlugin(t, conn, "create")
 	catalog := plugin.TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	set := plugin.TestSet(t, conn, kmsCache, sched, catalog, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plgpb.UnimplementedHostPluginServiceServer{}),
