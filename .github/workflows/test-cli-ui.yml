@@ -1,35 +1,20 @@
 name: test-cli-ui
 
 on:
-  workflow_dispatch:
-  workflow_run:
-    workflows: [ build ]
-    types:
-      - completed
+  workflow_call:
+    inputs:
+      product-version:
+        type: string
+        required: true
 
 permissions:
   contents: read
   actions: read
 
 jobs:
-  set-product-version:
-    runs-on: ${{ fromJSON(vars.RUNNER) }}
-    outputs:
-      product-version: ${{ steps.set-product-version.outputs.product-version }}
-      base-product-version: $${{ steps.set-product-version.outputs.base-product-version }}
-      prerelease-product-version: ${{ steps.set-product-version.outputs.prerelease-product-version }}
-    steps:
-      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
-      - name: Set Product version
-        id: set-product-version
-        uses: hashicorp/actions-set-product-version@v1  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
-
   bats:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     name: CLI tests
-    if: "! github.event.pull_request.head.repo.fork"
-    needs:
-      - set-product-version
     steps:
       - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - name: Import GPG key for Boundary pass keystore
@@ -91,13 +76,13 @@ jobs:
         uses: dawidd6/action-download-artifact@5e780fc7bbd0cac69fc73271ed86edf5dcb72d67 # v2.26.0
         with:
           workflow: build.yml
-          commit: ${{ github.sha }}
-          name: boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip
+          commit: ${{ github.event.workflow_run.head_sha }}
+          name: boundary_${{ inputs.product-version }}_linux_amd64.zip
           path: /tmp
       - name: Unpack boundary bundle
         run: |
-          unzip /tmp/boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip -d /usr/local/bin
-          rm /tmp/boundary_${{ needs.set-product-version.outputs.product-version }}_linux_amd64.zip
+          unzip /tmp/boundary_${{ inputs.product-version }}_linux_amd64.zip -d /usr/local/bin
+          rm /tmp/boundary_${{ inputs.product-version }}_linux_amd64.zip
       - name: Versions
         run: |
           echo "go version:"
