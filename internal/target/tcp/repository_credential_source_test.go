@@ -246,13 +246,15 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			ctx := context.Background()
 			projTarget := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, tt.name)
 
-			gotTarget, _, gotCredSources, err := repo.AddTargetCredentialSources(context.Background(), projTarget.GetPublicId(), tt.args.targetVersion, tt.args.ids)
+			gotTarget, err := repo.AddTargetCredentialSources(context.Background(), projTarget.GetPublicId(), tt.args.targetVersion, tt.args.ids)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "unexpected error %s", err.Error())
 				return
 			}
 			require.NoError(err)
+
+			gotCredSources := gotTarget.GetCredentialSources()
 			assert.Len(gotCredSources, len(tt.wantCredSources))
 
 			for _, cs := range gotCredSources {
@@ -266,8 +268,10 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 			err = db.TestVerifyOplog(t, rw, projTarget.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 
-			tar, _, lookupCredSources, err := repo.LookupTarget(context.Background(), projTarget.GetPublicId())
+			tar, err := repo.LookupTarget(context.Background(), projTarget.GetPublicId())
 			require.NoError(err)
+			lookupCredSources := tar.GetCredentialSources()
+
 			assert.Equal(tt.args.targetVersion+1, tar.GetVersion())
 			assert.Equal(projTarget.GetVersion(), tar.GetVersion()-1)
 			assert.True(proto.Equal(gotTarget.(*tcp.Target), tar.(*tcp.Target)))
@@ -291,7 +295,8 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 		ids := target.CredentialSources{
 			BrokeredCredentialIds: []string{lib1.PublicId},
 		}
-		_, _, gotCredSources, err := repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 1, ids)
+		gotTarget, err := repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 1, ids)
+		gotCredSources := gotTarget.GetCredentialSources()
 		require.NoError(err)
 		assert.Len(gotCredSources, 1)
 		assert.Equal(lib1.PublicId, gotCredSources[0].Id())
@@ -300,7 +305,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 		ids = target.CredentialSources{
 			BrokeredCredentialIds: []string{lib1.PublicId},
 		}
-		_, _, _, err = repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, ids)
+		_, err = repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, ids)
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.NotUnique), err))
 
@@ -308,13 +313,14 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 		ids = target.CredentialSources{
 			BrokeredCredentialIds: []string{lib3.PublicId, lib2.PublicId, lib1.PublicId},
 		}
-		_, _, _, err = repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, ids)
+		_, err = repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 2, ids)
 		require.Error(err)
 		assert.True(errors.Match(errors.T(errors.NotUnique), err))
 
 		// Previous transactions should have been rolled back and only lib1 should be associated
-		_, _, lookupCredSources, err := repo.LookupTarget(ctx, projTarget.GetPublicId())
+		lookupTarget, err := repo.LookupTarget(ctx, projTarget.GetPublicId())
 		require.NoError(err)
+		lookupCredSources := lookupTarget.GetCredentialSources()
 		assert.Len(lookupCredSources, 1)
 		assert.Equal(lib1.PublicId, lookupCredSources[0].Id())
 	})
@@ -324,7 +330,7 @@ func TestRepository_AddTargetCredentialSources(t *testing.T) {
 		ids := target.CredentialSources{
 			BrokeredCredentialIds: []string{lib1.PublicId},
 		}
-		_, _, _, err := repo.AddTargetCredentialSources(context.Background(), "fake-target-id", 1, ids)
+		_, err := repo.AddTargetCredentialSources(context.Background(), "fake-target-id", 1, ids)
 
 		require.Error(err)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "unexpected error %s", err.Error())
@@ -473,9 +479,9 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 				ids.BrokeredCredentialIds = append(ids.BrokeredCredentialIds, c.GetPublicId())
 			}
 
-			_, _, addedCredSources, err := repo.AddTargetCredentialSources(ctx, tar.GetPublicId(), 1, ids)
+			addedTarget, err := repo.AddTargetCredentialSources(ctx, tar.GetPublicId(), 1, ids)
 			require.NoError(err)
-			assert.Equal(tt.args.createLibCnt+tt.args.createStaticCnt, len(addedCredSources))
+			assert.Equal(tt.args.createLibCnt+tt.args.createStaticCnt, len(addedTarget.GetCredentialSources()))
 
 			var deleteIds target.CredentialSources
 			for i := 0; i < tt.args.deleteLibCnt; i++ {
@@ -531,8 +537,9 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 		ids := target.CredentialSources{
 			BrokeredCredentialIds: []string{lib1.GetPublicId(), lib2.GetPublicId()},
 		}
-		_, _, gotCredSources, err := repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 1, ids)
+		gotTarget, err := repo.AddTargetCredentialSources(ctx, projTarget.GetPublicId(), 1, ids)
 		require.NoError(err)
+		gotCredSources := gotTarget.GetCredentialSources()
 		assert.Len(gotCredSources, 2)
 
 		// Deleting an unassociated source should return an error
@@ -554,8 +561,9 @@ func TestRepository_DeleteTargetCredentialSources(t *testing.T) {
 		assert.Equal(0, delCount)
 
 		// Previous transactions should have been rolled back and only lib1 should be associated
-		_, _, lookupCredSources, err := repo.LookupTarget(ctx, projTarget.GetPublicId())
+		lookupTarget, err := repo.LookupTarget(ctx, projTarget.GetPublicId())
 		require.NoError(err)
+		lookupCredSources := lookupTarget.GetCredentialSources()
 		assert.Len(lookupCredSources, 2)
 	})
 }
@@ -593,8 +601,9 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			ids.BrokeredCredentialIds = append(ids.BrokeredCredentialIds, cred.GetPublicId())
 		}
 
-		_, _, created, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, ids)
+		addedTarget, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, ids)
 		require.NoError(t, err)
+		created := addedTarget.GetCredentialSources()
 		require.Equal(t, 10, len(created))
 		return created, ids
 	}
@@ -769,8 +778,9 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				}
 			}
 
-			origTarget, _, lookupCredSources, err := repo.LookupTarget(ctx, tar.GetPublicId())
+			origTarget, err := repo.LookupTarget(ctx, tar.GetPublicId())
 			require.NoError(err)
+			lookupCredSources := origTarget.GetCredentialSources()
 			assert.Equal(origCredSources, lookupCredSources)
 
 			_, gotSources, affectedRows, err := repo.SetTargetCredentialSources(ctx, tar.GetPublicId(), tt.args.targetVersion, tt.args.ids)
@@ -791,7 +801,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				assert.Equal(w.CredentialPurpose(), cs.CredentialPurpose())
 			}
 
-			foundTarget, _, _, err := repo.LookupTarget(ctx, tar.GetPublicId())
+			foundTarget, err := repo.LookupTarget(ctx, tar.GetPublicId())
 			require.NoError(err)
 			if tt.name != "no-change" {
 				assert.Equalf(tt.args.targetVersion+1, foundTarget.GetVersion(), "%s unexpected version: %d/%d", tt.name, tt.args.targetVersion+1, foundTarget.GetVersion())

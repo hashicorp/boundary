@@ -222,7 +222,7 @@ func TestSessionParams(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, iamR
 	kms := kms.TestKms(t, conn, wrapper)
 	targetRepo, err := target.NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
-	_, _, _, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
+	_, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
 	require.NoError(err)
 
 	authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]

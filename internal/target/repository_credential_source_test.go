@@ -79,10 +79,13 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			ids.BrokeredCredentialIds = append(ids.BrokeredCredentialIds, cred.GetPublicId())
 		}
 
-		_, _, created, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, ids)
+		target, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, ids)
 		require.NoError(t, err)
-		require.Equal(t, 10, len(created))
-		return created, ids
+
+		credentialSources := target.GetCredentialSources()
+
+		require.Equal(t, 10, len(credentialSources))
+		return credentialSources, ids
 	}
 	type args struct {
 		targetVersion    uint32
@@ -267,9 +270,10 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				}
 			}
 
-			origTarget, _, lookupCredSources, err := repo.LookupTarget(ctx, tar.GetPublicId())
+			origTarget, err := repo.LookupTarget(ctx, tar.GetPublicId())
 			require.NoError(err)
-			assert.Equal(origCredSources, lookupCredSources)
+
+			assert.Equal(origCredSources, origTarget.GetCredentialSources())
 
 			_, gotSources, affectedRows, err := repo.SetTargetCredentialSources(ctx, tar.GetPublicId(), tt.args.targetVersion, tt.args.ids)
 			if tt.wantErr {
@@ -289,7 +293,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 				assert.Equal(w.CredentialPurpose(), cs.CredentialPurpose())
 			}
 
-			foundTarget, _, _, err := repo.LookupTarget(ctx, tar.GetPublicId())
+			foundTarget, err := repo.LookupTarget(ctx, tar.GetPublicId())
 			require.NoError(err)
 			if tt.name != "no-change" {
 				assert.Equalf(tt.args.targetVersion+1, foundTarget.GetVersion(), "%s unexpected version: %d/%d", tt.name, tt.args.targetVersion+1, foundTarget.GetVersion())

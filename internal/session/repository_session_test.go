@@ -999,7 +999,7 @@ func TestRepository_CancelSession(t *testing.T) {
 
 				targetRepo, err := target.NewRepository(ctx, rw, rw, testKms)
 				require.NoError(t, err)
-				_, _, _, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
+				_, err = targetRepo.AddTargetHostSources(ctx, tcpTarget.GetPublicId(), tcpTarget.GetVersion(), []string{sets[0].PublicId})
 				require.NoError(t, err)
 
 				authMethod := password.TestAuthMethods(t, conn, org.PublicId, 1)[0]
@@ -1527,7 +1527,7 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	kms := kms.TestKms(t, conn, wrapper)
 	targetRepo, err := target.NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
-	tar, _, _, err := targetRepo.LookupTarget(ctx, params.TargetId)
+	tar, err := targetRepo.LookupTarget(ctx, params.TargetId)
 	require.NoError(err)
 	require.NotNil(tar)
 
@@ -1540,7 +1540,7 @@ func testSessionCredentialParams(t *testing.T, conn *db.DB, wrapper wrapping.Wra
 	ids := target.CredentialSources{
 		BrokeredCredentialIds: []string{libIds[0].GetPublicId(), libIds[1].GetPublicId(), upCreds[0].GetPublicId(), upCreds[1].GetPublicId()},
 	}
-	_, _, _, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), ids)
+	_, err = targetRepo.AddTargetCredentialSources(ctx, tar.GetPublicId(), tar.GetVersion(), ids)
 	require.NoError(err)
 	dynamicCreds := []*DynamicCredential{
 		NewDynamicCredential(libIds[0].GetPublicId(), cred.BrokeredPurpose),
