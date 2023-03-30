@@ -251,7 +251,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
 				return nil, err
 			}
-		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws: // TODO: add
+		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws: // TODO: add storage plugin flag here
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_host_plugins.CreateHostPlugin(
 				ctx,

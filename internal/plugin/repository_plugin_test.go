@@ -308,14 +308,7 @@ func TestRepository_AddSupportFlag(t *testing.T) {
 			ctx := context.Background()
 
 			require.Contains(pluginTypeDbMap, tt.flag)
-			plg := TestPlugin(t, conn, tt.pluginName)
-
-			// we want the flag to already be in the db, so add it before hand
-			if tt.flagExists {
-				rowCount, err := rw.Exec(ctx, fmt.Sprintf("insert into %s (public_id) values (?);", pluginTypeDbMap[tt.flag]), []any{plg.PublicId})
-				assert.Equal(1, rowCount)
-				require.NoError(err)
-			}
+			plg := TestPlugin(t, conn, tt.pluginName, WithHostFlag(tt.flagExists))
 
 			// check to make sure the start state is as expected
 			rows, err := rw.Query(ctx, fmt.Sprintf("select public_id from %s where public_id = ?;", pluginTypeDbMap[tt.flag]), []any{plg.PublicId})

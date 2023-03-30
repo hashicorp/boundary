@@ -537,7 +537,7 @@ func TestDelete(t *testing.T) {
 			},
 		},
 		{
-			name:      "Delete a hostplugin Host",
+			name:      "Delete a plugin Host",
 			projectId: proj.GetPublicId(),
 			req: &pbs.DeleteHostRequest{
 				Id: pluginH.GetPublicId(),
@@ -689,10 +689,10 @@ func TestCreate(t *testing.T) {
 			wantErrContains: `Details: {{name: "attributes", desc: "This is a required field."}}`,
 		},
 		{
-			name: "Create a hostplugin Host",
+			name: "Create a plugin Host",
 			req: &pbs.CreateHostRequest{Item: &pb.Host{
 				HostCatalogId: pluginHc.GetPublicId(),
-				Type:          "hostplugin",
+				Type:          "plugin",
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
 		},

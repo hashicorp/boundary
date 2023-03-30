@@ -435,7 +435,7 @@ func TestList(t *testing.T) {
 			name: "Filter To Catalog Using Test Plugin",
 			req: &pbs.ListHostCatalogsRequest{
 				ScopeId: scope.Global.String(), Recursive: true,
-				Filter: `"/item/hostplugin/name"=="test"`,
+				Filter: `"/item/plugin/name"=="test"`,
 			},
 			res: &pbs.ListHostCatalogsResponse{Items: testPluginCatalogs},
 		},
@@ -1403,7 +1403,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			PluginId:    plg.GetPublicId(),
 			Name:        wrapperspb.String("default"),
 			Description: wrapperspb.String("default"),
-			Type:        "hostplugin",
+			Type:        "plugin",
 			Attrs: &pb.HostCatalog_Attributes{
 				Attributes: attr,
 			},
