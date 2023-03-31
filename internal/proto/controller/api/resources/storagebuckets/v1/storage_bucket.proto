@@ -5,6 +5,7 @@ syntax = "proto3";
 
 package controller.api.resources.storagebuckets.v1;
 
+import "controller/api/resources/plugins/v1/plugin.proto";
 import "controller/custom_options/v1/options.proto";
 import "google/protobuf/struct.proto";
 
@@ -26,4 +27,7 @@ message StorageBucket {
 
   // Secrets specific to the storage bucket type. These are never output.
   google.protobuf.Struct secrets = 40 [(custom_options.v1.generate_sdk_option) = true];
+
+  // Output only. Plugin information for this resource.
+  resources.plugins.v1.PluginInfo plugin = 50;
 }

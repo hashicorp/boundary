@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/storage"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
@@ -78,7 +79,7 @@ type recorderCache any
 // create its reverseConnReceiver
 var reverseConnReceiverFactory func() reverseConnReceiver
 
-var recordingStorageFactory func(ctx context.Context, path string) (storage.RecordingStorage, error)
+var recordingStorageFactory func(ctx context.Context, path string, plgClients map[string]plgpb.StoragePluginServiceClient) (storage.RecordingStorage, error)
 
 var recorderCacheFactory func() recorderCache
 
@@ -143,6 +144,8 @@ type Worker struct {
 
 	// The storage for session recording
 	RecordingStorage storage.RecordingStorage
+
+	enabledPlugins []base.EnabledPlugin
 
 	// downstream workers and routes to those workers
 	downstreamWorkers  downstreamers
@@ -210,7 +213,15 @@ func New(conf *Config) (*Worker, error) {
 	}
 
 	if w.conf.RawConfig.Worker.RecordingStoragePath != "" && recordingStorageFactory != nil {
-		s, err := recordingStorageFactory(w.baseContext, w.conf.RawConfig.Worker.RecordingStoragePath)
+		plgClients := make(map[string]plgpb.StoragePluginServiceClient)
+		for _, enabledPlugin := range w.enabledPlugins {
+			switch enabledPlugin {
+			// TODO(storage): Add mock plugin when enabled, also make sure to enable in dev mode
+			// TODO(storage): Add AWS storage plugin
+			}
+		}
+
+		s, err := recordingStorageFactory(w.baseContext, w.conf.RawConfig.Worker.RecordingStoragePath, plgClients)
 		if err != nil {
 			return nil, fmt.Errorf("error create recording storage: %w", err)
 		}
