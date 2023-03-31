@@ -36,7 +36,7 @@ path to the file.
   Boundary serves traffic (API, cluster, and proxy).
 
   Controllers must have at least two listener blocks defined: one marked for
-  `api` purpose and the other marked for `cluster` purpose. 
+  `api` purpose and the other marked for `cluster` purpose.
 
   Workers will have only one listener, marked for `proxy` purpose.
 
@@ -62,7 +62,6 @@ path to the file.
   ```shell
   sudo setcap cap_ipc_lock=+ep $(readlink -f $(which boundary))
   ```
-
   If you use a Linux distribution with a modern version of systemd, you can add
   the following directive to the "[Service]" configuration section:
 
@@ -86,6 +85,13 @@ path to the file.
   configuration. If present, `boundary server` will start a Controller subprocess.
 
 - [`plugins`](/boundary/docs/configuration/plugins): Configures options for plugins.
+
+## Signals
+On `SIGHUP`, worker and controller processes will reload their configuration file to pick up updated values
+
+On `SIGTERM` or `SIGINT`, worker and controller processes will enter 'graceful shutdown'. Controller graceful shutdown
+will close listeners and servers before shutting down. Worker graceful shutdown will wait for sessions to drain
+before shutting down. Workers in a graceful shutdown state will not be assigned any new session proxying or other jobs.
 
 ## Example Configurations
 
