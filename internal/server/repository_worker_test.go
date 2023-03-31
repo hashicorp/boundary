@@ -297,6 +297,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
 		require.NoError(t, err)
 		assert.Len(t, workers, 1)
+		assert.Equal(t, server.KmsWorkerType.String(), workers[0].Type)
 
 		// update again with a shutdown state
 		wStatus3 := server.NewWorker(scope.Global.String(),
@@ -335,6 +336,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "pki_address", worker.GetAddress())
 		assert.Equal(t, "test-version", worker.ReleaseVersion)
+		assert.Equal(t, server.PkiWorkerType.String(), worker.Type)
 	})
 
 	failureCases := []struct {
@@ -1226,6 +1228,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 	pkiCases := []struct {
 		name         string
 		modifyWorker func(*testing.T, *server.Worker)
+		newIdFunc    func(context.Context, string, string) func(context.Context) (string, error)
 		path         []string
 		assertGot    func(*testing.T, *server.Worker)
 		wantErr      bool
@@ -1246,6 +1249,20 @@ func TestRepository_UpdateWorker(t *testing.T) {
 			},
 		},
 		{
+			name: "update name against kms-pki",
+			modifyWorker: func(t *testing.T, w *server.Worker) {
+				t.Helper()
+				w.Name = "foo"
+			},
+			newIdFunc: func(ctx context.Context, scopeId, name string) func(ctx context.Context) (string, error) {
+				return func(ctx context.Context) (string, error) {
+					return server.NewWorkerIdFromScopeAndName(ctx, scopeId, name)
+				}
+			},
+			path:    []string{"Name"},
+			wantErr: true,
+		},
+		{
 			name: "update description",
 			modifyWorker: func(t *testing.T, w *server.Worker) {
 				t.Helper()
@@ -1263,7 +1280,12 @@ func TestRepository_UpdateWorker(t *testing.T) {
 	}
 	for _, tt := range pkiCases {
 		t.Run(tt.name, func(t *testing.T) {
-			wkr := server.TestPkiWorker(t, conn, wrapper)
+			name := strings.ReplaceAll(tt.name, " ", "-")
+			opts := []server.Option{server.WithName(name)}
+			if tt.newIdFunc != nil {
+				opts = append(opts, server.WithNewIdFunc(tt.newIdFunc(ctx, scope.Global.String(), name)))
+			}
+			wkr := server.TestPkiWorker(t, conn, wrapper, opts...)
 			defer func() {
 				_, err := repo.DeleteWorker(ctx, wkr.GetPublicId())
 				require.NoError(t, err)

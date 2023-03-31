@@ -487,32 +487,48 @@ func TestUpdate(t *testing.T) {
 		return connectedDownstreams
 	}
 
-	wkr := server.TestPkiWorker(t, conn, wrapper,
+	pkiWkr := server.TestPkiWorker(t, conn, wrapper,
 		server.WithName("default"),
 		server.WithDescription("default"))
 
-	version := wkr.GetVersion()
+	pkiKmsWkr := server.TestPkiWorker(t, conn, wrapper,
+		server.WithName("default-kms"),
+		server.WithDescription("default-kms"),
+		server.WithNewIdFunc(func(ctx context.Context) (string, error) {
+			return server.NewWorkerIdFromScopeAndName(ctx, scope.Global.String(), "default-kms")
+		}),
+	)
+
+	pkiVersion := pkiWkr.GetVersion()
+	pkiKmsVersion := pkiKmsWkr.GetVersion()
 
 	resetWorker := func() {
-		version++
-		_, _, err = repo.UpdateWorker(context.Background(), wkr, version, []string{"Name", "Description"})
-		require.NoError(t, err, "Failed to reset worker.")
-		version++
+		pkiVersion = pkiWkr.Version + 1
+		pkiKmsVersion = pkiKmsWkr.Version + 1
+		wkr, _, err := repo.UpdateWorker(context.Background(), pkiWkr, pkiVersion, []string{"Name", "Description"})
+		require.NoError(t, err, "Failed to reset pki worker.")
+		pkiVersion = wkr.Version
+		wkr, _, err = repo.UpdateWorker(context.Background(), pkiKmsWkr, pkiKmsVersion, []string{"Description"})
+		require.NoError(t, err, "Failed to reset pki-kms worker.")
+		pkiKmsVersion = wkr.Version
 	}
 
-	wCreated := wkr.GetCreateTime().GetTimestamp().AsTime()
-	toMerge := &pbs.UpdateWorkerRequest{
-		Id: wkr.GetPublicId(),
+	wCreated := pkiWkr.GetCreateTime().GetTimestamp().AsTime()
+	toMerge := func(wkr *server.Worker) *pbs.UpdateWorkerRequest {
+		return &pbs.UpdateWorkerRequest{
+			Id: wkr.GetPublicId(),
+		}
 	}
 	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(t, err)
 	expectedScope := &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
 
 	cases := []struct {
-		name string
-		req  *pbs.UpdateWorkerRequest
-		res  *pbs.UpdateWorkerResponse
-		err  error
+		name      string
+		reqIdFunc func(*server.Worker) string
+		req       *pbs.UpdateWorkerRequest
+		res       func(*server.Worker) *pbs.UpdateWorkerResponse
+		err       error
 	}{
 		{
 			name: "Update an Existing Worker",
@@ -525,20 +541,22 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("desc"),
 				},
 			},
-			res: &pbs.UpdateWorkerResponse{
-				Item: &pb.Worker{
-					Id:                                 wkr.GetPublicId(),
-					ScopeId:                            wkr.GetScopeId(),
-					Scope:                              expectedScope,
-					Name:                               wrapperspb.String("name"),
-					Description:                        wrapperspb.String("desc"),
-					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
-					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
-					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:                  testAuthorizedActions,
-					Type:                               PkiWorkerType,
-					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
-				},
+			res: func(wkr *server.Worker) *pbs.UpdateWorkerResponse {
+				return &pbs.UpdateWorkerResponse{
+					Item: &pb.Worker{
+						Id:                                 wkr.GetPublicId(),
+						ScopeId:                            wkr.GetScopeId(),
+						Scope:                              expectedScope,
+						Name:                               wrapperspb.String("name"),
+						Description:                        wrapperspb.String("desc"),
+						CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+						ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+						LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+						AuthorizedActions:                  testAuthorizedActions,
+						Type:                               PkiWorkerType,
+						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+					},
+				}
 			},
 		},
 		{
@@ -549,23 +567,25 @@ func TestUpdate(t *testing.T) {
 				},
 				Item: &pb.Worker{
 					Name:        wrapperspb.String("name"),
-					Description: wrapperspb.String("desc"),
+					Description: wrapperspb.String("default"),
 				},
 			},
-			res: &pbs.UpdateWorkerResponse{
-				Item: &pb.Worker{
-					Id:                                 wkr.GetPublicId(),
-					ScopeId:                            wkr.GetScopeId(),
-					Scope:                              expectedScope,
-					Name:                               wrapperspb.String("name"),
-					Description:                        wrapperspb.String("desc"),
-					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
-					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:                  testAuthorizedActions,
-					Type:                               PkiWorkerType,
-					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
-				},
+			res: func(wkr *server.Worker) *pbs.UpdateWorkerResponse {
+				return &pbs.UpdateWorkerResponse{
+					Item: &pb.Worker{
+						Id:                                 wkr.GetPublicId(),
+						ScopeId:                            wkr.GetScopeId(),
+						Scope:                              expectedScope,
+						Name:                               wrapperspb.String("name"),
+						Description:                        wrapperspb.String("default"),
+						ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+						CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+						LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+						AuthorizedActions:                  testAuthorizedActions,
+						Type:                               PkiWorkerType,
+						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+					},
+				}
 			},
 		},
 		{
@@ -622,19 +642,21 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("ignored"),
 				},
 			},
-			res: &pbs.UpdateWorkerResponse{
-				Item: &pb.Worker{
-					Id:                                 wkr.GetPublicId(),
-					ScopeId:                            wkr.GetScopeId(),
-					Scope:                              expectedScope,
-					Description:                        wrapperspb.String("default"),
-					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
-					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:                  testAuthorizedActions,
-					Type:                               PkiWorkerType,
-					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
-				},
+			res: func(wkr *server.Worker) *pbs.UpdateWorkerResponse {
+				return &pbs.UpdateWorkerResponse{
+					Item: &pb.Worker{
+						Id:                                 wkr.GetPublicId(),
+						ScopeId:                            wkr.GetScopeId(),
+						Scope:                              expectedScope,
+						Description:                        wrapperspb.String(wkr.Description),
+						ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+						CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+						LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+						AuthorizedActions:                  testAuthorizedActions,
+						Type:                               PkiWorkerType,
+						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+					},
+				}
 			},
 		},
 		{
@@ -647,19 +669,26 @@ func TestUpdate(t *testing.T) {
 					Name: wrapperspb.String("ignored"),
 				},
 			},
-			res: &pbs.UpdateWorkerResponse{
-				Item: &pb.Worker{
-					Id:                                 wkr.GetPublicId(),
-					ScopeId:                            wkr.GetScopeId(),
-					Scope:                              expectedScope,
-					Name:                               wrapperspb.String("default"),
-					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
-					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
-					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:                  testAuthorizedActions,
-					Type:                               PkiWorkerType,
-					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
-				},
+			res: func(wkr *server.Worker) *pbs.UpdateWorkerResponse {
+				ret := &pbs.UpdateWorkerResponse{
+					Item: &pb.Worker{
+						Id:                                 wkr.GetPublicId(),
+						ScopeId:                            wkr.GetScopeId(),
+						Scope:                              expectedScope,
+						CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+						ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+						LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+						AuthorizedActions:                  testAuthorizedActions,
+						Type:                               PkiWorkerType,
+						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+					},
+				}
+				// In the previous test, the name will now be blank if it's the
+				// non-kms worker so must add it in to expected
+				if wkr.PublicId == pkiKmsWkr.PublicId {
+					ret.Item.Name = wrapperspb.String(wkr.Name)
+				}
+				return ret
 			},
 		},
 		{
@@ -673,20 +702,26 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("ignored"),
 				},
 			},
-			res: &pbs.UpdateWorkerResponse{
-				Item: &pb.Worker{
-					Id:                                 wkr.GetPublicId(),
-					ScopeId:                            wkr.GetScopeId(),
-					Scope:                              expectedScope,
-					Name:                               wrapperspb.String("updated"),
-					Description:                        wrapperspb.String("default"),
-					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
-					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
-					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:                  testAuthorizedActions,
-					Type:                               PkiWorkerType,
-					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
-				},
+			res: func(wkr *server.Worker) *pbs.UpdateWorkerResponse {
+				ret := &pbs.UpdateWorkerResponse{
+					Item: &pb.Worker{
+						Id:                                 wkr.GetPublicId(),
+						ScopeId:                            wkr.GetScopeId(),
+						Scope:                              expectedScope,
+						Name:                               wrapperspb.String("updated"),
+						CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+						ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+						LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+						AuthorizedActions:                  testAuthorizedActions,
+						Type:                               PkiWorkerType,
+						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+					},
+				}
+				// The name will not be updated if it's the pki-kms worker
+				if wkr.PublicId == pkiKmsWkr.PublicId {
+					ret.Item.Name = wrapperspb.String(wkr.Name)
+				}
+				return ret
 			},
 		},
 		{
@@ -700,20 +735,27 @@ func TestUpdate(t *testing.T) {
 					Description: wrapperspb.String("notignored"),
 				},
 			},
-			res: &pbs.UpdateWorkerResponse{
-				Item: &pb.Worker{
-					Id:                                 wkr.GetPublicId(),
-					ScopeId:                            wkr.GetScopeId(),
-					Scope:                              expectedScope,
-					Name:                               wrapperspb.String("default"),
-					ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
-					Description:                        wrapperspb.String("notignored"),
-					CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
-					LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
-					AuthorizedActions:                  testAuthorizedActions,
-					Type:                               PkiWorkerType,
-					DirectlyConnectedDownstreamWorkers: connectedDownstreams,
-				},
+			res: func(wkr *server.Worker) *pbs.UpdateWorkerResponse {
+				ret := &pbs.UpdateWorkerResponse{
+					Item: &pb.Worker{
+						Id:                                 wkr.GetPublicId(),
+						ScopeId:                            wkr.GetScopeId(),
+						Scope:                              expectedScope,
+						Name:                               wrapperspb.String("updated"),
+						ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+						Description:                        wrapperspb.String("notignored"),
+						CreatedTime:                        wkr.GetCreateTime().GetTimestamp(),
+						LastStatusTime:                     wkr.GetLastStatusTime().GetTimestamp(),
+						AuthorizedActions:                  testAuthorizedActions,
+						Type:                               PkiWorkerType,
+						DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+					},
+				}
+				// The name will not have been updated previously if it's the pki-kms worker
+				if wkr.PublicId == pkiKmsWkr.PublicId {
+					ret.Item.Name = wrapperspb.String(wkr.Name)
+				}
+				return ret
 			},
 		},
 		{
@@ -730,9 +772,11 @@ func TestUpdate(t *testing.T) {
 			err: handlers.ApiErrorWithCode(codes.NotFound),
 		},
 		{
-			name: "Cant change Id",
+			name: "Cant change Id pki worker",
+			reqIdFunc: func(worker *server.Worker) string {
+				return worker.GetPublicId()
+			},
 			req: &pbs.UpdateWorkerRequest{
-				Id: wkr.GetPublicId(),
 				UpdateMask: &field_mask.FieldMask{
 					Paths: []string{"id"},
 				},
@@ -853,36 +897,77 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			tc.req.Item.Version = version
+		for _, wkr := range []*server.Worker{pkiWkr, pkiKmsWkr} {
+			t.Run(fmt.Sprintf("%s-%s", tc.name, wkr.Name), func(t *testing.T) {
+				if wkr.PublicId == pkiWkr.PublicId {
+					tc.req.Item.Version = pkiVersion
+				} else {
+					tc.req.Item.Version = pkiKmsVersion
+				}
 
-			req := proto.Clone(toMerge).(*pbs.UpdateWorkerRequest)
-			proto.Merge(req, tc.req)
+				req := proto.Clone(toMerge(wkr)).(*pbs.UpdateWorkerRequest)
+				proto.Merge(req, tc.req)
+				if tc.reqIdFunc != nil {
+					req.Id = tc.reqIdFunc(wkr)
+				}
 
-			got, gErr := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, scope.Global.String()), req)
-			if tc.err != nil {
-				require.Error(t, gErr)
-				assert.True(t, errors.Is(gErr, tc.err), "UpdateWorker(%+v) got error %v, wanted %v", req, gErr, tc.err)
-			}
+				// Search through update masks to see if we're updating name
+				var nameChange bool
+				if tc.req != nil && tc.req.UpdateMask != nil {
+					for _, field := range tc.req.UpdateMask.Paths {
+						if strings.ToLower(field) == "name" {
+							nameChange = true
+						}
+						if strings.Contains(field, ",") {
+							splitStr := strings.Split(field, ",")
+							for _, field := range splitStr {
+								if strings.ToLower(field) == "name" {
+									nameChange = true
+								}
+							}
+						}
+					}
+				}
 
-			if tc.err == nil {
-				defer resetWorker()
-			}
+				got, gErr := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, scope.Global.String()), req)
+				// If it's a PKI-KMS worker and we wouldn't otherwise expect an
+				// error but we tried a name change, ensure we see the expected
+				// error here.
+				if wkr.PublicId == pkiKmsWkr.PublicId && nameChange && tc.err == nil {
+					require.Error(t, gErr)
+					assert.Contains(t, gErr.Error(), "KMS-registered workers cannot have their names updated via the API.")
+					assert.True(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)))
+					return
+				}
+				if tc.err != nil {
+					require.Error(t, gErr)
+					assert.True(t, errors.Is(gErr, tc.err), "UpdateWorker(%+v) got error %v, wanted %v", req, gErr, tc.err)
+					assert.Nil(t, got)
+					return
+				}
 
-			if got != nil {
+				// Should not have nil got at this point
+				require.NotNil(t, got)
+
+				if tc.err == nil {
+					defer resetWorker()
+				}
+
+				expRes := tc.res(wkr)
+
 				assert.NotNilf(t, tc.res, "Expected UpdateWorker response to be nil, but was %v", got)
 				gotUpdateTime := got.GetItem().GetUpdatedTime().AsTime()
 				// Verify updated set after it was created
 				assert.True(t, gotUpdateTime.After(wCreated), "Updated resource should have been updated after its creation. Was updated %v, which is after %v", gotUpdateTime, wCreated)
 
 				// Clear all values which are hard to compare against.
-				got.Item.UpdatedTime, tc.res.Item.UpdatedTime = nil, nil
-			}
-			if tc.res != nil {
-				tc.res.Item.Version = version + 1
-			}
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateWorker(%q) got response %q, wanted %q", req, got, tc.res)
-		})
+				got.Item.UpdatedTime, expRes.Item.UpdatedTime = nil, nil
+
+				expRes.Item.Version = tc.req.Item.Version + 1
+
+				assert.Empty(t, cmp.Diff(got, expRes, protocmp.Transform()), "UpdateWorker(%q) got response %q, wanted %q", req, got, expRes)
+			})
+		}
 	}
 }
 
