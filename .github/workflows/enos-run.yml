@@ -129,11 +129,13 @@ jobs:
         uses: hashicorp/action-setup-enos@v1    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
         with:
           github-token: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
-      - name: Set up AWS SSH private key
+      - name: Prepare scenario dependencies
+        id: prepare_scenario
         run: |
           mkdir -p ./enos/support
           echo "${{ secrets.SSH_KEY_PRIVATE_CI }}" > ./enos/support/private_key.pem
           chmod 600 ./enos/support/private_key.pem
+          echo "debug_data_artifact_name=enos-debug-data_$(echo ${{ matrix.scenario }} | sed -e 's/ /_/g' | sed -e 's/:/=/g')" >> $GITHUB_OUTPUT
       - name: Set up dependency cache
         id: dep-cache
         uses: actions/cache@69d9d449aced6a2ede0bc19182fadc3a0a42d2b0 # v3.2.6
@@ -222,7 +224,6 @@ jobs:
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
           ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
           ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
-          ENOS_DEBUG_DATA_ROOT_DIR: ./support/debug-data
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
@@ -248,14 +249,6 @@ jobs:
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
-      - name: Upload Debug Data
-        if: steps.run.outcome == 'failure'
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-        with:
-          # The name of the artifact is the same as the matrix scenario name with the spaces replaced with underscores.
-          name: ${${{ matrix.filter }}// /_}_run.zip
-          path: $ENOS_DEBUG_DATA_ROOT_DIR
-          retention-days: 30
       - name: Upload e2e tests output
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
@@ -283,9 +276,18 @@ jobs:
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
           ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
           ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
+          ENOS_DEBUG_DATA_ROOT_DIR: ./support/debug-data
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Upload Debug Data
+        if: failure()
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        with:
+          # The name of the artifact is the same as the matrix scenario name with the spaces replaced with underscores and colons replaced by equals.
+          name: ${{ steps.prepare_scenario.outputs.debug_data_artifact_name }}
+          path: ./enos/support/debug-data
+          retention-days: 30
       - name: Destroy Enos scenario
         if: ${{ always() && steps.run_retry.outcome == 'failure' }}
         env:
