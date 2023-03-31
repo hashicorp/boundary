@@ -89,7 +89,7 @@ worker {
 On `SIGHUP`, a worker will reload its configuration file to pick up updated values for `initial_upstreams` and `tags`.
 All other updated values will be ignored.
 
-`SIGTERM` or `SIGINT` will initiate 'graceful shutdown' on a worker. The worker will wait for sessions to drain
+`SIGTERM` or `SIGINT` will initiate graceful shutdown on a worker. The worker will wait for sessions to drain
 before shutting down. Workers in a graceful shutdown state will not receive new work, including session proxying, from the control plane.
 
 ## Multi-hop worker capabilities <sup>HCP only</sup>
