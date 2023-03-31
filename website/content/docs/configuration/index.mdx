@@ -36,7 +36,7 @@ path to the file.
   Boundary serves traffic (API, cluster, and proxy).
 
   Controllers must have at least two listener blocks defined: one marked for
-  `api` purpose and the other marked for `cluster` purpose. 
+  `api` purpose and the other marked for `cluster` purpose.
 
   Workers will have only one listener, marked for `proxy` purpose.
 
@@ -92,7 +92,7 @@ On `SIGHUP`, worker and controller processes will reload their configuration fil
 
 On `SIGTERM` or `SIGINT`, worker and controller processes will enter 'graceful shutdown'. Controller graceful shutdown
 will close listeners and servers before shutting down. Worker graceful shutdown will wait for sessions to drain
-before shutting down. Workers in a graceful shutdown state will not be assigned any new session proxying or other jobs.
+before shutting down. Workers in a graceful shutdown state will not receive new work, including session proxying, from the control plane.
 
 ## Example Configurations
 
