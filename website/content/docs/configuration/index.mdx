@@ -36,7 +36,7 @@ path to the file.
   Boundary serves traffic (API, cluster, and proxy).
 
   Controllers must have at least two listener blocks defined: one marked for
-  `api` purpose and the other marked for `cluster` purpose.
+  `api` purpose and the other marked for `cluster` purpose. 
 
   Workers will have only one listener, marked for `proxy` purpose.
 
@@ -62,6 +62,7 @@ path to the file.
   ```shell
   sudo setcap cap_ipc_lock=+ep $(readlink -f $(which boundary))
   ```
+
   If you use a Linux distribution with a modern version of systemd, you can add
   the following directive to the "[Service]" configuration section:
 
