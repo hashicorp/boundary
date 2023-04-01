@@ -405,6 +405,12 @@ func (k *Keys) VerifySignatureWithBsrKey(ctx context.Context, sig *wrapping.SigI
 		return false, fmt.Errorf("%s: missing wrapped bsr key bytes: %w", op, ErrInvalidParameter)
 	case len(msg) == 0:
 		return false, fmt.Errorf("%s: missing msg: %w", op, ErrInvalidParameter)
+	case sig == nil:
+		return false, fmt.Errorf("%s: missing signature: %w", op, ErrInvalidParameter)
+	case sig.KeyInfo == nil:
+		return false, fmt.Errorf("%s: missing signature key info: %w", op, ErrInvalidParameter)
+	case len(sig.Signature) == 0:
+		return false, fmt.Errorf("%s: signature is empty: %w", op, ErrInvalidParameter)
 	}
 
 	opts := getOpts(opt...)
