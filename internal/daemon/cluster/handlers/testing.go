@@ -55,7 +55,7 @@ func TestUpstreamService(t *testing.T) (UpstreamMessageServiceClientProducer, *t
 	require.NoError(t, err)
 
 	// start an upstream controller
-	testController, err := newControllerUpstreamMessageServiceServer(testCtx, initStorage)
+	testController, err := NewControllerUpstreamMessageServiceServer(testCtx, initStorage)
 	require.NoError(t, err)
 	require.NotNil(t, testController)
 

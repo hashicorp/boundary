@@ -11,7 +11,6 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/nodeenrollment"
-	"github.com/hashicorp/nodeenrollment/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -93,10 +92,10 @@ func SendUpstreamMessage(ctx context.Context, clientProducer UpstreamMessageServ
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	default:
-		if opts.withNodeInfo == nil {
+		if opts.withKeyProducer == nil {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "missing node information required for encrypting unwrap keys message")
 		}
-		req, err = ctMsg(ctx, opts.withNodeInfo, msgType, msg)
+		req, err = ctMsg(ctx, opts.withKeyProducer, msgType, msg)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -123,7 +122,7 @@ func SendUpstreamMessage(ctx context.Context, clientProducer UpstreamMessageServ
 		return pt, nil
 	default:
 		ct := h.AllocResponse()
-		if err := nodeenrollment.DecryptMessage(ctx, rawResp.GetCt(), opts.withNodeInfo, ct); err != nil {
+		if err := nodeenrollment.DecryptMessage(ctx, rawResp.GetCt(), opts.withKeyProducer, ct); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error decrypting unwrap keys response"))
 		}
 		return ct, nil
@@ -145,9 +144,9 @@ func ptMsg(ctx context.Context, msgType pbs.MsgType, msg proto.Message) (*pbs.Up
 	}, nil
 }
 
-func ctMsg(ctx context.Context, nodeInfo *types.NodeInformation, msgType pbs.MsgType, msg proto.Message) (*pbs.UpstreamMessageRequest, error) {
+func ctMsg(ctx context.Context, keySource nodeenrollment.X25519KeyProducer, msgType pbs.MsgType, msg proto.Message) (*pbs.UpstreamMessageRequest, error) {
 	const op = "handlers.encryptMsg"
-	ct, err := nodeenrollment.EncryptMessage(ctx, msg, nodeInfo)
+	ct, err := nodeenrollment.EncryptMessage(ctx, msg, keySource)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error encrypting upstream message"))
 	}

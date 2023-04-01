@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
+	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
@@ -123,6 +124,8 @@ type Worker struct {
 
 	controllerMultihopConn *atomic.Value
 
+	controllerUpstreamMsgConn atomic.Pointer[handlers.UpstreamMessageServiceClientProducer]
+
 	proxyListener *base.ServerListener
 
 	// Used to generate a random nonce for Controller connections
@@ -178,13 +181,14 @@ func New(conf *Config) (*Worker, error) {
 	initializeReverseGrpcClientCollectors(conf.PrometheusRegisterer)
 
 	w := &Worker{
-		conf:                        conf,
-		logger:                      conf.Logger.Named("worker"),
-		started:                     ua.NewBool(false),
-		controllerStatusConn:        new(atomic.Value),
-		everAuthenticated:           ua.NewUint32(authenticationStatusNeverAuthenticated),
-		lastStatusSuccess:           new(atomic.Value),
-		controllerMultihopConn:      new(atomic.Value),
+		conf:                   conf,
+		logger:                 conf.Logger.Named("worker"),
+		started:                ua.NewBool(false),
+		controllerStatusConn:   new(atomic.Value),
+		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
+		lastStatusSuccess:      new(atomic.Value),
+		controllerMultihopConn: new(atomic.Value),
+		// controllerUpstreamMsgConn:   new(atomic.Value),
 		tags:                        new(atomic.Value),
 		updateTags:                  ua.NewBool(false),
 		nonceFn:                     base62.Random,
@@ -735,4 +739,19 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 		}
 		return tlsConf, nil
 	}
+}
+
+// SendUpstreamMessage facilitates sending upstream messages to the controller.
+func (w *Worker) SendUpstreamMessage(ctx context.Context, m proto.Message) (proto.Message, error) {
+	const op = "worker.(Worker).SendUpstreamMessage"
+	nodeCreds, err := types.LoadNodeCredentials(w.baseContext, w.WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	initKeyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	clientProducer := w.controllerUpstreamMsgConn.Load()
+	return handlers.SendUpstreamMessage(ctx, *clientProducer, initKeyId, m, handlers.WithKeyProducer(nodeCreds))
 }

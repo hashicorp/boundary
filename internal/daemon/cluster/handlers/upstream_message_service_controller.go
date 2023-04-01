@@ -91,10 +91,10 @@ type controllerUpstreamMessageServiceServer struct {
 
 var _ pbs.UpstreamMessageServiceServer = (*controllerUpstreamMessageServiceServer)(nil)
 
-// newControllerUpstreamMessageServiceServer creates a new service implementing
+// NewControllerUpstreamMessageServiceServer creates a new service implementing
 // UpstreamMessageServiceServer, storing values used for the implementing
 // functions.
-func newControllerUpstreamMessageServiceServer(
+func NewControllerUpstreamMessageServiceServer(
 	ctx context.Context,
 	storage nodeenrollment.Storage,
 ) (pbs.UpstreamMessageServiceServer, error) {

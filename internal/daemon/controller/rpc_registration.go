@@ -21,6 +21,7 @@ func init() {
 		registerControllerServerCoordinationService,
 		registerControllerSessionService,
 		registerControllerMultihopService,
+		registerControllerUpstreamMessageService,
 	)
 }
 
@@ -86,5 +87,33 @@ func registerControllerMultihopService(ctx context.Context, c *Controller, serve
 		return fmt.Errorf("%s: error creating multihop service handler: %w", op, err)
 	}
 	multihop.RegisterMultihopServiceServer(server, multihopService)
+	return nil
+}
+
+func registerControllerUpstreamMessageService(ctx context.Context, c *Controller, server *grpc.Server) error {
+	const op = "controller.registerControllerUpstreamMessageService"
+
+	switch {
+	case nodeenrollment.IsNil(ctx):
+		return fmt.Errorf("%s: context is nil", op)
+	case c == nil:
+		return fmt.Errorf("%s: controller is nil", op)
+	case server == nil:
+		return fmt.Errorf("%s: server is nil", op)
+	}
+
+	workerAuthStorage, err := c.WorkerAuthRepoStorageFn()
+	switch {
+	case err != nil:
+		return fmt.Errorf("%s: error fetching worker auth storage: %w", op, err)
+	case workerAuthStorage == nil:
+		return fmt.Errorf("%s: worker auth repository storage func is unset", op)
+	}
+
+	upstreamMsgService, err := handlers.NewControllerUpstreamMessageServiceServer(ctx, workerAuthStorage)
+	if err != nil {
+		return fmt.Errorf("%s: error creating upstream message service handler: %w", op, err)
+	}
+	pbs.RegisterUpstreamMessageServiceServer(server, upstreamMsgService)
 	return nil
 }

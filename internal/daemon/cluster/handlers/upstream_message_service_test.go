@@ -111,7 +111,7 @@ func Test_controllerUpstreamMessageServiceServer_UpstreamMessage(t *testing.T) {
 	nodeInfo, err := types.LoadNodeInformation(testCtx, initStorage, initKeyId)
 	require.NoError(t, err)
 	// define a test controller
-	testController, err := newControllerUpstreamMessageServiceServer(testCtx, initStorage)
+	testController, err := NewControllerUpstreamMessageServiceServer(testCtx, initStorage)
 	require.NoError(t, err)
 	require.NotNil(t, testController)
 
@@ -317,7 +317,7 @@ func Test_SendUpstreamMessage(t *testing.T) {
 			clientProducer:      workerClientProducer,
 			originatingWorkerId: originatingWorkerId,
 			req:                 &pbs.EchoUpstreamMessageRequest{Msg: "ping"},
-			opt:                 []Option{WithNodeInfo(workerNodeInfo)},
+			opt:                 []Option{WithKeyProducer(workerNodeInfo)},
 			wantResp:            &pbs.EchoUpstreamMessageResponse{Msg: "ping"},
 			setupHandlers:       TestRegisterHandlerFn(t, pbs.MsgType_MSG_TYPE_ECHO, testEncryptedHandler),
 		},

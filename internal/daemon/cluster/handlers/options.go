@@ -4,7 +4,7 @@
 package handlers
 
 import (
-	"github.com/hashicorp/nodeenrollment/types"
+	"github.com/hashicorp/nodeenrollment"
 )
 
 // getOpts - iterate the inbound Options and return a struct
@@ -21,16 +21,16 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withNodeInfo *types.NodeInformation
+	withKeyProducer nodeenrollment.X25519KeyProducer
 }
 
 func getDefaultOptions() options {
 	return options{}
 }
 
-// WithNodeInfo provides an option types.NodeInformation
-func WithNodeInfo(nodeInfo *types.NodeInformation) Option {
+// WithKeyProducer provides an option types.NodeInformation
+func WithKeyProducer(nodeInfo nodeenrollment.X25519KeyProducer) Option {
 	return func(o *options) {
-		o.withNodeInfo = nodeInfo
+		o.withKeyProducer = nodeInfo
 	}
 }
