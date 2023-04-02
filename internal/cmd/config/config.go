@@ -72,6 +72,13 @@ kms "aead" {
 }
 
 kms "aead" {
+	purpose = "bsr"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_bsr"
+}
+
+kms "aead" {
 	purpose = "recovery"
 	aead_type = "aes-gcm"
 	key = "%s"
@@ -131,6 +138,7 @@ type Config struct {
 	DevControllerKey        string `hcl:"-"`
 	DevWorkerAuthKey        string `hcl:"-"`
 	DevWorkerAuthStorageKey string `hcl:"-"`
+	DevBsrKey               string `hcl:"-"`
 	DevRecoveryKey          string `hcl:"-"`
 
 	// Eventing configuration for the controller
@@ -363,9 +371,10 @@ func DevKeyGeneration() string {
 func DevController(opt ...Option) (*Config, error) {
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
+	bsrKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
 
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -373,6 +382,7 @@ func DevController(opt ...Option) (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
+	parsed.DevBsrKey = bsrKey
 	parsed.DevRecoveryKey = recoveryKey
 	opts := getOpts(opt...)
 	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
@@ -386,8 +396,9 @@ func DevCombined() (*Config, error) {
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
 	workerAuthStorageKey := DevKeyGeneration()
+	bsrKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, recoveryKey, workerAuthStorageKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey, workerAuthStorageKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -396,6 +407,7 @@ func DevCombined() (*Config, error) {
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
 	parsed.DevWorkerAuthStorageKey = workerAuthStorageKey
+	parsed.DevBsrKey = bsrKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }

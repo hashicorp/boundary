@@ -106,6 +106,7 @@ type Command struct {
 	flagWorkerAuthCaCertificateLifetime  time.Duration
 	flagWorkerAuthDebuggingEnabled       bool
 	flagWorkerRecordingStorageDir        string
+	flagBsrKey                           string
 }
 
 func (c *Command) Synopsis() string {
@@ -280,6 +281,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "If set, a valid base64-encoded AES key to be used for worker-auth purposes",
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:   "bsr-key",
+		Target: &c.flagBsrKey,
+		EnvVar: "BOUNDARY_DEV_BSR_KEY",
+		Usage:  "If set, a valid base64-encoded AES key to be used for bsr purposes",
+	})
+
 	f.BoolVar(&base.BoolVar{
 		Name:   "disable-database-destruction",
 		Target: &c.flagDisableDatabaseDestruction,
@@ -450,6 +458,15 @@ func (c *Command) Run(args []string) int {
 		for _, kms := range c.Config.Seals {
 			if strutil.StrListContains(kms.Purpose, globals.KmsPurposeWorkerAuth) {
 				kms.Config["key"] = c.flagWorkerAuthKey
+			}
+		}
+	}
+
+	if c.flagBsrKey != "" {
+		c.Config.DevBsrKey = c.flagBsrKey
+		for _, kms := range c.Config.Seals {
+			if strutil.StrListContains(kms.Purpose, globals.KmsPurposeBsr) {
+				kms.Config["key"] = c.flagBsrKey
 			}
 		}
 	}
@@ -669,6 +686,8 @@ func (c *Command) Run(args []string) int {
 	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
 	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
 	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
+	c.InfoKeys = append(c.InfoKeys, "[Bsr] AEAD Key Bytes")
+	c.Info["[Bsr] AEAD Key Bytes"] = c.Config.DevBsrKey
 
 	// Initialize the listeners
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {

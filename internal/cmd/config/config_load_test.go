@@ -419,6 +419,7 @@ func TestLoad(t *testing.T) {
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
 				DevWorkerAuthStorageKey: "",
+				DevBsrKey:               "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
 					AuditEnabled:        false,
@@ -837,6 +838,7 @@ func TestLoad(t *testing.T) {
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
@@ -1251,6 +1253,7 @@ func TestLoad(t *testing.T) {
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
@@ -1665,6 +1668,7 @@ func TestLoad(t *testing.T) {
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
@@ -1750,6 +1754,7 @@ func TestLoad(t *testing.T) {
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{

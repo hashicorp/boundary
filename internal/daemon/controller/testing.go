@@ -437,6 +437,9 @@ type TestControllerOpts struct {
 	// The downstream worker auth KMS to use, or one will be created
 	DownstreamWorkerAuthKms *multi.PooledWrapper
 
+	// The BSR wrapper to use, or one will be created
+	BsrKms wrapping.Wrapper
+
 	// The recovery KMS to use, or one will be created
 	RecoveryKms wrapping.Wrapper
 
@@ -692,6 +695,9 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	if opts.DownstreamWorkerAuthKms != nil {
 		tc.b.DownstreamWorkerAuthKms = opts.DownstreamWorkerAuthKms
 	}
+	if opts.BsrKms != nil {
+		tc.b.BsrKms = opts.BsrKms
+	}
 	if opts.RecoveryKms != nil {
 		tc.b.RecoveryKms = opts.RecoveryKms
 	}
@@ -800,6 +806,7 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		RootKms:                         tc.c.conf.RootKms,
 		WorkerAuthKms:                   tc.c.conf.WorkerAuthKms,
 		DownstreamWorkerAuthKms:         tc.c.conf.DownstreamWorkerAuthKms,
+		BsrKms:                          tc.c.conf.BsrKms,
 		RecoveryKms:                     tc.c.conf.RecoveryKms,
 		Name:                            opts.Name,
 		Logger:                          tc.c.conf.Logger,

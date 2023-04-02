@@ -91,6 +91,14 @@ func TestDevController(t *testing.T) {
 				},
 				{
 					Type:    "aead",
+					Purpose: []string{"bsr"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_bsr",
+					},
+				},
+				{
+					Type:    "aead",
 					Purpose: []string{"recovery"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
@@ -115,9 +123,11 @@ func TestDevController(t *testing.T) {
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
+	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
+	exp.DevBsrKey = actual.Seals[2].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
 
 	assert.Equal(t, exp, actual)
 
@@ -446,6 +456,14 @@ func TestDevCombined(t *testing.T) {
 				},
 				{
 					Type:    "aead",
+					Purpose: []string{"bsr"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_bsr",
+					},
+				},
+				{
+					Type:    "aead",
 					Purpose: []string{"recovery"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
@@ -486,10 +504,12 @@ func TestDevCombined(t *testing.T) {
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
 	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
+	exp.Seals[4].Config["key"] = actual.Seals[4].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
-	exp.DevWorkerAuthStorageKey = actual.Seals[3].Config["key"]
+	exp.DevBsrKey = actual.Seals[2].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
+	exp.DevWorkerAuthStorageKey = actual.Seals[4].Config["key"]
 	exp.Worker.TagsRaw = actual.Worker.TagsRaw
 	assert.Equal(t, exp, actual)
 }

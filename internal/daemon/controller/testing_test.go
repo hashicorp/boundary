@@ -85,4 +85,17 @@ func Test_TestController(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(testLdapAuthMethodId, got.GetPublicId())
 	})
+	t.Run("controller-external-wrappers", func(t *testing.T) {
+		testCtx := context.Background()
+		assert := assert.New(t)
+		tc := NewTestController(t, nil)
+		defer tc.Shutdown()
+
+		ws := tc.Kms().GetExternalWrappers(testCtx)
+
+		assert.NotNil(ws.Root())
+		assert.NotNil(ws.WorkerAuth())
+		assert.NotNil(ws.Recovery())
+		assert.NotNil(ws.Bsr())
+	})
 }
