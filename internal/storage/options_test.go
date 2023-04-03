@@ -15,43 +15,43 @@ func Test_getOpts(t *testing.T) {
 	assert := assert.New(t)
 	t.Run("WithCloseSyncMode", func(t *testing.T) {
 		testOpts := getDefaultOptions()
-		opts := getOpts(WithCloseSyncMode(Asynchronous))
+		opts := GetOpts(WithCloseSyncMode(Asynchronous))
 		assert.Equal(testOpts, opts)
 
 		testOpts = getDefaultOptions()
-		opts = getOpts(WithCloseSyncMode(Synchronous))
-		testOpts.withCloseSyncMode = Synchronous
+		opts = GetOpts(WithCloseSyncMode(Synchronous))
+		testOpts.WithCloseSyncMode = Synchronous
 		assert.Equal(opts, testOpts)
 
 		testOpts = getDefaultOptions()
-		opts = getOpts(WithCloseSyncMode(NoSync))
-		testOpts.withCloseSyncMode = NoSync
+		opts = GetOpts(WithCloseSyncMode(NoSync))
+		testOpts.WithCloseSyncMode = NoSync
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithFileAccessMode", func(t *testing.T) {
 		testOpts := getDefaultOptions()
-		opts := getOpts(WithFileAccessMode(ReadOnly))
+		opts := GetOpts(WithFileAccessMode(ReadOnly))
 		assert.Equal(testOpts, opts)
 
 		testOpts = getDefaultOptions()
-		opts = getOpts(WithFileAccessMode(WriteOnly))
-		testOpts.withFileAccessMode = WriteOnly
+		opts = GetOpts(WithFileAccessMode(WriteOnly))
+		testOpts.WithFileAccessMode = WriteOnly
 		assert.Equal(opts, testOpts)
 
 		testOpts = getDefaultOptions()
-		opts = getOpts(WithFileAccessMode(ReadWrite))
-		testOpts.withFileAccessMode = ReadWrite
+		opts = GetOpts(WithFileAccessMode(ReadWrite))
+		testOpts.WithFileAccessMode = ReadWrite
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithCreateFile", func(t *testing.T) {
 		testOpts := getDefaultOptions()
-		opts := getOpts()
-		testOpts.withCreateFile = false
+		opts := GetOpts()
+		testOpts.WithCreateFile = false
 		assert.Equal(testOpts, opts)
 
 		testOpts = getDefaultOptions()
-		opts = getOpts(WithCreateFile())
-		testOpts.withCreateFile = true
+		opts = GetOpts(WithCreateFile())
+		testOpts.WithCreateFile = true
 		assert.Equal(opts, testOpts)
 	})
 }

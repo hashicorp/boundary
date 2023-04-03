@@ -37,8 +37,8 @@ const (
 	ReadWrite
 )
 
-// getOpts - iterate the inbound Options and return a struct.
-func getOpts(opt ...Option) Options {
+// GetOpts - iterate the inbound Options and return a struct.
+func GetOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		o(&opts)
@@ -48,17 +48,17 @@ func getOpts(opt ...Option) Options {
 
 func getDefaultOptions() Options {
 	return Options{
-		withCloseSyncMode:  Asynchronous,
-		withFileAccessMode: ReadOnly,
-		withCreateFile:     false,
+		WithCloseSyncMode:  Asynchronous,
+		WithFileAccessMode: ReadOnly,
+		WithCreateFile:     false,
 	}
 }
 
 // Options are storage options.
 type Options struct {
-	withCloseSyncMode  SyncMode
-	withFileAccessMode AccessMode
-	withCreateFile     bool
+	WithCloseSyncMode  SyncMode
+	WithFileAccessMode AccessMode
+	WithCreateFile     bool
 }
 
 // Option is a storage option.
@@ -67,20 +67,20 @@ type Option func(*Options)
 // WithCloseSyncMode sets how a file is synced when closed.
 func WithCloseSyncMode(m SyncMode) Option {
 	return func(o *Options) {
-		o.withCloseSyncMode = m
+		o.WithCloseSyncMode = m
 	}
 }
 
 // WithCreateFile indicates a file should be created when opening.
 func WithCreateFile() Option {
 	return func(o *Options) {
-		o.withCreateFile = true
+		o.WithCreateFile = true
 	}
 }
 
 // WithFileAccessMode sets the access mode when a file is opened.
 func WithFileAccessMode(m AccessMode) Option {
 	return func(o *Options) {
-		o.withFileAccessMode = m
+		o.WithFileAccessMode = m
 	}
 }
