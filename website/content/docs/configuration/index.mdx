@@ -90,7 +90,7 @@ path to the file.
 ## Signals
 The `SIGHUP` signal causes worker and controller processes to reload their configuration files to pick up updated values.
 
-~> **Note:** Not all configuration values can be reloaded. Please see the configuration pages for
+~> **Note:** You cannot reload all configuration values using the `SIGHUP` signal. Refer to the configuration pages for
 [workers](/boundary/docs/configuration/worker/) and [controllers](/boundary/docs/configuration/controller) for details
 on which values can be reloaded on `SIGHUP`.
 
