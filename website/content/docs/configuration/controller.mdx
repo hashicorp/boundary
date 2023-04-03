@@ -109,8 +109,7 @@ description will be read.
 ## Signals
 The `SIGHUP` signal causes a controller to reload its configuration file to pick up any updates to the `database url` value. Any other updated values are ignored.
 
-`SIGTERM` or `SIGINT` will initiate graceful shutdown on a controller. Controller graceful shutdown
-will close listeners and servers before shutting down.
+The `SIGTERM` and `SIGINT` signals initiate a graceful shutdown on a controller. A graceful shutdown closes listeners and servers before shutting down the controller.
 
 ## KMS Configuration
 
