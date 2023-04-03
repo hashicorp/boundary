@@ -48,7 +48,7 @@ jobs:
           echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
           echo "go-bin=$(go env GOPATH)/bin" >> "$GITHUB_OUTPUT"
       - name: Set up Go modules cache
-        uses: actions/cache@69d9d449aced6a2ede0bc19182fadc3a0a42d2b0 # v3.2.6
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: |
             ${{ steps.go-cache-paths.outputs.go-build }}
@@ -71,7 +71,7 @@ jobs:
           echo "path=plugins/**/assets/*.gz" >> "$GITHUB_OUTPUT"
       - name: Set up plugin cache
         id: plugin-cache
-        uses: actions/cache@69d9d449aced6a2ede0bc19182fadc3a0a42d2b0 # v3.2.6
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: |
             ${{ steps.plugin-cache-paths.outputs.path }}
@@ -96,7 +96,7 @@ jobs:
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
       - name: Set up Go modules cache
-        uses: actions/cache@69d9d449aced6a2ede0bc19182fadc3a0a42d2b0 # v3.2.6
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: |
             ${{ needs.setup.outputs.cache-go-build }}
@@ -123,7 +123,7 @@ jobs:
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
       - name: Set up Go modules cache
-        uses: actions/cache@69d9d449aced6a2ede0bc19182fadc3a0a42d2b0 # v3.2.6
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: |
             ${{ needs.setup.outputs.cache-go-build }}
@@ -158,7 +158,7 @@ jobs:
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
       - name: Set up Go modules cache
-        uses: actions/cache@69d9d449aced6a2ede0bc19182fadc3a0a42d2b0 # v3.2.6
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: |
             ${{ needs.setup.outputs.cache-go-build }}
@@ -170,7 +170,7 @@ jobs:
           fail-on-cache-miss: true
       - name: Set up plugin cache
         id: plugin-cache
-        uses: actions/cache@69d9d449aced6a2ede0bc19182fadc3a0a42d2b0 # v3.2.6
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: |
             ${{ needs.setup.outputs.plugin-cache-path }}
