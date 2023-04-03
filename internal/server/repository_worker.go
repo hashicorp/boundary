@@ -484,8 +484,8 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 				}
 				// If it's a KMS-PKI worker we do not want to allow name updates via
 				// the API, it should only come in via the upsert mechanism via
-				// status updates. We key off whether or not the public ID is random
-				// or known to be generated in KMS fashion.
+				// status updates. If the public ID is predictably generated in the 
+				// KMS fashion, it's a KMS-PKI worker.
 				workerId, err := NewWorkerIdFromScopeAndName(ctx, wAgg.ScopeId, wAgg.Name)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id in kms-pki name check case"))
