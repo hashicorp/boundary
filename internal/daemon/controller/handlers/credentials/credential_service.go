@@ -842,21 +842,13 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 			}
 
 		case credential.JsonSubtype:
-			object := req.GetItem().GetJsonAttributes().GetObject()
-			if object != nil {
-				_, err := json.Marshal(object.AsMap())
-				if err != nil {
+			if handlers.MaskContainsPrefix(req.GetUpdateMask().GetPaths(), objectField) {
+				object := req.GetItem().GetJsonAttributes().GetObject()
+				if object == nil || len(object.AsMap()) <= 0 {
+					badFields[objectField] = "This is a required field and cannot be set to empty"
+				} else if _, err := json.Marshal(object); err != nil {
 					badFields[objectField] = "Unable to parse given json value"
 				}
-				if !handlers.MaskContainsPrefix(req.GetUpdateMask().GetPaths(), objectField) {
-					badFields[objectField] = "This is a required field and cannot be set to empty."
-				}
-				if len(object.AsMap()) == 0 {
-					badFields[objectField] = "This is a required field and cannot be set to empty."
-				}
-			}
-			if handlers.MaskContainsPrefix(req.GetUpdateMask().GetPaths(), objectField) && object == nil {
-				badFields[objectField] = "This is a required field and cannot be set to empty."
 			}
 
 		default:
