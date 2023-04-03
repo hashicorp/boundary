@@ -1277,6 +1277,20 @@ func TestRepository_UpdateWorker(t *testing.T) {
 				assert.Greater(t, w.GetUpdateTime().AsTime(), w.GetCreateTime().AsTime())
 			},
 		},
+		{
+			name: "update description against kms-pki",
+			modifyWorker: func(t *testing.T, w *server.Worker) {
+				t.Helper()
+				w.Description = "foo"
+			},
+			newIdFunc: func(ctx context.Context, scopeId, name string) func(ctx context.Context) (string, error) {
+				return func(ctx context.Context) (string, error) {
+					return server.NewWorkerIdFromScopeAndName(ctx, scopeId, name)
+				}
+			},
+			path:    []string{"Description"},
+			wantErr: true,
+		},
 	}
 	for _, tt := range pkiCases {
 		t.Run(tt.name, func(t *testing.T) {

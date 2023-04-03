@@ -339,13 +339,17 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 	w, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	switch {
 	case err == nil:
-	case stderrors.Is(err, server.ErrCannotUpdateKmsWorkerName):
+	case stderrors.Is(err, server.ErrCannotUpdateKmsWorkerViaApi):
 		// Treat this like a "bad field" error on name even though we couldn't
 		// return it in validation without having to make an additional call and
 		// a lot of additional logic
 		return nil, handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
-			badFields := map[string]string{
-				globals.NameField: "KMS-registered workers cannot have their names updated via the API.",
+			badFields := make(map[string]string)
+			if req.GetItem().GetName().GetValue() != "" {
+				badFields[globals.NameField] = "KMS-registered workers cannot have their name updated via the API."
+			}
+			if req.GetItem().GetDescription().GetValue() != "" {
+				badFields[globals.DescriptionField] = "KMS-registered workers cannot have their description updated via the API."
 			}
 			return badFields
 		}, globals.WorkerPrefix)

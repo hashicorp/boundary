@@ -508,9 +508,6 @@ func TestUpdate(t *testing.T) {
 		wkr, _, err := repo.UpdateWorker(context.Background(), pkiWkr, pkiVersion, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset pki worker.")
 		pkiVersion = wkr.Version
-		wkr, _, err = repo.UpdateWorker(context.Background(), pkiKmsWkr, pkiKmsVersion, []string{"Description"})
-		require.NoError(t, err, "Failed to reset pki-kms worker.")
-		pkiKmsVersion = wkr.Version
 	}
 
 	wCreated := pkiWkr.GetCreateTime().GetTimestamp().AsTime()
@@ -912,17 +909,17 @@ func TestUpdate(t *testing.T) {
 				}
 
 				// Search through update masks to see if we're updating name
-				var nameChange bool
+				var basicInfoChange bool
 				if tc.req != nil && tc.req.UpdateMask != nil {
 					for _, field := range tc.req.UpdateMask.Paths {
-						if strings.ToLower(field) == "name" {
-							nameChange = true
+						if strings.ToLower(field) == "name" || strings.ToLower(field) == "description" {
+							basicInfoChange = true
 						}
 						if strings.Contains(field, ",") {
 							splitStr := strings.Split(field, ",")
 							for _, field := range splitStr {
-								if strings.ToLower(field) == "name" {
-									nameChange = true
+								if strings.ToLower(field) == "name" || strings.ToLower(field) == "description" {
+									basicInfoChange = true
 								}
 							}
 						}
@@ -933,9 +930,9 @@ func TestUpdate(t *testing.T) {
 				// If it's a PKI-KMS worker and we wouldn't otherwise expect an
 				// error but we tried a name change, ensure we see the expected
 				// error here.
-				if wkr.PublicId == pkiKmsWkr.PublicId && nameChange && tc.err == nil {
+				if wkr.PublicId == pkiKmsWkr.PublicId && basicInfoChange && tc.err == nil {
 					require.Error(t, gErr)
-					assert.Contains(t, gErr.Error(), "KMS-registered workers cannot have their names updated via the API.")
+					assert.Contains(t, gErr.Error(), "KMS-registered workers cannot have their")
 					assert.True(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)))
 					return
 				}

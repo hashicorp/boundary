@@ -23,7 +23,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var ErrCannotUpdateKmsWorkerName = stderrors.New("cannot update a kms worker's name via api")
+var ErrCannotUpdateKmsWorkerViaApi = stderrors.New("cannot update a kms worker's basic information via api")
 
 // DeleteWorker will delete a worker from the repository.
 func (r *Repository) DeleteWorker(ctx context.Context, publicId string, _ ...Option) (int, error) {
@@ -444,11 +444,9 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "version is zero")
 	}
 
-	var checkNameUpdate bool
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold(nameField, f):
-			checkNameUpdate = true
 		case strings.EqualFold(descField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
@@ -476,24 +474,24 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			if checkNameUpdate {
-				// First we need to do a lookup so we can validate that the name is
-				// not changing if it was registered via KMS-PKI means
-				wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
-				if err := reader.LookupById(ctx, wAgg); err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
-				// If it's a KMS-PKI worker we do not want to allow name updates via
-				// the API, it should only come in via the upsert mechanism via
-				// status updates. If the public ID is predictably generated in the 
-				// KMS fashion, it's a KMS-PKI worker.
-				workerId, err := NewWorkerIdFromScopeAndName(ctx, wAgg.ScopeId, wAgg.Name)
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id in kms-pki name check case"))
-				}
-				if workerId == worker.PublicId {
-					return errors.Wrap(ctx, ErrCannotUpdateKmsWorkerName, op, errors.WithCode(errors.InvalidParameter))
-				}
+			// First we need to do a lookup so we can validate that this
+			// function is not being used for workers registered via KMS-PKI
+			// means
+			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
+			if err := reader.LookupById(ctx, wAgg); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			// If it's a KMS-PKI worker we do not want to allow
+			// name/description/other updates via the API, it should only come
+			// in via the upsert mechanism via status updates. If the public ID
+			// is predictably generated in the KMS fashion, it's a KMS-PKI
+			// worker.
+			workerId, err := NewWorkerIdFromScopeAndName(ctx, wAgg.ScopeId, wAgg.Name)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id in kms-pki name check case"))
+			}
+			if workerId == worker.PublicId {
+				return errors.Wrap(ctx, ErrCannotUpdateKmsWorkerViaApi, op, errors.WithCode(errors.InvalidParameter))
 			}
 
 			worker := worker.clone()
@@ -510,7 +508,7 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 
-			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
+			wAgg = &workerAggregate{PublicId: worker.GetPublicId()}
 			if err := reader.LookupById(ctx, wAgg); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
