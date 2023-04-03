@@ -16,6 +16,10 @@ import (
 
 var controllerGrpcServiceRegistrationFunctions []func(context.Context, *Controller, *grpc.Server) error
 
+// a stack of funcs; each func will use handlers.RegisterUpstreamMessageHandler
+// to register a handlers.UpstreamMessageHandler
+var controllerRegisterUpstreamMessageHandlerFunctions []func(context.Context, *Controller) error
+
 func init() {
 	controllerGrpcServiceRegistrationFunctions = append(controllerGrpcServiceRegistrationFunctions,
 		registerControllerServerCoordinationService,
@@ -115,5 +119,11 @@ func registerControllerUpstreamMessageService(ctx context.Context, c *Controller
 		return fmt.Errorf("%s: error creating upstream message service handler: %w", op, err)
 	}
 	pbs.RegisterUpstreamMessageServiceServer(server, upstreamMsgService)
+
+	for _, registerHandlerFn := range controllerRegisterUpstreamMessageHandlerFunctions {
+		if err := registerHandlerFn(ctx, c); err != nil {
+			return fmt.Errorf("%s: error registering upstream message handler: %w", op, err)
+		}
+	}
 	return nil
 }
