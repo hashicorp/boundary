@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: MPL-2.0
 
 //go:build ui
-// +build ui
 
 package controller
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -16,6 +16,9 @@ import (
 func init() {
 	handleUi = handleUiWithAssets
 }
+
+// serveMetadata provides controller metadata to the UI for licensed versions of Boundary.
+var serveMetadata = func(ctx context.Context, w http.ResponseWriter) {}
 
 func handleUiWithAssets(c *Controller) http.Handler {
 	var nextHandler http.Handler
@@ -40,7 +43,9 @@ func handleUiWithAssets(c *Controller) http.Handler {
 		default:
 			switch r.URL.Path {
 			case "/", "/favicon.png", "/assets/styles.css":
-
+			case "/metadata.json":
+				serveMetadata(c.baseContext, w)
+				return
 			default:
 				for i := dotIndex + 1; i < len(r.URL.Path); i++ {
 					intVal := r.URL.Path[i]
