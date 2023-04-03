@@ -88,7 +88,7 @@ path to the file.
 - [`plugins`](/boundary/docs/configuration/plugins): Configures options for plugins.
 
 ## Signals
-On `SIGHUP`, worker and controller processes will reload their configuration file to pick up updated values
+The `SIGHUP` signal causes worker and controller processes to reload their configuration files to pick up updated values.
 
 ~> **Note:** Not all configuration values can be reloaded. Please see the configuration pages for
 [workers](/boundary/docs/configuration/worker/) and [controllers](/boundary/docs/configuration/controller) for details
