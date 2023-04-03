@@ -19,7 +19,7 @@ func newWorkerId(ctx context.Context) (string, error) {
 	return id, nil
 }
 
-// newWorkerIdFromScopeAndName generates a predictable public id based on the
+// NewWorkerIdFromScopeAndName generates a predictable public id based on the
 // scope and the worker name.  This should only be used on kms workers at
 // upsert time.
 func NewWorkerIdFromScopeAndName(ctx context.Context, scope, name string) (string, error) {
