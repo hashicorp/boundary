@@ -86,8 +86,8 @@ worker {
   registration method and for workers directly connected to HCP Boundary.
 
 ## Signals
-On `SIGHUP`, a worker will reload its configuration file to pick up updated values for `initial_upstreams` and `tags`.
-All other updated values will be ignored.
+The `SIGHUP` signal causes a worker to reload its configuration file to pick up any updates for the `initial_upstreams` and `tags` values.
+Any other updated values are ignored.
 
 `SIGTERM` or `SIGINT` will initiate graceful shutdown on a worker. The worker will wait for sessions to drain
 before shutting down. Workers in a graceful shutdown state will not receive new work, including session proxying, from the control plane.
