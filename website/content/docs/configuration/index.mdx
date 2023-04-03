@@ -94,9 +94,8 @@ The `SIGHUP` signal causes worker and controller processes to reload their confi
 [workers](/boundary/docs/configuration/worker/) and [controllers](/boundary/docs/configuration/controller) for details
 on which values can be reloaded on `SIGHUP`.
 
-On `SIGTERM` or `SIGINT`, worker and controller processes will enter graceful shutdown. Controller graceful shutdown
-will close listeners and servers before shutting down. Worker graceful shutdown will wait for sessions to drain
-before shutting down. Workers in a graceful shutdown state will not receive new work, including session proxying, from the control plane.
+The `SIGTERM` and `SIGINT` signals cause worker and controller processes to enter graceful shutdown. A graceful shutdown for a controller closes listeners and servers before shutting down the controller. A graceful shutdown for a worker waits for any sessions to drain
+before shutting down the worker. Workers in a graceful shutdown state do not receive any new work, including session proxying, from the control plane.
 
 ## Example Configurations
 
