@@ -58,8 +58,8 @@ worker {
   at which the worker can be reached _by clients for proxying_. This defaults to
   the address of the listener marked for `proxy` purpose. This is especially
   useful for cloud environments that do not bind a publicly accessible IP to a
-  NIC on the host directly, such as an Amazon EIP. 
-  
+  NIC on the host directly, such as an Amazon EIP.
+
   This value can reference any of the following:
   - a direct address string
   - a file on disk (file://) from which an address will be read
@@ -84,6 +84,13 @@ worker {
   to connect to your HCP Boundary cluster rather than specifying
   `initial_upstreams`. This is currently only valid for workers using the PKI
   registration method and for workers directly connected to HCP Boundary.
+
+## Signals
+The `SIGHUP` signal causes a worker to reload its configuration file to pick up any updates for the `initial_upstreams` and `tags` values.
+Any other updated values are ignored.
+
+The `SIGTERM` and `SIGINT` signals initiate a graceful shutdown on a worker. The worker waits for any sessions to drain
+before shutting down. Workers in a graceful shutdown state do not receive any new work, including session proxying, from the control plane.
 
 ## Multi-hop worker capabilities <sup>HCP only</sup>
 Multi-hop capabilities, including multi-hop sessions and Vault private access,
