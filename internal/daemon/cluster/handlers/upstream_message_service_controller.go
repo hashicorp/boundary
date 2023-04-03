@@ -55,10 +55,7 @@ func RegisterUpstreamMessageHandler(ctx context.Context, msgType pbs.MsgType, h 
 	case util.IsNil(h):
 		return errors.New(ctx, errors.InvalidParameter, op, "missing handler")
 	}
-	if _, loaded := upstreamMessageHandler.LoadOrStore(msgType, h); loaded {
-		return errors.New(ctx, errors.InvalidParameter, op, "handler already registered for msg type")
-	}
-
+	upstreamMessageHandler.Store(msgType, h)
 	return nil
 }
 
