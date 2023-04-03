@@ -423,11 +423,12 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 
 // UpdateWorker will update a worker in the repository and return the resulting
 // worker. fieldMaskPaths provides field_mask.proto paths for fields that should
-// be updated.  Fields will be set to NULL if the field is a zero value and
+// be updated. Fields will be set to NULL if the field is a zero value and
 // included in fieldMask. Name, Description, and Address are the only updatable
 // fields, if no updatable fields are included in the fieldMaskPaths, then an
-// error is returned.  If any paths besides those listed above are included in
-// the path then an error is returned.
+// error is returned. If any paths besides those listed above are included in
+// the path then an error is returned. If the worker is a KMS worker (whether
+// via the old registration method or pki-kms) name updates will be disallowed.
 func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version uint32, fieldMaskPaths []string, opt ...Option) (*Worker, int, error) {
 	const (
 		nameField = "name"

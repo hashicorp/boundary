@@ -5,7 +5,6 @@ package cluster
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -29,7 +28,7 @@ func TestUnixListener(t *testing.T) {
 	conf, err := config.DevController()
 	require.NoError(err)
 
-	tempDir, err := ioutil.TempDir("", "boundary-unix-listener-test")
+	tempDir, err := os.MkdirTemp("", "boundary-unix-listener-test")
 	require.NoError(err)
 
 	defer func() {

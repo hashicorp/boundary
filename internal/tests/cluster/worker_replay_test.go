@@ -66,7 +66,7 @@ func TestWorkerReplay(t *testing.T) {
 	require.NoError(t, w1.Worker().Shutdown())
 
 	// Now, start up again with the same nonce
-	w1 = worker.NewTestWorker(t, &worker.TestWorkerOpts{
+	worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		Config:           conf,
 		WorkerAuthKms:    c1.Config().WorkerAuthKms,
 		InitialUpstreams: c1.ClusterAddrs(),
