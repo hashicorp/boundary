@@ -57,6 +57,7 @@ func TestWorkerUpgradeKmsAuthMethod(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, workers, 1)
 	assert.Equal(t, "kms", workers[0].Type)
+	oldId := workers[0].PublicId
 
 	// Assert that the worker has connected
 	logBuf, err := os.ReadFile(ec.AllEvents.Name())
@@ -88,4 +89,5 @@ func TestWorkerUpgradeKmsAuthMethod(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, workers, 1)
 	assert.Equal(t, "pki", workers[0].Type)
+	assert.Equal(t, oldId, workers[0].PublicId)
 }
