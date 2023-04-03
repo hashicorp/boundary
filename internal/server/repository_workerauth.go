@@ -159,7 +159,7 @@ func StoreNodeInformationTx(ctx context.Context, reader db.Reader, writer db.Wri
 			WithReleaseVersion(fmt.Sprintf("Boundary v%s", wci.BoundaryVersion)),
 		)
 		wConf.Type = PkiWorkerType.String()
-		wConf.PublicId, err = newWorkerIdFromScopeAndName(ctx, scopeId, wci.Name)
+		wConf.PublicId, err = NewWorkerIdFromScopeAndName(ctx, scopeId, wci.Name)
 		if err != nil || wConf.PublicId == "" {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker id"))
 		}
@@ -167,6 +167,31 @@ func StoreNodeInformationTx(ctx context.Context, reader db.Reader, writer db.Wri
 			Target: db.Columns{"public_id"},
 			Action: db.SetColumns([]string{"release_version", "name", "description"}),
 		}
+
+		// Before going ahead with this, we need to see if this is an upgrade
+		// case from the old KMS auth method. If so we need to delete first as
+		// type is immutable.
+		lookupWorker := allocWorker()
+		lookupWorker.PublicId = wConf.PublicId
+		err := reader.LookupById(ctx, &lookupWorker)
+		switch {
+		case err == nil:
+			if lookupWorker.Type == KmsWorkerType.String() {
+				// Delete it
+				rowsDeleted, err := writer.Delete(ctx, lookupWorker)
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("error deleting kms typed worker with matching id"))
+				}
+				if rowsDeleted != 1 {
+					return errors.New(ctx, errors.NotSpecificIntegrity, op, fmt.Sprintf("deleted %d rows, expected to delete 1", rowsDeleted))
+				}
+			}
+		case errors.Convert(err) != nil && errors.Convert(err).Code == errors.RecordNotFound:
+			// all good
+		default:
+			return errors.Wrap(ctx, err, op)
+		}
+
 		var withRowsAffected int64
 		err = writer.Create(
 			ctx,

@@ -264,9 +264,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		}
 	}
 
-	if opts.UseDeprecatedKmsAuthMethod {
-		opts.Config.Worker.UseDeprecatedKmsAuthMethod = true
-	}
+	opts.Config.Worker.UseDeprecatedKmsAuthMethod = opts.UseDeprecatedKmsAuthMethod
 	if len(opts.InitialUpstreams) > 0 {
 		opts.Config.Worker.InitialUpstreams = opts.InitialUpstreams
 	}

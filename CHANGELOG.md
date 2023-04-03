@@ -11,7 +11,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   only recommended if compatibility with pre-0.13 workers using the KMS auth
   method is required. Requiring opting in removes some potentially confusing
   behavior for deciding when to use the old versus new mechanism. To opt in, add
-  `use_deprecated_kms_auth_method = true` to the `worker` config block.
+  `use_deprecated_kms_auth_method = true` to the `worker` config block. Note
+  that if a 0.13+ worker using KMS connects to a 0.13+ controller using KMS, the
+  transition to the new method will happen automatically. To go back to the old
+  method after that will require the worker to be deleted and re-added with the
+  `use_deprecated_kms_auth_method` config field specified.
 * When grants are added to roles additional validity checking is now performed.
   This extra validity checking is designed to reject grants that are not
   [documented grant

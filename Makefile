@@ -36,7 +36,7 @@ golangci-lint:
 	$(eval GOLINT_INSTALLED := $(shell which golangci-lint))
 
 	if [ "$(GOLINT_INSTALLED)" = "" ]; then \
-		sh scripts/install-golangci-lint.sh -b $(GO_PATH)/bin v1.51.2; \
+		sh scripts/install-golangci-lint.sh -b $(GO_PATH)/bin v1.52.2; \
 	fi;
 
 .PHONY: cleangen

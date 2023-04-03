@@ -14,19 +14,20 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestWorkerReplay(t *testing.T) {
-	ec := event.TestEventerConfig(t, "TestWorkerReplay", event.TestWithObservationSink(t), event.TestWithSysSink(t))
+func TestWorkerUpgradeKmsAuthMethod(t *testing.T) {
+	ec := event.TestEventerConfig(t, "TestWorkerUpgradeKmsAuthMethod", event.TestWithObservationSink(t), event.TestWithSysSink(t))
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 		Name:  "test",
 	})
-	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-TestWorkerReplay", event.WithEventerConfig(&ec.EventerConfig)))
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-TestWorkerUpgradeKmsAuthMethod", event.WithEventerConfig(&ec.EventerConfig)))
 
 	conf, err := config.DevController()
 	conf.Eventing = &ec.EventerConfig
@@ -35,46 +36,43 @@ func TestWorkerReplay(t *testing.T) {
 		Config: conf,
 	})
 	defer c1.Shutdown()
+	serversRepo := c1.ServersRepo()
 
 	conf, err = config.DevWorker()
 	conf.Eventing = &ec.EventerConfig
 	require.NoError(t, err)
 	w1 := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		Config:           conf,
-		WorkerAuthKms:    c1.Config().WorkerAuthKms,
-		InitialUpstreams: c1.ClusterAddrs(),
-		NonceFn: func(length int) (string, error) {
-			return "test_noncetest_nonce", nil
-		},
+		Config:                     conf,
+		WorkerAuthKms:              c1.Config().WorkerAuthKms,
+		InitialUpstreams:           c1.ClusterAddrs(),
 		UseDeprecatedKmsAuthMethod: true,
 	})
+	defer w1.Shutdown()
 
 	// Give time for it to connect
 	time.Sleep(10 * time.Second)
+
+	// Verify it's KMS type
+	workers, err := serversRepo.ListWorkers(c1.Context(), []string{scope.Global.String()})
+	require.NoError(t, err)
+	require.Len(t, workers, 1)
+	assert.Equal(t, "kms", workers[0].Type)
+	oldId := workers[0].PublicId
 
 	// Assert that the worker has connected
 	logBuf, err := os.ReadFile(ec.AllEvents.Name())
 	require.NoError(t, err)
 	require.Equal(t, 1, strings.Count(string(logBuf), "worker successfully authed"))
 
-	// Assert we have the expected nonce in the DB
-	nonces, err := c1.ServersRepo().ListNonces(c1.Context(), server.NoncePurposeWorkerAuth)
-	require.NoError(t, err)
-	require.Len(t, nonces, 1)
-	require.Equal(t, &server.Nonce{Nonce: "test_noncetest_nonce", Purpose: server.NoncePurposeWorkerAuth}, nonces[0])
-
 	require.NoError(t, w1.Worker().Shutdown())
 
-	// Now, start up again with the same nonce
-	worker.NewTestWorker(t, &worker.TestWorkerOpts{
+	// Now, start up again, using the new method
+	w1 = worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		Config:           conf,
 		WorkerAuthKms:    c1.Config().WorkerAuthKms,
 		InitialUpstreams: c1.ClusterAddrs(),
-		NonceFn: func(length int) (string, error) {
-			return "test_noncetest_nonce", nil
-		},
-		UseDeprecatedKmsAuthMethod: true,
 	})
+	defer w1.Shutdown()
 
 	// Give time for it to connect
 	time.Sleep(10 * time.Second)
@@ -84,10 +82,12 @@ func TestWorkerReplay(t *testing.T) {
 	ec.AllEvents.Close()
 	logBuf, err = os.ReadFile(ec.AllEvents.Name())
 	require.NoError(t, err)
-	require.Equal(t, 1, strings.Count(string(logBuf), "worker successfully authed"))
+	require.Equal(t, 2, strings.Count(string(logBuf), "worker has successfully authenticated"))
 
-	nonces, err = c1.ServersRepo().ListNonces(c1.Context(), server.NoncePurposeWorkerAuth)
+	// Verify it's PKI type
+	workers, err = serversRepo.ListWorkers(c1.Context(), []string{scope.Global.String()})
 	require.NoError(t, err)
-	require.Len(t, nonces, 1)
-	require.Equal(t, &server.Nonce{Nonce: "test_noncetest_nonce", Purpose: server.NoncePurposeWorkerAuth}, nonces[0])
+	require.Len(t, workers, 1)
+	assert.Equal(t, "pki", workers[0].Type)
+	assert.Equal(t, oldId, workers[0].PublicId)
 }

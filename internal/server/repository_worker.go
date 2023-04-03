@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"strings"
 
@@ -21,6 +22,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+var ErrCannotUpdateKmsWorkerViaApi = stderrors.New("cannot update a kms worker's basic information via api")
 
 // DeleteWorker will delete a worker from the repository.
 func (r *Repository) DeleteWorker(ctx context.Context, publicId string, _ ...Option) (int, error) {
@@ -282,7 +285,7 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 		// are treated as the same worker.  Allowing this only for kms workers
 		// also ensures that we maintain the unique name constraint between pki
 		// workers and kms workers.
-		workerId, err = newWorkerIdFromScopeAndName(ctx, worker.GetScopeId(), worker.GetName())
+		workerId, err = NewWorkerIdFromScopeAndName(ctx, worker.GetScopeId(), worker.GetName())
 		if err != nil || workerId == "" {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error creating a worker id"))
 		}
@@ -299,9 +302,9 @@ func (r *Repository) UpsertWorkerStatus(ctx context.Context, worker *Worker, opt
 			switch {
 			case opts.withKeyId != "":
 				// This case goes first because a key ID being supplied should
-				// be a clear indicator that we are working with a PKI
-				// workerClone, and a lack of one a clear indication we are
-				// working with a KMS workerClone.
+				// be a clear indicator that we are working with a PKI (or
+				// KMS-PKI) workerClone, and a lack of one a clear indication we
+				// are working with a KMS workerClone.
 				//
 				// Note: unlike in the below case, this purposefully leaves out
 				// "description" since we want description changes for (non
@@ -420,11 +423,12 @@ func setWorkerTags(ctx context.Context, w db.Writer, id string, ts TagSource, ta
 
 // UpdateWorker will update a worker in the repository and return the resulting
 // worker. fieldMaskPaths provides field_mask.proto paths for fields that should
-// be updated.  Fields will be set to NULL if the field is a zero value and
+// be updated. Fields will be set to NULL if the field is a zero value and
 // included in fieldMask. Name, Description, and Address are the only updatable
 // fields, if no updatable fields are included in the fieldMaskPaths, then an
-// error is returned.  If any paths besides those listed above are included in
-// the path then an error is returned.
+// error is returned. If any paths besides those listed above are included in
+// the path then an error is returned. If the worker is a KMS worker (whether
+// via the old registration method or pki-kms) name updates will be disallowed.
 func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version uint32, fieldMaskPaths []string, opt ...Option) (*Worker, int, error) {
 	const (
 		nameField = "name"
@@ -470,6 +474,26 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
+			// First we need to do a lookup so we can validate that this
+			// function is not being used for workers registered via KMS-PKI
+			// means
+			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
+			if err := reader.LookupById(ctx, wAgg); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			// If it's a KMS-PKI worker we do not want to allow
+			// name/description/other updates via the API, it should only come
+			// in via the upsert mechanism via status updates. If the public ID
+			// is predictably generated in the KMS fashion, it's a KMS-PKI
+			// worker.
+			workerId, err := NewWorkerIdFromScopeAndName(ctx, wAgg.ScopeId, wAgg.Name)
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id in kms-pki name check case"))
+			}
+			if workerId == worker.PublicId {
+				return errors.Wrap(ctx, ErrCannotUpdateKmsWorkerViaApi, op, errors.WithCode(errors.InvalidParameter))
+			}
+
 			worker := worker.clone()
 			rowsUpdated, err = w.Update(ctx, worker, dbMask, nullFields, db.WithVersion(&version),
 				db.WithWhere("server_worker.type = 'pki'"))
@@ -484,7 +508,7 @@ func (r *Repository) UpdateWorker(ctx context.Context, worker *Worker, version u
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
 
-			wAgg := &workerAggregate{PublicId: worker.GetPublicId()}
+			wAgg = &workerAggregate{PublicId: worker.GetPublicId()}
 			if err := reader.LookupById(ctx, wAgg); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
