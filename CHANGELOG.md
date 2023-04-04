@@ -8,7 +8,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Security
 
-* Boundary now uses Go 1.19.8 to address (CVE-2023-24536) See the
+* Boundary now uses Go 1.19.8 to address CVE-2023-24536. See the
   [Go announcement](https://groups.google.com/g/golang-announce/c/Xdv6JL9ENs8) for
   more details.
 
