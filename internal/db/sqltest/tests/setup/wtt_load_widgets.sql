@@ -5,7 +5,7 @@
 begin;
   select plan(1);
 
-  select lives_ok($$select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets')$$);
+  select lives_ok($$select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'credentials', 'sessions')$$);
 
   select * from finish();
 rollback;

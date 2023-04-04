@@ -4,14 +4,16 @@
 begin;
   -- wtt_load populates tables for the given test persona and set of aggregates.
   -- Valid personas are:
-  --  * colors
   --  * widgets
   --
   -- Valid aggregates:
   --  * iam
+  --  * kms
   --  * auth
   --  * hosts
   --  * targets
+  --  * credentials
+  --  * sessions
   --
   -- Note that some aggregates depend on data from other aggretates, so the order
   -- that they are passed to this function matters.

@@ -474,9 +474,9 @@ create function _wtt_load_widgets_sessions() returns void
 as $$
 begin
     insert into session
-      (project_id,     target_id,      host_set_id,    host_id,        user_id,        auth_token_id,  certificate,  endpoint, public_id)
+      (project_id,     target_id,      user_id,        auth_token_id,  certificate,  endpoint, public_id)
     values
-      ('p____swidget', 't_________wb', 's___1wb-sths', 'h_____wb__01', 'u_____warren', 'tok___warren', 'abc'::bytea, 'ep1',    's1____warren');
+      ('p____swidget', 't_________wb', 'u_____warren', 'tok___warren', 'abc'::bytea, 'ep1',    's1____warren');
 end;
 $$ language plpgsql;
 
