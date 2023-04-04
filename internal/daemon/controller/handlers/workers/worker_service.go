@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	stderrors "errors"
 	"fmt"
 	"strings"
 
@@ -334,8 +335,25 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
+
 	w, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
-	if err != nil {
+	switch {
+	case err == nil:
+	case stderrors.Is(err, server.ErrCannotUpdateKmsWorkerViaApi):
+		// Treat this like a "bad field" error on name even though we couldn't
+		// return it in validation without having to make an additional call and
+		// a lot of additional logic
+		return nil, handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
+			badFields := make(map[string]string)
+			if req.GetItem().GetName().GetValue() != "" {
+				badFields[globals.NameField] = "KMS-registered workers cannot have their name updated via the API."
+			}
+			if req.GetItem().GetDescription().GetValue() != "" {
+				badFields[globals.DescriptionField] = "KMS-registered workers cannot have their description updated via the API."
+			}
+			return badFields
+		}, globals.WorkerPrefix)
+	default:
 		return nil, err
 	}
 

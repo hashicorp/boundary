@@ -36,7 +36,7 @@ path to the file.
   Boundary serves traffic (API, cluster, and proxy).
 
   Controllers must have at least two listener blocks defined: one marked for
-  `api` purpose and the other marked for `cluster` purpose. 
+  `api` purpose and the other marked for `cluster` purpose.
 
   Workers will have only one listener, marked for `proxy` purpose.
 
@@ -86,6 +86,16 @@ path to the file.
   configuration. If present, `boundary server` will start a Controller subprocess.
 
 - [`plugins`](/boundary/docs/configuration/plugins): Configures options for plugins.
+
+## Signals
+The `SIGHUP` signal causes worker and controller processes to reload their configuration files to pick up updated values.
+
+~> **Note:** You cannot reload all configuration values using the `SIGHUP` signal. Refer to the configuration pages for
+[workers](/boundary/docs/configuration/worker/) and [controllers](/boundary/docs/configuration/controller) for details
+on which values can be reloaded on `SIGHUP`.
+
+The `SIGTERM` and `SIGINT` signals cause worker and controller processes to enter graceful shutdown. A graceful shutdown for a controller closes listeners and servers before shutting down the controller. A graceful shutdown for a worker waits for any sessions to drain
+before shutting down the worker. Workers in a graceful shutdown state do not receive any new work, including session proxying, from the control plane.
 
 ## Example Configurations
 

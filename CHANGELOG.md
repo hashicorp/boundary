@@ -1,10 +1,21 @@
 # Boundary CHANGELOG
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
+
 ## Next
 
 ### Deprecations/Changes
 
+* With the introduction of the new KMS variant for worker registration (as
+  described below), using the deprecated behavior requires opting-in. This is
+  only recommended if compatibility with pre-0.13 workers using the KMS auth
+  method is required. Requiring opting in removes some potentially confusing
+  behavior for deciding when to use the old versus new mechanism. To opt in, add
+  `use_deprecated_kms_auth_method = true` to the `worker` config block. Note
+  that if a 0.13+ worker using KMS connects to a 0.13+ controller using KMS, the
+  transition to the new method will happen automatically. To go back to the old
+  method after that will require the worker to be deleted and re-added with the
+  `use_deprecated_kms_auth_method` config field specified.
 * When grants are added to roles additional validity checking is now performed.
   This extra validity checking is designed to reject grants that are not
   [documented grant
@@ -17,6 +28,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* KMS workers: KMS workers now have feature parity with PKI workers (they
+  support multi-hop and Vault private access) and support separate KMSes for
+  authenticating downstreams across different networks. See the [worker
+  configuration
+  documentation](https://developer.hashicorp.com/boundary/docs/configuration/worker)
+  for more information. ([PR](https://github.com/hashicorp/boundary/pull/3101))
 * roles: Perform additional validity checking on grants at submission time
   ([PR](https://github.com/hashicorp/boundary/pull/3081))
 
@@ -37,7 +54,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   credential type. [PR](https://github.com/hashicorp/boundary/pull/2989)
 * ui: Fix credential library not saving correctly when trying to save it as a
   generic secrets type. ([PR](https://github.com/hashicorp/boundary-ui/pull/1640))
-* sessions: Fix tofu token retreival. ([PR](https://github.com/hashicorp/boundary/pull/3064))
+* sessions: Fix tofu token retrieval. ([PR](https://github.com/hashicorp/boundary/pull/3064))
 
 ## 0.12.0 (2023/01/24)
 

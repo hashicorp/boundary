@@ -45,9 +45,9 @@ jobs:
           # getdiff echoes the diff in GitHub markdown syntax or "Unchanged" if
           # the file is empty.
           getdiff() {
-            if [[ -s $1 ]]; then
+            if [[ -s "$1" ]]; then
               echo \`\`\`diff
-              echo "$(cat $1)"
+              cat "$1"
               echo \`\`\`
             else
               echo "Unchanged"
@@ -58,6 +58,9 @@ jobs:
           echo 'Building new GitHub schema-diff comment'
           cat << EOF > github-comment.txt
           $gh_comment_prefix \`${GITHUB_BASE_REF}\` and \`${GITHUB_HEAD_REF}\` @ ${{ github.event.pull_request.head.sha }}
+
+          To understand how these diffs are generated and some limitations see the
+          [documentation](https://github.com/hashicorp/boundary/blob/main/scripts/schema-diff.sh) of the script.
 
           #### Functions
           $(getdiff .schema-diff/funcs.diff)
@@ -76,6 +79,9 @@ jobs:
 
           #### Constraints
           $(getdiff .schema-diff/constraints.diff)
+
+          #### Foreign Key Constraints
+          $(getdiff .schema-diff/fk_constraints.diff)
           EOF
 
           # Parse it through jq to build a valid json object.
@@ -89,4 +95,4 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -d @body.json \
-            $GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number }}/comments
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues/${{ github.event.pull_request.number }}/comments"

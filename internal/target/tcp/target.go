@@ -31,8 +31,10 @@ const (
 type Target struct {
 	*store.Target
 	// Network address assigned to the Target.
-	Address   string `json:"address,omitempty" gorm:"-"`
-	tableName string `gorm:"-"`
+	Address           string                    `json:"address,omitempty" gorm:"-"`
+	tableName         string                    `gorm:"-"`
+	HostSource        []target.HostSource       `gorm:"-"`
+	CredentialSources []target.CredentialSource `gorm:"-"`
 }
 
 // Ensure Target implements interfaces
@@ -78,8 +80,10 @@ func (h targetHooks) AllocTarget() target.Target {
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
-		Target:  cp.(*store.Target),
-		Address: t.Address,
+		Target:            cp.(*store.Target),
+		Address:           t.Address,
+		HostSource:        t.HostSource,
+		CredentialSources: t.CredentialSources,
 	}
 }
 
@@ -133,6 +137,14 @@ func (t *Target) GetType() subtypes.Subtype {
 
 func (t *Target) GetAddress() string {
 	return t.Address
+}
+
+func (t *Target) GetHostSources() []target.HostSource {
+	return t.HostSource
+}
+
+func (t *Target) GetCredentialSources() []target.CredentialSource {
+	return t.CredentialSources
 }
 
 func (t *Target) SetPublicId(ctx context.Context, publicId string) error {
@@ -195,4 +207,12 @@ func (t *Target) SetIngressWorkerFilter(filter string) {
 
 func (t *Target) SetAddress(address string) {
 	t.Address = address
+}
+
+func (t *Target) SetHostSources(sources []target.HostSource) {
+	t.HostSource = sources
+}
+
+func (t *Target) SetCredentialSources(sources []target.CredentialSource) {
+	t.CredentialSources = sources
 }

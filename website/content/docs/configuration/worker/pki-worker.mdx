@@ -7,11 +7,9 @@ description: |-
 
 
 # PKI worker configuration
-PKI Workers authenticate to Boundary using a certificate-based method, allowing
-for worker deployment without using a shared KMS.
-
-PKI Workers require an accessible directory defined by `auth_storage_path` for
-credential storage.
+PKI Workers authenticate to Boundary using an activation token. They require an
+accessible directory defined by `auth_storage_path` for credential storage and
+rotation.
 
 Example (not safe for production!):
 
@@ -62,14 +60,15 @@ on the CLI this would be via `boundary workers create worker-led
 -worker-generated-auth-token`. No values are needed in the configuration file.
 
 ## KMS configuration
-PKI Workers credentials can be encrypted by including an optional KMS stanza with the purpose `worker-auth-storage`.
+PKI Workers' credentials can be encrypted by including an optional KMS stanza
+with the purpose `worker-auth-storage`.
 
 Example (not safe for production!):
 ```hcl
 kms "aead" {
   purpose = "worker-auth-storage"
 	aead_type = "aes-gcm"
-	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+	key = "X+IJMVT6OnsrIR6G/9OTcJSX+lM9FSPN"
 	key_id = "worker-auth-storage"
 }
 ```
@@ -78,99 +77,3 @@ kms "aead" {
 workers. These fields are only valid for [KMS Workers][]. `name` and
 `description` can only be set for PKI workers through the API.
 
-## Multi-hop sessions <sup>HCP only</sup>
-
-You can use the `hcp_boundary_cluster_id` field to configure PKI workers to connect to your HCP
-Boundary cluster or the `initial_upstreams` field to connect directly to other workers,
- when set to that worker's `public_addr` field.
-
-A multi-hop session is when two or more workers are connected, and there are multiple “hops” from a worker to
-the controller. There are no limits on the amount of workers allowed in a multi-hop session configuration.
-
-The multi-hop session introduces the concepts of “upstream” and “downstream” workers. If you view controllers
-as the “top” of a multi-hop chain, downstream workers reside below a worker in the chain, while upstream workers reside
-above a worker in the chain. For example, in the diagram below, Worker 2’s upstream is Worker 1, and its
-downstream is Worker 3.
-
-![multi-hop workers](/img/multi-hop-workers.png)
-
-You can deploy multi-hop workers in scenarios where inbound network traffic is not allowed. A worker in a private
-network can send outbound communication to its upstream worker, and create a reverse proxy to establish a session.
-
-You can configure [target worker filters][] with multi-hop workers to allow for fine-grained control on which workers handle
-ingress and egress for session traffic to a [target][]. Ingress worker filters determine which
-workers you connect with to initiate a session, and egress worker filters determine which workers are
-used to access targets.
-
-### Multi-hop worker requirements
-
-When you configure multi-hop sessions, there is an "ingress" worker, an "egress" worker, and any number of intermediary workers.
-Ingress, egress, and intermediary workers have the following requirements.
-
-#### Ingress worker requirements
-
-To proxy target connections, ingress workers require outbound access to the Boundary control plane and inbound access from clients.
-
-#### Intermediary worker requirements
-
-Intermediary workers require outbound access to an upstream worker.
-The upstream worker may be an ingress worker or another intermediary worker.
-Any upstream intermediary worker needs eventual connectivity to an ingress worker via trusted intermediaries.
-
-Intermediary workers also require inbound access from a downstream worker.
-The downstream worker may be an egress worker or another intermediary worker.
-Any downstream intermediary worker needs eventual connectivity to an egress worker via trusted intermediaries.
-
-#### Egress worker requirements
-
-To proxy target connections, egress workers require outbound access to an upstream worker and outbound access to the destination host.
-Inbound session connections from clients reach the egress worker via reverse proxy; the ingress worker is initiated from the egress worker.
-
-## Complete configuration example
-
-```hcl
-listener "tcp" {
-	purpose = "proxy"
-	tls_disable = true
-	address = "127.0.0.1"
-}
-
-worker {
-  # Path for worker storage. Must be unique across workers
-  auth_storage_path="/boundary/demo-worker-1"
-
-  # Workers typically need to reach upstreams on :9201
-  initial_upstreams = [
-    "10.0.0.1",
-    "10.0.0.2",
-    "10.0.0.3",
-  ]
-
-  public_addr = "myhost.mycompany.com"
-
-  tags {
-    type   = ["prod", "webservers"]
-    region = ["us-east-1"]
-  }
-}
-
-# The following KMS config is an example only
-# Use a production KMS such as AWS KMS for production installs
-kms "aead" {
-  purpose = "worker-auth-storage"
-	aead_type = "aes-gcm"
-	key = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
-	key_id = "worker-auth-storage"
-}
-
-
-```
-[kms workers]: /boundary/docs/configuration/worker/kms-worker
-[target]: /boundary/docs/concepts/domain-model/targets
-[target worker filters]: /boundary/docs/concepts/filtering/worker-tags#target-worker-filtering
-
-## Tutorials
-
-Refer to the [Self-Managed Worker Registration with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-workers) tutorial to learn how to register and manage PKI workers.
-
-Refer to the [Manage Multi-Hop Sessions with HCP Boundary](/boundary/tutorials/hcp-administration/hcp-manage-multi-hop) tutorial to learn how to configure a multi-hop session.

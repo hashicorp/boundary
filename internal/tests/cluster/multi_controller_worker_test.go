@@ -118,7 +118,8 @@ func TestWorkerAppendInitialUpstreams(t *testing.T) {
 	defer w1.Shutdown()
 
 	// Wait for worker to send status
-	cancelCtx, _ := context.WithTimeout(ctx, 10*time.Second)
+	cancelCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	t.Cleanup(cancel)
 	for {
 		select {
 		case <-time.After(500 * time.Millisecond):

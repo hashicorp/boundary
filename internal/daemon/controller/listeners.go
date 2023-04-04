@@ -20,10 +20,12 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
 	"github.com/hashicorp/nodeenrollment/protocol"
+	"github.com/hashicorp/nodeenrollment/util/toggledlogger"
 	"google.golang.org/grpc"
 )
 
@@ -133,10 +135,25 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		return nil, fmt.Errorf("error fetching worker auth storage: %w", err)
 	}
 
+	eventLogger, err := event.NewHclogLogger(c.baseContext, c.conf.Eventer)
+	if err != nil {
+		event.WriteError(c.baseContext, op, err)
+		return nil, errors.Wrap(c.baseContext, err, op)
+	}
+	// Give the log a prefix
+	eventLogger = eventLogger.Named(fmt.Sprintf("workerauth_listener"))
+	// Wrap the log in a toggle so we can turn it on and off via config and
+	// SIGHUP
+	eventLogger = toggledlogger.NewToggledLogger(eventLogger, c.conf.WorkerAuthDebuggingEnabled)
+
+	wrapperToUse := c.conf.WorkerAuthKms
+	if !util.IsNil(c.conf.DownstreamWorkerAuthKms) {
+		wrapperToUse = c.conf.DownstreamWorkerAuthKms
+	}
+
 	// The cluster listener is shut down at server shutdown time so we do not
 	// need to handle individual listener shutdown.
-	var l net.Listener
-	l, err = protocol.NewInterceptingListener(
+	interceptingListener, err := protocol.NewInterceptingListener(
 		&protocol.InterceptingListenerConfiguration{
 			Context:      c.baseContext,
 			Storage:      workerAuthStorage,
@@ -144,13 +161,17 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 			BaseTlsConfiguration: &tls.Config{
 				GetConfigForClient: c.validateWorkerTls,
 			},
+			Options: []nodee.Option{
+				nodee.WithLogger(eventLogger),
+				nodee.WithRegistrationWrapper(wrapperToUse),
+			},
 		})
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating node auth listener: %w", err)
 	}
 
 	// Create split listener
-	splitListener, err := nodeenet.NewSplitListener(l)
+	splitListener, err := nodeenet.NewSplitListener(interceptingListener)
 	if err != nil {
 		return nil, fmt.Errorf("error instantiating split listener: %w", err)
 	}

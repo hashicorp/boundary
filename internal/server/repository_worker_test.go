@@ -297,6 +297,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
 		require.NoError(t, err)
 		assert.Len(t, workers, 1)
+		assert.Equal(t, server.KmsWorkerType.String(), workers[0].Type)
 
 		// update again with a shutdown state
 		wStatus3 := server.NewWorker(scope.Global.String(),
@@ -335,6 +336,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, uint32(1), worker.Version)
 		assert.Equal(t, "pki_address", worker.GetAddress())
 		assert.Equal(t, "test-version", worker.ReleaseVersion)
+		assert.Equal(t, server.PkiWorkerType.String(), worker.Type)
 	})
 
 	failureCases := []struct {
@@ -378,18 +380,6 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			errAssert: func(t *testing.T, err error) {
 				t.Helper()
 				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))
-			},
-		},
-		{
-			name: "name and key id provided",
-			repo: repo,
-			status: server.NewWorker(scope.Global.String(),
-				server.WithName("name and key id provided"),
-				server.WithAddress("someaddress")),
-			options: []server.Option{server.WithKeyId(pkiWorkerKeyId)},
-			errAssert: func(t *testing.T, err error) {
-				t.Helper()
-				assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err), err)
 			},
 		},
 		{
@@ -469,6 +459,20 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Len(t, workers, 3)
 	})
 
+	t.Run("name and key id provided", func(t *testing.T) {
+		anotherStatus := server.NewWorker(scope.Global.String(),
+			server.WithName("name-and-keyid"),
+			server.WithAddress("address2"),
+			server.WithReleaseVersion("Boundary v0.11.0"),
+			server.WithKeyId(pkiWorkerKeyId))
+		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
+		require.NoError(t, err)
+
+		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
+		require.NoError(t, err)
+		assert.Len(t, workers, 4)
+	})
+
 	t.Run("send shutdown status", func(t *testing.T) {
 		anotherStatus := server.NewWorker(scope.Global.String(),
 			server.WithName("another_test_worker"),
@@ -478,10 +482,10 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
 
-		// Filtering out shutdown workers will remove the shutdown KMS and this shutdown worker, resulting in 1
+		// Filtering out shutdown workers will remove the shutdown KMS and this shutdown worker, resulting in 2
 		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
 		require.NoError(t, err)
-		assert.Len(t, workers, 1)
+		assert.Len(t, workers, 2)
 	})
 }
 
@@ -1044,7 +1048,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 					// This happens on the worker
 					fileStorage, err := file.New(testCtx)
 					require.NoError(t, err)
-					defer fileStorage.Cleanup()
+					defer func() { fileStorage.Cleanup(testCtx) }()
 
 					nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
 					require.NoError(t, err)
@@ -1136,7 +1140,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 					// This happens on the worker
 					fileStorage, err := file.New(testCtx)
 					require.NoError(t, err)
-					defer fileStorage.Cleanup()
+					defer func() { fileStorage.Cleanup(testCtx) }()
 
 					nodeCreds, err := types.NewNodeCredentials(testCtx, fileStorage)
 					require.NoError(t, err)
@@ -1224,6 +1228,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 	pkiCases := []struct {
 		name         string
 		modifyWorker func(*testing.T, *server.Worker)
+		newIdFunc    func(context.Context, string, string) func(context.Context) (string, error)
 		path         []string
 		assertGot    func(*testing.T, *server.Worker)
 		wantErr      bool
@@ -1244,6 +1249,20 @@ func TestRepository_UpdateWorker(t *testing.T) {
 			},
 		},
 		{
+			name: "update name against kms-pki",
+			modifyWorker: func(t *testing.T, w *server.Worker) {
+				t.Helper()
+				w.Name = "foo"
+			},
+			newIdFunc: func(ctx context.Context, scopeId, name string) func(ctx context.Context) (string, error) {
+				return func(ctx context.Context) (string, error) {
+					return server.NewWorkerIdFromScopeAndName(ctx, scopeId, name)
+				}
+			},
+			path:    []string{"Name"},
+			wantErr: true,
+		},
+		{
 			name: "update description",
 			modifyWorker: func(t *testing.T, w *server.Worker) {
 				t.Helper()
@@ -1258,10 +1277,29 @@ func TestRepository_UpdateWorker(t *testing.T) {
 				assert.Greater(t, w.GetUpdateTime().AsTime(), w.GetCreateTime().AsTime())
 			},
 		},
+		{
+			name: "update description against kms-pki",
+			modifyWorker: func(t *testing.T, w *server.Worker) {
+				t.Helper()
+				w.Description = "foo"
+			},
+			newIdFunc: func(ctx context.Context, scopeId, name string) func(ctx context.Context) (string, error) {
+				return func(ctx context.Context) (string, error) {
+					return server.NewWorkerIdFromScopeAndName(ctx, scopeId, name)
+				}
+			},
+			path:    []string{"Description"},
+			wantErr: true,
+		},
 	}
 	for _, tt := range pkiCases {
 		t.Run(tt.name, func(t *testing.T) {
-			wkr := server.TestPkiWorker(t, conn, wrapper)
+			name := strings.ReplaceAll(tt.name, " ", "-")
+			opts := []server.Option{server.WithName(name)}
+			if tt.newIdFunc != nil {
+				opts = append(opts, server.WithNewIdFunc(tt.newIdFunc(ctx, scope.Global.String(), name)))
+			}
+			wkr := server.TestPkiWorker(t, conn, wrapper, opts...)
 			defer func() {
 				_, err := repo.DeleteWorker(ctx, wkr.GetPublicId())
 				require.NoError(t, err)

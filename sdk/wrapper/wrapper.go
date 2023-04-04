@@ -48,7 +48,7 @@ func GetWrapperFromPath(ctx context.Context, path, purpose string, opt ...config
 }
 
 func GetWrapperFromHcl(ctx context.Context, inHcl, purpose string, opt ...configutil.Option) (wrapping.Wrapper, func() error, error) {
-	kmses, err := configutil.ParseKMSes(inHcl)
+	kmses, err := configutil.ParseKMSes(inHcl, configutil.WithMaxKmsBlocks(-1))
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error parsing KMS HCL: %w", err)
 	}

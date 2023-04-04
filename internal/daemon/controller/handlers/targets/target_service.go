@@ -245,7 +245,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
-		item, err := toProto(ctx, item, nil, nil, outputOpts...)
+		item, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
@@ -291,8 +291,10 @@ func (s Service) GetTarget(ctx context.Context, req *pbs.GetTargetRequest) (*pbs
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
 	}
+	t.SetHostSources(ts)
+	t.SetCredentialSources(cl)
 
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
+	item, err := toProto(ctx, t, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -329,8 +331,10 @@ func (s Service) CreateTarget(ctx context.Context, req *pbs.CreateTargetRequest)
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
 	}
+	t.SetHostSources(ts)
+	t.SetCredentialSources(cl)
 
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
+	item, err := toProto(ctx, t, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -367,8 +371,10 @@ func (s Service) UpdateTarget(ctx context.Context, req *pbs.UpdateTargetRequest)
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
 	}
+	t.SetHostSources(ts)
+	t.SetCredentialSources(cl)
 
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
+	item, err := toProto(ctx, t, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -403,10 +409,12 @@ func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHos
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	t, ts, cl, err := s.addHostSourcesInRepo(ctx, req.GetId(), req.GetHostSourceIds(), req.GetVersion())
+	t, err := s.addHostSourcesInRepo(ctx, req.GetId(), req.GetHostSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
+	ts := t.GetHostSources()
+	cl := t.GetCredentialSources()
 
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
@@ -421,8 +429,10 @@ func (s Service) AddTargetHostSources(ctx context.Context, req *pbs.AddTargetHos
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
 	}
+	t.SetHostSources(ts)
+	t.SetCredentialSources(cl)
 
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
+	item, err := toProto(ctx, t, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -459,8 +469,10 @@ func (s Service) SetTargetHostSources(ctx context.Context, req *pbs.SetTargetHos
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
 	}
+	t.SetHostSources(ts)
+	t.SetCredentialSources(cl)
 
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
+	item, err := toProto(ctx, t, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -497,8 +509,10 @@ func (s Service) RemoveTargetHostSources(ctx context.Context, req *pbs.RemoveTar
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
 	}
+	t.SetHostSources(ts)
+	t.SetCredentialSources(cl)
 
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
+	item, err := toProto(ctx, t, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -537,8 +551,10 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
 	}
+	t.SetHostSources(ts)
+	t.SetCredentialSources(cl)
 
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
+	item, err := toProto(ctx, t, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -577,8 +593,10 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
 	}
+	t.SetHostSources(ts)
+	t.SetCredentialSources(cl)
 
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
+	item, err := toProto(ctx, t, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -617,8 +635,10 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, t.GetPublicId(), IdActions).Strings()))
 	}
+	t.SetHostSources(ts)
+	t.SetCredentialSources(cl)
 
-	item, err := toProto(ctx, t, ts, cl, outputOpts...)
+	item, err := toProto(ctx, t, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -711,7 +731,10 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
-	t, hostSources, credSources, err := repo.LookupTarget(ctx, t.GetPublicId())
+	t, err = repo.LookupTarget(ctx, t.GetPublicId())
+	hostSources := t.GetHostSources()
+	credSources := t.GetCredentialSources()
+
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
@@ -1037,13 +1060,16 @@ func (s Service) getFromRepo(ctx context.Context, id string) (target.Target, []t
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	u, hs, cl, err := repo.LookupTarget(ctx, id)
+	u, err := repo.LookupTarget(ctx, id)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 		}
 		return nil, nil, nil, err
 	}
+	hs := u.GetHostSources()
+	cl := u.GetCredentialSources()
+
 	if u == nil {
 		return nil, nil, nil, handlers.NotFoundErrorf("Target %q doesn't exist.", id)
 	}
@@ -1086,10 +1112,13 @@ func (s Service) createInRepo(ctx context.Context, item *pb.Target) (target.Targ
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	out, hs, cl, err := repo.CreateTarget(ctx, u)
+	out, err := repo.CreateTarget(ctx, u)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create target"))
 	}
+	hs := out.GetHostSources()
+	cl := out.GetCredentialSources()
+
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create target but no error returned from repository.")
 	}
@@ -1157,10 +1186,13 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	out, hs, cl, rowsUpdated, err := repo.UpdateTarget(ctx, u, version, dbMask, opts...)
+	out, rowsUpdated, err := repo.UpdateTarget(ctx, u, version, dbMask, opts...)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update target"))
 	}
+	hs := out.GetHostSources()
+	cl := out.GetCredentialSources()
+
 	if rowsUpdated == 0 {
 		return nil, nil, nil, handlers.NotFoundErrorf("Target %q not found or incorrect version provided.", id)
 	}
@@ -1195,26 +1227,26 @@ func (s Service) listFromRepo(ctx context.Context, perms []perms.Permission) ([]
 	return ul, nil
 }
 
-func (s Service) addHostSourcesInRepo(ctx context.Context, targetId string, hostSourceIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
+func (s Service) addHostSourcesInRepo(ctx context.Context, targetId string, hostSourceIds []string, version uint32) (target.Target, error) {
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
-	out, hs, cl, err := repo.AddTargetHostSources(ctx, targetId, version, strutil.RemoveDuplicates(hostSourceIds, false))
+	out, err := repo.AddTargetHostSources(ctx, targetId, version, strutil.RemoveDuplicates(hostSourceIds, false))
 	if err != nil {
 		var internalErr *errors.Err
 		if stderrors.As(err, &internalErr) && internalErr.Code == errors.Conflict {
 			// The conflict error is surfaced directly as it's correctly
 			// converted all the way down to the HTTP status.
-			return nil, nil, nil, err
+			return nil, err
 		}
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed to add target host sources")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed to add target host sources")
 	}
 	if out == nil {
-		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sources to it.")
+		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding host sources to it.")
 	}
-	return out, hs, cl, nil
+	return out, nil
 }
 
 func (s Service) setHostSourcesInRepo(ctx context.Context, targetId string, hostSourceIds []string, version uint32) (target.Target, []target.HostSource, []target.CredentialSource, error) {
@@ -1235,10 +1267,13 @@ func (s Service) setHostSourcesInRepo(ctx context.Context, targetId string, host
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Failed to set target host sources")
 	}
 
-	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
+	out, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up target after setting host sources"))
 	}
+	hs := out.GetHostSources()
+	cl := out.GetCredentialSources()
+
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting host sources for it.")
 	}
@@ -1256,10 +1291,13 @@ func (s Service) removeHostSourcesInRepo(ctx context.Context, targetId string, h
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove host sources from target: %v.", err)
 	}
-	out, hs, cl, err := repo.LookupTarget(ctx, targetId)
+	out, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up target after removing host sources"))
 	}
+	hs := out.GetHostSources()
+	cl := out.GetCredentialSources()
+
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing host sources from it.")
 	}
@@ -1280,11 +1318,14 @@ func (s Service) addCredentialSourcesInRepo(ctx context.Context, targetId string
 		creds.InjectedApplicationCredentialIds = strutil.RemoveDuplicates(injectedAppIds, false)
 	}
 
-	out, hs, credSources, err := repo.AddTargetCredentialSources(ctx, targetId, version, creds)
+	out, err := repo.AddTargetCredentialSources(ctx, targetId, version, creds)
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add credential sources to target: %v.", err)
 	}
+	hs := out.GetHostSources()
+	credSources := out.GetCredentialSources()
+
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after adding credential sources to it.")
 	}
@@ -1312,10 +1353,13 @@ func (s Service) setCredentialSourcesInRepo(ctx context.Context, targetId string
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set credential sources in target: %v.", err)
 	}
 
-	out, hs, credSources, err := repo.LookupTarget(ctx, targetId)
+	out, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up target after setting credential sources"))
 	}
+	hs := out.GetHostSources()
+	credSources := out.GetCredentialSources()
+
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after setting credential sources for it.")
 	}
@@ -1341,10 +1385,13 @@ func (s Service) removeCredentialSourcesInRepo(ctx context.Context, targetId str
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove credential sources from target: %v.", err)
 	}
-	out, hs, credSources, err := repo.LookupTarget(ctx, targetId)
+	out, err := repo.LookupTarget(ctx, targetId)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up target after removing credential sources"))
 	}
+	hs := out.GetHostSources()
+	credSources := out.GetCredentialSources()
+
 	if out == nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup target after removing credential sources from it.")
 	}
@@ -1380,7 +1427,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 			res.Error = err
 			return res
 		}
-		t, _, _, err = repo.LookupTarget(ctx, id, lookupOpt...)
+		t, err = repo.LookupTarget(ctx, id, lookupOpt...)
 		if err != nil {
 			// TODO: Fix this with new/better error handling
 			if strings.Contains(err.Error(), "more than one row returned by a subquery") {
@@ -1404,13 +1451,15 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type, looku
 	return ret
 }
 
-func toProto(ctx context.Context, in target.Target, hostSources []target.HostSource, credSources []target.CredentialSource, opt ...handlers.Option) (*pb.Target, error) {
+func toProto(ctx context.Context, in target.Target, opt ...handlers.Option) (*pb.Target, error) {
 	const op = "target_service.toProto"
 	opts := handlers.GetOpts(opt...)
 	if opts.WithOutputFields == nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "output fields not found when building target proto")
 	}
 	outputFields := *opts.WithOutputFields
+	hostSources := in.GetHostSources()
+	credSources := in.GetCredentialSources()
 
 	out := pb.Target{}
 	if outputFields.Has(globals.IdField) {

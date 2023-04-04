@@ -43,7 +43,9 @@ func Test_TestTcpTarget(t *testing.T) {
 	require.NotEmpty(tar.GetPublicId())
 	require.Equal(name, tar.GetName())
 
-	_, foundSources, _, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+	foundTarget, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+	foundSources := foundTarget.GetHostSources()
+
 	require.NoError(err)
 	foundIds := make([]string, 0, len(foundSources))
 	for _, s := range foundSources {
@@ -79,7 +81,9 @@ func Test_TestCredentialLibrary(t *testing.T) {
 
 	assert.Len(libs, 2)
 
-	_, _, foundSources, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+	foundTarget, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+	foundSources := foundTarget.GetCredentialSources()
+
 	require.NoError(err)
 	foundIds := make([]string, 0, len(foundSources))
 	for _, s := range foundSources {

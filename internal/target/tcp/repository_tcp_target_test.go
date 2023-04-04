@@ -211,7 +211,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			tar, hostSources, credSources, err := repo.CreateTarget(context.Background(), tt.args.target, tt.args.opt...)
+			tar, err := repo.CreateTarget(context.Background(), tt.args.target, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(tar)
@@ -221,7 +221,13 @@ func TestRepository_CreateTarget(t *testing.T) {
 			require.NoError(err)
 			assert.NotNil(tar.GetPublicId())
 
-			foundTarget, foundHostSources, foundCredLibs, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+			hostSources := tar.GetHostSources()
+			credSources := tar.GetCredentialSources()
+
+			foundTarget, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+			foundHostSources := foundTarget.GetHostSources()
+			foundCredLibs := foundTarget.GetCredentialSources()
+
 			assert.NoError(err)
 			if len(tt.wantAddress) != 0 {
 				assert.Equal(tt.wantAddress, tar.GetAddress())
@@ -577,7 +583,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 				ut.PublicId = *tt.args.PublicId
 			}
 
-			targetAfterUpdate, hostSources, credSources, updatedRows, err := repo.UpdateTarget(ctx, updateTarget, tar.GetVersion(), tt.args.fieldMaskPaths, tt.args.opt...)
+			targetAfterUpdate, updatedRows, err := repo.UpdateTarget(ctx, updateTarget, tar.GetVersion(), tt.args.fieldMaskPaths, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsError), err))
@@ -593,6 +599,9 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(targetAfterUpdate)
 			assert.Equal(tt.wantRowsUpdate, updatedRows)
+
+			hostSources := targetAfterUpdate.GetHostSources()
+			credSources := targetAfterUpdate.GetCredentialSources()
 			afterUpdateIds := make([]string, 0, len(hostSources))
 			for _, hs := range hostSources {
 				afterUpdateIds = append(afterUpdateIds, hs.Id())
@@ -616,7 +625,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			default:
 				assert.NotEqual(tar.GetUpdateTime(), targetAfterUpdate.GetUpdateTime())
 			}
-			foundTarget, _, _, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
+			foundTarget, err := repo.LookupTarget(context.Background(), tar.GetPublicId())
 			assert.NoError(err)
 			assert.True(proto.Equal(targetAfterUpdate.((*tcp.Target)), foundTarget.((*tcp.Target))))
 			assert.Equal(targetAfterUpdate.GetAddress(), foundTarget.GetAddress())

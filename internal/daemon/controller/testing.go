@@ -37,6 +37,7 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/prometheus/client_golang/prometheus"
@@ -424,6 +425,9 @@ type TestControllerOpts struct {
 	// The worker auth KMS to use, or one will be created
 	WorkerAuthKms wrapping.Wrapper
 
+	// The downstream worker auth KMS to use, or one will be created
+	DownstreamWorkerAuthKms *multi.PooledWrapper
+
 	// The recovery KMS to use, or one will be created
 	RecoveryKms wrapping.Wrapper
 
@@ -670,16 +674,17 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	tc.b.DevUnprivilegedUserId = "u_" + strutil.Reverse(strings.TrimPrefix(tc.b.DevUserId, "u_"))
 
 	// Set up KMSes
-	switch {
-	case opts.RootKms != nil && opts.WorkerAuthKms != nil:
+	if err := tc.b.SetupKMSes(tc.b.Context, nil, opts.Config); err != nil {
+		t.Fatal(err)
+	}
+	if opts.RootKms != nil {
 		tc.b.RootKms = opts.RootKms
+	}
+	if opts.WorkerAuthKms != nil {
 		tc.b.WorkerAuthKms = opts.WorkerAuthKms
-	case opts.RootKms == nil && opts.WorkerAuthKms == nil:
-		if err := tc.b.SetupKMSes(tc.b.Context, nil, opts.Config); err != nil {
-			t.Fatal(err)
-		}
-	default:
-		t.Fatal("either controller and worker auth KMS must both be set, or neither")
+	}
+	if opts.DownstreamWorkerAuthKms != nil {
+		tc.b.DownstreamWorkerAuthKms = opts.DownstreamWorkerAuthKms
 	}
 	if opts.RecoveryKms != nil {
 		tc.b.RecoveryKms = opts.RecoveryKms
@@ -778,6 +783,7 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		DefaultOidcAuthMethodId:         tc.c.conf.DevOidcAuthMethodId,
 		RootKms:                         tc.c.conf.RootKms,
 		WorkerAuthKms:                   tc.c.conf.WorkerAuthKms,
+		DownstreamWorkerAuthKms:         tc.c.conf.DownstreamWorkerAuthKms,
 		RecoveryKms:                     tc.c.conf.RecoveryKms,
 		Name:                            opts.Name,
 		Logger:                          tc.c.conf.Logger,

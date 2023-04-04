@@ -177,6 +177,7 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
+	c.WorkerAuthDebuggingEnabled.Store(c.Config.EnableWorkerAuthDebugging)
 
 	base.StartMemProfiler(c.Context)
 
@@ -200,7 +201,7 @@ func (c *Command) Run(args []string) int {
 				return base.CommandUserError
 			}
 			if c.Config.Worker.Name != "" || c.Config.Worker.Description != "" {
-				c.UI.Error("Worker config cannot contain name or description when using PKI-based worker authentication; it must be set via the API.")
+				c.UI.Error("Worker config cannot contain name or description when using activation-token-based worker authentication; it must be set via the API.")
 				return base.CommandUserError
 			}
 		default:
@@ -210,6 +211,10 @@ func (c *Command) Run(args []string) int {
 			}
 			if c.Config.Worker.ControllerGeneratedActivationToken != "" {
 				c.UI.Error("Worker has KMS auth info but also has a controller-generated activation token set, which is incompatible.")
+				return base.CommandUserError
+			}
+			if c.Config.Worker.AuthStoragePath != "" {
+				c.UI.Error("Worker has KMS auth info but also has an auth storage path set, which is incompatible.")
 				return base.CommandUserError
 			}
 		}
@@ -478,7 +483,7 @@ func (c *Command) Run(args []string) int {
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
 
 			// Write the WorkerAuth request to a file
-			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
+			if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.Config.Worker.AuthStoragePath); err != nil {
 				// Shutdown on failure
 				retErr := fmt.Errorf("Error storing worker auth request: %w", err)
 				if err := c.worker.Shutdown(); err != nil {
@@ -570,6 +575,7 @@ func (c *Command) reloadConfig() (*config.Config, int) {
 			return nil, base.CommandUserError
 		}
 	}
+
 	return cfg, 0
 }
 
@@ -618,12 +624,12 @@ func (c *Command) StartWorker() error {
 		return retErr
 	}
 
-	if c.WorkerAuthKms == nil || c.DevUsePkiForUpstream {
+	if c.WorkerAuthKms == nil {
 		if c.worker.WorkerAuthStorage == nil {
-			return fmt.Errorf("No worker auth storage found")
+			return fmt.Errorf("Chosen worker authentication method requires storage and no worker auth storage was configured")
 		}
 		c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
-		c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
+		c.Info["worker auth storage path"] = c.Config.Worker.AuthStoragePath
 	}
 
 	return nil
@@ -756,6 +762,8 @@ func (c *Command) WaitForInterrupt() int {
 				}
 				c.Logger.SetLevel(level)
 			}
+
+			c.WorkerAuthDebuggingEnabled.Store(newConf.EnableWorkerAuthDebugging)
 
 		RUNRELOADFUNCS:
 			if err := c.Reload(newConf); err != nil {

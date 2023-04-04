@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api/sessions"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
@@ -64,10 +65,10 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 		)
 	}()
 	t.Cleanup(cancel)
-
-	session := boundary.WaitForSessionToBeActiveCli(t, ctx, newProjectId)
-	assert.Equal(t, newTargetId, session.TargetId)
-	assert.Equal(t, newHostId, session.HostId)
+	s := boundary.WaitForSessionCli(t, ctx, newProjectId)
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
+	assert.Equal(t, newTargetId, s.TargetId)
+	assert.Equal(t, newHostId, s.HostId)
 
 	bytesUp := 0
 	bytesDown := 0
@@ -76,18 +77,23 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 	t.Log("Waiting for bytes_up/bytes_down to be greater than 0...")
 	for i := 0; i < 3; i++ {
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
+			e2e.WithArgs("sessions", "read", "-id", s.Id, "-format", "json"),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 		var newSessionReadResult sessions.SessionReadResult
 		err = json.Unmarshal(output.Stdout, &newSessionReadResult)
 		require.NoError(t, err)
-		bytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
-		bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
-		t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
 
-		if bytesUp > 0 && bytesDown > 0 {
-			break
+		if len(newSessionReadResult.Item.Connections) > 0 {
+			bytesUp = int(newSessionReadResult.Item.Connections[0].BytesUp)
+			bytesDown = int(newSessionReadResult.Item.Connections[0].BytesDown)
+			t.Logf("bytes_up: %d, bytes_down: %d", bytesUp, bytesDown)
+
+			if bytesUp > 0 && bytesDown > 0 {
+				break
+			}
+		} else {
+			t.Log("No connections found in session. Retrying...")
 		}
 
 		time.Sleep(2 * time.Second)
@@ -100,7 +106,7 @@ func TestCliBytesUpDownTransferData(t *testing.T) {
 	var newBytesUp, newBytesDown int
 	for i := 0; i < 3; i++ {
 		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("sessions", "read", "-id", session.Id, "-format", "json"),
+			e2e.WithArgs("sessions", "read", "-id", s.Id, "-format", "json"),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
 		var newSessionReadResult sessions.SessionReadResult

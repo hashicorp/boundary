@@ -29,12 +29,20 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/types"
 	"github.com/mitchellh/cli"
 	"github.com/mr-tron/base58"
 	"github.com/posener/complete"
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
+)
+
+const (
+	PkiControllerLedWorkerAuthMechanism = "pki-controller-led"
+	PkiWorkerLedWorkerAuthMechanism     = "pki-worker-led"
+	PkiKmsWorkerAuthMechanism           = "pki-kms"
+	PkiRandomWorkerAuthMechanism        = "pki"
 )
 
 var (
@@ -95,6 +103,7 @@ type Command struct {
 	flagWorkerAuthStorageDir         string
 	flagWorkerAuthStorageSkipCleanup bool
 	flagWorkerAuthRotationInterval   time.Duration
+	flagWorkerAuthDebuggingEnabled   bool
 }
 
 func (c *Command) Synopsis() string {
@@ -346,23 +355,27 @@ func (c *Command) Flags() *base.FlagSets {
 		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
 		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
 	})
+
 	f.StringVar(&base.StringVar{
 		Name:    "worker-auth-method",
 		Target:  &c.flagWorkerAuthMethod,
-		Default: "random-pki",
-		Usage:   `Allows specifying how the generated worker will authenticate to the controller. Valid values are "kms" for the KMS-based mechanism; "pki-controller-led" for the PKI mechanism via the server-led authorization flow; "pki-worker-led" for the PKI mechanism via the worker-led authorization flow; and "random-pki" to randomly choose one of the PKI methods.`,
+		Default: PkiRandomWorkerAuthMechanism,
+		Usage:   `Allows specifying how the generated worker will authenticate to the controller. Valid values are "kms" for the deprecated KMS-based mechanism; "pki-kms" for the new-style KMS mechanism; "pki-controller-led" for the PKI mechanism via the server-led authorization flow; "pki-worker-led" for the PKI mechanism via the worker-led authorization flow; and "pki" to randomly choose one of the PKI methods.`,
 	})
-
 	f.StringVar(&base.StringVar{
 		Name:   "worker-auth-storage-dir",
 		Target: &c.flagWorkerAuthStorageDir,
-		Usage:  "Specifies the directory to store worker authentication credentials in dev mode.",
+		Usage:  "Specifies the directory to store worker authentication credentials in dev mode. Setting this will make use of file storage at the specified location; otherwise in-memory storage or a temporary directory will be used.",
 	})
-
 	f.BoolVar(&base.BoolVar{
 		Name:   "worker-auth-storage-skip-cleanup",
 		Target: &c.flagWorkerAuthStorageSkipCleanup,
-		Usage:  "Prevents deletion of temp worker credential storage directory if set.",
+		Usage:  "Prevents deletion of worker credential storage directory if set. Has no effect unless worker-auth-storage-dir is specified.",
+	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "worker-auth-enable-debugging",
+		Target: &c.flagWorkerAuthDebuggingEnabled,
+		Usage:  "Turn on debug logging of the worker authentication process.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -426,6 +439,8 @@ func (c *Command) Run(args []string) int {
 			}
 		}
 	}
+
+	c.WorkerAuthDebuggingEnabled.Store(c.flagWorkerAuthDebuggingEnabled)
 
 	c.DevLoginName = c.flagLoginName
 	c.DevPassword = c.flagPassword
@@ -614,26 +629,30 @@ func (c *Command) Run(args []string) int {
 		c.UI.Error("Controller KMS not found after parsing KMS blocks")
 		return base.CommandUserError
 	}
-	if c.WorkerAuthKms == nil {
-		c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
-		return base.CommandUserError
-	}
-	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
-	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 
 	if c.flagWorkerAuthMethod != "kms" {
-		c.DevUsePkiForUpstream = true
-		// These must be unset for PKI
-		c.Config.Worker.Name = ""
-		c.Config.Worker.Description = ""
-	} else {
-		// This must be unset for KMS
-		c.WorkerAuthStorageKms = nil
+		// Flip a coin to decide between file storage and inmem. It's
+		// transparent to users, but keeps both exercised.
+		randStorage := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2)
+		if randStorage == 0 {
+			const pattern = "nodeenrollment"
+			c.Config.Worker.AuthStoragePath, err = os.MkdirTemp("", pattern)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error creating temp dir: %w", err).Error())
+				return base.CommandCliError
+			}
+			if !c.flagWorkerAuthStorageSkipCleanup && c.flagWorkerAuthStorageDir != "" {
+				c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return os.RemoveAll(c.Config.Worker.AuthStoragePath) })
+			}
+		}
 	}
+
 	c.InfoKeys = append(c.InfoKeys, "[Controller] AEAD Key Bytes")
 	c.Info["[Controller] AEAD Key Bytes"] = c.Config.DevControllerKey
 	c.InfoKeys = append(c.InfoKeys, "[Recovery] AEAD Key Bytes")
 	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
+	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
+	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
 
 	// Initialize the listeners
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {
@@ -727,51 +746,58 @@ func (c *Command) Run(args []string) int {
 			c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthRotationInterval
 		}
 
-		// Note: this should be done before starting the worker so that the
-		// activation token is populated
-		var useWorkerLed bool
-		if c.flagWorkerAuthMethod != "kms" {
+		if c.flagWorkerAuthMethod == PkiRandomWorkerAuthMechanism {
 			// Flip a coin. Use one method or the other; it's transparent to
 			// users, but keeps both exercised.
-			if c.flagWorkerAuthMethod == "random-pki" {
-				randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2)
-				if randPki == 0 {
-					c.flagWorkerAuthMethod = "pki-controller-led"
-				} else {
-					c.flagWorkerAuthMethod = "pki-worker-led"
-				}
-			}
-			switch c.flagWorkerAuthMethod {
-			case "pki-controller-led":
-				// Controller-led
-				serversRepo, err := c.controller.ServersRepoFn()
-				if err != nil {
-					c.UI.Error(fmt.Errorf("Error instantiating server repo: %w", err).Error())
-					if err := c.controller.Shutdown(); err != nil {
-						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-					}
-					return base.CommandCliError
-				}
-
-				// Create the worker in the database and fetch an activation token
-				worker, err := serversRepo.CreateWorker(c.Context, &server.Worker{
-					Worker: &store.Worker{
-						ScopeId: scope.Global.String(),
-					},
-				}, server.WithCreateControllerLedActivationToken(true))
-				if err != nil {
-					c.UI.Error(fmt.Errorf("Error creating worker in database: %w", err).Error())
-					if err := c.controller.Shutdown(); err != nil {
-						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-					}
-					return base.CommandCliError
-				}
-
-				// Set the activation token in the config
-				conf.RawConfig.Worker.ControllerGeneratedActivationToken = worker.ControllerGeneratedActivationToken
-
+			randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(3)
+			switch randPki {
+			case 0:
+				c.flagWorkerAuthMethod = PkiControllerLedWorkerAuthMechanism
+			case 1:
+				c.flagWorkerAuthMethod = PkiWorkerLedWorkerAuthMechanism
 			default:
-				useWorkerLed = true
+				c.flagWorkerAuthMethod = PkiKmsWorkerAuthMechanism
+			}
+		}
+		switch c.flagWorkerAuthMethod {
+		case PkiControllerLedWorkerAuthMechanism:
+			// Controller-led
+			serversRepo, err := c.controller.ServersRepoFn()
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error instantiating server repo: %w", err).Error())
+				if err := c.controller.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
+				return base.CommandCliError
+			}
+
+			// Create the worker in the database and fetch an activation token
+			worker, err := serversRepo.CreateWorker(c.Context, &server.Worker{
+				Worker: &store.Worker{
+					ScopeId: scope.Global.String(),
+				},
+			}, server.WithCreateControllerLedActivationToken(true))
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error creating worker in database: %w", err).Error())
+				if err := c.controller.Shutdown(); err != nil {
+					c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+				}
+				return base.CommandCliError
+			}
+
+			// Set the activation token in the config and nil out the worker
+			// auth KMS so we don't use it via PKI-KMS
+			c.WorkerAuthKms = nil
+			conf.RawConfig.Worker.ControllerGeneratedActivationToken = worker.ControllerGeneratedActivationToken
+
+		case PkiWorkerLedWorkerAuthMechanism:
+			// Clear this out as presence of it causes PKI-KMS behavior
+			c.WorkerAuthKms = nil
+
+		case PkiKmsWorkerAuthMechanism, "kms":
+			if c.WorkerAuthKms == nil {
+				c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
+				return base.CommandUserError
 			}
 		}
 
@@ -792,28 +818,35 @@ func (c *Command) Run(args []string) int {
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
 			c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
-			c.Info["worker auth storage path"] = c.worker.WorkerAuthStorage.BaseDir()
+			if c.Config.Worker.AuthStoragePath != "" {
+				c.Info["worker auth storage path"] = c.Config.Worker.AuthStoragePath
+			} else {
+				c.Info["worker auth storage path"] = "(in-memory)"
+			}
 
-			if useWorkerLed {
+			if c.flagWorkerAuthMethod == PkiWorkerLedWorkerAuthMechanism {
 				req := c.worker.WorkerAuthRegistrationRequest
 				if req == "" {
 					c.UI.Error("No worker auth registration request found at worker start time")
 					return base.CommandCliError
 				}
 
-				if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.worker.WorkerAuthStorage.BaseDir()); err != nil {
-					// Shutdown on failure
-					retErr := fmt.Errorf("Error storing worker auth request: %w", err)
-					if err := c.worker.Shutdown(); err != nil {
+				if c.Config.Worker.AuthStoragePath != "" {
+					if err := c.StoreWorkerAuthReq(c.worker.WorkerAuthRegistrationRequest, c.Config.Worker.AuthStoragePath); err != nil {
+						// Shutdown on failure
+						retErr := fmt.Errorf("Error storing worker auth request: %w", err)
+						if err := c.worker.Shutdown(); err != nil {
+							c.UI.Error(retErr.Error())
+							retErr = fmt.Errorf("Error shutting down worker: %w", err)
+						}
 						c.UI.Error(retErr.Error())
-						retErr = fmt.Errorf("Error shutting down worker: %w", err)
+						if err := c.controller.Shutdown(); err != nil {
+							c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
+						}
+						return base.CommandCliError
 					}
-					c.UI.Error(retErr.Error())
-					if err := c.controller.Shutdown(); err != nil {
-						c.UI.Error(fmt.Errorf("Error with controller shutdown: %w", err).Error())
-					}
-					return base.CommandCliError
 				}
+
 				go func() {
 					for {
 						select {
@@ -843,7 +876,6 @@ func (c *Command) Run(args []string) int {
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Failed to start ops listeners: %w", err).Error())
 		return base.CommandCliError
-
 	}
 	c.opsServer = opsServer
 	c.opsServer.Start()
@@ -857,7 +889,11 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error shutting down worker: %w", err).Error())
 		}
 		if !c.flagWorkerAuthStorageSkipCleanup && c.worker.WorkerAuthStorage != nil {
-			c.worker.WorkerAuthStorage.Cleanup()
+			if cleanable, ok := c.worker.WorkerAuthStorage.(nodeenrollment.CleanableStorage); ok {
+				if err := cleanable.Cleanup(c.Context); err != nil {
+					c.UI.Error(fmt.Errorf("Error cleaning up authentication storage: %w", err).Error())
+				}
+			}
 		}
 	}
 	workerGracefulShutdownFunc := func() {

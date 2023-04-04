@@ -30,8 +30,10 @@ const (
 // Target is a target.Target used for tests.
 type Target struct {
 	*store.Target
-	Address   string `gorm:"-"`
-	tableName string `gorm:"-"`
+	Address           string                    `gorm:"-"`
+	tableName         string                    `gorm:"-"`
+	HostSource        []target.HostSource       `gorm:"-"`
+	CredentialSources []target.CredentialSource `gorm:"-"`
 }
 
 var (
@@ -133,11 +135,21 @@ func (t *Target) GetAddress() string {
 	return t.Address
 }
 
+func (t *Target) GetHostSources() []target.HostSource {
+	return t.HostSource
+}
+
+func (t *Target) GetCredentialSources() []target.CredentialSource {
+	return t.CredentialSources
+}
+
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
-		Address: t.Address,
-		Target:  cp.(*store.Target),
+		Address:           t.Address,
+		Target:            cp.(*store.Target),
+		HostSource:        t.HostSource,
+		CredentialSources: t.CredentialSources,
 	}
 }
 
@@ -196,6 +208,14 @@ func (t *Target) SetIngressWorkerFilter(filter string) {
 
 func (t *Target) SetAddress(a string) {
 	t.Address = a
+}
+
+func (t *Target) SetHostSources(sources []target.HostSource) {
+	t.HostSource = sources
+}
+
+func (t *Target) SetCredentialSources(sources []target.CredentialSource) {
+	t.CredentialSources = sources
 }
 
 func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {

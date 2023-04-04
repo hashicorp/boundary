@@ -336,7 +336,7 @@ func (w *Worker) credDecryptFn(ctx context.Context) (proxyHandlers.DecryptFn, er
 	was := w.WorkerAuthStorage
 	var opts []nodeenrollment.Option
 	if !util.IsNil(w.conf.WorkerAuthStorageKms) {
-		opts = append(opts, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
+		opts = append(opts, nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms))
 	}
 	nodeCreds, err := types.LoadNodeCredentials(ctx, was, nodeenrollment.CurrentId, opts...)
 	if err != nil {

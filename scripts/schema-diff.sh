@@ -1,7 +1,40 @@
 #!/usr/bin/env bash
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
-
+#
+# This script can aid in comparing the database schema between two commits.
+# It will:
+#
+#  1. Create a docker postgres database.
+#  2. Apply the schema migrations for the current commit.
+#  3. Create a dump of the database using pg_dump
+#  4. Destroy the database container
+#  5. Extract the definitions of specific database objects from the dump.
+#     These are extracted to place each definition into a separeate .sql file,
+#     which aids in the performing a diff that can detect renames.
+#  6. Switch to the provided base branch (defaults to main)
+#  7. Repeate the dump and extract process.
+#  8. Create diffs for each kind of database object using `git diff` to compare
+#     directories which helps with detecting renames.
+#
+# The dumps and extracted .sql files are left in place so they can be examined
+# and compared using other tools. For example an alternate diff tool like delta
+# could be used to view the diff to the functions:
+#
+#   delta .schema-diff/funcs_$(git rev-parse main) .schema-diff/funcs_$(git rev-parse HEAD)
+#
+# These files get removed if the script is run again, or can be manually removed with:
+#
+#   rm -r .schema-diff
+#
+# Limitations:
+#
+# Since this script is extracting specifc parts of the schema from
+# a database dump, there may be some differences that are not extracted and therefore
+# not reported. Some notable limitations follow:
+#
+# - domain definitions: These are not easily extracted from a pg_dump. Therefore
+#   changes to domain types or new domain definitions will not be present in the diff.
 
 die() {
     echo "$@"
@@ -43,7 +76,8 @@ extract() {
         "${tmp_dir}/views_${suffix}" \
         "${tmp_dir}/triggers_${suffix}" \
         "${tmp_dir}/indexes_${suffix}" \
-        "${tmp_dir}/constraints_${suffix}"
+        "${tmp_dir}/constraints_${suffix}" \
+        "${tmp_dir}/fk_constraints_${suffix}"
 
     echo "extracting function definitions from ${dump}"
     while read -r f; do
@@ -79,6 +113,11 @@ extract() {
         cName="${c#* }"
         pg_restore --section=post-data -O -f - "${dump}" | grep ${cName} | tr '[:upper:]' '[:lower:]' > "${tmp_dir}/constraints_${suffix}/${cName}.sql"
     done < <(pg_restore -l "${dump}" -f - | awk '$4 == "CONSTRAINT" {for(i=6;i<NF;i++) printf $i" "; print ""}')
+
+    while read -r c; do
+        cName="${c#* }"
+        pg_restore --section=post-data -O -f - "${dump}" | grep ${cName} | tr '[:upper:]' '[:lower:]' > "${tmp_dir}/fk_constraints_${suffix}/${cName}.sql"
+    done < <(pg_restore -l "${dump}" -f - | awk '$4 == "FK" && $5 == "CONSTRAINT" {for(i=7;i<NF;i++) printf $i" "; print ""}')
 }
 
 dump() {
@@ -125,6 +164,6 @@ else
     git checkout "${new_branch}"
 fi
 
-for t in "funcs" "tables" "views" "triggers" "indexes" "constraints"; do
+for t in "funcs" "tables" "views" "triggers" "indexes" "constraints" "fk_constraints"; do
     git diff --no-index "${tmp_dir}/${t}_${base_commit}" "${tmp_dir}/${t}_${new_commit}" | tee "${tmp_dir}/${t}.diff"
 done

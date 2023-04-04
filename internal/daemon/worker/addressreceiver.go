@@ -42,7 +42,7 @@ type grpcResolverReceiver struct {
 }
 
 // IsDialingListener always returns
-func (_ *grpcResolverReceiver) Type() receiverType {
+func (*grpcResolverReceiver) Type() receiverType {
 	return grpcResolverReceiverType
 }
 

@@ -461,7 +461,7 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target object: %w", err)
 	}
-	tt, _, _, err := targetRepo.CreateTarget(ctx, t, opts...)
+	tt, err := targetRepo.CreateTarget(ctx, t, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save target to the db: %w", err)
 	}
@@ -525,11 +525,11 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target object: %w", err)
 	}
-	tt, _, _, err := targetRepo.CreateTarget(ctx, t, opts...)
+	tt, err := targetRepo.CreateTarget(ctx, t, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save target to the db: %w", err)
 	}
-	tt, _, _, err = targetRepo.AddTargetHostSources(ctx, tt.GetPublicId(), tt.GetVersion(), []string{b.DevHostSetId})
+	tt, err = targetRepo.AddTargetHostSources(ctx, tt.GetPublicId(), tt.GetVersion(), []string{b.DevHostSetId})
 	if err != nil {
 		return nil, fmt.Errorf("failed to add host source %q to target: %w", b.DevHostSetId, err)
 	}

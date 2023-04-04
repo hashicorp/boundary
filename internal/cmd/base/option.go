@@ -25,25 +25,24 @@ type Option func(*Options)
 
 // Options - how Options are represented.
 type Options struct {
-	withNoTokenScope                   bool
-	withNoTokenValue                   bool
-	withSkipDatabaseDestruction        bool
-	withSkipAuthMethodCreation         bool
-	withSkipOidcAuthMethodCreation     bool
-	withSkipScopesCreation             bool
-	withSkipHostResourcesCreation      bool
-	withSkipTargetCreation             bool
-	withContainerImage                 string
-	withDialect                        string
-	withDatabaseTemplate               string
-	withEventerConfig                  *event.EventerConfig
-	withEventFlags                     *EventFlags
-	withEventWrapper                   wrapping.Wrapper
-	withAttributeFieldPrefix           string
-	withStatusCode                     int
-	withHostPlugin                     func() (string, plugin.HostPluginServiceClient)
-	withEventGating                    bool
-	withSkipWorkerAuthKmsInstantiation bool
+	withNoTokenScope               bool
+	withNoTokenValue               bool
+	withSkipDatabaseDestruction    bool
+	withSkipAuthMethodCreation     bool
+	withSkipOidcAuthMethodCreation bool
+	withSkipScopesCreation         bool
+	withSkipHostResourcesCreation  bool
+	withSkipTargetCreation         bool
+	withContainerImage             string
+	withDialect                    string
+	withDatabaseTemplate           string
+	withEventerConfig              *event.EventerConfig
+	withEventFlags                 *EventFlags
+	withEventWrapper               wrapping.Wrapper
+	withAttributeFieldPrefix       string
+	withStatusCode                 int
+	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
+	withEventGating                bool
 }
 
 func getDefaultOptions() Options {
@@ -190,13 +189,5 @@ func WithHostPlugin(pluginId string, plg plugin.HostPluginServiceClient) Option 
 func WithEventGating(with bool) Option {
 	return func(o *Options) {
 		o.withEventGating = with
-	}
-}
-
-// WithSkipWorkerAuthKmsInstantiation causes KMS methods used for worker-auth to
-// not be processed, useful for dev mode
-func WithSkipWorkerAuthKmsInstantiation(with bool) Option {
-	return func(o *Options) {
-		o.withSkipWorkerAuthKmsInstantiation = with
 	}
 }
