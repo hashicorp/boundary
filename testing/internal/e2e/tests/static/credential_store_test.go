@@ -21,6 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const testCredentialsFile = "testdata/credential.json"
+
 // TestCliStaticCredentialStore validates various credential-store operations using the cli
 func TestCliStaticCredentialStore(t *testing.T) {
 	e2e.MaybeSkipTest(t)
@@ -43,9 +45,12 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+
+	// Create static credentials
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
 	boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
 	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, "password")
+	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, newCredentialStoreId, testCredentialsFile)
 
 	// Get credentials for target (expect empty)
 	output := e2e.RunCommand(ctx, "boundary",
@@ -57,6 +62,8 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
+	// Add credentials to target
+	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, jsonCredentialsId)
 	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, pwCredentialsId)
 
 	// Get credentials for target
@@ -67,13 +74,17 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)
 	require.NoError(t, err)
 
-	newSessionAuthorization := newSessionAuthorizationResult.Item
-	retrievedUser, ok := newSessionAuthorization.Credentials[0].Credential["username"].(string)
-	require.True(t, ok)
-	retrievedPassword, ok := newSessionAuthorization.Credentials[0].Credential["password"].(string)
-	require.True(t, ok)
-	assert.Equal(t, c.TargetSshUser, retrievedUser)
-	assert.Equal(t, "password", retrievedPassword)
+	brokeredCredentials := make([]map[string]any, 0, 2)
+	for _, credential := range newSessionAuthorizationResult.Item.Credentials {
+		brokeredCredentials = append(brokeredCredentials, credential.Credential)
+	}
+
+	expectedCredentials := []map[string]interface{}{
+		{"username": c.TargetSshUser, "password": "password"},
+		{"username": "name-json", "password": "password-json"},
+	}
+
+	assert.ElementsMatch(t, expectedCredentials, brokeredCredentials)
 
 	// Delete credential store
 	output = e2e.RunCommand(ctx, "boundary",
