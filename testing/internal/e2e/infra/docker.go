@@ -30,6 +30,8 @@ type Container struct {
 // Returns information about the container
 func StartBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockertest.Network) *Container {
 	t.Log("Starting postgres database...")
+	c, err := LoadConfig()
+	require.NoError(t, err)
 
 	networkAlias := "e2epostgres"
 	postgresDb := "e2eboundarydb"
@@ -39,8 +41,8 @@ func StartBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockert
 	require.NoError(t, err)
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "postgres",
-		Tag:        "13-alpine",
+		Repository: c.DockerMirror + "/library/postgres",
+		Tag:        "latest",
 		Cmd:        []string{"postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"},
 		Env: []string{
 			"POSTGRES_DB=" + postgresDb,
@@ -77,12 +79,14 @@ func StartBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockert
 // Returns information about the container
 func InitBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, postgresURI string) *Container {
 	t.Log("Initializing postgres database...")
+	c, err := LoadConfig()
+	require.NoError(t, err)
 
 	boundaryConfigFilePath, err := filepath.Abs("testdata/boundary-config.hcl")
 	require.NoError(t, err)
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "hashicorp/boundary",
+		Repository: c.DockerMirror + "/hashicorp/boundary",
 		Tag:        "latest",
 		Cmd:        []string{"boundary", "database", "init", "-config", "/boundary/boundary-config.hcl", "-format", "json"},
 		Env: []string{
@@ -130,12 +134,14 @@ func GetDbInitInfoFromContainer(t testing.TB, pool *dockertest.Pool, container *
 // Returns information about the container.
 func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, postgresURI string) *Container {
 	t.Log("Starting Boundary...")
+	c, err := LoadConfig()
+	require.NoError(t, err)
 
 	boundaryConfigFilePath, err := filepath.Abs("testdata/boundary-config.hcl")
 	require.NoError(t, err)
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "hashicorp/boundary",
+		Repository: c.DockerMirror + "/hashicorp/boundary",
 		Tag:        "latest",
 		Cmd:        []string{"boundary", "server", "-config", "/boundary/boundary-config.hcl"},
 		Env: []string{
@@ -168,10 +174,12 @@ func StartBoundary(t testing.TB, pool *dockertest.Pool, network *dockertest.Netw
 // Returns information about the container.
 func StartVault(t testing.TB, pool *dockertest.Pool, network *dockertest.Network) (*Container, string) {
 	t.Log("Starting Vault...")
+	c, err := LoadConfig()
+	require.NoError(t, err)
 
 	vaultToken := "boundarytok"
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "hashicorp/vault",
+		Repository: c.DockerMirror + "/hashicorp/vault",
 		Tag:        "latest",
 		Env: []string{
 			"VAULT_DEV_ROOT_TOKEN_ID=" + vaultToken,
@@ -201,9 +209,11 @@ func StartVault(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 // Returns information about the container.
 func ConnectToTarget(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, boundaryAddr string, token string, targetId string) *Container {
 	t.Log("Connecting to target...")
+	c, err := LoadConfig()
+	require.NoError(t, err)
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "hashicorp/boundary",
+		Repository: c.DockerMirror + "/hashicorp/boundary",
 		Tag:        "latest",
 		Cmd: []string{
 			"boundary", "connect",
@@ -231,6 +241,8 @@ func ConnectToTarget(t testing.TB, pool *dockertest.Pool, network *dockertest.Ne
 // Returns information about the container.
 func StartOpenSshServer(t testing.TB, pool *dockertest.Pool, network *dockertest.Network, user string, privateKeyFilePath string) *Container {
 	t.Log("Starting openssh-server to serve as target...")
+	c, err := LoadConfig()
+	require.NoError(t, err)
 
 	privateKeyRaw, err := os.ReadFile(privateKeyFilePath)
 	require.NoError(t, err)
@@ -239,7 +251,7 @@ func StartOpenSshServer(t testing.TB, pool *dockertest.Pool, network *dockertest
 
 	networkAlias := "target"
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "docker.mirror.hashicorp.services/linuxserver/openssh-server",
+		Repository: c.DockerMirror + "/linuxserver/openssh-server",
 		Env: []string{
 			"PUID=1000",
 			"PGID=1000",
