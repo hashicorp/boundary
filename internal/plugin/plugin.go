@@ -1,14 +1,27 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package host
+package plugin
 
 import (
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/plugin/host/store"
+	"github.com/hashicorp/boundary/internal/plugin/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
+
+type PluginType int
+
+const (
+	PluginTypeUnknown PluginType = 0
+	PluginTypeHost    PluginType = 1
+)
+
+// pluginTypeDbMap is a map from PluginType to the db table name where the flag for that plugin type lives
+// these tables are usually named "plugin_<TYPE>_supported"
+var pluginTypeDbMap = map[PluginType]string{
+	PluginTypeHost: "plugin_host_supported",
+}
 
 // A Plugin enables additional logic to be used by boundary.
 // It is owned by a scope.
@@ -36,7 +49,7 @@ func (c *Plugin) TableName() string {
 	if c.tableName != "" {
 		return c.tableName
 	}
-	return "plugin_host"
+	return "plugin"
 }
 
 // SetTableName sets the table name. If the caller attempts to

@@ -20,11 +20,11 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/host/plugin"
+	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	plugin "github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
@@ -60,7 +60,7 @@ var authorizedCollectionActions = map[subtypes.Subtype]map[string]*structpb.List
 			},
 		},
 	},
-	plugin.Subtype: {
+	hostplugin.Subtype: {
 		"host-sets": {
 			Values: []*structpb.Value{
 				structpb.NewStringValue("create"),
@@ -88,11 +88,11 @@ func TestGet_Static(t *testing.T) {
 	repo := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	pluginRepo := func() (*host.Repository, error) {
-		return host.NewRepository(rw, rw, kms)
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
@@ -178,19 +178,19 @@ func TestGet_Plugin(t *testing.T) {
 	repo := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	pluginRepo := func() (*host.Repository, error) {
-		return host.NewRepository(rw, rw, kms)
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	name := "test"
-	plg := host.TestPlugin(t, conn, name)
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac([]byte("foobar")))
-	hcPrev := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), plugin.WithSecretsHmac([]byte("foobar")), plugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostCatalogPreviousPrefix)))
+	plg := plugin.TestPlugin(t, conn, name)
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), hostplugin.WithSecretsHmac([]byte("foobar")))
+	hcPrev := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId(), hostplugin.WithSecretsHmac([]byte("foobar")), hostplugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostCatalogPreviousPrefix)))
 
 	toMerge := &pbs.GetHostCatalogRequest{
 		Id: hc.GetPublicId(),
@@ -212,9 +212,9 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		CreatedTime:                 hc.CreateTime.GetTimestamp(),
 		UpdatedTime:                 hc.UpdateTime.GetTimestamp(),
-		Type:                        plugin.Subtype.String(),
+		Type:                        hostplugin.Subtype.String(),
 		AuthorizedActions:           testAuthorizedActions,
-		AuthorizedCollectionActions: authorizedCollectionActions[plugin.Subtype],
+		AuthorizedCollectionActions: authorizedCollectionActions[hostplugin.Subtype],
 		SecretsHmac:                 base58.Encode([]byte("foobar")),
 	}
 
@@ -291,11 +291,11 @@ func TestList(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	pluginRepo := func() (*host.Repository, error) {
-		return host.NewRepository(rw, rw, kms)
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -323,9 +323,9 @@ func TestList(t *testing.T) {
 
 	var testPluginCatalogs []*pb.HostCatalog
 	name := "test"
-	plg := host.TestPlugin(t, conn, name)
+	plg := plugin.TestPlugin(t, conn, name)
 	for i := 0; i < 3; i++ {
-		hc := plugin.TestCatalog(t, conn, pWithCatalogs.GetPublicId(), plg.GetPublicId())
+		hc := hostplugin.TestCatalog(t, conn, pWithCatalogs.GetPublicId(), plg.GetPublicId())
 		cat := &pb.HostCatalog{
 			Id:          hc.GetPublicId(),
 			ScopeId:     hc.GetProjectId(),
@@ -339,9 +339,9 @@ func TestList(t *testing.T) {
 				Description: plg.GetDescription(),
 			},
 			Version:                     1,
-			Type:                        plugin.Subtype.String(),
+			Type:                        hostplugin.Subtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: authorizedCollectionActions[plugin.Subtype],
+			AuthorizedCollectionActions: authorizedCollectionActions[hostplugin.Subtype],
 		}
 		wantSomeCatalogs = append(wantSomeCatalogs, cat)
 		testPluginCatalogs = append(testPluginCatalogs, cat)
@@ -363,9 +363,9 @@ func TestList(t *testing.T) {
 	}
 
 	name = "different"
-	diffPlg := host.TestPlugin(t, conn, name)
+	diffPlg := plugin.TestPlugin(t, conn, name)
 	for i := 0; i < 3; i++ {
-		hc := plugin.TestCatalog(t, conn, pWithOtherCatalogs.GetPublicId(), diffPlg.GetPublicId())
+		hc := hostplugin.TestCatalog(t, conn, pWithOtherCatalogs.GetPublicId(), diffPlg.GetPublicId())
 		wantOtherCatalogs = append(wantOtherCatalogs, &pb.HostCatalog{
 			Id:          hc.GetPublicId(),
 			ScopeId:     hc.GetProjectId(),
@@ -379,9 +379,9 @@ func TestList(t *testing.T) {
 				Description: diffPlg.GetDescription(),
 			},
 			Version:                     1,
-			Type:                        plugin.Subtype.String(),
+			Type:                        hostplugin.Subtype.String(),
 			AuthorizedActions:           testAuthorizedActions,
-			AuthorizedCollectionActions: authorizedCollectionActions[plugin.Subtype],
+			AuthorizedCollectionActions: authorizedCollectionActions[hostplugin.Subtype],
 		})
 	}
 
@@ -497,11 +497,11 @@ func TestDelete_Static(t *testing.T) {
 	repo := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	pluginRepo := func() (*host.Repository, error) {
-		return host.NewRepository(rw, rw, kms)
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -567,17 +567,17 @@ func TestDelete_Plugin(t *testing.T) {
 	repo := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	pluginRepo := func() (*host.Repository, error) {
-		return host.NewRepository(rw, rw, kms)
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	plg := host.TestPlugin(t, conn, "test")
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	plg := plugin.TestPlugin(t, conn, "test")
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
 	s, err := host_catalogs.NewService(repo, pluginHostRepo, pluginRepo, iamRepoFn)
 	require.NoError(t, err, "Couldn't create a new host catalog service.")
@@ -639,11 +639,11 @@ func TestDelete_twice(t *testing.T) {
 	repo := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	pluginRepo := func() (*host.Repository, error) {
-		return host.NewRepository(rw, rw, kms)
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -675,11 +675,11 @@ func TestCreate_Static(t *testing.T) {
 	repo := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	pluginRepo := func() (*host.Repository, error) {
-		return host.NewRepository(rw, rw, kms)
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -827,25 +827,25 @@ func TestCreate_Plugin(t *testing.T) {
 	repo := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginRepo := func() (*host.Repository, error) {
-		return host.NewRepository(rw, rw, kms)
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
 
 	name := "test"
-	plg := host.TestPlugin(t, conn, name)
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{
+	plg := plugin.TestPlugin(t, conn, name)
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
+			plg.GetPublicId(): hostplugin.NewWrappingPluginClient(&hostplugin.TestPluginServer{
 				OnCreateCatalogFn: func(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 					return nil, nil
 				},
 			}),
 		})
 	}
-	defaultHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	defaultHc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	defaultHcCreated := defaultHc.GetCreateTime().GetTimestamp().AsTime()
 	toMerge := &pbs.CreateHostCatalogRequest{}
 
@@ -861,7 +861,7 @@ func TestCreate_Plugin(t *testing.T) {
 				ScopeId:     proj.GetPublicId(),
 				Name:        &wrappers.StringValue{Value: "name"},
 				Description: &wrappers.StringValue{Value: "desc"},
-				Type:        plugin.Subtype.String(),
+				Type:        hostplugin.Subtype.String(),
 				PluginId:    plg.GetPublicId(),
 			}},
 			res: &pbs.CreateHostCatalogResponse{
@@ -877,9 +877,9 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:                        &wrappers.StringValue{Value: "name"},
 					Description:                 &wrappers.StringValue{Value: "desc"},
-					Type:                        plugin.Subtype.String(),
+					Type:                        hostplugin.Subtype.String(),
 					AuthorizedActions:           testAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions[plugin.Subtype],
+					AuthorizedCollectionActions: authorizedCollectionActions[hostplugin.Subtype],
 				},
 			},
 		},
@@ -887,7 +887,7 @@ func TestCreate_Plugin(t *testing.T) {
 			name: "Cant create in org",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				ScopeId:  org.GetParentId(),
-				Type:     plugin.Subtype.String(),
+				Type:     hostplugin.Subtype.String(),
 				PluginId: plg.GetPublicId(),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -896,7 +896,7 @@ func TestCreate_Plugin(t *testing.T) {
 			name: "Cant create in global",
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				ScopeId:  scope.Global.String(),
-				Type:     plugin.Subtype.String(),
+				Type:     hostplugin.Subtype.String(),
 				PluginId: plg.GetPublicId(),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -923,7 +923,7 @@ func TestCreate_Plugin(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				Id:       "not allowed to be set",
 				ScopeId:  proj.GetPublicId(),
-				Type:     plugin.Subtype.String(),
+				Type:     hostplugin.Subtype.String(),
 				PluginId: plg.GetPublicId(),
 			}},
 			res: nil,
@@ -934,7 +934,7 @@ func TestCreate_Plugin(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				CreatedTime: timestamppb.Now(),
 				ScopeId:     proj.GetPublicId(),
-				Type:        plugin.Subtype.String(),
+				Type:        hostplugin.Subtype.String(),
 				PluginId:    plg.GetPublicId(),
 			}},
 			res: nil,
@@ -945,7 +945,7 @@ func TestCreate_Plugin(t *testing.T) {
 			req: &pbs.CreateHostCatalogRequest{Item: &pb.HostCatalog{
 				UpdatedTime: timestamppb.Now(),
 				ScopeId:     proj.GetPublicId(),
-				Type:        plugin.Subtype.String(),
+				Type:        hostplugin.Subtype.String(),
 				PluginId:    plg.GetPublicId(),
 			}},
 			res: nil,
@@ -1004,11 +1004,11 @@ func TestUpdate_Static(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	pluginRepo := func() (*host.Repository, error) {
-		return host.NewRepository(rw, rw, kms)
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -1371,19 +1371,19 @@ func TestUpdate_Plugin(t *testing.T) {
 	rw := db.New(conn)
 
 	name := "test"
-	plg := host.TestPlugin(t, conn, name)
+	plg := plugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin()),
+		plg.GetPublicId(): hostplugin.NewWrappingPluginClient(hostplugin.NewLoopbackPlugin()),
 	}
 
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
-	pluginRepo := func() (*host.Repository, error) {
-		return host.NewRepository(rw, rw, kms)
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -1469,7 +1469,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			check: func(t *testing.T, in *pb.HostCatalog) {
 				assert.Equal(t, "new", in.Name.GetValue())
 				assert.Equal(t, "desc", in.Description.GetValue())
-				assert.Empty(t, cmp.Diff(authorizedCollectionActions[plugin.Subtype], in.GetAuthorizedCollectionActions(), cmpopts.IgnoreUnexported(structpb.ListValue{}, structpb.Value{})))
+				assert.Empty(t, cmp.Diff(authorizedCollectionActions[hostplugin.Subtype], in.GetAuthorizedCollectionActions(), cmpopts.IgnoreUnexported(structpb.ListValue{}, structpb.Value{})))
 			},
 		},
 		{

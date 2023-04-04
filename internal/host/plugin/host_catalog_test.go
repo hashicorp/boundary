@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/mr-tron/base58"
@@ -29,7 +29,7 @@ func TestHostCatalog_Create(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 
 	type args struct {
 		pluginId  string
@@ -187,8 +187,8 @@ func TestHostCatalog_Create_DuplicateNames(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	_, prj2 := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test1")
-	plg2 := host.TestPlugin(t, conn, "test2")
+	plg := plugin.TestPlugin(t, conn, "test1")
+	plg2 := plugin.TestPlugin(t, conn, "test2")
 
 	got, err := NewHostCatalog(ctx, prj.GetPublicId(), plg.GetPublicId(), WithName("duplicate"))
 	require.NoError(t, err)
@@ -220,7 +220,7 @@ func TestHostCatalog_Delete(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	ignoredCat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	_ = ignoredCat
@@ -271,7 +271,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 
 	t.Run("delete-project", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := host.TestPlugin(t, conn, "deletescope")
+		plg := plugin.TestPlugin(t, conn, "deletescope")
 		cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 		deleted, err := w.Delete(ctx, prj)
@@ -285,7 +285,7 @@ func TestHostCatalog_Delete_Cascading(t *testing.T) {
 
 	t.Run("delete-plugin", func(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := host.TestPlugin(t, conn, "deleteplugin")
+		plg := plugin.TestPlugin(t, conn, "deleteplugin")
 		cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 		deleted, err := w.Delete(ctx, plg)
@@ -343,7 +343,7 @@ func TestHostCatalog_SecretsHmac(t *testing.T) {
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	plg := host.TestPlugin(t, conn, "testplugin")
+	plg := plugin.TestPlugin(t, conn, "testplugin")
 	cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 
 	// stableValue checks that HMACing the same value returns the same result.

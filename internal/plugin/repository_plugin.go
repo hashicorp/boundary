@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package host
+package plugin
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 //
 // Both p.CreateTime and c.UpdateTime are ignored.
 func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, opt ...Option) (*Plugin, error) {
-	const op = "host.(Repository).CreatePlugin"
+	const op = "plugin.(Repository).CreatePlugin"
 	if p == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil Plugin")
 	}
@@ -91,7 +91,7 @@ func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, opt ...Option)
 // LookupPlugin returns the Plugin for id. Returns nil, nil if no
 // Plugin is found for id.
 func (r *Repository) LookupPlugin(ctx context.Context, id string, _ ...Option) (*Plugin, error) {
-	const op = "host.(Repository).LookupPlugin"
+	const op = "plugin.(Repository).LookupPlugin"
 	if id == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
@@ -109,7 +109,7 @@ func (r *Repository) LookupPlugin(ctx context.Context, id string, _ ...Option) (
 // LookupPluginByName returns the Plugin for a given name. Returns nil, nil if no
 // Plugin is found with that plugin name.
 func (r *Repository) LookupPluginByName(ctx context.Context, name string, _ ...Option) (*Plugin, error) {
-	const op = "host.(Repository).LookupPluginByName"
+	const op = "plugin.(Repository).LookupPluginByName"
 	if name == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin name")
 	}
@@ -126,7 +126,7 @@ func (r *Repository) LookupPluginByName(ctx context.Context, name string, _ ...O
 
 // ListPlugins returns a slice of Plugins for the scope IDs. WithLimit is the only option supported.
 func (r *Repository) ListPlugins(ctx context.Context, scopeIds []string, opt ...Option) ([]*Plugin, error) {
-	const op = "host.(Repository).ListPlugins"
+	const op = "plugin.(Repository).ListPlugins"
 	if len(scopeIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
@@ -142,4 +142,21 @@ func (r *Repository) ListPlugins(ctx context.Context, scopeIds []string, opt ...
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return plugins, nil
+}
+
+// AddSupportFlag adds a flag in the database for the current plugin to specify that it is capable
+// of that type's functions
+func (r *Repository) AddSupportFlag(ctx context.Context, plugin *Plugin, flag PluginType) error {
+	const op = "plugin.(Repository).AddSupportFlag"
+
+	tableName, ok := pluginTypeDbMap[flag]
+	if !ok {
+		return errors.New(ctx, errors.InvalidParameter, op, "plugin type does not exist")
+	}
+
+	sql := fmt.Sprintf(addSupportFlagQuery, tableName)
+	if _, err := r.writer.Exec(ctx, sql, []any{plugin.PublicId}); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	return nil
 }

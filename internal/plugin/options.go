@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package host
+package plugin
 
 // GetOpts - iterate the inbound Options and return a struct
 func GetOpts(opt ...Option) options {

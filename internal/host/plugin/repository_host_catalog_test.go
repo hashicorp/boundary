@@ -20,8 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -41,8 +40,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "test")
-	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
+	plg := plugin.TestPlugin(t, conn, "test")
+	unimplementedPlugin := plugin.TestPlugin(t, conn, "unimplemented")
 
 	const normalizeToSliceKey = "normalize_to_slice"
 
@@ -495,7 +494,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	var setRespSecretsNil bool
 	var gotOnUpdateCatalogRequest *plgpb.OnUpdateCatalogRequest
 	var pluginError error
-	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
+	testPlugin := plugin.TestPlugin(t, dbConn, "test")
 	testPluginMap := map[string]plgpb.HostPluginServiceClient{
 		testPlugin.GetPublicId(): &WrappingPluginClient{
 			Server: &TestPluginServer{
@@ -1232,7 +1231,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			}
 
 			setRespSecretsNil = tt.withRespSecretsNil
-			var gotPlugin *hostplugin.Plugin
+			var gotPlugin *plugin.Plugin
 			gotCatalog, gotPlugin, gotNumUpdated, err = repo.UpdateCatalog(ctx, workingCat, tt.version, tt.fieldMask)
 			if tt.wantIsErr != 0 {
 				require.Equal(db.NoRowsAffected, gotNumUpdated)
@@ -1263,7 +1262,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
 	}
@@ -1330,7 +1329,7 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
-	plg := hostplg.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
 	}
@@ -1363,7 +1362,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	pluginInstance := &TestPluginServer{}
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): &WrappingPluginClient{Server: pluginInstance},
@@ -1449,7 +1448,7 @@ func TestRepository_DeleteCatalogX(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplg.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
 	}
@@ -1537,7 +1536,7 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
 	_, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
 
-	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
+	testPlugin := plugin.TestPlugin(t, dbConn, "test")
 	dummyPluginMap := map[string]plgpb.HostPluginServiceClient{
 		testPlugin.GetPublicId(): &WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
 	}

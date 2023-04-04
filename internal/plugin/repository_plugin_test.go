@@ -1,10 +1,11 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package host
+package plugin
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host/store"
+	"github.com/hashicorp/boundary/internal/plugin/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -258,4 +259,123 @@ func TestRepository_LookupPluginByName(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_AddSupportFlag(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	tests := []struct {
+		name       string
+		pluginName string
+		flag       PluginType
+		flagExists bool
+		forceErr   bool
+		err        string
+	}{
+		{
+			name:       "flag doesn't exist and is added",
+			pluginName: "test1",
+			flag:       PluginTypeHost,
+			flagExists: false,
+			forceErr:   false,
+			err:        "",
+		},
+		{
+			name:       "flag exists and is unchanged",
+			pluginName: "test2",
+			flag:       PluginTypeHost,
+			flagExists: true,
+			forceErr:   false,
+			err:        "",
+		},
+		{
+			name:       "err thrown and is handled",
+			pluginName: "test3",
+			flag:       PluginTypeHost,
+			flagExists: false,
+			forceErr:   true,
+			err:        "wt_plugin_id_check constraint failed",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
+			ctx := context.Background()
+
+			require.Contains(pluginTypeDbMap, tt.flag)
+			plg := TestPlugin(t, conn, tt.pluginName, WithHostFlag(tt.flagExists))
+
+			// check to make sure the start state is as expected
+			rows, err := rw.Query(ctx, fmt.Sprintf("select public_id from %s where public_id = ?;", pluginTypeDbMap[tt.flag]), []any{plg.PublicId})
+			require.NoError(err)
+
+			rowCount := 0
+			var plgid string
+
+			for rows.Next() {
+				rowCount++
+				require.NoError(rows.Scan(&plgid))
+			}
+
+			if tt.flagExists {
+				assert.Equal(1, rowCount)
+				assert.Equal(plg.PublicId, plgid)
+			} else {
+				assert.Equal(0, rowCount)
+				assert.Equal("", plgid)
+			}
+
+			// create the plugin repo
+			kms := kms.TestKms(t, conn, wrapper)
+			repo, err := NewRepository(rw, rw, kms)
+			assert.NoError(err)
+			assert.NotNil(repo)
+
+			if tt.forceErr {
+				plg.PublicId = "biscuit"
+			}
+
+			// do the thing
+			err = repo.AddSupportFlag(ctx, plg, tt.flag)
+
+			if tt.err != "" {
+				require.ErrorContains(err, tt.err)
+				return
+			}
+			require.NoError(err)
+
+			// check to make sure the end state is as expected
+			rows, err = rw.Query(ctx, fmt.Sprintf("select public_id from %s where public_id = ?;", pluginTypeDbMap[tt.flag]), []any{plg.PublicId})
+			require.NoError(err)
+			rowCount = 0
+			for rows.Next() {
+				rowCount++
+			}
+			assert.Equal(1, rowCount)
+		})
+	}
+
+	// this needs it's own test becaues of the setup required for above tests
+	t.Run("plugin type unknown", func(t *testing.T) {
+		assert := assert.New(t)
+		require := require.New(t)
+		ctx := context.Background()
+		plg := TestPlugin(t, conn, "test12345")
+
+		// create the plugin repo
+		kms := kms.TestKms(t, conn, wrapper)
+		repo, err := NewRepository(rw, rw, kms)
+		assert.NoError(err)
+		assert.NotNil(repo)
+
+		// do the thing
+		err = repo.AddSupportFlag(ctx, plg, PluginTypeUnknown)
+
+		require.ErrorContains(err, "plugin type does not exist: parameter violation")
+	})
 }
