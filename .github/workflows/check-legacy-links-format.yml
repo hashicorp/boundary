@@ -5,12 +5,14 @@ on:
     paths:
       - "website/content/**/*.mdx"
       - "website/data/*-nav-data.json"
+      - ".github/workflows/check-legacy-links-format.yml"
 
 permissions:
   contents: read
 
 jobs:
   check-links:
+    if: github.repository == 'hashicorp/boundary'
     uses: hashicorp/dev-portal/.github/workflows/docs-content-check-legacy-links-format.yml@475289345d312552b745224b46895f51cc5fc490
     with:
       repo-owner: "hashicorp"
