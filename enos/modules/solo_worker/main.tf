@@ -115,7 +115,6 @@ resource "aws_vpc_security_group_ingress_rule" "worker_to_controller" {
       "Name" = "${var.vpc_name}_solo_worker_${random_pet.worker.id}_ingress_rule"
     },
   )
-
 }
 
 data "aws_route_table" "default" {
