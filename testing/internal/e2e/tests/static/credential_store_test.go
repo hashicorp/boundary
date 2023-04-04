@@ -79,7 +79,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 		brokeredCredentials = append(brokeredCredentials, credential.Credential)
 	}
 
-	expectedCredentials := []map[string]interface{}{
+	expectedCredentials := []map[string]any{
 		{"username": c.TargetSshUser, "password": "password"},
 		{"username": "name-json", "password": "password-json"},
 	}
