@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,7 +52,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 
 	// Create static credentials
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
-	boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
+	privateKeyCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
 	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, testPassword)
 	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, newCredentialStoreId, testCredentialsFile)
 
@@ -66,6 +67,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
 	// Add credentials to target
+	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, privateKeyCredentialsId)
 	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, jsonCredentialsId)
 	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, pwCredentialsId)
 
@@ -77,19 +79,25 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)
 	require.NoError(t, err)
 
-	brokeredCredentials := make([]map[string]any, 0, 2)
+	brokeredCredentials := make([]map[string]any, 0, 3)
 	for _, credential := range newSessionAuthorizationResult.Item.Credentials {
 		brokeredCredentials = append(brokeredCredentials, credential.Credential)
 	}
 
+	// Prepare expected credentials
 	testCredentialsJson, err := os.ReadFile(testCredentialsFile)
 	require.NoError(t, err)
 	var expectedJsonCredentials map[string]any
 	err = json.Unmarshal(testCredentialsJson, &expectedJsonCredentials)
 	require.NoError(t, err)
 
+	sshPrivateKeyFileContent, err := os.ReadFile(c.TargetSshKeyPath)
+	require.NoError(t, err)
+	sshPrivateKey := strings.TrimSuffix(string(sshPrivateKeyFileContent), "\n")
+
 	expectedCredentials := []map[string]any{
 		{"username": c.TargetSshUser, "password": testPassword},
+		{"username": c.TargetSshUser, "private_key": sshPrivateKey},
 		expectedJsonCredentials,
 	}
 
