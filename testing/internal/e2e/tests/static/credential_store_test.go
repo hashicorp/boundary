@@ -5,7 +5,11 @@ package static_test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"os"
 	"strings"
@@ -24,6 +28,7 @@ import (
 
 const (
 	testCredentialsFile = "testdata/credential.json"
+	testPemFile         = "testdata/private-key.pem"
 	testPassword        = "password"
 )
 
@@ -50,9 +55,16 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
+	err = createPrivateKeyPemFile(testPemFile)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := os.Remove(testPemFile)
+		require.NoError(t, err)
+	})
+
 	// Create static credentials
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
-	privateKeyCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
+	privateKeyCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, testPemFile)
 	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, testPassword)
 	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, newCredentialStoreId, testCredentialsFile)
 
@@ -91,7 +103,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	err = json.Unmarshal(testCredentialsJson, &expectedJsonCredentials)
 	require.NoError(t, err)
 
-	sshPrivateKeyFileContent, err := os.ReadFile(c.TargetSshKeyPath)
+	sshPrivateKeyFileContent, err := os.ReadFile(testPemFile)
 	require.NoError(t, err)
 	sshPrivateKey := strings.TrimSuffix(string(sshPrivateKeyFileContent), "\n")
 
@@ -137,6 +149,29 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Logf("Successfully deleted credential store")
+}
+
+func createPrivateKeyPemFile(fileName string) error {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return err
+	}
+	return savePrivateKeyToFile(fileName, key)
+}
+
+func savePrivateKeyToFile(fileName string, key *rsa.PrivateKey) error {
+	pemFile, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer pemFile.Close()
+
+	privateKey := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+
+	return pem.Encode(pemFile, privateKey)
 }
 
 // TestApiStaticCredentialStore uses the Go api to create a credential using
