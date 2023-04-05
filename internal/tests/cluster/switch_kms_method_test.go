@@ -4,6 +4,7 @@
 package cluster
 
 import (
+	"context"
 	"os"
 	"strings"
 	"sync"
@@ -74,8 +75,22 @@ func TestWorkerUpgradeKmsAuthMethod(t *testing.T) {
 	})
 	defer w1.Shutdown()
 
-	// Give time for it to connect
-	time.Sleep(10 * time.Second)
+	timeout := time.Minute
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	for {
+		logBuf, err = os.ReadFile(ec.AllEvents.Name())
+		require.NoError(t, err)
+		if strings.Count(string(logBuf), "worker has successfully authenticated") == 2 {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatal("worker had not successfully connected after ", timeout.String())
+		case <-time.After(time.Second):
+			// Try again
+		}
+	}
 
 	// We should find only one nonce, and one successful worker authentication,
 	// both in the output and in the database
