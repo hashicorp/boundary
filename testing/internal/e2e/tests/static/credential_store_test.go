@@ -21,7 +21,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testCredentialsFile = "testdata/credential.json"
+const (
+	testCredentialsFile = "testdata/credential.json"
+	testPassword        = "password"
+)
 
 // TestCliStaticCredentialStore validates various credential-store operations using the cli
 func TestCliStaticCredentialStore(t *testing.T) {
@@ -49,7 +52,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	// Create static credentials
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
 	boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
-	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, "password")
+	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, testPassword)
 	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, newCredentialStoreId, testCredentialsFile)
 
 	// Get credentials for target (expect empty)
@@ -86,7 +89,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedCredentials := []map[string]any{
-		{"username": c.TargetSshUser, "password": "password"},
+		{"username": c.TargetSshUser, "password": testPassword},
 		expectedJsonCredentials,
 	}
 
