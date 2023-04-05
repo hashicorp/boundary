@@ -79,9 +79,15 @@ func TestCliStaticCredentialStore(t *testing.T) {
 		brokeredCredentials = append(brokeredCredentials, credential.Credential)
 	}
 
+	testCredentialsJson, err := os.ReadFile(testCredentialsFile)
+	require.NoError(t, err)
+	var expectedJsonCredentials map[string]any
+	err = json.Unmarshal(testCredentialsJson, &expectedJsonCredentials)
+	require.NoError(t, err)
+
 	expectedCredentials := []map[string]any{
 		{"username": c.TargetSshUser, "password": "password"},
-		{"username": "name-json", "password": "password-json"},
+		expectedJsonCredentials,
 	}
 
 	assert.ElementsMatch(t, expectedCredentials, brokeredCredentials)
