@@ -86,7 +86,7 @@ func TestWorkerUpgradeKmsAuthMethod(t *testing.T) {
 		}
 		select {
 		case <-ctx.Done():
-			t.Fatal("worker had not succesully connected after ", timeout.String())
+			t.Fatal("worker had not successfully connected after ", timeout.String())
 		case <-time.After(time.Second):
 			// Try again
 		}
