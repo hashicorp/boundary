@@ -105,7 +105,7 @@ func TestCliStaticCredentialStore(t *testing.T) {
 
 	sshPrivateKeyFileContent, err := os.ReadFile(testPemFile)
 	require.NoError(t, err)
-	sshPrivateKey := strings.TrimSuffix(string(sshPrivateKeyFileContent), "\n")
+	sshPrivateKey := strings.TrimSpace(string(sshPrivateKeyFileContent))
 
 	expectedCredentials := []map[string]any{
 		{"username": c.TargetSshUser, "password": testPassword},
