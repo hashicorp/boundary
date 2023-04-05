@@ -29,8 +29,6 @@ module "boundary" {
 module "solo_worker" {
   source = "./modules/solo_worker"
 
-  project_name = "qti-enos-boundary"
-  environment  = var.environment
   common_tags = {
     "Project" : "Enos",
     "Project Name" : "qti-enos-boundary",
