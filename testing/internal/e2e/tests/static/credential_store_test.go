@@ -5,9 +5,14 @@ package static_test
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,6 +24,12 @@ import (
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+const (
+	testCredentialsFile = "testdata/credential.json"
+	testPemFile         = "testdata/private-key.pem"
+	testPassword        = "password"
 )
 
 // TestCliStaticCredentialStore validates various credential-store operations using the cli
@@ -43,9 +54,19 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+
+	err = createPrivateKeyPemFile(testPemFile)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err := os.Remove(testPemFile)
+		require.NoError(t, err)
+	})
+
+	// Create static credentials
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
-	boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
-	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, "password")
+	privateKeyCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, testPemFile)
+	pwCredentialsId := boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, testPassword)
+	jsonCredentialsId := boundary.CreateNewStaticCredentialJsonCli(t, ctx, newCredentialStoreId, testCredentialsFile)
 
 	// Get credentials for target (expect empty)
 	output := e2e.RunCommand(ctx, "boundary",
@@ -57,6 +78,9 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
+	// Add credentials to target
+	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, privateKeyCredentialsId)
+	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, jsonCredentialsId)
 	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, pwCredentialsId)
 
 	// Get credentials for target
@@ -67,13 +91,29 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	err = json.Unmarshal(output.Stdout, &newSessionAuthorizationResult)
 	require.NoError(t, err)
 
-	newSessionAuthorization := newSessionAuthorizationResult.Item
-	retrievedUser, ok := newSessionAuthorization.Credentials[0].Credential["username"].(string)
-	require.True(t, ok)
-	retrievedPassword, ok := newSessionAuthorization.Credentials[0].Credential["password"].(string)
-	require.True(t, ok)
-	assert.Equal(t, c.TargetSshUser, retrievedUser)
-	assert.Equal(t, "password", retrievedPassword)
+	brokeredCredentials := make([]map[string]any, 0, 3)
+	for _, credential := range newSessionAuthorizationResult.Item.Credentials {
+		brokeredCredentials = append(brokeredCredentials, credential.Credential)
+	}
+
+	// Prepare expected credentials
+	testCredentialsJson, err := os.ReadFile(testCredentialsFile)
+	require.NoError(t, err)
+	var expectedJsonCredentials map[string]any
+	err = json.Unmarshal(testCredentialsJson, &expectedJsonCredentials)
+	require.NoError(t, err)
+
+	sshPrivateKeyFileContent, err := os.ReadFile(testPemFile)
+	require.NoError(t, err)
+	sshPrivateKey := strings.TrimSpace(string(sshPrivateKeyFileContent))
+
+	expectedCredentials := []map[string]any{
+		{"username": c.TargetSshUser, "password": testPassword},
+		{"username": c.TargetSshUser, "private_key": sshPrivateKey},
+		expectedJsonCredentials,
+	}
+
+	assert.ElementsMatch(t, expectedCredentials, brokeredCredentials)
 
 	// Delete credential store
 	output = e2e.RunCommand(ctx, "boundary",
@@ -109,6 +149,26 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	)
 	require.NoError(t, err)
 	t.Logf("Successfully deleted credential store")
+}
+
+func createPrivateKeyPemFile(fileName string) error {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return err
+	}
+
+	pemFile, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer pemFile.Close()
+
+	privateKey := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+
+	return pem.Encode(pemFile, privateKey)
 }
 
 // TestApiStaticCredentialStore uses the Go api to create a credential using
