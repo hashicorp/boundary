@@ -112,12 +112,6 @@ resource "aws_vpc_security_group_ingress_rule" "worker_to_controller" {
   from_port         = 9201
   to_port           = 9201
   ip_protocol       = "tcp"
-  tags = merge(
-    local.common_tags,
-    {
-      "Name" = "${var.vpc_name}_solo_worker_${random_pet.worker.id}_ingress_rule"
-    },
-  )
 }
 
 data "aws_route_table" "default" {
