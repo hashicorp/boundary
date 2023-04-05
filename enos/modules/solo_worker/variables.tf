@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 variable "vpc_name" {
   description = "The name of the existing VPC to be used for this module"
   type        = string
