@@ -60,15 +60,15 @@ resource "aws_subnet" "default" {
   tags = merge(
     local.common_tags,
     {
-      "Name" = "${var.vpc_name}_solo_worker_subnet"
+      "Name" = "${var.vpc_name}_worker_subnet"
     },
   )
 }
 
 # The worker instance is a part of this security group, not to be confused with the next rule below
 resource "aws_security_group" "default" {
-  name        = "boundary-sg-isolated-worker-${random_pet.worker.id}"
-  description = "SSH to Isolated worker to KMS and controllers"
+  name        = "boundary-sg-worker-${random_pet.worker.id}"
+  description = "SSH to worker to KMS and controllers"
   vpc_id      = var.vpc_name
 
   ingress {
@@ -98,12 +98,12 @@ resource "aws_security_group" "default" {
   tags = merge(
     local.common_tags,
     {
-      "Name" = "${var.vpc_name}_solo_worker_sg"
+      "Name" = "${var.vpc_name}_worker_sg"
     },
   )
 }
 
-# This module only manages a rule for the controller SG that is vital to the isolated worker's operation
+# This module only manages a rule for the controller SG that is vital to the worker's operation
 # This module does _not_ manage the security group itself
 resource "aws_vpc_security_group_ingress_rule" "worker_to_controller" {
   description       = "This rule allows traffic from a worker to controllers over WAN"
@@ -123,7 +123,7 @@ data "aws_route_table" "default" {
   }
 }
 
-resource "aws_route_table_association" "solo_worker_rta" {
+resource "aws_route_table_association" "worker_rta" {
   subnet_id      = aws_subnet.default.id
   route_table_id = data.aws_route_table.default.id
 }
@@ -148,13 +148,13 @@ resource "aws_instance" "worker" {
   tags = merge(
     local.common_tags,
     {
-      Name = "${var.name_prefix}-boundary-solo-worker",
+      Name = "${var.name_prefix}-boundary-worker",
     },
   )
 }
 
 resource "enos_bundle_install" "worker" {
-  depends_on  = [aws_instance.worker, aws_route_table_association.solo_worker_rta]
+  depends_on  = [aws_instance.worker, aws_route_table_association.worker_rta]
   destination = var.boundary_install_dir
 
   artifactory = var.boundary_artifactory_release

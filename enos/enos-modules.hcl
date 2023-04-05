@@ -26,8 +26,8 @@ module "boundary" {
   alb_listener_api_port = var.alb_listener_api_port
 }
 
-module "solo_worker" {
-  source = "./modules/solo_worker"
+module "worker" {
+  source = "./modules/worker"
 
   common_tags = {
     "Project" : "Enos",
