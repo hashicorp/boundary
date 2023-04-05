@@ -156,10 +156,7 @@ func createPrivateKeyPemFile(fileName string) error {
 	if err != nil {
 		return err
 	}
-	return savePrivateKeyToFile(fileName, key)
-}
 
-func savePrivateKeyToFile(fileName string, key *rsa.PrivateKey) error {
 	pemFile, err := os.Create(fileName)
 	if err != nil {
 		return err
