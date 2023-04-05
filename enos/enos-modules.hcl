@@ -10,7 +10,7 @@ module "bats_deps" {
 }
 
 module "boundary" {
-  source = "app.terraform.io/hashicorp-qti/aws-boundary/enos"
+  source  = "app.terraform.io/hashicorp-qti/aws-boundary/enos"
   version = ">= 0.5.0"
 
   project_name = "qti-enos-boundary"
