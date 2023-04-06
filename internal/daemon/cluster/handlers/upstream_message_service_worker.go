@@ -167,6 +167,8 @@ func toMsgType(ctx context.Context, m proto.Message) (pbs.MsgType, error) {
 		return pbs.MsgType_MSG_TYPE_UNWRAP_KEYS, nil
 	case *pbs.VerifySignatureRequest, *pbs.VerifySignatureResponse:
 		return pbs.MsgType_MSG_TYPE_VERIFY_SIGNATURE, nil
+	case *pbs.CloseConnectionRecordingRequest, *pbs.CloseConnectionRecordingResponse:
+		return pbs.MsgType_MSG_TYPE_CLOSE_CONNECTION, nil
 	default:
 		return pbs.MsgType_MSG_TYPE_UNSPECIFIED, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%q is an unknown msg type", t))
 	}

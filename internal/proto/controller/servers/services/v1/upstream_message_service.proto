@@ -52,6 +52,7 @@ enum MsgType {
   MSG_TYPE_ECHO = 1; // currently this only used for testing.
   MSG_TYPE_UNWRAP_KEYS = 2;
   MSG_TYPE_VERIFY_SIGNATURE = 3;
+  MSG_TYPE_CLOSE_CONNECTION = 4;
 }
 
 message EchoUpstreamMessageRequest {

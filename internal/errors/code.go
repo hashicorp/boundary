@@ -119,6 +119,8 @@ const (
 	// specific number of records returned a different count, e.g. if you
 	// expected to delete three items and only one was deleted.
 	UnexpectedRowsAffected Code = 1107
+	// ImmutableColumn is used when an operation attempted to mutate an immutable column.
+	ImmutableColumn Code = 1108
 
 	// Migration setup errors are codes 2000-2999
 	MigrationIntegrity Code = 2000 // MigrationIntegrity represents an error with the generated migration related code

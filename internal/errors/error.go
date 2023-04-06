@@ -208,6 +208,9 @@ func Convert(e error) *Err {
 			case "23514": // check_violation
 				msg := fmt.Sprintf("%s constraint failed", pgxError.ConstraintName)
 				return E(ctx, WithoutEvent(), WithMsg(msg), WithWrap(E(ctx, WithoutEvent(), WithCode(CheckConstraint), WithMsg("check constraint violated")))).(*Err)
+			case "23602": // set_once_column
+				msg := fmt.Sprintf("%s.%s can only be set once", pgxError.TableName, pgxError.ColumnName)
+				return E(ctx, WithoutEvent(), WithMsg(msg), WithWrap(E(ctx, WithoutEvent(), WithCode(ImmutableColumn), WithMsg("set_once_column constraint violated")))).(*Err)
 			default:
 				return E(ctx, WithoutEvent(), WithCode(NotSpecificIntegrity), WithMsg(pgxError.Message)).(*Err)
 			}
