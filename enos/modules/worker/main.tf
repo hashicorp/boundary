@@ -154,9 +154,9 @@ resource "aws_instance" "worker" {
 }
 
 resource "enos_bundle_install" "worker" {
-  depends_on  = [aws_instance.worker, aws_route_table_association.worker_rta]
-  destination = var.boundary_install_dir
+  depends_on = [aws_instance.worker, aws_route_table_association.worker_rta]
 
+  destination = var.boundary_install_dir
   artifactory = var.boundary_artifactory_release
   path        = var.local_artifact_path
   release     = var.boundary_release == null ? var.boundary_release : merge(var.boundary_release, { product = "boundary", edition = "oss" })
@@ -169,7 +169,8 @@ resource "enos_bundle_install" "worker" {
 }
 
 resource "enos_file" "worker_config" {
-  depends_on  = [enos_bundle_install.worker]
+  depends_on = [enos_bundle_install.worker]
+
   destination = "/etc/boundary/boundary.hcl"
   content = templatefile("${path.module}/templates/worker.hcl", {
     id                   = random_pet.worker.id
@@ -188,7 +189,10 @@ resource "enos_file" "worker_config" {
 }
 
 resource "enos_boundary_start" "worker_start" {
-  depends_on = [enos_file.worker_config]
+  depends_on = [
+    enos_file.worker_config,
+    aws_vpc_security_group_ingress_rule.worker_to_controller,
+  ]
 
   bin_path    = "/opt/boundary/bin"
   config_path = "/etc/boundary"
