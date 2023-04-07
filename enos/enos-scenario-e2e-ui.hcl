@@ -135,6 +135,7 @@ scenario "e2e_ui" {
       vpc_id               = step.create_base_infra.vpc_id
       target_count         = 2
       additional_tags      = step.create_tag1_inputs.tag_map
+      subnet_ids           = step.create_boundary_cluster.subnet_ids
     }
   }
 
@@ -164,6 +165,7 @@ scenario "e2e_ui" {
       vpc_id               = step.create_base_infra.vpc_id
       target_count         = 1
       additional_tags      = step.create_tag2_inputs.tag_map
+      subnet_ids           = step.create_boundary_cluster.subnet_ids
     }
   }
 
