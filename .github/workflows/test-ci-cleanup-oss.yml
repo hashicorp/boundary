@@ -34,11 +34,11 @@ jobs:
     container:
       image: rebuy/aws-nuke
       options:
-         --user root
-         -t
+        --user root
+        -t
       env:
-        AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         TIME_LIMIT: "48h"
     timeout-minutes: 60
     steps:
@@ -73,8 +73,8 @@ jobs:
     container:
       image: jantman/awslimitchecker
       env:
-        AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID_CI }}
-        AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY_CI }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
     strategy:
       matrix:
         region: ${{ fromJSON(needs.setup.outputs.regions) }}
