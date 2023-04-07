@@ -27,6 +27,10 @@ jobs:
           repository: "grafana/grafana-github-actions"
           path: ./actions
           ref: be89ad434792280ebaa4d982ac72ba548b6f7095
+      - name: Set up Node.js
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
+        with:
+          node-version: '16.x'
       - name: Install Actions
         run: npm install --production --prefix ./actions
       - name: Run PR Checks
