@@ -11,7 +11,7 @@ output "worker_tags" {
   value       = var.worker_type_tags
 }
 
-output "subnet_id" {
+output "subnet_ids" {
   description = "The ID of the subnet this worker resides in"
-  value       = aws_subnet.default.id
+  value       = [aws_subnet.default.id]
 }

@@ -83,6 +83,10 @@ module "random_stringifier" {
   source = "./modules/random_stringifier"
 }
 
+module "map2list" {
+  source = "./modules/map2list"
+}
+
 module "target" {
   source       = "./modules/target"
   target_count = var.target_count

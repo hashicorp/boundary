@@ -97,6 +97,7 @@ scenario "e2e_static" {
       instance_type        = var.target_instance_type
       vpc_id               = step.create_base_infra.vpc_id
       target_count         = 1
+      subnet_ids           = step.create_boundary_cluster.subnet_ids
     }
   }
 
