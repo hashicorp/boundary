@@ -36,7 +36,10 @@ type LoopbackPlugin struct {
 	*LoopbackStorage
 }
 
-// NewLoopbackPlugin returns a new loopback plugin
+// NewLoopbackPlugin returns a new loopback pluginre
+// For storage service testings NewLoopbackPlugin Supports WithMockErrors
+// and WithMockBuckets as options. If no mock buckets are provided,
+// a bucket named `default` will be created.
 func NewLoopbackPlugin(opt ...TestOption) (*LoopbackPlugin, error) {
 	opts, err := getTestOpts(opt...)
 	if err != nil {
@@ -49,7 +52,7 @@ func NewLoopbackPlugin(opt ...TestOption) (*LoopbackPlugin, error) {
 			hostMap: make(map[string][]*loopbackPluginHostInfo),
 		},
 		LoopbackStorage: &LoopbackStorage{
-			buckets: make(map[BucketName]Bucket),
+			buckets: map[BucketName]Bucket{"default": {}},
 			errs:    make([]PluginMockError, 0),
 		},
 	}

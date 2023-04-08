@@ -311,6 +311,8 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	if opts.WorkerRecordingStoragePath != "" {
 		opts.Config.Worker.RecordingStoragePath = opts.WorkerRecordingStoragePath
 	}
+
+	tw.b.EnabledPlugins = append(tw.b.EnabledPlugins, base.EnabledPluginLoopback)
 	tw.name = opts.Config.Worker.Name
 
 	if opts.SuccessfulStatusGracePeriodDuration != 0 {
@@ -356,7 +358,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		Server:    tw.b,
 	}
 
-	tw.w, err = New(conf)
+	tw.w, err = New(ctx, conf)
 	if err != nil {
 		tw.Shutdown()
 		t.Fatal(err)

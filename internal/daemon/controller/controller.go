@@ -45,7 +45,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
-	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
+	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
@@ -251,29 +251,30 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			}
 		}
 		switch enabledPlugin {
-		case base.EnabledPluginHostLoopback:
+		case base.EnabledPluginLoopback:
 			lp, err := loopback.NewLoopbackPlugin()
 			if err != nil {
 				return nil, fmt.Errorf("error creating loopback plugin: %w", err)
 			}
 			plg := loopback.NewWrappingPluginHostClient(lp)
 			opts := []host.Option{
-				host.WithDescription("Provides an initial loopback host plugin in Boundary"),
+				host.WithDescription("Provides an initial loopback storage and host plugin in Boundary"),
 				host.WithPublicId(conf.DevLoopbackPluginId),
 			}
+			// TODO(storage): Register loopback as storage supported
 			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
 				return nil, err
 			}
-		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
+		case base.EnabledPluginHostAzure, base.EnabledPluginAws:
 			pluginType := strings.ToLower(enabledPlugin.String())
-			client, cleanup, err := external_host_plugins.CreateHostPlugin(
+			client, cleanup, err := external_plugins.CreateHostPlugin(
 				ctx,
 				pluginType,
-				external_host_plugins.WithPluginOptions(
+				external_plugins.WithPluginOptions(
 					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
 					pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
 				),
-				external_host_plugins.WithLogger(pluginLogger.Named(pluginType)),
+				external_plugins.WithLogger(pluginLogger.Named(pluginType)),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
@@ -337,14 +338,13 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	// TODO: Allow setting run jobs limit from config
 	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
-	if sche := c.conf.RawConfig.Controller.Scheduler; sche != nil {
-		if sche.JobRunIntervalDuration > 0 {
-			schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(sche.JobRunIntervalDuration))
-		}
-		if sche.MonitorIntervalDuration > 0 {
-			schedulerOpts = append(schedulerOpts, scheduler.WithMonitorInterval(sche.MonitorIntervalDuration))
-		}
+	if c.conf.RawConfig.Controller.Scheduler.JobRunIntervalDuration > 0 {
+		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.Scheduler.JobRunIntervalDuration))
 	}
+	if c.conf.RawConfig.Controller.Scheduler.MonitorIntervalDuration > 0 {
+		schedulerOpts = append(schedulerOpts, scheduler.WithMonitorInterval(c.conf.RawConfig.Controller.Scheduler.MonitorIntervalDuration))
+	}
+
 	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)

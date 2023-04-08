@@ -31,10 +31,13 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/storage"
+	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
@@ -80,7 +83,7 @@ type recorderCache any
 // create its reverseConnReceiver
 var reverseConnReceiverFactory func() reverseConnReceiver
 
-var recordingStorageFactory func(ctx context.Context, path string, plgClients map[string]plgpb.StoragePluginServiceClient) (storage.RecordingStorage, error)
+var recordingStorageFactory func(ctx context.Context, path string, plgClients map[string]plgpb.StoragePluginServiceClient, enableLoopback bool) (storage.RecordingStorage, error)
 
 var recorderCacheFactory func() recorderCache
 
@@ -148,8 +151,6 @@ type Worker struct {
 	// The storage for session recording
 	RecordingStorage storage.RecordingStorage
 
-	enabledPlugins []base.EnabledPlugin
-
 	// downstream workers and routes to those workers
 	downstreamWorkers  downstreamers
 	downstreamReceiver reverseConnReceiver
@@ -173,7 +174,7 @@ type Worker struct {
 	pkiConnManager *cluster.DownstreamManager
 }
 
-func New(conf *Config) (*Worker, error) {
+func New(ctx context.Context, conf *Config) (*Worker, error) {
 	const op = "worker.New"
 	metric.InitializeHttpCollectors(conf.PrometheusRegisterer)
 	metric.InitializeWebsocketCollectors(conf.PrometheusRegisterer)
@@ -217,15 +218,37 @@ func New(conf *Config) (*Worker, error) {
 	}
 
 	if w.conf.RawConfig.Worker.RecordingStoragePath != "" && recordingStorageFactory != nil {
+		pluginLogger, err := event.NewHclogLogger(ctx, w.conf.Server.Eventer)
+		if err != nil {
+			return nil, fmt.Errorf("error creating storage catalog plugin logger: %w", err)
+		}
 		plgClients := make(map[string]plgpb.StoragePluginServiceClient)
-		for _, enabledPlugin := range w.enabledPlugins {
+		var enableStorageLoopback bool
+
+		for _, enabledPlugin := range w.conf.Server.EnabledPlugins {
 			switch enabledPlugin {
-			// TODO(storage): Add mock plugin when enabled, also make sure to enable in dev mode
-			// TODO(storage): Add AWS storage plugin
+			case base.EnabledPluginAws:
+				pluginType := strings.ToLower(enabledPlugin.String())
+				client, cleanup, err := external_plugins.CreateStoragePlugin(
+					ctx,
+					pluginType,
+					external_plugins.WithPluginOptions(
+						pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+						pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+					),
+					external_plugins.WithLogger(pluginLogger.Named(pluginType)),
+				)
+				if err != nil {
+					return nil, fmt.Errorf("error creating %s storage plugin: %w", pluginType, err)
+				}
+				conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+				plgClients[pluginType] = client
+			case base.EnabledPluginLoopback:
+				enableStorageLoopback = true
 			}
 		}
 
-		s, err := recordingStorageFactory(w.baseContext, w.conf.RawConfig.Worker.RecordingStoragePath, plgClients)
+		s, err := recordingStorageFactory(ctx, w.conf.RawConfig.Worker.RecordingStoragePath, plgClients, enableStorageLoopback)
 		if err != nil {
 			return nil, fmt.Errorf("error create recording storage: %w", err)
 		}

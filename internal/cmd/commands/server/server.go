@@ -470,8 +470,9 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
+	c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws)
 	if c.Config.Controller != nil {
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAzure)
 		if err := c.StartController(c.Context); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
@@ -624,7 +625,7 @@ func (c *Command) StartWorker() error {
 	}
 
 	var err error
-	c.worker, err = worker.New(conf)
+	c.worker, err = worker.New(c.Context, conf)
 	if err != nil {
 		return fmt.Errorf("Error initializing worker: %w", err)
 	}

@@ -162,11 +162,11 @@ type Config struct {
 }
 
 type Controller struct {
-	Name              string     `hcl:"name"`
-	Description       string     `hcl:"description"`
-	Database          *Database  `hcl:"database"`
-	PublicClusterAddr string     `hcl:"public_cluster_addr"`
-	Scheduler         *Scheduler `hcl:"scheduler"`
+	Name              string    `hcl:"name"`
+	Description       string    `hcl:"description"`
+	Database          *Database `hcl:"database"`
+	PublicClusterAddr string    `hcl:"public_cluster_addr"`
+	Scheduler         Scheduler `hcl:"scheduler"`
 
 	// AuthTokenTimeToLive is the total valid lifetime of a token denoted by time.Duration
 	AuthTokenTimeToLive         any           `hcl:"auth_token_time_to_live"`
@@ -568,22 +568,20 @@ func Parse(d string) (*Config, error) {
 			result.Controller.GracefulShutdownWaitDuration = t
 		}
 
-		if result.Controller.Scheduler != nil {
-			if result.Controller.Scheduler.JobRunInterval != "" {
-				t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.JobRunInterval)
-				if err != nil {
-					return result, err
-				}
-				result.Controller.Scheduler.JobRunIntervalDuration = t
+		if result.Controller.Scheduler.JobRunInterval != "" {
+			t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.JobRunInterval)
+			if err != nil {
+				return result, err
 			}
+			result.Controller.Scheduler.JobRunIntervalDuration = t
+		}
 
-			if result.Controller.Scheduler.MonitorInterval != "" {
-				t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.MonitorInterval)
-				if err != nil {
-					return result, err
-				}
-				result.Controller.Scheduler.MonitorIntervalDuration = t
+		if result.Controller.Scheduler.MonitorInterval != "" {
+			t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.MonitorInterval)
+			if err != nil {
+				return result, err
 			}
+			result.Controller.Scheduler.MonitorIntervalDuration = t
 		}
 
 		workerStatusGracePeriod := result.Controller.WorkerStatusGracePeriod

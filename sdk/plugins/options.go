@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package external_host_plugins
+package external_plugins
 
 import (
 	"fmt"

@@ -614,7 +614,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	tc.b.DevUnprivilegedOidcAccountId = DefaultTestUnprivilegedOidcAccountId
 	tc.b.DevLoopbackPluginId = DefaultTestPluginId
 
-	tc.b.EnabledPlugins = append(tc.b.EnabledPlugins, base.EnabledPluginHostLoopback)
+	tc.b.EnabledPlugins = append(tc.b.EnabledPlugins, base.EnabledPluginLoopback)
 
 	// Start a logger
 	tc.b.Logger = opts.Logger
@@ -631,10 +631,6 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	}
 	if opts.Config.Controller.Name == "" {
 		require.NoError(t, opts.Config.Controller.InitNameIfEmpty())
-	}
-
-	if opts.Config.Controller.Scheduler == nil {
-		opts.Config.Controller.Scheduler = new(config.Scheduler)
 	}
 	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
 

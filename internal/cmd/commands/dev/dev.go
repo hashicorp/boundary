@@ -97,7 +97,7 @@ type Command struct {
 	flagSysEvents                        string
 	flagEveryEventAllowFilters           []string
 	flagEveryEventDenyFilters            []string
-	flagCreateLoopbackHostPlugin         bool
+	flagCreateLoopbackPlugin             bool
 	flagPluginExecutionDir               string
 	flagWorkerAuthMethod                 string
 	flagWorkerAuthStorageDir             string
@@ -381,7 +381,7 @@ func (c *Command) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:   "worker-recording-storage-dir",
 		Target: &c.flagWorkerRecordingStorageDir,
-		Usage:  "Specifies the directory to store worker session recordings in dev mode.",
+		Usage:  "Specifies the directory to store worker session recordings in dev mode. If not provided a temp directory will be created. Session recording is an Enterprise-only feature.",
 	})
 
 	f.BoolVar(&base.BoolVar{
@@ -396,8 +396,8 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "create-loopback-host-plugin",
-		Target: &c.flagCreateLoopbackHostPlugin,
+		Name:   "create-loopback-plugin",
+		Target: &c.flagCreateLoopbackPlugin,
 		Hidden: true,
 	})
 
@@ -480,7 +480,19 @@ func (c *Command) Run(args []string) int {
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
 	c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
+
 	c.Config.Worker.RecordingStoragePath = c.flagWorkerRecordingStorageDir
+	if c.Config.Worker.RecordingStoragePath == "" {
+		// Create a temp dir for recording storage
+		const pattern = "recordingstorage"
+		c.Config.Worker.RecordingStoragePath, err = os.MkdirTemp("", pattern)
+		if err != nil {
+			c.UI.Error(fmt.Errorf("Error creating storage temp dir: %w", err).Error())
+			return base.CommandCliError
+		}
+		c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return os.RemoveAll(c.Config.Worker.RecordingStoragePath) })
+	}
+
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
@@ -702,9 +714,9 @@ func (c *Command) Run(args []string) int {
 	}
 
 	var opts []base.Option
-	if c.flagCreateLoopbackHostPlugin {
+	if c.flagCreateLoopbackPlugin {
 		c.DevLoopbackPluginId = "pl_1234567890"
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostLoopback)
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginLoopback)
 		c.Config.Controller.Scheduler.JobRunIntervalDuration = 100 * time.Millisecond
 	}
 	switch c.flagDatabaseUrl {
@@ -738,7 +750,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	{
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws, base.EnabledPluginHostAzure)
 		conf := &controller.Config{
 			RawConfig: c.Config,
 			Server:    c.Server,
@@ -772,7 +784,7 @@ func (c *Command) Run(args []string) int {
 		}
 
 		var err error
-		c.worker, err = worker.New(conf)
+		c.worker, err = worker.New(c.Context, conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing worker: %w", err).Error())
 			return base.CommandCliError

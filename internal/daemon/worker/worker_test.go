@@ -129,7 +129,7 @@ func TestWorkerNew(t *testing.T) {
 			tt.in.Logger = hclog.Default()
 			tt.in.RawConfig = &config.Config{SharedConfig: &configutil.SharedConfig{DisableMlock: true}}
 
-			w, err := New(tt.in)
+			w, err := New(context.Background(), tt.in)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, w)
@@ -286,7 +286,7 @@ func Test_Worker_getSessionTls(t *testing.T) {
 		},
 	}
 	conf.RawConfig = &config.Config{SharedConfig: &configutil.SharedConfig{DisableMlock: true}}
-	w, err := New(conf)
+	w, err := New(context.Background(), conf)
 	require.NoError(t, err)
 	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: &services.StatusResponse{}, StatusTime: time.Now(), LastCalculatedUpstreams: nil})
 	w.baseContext = context.Background()

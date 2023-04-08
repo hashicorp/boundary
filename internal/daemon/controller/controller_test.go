@@ -255,7 +255,7 @@ func TestController_NewPluginsConfig(t *testing.T) {
 	initialConfig.Plugins.ExecutionDir = tmpDir
 	conf := TestControllerConfig(t, ctx, tc, &TestControllerOpts{Config: initialConfig})
 	conf.EnabledPlugins = []base.EnabledPlugin{
-		base.EnabledPluginHostAws,
+		base.EnabledPluginAws,
 		base.EnabledPluginHostAzure,
 	}
 
