@@ -13,12 +13,13 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   # checks that a milestone entry is present for a PR
   milestone-check:
     # If there is a `pr/no-milestone` label we ignore this check
-    if: contains(github.event.pull_request.labels.*.name, 'pr/no-milestone') != 'true'
+    if: contains(github.event.pull_request.labels.*.name, 'pr/no-milestone') != true
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
       - name: Checkout Actions
