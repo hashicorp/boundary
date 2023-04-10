@@ -60,7 +60,7 @@ resource "aws_subnet" "default" {
   tags = merge(
     local.common_tags,
     {
-      "Name" = "${var.vpc_name}_worker_subnet"
+      "Name" = "${var.vpc_name}_worker_${random_pet.worker.id}_subnet"
     },
   )
 }
