@@ -46,7 +46,7 @@ scenario "e2e_database" {
     module = module.random_stringifier
   }
 
-  step "map2list" {
+  step "get_subnets" {
     module = module.map2list
     variables {
       map = step.create_base_infra.vpc_subnets
@@ -75,7 +75,7 @@ scenario "e2e_database" {
       vpc_id               = step.create_base_infra.vpc_id
       target_count         = 1
       additional_tags      = step.create_tag_inputs.tag_map
-      subnet_ids           = step.map2list.list
+      subnet_ids           = step.get_subnets.list
     }
   }
 
