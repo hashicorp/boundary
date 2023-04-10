@@ -15,3 +15,8 @@ output "subnet_ids" {
   description = "The ID of the subnet this worker resides in"
   value       = [aws_subnet.default.id]
 }
+
+output "pet_id" {
+  description = "The ID of the random_pet used in this module"
+  value       = random_pet.worker.id
+}

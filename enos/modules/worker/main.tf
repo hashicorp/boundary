@@ -16,7 +16,9 @@ locals {
   common_tags = merge(
     var.common_tags,
     {
-      Type = var.cluster_tag,
+      Type   = var.cluster_tag
+      Module = "boundary-worker"
+      Pet = random_pet.worker.id
     },
   )
 }
