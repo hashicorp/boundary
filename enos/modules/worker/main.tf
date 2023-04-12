@@ -18,7 +18,7 @@ locals {
     {
       Type   = var.cluster_tag
       Module = "boundary-worker"
-      Pet = random_pet.worker.id
+      Pet    = random_pet.worker.id
     },
   )
 }
