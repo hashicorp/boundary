@@ -7,9 +7,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"testing"
+
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // AuthTokenInfo parses the JSON representation of auth-token information`

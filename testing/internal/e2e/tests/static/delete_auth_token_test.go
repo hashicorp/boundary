@@ -6,10 +6,11 @@ package static_test
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 const testAccountName = "test-account"
