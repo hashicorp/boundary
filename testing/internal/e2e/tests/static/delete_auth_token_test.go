@@ -11,6 +11,7 @@ import (
 
 const testAccountName = "test-account"
 
+// TestUserIsLoggedOutWhenAuthTokenIsDeletedCli validates auth-token deletion by admin
 func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	bc, err := boundary.LoadConfig()
