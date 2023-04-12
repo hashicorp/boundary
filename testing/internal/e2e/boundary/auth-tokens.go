@@ -19,6 +19,7 @@ type ListAuthTokensCliOutput struct {
 	Items []*AuthTokenInfo `json:"items"`
 }
 
+// GetAuthenticationTokenIdCli uses the CLI to get an auth-token ID by its name
 func GetAuthenticationTokenIdCli(t testing.TB, ctx context.Context, tokenName string) string {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
@@ -32,6 +33,8 @@ func GetAuthenticationTokenIdCli(t testing.TB, ctx context.Context, tokenName st
 	var authenticationResult ListAuthTokensCliOutput
 	err := json.Unmarshal(output.Stdout, &authenticationResult)
 	require.NoError(t, err)
+	userAuthTokenID := fmt.Sprint(authenticationResult.Items[0].ID)
+	t.Logf("Acquired auth-token ID: %s", userAuthTokenID)
 
-	return fmt.Sprint(authenticationResult.Items[0].ID)
+	return userAuthTokenID
 }

@@ -72,7 +72,6 @@ func AuthenticateCli(t testing.TB, ctx context.Context, authMethodId string, log
 
 	output := e2e.RunCommand(ctx, "boundary", options...)
 	require.NoError(t, output.Err, string(output.Stderr))
-	t.Logf("Logged in as: %s", loginName)
 }
 
 // GetAuthenticationTokenCli uses the cli to get an auth token that can be used in subsequent
