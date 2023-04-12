@@ -53,11 +53,12 @@ func AuthenticateAdminCli(t testing.TB, ctx context.Context) {
 }
 
 // AuthenticateCli uses the cli to authenticate the specified Boundary instance
-func AuthenticateCli(t testing.TB, ctx context.Context, authMethodId string, loginName string, password string) {
+func AuthenticateCli(t testing.TB, ctx context.Context, authMethodId string, loginName string, password string, opt ...e2e.Option) {
 	c, err := LoadConfig()
 	require.NoError(t, err)
 
-	output := e2e.RunCommand(ctx, "boundary",
+	var options []e2e.Option
+	options = append(options,
 		e2e.WithArgs(
 			"authenticate", "password",
 			"-addr", c.Address,
@@ -67,7 +68,11 @@ func AuthenticateCli(t testing.TB, ctx context.Context, authMethodId string, log
 		),
 		e2e.WithEnv("E2E_TEST_BOUNDARY_PASSWORD", password),
 	)
+	options = append(options, opt...)
+
+	output := e2e.RunCommand(ctx, "boundary", options...)
 	require.NoError(t, output.Err, string(output.Stderr))
+	t.Logf("Logged in as: %s", loginName)
 }
 
 // GetAuthenticationTokenCli uses the cli to get an auth token that can be used in subsequent
@@ -94,24 +99,4 @@ func GetAuthenticationTokenCli(t testing.TB, ctx context.Context, loginName stri
 	require.NoError(t, err)
 
 	return fmt.Sprint(authenticationResult.Item.Attributes["token"])
-}
-
-func GetAuthenticationTokenIDCli(t testing.TB, ctx context.Context, loginName string, password string) string {
-	//c, err := LoadConfig()
-	//require.NoError(t, err)
-
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"auth-tokens", "list",
-			"-token-name", loginName,
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-
-	var authenticationResult ListAuthTokensCliOutput
-	err := json.Unmarshal(output.Stdout, &authenticationResult)
-	require.NoError(t, err)
-
-	return fmt.Sprint(authenticationResult.Items[0].ID)
 }

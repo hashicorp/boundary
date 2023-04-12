@@ -2,11 +2,14 @@ package static_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
+
+const testAccountName = "test-account"
 
 func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 	e2e.MaybeSkipTest(t)
@@ -15,8 +18,7 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 
 	ctx := context.Background()
 	boundary.AuthenticateAdminCli(t, ctx)
-	acctName := "test-account1"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
+	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, testAccountName)
 	t.Cleanup(func() {
 		boundary.AuthenticateAdminCli(t, context.Background())
 		output := e2e.RunCommand(ctx, "boundary",
@@ -35,31 +37,21 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 
 	// Authenticate user and assign a name to its auth token
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"authenticate", "password",
-			"-addr", bc.Address,
-			"-auth-method-id", bc.AuthMethodId,
-			"-login-name", acctName,
-			"-password", "env://E2E_TEST_BOUNDARY_PASSWORD",
-			"-token-name", acctName,
-		),
-		e2e.WithEnv("E2E_TEST_BOUNDARY_PASSWORD", acctPassword),
+	boundary.AuthenticateCli(t, context.Background(), bc.AuthMethodId, testAccountName, acctPassword,
+		e2e.WithArgs("-token-name", testAccountName),
 	)
-	require.NoError(t, output.Err, string(output.Stderr))
-
-	userAuthTokenID := boundary.GetAuthenticationTokenIDCli(t, ctx, acctName, acctPassword)
 
 	// Check if user is logged in
-	output = e2e.RunCommand(ctx, "boundary",
+	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-tokens", "list",
-			"-token-name", acctName,
+			"-token-name", testAccountName,
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Delete user's auth token by admin
+	userAuthTokenID := boundary.GetAuthenticationTokenIdCli(t, ctx, testAccountName)
 	boundary.AuthenticateAdminCli(t, ctx)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
@@ -69,12 +61,12 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	// Check if user is NOT logged in
+	// Check if user is logged out
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-tokens", "list",
-			"-token-name", acctName,
+			"-token-name", testAccountName,
 		),
 	)
-	require.Error(t, output.Err, string(output.Stderr))
+	require.Error(t, output.Err, fmt.Sprintf("User '%s' is still logged in", testAccountName))
 }

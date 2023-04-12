@@ -14,15 +14,6 @@ type AuthenticateCliOutput struct {
 	StatusCode int `json:"status_code"`
 }
 
-type AuthTokenInfo struct {
-	ID string `json:"id"`
-}
-
-type ListAuthTokensCliOutput struct {
-	Items      []*AuthTokenInfo `json:"items"`
-	StatusCode int              `json:"status_code"`
-}
-
 // AuthMethodInfo parses auth method info in the json response from running `boundary database init`
 type AuthMethodInfo struct {
 	AuthMethodId string `json:"auth_method_id"`
