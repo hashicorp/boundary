@@ -3,6 +3,7 @@
 
 variable "vpc_id" {}
 variable "ami_id" {}
+variable "subnet_ids" {}
 variable "target_count" {}
 variable "environment" {}
 variable "project_name" {}
@@ -11,13 +12,6 @@ variable "aws_ssh_keypair_name" {}
 variable "enos_user" {}
 variable "additional_tags" {
   default = {}
-}
-
-data "aws_subnets" "infra" {
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
 }
 
 resource "aws_security_group" "boundary_target" {
@@ -50,7 +44,7 @@ resource "aws_instance" "target" {
   ami                    = var.ami_id
   instance_type          = var.instance_type
   vpc_security_group_ids = [aws_security_group.boundary_target.id]
-  subnet_id              = tolist(data.aws_subnets.infra.ids)[count.index % length(data.aws_subnets.infra.ids)]
+  subnet_id              = var.subnet_ids[count.index % length(var.subnet_ids)]
   key_name               = var.aws_ssh_keypair_name
 
   tags = merge(var.additional_tags, {
