@@ -95,3 +95,23 @@ func GetAuthenticationTokenCli(t testing.TB, ctx context.Context, loginName stri
 
 	return fmt.Sprint(authenticationResult.Item.Attributes["token"])
 }
+
+func GetAuthenticationTokenIDCli(t testing.TB, ctx context.Context, loginName string, password string) string {
+	//c, err := LoadConfig()
+	//require.NoError(t, err)
+
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"auth-tokens", "list",
+			"-token-name", loginName,
+			"-format", "json",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	var authenticationResult ListAuthTokensCliOutput
+	err := json.Unmarshal(output.Stdout, &authenticationResult)
+	require.NoError(t, err)
+
+	return fmt.Sprint(authenticationResult.Items[0].ID)
+}
