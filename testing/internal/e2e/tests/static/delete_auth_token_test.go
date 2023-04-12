@@ -8,11 +8,8 @@ import (
 	"testing"
 )
 
-// TODO: rename test
-func TestTwoUsersAuth(t *testing.T) {
+func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	//c, err := loadConfig()
-	//require.NoError(t, err)
 	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)
 
