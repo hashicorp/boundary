@@ -45,6 +45,9 @@
       "name": "controller.api.services.v1.RoleService"
     },
     {
+      "name": "controller.api.services.v1.SessionRecordingService"
+    },
+    {
       "name": "controller.api.services.v1.SessionService"
     },
     {
@@ -2744,6 +2747,107 @@
         ]
       }
     },
+    "/v1/session-recordings": {
+      "get": {
+        "summary": "ListSessionRecordings lists all Session recordings. Session recordings are ordered by start_time descending (most recently started first).",
+        "operationId": "SessionRecordingService_ListSessionRecordings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListSessionRecordingsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "description": "The scope in which to list session recordings.\nMust be set unless recursive is set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "description": "Whether to recurse into child scopes when listing.\nIf set and scope_id is empty, shows session recordings in\nall scopes the caller has access to.",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionRecordingService"
+        ]
+      }
+    },
+    "/v1/session-recordings/{id}": {
+      "get": {
+        "summary": "GetSessionRecording returns a stored Session recording if present. The provided request must include the Session recording ID for the Session recording being retrieved, or the ID of the Session that was recorded. If that ID is missing, malformed or reference a non existing resource, an error is returned.",
+        "operationId": "SessionRecordingService_GetSessionRecording",
+        "responses": {
+          "200": {
+            "description": "The requested recording.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The ID of the Session recording, or the ID of the Session that was recorded.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionRecordingService"
+        ]
+      }
+    },
+    "/v1/session-recordings/{id}:download": {
+      "get": {
+        "summary": "Download returns the contents of the specified resource in the specified mime type. Supports both Session ID and Session recording ID for looking up a Session recording. Supports both Connection ID and Connection recording ID to look up a Connection recording. A Channel recording ID is required to look up a Channel recording. The only supported mime type is \"application/x-asciicast\".",
+        "operationId": "SessionRecordingService_Download",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/google.api.HttpBody"
+                },
+                "error": {
+                  "$ref": "#/definitions/google.rpc.Status"
+                }
+              },
+              "title": "Stream result of google.api.HttpBody"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The ID of the resource that should be downloaded. Supported types:\n  - Session ID and Session recording ID for Session recordings\n  - Connection ID and Connection recording ID for Connection recordings\n  - Channel recording ID for Channel recordings",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "mime_type",
+            "description": "The format of the response. The only supported mime type is \"application/x-asciicast\".\nDefaults to \"application/x-asciicast\" if not set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionRecordingService"
+        ]
+      }
+    },
     "/v1/sessions": {
       "get": {
         "summary": "Lists all Sessions.",
@@ -5244,6 +5348,239 @@
         }
       }
     },
+    "controller.api.resources.sessionrecordings.v1.ChannelRecording": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Channel recording."
+        },
+        "bytes_up": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes uploaded from the client in the Channel."
+        },
+        "bytes_down": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes downloaded to the client in the Channel."
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Channel started."
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Channel ended."
+        },
+        "duration": {
+          "type": "string",
+          "description": "The total duration of the Channel."
+        },
+        "mime_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MimeTypes define the mime types that can\nbe used to consume the recording of this Channel.\nThe only supported mime type is \"application/x-asciicast\"."
+        }
+      },
+      "description": "ChannelRecording contains recorded information about a single Channel within a Connection.\nChannels are only present in multiplexed protocols, such as SSH."
+    },
+    "controller.api.resources.sessionrecordings.v1.ConnectionRecording": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Connection recording."
+        },
+        "connection_id": {
+          "type": "string",
+          "description": "The ID of the Connection this is a recording of."
+        },
+        "bytes_up": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes uploaded from the client in the Connection.\nThis includes any protocol overhead."
+        },
+        "bytes_down": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes downloaded to the client in the Connection.\nThis includes any protocol overhead."
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Connection started."
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Connection ended."
+        },
+        "duration": {
+          "type": "string",
+          "description": "The total duration of the Connection."
+        },
+        "mime_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MimeTypes define the mime types that can\nbe used to consume the recording of this Connection.\nNo mime types are currently supported."
+        },
+        "channel_recordings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.ChannelRecording"
+          },
+          "description": "Optionally, the channels used in this Connection,\nif it is using a multiplexed protocol, such as SSH."
+        }
+      },
+      "description": "ConnectionRecording contains the recording of a single Connection within a Session."
+    },
+    "controller.api.resources.sessionrecordings.v1.SessionRecording": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Session recording."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "The scope that the Session Recording is in.\nThis is inferred from the storage bucket associated\nwith the target."
+        },
+        "user": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.User",
+          "description": "Information about the User that created the Session."
+        },
+        "session_id": {
+          "type": "string",
+          "description": "The ID of the Session which this Session Recording recorded."
+        },
+        "target": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Target",
+          "description": "Information about the Target the Session connected to."
+        },
+        "bytes_up": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes uploaded from the client in the Session.\nThis includes all bytes uploaded over all Connections, including\nany protocol overhead."
+        },
+        "bytes_down": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes downloaded to the client in the Session.\nThis includes all bytes downloaded over all Connections, including\nany protocol overhead."
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Session started."
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Session ended."
+        },
+        "duration": {
+          "type": "string",
+          "description": "The total duration of the Session."
+        },
+        "delete_on": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time that the Session recording will be deleted."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of the Session that was recorded (e.g. ssh)."
+        },
+        "mime_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MimeTypes define the mime types that can\nbe used to consume the recording of this Session.\nNo mime types are currently supported."
+        },
+        "connection_recordings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.ConnectionRecording"
+          },
+          "description": "The recordings of the connections that were created in the Session.\nThis field may be unset when listing Session recordings."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The available actions on this resource for this user."
+        }
+      },
+      "description": "SessionRecording contains information about the recording of a Session."
+    },
+    "controller.api.resources.sessionrecordings.v1.Target": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Target."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the Target."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "The project that the Target is in."
+        },
+        "storage_bucket_id": {
+          "type": "string",
+          "description": "The ID of the storage bucket this Target's recordings use."
+        }
+      },
+      "description": "Target describes a target in Boundary."
+    },
+    "controller.api.resources.sessionrecordings.v1.User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the User."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the User that created the Session."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the User that created the Session."
+        },
+        "full_name": {
+          "type": "string",
+          "description": "The full name of the User that created the Session,\ninferred from the account used by the user."
+        },
+        "login_name": {
+          "type": "string",
+          "description": "The login name of the User that created the Session,\ninferred from the account used by the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email of the User that created the Session,\ninferred from the account used by the user."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "The scope that the User is in."
+        },
+        "account_id": {
+          "type": "string",
+          "description": "The ID of the account that the User that created the Session authenticated with."
+        }
+      },
+      "description": "User describes an authenticated user in Boundary."
+    },
     "controller.api.resources.sessions.v1.Connection": {
       "type": "object",
       "properties": {
@@ -6457,6 +6794,15 @@
         }
       }
     },
+    "controller.api.services.v1.GetSessionRecordingResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording",
+          "description": "The requested recording."
+        }
+      }
+    },
     "controller.api.services.v1.GetSessionResponse": {
       "type": "object",
       "properties": {
@@ -6651,6 +6997,18 @@
           "items": {
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
           }
+        }
+      }
+    },
+    "controller.api.services.v1.ListSessionRecordingsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
+          },
+          "description": "All Session recordings, ordered by start_time descending (most recently started first)."
         }
       }
     },
@@ -6983,6 +7341,39 @@
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
+    },
+    "google.api.HttpBody": {
+      "type": "object",
+      "properties": {
+        "content_type": {
+          "type": "string",
+          "description": "The HTTP Content-Type header value specifying the content type of the body."
+        },
+        "data": {
+          "type": "string",
+          "format": "byte",
+          "description": "The HTTP request/response body as raw binary."
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/google.protobuf.Any"
+          },
+          "description": "Application specific response metadata. Must be set in the first response\nfor streaming APIs."
+        }
+      },
+      "description": "Message that represents an arbitrary HTTP body. It should only be used for\npayload formats that can't be represented as JSON, such as raw binary or\nan HTML page.\n\n\nThis message can be used both in streaming and non-streaming API methods in\nthe request as well as the response.\n\nIt can be used as a top-level request field, which is convenient if one\nwants to extract parameters from either the URL or HTTP template into the\nrequest fields and also want access to the raw HTTP body.\n\nExample:\n\n    message GetResourceRequest {\n      // A unique request id.\n      string request_id = 1;\n\n      // The raw HTTP body is bound to this field.\n      google.api.HttpBody http_body = 2;\n\n    }\n\n    service ResourceService {\n      rpc GetResource(GetResourceRequest)\n        returns (google.api.HttpBody);\n      rpc UpdateResource(google.api.HttpBody)\n        returns (google.protobuf.Empty);\n\n    }\n\nExample with streaming methods:\n\n    service CaldavService {\n      rpc GetCalendar(stream google.api.HttpBody)\n        returns (stream google.api.HttpBody);\n      rpc UpdateCalendar(stream google.api.HttpBody)\n        returns (stream google.api.HttpBody);\n\n    }\n\nUse of this type only changes how the request and response bodies are\nhandled, all other features will continue to work unchanged."
+    },
+    "google.protobuf.Any": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+        }
+      },
+      "additionalProperties": {},
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\nExample 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\nExample 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
     },
     "google.protobuf.NullValue": {
       "type": "string",

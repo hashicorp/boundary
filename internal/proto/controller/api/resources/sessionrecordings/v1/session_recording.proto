@@ -1,0 +1,176 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.resources.sessionrecordings.v1;
+
+import "controller/api/resources/scopes/v1/scope.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/session_recordings;session_recordings";
+
+// ChannelRecording contains recorded information about a single Channel within a Connection.
+// Channels are only present in multiplexed protocols, such as SSH.
+message ChannelRecording {
+  // The ID of the Channel recording.
+  string id = 1; // @gotags: class:"public"
+
+  // The total number of bytes uploaded from the client in the Channel.
+  uint64 bytes_up = 2 [json_name = "bytes_up"]; // @gotags: class:"public"
+
+  // The total number of bytes downloaded to the client in the Channel.
+  uint64 bytes_down = 3 [json_name = "bytes_down"]; // @gotags: class:"public"
+
+  // The time the Channel started.
+  google.protobuf.Timestamp start_time = 4 [json_name = "start_time"]; // @gotags: class:"public"
+
+  // The time the Channel ended.
+  google.protobuf.Timestamp end_time = 5 [json_name = "end_time"]; // @gotags: class:"public"
+
+  // The total duration of the Channel.
+  google.protobuf.Duration duration = 6; // @gotags: class:"public"
+
+  // MimeTypes define the mime types that can
+  // be used to consume the recording of this Channel.
+  // The only supported mime type is "application/x-asciicast".
+  repeated string mime_types = 7 [json_name = "mime_types"]; // @gotags: class:"public"
+}
+
+// ConnectionRecording contains the recording of a single Connection within a Session.
+message ConnectionRecording {
+  // The ID of the Connection recording.
+  string id = 1; // @gotags: class:"public"
+
+  // The ID of the Connection this is a recording of.
+  string connection_id = 2 [json_name = "connection_id"]; // @gotags: class:"public"
+
+  // The total number of bytes uploaded from the client in the Connection.
+  // This includes any protocol overhead.
+  uint64 bytes_up = 3 [json_name = "bytes_up"]; // @gotags: class:"public"
+
+  // The total number of bytes downloaded to the client in the Connection.
+  // This includes any protocol overhead.
+  uint64 bytes_down = 4 [json_name = "bytes_down"]; // @gotags: class:"public"
+
+  // The time the Connection started.
+  google.protobuf.Timestamp start_time = 5 [json_name = "start_time"]; // @gotags: class:"public"
+
+  // The time the Connection ended.
+  google.protobuf.Timestamp end_time = 6 [json_name = "end_time"]; // @gotags: class:"public"
+
+  // The total duration of the Connection.
+  google.protobuf.Duration duration = 7; // @gotags: class:"public"
+
+  // MimeTypes define the mime types that can
+  // be used to consume the recording of this Connection.
+  // No mime types are currently supported.
+  repeated string mime_types = 8 [json_name = "mime_types"]; // @gotags: class:"public"
+
+  // Optionally, the channels used in this Connection,
+  // if it is using a multiplexed protocol, such as SSH.
+  repeated ChannelRecording channel_recordings = 9 [json_name = "channel_recordings"];
+}
+
+// User describes an authenticated user in Boundary.
+message User {
+  // The ID of the User.
+  string id = 1; // @gotags: class:"public"
+
+  // The name of the User that created the Session.
+  string name = 2; // @gotags: class:"sensitive"
+
+  // The description of the User that created the Session.
+  string description = 3; // @gotags: class:"sensitive"
+
+  // The full name of the User that created the Session,
+  // inferred from the account used by the user.
+  string full_name = 4 [json_name = "full_name"]; // @gotags: class:"sensitive"
+
+  // The login name of the User that created the Session,
+  // inferred from the account used by the user.
+  string login_name = 5 [json_name = "login_name"]; // @gotags: class:"sensitive"
+
+  // The email of the User that created the Session,
+  // inferred from the account used by the user.
+  string email = 6; // @gotags: class:"sensitive"
+
+  // The scope that the User is in.
+  resources.scopes.v1.ScopeInfo scope = 7;
+
+  // The ID of the account that the User that created the Session authenticated with.
+  string account_id = 8 [json_name = "account_id"]; // @gotags: class:"public"
+}
+
+// Target describes a target in Boundary.
+message Target {
+  // The ID of the Target.
+  string id = 1; // @gotags: class:"public"
+
+  // The name of the Target.
+  string name = 2; // @gotags: class:"public"
+
+  // The project that the Target is in.
+  resources.scopes.v1.ScopeInfo scope = 3;
+
+  // The ID of the storage bucket this Target's recordings use.
+  string storage_bucket_id = 4 [json_name = "storage_bucket_id"]; // @gotags: class:"public"
+}
+
+// SessionRecording contains information about the recording of a Session.
+message SessionRecording {
+  // The ID of the Session recording.
+  string id = 1; // @gotags: class:"public"
+
+  // The scope that the Session Recording is in.
+  // This is inferred from the storage bucket associated
+  // with the target.
+  resources.scopes.v1.ScopeInfo scope = 2;
+
+  // Information about the User that created the Session.
+  User user = 3;
+
+  // The ID of the Session which this Session Recording recorded.
+  string session_id = 4 [json_name = "session_id"]; // @gotags: class:"public"
+
+  // Information about the Target the Session connected to.
+  Target target = 5;
+
+  // The total number of bytes uploaded from the client in the Session.
+  // This includes all bytes uploaded over all Connections, including
+  // any protocol overhead.
+  uint64 bytes_up = 6 [json_name = "bytes_up"]; // @gotags: class:"public"
+
+  // The total number of bytes downloaded to the client in the Session.
+  // This includes all bytes downloaded over all Connections, including
+  // any protocol overhead.
+  uint64 bytes_down = 7 [json_name = "bytes_down"]; // @gotags: class:"public"
+
+  // The time the Session started.
+  google.protobuf.Timestamp start_time = 8 [json_name = "start_time"]; // @gotags: class:"public"
+
+  // The time the Session ended.
+  google.protobuf.Timestamp end_time = 9 [json_name = "end_time"]; // @gotags: class:"public"
+
+  // The total duration of the Session.
+  google.protobuf.Duration duration = 10; // @gotags: class:"public"
+
+  // The time that the Session recording will be deleted.
+  google.protobuf.Timestamp delete_on = 11 [json_name = "delete_on"]; // @gotags: class:"public"
+
+  // Type of the Session that was recorded (e.g. ssh).
+  string type = 12; // @gotags: class:"public"
+
+  // MimeTypes define the mime types that can
+  // be used to consume the recording of this Session.
+  // No mime types are currently supported.
+  repeated string mime_types = 13 [json_name = "mime_types"]; // @gotags: class:"public"
+
+  // The recordings of the connections that were created in the Session.
+  // This field may be unset when listing Session recordings.
+  repeated ConnectionRecording connection_recordings = 14 [json_name = "connection_recordings"];
+
+  // The available actions on this resource for this user.
+  repeated string authorized_actions = 15 [json_name = "authorized_actions"]; // @gotags: class:"public"
+}

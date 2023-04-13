@@ -264,7 +264,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		}
 		services.RegisterCredentialServiceServer(s, c)
 	}
-	if _, ok := s.GetServiceInfo()[opsservices.HealthService_ServiceDesc.ServiceName]; !ok {
+	if _, ok := currentServices[opsservices.HealthService_ServiceDesc.ServiceName]; !ok {
 		hs := health.NewService()
 		opsservices.RegisterHealthServiceServer(s, hs)
 		c.HealthService = hs
@@ -326,6 +326,9 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 	}
 	if err := services.RegisterCredentialServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register credential service handler: %w", err)
+	}
+	if err := services.RegisterSessionRecordingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register session recording service handler: %w", err)
 	}
 
 	return nil
