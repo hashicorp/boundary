@@ -2,6 +2,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
 version: v1
-directories:
-  - internal/proto
-  - internal/bsr/proto
+lint:
+  use:
+    - DEFAULT

@@ -1,0 +1,13 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/hashicorp/boundary/internal/bsr/gen
+plugins:
+  - name: go
+    out: gen
+    opt:
+      - paths=source_relative

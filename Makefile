@@ -142,12 +142,13 @@ proto: protolint protobuild
 
 .PHONY: protobuild
 protobuild:
-	@buf generate -o "${TMP_DIR}"
+	@buf generate -o "${TMP_DIR}" internal/proto
 
 	# Move the generated files from the tmp file subdirectories into the current repo.
 	cp -R ${TMP_DIR}/${REPO_PATH}/* ${THIS_DIR}
 
 	@buf generate --template buf.openapiv2.gen.yaml --path internal/proto/controller/api/services/v1/
+	 cd internal/bsr/ && buf generate proto/
 
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
