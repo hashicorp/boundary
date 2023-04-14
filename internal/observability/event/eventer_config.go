@@ -13,6 +13,7 @@ type EventerConfig struct {
 	ObservationsEnabled bool          `hcl:"observations_enabled"` // ObservationsEnabled specifies if observation events should be emitted.
 	SysEventsEnabled    bool          `hcl:"sysevents_enabled"`    // SysEventsEnabled specifies if sysevents should be emitted.
 	Sinks               []*SinkConfig `hcl:"-"`                    // Sinks are all the configured sinks
+	ErrorEventsDisabled bool          `hcl:"-"`                    // ErrorEventsDisabled will disable error events from being emitted.  This should only be used to turn off error events in tests.
 }
 
 // Validate will Validate the config. A config isn't required to have any

@@ -661,6 +661,9 @@ func (e *Eventer) writeError(ctx context.Context, event *err, opt ...Option) err
 	if event == nil {
 		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
 	}
+	if e.conf.ErrorEventsDisabled {
+		return nil
+	}
 	opts := getOpts(opt...)
 	if e.gated.Load() && !opts.withNoGateLocking {
 		e.gatedQueueLock.Lock()
@@ -688,6 +691,9 @@ func (e *Eventer) writeSysEvent(ctx context.Context, event *sysEvent, opt ...Opt
 	const op = "event.(Eventer).writeSysEvent"
 	if event == nil {
 		return fmt.Errorf("%s: missing event: %w", op, ErrInvalidParameter)
+	}
+	if !e.conf.SysEventsEnabled {
+		return nil
 	}
 	opts := getOpts(opt...)
 	if e.gated.Load() && !opts.withNoGateLocking {

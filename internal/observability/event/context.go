@@ -9,9 +9,14 @@ import (
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/hashicorp/boundary/internal/test"
 )
 
-var ci bool
+var (
+	ci     bool
+	isTest bool
+)
 
 type key int
 
@@ -24,6 +29,7 @@ const (
 
 func init() {
 	ci = os.Getenv("CI") != ""
+	isTest = test.IsTestRun()
 }
 
 // NewEventerContext will return a context containing a value of the provided Eventer
@@ -136,7 +142,10 @@ func WriteError(ctx context.Context, caller Op, e error, opt ...Option) {
 	if !ok {
 		eventer = SysEventer()
 		if eventer == nil {
-			if !ci {
+			switch {
+			case !ci:
+			case !isTest:
+			default:
 				fallbackLogger().Error(fmt.Sprintf("%s: no eventer available to write error: %v", op, e))
 			}
 			return

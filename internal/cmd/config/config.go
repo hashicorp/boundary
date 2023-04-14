@@ -309,14 +309,20 @@ type Plugins struct {
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary
-// workers
-func DevWorker() (*Config, error) {
+// workers. Supported options: WithObservationsEnabled, WithSysEventsEnabled,
+// WithAuditEventsEnabled, TestWithErrorEventsEnabled
+func DevWorker(opt ...Option) (*Config, error) {
 	workerAuthStorageKey := DevKeyGeneration()
 	hclStr := fmt.Sprintf(devConfig+devWorkerExtraConfig, workerAuthStorageKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
+	opts := getOpts(opt...)
+	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
+	parsed.Eventing.ObservationsEnabled = opts.withObservationsEnabled
+	parsed.Eventing.SysEventsEnabled = opts.withSysEventsEnabled
+	parsed.Eventing.ErrorEventsDisabled = !opts.testWithErrorEventsEnabled
 	return parsed, nil
 }
 
@@ -339,7 +345,7 @@ func DevKeyGeneration() string {
 
 // DevController is a Config that is used for dev mode of Boundary
 // controllers
-func DevController() (*Config, error) {
+func DevController(opt ...Option) (*Config, error) {
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
@@ -353,6 +359,11 @@ func DevController() (*Config, error) {
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
 	parsed.DevRecoveryKey = recoveryKey
+	opts := getOpts(opt...)
+	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
+	parsed.Eventing.ObservationsEnabled = opts.withObservationsEnabled
+	parsed.Eventing.SysEventsEnabled = opts.withSysEventsEnabled
+	parsed.Eventing.ErrorEventsDisabled = !opts.testWithErrorEventsEnabled
 	return parsed, nil
 }
 

@@ -105,6 +105,9 @@ func TestDevController(t *testing.T) {
 		},
 		DevController: true,
 	}
+	exp.Eventing.ErrorEventsDisabled = true
+	exp.Eventing.SysEventsEnabled = false
+	exp.Eventing.ObservationsEnabled = false
 
 	exp.Listeners[0].RawConfig = actual.Listeners[0].RawConfig
 	exp.Listeners[1].RawConfig = actual.Listeners[1].RawConfig
@@ -191,11 +194,10 @@ func TestDevController(t *testing.T) {
 }
 
 func TestDevWorker(t *testing.T) {
-	actual, err := DevWorker()
+	actual, err := DevWorker(WithSysEventsEnabled(true), WithObservationsEnabled(true), TestWithErrorEventsEnabled(t, true))
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	exp := &Config{
 		Eventing: event.DefaultEventerConfig(),
 		SharedConfig: &configutil.SharedConfig{

@@ -79,6 +79,8 @@ func TestHandler_CORS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cfg.Eventing.ErrorEventsDisabled = true
+	cfg.Eventing.SysEventsEnabled = false
 
 	var wildcardListenerNum int
 	for listenerNum, listener := range cfg.Listeners {
