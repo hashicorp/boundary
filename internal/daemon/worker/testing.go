@@ -226,6 +226,18 @@ type TestWorkerOpts struct {
 
 	// Toggle worker auth debugging
 	WorkerAuthDebuggingEnabled *atomic.Bool
+
+	// Enable audit events
+	EnableAuditEvents bool
+
+	// Enable system events
+	EnableSysEvents bool
+
+	// Enable observation events
+	EnableObservationEvents bool
+
+	// Enable error events
+	EnableErrorEvents bool
 }
 
 func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
@@ -255,7 +267,12 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	// Get dev config, or use a provided one
 	var err error
 	if opts.Config == nil {
-		opts.Config, err = config.DevWorker()
+		var configOpts []config.Option
+		configOpts = append(configOpts, config.WithAuditEventsEnabled(opts.EnableAuditEvents))
+		configOpts = append(configOpts, config.WithSysEventsEnabled(opts.EnableSysEvents))
+		configOpts = append(configOpts, config.WithObservationsEnabled(opts.EnableObservationEvents))
+		configOpts = append(configOpts, config.TestWithErrorEventsEnabled(t, opts.EnableErrorEvents))
+		opts.Config, err = config.DevWorker(configOpts...)
 		if err != nil {
 			t.Fatal(err)
 		}

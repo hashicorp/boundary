@@ -89,6 +89,7 @@ func TestEventerConfig(t testing.TB, testName string, opt ...Option) TestConfig 
 		EventerConfig: EventerConfig{
 			ObservationsEnabled: true,
 			AuditEnabled:        true,
+			SysEventsEnabled:    true,
 			Sinks: []*SinkConfig{
 				{
 					Name:       "every-type-file-sink",
@@ -99,13 +100,6 @@ func TestEventerConfig(t testing.TB, testName string, opt ...Option) TestConfig 
 						Path:     "./",
 						FileName: tmpAllFile.Name(),
 					},
-					AuditConfig: DefaultAuditConfig(),
-				},
-				{
-					Name:        "stderr",
-					Type:        StderrSink,
-					EventTypes:  []Type{EveryType},
-					Format:      opts.withSinkFormat,
 					AuditConfig: DefaultAuditConfig(),
 				},
 				{
@@ -122,6 +116,15 @@ func TestEventerConfig(t testing.TB, testName string, opt ...Option) TestConfig 
 		},
 		AllEvents:   tmpAllFile,
 		ErrorEvents: tmpErrFile,
+	}
+	if opts.withStderrSink {
+		c.EventerConfig.Sinks = append(c.EventerConfig.Sinks, &SinkConfig{
+			Name:        "stderr",
+			Type:        StderrSink,
+			EventTypes:  []Type{EveryType},
+			Format:      opts.withSinkFormat,
+			AuditConfig: DefaultAuditConfig(),
+		})
 	}
 	if opts.withAuditSink {
 		tmpFile, err := ioutil.TempFile("./", "tmp-audit-"+testName)
@@ -256,6 +259,14 @@ func TestWithSysSink(t testing.TB) Option {
 	t.Helper()
 	return func(o *options) {
 		o.withSysSink = true
+	}
+}
+
+// TestWithStderrSink is a test option
+func TestWithStderrSink(t testing.TB) Option {
+	t.Helper()
+	return func(o *options) {
+		o.withStderrSink = true
 	}
 }
 

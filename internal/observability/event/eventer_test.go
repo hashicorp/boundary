@@ -350,11 +350,11 @@ func TestEventer_writeError(t *testing.T) {
 
 func Test_NewEventer(t *testing.T) {
 	t.Parallel()
-	testSetup := TestEventerConfig(t, "Test_NewEventer")
+	testSetup := TestEventerConfig(t, "Test_NewEventer", TestWithStderrSink(t))
 
-	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", TestWithAuditSink(t), TestWithObservationSink(t), TestWithSysSink(t))
+	testSetupWithOpts := TestEventerConfig(t, "Test_NewEventer", TestWithStderrSink(t), TestWithAuditSink(t), TestWithObservationSink(t), TestWithSysSink(t))
 
-	testHclogSetup := TestEventerConfig(t, "Test_NewEventer", testWithSinkFormat(t, TextHclogSinkFormat))
+	testHclogSetup := TestEventerConfig(t, "Test_NewEventer", TestWithStderrSink(t), testWithSinkFormat(t, TextHclogSinkFormat))
 
 	testLock := &sync.Mutex{}
 	testLogger := testLogger(t, testLock)

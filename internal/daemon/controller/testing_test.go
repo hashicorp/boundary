@@ -57,11 +57,11 @@ func Test_TestController(t *testing.T) {
 		}
 
 		assert.Empty(captureFn(func() {
-			tc := NewTestController(t, &TestControllerOpts{DisableEventing: true})
+			tc := NewTestController(t, nil)
 			defer tc.Shutdown()
 		}))
 		assert.NotEmpty(captureFn(func() {
-			tc := NewTestController(t, nil)
+			tc := NewTestController(t, &TestControllerOpts{EnableEventing: true})
 			defer tc.Shutdown()
 		}))
 	})

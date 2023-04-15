@@ -53,6 +53,7 @@ type options struct {
 	withHclogLevel hclog.Level
 
 	withBroker          broker     // test only option
+	withStderrSink      bool       // test only option
 	withAuditSink       bool       // test only option
 	withObservationSink bool       // test only option
 	withSysSink         bool       // test only option
