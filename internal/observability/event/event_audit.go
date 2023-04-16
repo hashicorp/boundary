@@ -132,7 +132,21 @@ func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 			payload.Auth = gated.Auth
 		}
 		if gated.Request != nil {
-			payload.Request = gated.Request
+			if payload.Request == nil {
+				payload.Request = &Request{}
+			}
+			if gated.Request.Endpoint != "" {
+				payload.Request.Endpoint = gated.Request.Endpoint
+			}
+			if gated.Request.Operation != "" {
+				payload.Request.Operation = gated.Request.Operation
+			}
+			if gated.Request.Details != nil {
+				payload.Request.Details = gated.Request.Details
+			}
+			if gated.Request.DetailsUpstreamMessage != nil {
+				payload.Request.DetailsUpstreamMessage = gated.Request.DetailsUpstreamMessage
+			}
 		}
 		if gated.Response != nil {
 			if payload.Response == nil {
@@ -144,11 +158,13 @@ func (a *audit) ComposeFrom(events []*eventlogger.Event) (eventlogger.EventType,
 			if gated.Response.Details != nil {
 				payload.Response.Details = gated.Response.Details
 			}
+			if gated.Response.DetailsUpstreamMessage != nil {
+				payload.Response.DetailsUpstreamMessage = gated.Response.DetailsUpstreamMessage
+			}
 		}
 		if !gated.Timestamp.IsZero() {
 			payload.Timestamp = gated.Timestamp
 		}
-
 	}
 	payload.Id = validId
 	payload.Version = auditVersion

@@ -48,12 +48,19 @@ type Auth struct {
 }
 
 type Request struct {
-	Operation string        `json:"operation,omitempty" class:"public"` // std audit field
-	Endpoint  string        `json:"endpoint,omitempty" class:"public"`  // std audit field
-	Details   proto.Message `json:"details,omitempty"`                  // boundary field
+	Operation              string           `json:"operation,omitempty" class:"public"` // std audit field
+	Endpoint               string           `json:"endpoint,omitempty" class:"public"`  // std audit field
+	Details                proto.Message    `json:"details,omitempty"`                  // boundary field
+	DetailsUpstreamMessage *UpstreamMessage `json:"details_upstream_message,omitempty"` // boundary field
 }
 
 type Response struct {
-	StatusCode int           `json:"status_code,omitempty"` // std audit
-	Details    proto.Message `json:"details,omitempty"`     // boundary field
+	StatusCode             int              `json:"status_code,omitempty"`              // std audit
+	Details                proto.Message    `json:"details,omitempty"`                  // boundary field
+	DetailsUpstreamMessage *UpstreamMessage `json:"details_upstream_message,omitempty"` // boundary field
+}
+
+type UpstreamMessage struct {
+	Type    string        `json:"type,omitempty" class:"public"` // boundary field
+	Message proto.Message `json:"message,omitempty"`             // boundary field
 }

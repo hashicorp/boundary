@@ -148,10 +148,35 @@ func (s *controllerUpstreamMessageServiceServer) UpstreamMessage(ctx context.Con
 			return nil, status.Errorf(codes.Internal, "%s: error decrypting request message: %v", op, err)
 		}
 	}
-
+	clonedMsg := proto.Clone(msg)
+	if err := event.WriteAudit(ctx, "handlers.(controllerUpstreamMessageServiceServer).UpstreamMessage",
+		event.WithRequest(
+			&event.Request{
+				DetailsUpstreamMessage: &event.UpstreamMessage{
+					Message: clonedMsg,
+					Type:    string(clonedMsg.ProtoReflect().Descriptor().Name()),
+				},
+			},
+		)); err != nil {
+		// error was NOT event'd above...
+		_ = errors.Wrap(ctx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("error writing upstream message unwrapped details request"))
+	}
 	respMsg, respStatusErr := h.Handler(ctx, msg)
 	if respStatusErr != nil {
 		return nil, respStatusErr
+	}
+	clonedResp := proto.Clone(respMsg)
+	if err := event.WriteAudit(ctx, "handlers.(controllerUpstreamMessageServiceServer).UpstreamMessage",
+		event.WithResponse(
+			&event.Response{
+				DetailsUpstreamMessage: &event.UpstreamMessage{
+					Message: clonedResp,
+					Type:    string(clonedResp.ProtoReflect().Descriptor().Name()),
+				},
+			},
+		)); err != nil {
+		// error was NOT event'd above...
+		_ = errors.Wrap(ctx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("error writing upstream message unwrapped details response"))
 	}
 	switch {
 	case h.Encrypted() == false:
