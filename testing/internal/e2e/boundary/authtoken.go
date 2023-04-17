@@ -9,19 +9,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/stretchr/testify/require"
 )
-
-// AuthTokenInfo parses the JSON representation of auth-token information`
-type AuthTokenInfo struct {
-	ID string `json:"id"`
-}
-
-// ListAuthTokensCliOutput parses the JSON response from running `boundary auth-tokens list`
-type ListAuthTokensCliOutput struct {
-	Items []*AuthTokenInfo `json:"items"`
-}
 
 // GetAuthenticationTokenIdCli uses the CLI to get an auth-token ID by its name
 func GetAuthenticationTokenIdCli(t testing.TB, ctx context.Context, tokenName string) string {
@@ -34,10 +25,10 @@ func GetAuthenticationTokenIdCli(t testing.TB, ctx context.Context, tokenName st
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 
-	var authenticationResult ListAuthTokensCliOutput
-	err := json.Unmarshal(output.Stdout, &authenticationResult)
+	var authTokenListResult authtokens.AuthTokenListResult
+	err := json.Unmarshal(output.Stdout, &authTokenListResult)
 	require.NoError(t, err)
-	userAuthTokenID := fmt.Sprint(authenticationResult.Items[0].ID)
+	userAuthTokenID := fmt.Sprint(authTokenListResult.Items[0].Id)
 	t.Logf("Acquired auth-token ID: %s", userAuthTokenID)
 
 	return userAuthTokenID
