@@ -140,7 +140,7 @@ jobs:
     needs:
       - setup
       #- set-test-package-matrix
-    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     # strategy:
     #   fail-fast: false
     #   matrix:
