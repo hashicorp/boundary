@@ -64,7 +64,7 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// As admin, delete the user's auth token
-	userAuthTokenID := boundary.GetAuthenticationTokenIdCli(t, ctx, testAccountName)
+	userAuthTokenID := boundary.GetAuthenticationTokenIdByTokenNameCli(t, ctx, testAccountName)
 	boundary.AuthenticateAdminCli(t, ctx)
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(

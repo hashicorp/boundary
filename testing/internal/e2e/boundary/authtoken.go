@@ -14,8 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// GetAuthenticationTokenIdCli uses the CLI to get an auth-token ID by its name
-func GetAuthenticationTokenIdCli(t testing.TB, ctx context.Context, tokenName string) string {
+// GetAuthenticationTokenIdByTokenNameCli uses the CLI to get an auth-token ID by its name
+// The operation is performed by the user associated with the auth-token
+func GetAuthenticationTokenIdByTokenNameCli(t testing.TB, ctx context.Context, tokenName string) string {
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"auth-tokens", "list",
