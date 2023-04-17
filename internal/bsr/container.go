@@ -5,6 +5,7 @@ package bsr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/checksum"
@@ -12,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr/internal/sign"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
 	"github.com/hashicorp/boundary/internal/storage"
-	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -159,31 +159,31 @@ func (c *container) WriteBinaryChecksum(_ context.Context, sum []byte, fname str
 func (c *container) close(_ context.Context) error {
 	const op = "bsr.(container).close"
 
-	var closeErrors *multierror.Error
+	var closeError error
 
 	if err := c.meta.Close(); err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
 	}
 
 	if err := c.sum.Close(); err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
 	}
 
 	if err := c.checksums.Close(); err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
 	}
 
 	if err := c.sigs.Close(); err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
 	}
 
 	if err := c.journal.Close(); err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
 	}
 
 	if err := c.container.Close(); err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
 	}
 
-	return closeErrors.ErrorOrNil()
+	return closeError
 }
