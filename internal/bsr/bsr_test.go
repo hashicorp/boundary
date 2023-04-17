@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -52,14 +53,23 @@ func assertContainer(ctx context.Context, t *testing.T, path, state string, typ 
 	require.NoError(t, err, "unable to find test data file")
 	checksums, ok := fs.Files["SHA256SUM"]
 	require.True(t, ok, "container is missing checksums file")
-	assert.Equal(t, string(wantChecksums), checksums.Buf.String())
+	checksumSlice := strings.Split(string(wantChecksums), "\n")
+	var wChecksumsRegex []*regexp.Regexp
+	for _, c := range checksumSlice {
+		r, err := regexp.Compile(c)
+		require.NoError(t, err)
+		wChecksumsRegex = append(wChecksumsRegex, r)
+	}
+	for _, cr := range wChecksumsRegex {
+		assert.True(t, cr.MatchString(checksums.Buf.String()))
+	}
 
 	// SHA256SUM.sig signature file
 	sig, ok := fs.Files["SHA256SUM.sig"]
 	require.True(t, ok, "container is missing sig file")
 	switch state {
 	case "closed":
-		want, err := keys.SignWithPrivKey(ctx, wantChecksums)
+		want, err := keys.SignWithPrivKey(ctx, checksums.Buf.Bytes())
 		require.NoError(t, err)
 
 		got := &wrapping.SigInfo{}
@@ -82,7 +92,39 @@ func assertContainer(ctx context.Context, t *testing.T, path, state string, typ 
 	require.NoError(t, err, "unable to find test data file")
 	journal, ok := fs.Files[".journal"]
 	require.True(t, ok, "container is missing journal file")
-	assert.Equal(t, string(wantJournal), journal.Buf.String())
+	journalSlice := strings.Split(string(wantJournal), "\n")
+	var wJournalRegex []*regexp.Regexp
+	for _, c := range journalSlice {
+		r, err := regexp.Compile(c)
+		require.NoError(t, err)
+		wJournalRegex = append(wJournalRegex, r)
+	}
+	for _, cr := range wJournalRegex {
+		assert.True(t, cr.MatchString(journal.Buf.String()))
+	}
+
+	if typ == "session" {
+		// BSR keys, if this is a session container
+		bsrPub, ok := fs.Files["bsrKey.pub"]
+		require.True(t, ok, "container is missing bsrPub file")
+		assert.NotEmpty(t, bsrPub.Buf.String())
+
+		wrappedBsrKey, ok := fs.Files["wrappedBsrKey"]
+		require.True(t, ok, "container is missing wrappedBsrKey file")
+		assert.NotEmpty(t, wrappedBsrKey.Buf.String())
+
+		wrappedPrivKey, ok := fs.Files["wrappedPrivKey"]
+		require.True(t, ok, "container is missing wrappedPrivKey file")
+		assert.NotEmpty(t, wrappedPrivKey.Buf.String())
+
+		pubKeyBsrSignature, ok := fs.Files["pubKeyBsrSignature.sign"]
+		require.True(t, ok, "container is missing pubKeyBsrSignature.sign file")
+		assert.NotEmpty(t, pubKeyBsrSignature.Buf.String())
+
+		pubKeySelfSignature, ok := fs.Files["pubKeySelfSignature.sign"]
+		require.True(t, ok, "container is missing pubKeySelfSignature.sign file")
+		assert.NotEmpty(t, pubKeySelfSignature.Buf.String())
+	}
 }
 
 type connection struct {
@@ -361,6 +403,66 @@ func TestNewSessionErrors(t *testing.T) {
 			&fstest.MemFS{},
 			nil,
 			errors.New("bsr.NewSession: missing kms keys: invalid parameter"),
+		},
+		{
+			"missing-bsr-signature",
+			&bsr.SessionMeta{Id: "session"},
+			&fstest.MemFS{},
+			&kms.Keys{
+				PubKey:              keys.PubKey,
+				WrappedBsrKey:       keys.WrappedBsrKey,
+				WrappedPrivKey:      keys.WrappedPrivKey,
+				PubKeySelfSignature: keys.PubKeySelfSignature,
+			},
+			errors.New("bsr.persistBsrSessionKeys: missing kms pub key BSR signature: invalid parameter\nbsr.NewSession: could not persist BSR keys"),
+		},
+		{
+			"missing-pub-signature",
+			&bsr.SessionMeta{Id: "session"},
+			&fstest.MemFS{},
+			&kms.Keys{
+				PubKey:             keys.PubKey,
+				WrappedBsrKey:      keys.WrappedBsrKey,
+				WrappedPrivKey:     keys.WrappedPrivKey,
+				PubKeyBsrSignature: keys.PubKeyBsrSignature,
+			},
+			errors.New("bsr.persistBsrSessionKeys: missing kms pub key self signature: invalid parameter\nbsr.NewSession: could not persist BSR keys"),
+		},
+		{
+			"missing-pub-key",
+			&bsr.SessionMeta{Id: "session"},
+			&fstest.MemFS{},
+			&kms.Keys{
+				WrappedBsrKey:       keys.WrappedBsrKey,
+				WrappedPrivKey:      keys.WrappedPrivKey,
+				PubKeySelfSignature: keys.PubKeySelfSignature,
+				PubKeyBsrSignature:  keys.PubKeyBsrSignature,
+			},
+			errors.New("bsr.persistBsrSessionKeys: missing kms pub key: invalid parameter\nbsr.NewSession: could not persist BSR keys"),
+		},
+		{
+			"missing-wrapped-bsr-key",
+			&bsr.SessionMeta{Id: "session"},
+			&fstest.MemFS{},
+			&kms.Keys{
+				PubKey:              keys.PubKey,
+				WrappedPrivKey:      keys.WrappedPrivKey,
+				PubKeySelfSignature: keys.PubKeySelfSignature,
+				PubKeyBsrSignature:  keys.PubKeyBsrSignature,
+			},
+			errors.New("bsr.persistBsrSessionKeys: missing kms wrapped BSR key: invalid parameter\nbsr.NewSession: could not persist BSR keys"),
+		},
+		{
+			"missing-wrapped-priv-key",
+			&bsr.SessionMeta{Id: "session"},
+			&fstest.MemFS{},
+			&kms.Keys{
+				PubKey:              keys.PubKey,
+				WrappedBsrKey:       keys.WrappedBsrKey,
+				PubKeySelfSignature: keys.PubKeySelfSignature,
+				PubKeyBsrSignature:  keys.PubKeyBsrSignature,
+			},
+			errors.New("bsr.persistBsrSessionKeys: missing kms wrapped priv key: invalid parameter\nbsr.NewSession: could not persist BSR keys"),
 		},
 		{
 			"fs-new-error",

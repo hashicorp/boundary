@@ -1,0 +1,5 @@
+.*  bsrKey.pub
+.*  wrappedBsrKey
+.*  wrappedPrivKey
+.*  pubKeyBsrSignature.sign
+.*  pubKeySelfSignature.sign

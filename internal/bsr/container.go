@@ -105,19 +105,72 @@ func newContainer(ctx context.Context, t containerType, c storage.Container, key
 	return cc, nil
 }
 
-// Create creates a new file in the container for writing.
-func (c *container) create(ctx context.Context, s string) (storage.File, error) {
-	c.journal.Record("CREATING", s)
-	f, err := c.container.Create(ctx, s)
+// create creates a new file in the container for writing.
+func (c *container) create(ctx context.Context, s string, options ...storage.Option) (storage.File, error) {
+	const op = "bsr.(container).create"
+
+	err := c.journal.Record("CREATING", s)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+
+	var f storage.File
+	switch len(options) {
+	case 0:
+		f, err = c.container.Create(ctx, s)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+	default:
+		f, err = c.container.OpenFile(ctx, s, options...)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
 	jf, err := journal.NewFile(ctx, f, c.journal)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	defer c.journal.Record("CREATED", s)
 	return jf, nil
+}
+
+// syncBsrKey will take the marshalled bytes of a key, write its contents to a local file,
+// and then close it. The key file is created using the synchronous storage option, so
+// close will block until the file is synced to remote storage
+func (c *container) syncBsrKey(ctx context.Context, s string, data []byte) error {
+	const op = "bsr.(container).syncBsrKey"
+	switch {
+	case len(s) == 0:
+		return fmt.Errorf("%s: missing file name %w", op, ErrInvalidParameter)
+	case data == nil:
+		return fmt.Errorf("%s: missing data payload %w", op, ErrInvalidParameter)
+	}
+
+	jf, err := c.create(ctx, s, storage.WithCreateFile(),
+		storage.WithFileAccessMode(storage.WriteOnly),
+		storage.WithCloseSyncMode(storage.Synchronous))
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	cf, err := checksum.NewFile(ctx, jf, c.checksums)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	_, err = cf.Write(data)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	err = cf.Close()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }
 
 // writeMetaString writes a string to the containers meta file.

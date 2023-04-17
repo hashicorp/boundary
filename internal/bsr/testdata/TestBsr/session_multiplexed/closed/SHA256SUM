@@ -1,2 +1,7 @@
+.*  bsrKey.pub
+.*  wrappedBsrKey
+.*  wrappedPrivKey
+.*  pubKeyBsrSignature.sign
+.*  pubKeySelfSignature.sign
 a7b7dc4a1c6032980f84d22afb71d59ccdf498db37f2e855a83d8854bdc297db  session.meta
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  session.summary

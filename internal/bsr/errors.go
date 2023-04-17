@@ -16,3 +16,6 @@ var ErrInvalidParameter = errors.New("invalid parameter")
 // ErrNotSupported represents an operation that is not supported for a
 // particular protocol.
 var ErrNotSupported = errors.New("not supported by protocol")
+
+// ErrBsrKeyPersistenceFailure indicates a failure in persisting BSR encryption keys
+var ErrBsrKeyPersistenceFailure = errors.New("could not persist BSR keys")

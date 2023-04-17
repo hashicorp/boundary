@@ -90,6 +90,7 @@ func (f *File) Close() error {
 
 	var closeErrors *multierror.Error
 
+	// Call stat before closure; calling it after results in an err
 	s, err := f.Stat()
 	if err != nil {
 		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))

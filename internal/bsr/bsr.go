@@ -5,6 +5,7 @@ package bsr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr/internal/is"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
 	"github.com/hashicorp/boundary/internal/storage"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -20,6 +22,12 @@ const (
 	channelFile    = "%s.channel"
 	messagesFile   = "messages-%s.data"
 	requestsFile   = "requests-%s.data"
+
+	bsrPubKeyFile           = "bsrKey.pub"
+	wrappedBsrKeyFile       = "wrappedBsrKey"
+	wrappedPrivKeyFile      = "wrappedPrivKey"
+	pubKeyBsrSignatureFile  = "pubKeyBsrSignature.sign"
+	pubKeySelfSignatureFile = "pubKeySelfSignature.sign"
 )
 
 // SessionMeta contains metadata about a session in a BSR.
@@ -63,6 +71,13 @@ func NewSession(ctx context.Context, meta *SessionMeta, f storage.FS, keys *kms.
 	if err != nil {
 		return nil, err
 	}
+
+	// Sync keys and signatures
+	err = persistBsrSessionKeys(ctx, keys, nc)
+	if err != nil {
+		return nil, errors.Join(err, fmt.Errorf("%s: %w", op, ErrBsrKeyPersistenceFailure))
+	}
+
 	_, err = nc.WriteMeta(ctx, "id", meta.Id)
 	if err != nil {
 		return nil, err
@@ -76,6 +91,51 @@ func NewSession(ctx context.Context, meta *SessionMeta, f storage.FS, keys *kms.
 		multiplexed: opts.withSupportsMultiplex,
 		Meta:        meta,
 	}, nil
+}
+
+// persistBsrSessionKeys will marshal, write, and close BSR keys locally before syncing to
+// storage. Any error while syncing the key files should result in the termination of
+// the session this recording is for.
+// The key files synced are:
+// * the BSR public key, bsrKey.pub
+// * the wrapped BSR key, wrappedBsrKey
+// * the wrapped private key, wrappedPrivKey
+// * the public key BSR signature, pubKeyBsrSignature.sign
+// * the public key self signature, pubKeySelfSignature.sign
+func persistBsrSessionKeys(ctx context.Context, keys *kms.Keys, c *container) error {
+	const op = "bsr.persistBsrSessionKeys"
+	switch {
+	case keys.PubKey == nil:
+		return fmt.Errorf("%s: missing kms pub key: %w", op, ErrInvalidParameter)
+	case keys.WrappedBsrKey == nil:
+		return fmt.Errorf("%s: missing kms wrapped BSR key: %w", op, ErrInvalidParameter)
+	case keys.WrappedPrivKey == nil:
+		return fmt.Errorf("%s: missing kms wrapped priv key: %w", op, ErrInvalidParameter)
+	case keys.PubKeyBsrSignature == nil:
+		return fmt.Errorf("%s: missing kms pub key BSR signature: %w", op, ErrInvalidParameter)
+	case keys.PubKeySelfSignature == nil:
+		return fmt.Errorf("%s: missing kms pub key self signature: %w", op, ErrInvalidParameter)
+	}
+
+	keyFiles := map[string]proto.Message{
+		bsrPubKeyFile:           keys.PubKey,
+		wrappedBsrKeyFile:       keys.WrappedBsrKey,
+		wrappedPrivKeyFile:      keys.WrappedPrivKey,
+		pubKeyBsrSignatureFile:  keys.PubKeyBsrSignature,
+		pubKeySelfSignatureFile: keys.PubKeySelfSignature,
+	}
+	for f, k := range keyFiles {
+		b, err := proto.Marshal(k)
+		if err != nil {
+			return fmt.Errorf("%s: failed to marshal data for %s: %w", op, f, err)
+		}
+		err = c.syncBsrKey(ctx, f, b)
+		if err != nil {
+			return fmt.Errorf("%s: failed syncing bsr key %s: %w", op, f, err)
+		}
+	}
+
+	return nil
 }
 
 // NewConnection creates a Connection container for a given connection id.
