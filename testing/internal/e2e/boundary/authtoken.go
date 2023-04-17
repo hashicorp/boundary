@@ -30,7 +30,7 @@ func GetAuthenticationTokenIdByTokenNameCli(t testing.TB, ctx context.Context, t
 	err := json.Unmarshal(output.Stdout, &authTokenListResult)
 	require.NoError(t, err)
 	userAuthTokenID := fmt.Sprint(authTokenListResult.Items[0].Id)
-	t.Logf("Acquired auth-token ID: %s", userAuthTokenID)
+	t.Logf("Retrieved Auth-Token: %s", userAuthTokenID)
 
 	return userAuthTokenID
 }
