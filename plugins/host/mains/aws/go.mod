@@ -3,8 +3,8 @@ module github.com/hashicorp/boundary/plugins/host/mains/aws
 go 1.20
 
 require (
-	github.com/hashicorp/boundary-plugin-host-aws v0.1.3
-	github.com/hashicorp/boundary/sdk v0.0.30
+	github.com/hashicorp/boundary-plugin-host-aws v0.1.4
+	github.com/hashicorp/boundary/sdk v0.0.31
 )
 
 require (
@@ -17,7 +17,6 @@ require (
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20230227112545-f26a3bdf6871 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.4.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.4-0.20230228185604-529de2006180 // indirect
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230228185604-529de2006180 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.9 // indirect
