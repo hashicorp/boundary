@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	intglobals "github.com/hashicorp/boundary/internal/globals"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -80,6 +81,7 @@ var (
 	downstreamersFactory           func(context.Context, string, string) (common.Downstreamers, error)
 	downstreamWorkersTickerFactory func(context.Context, string, string, common.Downstreamers, downstreamReceiver) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
+	extControllerFactory           func(ctx context.Context, c *Controller, r db.Reader, w db.Writer) (intglobals.ControllerExtension, error)
 )
 
 type Controller struct {
@@ -142,6 +144,9 @@ type Controller struct {
 	HealthService *health.Service
 
 	pkiConnManager *cluster.DownstreamManager
+
+	// ControllerExtension defines a std way to extend the controller
+	ControllerExtension intglobals.ControllerExtension
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
@@ -415,6 +420,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 	}
 
+	if extControllerFactory != nil {
+		if c.ControllerExtension, err = extControllerFactory(ctx, c, dbase, dbase); err != nil {
+			return nil, fmt.Errorf("unable to extend controller: %w", err)
+		}
+	}
+
 	return c, nil
 }
 
@@ -507,7 +518,11 @@ func (c *Controller) Start() error {
 			}
 		}()
 	}
-
+	if c.ControllerExtension != nil {
+		if err := c.ControllerExtension.Start(c.baseContext); err != nil {
+			return fmt.Errorf("error starting controller extension: %w", err)
+		}
+	}
 	return nil
 }
 
