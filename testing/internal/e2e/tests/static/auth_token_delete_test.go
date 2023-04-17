@@ -35,7 +35,6 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
-		t.Logf("Successfully deleted account '%s'", newAccountId)
 	})
 	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
 	t.Cleanup(func() {
@@ -44,7 +43,6 @@ func TestUserIsLoggedOutWhenAuthTokenIsDeletedCli(t *testing.T) {
 			e2e.WithArgs("users", "delete", "-id", newUserId),
 		)
 		require.NoError(t, output.Err, string(output.Stderr))
-		t.Logf("Successfully deleted user '%s'", newUserId)
 	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 
