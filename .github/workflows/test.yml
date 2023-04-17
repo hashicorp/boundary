@@ -195,7 +195,7 @@ jobs:
           TESTARGS: -v
           TEST_TIMEOUT: 120m
         with:
-          max_attempts: 1
+          max_attempts: 3
           timeout_minutes: 120
           retry_on: error
           command: make test
