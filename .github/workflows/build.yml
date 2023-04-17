@@ -155,7 +155,7 @@ jobs:
         id: set-sha
         run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@5e780fc7bbd0cac69fc73271ed86edf5dcb72d67 # v2.26.0
+        uses: dawidd6/action-download-artifact@246dbf436b23d7c49e21a7ab8204ca9ecd1fe615 # v2.27.0
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
@@ -226,7 +226,7 @@ jobs:
         id: set-sha
         run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@5e780fc7bbd0cac69fc73271ed86edf5dcb72d67 # v2.26.0
+        uses: dawidd6/action-download-artifact@246dbf436b23d7c49e21a7ab8204ca9ecd1fe615 # v2.27.0
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
@@ -324,7 +324,7 @@ jobs:
         id: set-sha
         run: echo "sha=$(head -n1 internal/ui/VERSION | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Download UI artifact
-        uses: dawidd6/action-download-artifact@5e780fc7bbd0cac69fc73271ed86edf5dcb72d67 # v2.26.0
+        uses: dawidd6/action-download-artifact@246dbf436b23d7c49e21a7ab8204ca9ecd1fe615 # v2.27.0
         with:
           workflow: build-admin-ui.yaml
           commit: ${{ steps.set-sha.outputs.sha }}
