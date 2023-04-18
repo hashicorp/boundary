@@ -83,6 +83,14 @@ resource "aws_security_group" "default" {
 
   egress {
     description = "Communication from Boundary worker to controller"
+    from_port   = 9200
+    to_port     = 9200
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Communication from Boundary worker to controller"
     from_port   = 9201
     to_port     = 9201
     protocol    = "tcp"
@@ -105,7 +113,7 @@ resource "aws_security_group" "default" {
   )
 }
 
-# This module only manages a rule for the controller SG that is vital to the worker's operation
+# This module only manages some rules for the controller SG that are vital to the worker's operation
 # This module does _not_ manage the security group itself
 resource "aws_vpc_security_group_ingress_rule" "worker_to_controller" {
   description       = "This rule allows traffic from a worker to controllers over WAN"
@@ -113,6 +121,15 @@ resource "aws_vpc_security_group_ingress_rule" "worker_to_controller" {
   cidr_ipv4         = "${aws_instance.worker.public_ip}/32"
   from_port         = 9201
   to_port           = 9201
+  ip_protocol       = "tcp"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "worker_to_controller_auth" {
+  description       = "This rule allows authorization from a worker to controllers over WAN"
+  security_group_id = var.controller_sg_id
+  cidr_ipv4         = "${aws_instance.worker.public_ip}/32"
+  from_port         = 9200
+  to_port           = 9200
   ip_protocol       = "tcp"
 }
 
@@ -150,7 +167,7 @@ resource "aws_instance" "worker" {
   tags = merge(
     local.common_tags,
     {
-      Name = "${var.name_prefix}-boundary-worker",
+      Name = "${var.name_prefix}-boundary-worker-${random_pet.worker.id}",
     },
   )
 }
@@ -175,12 +192,11 @@ resource "enos_file" "worker_config" {
 
   destination = "/etc/boundary/boundary.hcl"
   content = templatefile("${path.module}/templates/worker.hcl", {
-    id                   = random_pet.worker.id
-    kms_key_id           = data.aws_kms_key.kms_key.id
     public_addr          = aws_instance.worker.public_ip
     type                 = jsonencode(var.worker_type_tags)
     region               = data.aws_availability_zone.worker_az.region
     controller_addresses = jsonencode(var.controller_addresses)
+    controller_token     = enos_remote_exec.controller_led_authorization.stdout
   })
 
   transport = {
@@ -188,6 +204,28 @@ resource "enos_file" "worker_config" {
       host = aws_instance.worker.public_ip
     }
   }
+}
+
+resource "enos_remote_exec" "controller_led_authorization" {
+  environment = {
+    BOUNDARY_ADDR = "http://${var.controller_addresses[0]}:9200"
+    BOUNDARY_PASS = var.auth_password
+  }
+
+  content = templatefile("${path.module}/templates/controller_led_authorization", {
+    auth_method_id  = var.auth_method_id
+    auth_login_name = var.auth_login_name
+  })
+
+  transport = {
+    ssh = {
+      host             = aws_instance.worker.public_ip
+      user             = "ubuntu"
+      private_key_path = var.private_key_path
+    }
+  }
+
+  depends_on = [enos_bundle_install.worker]
 }
 
 resource "enos_boundary_start" "worker_start" {

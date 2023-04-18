@@ -129,3 +129,25 @@ variable "controller_sg_id" {
   description = "The controllers' security group ID for adding rules allowing this worker to communicate with them"
   type        = string
 }
+
+variable "private_key_path" {
+  description = "The path to the private key to be used for SSH"
+  type        = string
+}
+
+variable "auth_method_id" {
+  description = "The ID for the auth method created within the Boundary module"
+  type        = string
+}
+
+variable "auth_login_name" {
+  description = "Generated login name from boundary init"
+  type        = string
+  default     = "admin"
+}
+
+variable "auth_password" {
+  description = "Generated auth password from boundary init"
+  type        = string
+  sensitive   = true
+}
