@@ -13,6 +13,10 @@ variable "enos_user" {}
 variable "additional_tags" {
   default = {}
 }
+variable "ingress_cidr" {
+  type    = list(string)
+  default = ["10.0.0.0/8"]
+}
 
 resource "aws_security_group" "boundary_target" {
   name_prefix = "boundary-target-sg"
@@ -24,7 +28,7 @@ resource "aws_security_group" "boundary_target" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/8"]
+    cidr_blocks = var.ingress_cidr
   }
 
   egress {
