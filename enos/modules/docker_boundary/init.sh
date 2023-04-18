@@ -8,8 +8,6 @@
 # This script must only output the JSON that comes from `boundary database init` as the output is
 # consumed by other scripts.
 
-TEST_BOUNDARY_IMAGE=$1
-TEST_DATABASE_ADDRESS=$2
 TEST_CONTAINER_NAME=boundary-init
 SOURCE=$(realpath $(dirname ${BASH_SOURCE[0]})) # get directory of this script
 
@@ -20,6 +18,6 @@ docker run \
     -e "SKIP_CHOWN=true" \
     --cap-add IPC_LOCK \
     --mount type=bind,src=$SOURCE,dst=/boundary/ \
-    --network e2e_network \
+    --network $TEST_NETWORK_NAME \
     $TEST_BOUNDARY_IMAGE \
     boundary database init -config /boundary/boundary-config.hcl -format json

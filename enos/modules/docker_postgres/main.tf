@@ -7,6 +7,10 @@ terraform {
       source  = "kreuzwerker/docker"
       version = "3.0.1"
     }
+
+    enos = {
+      source = "app.terraform.io/hashicorp-qti/enos"
+    }
   }
 }
 
@@ -73,6 +77,14 @@ resource "docker_container" "postgres" {
   networks_advanced {
     name = var.network_name
   }
+}
+
+resource "enos_local_exec" "wait" {
+  depends_on = [
+    docker_container.postgres
+  ]
+
+  inline = ["timeout 10s bash -c 'until docker exec ${var.container_name} pg_isready; do sleep 2; done'"]
 }
 
 output "address" {
