@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	sfs "io/fs"
@@ -60,10 +61,14 @@ type MemContainer struct {
 	Files map[string]*MemFile
 
 	Closed bool
+
+	sync.RWMutex
 }
 
 // Close closes the container.
 func (m *MemContainer) Close() error {
+	m.Lock()
+	defer m.Unlock()
 	m.Closed = true
 	return nil
 }
@@ -88,6 +93,9 @@ func (m *MemContainer) Create(_ context.Context, n string) (storage.File, error)
 // OpenFile creates a storage.File in the container using the provided options
 // It supports WithCloseSyncMode.
 func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.Option) (storage.File, error) {
+	m.Lock()
+	defer m.Unlock()
+
 	opts := storage.GetOpts(option...)
 	if m.Closed {
 		return nil, fmt.Errorf("create on closed container")
@@ -116,6 +124,11 @@ func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.O
 
 // SubContainer creates a new storage.Container in the container.
 func (m *MemContainer) SubContainer(_ context.Context, n string, _ ...storage.Option) (storage.Container, error) {
+	m.Lock()
+	defer m.Unlock()
+	if m.Closed {
+		return nil, fmt.Errorf("subcontainer on closed container")
+	}
 	if _, exists := m.Sub[n]; exists {
 		return nil, fmt.Errorf("container %s already exists", n)
 	}
@@ -154,6 +167,8 @@ type MemFile struct {
 	closeFunc CloseFunc
 
 	Closed bool
+
+	sync.RWMutex
 }
 
 // NewMemFile creates a MemFile. It supports WithCloseFunc and WithStatFunc
@@ -172,6 +187,13 @@ func NewMemFile(n string, mode sfs.FileMode, options ...Option) *MemFile {
 
 // Stat returns the FileInfo for the file.
 func (m *MemFile) Stat() (sfs.FileInfo, error) {
+	m.RLock()
+	defer m.RUnlock()
+
+	if m.Closed {
+		return nil, fmt.Errorf("stat on closed file")
+	}
+
 	if m.statFunc != nil {
 		return m.statFunc()
 	}
@@ -184,11 +206,24 @@ func (m *MemFile) Stat() (sfs.FileInfo, error) {
 }
 
 func (m *MemFile) Read(p []byte) (int, error) {
+	m.RLock()
+	defer m.RUnlock()
+
+	if m.Closed {
+		return 0, fmt.Errorf("read on closed file")
+	}
 	return m.Buf.Read(p)
 }
 
 // Close closes the file.
 func (m *MemFile) Close() error {
+	m.Lock()
+	defer m.Unlock()
+
+	if m.Closed {
+		return fmt.Errorf("close on closed file")
+	}
+
 	if m.closeFunc != nil {
 		return m.closeFunc()
 	}
@@ -202,6 +237,9 @@ func (m *MemFile) WriteString(s string) (n int, err error) {
 }
 
 func (m *MemFile) Write(p []byte) (n int, err error) {
+	m.Lock()
+	defer m.Unlock()
+
 	if m.Closed {
 		return 0, fmt.Errorf("write on closed file")
 	}
