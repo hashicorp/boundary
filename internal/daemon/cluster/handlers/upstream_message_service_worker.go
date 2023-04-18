@@ -84,13 +84,13 @@ type UpstreamMessageTypeSpecifier interface {
 
 var upstreamMessageTypeSpecifier sync.Map
 
-// RegisterUpstreamMessageTypeSpecifier will register an
+// registerUpstreamMessageTypeSpecifier will register an
 // UpstreamMessageTypeSpecifier for the specified msg name.
 //
 // See handlers.SendUpstreamMessage for how this is
 // used to send UpstreamMessage requests
-func RegisterUpstreamMessageTypeSpecifier(ctx context.Context, msgType pbs.MsgType, t UpstreamMessageTypeSpecifier) error {
-	const op = "handlers.RegisterUpstreamMessageTypeSpecifier"
+func registerUpstreamMessageTypeSpecifier(ctx context.Context, msgType pbs.MsgType, t UpstreamMessageTypeSpecifier) error {
+	const op = "handlers.registerUpstreamMessageTypeSpecifier"
 	switch {
 	case msgType == pbs.MsgType_MSG_TYPE_UNSPECIFIED:
 		return errors.New(ctx, errors.InvalidParameter, op, "missing msg type")

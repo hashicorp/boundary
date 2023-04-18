@@ -473,7 +473,7 @@ func Test_RegisterUpstreamMessageTypeSpecifier(t *testing.T) {
 				cp.Store(k, v)
 				return true
 			})
-			err := RegisterUpstreamMessageTypeSpecifier(testCtx, tc.msgType, tc.s)
+			err := registerUpstreamMessageTypeSpecifier(testCtx, tc.msgType, tc.s)
 			t.Cleanup(func() {
 				upstreamMessageHandler = cp
 			})

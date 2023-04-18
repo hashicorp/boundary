@@ -49,7 +49,7 @@ func RegisterUpstreamMessageHandler(ctx context.Context, msgType pbs.MsgType, h 
 		return errors.New(ctx, errors.InvalidParameter, op, "missing handler")
 	}
 	upstreamMessageHandler.Store(msgType, h)
-	if err := RegisterUpstreamMessageTypeSpecifier(ctx, msgType, h); err != nil {
+	if err := registerUpstreamMessageTypeSpecifier(ctx, msgType, h); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
