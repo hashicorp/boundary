@@ -48,7 +48,7 @@ scenario "e2e_docker" {
       step.create_docker_network
     ]
     variables {
-      image_name   = "docker.mirror.hashicorp.services/library/postgres:latest"
+      image_name   = "${var.docker_mirror}/library/postgres:latest"
       network_name = step.create_docker_network.network_name
     }
     module = module.docker_postgres
@@ -74,7 +74,7 @@ scenario "e2e_docker" {
       step.create_docker_network
     ]
     variables {
-      image_name   = "docker.mirror.hashicorp.services/hashicorp/vault:${var.vault_version}"
+      image_name   = "${var.docker_mirror}/hashicorp/vault:${var.vault_version}"
       network_name = step.create_docker_network.network_name
     }
   }
@@ -85,7 +85,7 @@ scenario "e2e_docker" {
       step.create_docker_network
     ]
     variables {
-      image_name            = "docker.mirror.hashicorp.services/linuxserver/openssh-server"
+      image_name            = "${var.docker_mirror}/linuxserver/openssh-server:latest"
       network_name          = step.create_docker_network.network_name
       private_key_file_path = local.aws_ssh_private_key_path
     }
