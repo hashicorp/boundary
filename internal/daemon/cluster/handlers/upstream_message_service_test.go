@@ -28,12 +28,13 @@ func Test_RegisterUpstreamMessageHandler(t *testing.T) {
 	// handlers pkg state.
 	testCtx := context.Background()
 	tests := []struct {
-		name            string
-		msgType         pbs.MsgType
-		h               UpstreamMessageHandler
-		wantErr         bool
-		wantErrMatch    *errors.Template
-		wantErrContains string
+		name                         string
+		msgType                      pbs.MsgType
+		h                            UpstreamMessageHandler
+		withUpstreamMsgTypeSpecifier bool
+		wantErr                      bool
+		wantErrMatch                 *errors.Template
+		wantErrContains              string
 	}{
 		{
 			name:            "missing-msg-type",
@@ -53,6 +54,12 @@ func Test_RegisterUpstreamMessageHandler(t *testing.T) {
 			name:    "success",
 			msgType: pbs.MsgType_MSG_TYPE_ECHO,
 			h:       &TestMockUpstreamMessageHandler{},
+		},
+		{
+			name:                         "success-with-type-specifier",
+			msgType:                      pbs.MsgType_MSG_TYPE_ECHO,
+			h:                            &TestMockUpstreamMessageHandler{},
+			withUpstreamMsgTypeSpecifier: true,
 		},
 	}
 	for _, tc := range tests {
@@ -80,6 +87,11 @@ func Test_RegisterUpstreamMessageHandler(t *testing.T) {
 			require.NoError(err)
 			_, ok := getUpstreamMessageHandler(testCtx, tc.msgType)
 			assert.True(ok)
+
+			if tc.withUpstreamMsgTypeSpecifier {
+				_, ok := getUpstreamMessageTypeSpecifier(testCtx, tc.msgType)
+				assert.True(ok)
+			}
 		})
 	}
 }
@@ -417,6 +429,67 @@ func Test_SendUpstreamMessage(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(gotResp)
 			assert.Empty(cmp.Diff(gotResp, tc.wantResp, protocmp.Transform()))
+		})
+	}
+}
+
+func Test_RegisterUpstreamMessageTypeSpecifier(t *testing.T) {
+	// IMPORTANT: cannot run with t.Parallel() because it operates on the
+	// handlers pkg state.
+	testCtx := context.Background()
+	tests := []struct {
+		name            string
+		msgType         pbs.MsgType
+		s               UpstreamMessageTypeSpecifier
+		wantErr         bool
+		wantErrMatch    *errors.Template
+		wantErrContains string
+	}{
+		{
+			name:            "missing-msg-type",
+			s:               &TestMockUpstreamMessageHandler{},
+			wantErr:         true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing msg type",
+		},
+		{
+			name:            "missing-type-specifier",
+			msgType:         pbs.MsgType_MSG_TYPE_ECHO,
+			wantErr:         true,
+			wantErrMatch:    errors.T(errors.InvalidParameter),
+			wantErrContains: "missing type specifier",
+		},
+		{
+			name:    "success",
+			msgType: pbs.MsgType_MSG_TYPE_ECHO,
+			s:       &TestMockUpstreamMessageHandler{},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var cp sync.Map
+			upstreamMessageTypeSpecifier.Range(func(k, v interface{}) bool {
+				cp.Store(k, v)
+				return true
+			})
+			err := RegisterUpstreamMessageTypeSpecifier(testCtx, tc.msgType, tc.s)
+			t.Cleanup(func() {
+				upstreamMessageHandler = cp
+			})
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrMatch != nil {
+					assert.Truef(errors.Match(tc.wantErrMatch, err), "unexpected error: %q", err.Error())
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			_, ok := getUpstreamMessageTypeSpecifier(testCtx, tc.msgType)
+			assert.True(ok)
 		})
 	}
 }

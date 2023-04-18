@@ -31,14 +31,7 @@ type UpstreamMessageHandler interface {
 	// using google.golang.org/grpc/status
 	Handler(ctx context.Context, request proto.Message) (response proto.Message, statusErr error)
 
-	// Encrypted returns true if the handler request/response should be encrypted
-	Encrypted() bool
-
-	// AllocRequest will allocate handler specific request proto message
-	AllocRequest() proto.Message
-
-	// AllocResponse will allocate a handler specific response proto message
-	AllocResponse() proto.Message
+	UpstreamMessageTypeSpecifier
 }
 
 // RegisterUpstreamMessageHandler will register an UpstreamMessageHandler for
@@ -56,6 +49,9 @@ func RegisterUpstreamMessageHandler(ctx context.Context, msgType pbs.MsgType, h 
 		return errors.New(ctx, errors.InvalidParameter, op, "missing handler")
 	}
 	upstreamMessageHandler.Store(msgType, h)
+	if err := RegisterUpstreamMessageTypeSpecifier(ctx, msgType, h); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 	return nil
 }
 

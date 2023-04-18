@@ -6,9 +6,11 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/nodeenrollment"
 	"google.golang.org/grpc/codes"
@@ -63,6 +65,62 @@ func (s *workerUpstreamMessageServiceServer) UpstreamMessage(ctx context.Context
 	return c.UpstreamMessage(ctx, req)
 }
 
+// UpstreamMessageTypeSpecifier defines an interface for specifying type
+// information for an UpstreamMessageRequest(s).
+//
+// See handlers.SendUpstreamMessage for how this is
+// used to send an UpstreamMessageRequest via registered upstream message
+// type specifiers.
+type UpstreamMessageTypeSpecifier interface {
+	// Encrypted returns true if the request/response should be encrypted
+	Encrypted() bool
+
+	// AllocRequest will allocate a type specific request proto message
+	AllocRequest() proto.Message
+
+	// AllocResponse will allocate a type specific response proto message
+	AllocResponse() proto.Message
+}
+
+var upstreamMessageTypeSpecifier sync.Map
+
+// RegisterUpstreamMessageTypeSpecifier will register an
+// UpstreamMessageTypeSpecifier for the specified msg name.
+//
+// See handlers.SendUpstreamMessage for how this is
+// used to send UpstreamMessage requests
+func RegisterUpstreamMessageTypeSpecifier(ctx context.Context, msgType pbs.MsgType, t UpstreamMessageTypeSpecifier) error {
+	const op = "handlers.RegisterUpstreamMessageTypeSpecifier"
+	switch {
+	case msgType == pbs.MsgType_MSG_TYPE_UNSPECIFIED:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing msg type")
+	case util.IsNil(t):
+		return errors.New(ctx, errors.InvalidParameter, op, "missing type specifier")
+	}
+	upstreamMessageTypeSpecifier.Store(msgType, t)
+	return nil
+}
+
+func getUpstreamMessageTypeSpecifier(ctx context.Context, msgType pbs.MsgType) (UpstreamMessageTypeSpecifier, bool) {
+	const op = "handlers.getUpstreamMessageTypeSpecifier"
+	switch {
+	case msgType == pbs.MsgType_MSG_TYPE_UNSPECIFIED:
+		event.WriteError(ctx, op, fmt.Errorf("missing msg type"))
+		return nil, false
+	}
+	v, ok := upstreamMessageTypeSpecifier.Load(msgType)
+	if !ok {
+		return nil, false
+	}
+
+	h, ok := v.(UpstreamMessageTypeSpecifier)
+	if !ok {
+		event.WriteError(ctx, op, fmt.Errorf("malformed type specifier %q registered as incorrect type %T", msgType.String(), v))
+		return nil, false
+	}
+	return h, true
+}
+
 func SendUpstreamMessage(ctx context.Context, clientProducer UpstreamMessageServiceClientProducer, originatingWorkerKeyId string, msg proto.Message, opt ...Option) (proto.Message, error) {
 	const op = "handlers.SendUpstreamMessage"
 	switch {
@@ -79,14 +137,14 @@ func SendUpstreamMessage(ctx context.Context, clientProducer UpstreamMessageServ
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "%s: %v", op, err)
 	}
-	h, ok := getUpstreamMessageHandler(ctx, msgType)
+	t, ok := getUpstreamMessageTypeSpecifier(ctx, msgType)
 	if !ok {
-		return nil, status.Errorf(codes.Unimplemented, "upstream message handler for %q is not implemented", msgType.String())
+		return nil, status.Errorf(codes.Unimplemented, "upstream message type specifier for %q is not implemented", msgType.String())
 	}
 
 	var req *pbs.UpstreamMessageRequest
 	switch {
-	case h.Encrypted() == false:
+	case t.Encrypted() == false:
 		req, err = ptMsg(ctx, msgType, msg)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -114,14 +172,14 @@ func SendUpstreamMessage(ctx context.Context, clientProducer UpstreamMessageServ
 	}
 
 	switch {
-	case h.Encrypted() == false:
-		pt := h.AllocResponse()
+	case t.Encrypted() == false:
+		pt := t.AllocResponse()
 		if err := proto.Unmarshal(rawResp.GetPt(), pt); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error marshaling echo request"))
 		}
 		return pt, nil
 	default:
-		ct := h.AllocResponse()
+		ct := t.AllocResponse()
 		if err := nodeenrollment.DecryptMessage(ctx, rawResp.GetCt(), opts.withKeyProducer, ct); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error decrypting unwrap keys response"))
 		}

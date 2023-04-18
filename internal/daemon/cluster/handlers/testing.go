@@ -84,15 +84,21 @@ func TestRegisterHandlerFn(t *testing.T, msgType pbs.MsgType, h UpstreamMessageH
 	return func(t *testing.T) {
 		t.Helper()
 		testCtx := context.Background()
-		var cp sync.Map
+		var cpHandlerRegistry sync.Map
 		upstreamMessageHandler.Range(func(k, v interface{}) bool {
-			cp.Store(k, v)
+			cpHandlerRegistry.Store(k, v)
+			return true
+		})
+		var cpTypeSpecifierRegister sync.Map
+		upstreamMessageTypeSpecifier.Range(func(k, v interface{}) bool {
+			cpTypeSpecifierRegister.Store(k, v)
 			return true
 		})
 
 		require.NoError(t, RegisterUpstreamMessageHandler(testCtx, msgType, h))
 		t.Cleanup(func() {
-			upstreamMessageHandler = cp
+			upstreamMessageHandler = cpHandlerRegistry
+			upstreamMessageTypeSpecifier = cpTypeSpecifierRegister
 		})
 	}
 }
