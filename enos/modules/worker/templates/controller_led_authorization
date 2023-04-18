@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -ex -o pipefail
+
+function get_token () {
+  /opt/boundary/bin/boundary authenticate password -auth-method-id="${auth_method_id}" -login-name="${auth_login_name}" -password "env://BOUNDARY_PASS" 2>&1 \
+| grep -A 2 "The token was not successfully saved to a system keyring." \
+| tail -1
+}
+
+export BOUNDARY_TOKEN="$(get_token)"
+
+/opt/boundary/bin/boundary workers create controller-led -token env://BOUNDARY_TOKEN \
+| grep 'Controller-Generated Activation Token' \
+| tr -s ' ' \
+| cut -d ' ' -f 5

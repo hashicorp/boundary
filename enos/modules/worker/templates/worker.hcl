@@ -8,10 +8,6 @@ listener "tcp" {
 }
 
 worker {
-  # Name attr must be unique across workers
-  name = "worker-${id}"
-  description = "Enos Boundary worker ${id}"
-
   # Workers must be able to reach controllers on :9201
   initial_upstreams = ${controller_addresses}
 
@@ -21,11 +17,7 @@ worker {
     region = ["${region}"]
     type = ${type}
   }
-}
 
-# must be same key as used on controller config
-kms "awskms" {
-  purpose    = "worker-auth"
-  region     = "${region}"
-  kms_key_id = "${kms_key_id}"
+  auth_storage_path = "/boundary/auth_storage"
+  controller_generated_activation_token = "${controller_token}"
 }
