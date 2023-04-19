@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -17,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr"
 	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
+	"github.com/hashicorp/boundary/internal/bsr/ssh"
 	"github.com/hashicorp/boundary/internal/storage"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +36,9 @@ func assertContainer(ctx context.Context, t *testing.T, path, state string, typ 
 	require.NoError(t, err, "unable to find test data file")
 	meta, ok := fs.Files[string(typ)+".meta"]
 	require.True(t, ok, "container is missing meta file")
-	assert.Equal(t, string(wantMeta), meta.Buf.String())
+	wantChecksumsRegex, err := regexp.Compile(string(wantMeta))
+	require.NoError(t, err)
+	assert.True(t, wantChecksumsRegex.MatchString(meta.Buf.String()))
 
 	// summary
 	wantSummary, err := os.ReadFile(filepath.Join(td, string(typ)+".summary"))
@@ -188,7 +192,7 @@ func TestBsr(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: tc.id}, tc.c, tc.keys, tc.opts...)
+			s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: tc.id, Protocol: ssh.Protocol}, tc.c, tc.keys, tc.opts...)
 			require.NoError(t, err)
 			require.NotNil(t, s)
 

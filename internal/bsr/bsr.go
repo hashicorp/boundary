@@ -24,7 +24,8 @@ const (
 
 // SessionMeta contains metadata about a session in a BSR.
 type SessionMeta struct {
-	Id string
+	Id       string
+	Protocol Protocol
 }
 
 // Session is the top level container in a bsr that contains the files for
@@ -63,6 +64,10 @@ func NewSession(ctx context.Context, meta *SessionMeta, f storage.FS, keys *kms.
 		return nil, err
 	}
 	_, err = nc.WriteMeta(ctx, "id", meta.Id)
+	if err != nil {
+		return nil, err
+	}
+	_, err = nc.WriteMeta(ctx, "protocol", meta.Protocol.ToText())
 	if err != nil {
 		return nil, err
 	}
