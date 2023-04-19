@@ -612,7 +612,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	tc.b.DevOidcAccountId = DefaultTestOidcAccountId
 	tc.b.DevUnprivilegedPasswordAccountId = DefaultTestUnprivilegedPasswordAccountId
 	tc.b.DevUnprivilegedOidcAccountId = DefaultTestUnprivilegedOidcAccountId
-	tc.b.DevLoopbackHostPluginId = DefaultTestPluginId
+	tc.b.DevLoopbackPluginId = DefaultTestPluginId
 
 	tc.b.EnabledPlugins = append(tc.b.EnabledPlugins, base.EnabledPluginHostLoopback)
 

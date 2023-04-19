@@ -38,6 +38,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
@@ -1368,7 +1369,7 @@ func TestAddTargetHostSources(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
 	})
 
 	ctx := context.Background()
@@ -1530,7 +1531,7 @@ func TestSetTargetHostSources(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
 	})
 
 	ctx := context.Background()
@@ -1680,7 +1681,7 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
 	})
 
 	ctx := context.Background()
@@ -2456,7 +2457,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(plugin.TestPluginServer{
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(loopback.TestPluginServer{
 			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
 				var setIds []string
 				for _, set := range req.GetSets() {

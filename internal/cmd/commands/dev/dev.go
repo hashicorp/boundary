@@ -703,7 +703,7 @@ func (c *Command) Run(args []string) int {
 
 	var opts []base.Option
 	if c.flagCreateLoopbackHostPlugin {
-		c.DevLoopbackHostPluginId = "pl_1234567890"
+		c.DevLoopbackPluginId = "pl_1234567890"
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostLoopback)
 		c.Config.Controller.Scheduler.JobRunIntervalDuration = 100 * time.Millisecond
 	}

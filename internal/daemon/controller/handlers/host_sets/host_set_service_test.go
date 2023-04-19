@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
@@ -166,7 +167,7 @@ func TestGet_Plugin(t *testing.T) {
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
 	plg := hostplugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, sche, plgm)
@@ -380,7 +381,7 @@ func TestList_Plugin(t *testing.T) {
 	name := "test"
 	plg := hostplugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
 	}
 	pluginRepoFn := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, sche, plgm)
@@ -568,7 +569,7 @@ func TestDelete_Plugin(t *testing.T) {
 	name := "test"
 	plg := hostplugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
 	}
 
 	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
@@ -837,7 +838,7 @@ func TestCreate_Plugin(t *testing.T) {
 	plg := hostplugin.TestPlugin(t, conn, name)
 	plgRepoFn := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{
+			plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{
 				OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 					return nil, nil
 				},
@@ -1476,7 +1477,7 @@ func TestUpdate_Plugin(t *testing.T) {
 	name := "test"
 	plg := hostplugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
 	}
 
 	repoFn := func() (*static.Repository, error) {

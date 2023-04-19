@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
@@ -153,7 +154,7 @@ func TestGet_Plugin(t *testing.T) {
 
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
 	}
 
 	rw := db.New(conn)
@@ -384,7 +385,7 @@ func TestList_Plugin(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo)
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
 	}
 
 	rw := db.New(conn)

@@ -34,6 +34,7 @@ import (
 	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/cleaner"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
@@ -251,10 +252,14 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		}
 		switch enabledPlugin {
 		case base.EnabledPluginHostLoopback:
-			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
+			lp, err := loopback.NewLoopbackPlugin()
+			if err != nil {
+				return nil, fmt.Errorf("error creating loopback plugin: %w", err)
+			}
+			plg := loopback.NewWrappingPluginClient(lp)
 			opts := []host.Option{
 				host.WithDescription("Provides an initial loopback host plugin in Boundary"),
-				host.WithPublicId(conf.DevLoopbackHostPluginId),
+				host.WithPublicId(conf.DevLoopbackPluginId),
 			}
 			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
 				return nil, err

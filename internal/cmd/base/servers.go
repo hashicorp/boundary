@@ -125,7 +125,7 @@ type Server struct {
 	DevTargetDefaultPort             int
 	DevTargetSessionMaxSeconds       int
 	DevTargetSessionConnectionLimit  int
-	DevLoopbackHostPluginId          string
+	DevLoopbackPluginId              string
 
 	EnabledPlugins []EnabledPlugin
 	HostPlugins    map[string]plgpb.HostPluginServiceClient

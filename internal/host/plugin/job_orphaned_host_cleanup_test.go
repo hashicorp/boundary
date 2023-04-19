@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -105,10 +106,10 @@ func TestOrphanedHostCleanupJob_Run(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 
-	plgServer := &TestPluginServer{}
+	plgServer := &loopback.TestPluginServer{}
 	plg := hostplg.TestPlugin(t, conn, "run")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(plgServer),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(plgServer),
 	}
 
 	r, err := newOrphanedHostCleanupJob(ctx, rw, rw, kmsCache)

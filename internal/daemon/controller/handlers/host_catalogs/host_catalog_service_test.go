@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
@@ -838,7 +839,7 @@ func TestCreate_Plugin(t *testing.T) {
 	plg := host.TestPlugin(t, conn, name)
 	pluginHostRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{
+			plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{
 				OnCreateCatalogFn: func(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 					return nil, nil
 				},
@@ -1372,8 +1373,10 @@ func TestUpdate_Plugin(t *testing.T) {
 
 	name := "test"
 	plg := host.TestPlugin(t, conn, name)
+	lp, err := loopback.NewLoopbackPlugin()
+	require.NoError(t, err)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(plugin.NewLoopbackPlugin()),
+		plg.GetPublicId(): loopback.NewWrappingPluginClient(lp),
 	}
 
 	repoFn := func() (*static.Repository, error) {

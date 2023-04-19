@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package plugin
+package loopback
 
 import (
 	"context"
@@ -20,7 +20,8 @@ func TestLoopbackPlugin(t *testing.T) {
 	require, assert := tr.New(t), ta.New(t)
 	ctx := context.Background()
 
-	plg := NewLoopbackPlugin()
+	plg, err := NewLoopbackPlugin()
+	require.NoError(err)
 	secretsMap := map[string]any{
 		"key1": "key2",
 		"baz":  true,
@@ -233,7 +234,8 @@ func TestLoopbackPluginArrays(t *testing.T) {
 	require := tr.New(t)
 	ctx := context.Background()
 
-	plg := NewLoopbackPlugin()
+	plg, err := NewLoopbackPlugin()
+	require.NoError(err)
 
 	// Add data to some sets
 	hostInfo1 := map[string]any{

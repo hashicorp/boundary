@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
 	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -270,8 +271,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 
 			var pluginCalled bool
 			plgm := map[string]plgpb.HostPluginServiceClient{
-				plg.GetPublicId(): &WrappingPluginClient{
-					Server: &TestPluginServer{
+				plg.GetPublicId(): &loopback.WrappingPluginClient{
+					Server: &loopback.TestPluginServer{
 						NormalizeCatalogDataFn: func(_ context.Context, req *plgpb.NormalizeCatalogDataRequest) (*plgpb.NormalizeCatalogDataResponse, error) {
 							if req.Attributes == nil {
 								return new(plgpb.NormalizeCatalogDataResponse), nil
@@ -296,7 +297,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 						},
 					},
 				},
-				unimplementedPlugin.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{
+				unimplementedPlugin.GetPublicId(): &loopback.WrappingPluginClient{Server: &loopback.TestPluginServer{
 					OnCreateCatalogFn: func(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 						pluginCalled = true
 						gotPluginAttrs = req.GetCatalog().GetAttributes()
@@ -372,8 +373,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		kms := kms.TestKms(t, conn, wrapper)
 		var pluginCalled bool
 		plgm := map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): &WrappingPluginClient{
-				Server: &TestPluginServer{
+			plg.GetPublicId(): &loopback.WrappingPluginClient{
+				Server: &loopback.TestPluginServer{
 					OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 						pluginCalled = true
 						return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
@@ -418,8 +419,8 @@ func TestRepository_CreateCatalog(t *testing.T) {
 		kms := kms.TestKms(t, conn, wrapper)
 		var pluginCalled bool
 		plgm := map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): &WrappingPluginClient{
-				Server: &TestPluginServer{
+			plg.GetPublicId(): &loopback.WrappingPluginClient{
+				Server: &loopback.TestPluginServer{
 					OnCreateCatalogFn: func(_ context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 						pluginCalled = true
 						return &plgpb.OnCreateCatalogResponse{Persisted: &plgpb.HostCatalogPersisted{Secrets: req.GetCatalog().GetSecrets()}}, nil
@@ -496,8 +497,8 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 	var pluginError error
 	testPlugin := hostplugin.TestPlugin(t, dbConn, "test")
 	testPluginMap := map[string]plgpb.HostPluginServiceClient{
-		testPlugin.GetPublicId(): &WrappingPluginClient{
-			Server: &TestPluginServer{
+		testPlugin.GetPublicId(): &loopback.WrappingPluginClient{
+			Server: &loopback.TestPluginServer{
 				NormalizeCatalogDataFn: func(_ context.Context, req *plgpb.NormalizeCatalogDataRequest) (*plgpb.NormalizeCatalogDataResponse, error) {
 					if req.Attributes == nil {
 						return new(plgpb.NormalizeCatalogDataResponse), nil
@@ -1264,7 +1265,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
+		plg.GetPublicId(): &loopback.WrappingPluginClient{Server: &loopback.TestPluginServer{}},
 	}
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	badId, err := newHostCatalogId(ctx)
@@ -1331,7 +1332,7 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
+		plg.GetPublicId(): &loopback.WrappingPluginClient{Server: &loopback.TestPluginServer{}},
 	}
 	repo, err := NewRepository(rw, rw, kms, sched, plgm)
 	assert.NoError(t, err)
@@ -1363,9 +1364,9 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplugin.TestPlugin(t, conn, "test")
-	pluginInstance := &TestPluginServer{}
+	pluginInstance := &loopback.TestPluginServer{}
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): &WrappingPluginClient{Server: pluginInstance},
+		plg.GetPublicId(): &loopback.WrappingPluginClient{Server: pluginInstance},
 	}
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	cat2 := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -1450,7 +1451,7 @@ func TestRepository_DeleteCatalogX(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): &WrappingPluginClient{Server: &TestPluginServer{}},
+		plg.GetPublicId(): &loopback.WrappingPluginClient{Server: &loopback.TestPluginServer{}},
 	}
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	badId, err := newHostCatalogId(ctx)
@@ -1538,7 +1539,7 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 
 	testPlugin := hostplugin.TestPlugin(t, dbConn, "test")
 	dummyPluginMap := map[string]plgpb.HostPluginServiceClient{
-		testPlugin.GetPublicId(): &WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
+		testPlugin.GetPublicId(): &loopback.WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
 	}
 
 	// Set up a test catalog and the secrets for it
