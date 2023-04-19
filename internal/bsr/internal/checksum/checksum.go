@@ -90,18 +90,18 @@ func (f *File) Close() error {
 
 	var closeErrors *multierror.Error
 
+	s, err := f.Stat()
+	if err != nil {
+		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
+		return closeErrors.ErrorOrNil()
+	}
+
 	// f.Sha256SumWriter will close f.underlying
 	if err := f.Sha256SumWriter.Close(); err != nil {
 		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
 	}
 
 	sum, err := f.Sha256SumWriter.Sum(f.ctx, crypto.WithHexEncoding(true))
-	if err != nil {
-		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
-		return closeErrors.ErrorOrNil()
-	}
-
-	s, err := f.Stat()
 	if err != nil {
 		closeErrors = multierror.Append(closeErrors, fmt.Errorf("%s: %w", op, err))
 		return closeErrors.ErrorOrNil()
