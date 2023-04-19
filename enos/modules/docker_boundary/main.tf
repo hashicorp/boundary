@@ -44,7 +44,12 @@ resource "docker_image" "boundary" {
 }
 
 resource "enos_local_exec" "init_database" {
-  inline = ["bash ./${path.module}/init.sh \"${var.image_name}\" \"${var.postgres_address}\""]
+  environment = {
+    TEST_BOUNDARY_IMAGE   = var.image_name,
+    TEST_DATABASE_ADDRESS = var.postgres_address,
+    TEST_NETWORK_NAME     = var.network_name
+  }
+  inline = ["bash ./${path.module}/init.sh"]
 }
 
 locals {
@@ -102,12 +107,20 @@ resource "docker_container" "boundary" {
   }
 }
 
-resource "enos_local_exec" "wait" {
+resource "enos_local_exec" "check_address" {
   depends_on = [
     docker_container.boundary
   ]
 
   inline = ["timeout 10s bash -c 'until curl http://0.0.0.0:9200; do sleep 2; done'"]
+}
+
+resource "enos_local_exec" "check_health" {
+  depends_on = [
+    enos_local_exec.check_address
+  ]
+
+  inline = ["timeout 10s bash -c 'until curl -i http://0.0.0.0:9203/health; do sleep 2; done'"]
 }
 
 output "address" {

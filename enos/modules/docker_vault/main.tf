@@ -61,9 +61,17 @@ resource "docker_container" "vault" {
   }
 }
 
-resource "enos_local_exec" "wait" {
+resource "enos_local_exec" "check_address" {
   depends_on = [
     docker_container.vault
+  ]
+
+  inline = ["timeout 10s bash -c 'until curl http://0.0.0.0:8200; do sleep 2; done'"]
+}
+
+resource "enos_local_exec" "check_health" {
+  depends_on = [
+    enos_local_exec.check_address
   ]
 
   environment = {

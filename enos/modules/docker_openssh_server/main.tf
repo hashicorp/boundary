@@ -12,13 +12,17 @@ terraform {
       source  = "hashicorp/tls"
       version = "4.0.4"
     }
+
+    enos = {
+      source = "app.terraform.io/hashicorp-qti/enos"
+    }
   }
 }
 
 variable "image_name" {
   description = "Name of Docker Image"
   type        = string
-  default     = "docker.mirror.hashicorp.services/linuxserver/openssh-server"
+  default     = "docker.mirror.hashicorp.services/linuxserver/openssh-server:latest"
 }
 variable "network_name" {
   description = "Name of Docker Network"
@@ -65,6 +69,18 @@ resource "docker_container" "openssh_server" {
   networks_advanced {
     name = var.network_name
   }
+  ports {
+    internal = 2222
+    external = 2222
+  }
+}
+
+resource "enos_local_exec" "wait" {
+  depends_on = [
+    docker_container.openssh_server
+  ]
+
+  inline = ["timeout 10s bash -c 'until ssh -i ${var.private_key_file_path} -p 2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o IdentitiesOnly=yes ${var.target_user}@localhost; do sleep 2; done'"]
 }
 
 output "user" {

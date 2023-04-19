@@ -148,3 +148,9 @@ variable "e2e_debug_no_run" {
   type        = bool
   default     = false
 }
+
+variable "docker_mirror" {
+  description = ""
+  type        = string
+  default     = "docker.mirror.hashicorp.services"
+}
