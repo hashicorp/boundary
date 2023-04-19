@@ -188,6 +188,28 @@ resource "enos_bundle_install" "worker" {
   }
 }
 
+resource "enos_remote_exec" "controller_led_authorization" {
+  depends_on = [enos_bundle_install.worker]
+
+  environment = {
+    BOUNDARY_ADDR = "http://${var.controller_addresses[0]}:9200"
+    BOUNDARY_PASS = var.auth_password
+  }
+
+  content = templatefile("${path.module}/templates/controller_led_authorization", {
+    auth_method_id  = var.auth_method_id
+    auth_login_name = var.auth_login_name
+  })
+
+  transport = {
+    ssh = {
+      host             = aws_instance.worker.public_ip
+      user             = "ubuntu"
+      private_key_path = var.private_key_path
+    }
+  }
+}
+
 resource "enos_file" "worker_config" {
   depends_on = [enos_bundle_install.worker]
 
@@ -207,39 +229,17 @@ resource "enos_file" "worker_config" {
   }
 }
 
-resource "enos_remote_exec" "controller_led_authorization" {
-  environment = {
-    BOUNDARY_ADDR = "http://${var.controller_addresses[0]}:9200"
-    BOUNDARY_PASS = var.auth_password
-  }
+# resource "enos_boundary_start" "worker_start" {
+#   depends_on = [
+#     enos_file.worker_config,
+#     aws_vpc_security_group_ingress_rule.worker_to_controller,
+#   ]
 
-  content = templatefile("${path.module}/templates/controller_led_authorization", {
-    auth_method_id  = var.auth_method_id
-    auth_login_name = var.auth_login_name
-  })
-
-  transport = {
-    ssh = {
-      host             = aws_instance.worker.public_ip
-      user             = "ubuntu"
-      private_key_path = var.private_key_path
-    }
-  }
-
-  depends_on = [enos_bundle_install.worker]
-}
-
-resource "enos_boundary_start" "worker_start" {
-  depends_on = [
-    enos_file.worker_config,
-    aws_vpc_security_group_ingress_rule.worker_to_controller,
-  ]
-
-  bin_path    = "/opt/boundary/bin"
-  config_path = "/etc/boundary"
-  transport = {
-    ssh = {
-      host = aws_instance.worker.public_ip
-    }
-  }
-}
+#   bin_path    = "/opt/boundary/bin"
+#   config_path = "/etc/boundary"
+#   transport = {
+#     ssh = {
+#       host = aws_instance.worker.public_ip
+#     }
+#   }
+# }

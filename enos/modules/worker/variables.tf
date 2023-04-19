@@ -151,3 +151,14 @@ variable "auth_password" {
   type        = string
   sensitive   = true
 }
+
+variable "auth_scheme" {
+  description = "The authorization scheme for the worker to use- it can be either worker-led or controller-led"
+  type        = string
+  default     = "controller-led"
+
+  validation {
+    condition     = contains(["worker-led", "controller-led"], var.auth_scheme)
+    error_message = "authorization_scheme must be either controller-led or worker-led"
+  }
+}
