@@ -109,7 +109,7 @@ func TestPluginSet_ImmutableFields(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	new := TestSet(t, conn, kmsCache, sched, cat, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
 	tests := []struct {

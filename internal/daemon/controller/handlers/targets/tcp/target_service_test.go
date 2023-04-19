@@ -1369,7 +1369,7 @@ func TestAddTargetHostSources(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
 	ctx := context.Background()
@@ -1531,7 +1531,7 @@ func TestSetTargetHostSources(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
 	ctx := context.Background()
@@ -1681,7 +1681,7 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	plg := host.TestPlugin(t, conn, "test")
 	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
 	ctx := context.Background()
@@ -2457,7 +2457,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	plg := host.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(loopback.TestPluginServer{
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{
 			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
 				var setIds []string
 				for _, set := range req.GetSets() {

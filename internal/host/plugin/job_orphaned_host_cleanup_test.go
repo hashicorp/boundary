@@ -109,7 +109,7 @@ func TestOrphanedHostCleanupJob_Run(t *testing.T) {
 	plgServer := &loopback.TestPluginServer{}
 	plg := hostplg.TestPlugin(t, conn, "run")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(plgServer),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(plgServer),
 	}
 
 	r, err := newOrphanedHostCleanupJob(ctx, rw, rw, kmsCache)

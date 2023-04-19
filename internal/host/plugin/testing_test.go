@@ -53,7 +53,7 @@ func Test_TestSet(t *testing.T) {
 	assert.NotEmpty(plg.GetPublicId())
 
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
-	set := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{})}, WithName("foo"), WithDescription("bar"))
+	set := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{})}, WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(set.GetPublicId())
 	db.AssertPublicId(t, globals.PluginHostSetPrefix, set.GetPublicId())
 	assert.Equal("foo", set.GetName())
@@ -94,7 +94,7 @@ func Test_TestSetMembers(t *testing.T) {
 	assert.NotEmpty(plg.GetPublicId())
 
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
-	s := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{})})
+	s := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{})})
 
 	h := TestHost(t, conn, c.GetPublicId(), plg.GetPublicId())
 	members := TestSetMembers(t, conn, s.PublicId, []*Host{h})
@@ -117,7 +117,7 @@ func Test_TestRunSetSync(t *testing.T) {
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 	pluginServer := &loopback.TestPluginServer{}
-	plgm := map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): loopback.NewWrappingPluginClient(pluginServer)}
+	plgm := map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): loopback.NewWrappingPluginHostClient(pluginServer)}
 
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	s1 := TestSet(t, conn, kmsCache, sched, c, plgm)

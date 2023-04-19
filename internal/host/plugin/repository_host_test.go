@@ -40,7 +40,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 
 	plg := hostplg.TestPlugin(t, conn, "create")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&plgpb.UnimplementedHostPluginServiceServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&plgpb.UnimplementedHostPluginServiceServer{}),
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())

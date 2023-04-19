@@ -839,7 +839,7 @@ func TestCreate_Plugin(t *testing.T) {
 	plg := host.TestPlugin(t, conn, name)
 	pluginHostRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{
+			plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginHostServer{
 				OnCreateCatalogFn: func(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 					return nil, nil
 				},
@@ -1376,7 +1376,7 @@ func TestUpdate_Plugin(t *testing.T) {
 	lp, err := loopback.NewLoopbackPlugin()
 	require.NoError(t, err)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(lp),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(lp),
 	}
 
 	repoFn := func() (*static.Repository, error) {

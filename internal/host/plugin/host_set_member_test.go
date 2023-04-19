@@ -36,7 +36,7 @@ func TestHostSetMember_InsertDelete(t *testing.T) {
 
 	plg := hostplg.TestPlugin(t, conn, "create")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&plgpb.UnimplementedHostPluginServiceServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&plgpb.UnimplementedHostPluginServiceServer{}),
 	}
 
 	repo, err := NewRepository(rw, rw, kms, sched, plgm)

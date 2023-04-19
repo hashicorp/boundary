@@ -154,7 +154,7 @@ func TestGet_Plugin(t *testing.T) {
 
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	rw := db.New(conn)
@@ -385,7 +385,7 @@ func TestList_Plugin(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo)
 	plg := hostplugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	rw := db.New(conn)

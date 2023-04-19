@@ -279,7 +279,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			}
 			var pluginCalled bool
 			plgm := map[string]plgpb.HostPluginServiceClient{
-				plg.GetPublicId(): loopback.NewWrappingPluginClient(loopback.TestPluginServer{
+				plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{
 					NormalizeSetDataFn: func(_ context.Context, req *plgpb.NormalizeSetDataRequest) (*plgpb.NormalizeSetDataResponse, error) {
 						if req.Attributes == nil {
 							return new(plgpb.NormalizeSetDataResponse), nil
@@ -303,7 +303,7 @@ func TestRepository_CreateSet(t *testing.T) {
 						return &plgpb.OnCreateSetResponse{}, nil
 					},
 				}),
-				unimplementedPlugin.GetPublicId(): loopback.NewWrappingPluginClient(loopback.TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+				unimplementedPlugin.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 					pluginCalled = true
 					pluginReceivedAttrs = req.GetSet().GetAttributes()
 					return plgpb.UnimplementedHostPluginServiceServer{}.OnCreateSet(ctx, req)
@@ -357,7 +357,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		var pluginCalled bool
 		plgm := map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): loopback.NewWrappingPluginClient(loopback.TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+			plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 				pluginCalled = true
 				return &plgpb.OnCreateSetResponse{}, nil
 			}}),
@@ -400,7 +400,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		var pluginCalled bool
 		plgm := map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): loopback.NewWrappingPluginClient(loopback.TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+			plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 				pluginCalled = true
 				return &plgpb.OnCreateSetResponse{}, nil
 			}}),
@@ -462,7 +462,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
 	dummyPluginMap := map[string]plgpb.HostPluginServiceClient{
-		testPlugin.GetPublicId(): &loopback.WrappingPluginClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
+		testPlugin.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
 	}
 
 	// Set up a test catalog and the secrets for it
@@ -1200,8 +1200,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 			// well.
 			var gotOnUpdateCallCount int
 			testPluginMap := map[string]plgpb.HostPluginServiceClient{
-				testPlugin.GetPublicId(): &loopback.WrappingPluginClient{
-					Server: &loopback.TestPluginServer{
+				testPlugin.GetPublicId(): &loopback.WrappingPluginHostClient{
+					Server: &loopback.TestPluginHostServer{
 						NormalizeSetDataFn: func(_ context.Context, req *plgpb.NormalizeSetDataRequest) (*plgpb.NormalizeSetDataResponse, error) {
 							if req.Attributes == nil {
 								return new(plgpb.NormalizeSetDataResponse), nil
@@ -1299,8 +1299,8 @@ func TestRepository_UpdateSet(t *testing.T) {
 	t.Run("Unset Empty PreferredEndpoint", func(t *testing.T) {
 		var gotOnUpdateCallCount int
 		testPluginMap := map[string]plgpb.HostPluginServiceClient{
-			testPlugin.GetPublicId(): &loopback.WrappingPluginClient{
-				Server: &loopback.TestPluginServer{
+			testPlugin.GetPublicId(): &loopback.WrappingPluginHostClient{
+				Server: &loopback.TestPluginHostServer{
 					OnUpdateSetFn: func(_ context.Context, req *plgpb.OnUpdateSetRequest) (*plgpb.OnUpdateSetResponse, error) {
 						gotOnUpdateCallCount++
 						for _, check := range []checkPluginReqFunc{
@@ -1352,12 +1352,12 @@ func TestRepository_LookupSet(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	hostSet := TestSet(t, conn, kms, sched, catalog, map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginHostServer{
 			ListHostsFn: func(ctx context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
 				require.NotEmpty(t, req.GetSets())
 				require.NotNil(t, req.GetCatalog())
@@ -1423,7 +1423,7 @@ func TestRepository_Endpoints(t *testing.T) {
 
 	hostlessCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -1557,7 +1557,7 @@ func TestRepository_ListSets(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "list")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 	catalogA := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	catalogB := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -1629,7 +1629,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "listlimit")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	count := 10
@@ -1709,7 +1709,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 	plg := hostplg.TestPlugin(t, conn, "create")
 
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(loopback.TestPluginServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 			return &plgpb.OnCreateSetResponse{}, nil
 		}}),
 	}

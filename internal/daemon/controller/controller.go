@@ -256,7 +256,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if err != nil {
 				return nil, fmt.Errorf("error creating loopback plugin: %w", err)
 			}
-			plg := loopback.NewWrappingPluginClient(lp)
+			plg := loopback.NewWrappingPluginHostClient(lp)
 			opts := []host.Option{
 				host.WithDescription("Provides an initial loopback host plugin in Boundary"),
 				host.WithPublicId(conf.DevLoopbackPluginId),

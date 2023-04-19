@@ -32,7 +32,7 @@ func TestNewSetSyncJob(t *testing.T) {
 
 	plg := hostplg.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	type args struct {
@@ -146,7 +146,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	plgServer := &loopback.TestPluginServer{}
 	plg := hostplg.TestPlugin(t, conn, "run")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(plgServer),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(plgServer),
 	}
 
 	r, err := newSetSyncJob(ctx, rw, rw, kmsCache, plgm)
@@ -414,7 +414,7 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	plg := hostplg.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): loopback.NewWrappingPluginClient(&loopback.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	hostSet := TestSet(t, conn, kmsCache, sched, catalog, plgm)
