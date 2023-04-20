@@ -1816,3 +1816,41 @@ func Test_decryptAndMaybeUpdateSession(t *testing.T) {
 		require.ErrorContains(t, err, "You may need to recreate your session")
 	})
 }
+
+func TestRepository_CheckIfNoLongerActive(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	testKms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	terminatedSession := TestDefaultSession(t, conn, wrapper, iamRepo)
+	terminatedSession, err = repo.CancelSession(ctx, terminatedSession.PublicId, terminatedSession.Version)
+	require.NoError(t, err)
+	n, err := repo.terminateSessionIfPossible(ctx, terminatedSession.PublicId)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+
+	cancelingSess := TestDefaultSession(t, conn, wrapper, iamRepo)
+	cancelingSess, err = repo.CancelSession(ctx, cancelingSess.PublicId, cancelingSess.Version)
+	require.NoError(t, err)
+
+	pendingSess := TestDefaultSession(t, conn, wrapper, iamRepo)
+
+	activeSess := TestDefaultSession(t, conn, wrapper, iamRepo)
+	_, _, err = repo.ActivateSession(ctx, activeSess.PublicId, activeSess.Version, []byte("tofu"))
+	require.NoError(t, err)
+
+	unrecognizedSessionId := "unrecognized_session_id"
+	got, err := repo.CheckIfNotActive(ctx, []string{unrecognizedSessionId, terminatedSession.PublicId, cancelingSess.PublicId, activeSess.PublicId, pendingSess.PublicId})
+	assert.NoError(t, err)
+	var gotIds []string
+	for _, g := range got {
+		gotIds = append(gotIds, g.SessionId)
+	}
+	assert.ElementsMatch(t, gotIds, []string{unrecognizedSessionId, terminatedSession.PublicId, cancelingSess.PublicId})
+}

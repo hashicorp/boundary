@@ -45,11 +45,24 @@ message SessionJobInfo {
   string session_id = 1; // @gotags: `class:"public"`
   SESSIONSTATUS status = 2;
   repeated Connection connections = 3;
+  SessionProcessingError processing_error = 4; // @gotags: `class:"public"`
+}
+
+enum SessionProcessingError {
+  SESSION_PROCESSING_ERROR_UNSPECIFIED = 0;
+  SESSION_PROCESSING_ERROR_UNRECOGNIZED = 1;
+}
+
+message MonitorSessionJobInfo {
+  string session_id = 1; // @gotags: `class:"public"`
+  SESSIONSTATUS status = 2; // @gotags: `class:"public"`
+  SessionProcessingError processing_error = 3; // @gotags: `class:"public"`
 }
 
 enum JOBTYPE {
   JOBTYPE_UNSPECIFIED = 0;
   JOBTYPE_SESSION = 1;
+  JOBTYPE_MONITOR_SESSION = 2;
 }
 
 message Job {
@@ -57,6 +70,7 @@ message Job {
   oneof job_info {
     // This value is specified when type is JOBTYPE_SESSION.
     SessionJobInfo session_info = 2;
+    MonitorSessionJobInfo monitor_session_info = 3;
   }
 }
 

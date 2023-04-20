@@ -393,15 +393,6 @@ update session_connection
 	public_id in (select public_id from connections_to_close)
 returning public_id;
 `
-	checkIfNotActive = `
-select session_id, state
-	from session_state ss
-where
-	(ss.state = 'canceling' or ss.state = 'terminated')
-	and ss.end_time is null
-	%s
-;
-`
 	deleteTerminated = `
 delete from session
 using session_state

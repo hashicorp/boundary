@@ -186,6 +186,28 @@ func TestWorkerStatusReport(t *testing.T) {
 			},
 		},
 		{
+			name: "unrecognized session",
+			caseFn: func(t *testing.T) testCase {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+
+				return testCase{
+					worker: worker,
+					req: []*session.StateReport{
+						{
+							SessionId: "unrecognized_session_id",
+							Status:    session.StatusActive,
+						},
+					},
+					want: []*session.StateReport{
+						{
+							SessionId:    "unrecognized_session_id",
+							Unrecognized: true,
+						},
+					},
+				}
+			},
+		},
+		{
 			name: "MultipleSessionsClosed",
 			caseFn: func(t *testing.T) testCase {
 				worker := server.TestKmsWorker(t, conn, wrapper)

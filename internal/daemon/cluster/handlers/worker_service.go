@@ -207,9 +207,23 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	stateReport := make([]*session.StateReport, 0, len(req.GetJobs()))
+	var monitoredSessionIds []string
 
 	for _, jobStatus := range req.GetJobs() {
 		switch jobStatus.Job.GetType() {
+		case pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION:
+			si := jobStatus.GetJob().GetMonitorSessionInfo()
+			if si == nil {
+				return nil, status.Error(codes.Internal, "Error getting monitored session info at status time")
+			}
+			switch si.Status {
+			case pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+				pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED:
+				// No need to see about canceling anything
+				continue
+			}
+
+			monitoredSessionIds = append(monitoredSessionIds, si.GetSessionId())
 		case pbs.JOBTYPE_JOBTYPE_SESSION:
 			si := jobStatus.GetJob().GetSessionInfo()
 			if si == nil {
@@ -267,14 +281,44 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 				Status:       session.StatusClosed.ProtoVal(),
 			})
 		}
+		processErr := pbs.SessionProcessingError_SESSION_PROCESSING_ERROR_UNSPECIFIED
+		if na.Unrecognized {
+			processErr = pbs.SessionProcessingError_SESSION_PROCESSING_ERROR_UNRECOGNIZED
+		}
 		ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
 			Job: &pbs.Job{
 				Type: pbs.JOBTYPE_JOBTYPE_SESSION,
 				JobInfo: &pbs.Job_SessionInfo{
 					SessionInfo: &pbs.SessionJobInfo{
-						SessionId:   na.SessionId,
-						Status:      na.Status.ProtoVal(),
-						Connections: connChanges,
+						SessionId:       na.SessionId,
+						Status:          na.Status.ProtoVal(),
+						Connections:     connChanges,
+						ProcessingError: processErr,
+					},
+				},
+			},
+			RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
+		})
+	}
+
+	nonActiveMonitoredSessions, err := sessRepo.CheckIfNotActive(ctx, monitoredSessionIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal,
+			"Error checking if monitored jobs are no longer active: %v", err)
+	}
+	for _, na := range nonActiveMonitoredSessions {
+		processErr := pbs.SessionProcessingError_SESSION_PROCESSING_ERROR_UNSPECIFIED
+		if na.Unrecognized {
+			processErr = pbs.SessionProcessingError_SESSION_PROCESSING_ERROR_UNRECOGNIZED
+		}
+		ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
+			Job: &pbs.Job{
+				Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
+				JobInfo: &pbs.Job_MonitorSessionInfo{
+					MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
+						SessionId:       na.SessionId,
+						Status:          na.Status.ProtoVal(),
+						ProcessingError: processErr,
 					},
 				},
 			},
