@@ -19,5 +19,4 @@ type SessionAuthorization struct {
 	AuthorizationToken string               `json:"authorization_token,omitempty"`
 	Endpoint           string               `json:"endpoint,omitempty"`
 	Credentials        []*SessionCredential `json:"credentials,omitempty"`
-	DefaultClientPort  uint32               `json:"default_client_port,omitempty"`
 }

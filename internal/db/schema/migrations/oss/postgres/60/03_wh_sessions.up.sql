@@ -128,7 +128,6 @@ begin;
   select * from host_target_address;
 
   -- replaced function in 26/03_wh_network_address_dimensions.up.sql
-  -- replaced in 68/01_target_default_client_port.up.sql
   create or replace function wh_upsert_host() returns trigger
   as $$
   declare
@@ -337,7 +336,6 @@ begin;
   end
   $$ language plpgsql;
 
-  -- Replaced in 68/01_target_default_client_port.up.sql
   create function wh_upsert_host_direct_network_address() returns trigger
   as $$
   declare

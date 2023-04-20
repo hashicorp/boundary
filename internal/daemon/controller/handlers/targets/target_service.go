@@ -1021,17 +1021,18 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 
 	sad := &pb.SessionAuthorizationData{
-		SessionId:       sess.PublicId,
-		TargetId:        t.GetPublicId(),
-		Scope:           authResults.Scope,
-		CreatedTime:     sess.CreateTime.GetTimestamp(),
-		Type:            t.GetType().String(),
-		Certificate:     sess.Certificate,
-		PrivateKey:      sess.CertificatePrivateKey,
-		HostId:          hostId,
-		Endpoint:        endpointUrl.String(),
-		WorkerInfo:      wl.WorkerList(selectedWorkers).WorkerInfos(),
-		ConnectionLimit: t.GetSessionConnectionLimit(),
+		SessionId:         sess.PublicId,
+		TargetId:          t.GetPublicId(),
+		Scope:             authResults.Scope,
+		CreatedTime:       sess.CreateTime.GetTimestamp(),
+		Type:              t.GetType().String(),
+		Certificate:       sess.Certificate,
+		PrivateKey:        sess.CertificatePrivateKey,
+		HostId:            hostId,
+		Endpoint:          endpointUrl.String(),
+		WorkerInfo:        wl.WorkerList(selectedWorkers).WorkerInfos(),
+		ConnectionLimit:   t.GetSessionConnectionLimit(),
+		DefaultClientPort: t.GetDefaultClientPort(),
 	}
 	marshaledSad, err := proto.Marshal(sad)
 	if err != nil {
@@ -1050,7 +1051,6 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		HostId:             hostId,
 		HostSetId:          hostSetId,
 		Endpoint:           endpointUrl.String(),
-		DefaultClientPort:  t.GetDefaultClientPort(),
 		Credentials:        creds,
 	}
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil

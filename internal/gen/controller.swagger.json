@@ -5531,12 +5531,6 @@
           },
           "description": "Output only. The credentials for this session.",
           "readOnly": true
-        },
-        "default_client_port": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Output only. A default port to listen on for client connections.",
-          "readOnly": true
         }
       },
       "description": "SessionAuthorization contains all fields related to authorization for a Session. It's in the Targets package because it's returned by a Target's authorize action."

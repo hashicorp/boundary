@@ -143,7 +143,6 @@ begin;
       from final;
 
   -- Replaces view in 16/02_wh_credential_dimension.up.sql
-  -- Replaced in 68/01_target_default_client_port.up.sql
   drop view whx_credential_dimension_target;
   create view whx_credential_dimension_target as
   select key,
@@ -181,7 +180,6 @@ begin;
   ;
 
   -- Replaces function in 16/03_wh_credential_dimension.up.sql
-  -- Replaced in 68/01_target_default_client_port.up.sql
   drop function wh_upsert_credential_dimension;
   create function wh_upsert_credential_dimension(p_session_id wt_public_id, p_library_id wt_public_id, p_credential_purpose wh_dim_text) returns wh_dim_key
   as $$

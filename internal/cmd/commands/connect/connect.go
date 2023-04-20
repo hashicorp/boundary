@@ -426,6 +426,10 @@ func (c *Command) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
+	if c.flagListenPort == 0 {
+		c.flagListenPort = int(c.sessionAuthzData.DefaultClientPort)
+	}
+
 	c.connectionsLeft.Store(c.sessionAuthzData.ConnectionLimit)
 	workerAddr := c.sessionAuthzData.GetWorkerInfo()[0].GetAddress()
 	workerHost, _, err := net.SplitHostPort(workerAddr)
@@ -459,10 +463,6 @@ func (c *Command) Run(args []string) (retCode int) {
 	transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		dialer := &tls.Dialer{Config: tlsConf}
 		return dialer.DialContext(ctx, network, addr)
-	}
-
-	if c.flagListenPort == 0 && c.sessionAuthz != nil {
-		c.flagListenPort = int(c.sessionAuthz.DefaultClientPort)
 	}
 
 	c.listener, err = net.ListenTCP("tcp", &net.TCPAddr{

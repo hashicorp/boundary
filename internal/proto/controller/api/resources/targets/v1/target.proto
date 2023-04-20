@@ -320,6 +320,9 @@ message SessionAuthorizationData {
 
   // Output only. Worker information. The first worker in the array should be prioritized.
   repeated WorkerInfo worker_info = 150 [json_name = "worker_info"];
+
+  // Output only. A default port to listen on for client connections.
+  uint32 default_client_port = 160 [json_name = "default_client_port"]; // @gotags: `class:"public"`
 }
 
 // SessionAuthorization contains all fields related to authorization for a Session. It's in the Targets package because it's returned by a Target's authorize action.
@@ -356,9 +359,6 @@ message SessionAuthorization {
 
   // Output only. The credentials for this session.
   repeated SessionCredential credentials = 110 [json_name = "credentials"];
-
-  // Output only. A default port to listen on for client connections.
-  uint32 default_client_port = 120 [json_name = "default_client_port"]; // @gotags: `class:"public"`
 }
 
 // The layout of the struct for "credential" field in SessionCredential for a username_password credential type.
