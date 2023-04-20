@@ -154,3 +154,15 @@ variable "docker_mirror" {
   type        = string
   default     = "docker.mirror.hashicorp.services"
 }
+
+variable "boundary_license" {
+  description = "Boundary enterprise license"
+  type        = string
+  default     = null
+}
+
+variable "boundary_binary_name" {
+  description = "Boundary binary name"
+  type        = string
+  default     = "boundary"
+}
