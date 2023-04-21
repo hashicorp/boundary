@@ -58,6 +58,7 @@ func (h targetHooks) NewTarget(projectId string, opt ...target.Option) (target.T
 			Name:                   opts.WithName,
 			Description:            opts.WithDescription,
 			DefaultPort:            opts.WithDefaultPort,
+			DefaultClientPort:      opts.WithDefaultClientPort,
 			SessionConnectionLimit: opts.WithSessionConnectionLimit,
 			SessionMaxSeconds:      opts.WithSessionMaxSeconds,
 			WorkerFilter:           opts.WithWorkerFilter,
@@ -175,6 +176,10 @@ func (t *Target) SetVersion(v uint32) {
 
 func (t *Target) SetDefaultPort(port uint32) {
 	t.DefaultPort = port
+}
+
+func (t *Target) SetDefaultClientPort(port uint32) {
+	t.DefaultClientPort = port
 }
 
 func (t *Target) SetCreateTime(ts *timestamp.Timestamp) {

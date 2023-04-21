@@ -426,6 +426,10 @@ func (c *Command) Run(args []string) (retCode int) {
 		return base.CommandUserError
 	}
 
+	if c.flagListenPort == 0 {
+		c.flagListenPort = int(c.sessionAuthzData.DefaultClientPort)
+	}
+
 	c.connectionsLeft.Store(c.sessionAuthzData.ConnectionLimit)
 	workerAddr := c.sessionAuthzData.GetWorkerInfo()[0].GetAddress()
 	workerHost, _, err := net.SplitHostPort(workerAddr)

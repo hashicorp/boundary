@@ -21,6 +21,7 @@ type Target interface {
 	GetPublicId() string
 	GetProjectId() string
 	GetDefaultPort() uint32
+	GetDefaultClientPort() uint32
 	GetName() string
 	GetDescription() string
 	GetVersion() uint32
@@ -42,6 +43,7 @@ type Target interface {
 	SetDescription(string)
 	SetVersion(uint32)
 	SetDefaultPort(uint32)
+	SetDefaultClientPort(uint32)
 	SetCreateTime(*timestamp.Timestamp)
 	SetUpdateTime(*timestamp.Timestamp)
 	SetSessionMaxSeconds(uint32)
@@ -161,6 +163,7 @@ func (t *targetView) targetSubtype(ctx context.Context, address string) (Target,
 	tt.SetName(t.Name)
 	tt.SetDescription(t.Description)
 	tt.SetDefaultPort(t.DefaultPort)
+	tt.SetDefaultClientPort(t.DefaultClientPort)
 	tt.SetCreateTime(t.CreateTime)
 	tt.SetUpdateTime(t.UpdateTime)
 	tt.SetSessionMaxSeconds(t.SessionMaxSeconds)

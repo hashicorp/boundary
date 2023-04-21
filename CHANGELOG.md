@@ -36,6 +36,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   for more information. ([PR](https://github.com/hashicorp/boundary/pull/3101))
 * roles: Perform additional validity checking on grants at submission time
   ([PR](https://github.com/hashicorp/boundary/pull/3081))
+* targets: The new `default_client_port` field allows specifying the default
+  port to use on the client side when connecting to a target, unless overridden
+  by the client via `-listen-port`
+  ([PR](https://github.com/hashicorp/boundary/pull/2767))
 
 ## 0.12.1 (2023/03/13)
 

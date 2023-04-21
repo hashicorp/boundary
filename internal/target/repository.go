@@ -509,6 +509,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		case strings.EqualFold("defaultport", f):
+		case strings.EqualFold("defaultclientport", f):
 		case strings.EqualFold("sessionmaxseconds", f):
 		case strings.EqualFold("sessionconnectionlimit", f):
 		case strings.EqualFold("workerfilter", f):
@@ -528,6 +529,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 			"Name":                   target.GetName(),
 			"Description":            target.GetDescription(),
 			"DefaultPort":            target.GetDefaultPort(),
+			"DefaultClientPort":      target.GetDefaultClientPort(),
 			"SessionMaxSeconds":      target.GetSessionMaxSeconds(),
 			"SessionConnectionLimit": target.GetSessionConnectionLimit(),
 			"WorkerFilter":           target.GetWorkerFilter(),

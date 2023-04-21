@@ -138,6 +138,54 @@ func DefaultBrokeredCredentialSourceIds() Option {
 	}
 }
 
+func WithSshTargetDefaultClientPort(inDefaultClientPort uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["default_client_port"] = inDefaultClientPort
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultSshTargetDefaultClientPort() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["default_client_port"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithTcpTargetDefaultClientPort(inDefaultClientPort uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["default_client_port"] = inDefaultClientPort
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultTcpTargetDefaultClientPort() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["default_client_port"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithSshTargetDefaultPort(inDefaultPort uint32) Option {
 	return func(o *options) {
 		raw, ok := o.postMap["attributes"]
