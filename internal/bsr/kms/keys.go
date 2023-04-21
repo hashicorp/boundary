@@ -51,6 +51,21 @@ type Keys struct {
 	l sync.RWMutex
 }
 
+// WrappedKeys contains the wrapped BSR and priv keys
+type WrappedKeys struct {
+	WrappedBsrKey  *wrapping.KeyInfo
+	WrappedPrivKey *wrapping.KeyInfo
+}
+
+// Unwrapped keys contains the unwrapped BSR and priv keys
+type UnwrappedKeys struct {
+	BsrKey  *wrapping.KeyInfo
+	PrivKey *wrapping.KeyInfo
+}
+
+// KeyUnwrapCallbackFunc is used by OpenSession to unwrap BSR and private keys
+type KeyUnwrapCallbackFunc func(WrappedKeys) (UnwrappedKeys, error)
+
 // CreateKeys creates new bsr keys, wrapping and signing keys as required
 // using the provided bsrWrapper. Supported options: WithRandomReader
 func CreateKeys(ctx context.Context, bsrWrapper wrapping.Wrapper, sessionId string, opt ...Option) (*Keys, error) {

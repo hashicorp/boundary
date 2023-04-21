@@ -138,6 +138,15 @@ func persistBsrSessionKeys(ctx context.Context, keys *kms.Keys, c *container) er
 	return nil
 }
 
+// OpenSession retrieves a BSR from storage using the sessionRecordingId and initializes it for reading.
+// Encryption keys necessary for checking signed files will be unwrapped using the keyUnwrapFn
+// Signature and checksum files will then be verified.
+// Fields on the underlying container will be populated so that the returned Session can be used for BSR
+// playback and conversion to formats such as asciinema
+func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*Session, error) {
+	panic("not implemented")
+}
+
 // NewConnection creates a Connection container for a given connection id.
 func (s *Session) NewConnection(ctx context.Context, meta *ConnectionMeta) (*Connection, error) {
 	const op = "bsr.(Session).NewConnection"
