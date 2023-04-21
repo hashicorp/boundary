@@ -6,6 +6,7 @@ package tcp
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/credential"
@@ -44,6 +45,12 @@ func (h targetHooks) Vet(ctx context.Context, t target.Target) error {
 	if tt.GetDefaultPort() == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing target default port")
 	}
+	if tt.GetDefaultPort() > math.MaxUint16 {
+		return errors.New(ctx, errors.InvalidParameter, op, "invalid default port number")
+	}
+	if tt.GetDefaultClientPort() > math.MaxUint16 {
+		return errors.New(ctx, errors.InvalidParameter, op, "invalid default client port number")
+	}
 	return nil
 }
 
@@ -66,8 +73,18 @@ func (h targetHooks) VetForUpdate(ctx context.Context, t target.Target, paths []
 	}
 
 	for _, f := range paths {
-		if strings.EqualFold("defaultport", f) && tt.GetDefaultPort() == 0 {
-			return errors.New(ctx, errors.InvalidParameter, op, "clearing or setting default port to zero")
+		if strings.EqualFold("defaultport", f) {
+			if tt.GetDefaultPort() == 0 {
+				return errors.New(ctx, errors.InvalidParameter, op, "clearing or setting default port to zero")
+			}
+			if tt.GetDefaultPort() > math.MaxUint16 {
+				return errors.New(ctx, errors.InvalidParameter, op, "invalid default port number")
+			}
+		}
+		if strings.EqualFold("defaultclientport", f) {
+			if tt.GetDefaultClientPort() > math.MaxUint16 {
+				return errors.New(ctx, errors.InvalidParameter, op, "invalid default client port number")
+			}
 		}
 	}
 
