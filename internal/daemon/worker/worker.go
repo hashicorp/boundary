@@ -75,9 +75,9 @@ type downstreamers interface {
 	RootId() string
 }
 
-// recorderCache updates the status updates with relevant recording
+// recorderManager updates the status updates with relevant recording
 // information
-type recorderCache any
+type recorderManager any
 
 // reverseConnReceiverFactory provides a simple factory which a Worker can use to
 // create its reverseConnReceiver
@@ -85,7 +85,7 @@ var reverseConnReceiverFactory func() reverseConnReceiver
 
 var recordingStorageFactory func(ctx context.Context, path string, plgClients map[string]plgpb.StoragePluginServiceClient, enableLoopback bool) (storage.RecordingStorage, error)
 
-var recorderCacheFactory func() recorderCache
+var recorderManagerFactory func(*Worker) (recorderManager, error)
 
 var initializeReverseGrpcClientCollectors = noopInitializePromCollectors
 
@@ -117,7 +117,7 @@ type Worker struct {
 
 	sessionManager session.Manager
 
-	recorderCache recorderCache
+	recorderManager recorderManager
 
 	controllerStatusConn *atomic.Value
 	everAuthenticated    *ua.Uint32
@@ -204,10 +204,6 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		w.downstreamReceiver = reverseConnReceiverFactory()
 	}
 
-	if recorderCacheFactory != nil {
-		w.recorderCache = recorderCacheFactory()
-	}
-
 	w.lastStatusSuccess.Store((*LastStatusInformation)(nil))
 	scheme := strconv.FormatInt(time.Now().UnixNano(), 36)
 	controllerResolver := manual.NewBuilderWithScheme(scheme)
@@ -290,6 +286,14 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	}
 	// FIXME: This is really ugly, but works.
 	session.CloseCallTimeout = w.statusCallTimeoutDuration
+
+	if recorderManagerFactory != nil {
+		var err error
+		w.recorderManager, err = recorderManagerFactory(w)
+		if err != nil {
+			return nil, fmt.Errorf("error calling recorderManagerFactory: %w", err)
+		}
+	}
 
 	var listenerCount int
 	for i := range conf.Listeners {

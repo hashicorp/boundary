@@ -331,4 +331,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "container is write only",
 		Kind:    State,
 	},
+	Closed: {
+		Message: "closed",
+		Kind:    State,
+	},
 }

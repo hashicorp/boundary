@@ -395,6 +395,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    WorkerNotFoundForRequest,
 			want: WorkerNotFoundForRequest,
 		},
+		{
+			name: "Closed",
+			c:    Closed,
+			want: Closed,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
