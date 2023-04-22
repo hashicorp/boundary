@@ -16,4 +16,18 @@ begin;
   comment on function wt_encode_base64_url_safe is
     'Encodes binary data into URL safe base64';
 
+  -- wt_url_safe_id is a domain that constrains the characters of a value to the
+  -- unreserved character set defined RFC 3986 Section 2.3. The valid characters are
+  -- the ASCII characters in the 'a-z', 'A-Z', or '0-9' ranges plus the four ASCII
+  -- characters '~', '-', '.', and '_'.
+  --
+  -- See https://www.rfc-editor.org/rfc/rfc3986.html#section-2.3
+  create domain wt_url_safe_id as text
+    constraint wt_url_safe_id_can_only_contain_unreserved_characters
+      check (value ~ '^[a-zA-Z0-9\-~\._]+$')
+    constraint wt_url_safe_id_must_be_more_than_10_characters
+      check (length(trim(value)) > 10);
+  comment on domain wt_url_safe_id is
+    'An ID that contains only URL safe characters';
+
 commit;
