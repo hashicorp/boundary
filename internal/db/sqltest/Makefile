@@ -29,6 +29,7 @@ TESTS ?= tests/setup/*.sql \
 		 tests/hcp/*/*.sql \
 		 tests/kms/*.sql \
 		 tests/plugin/*.sql \
+		 tests/history/*.sql \
 		 tests/recording/*.sql
 
 POSTGRES_DOCKER_IMAGE_BASE ?= postgres
