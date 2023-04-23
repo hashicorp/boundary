@@ -287,6 +287,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "unsupported operation for a kms worker",
 		Kind:    State,
 	},
+	WorkerNotFoundForRequest: {
+		Message: "worker not found with all conditions required for request",
+		Kind:    State,
+	},
 	QueueIsFull: {
 		Message: "queue is full",
 		Kind:    State,

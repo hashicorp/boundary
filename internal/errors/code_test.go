@@ -390,6 +390,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    StorageContainerWriteOnly,
 			want: StorageContainerWriteOnly,
 		},
+		{
+			name: "WorkerNotFoundForRequest",
+			c:    WorkerNotFoundForRequest,
+			want: WorkerNotFoundForRequest,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

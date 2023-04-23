@@ -63,6 +63,8 @@ const (
 	StorageContainerReadOnly  = 131 // StorageContainerReadOnly represents an error when a container is readonly and a write operation is attempted on it
 	StorageContainerWriteOnly = 132 // StorageContainerWriteOnly represents an error when a container is write only and a read operation is attempted on it
 
+	WorkerNotFoundForRequest = 133 // WorkerNotFoundForRequest represents an error when no appropriate worker is found which meets the conditions required to handle a request
+
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
 
