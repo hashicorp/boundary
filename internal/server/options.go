@@ -119,7 +119,15 @@ func WithUpdateTags(updateTags bool) Option {
 // WithWorkerTags provides worker tags.
 func WithWorkerTags(tags ...*Tag) Option {
 	return func(o *options) {
-		o.withWorkerTags = tags
+		newTags := []*Tag{}
+		for _, tag := range tags {
+			if tag != nil {
+				newTags = append(newTags, tag)
+			}
+		}
+		if len(newTags) > 0 {
+			o.withWorkerTags = tags
+		}
 	}
 }
 
