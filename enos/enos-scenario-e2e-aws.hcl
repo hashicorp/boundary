@@ -167,13 +167,53 @@ scenario "e2e_aws" {
     }
   }
 
+  step "create_isolated_worker" {
+    module     = module.worker
+    depends_on = [step.create_boundary_cluster]
+    variables {
+      vpc_name                  = step.create_base_infra.vpc_id
+      availability_zones        = step.create_base_infra.availability_zone_names
+      kms_key_arn               = step.create_base_infra.kms_key_arn
+      ubuntu_ami_id             = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      local_artifact_path       = step.build_boundary.artifact_path
+      boundary_install_dir      = local.boundary_install_dir
+      iam_instance_profile_name = step.create_boundary_cluster.iam_instance_profile_name
+      name_prefix               = step.create_boundary_cluster.name_prefix
+      cluster_tag               = step.create_boundary_cluster.cluster_tag
+      controller_addresses      = step.create_boundary_cluster.public_controller_addresses
+      controller_sg_id          = step.create_boundary_cluster.controller_aux_sg_id
+      worker_type_tags          = ["worker_e2e_test"]
+    }
+  }
+
+  step "create_isolated_target" {
+    module = module.target
+    depends_on = [
+      step.create_base_infra,
+      step.create_isolated_worker
+    ]
+
+    variables {
+      ami_id               = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
+      aws_ssh_keypair_name = var.aws_ssh_keypair_name
+      enos_user            = var.enos_user
+      instance_type        = var.target_instance_type
+      vpc_id               = step.create_base_infra.vpc_id
+      target_count         = 1
+      subnet_ids           = step.create_isolated_worker.subnet_ids
+      ingress_cidr         = ["10.13.9.0/24"]
+    }
+  }
+
   step "run_e2e_test" {
     module = module.test_e2e
     depends_on = [
       step.create_boundary_cluster,
       step.create_targets_with_tag1,
       step.create_targets_with_tag2,
-      step.iam_setup
+      step.iam_setup,
+      step.create_isolated_worker,
+      step.create_isolated_target
     ]
 
     variables {
@@ -193,6 +233,8 @@ scenario "e2e_aws" {
       aws_host_set_ips1        = step.create_targets_with_tag1.target_ips
       aws_host_set_filter2     = step.create_tag2_inputs.tag_string
       aws_host_set_ips2        = step.create_targets_with_tag2.target_ips
+      target_ip                = step.create_isolated_target.target_ips[0]
+      worker_tags              = step.create_isolated_worker.worker_tags
     }
   }
 

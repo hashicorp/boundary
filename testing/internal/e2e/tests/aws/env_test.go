@@ -14,7 +14,9 @@ type config struct {
 	AwsHostSetIps2     string `envconfig:"E2E_AWS_HOST_SET_IPS2" required:"true"`    // e.g. "[\"1.2.3.4\"]"
 	TargetSshKeyPath   string `envconfig:"E2E_SSH_KEY_PATH" required:"true"`         // e.g. "/Users/username/key.pem"
 	TargetSshUser      string `envconfig:"E2E_SSH_USER" required:"true"`             // e.g. "ubuntu"
-	TargetPort         string `envconfig:"E2E_SSH_PORT" required:"true"`
+	TargetPort         string `envconfig:"E2E_SSH_PORT" required:"true"`             // e.g. "22"
+	TargetIp           string `envconfig:"E2E_TARGET_IP" required:"true"`            // e.g. "192.168.0.1"
+	WorkerTags         string `envconfig:"E2E_WORKER_TAG" required:"true"`           // e.g. "[\"tag1\", \"tag2\"]"
 }
 
 func loadConfig() (*config, error) {
