@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
@@ -39,6 +40,7 @@ type workerServiceServer struct {
 	updateTimes         *sync.Map
 	kms                 *kms.Kms
 	livenessTimeToStale *atomic.Int64
+	controllerExt       intglobals.ControllerExtension
 }
 
 var (
@@ -73,6 +75,7 @@ func NewWorkerServiceServer(
 	updateTimes *sync.Map,
 	kms *kms.Kms,
 	livenessTimeToStale *atomic.Int64,
+	controllerExt intglobals.ControllerExtension,
 ) *workerServiceServer {
 	return &workerServiceServer{
 		serversRepoFn:       serversRepoFn,
@@ -83,6 +86,7 @@ func NewWorkerServiceServer(
 		updateTimes:         updateTimes,
 		kms:                 kms,
 		livenessTimeToStale: livenessTimeToStale,
+		controllerExt:       controllerExt,
 	}
 }
 
@@ -381,7 +385,16 @@ func egressFilterSelector(sessionInfo *session.Session) string {
 }
 
 // noProtocolContext doesn't provide any protocol context since tcp doesn't need any
-func noProtocolContext(context.Context, *session.Repository, *server.Repository, common.WorkerAuthRepoStorageFactory, *pbs.AuthorizeConnectionRequest, []string) (*anypb.Any, error) {
+func noProtocolContext(
+	context.Context,
+	*session.Repository,
+	*server.Repository,
+	common.WorkerAuthRepoStorageFactory,
+	*pbs.AuthorizeConnectionRequest,
+	[]string,
+	string,
+	intglobals.ControllerExtension,
+) (*anypb.Any, error) {
 	return nil, nil
 }
 
@@ -625,7 +638,16 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		ConnectionsLeft: authzSummary.ConnectionLimit,
 		Route:           route,
 	}
-	if pc, err := getProtocolContext(ctx, sessionRepo, serversRepo, ws.workerAuthRepoFn, req, route); err != nil {
+	if pc, err := getProtocolContext(
+		ctx,
+		sessionRepo,
+		serversRepo,
+		ws.workerAuthRepoFn,
+		req,
+		route,
+		ret.ConnectionId,
+		ws.controllerExt,
+	); err != nil {
 		return nil, err
 	} else {
 		ret.ProtocolContext = pc
