@@ -30,4 +30,19 @@ begin;
   comment on domain wt_url_safe_id is
     'An ID that contains only URL safe characters';
 
+  -- wt_url_safe_id is a function that generates a secure random ID of 14
+  -- characters suitable for use as a public or private ID. IDs generated with
+  -- this function will only contain characters from the unreserved character set
+  -- defined in RFC 3986 Section 2.3 making them safe for use in a URL.
+  -- See https://www.rfc-editor.org/rfc/rfc3986.html#section-2.3
+  create function wt_url_safe_id() returns text
+  as $$
+    select wt_encode_base64_url_safe(gen_random_bytes(10));
+  $$ language sql
+     volatile
+     parallel safe -- all of the functions called are parallel safe
+     cost 1;       -- all of the functions called are cost 1
+  comment on function wt_url_safe_id is
+    'Returns a random ID of 14 characters containing URL safe characters only';
+
 commit;
