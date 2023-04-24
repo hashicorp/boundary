@@ -18,7 +18,7 @@ const SessionRequestType = "session"
 
 // SessionRequest is a chunk to contain data for an SSH Session request
 type SessionRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.SessionRequest
 }
 
@@ -63,7 +63,7 @@ func NewSessionRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp, r
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &SessionRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		SessionRequest: &pssh.SessionRequest{
 			RequestType:       r.Type,
 			SenderChannel:     sigval.SenderChannel,

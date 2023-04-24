@@ -18,7 +18,7 @@ const CancelTCPIPForwardRequestType = "cancel-tcpip-forward"
 
 // CancelTCPIPForwardRequest is a chunk to contain data for an SSH Cancel TCIPIP Forward request
 type CancelTCPIPForwardRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.CancelTCPIPForwardRequest
 }
 
@@ -63,7 +63,7 @@ func NewCancelTCPIPForwardRequest(ctx context.Context, d bsr.Direction, t *bsr.T
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &CancelTCPIPForwardRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		CancelTCPIPForwardRequest: &pssh.CancelTCPIPForwardRequest{
 			RequestType:   r.Type,
 			WantReply:     r.WantReply,

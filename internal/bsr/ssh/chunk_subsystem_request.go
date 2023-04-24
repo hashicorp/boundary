@@ -18,7 +18,7 @@ const SubsystemRequestType = "subsystem"
 
 // SubsystemRequest is a chunk to contain data for an SSH Subsystem request
 type SubsystemRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.SubsystemRequest
 }
 
@@ -63,7 +63,7 @@ func NewSubsystemRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp,
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &SubsystemRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		SubsystemRequest: &pssh.SubsystemRequest{
 			RequestType:   r.Type,
 			WantReply:     r.WantReply,

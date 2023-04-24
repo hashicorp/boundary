@@ -18,7 +18,7 @@ const PtyRequestType = "pty-req"
 
 // PtyPRequest is a chunk to contain data for an SSH Pty request
 type PtyRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.PtyRequest
 }
 
@@ -63,7 +63,7 @@ func NewPtyRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp, r *gs
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &PtyRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		PtyRequest: &pssh.PtyRequest{
 			RequestType:             r.Type,
 			WantReply:               r.WantReply,

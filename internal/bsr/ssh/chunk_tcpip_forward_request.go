@@ -18,7 +18,7 @@ const TCPIPForwardRequestType = "tcpip-forward"
 
 // TCPIPForwardRequest is a chunk to contain data for an SSH TCPIP Forward request
 type TCPIPForwardRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.TCPIPForwardRequest
 }
 
@@ -63,7 +63,7 @@ func NewTCPIPForwardRequest(ctx context.Context, d bsr.Direction, t *bsr.Timesta
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &TCPIPForwardRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		TCPIPForwardRequest: &pssh.TCPIPForwardRequest{
 			RequestType:   r.Type,
 			WantReply:     r.WantReply,

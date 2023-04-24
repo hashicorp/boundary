@@ -18,7 +18,7 @@ const X11RequestType = "x11"
 
 // X11Request is a chunk to contain data for an SSH X11 request
 type X11Request struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.X11Request
 }
 
@@ -63,7 +63,7 @@ func NewX11Request(ctx context.Context, d bsr.Direction, t *bsr.Timestamp, r *gs
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &X11Request{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		X11Request: &pssh.X11Request{
 			RequestType:       r.Type,
 			SenderChannel:     sigval.SenderChannel,

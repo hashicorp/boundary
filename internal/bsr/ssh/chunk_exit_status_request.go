@@ -18,7 +18,7 @@ const ExitStatusRequestType = "exit-status"
 
 // ExitStatusRequest is a chunk to contain data for an SSH Exit Status request
 type ExitStatusRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.ExitStatusRequest
 }
 
@@ -63,7 +63,7 @@ func NewExitStatusRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &ExitStatusRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		ExitStatusRequest: &pssh.ExitStatusRequest{
 			RequestType: r.Type,
 			WantReply:   r.WantReply,

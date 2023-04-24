@@ -16,7 +16,7 @@ import (
 
 // UnknownRequest is a chunk to contain data for any unrecognized SSH request
 type UnknownRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.UnknownRequest
 }
 
@@ -54,7 +54,7 @@ func NewUnknownRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp, r
 	}
 
 	return &UnknownRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		UnknownRequest: &pssh.UnknownRequest{
 			RequestType: r.Type,
 			WantReply:   r.WantReply,

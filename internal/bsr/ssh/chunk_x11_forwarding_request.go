@@ -18,7 +18,7 @@ const X11ForwardingRequestType = "x11-req"
 
 // X11ForwardingRequest is a chunk to contain data for an SSH X11 Forwarding request
 type X11ForwardingRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.X11ForwardingRequest
 }
 
@@ -63,7 +63,7 @@ func NewX11ForwardingRequest(ctx context.Context, d bsr.Direction, t *bsr.Timest
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &X11ForwardingRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		X11ForwardingRequest: &pssh.X11ForwardingRequest{
 			RequestType:               r.Type,
 			WantReply:                 r.WantReply,

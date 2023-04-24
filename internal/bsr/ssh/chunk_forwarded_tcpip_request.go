@@ -18,7 +18,7 @@ const ForwardedTCPIPRequestType = "forwarded-tcpip"
 
 // ForwardedTCPIPRequest is a chunk to contain data for an SSH Forwarded TCPIP request
 type ForwardedTCPIPRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.ForwardedTCPIPRequest
 }
 
@@ -63,7 +63,7 @@ func NewForwardedTCPIPRequest(ctx context.Context, d bsr.Direction, t *bsr.Times
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &ForwardedTCPIPRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		ForwardedTCPIPRequest: &pssh.ForwardedTCPIPRequest{
 			RequestType:         r.Type,
 			SenderChannel:       sigval.SenderChannel,

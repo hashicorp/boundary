@@ -18,7 +18,7 @@ const XonXoffRequestType = "xon-xoff"
 
 // XonXoffRequest is a chunk to contain data for an SSH Xon Xoff request
 type XonXoffRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.XonXoffRequest
 }
 
@@ -63,7 +63,7 @@ func NewXonXoffRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp, r
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &XonXoffRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		XonXoffRequest: &pssh.XonXoffRequest{
 			RequestType: r.Type,
 			WantReply:   r.WantReply,

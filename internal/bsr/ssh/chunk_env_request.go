@@ -18,7 +18,7 @@ const EnvRequestType = "env"
 
 // EnvRequest is a chunk to contain data for an SSH Env request
 type EnvRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.EnvRequest
 }
 
@@ -63,7 +63,7 @@ func NewEnvRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp, r *gs
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &EnvRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		EnvRequest: &pssh.EnvRequest{
 			RequestType:   r.Type,
 			WantReply:     r.WantReply,

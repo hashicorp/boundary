@@ -18,7 +18,7 @@ const DirectTCPIPRequestType = "direct-tcpip"
 
 // DirectTCPIPRequest is a chunk to contain data for an SSH Direct TCPIP request
 type DirectTCPIPRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.DirectTCPIPRequest
 }
 
@@ -63,7 +63,7 @@ func NewDirectTCPIPRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestam
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &DirectTCPIPRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		DirectTCPIPRequest: &pssh.DirectTCPIPRequest{
 			RequestType:         r.Type,
 			SenderChannel:       sigval.SenderChannel,

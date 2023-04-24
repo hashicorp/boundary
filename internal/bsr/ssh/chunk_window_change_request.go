@@ -18,7 +18,7 @@ const WindowChangeRequestType = "window-change"
 
 // WindowChangeRequest is a chunk to contain data for an SSH Window Change request
 type WindowChangeRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.WindowChangeRequest
 }
 
@@ -63,7 +63,7 @@ func NewWindowChangeRequest(ctx context.Context, d bsr.Direction, t *bsr.Timesta
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &WindowChangeRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		WindowChangeRequest: &pssh.WindowChangeRequest{
 			RequestType:          r.Type,
 			WantReply:            r.WantReply,

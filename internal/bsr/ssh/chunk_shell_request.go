@@ -18,7 +18,7 @@ const ShellRequestType = "shell"
 
 // ShellRequest is a chunk to contain data for an SSH Shell request
 type ShellRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.ShellRequest
 }
 
@@ -59,7 +59,7 @@ func NewShellRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp, r *
 	}
 
 	reqData := &ShellRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		ShellRequest: &pssh.ShellRequest{
 			RequestType: r.Type,
 			WantReply:   r.WantReply,

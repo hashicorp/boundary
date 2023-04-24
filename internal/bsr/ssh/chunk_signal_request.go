@@ -18,7 +18,7 @@ const SignalRequestType = "signal"
 
 // SignalRequest is a chunk to contain data for an SSH Signal request
 type SignalRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.SignalRequest
 }
 
@@ -63,7 +63,7 @@ func NewSignalRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp, r 
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &SignalRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		SignalRequest: &pssh.SignalRequest{
 			RequestType: r.Type,
 			WantReply:   r.WantReply,

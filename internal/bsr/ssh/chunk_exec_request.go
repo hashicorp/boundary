@@ -18,7 +18,7 @@ const ExecRequestType = "exec"
 
 // ExecRequest is a chunk to contain data for an SSH Exec request
 type ExecRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.ExecRequest
 }
 
@@ -63,7 +63,7 @@ func NewExecRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp, r *g
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &ExecRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		ExecRequest: &pssh.ExecRequest{
 			RequestType: r.Type,
 			WantReply:   r.WantReply,

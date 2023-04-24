@@ -18,7 +18,7 @@ const BreakRequestType = "break"
 
 // BreakRequest is a chunk to contain data for an SSH Break request
 type BreakRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.BreakRequest
 }
 
@@ -63,7 +63,7 @@ func NewBreakRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp, r *
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &BreakRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		BreakRequest: &pssh.BreakRequest{
 			RequestType:   r.Type,
 			WantReply:     r.WantReply,

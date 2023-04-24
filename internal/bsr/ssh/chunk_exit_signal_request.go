@@ -18,7 +18,7 @@ const ExitSignalRequestType = "exit-signal"
 
 // ExitSignalRequest is a chunk to contain data for an SSH Exit Signal request
 type ExitSignalRequest struct {
-	bsr.BaseChunk
+	*bsr.BaseChunk
 	*pssh.ExitSignalRequest
 }
 
@@ -63,7 +63,7 @@ func NewExitSignalRequest(ctx context.Context, d bsr.Direction, t *bsr.Timestamp
 		return nil, fmt.Errorf("%s: unable to unmarshal payload: %w", op, err)
 	}
 	reqData := &ExitSignalRequest{
-		BaseChunk: *baseChunk,
+		BaseChunk: baseChunk,
 		ExitSignalRequest: &pssh.ExitSignalRequest{
 			RequestType:  r.Type,
 			WantReply:    r.WantReply,
