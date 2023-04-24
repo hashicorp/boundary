@@ -42,6 +42,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	fm "github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mr-tron/base58"
@@ -96,10 +97,11 @@ var (
 		action.List,
 	}
 
-	validateCredentialSourcesFn    = func(context.Context, subtypes.Subtype, []target.CredentialSource) error { return nil }
-	ValidateIngressWorkerFilterFn  = IngressWorkerFilterUnsupported
-	AuthorizeSessionWorkerFilterFn = AuthorizeSessionWithWorkerFilter
-	WorkerFilterDeprecationMessage = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
+	validateCredentialSourcesFn      = func(context.Context, subtypes.Subtype, []target.CredentialSource) error { return nil }
+	ValidateIngressWorkerFilterFn    = IngressWorkerFilterUnsupported
+	AuthorizeSessionWorkerFilterFn   = AuthorizeSessionWithWorkerFilter
+	PostSessionAuthorizationCallback = DefaultPostSessionAuthorizationCallback
+	WorkerFilterDeprecationMessage   = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
 )
 
 func IngressWorkerFilterUnsupported(string) error {
@@ -688,6 +690,10 @@ func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, select
 	return selectedWorkers, nil, nil
 }
 
+func DefaultPostSessionAuthorizationCallback(context.Context, intglobals.ControllerExtension, wrapping.Wrapper, *target.Repository, target.Target, *session.Session, *server.Worker) error {
+	return nil
+}
+
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (_ *pbs.AuthorizeSessionResponse, retErr error) {
 	const op = "targets.(Service).AuthorizeSession"
 	if err := validateAuthorizeSessionRequest(req); err != nil {
@@ -972,7 +978,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			if retErr != nil {
 				// Revoke issued credentials in case of errors.
 				// Use new context for deletion in case error is because of context cancellation.
-				deleteCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				deleteCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 				defer cancel()
 				err := credRepo.Revoke(deleteCtx, sess.PublicId)
 				retErr = multierror.Append(retErr, err)
@@ -1094,6 +1100,21 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		Endpoint:           endpointUrl.String(),
 		Credentials:        creds,
 	}
+
+	if err := PostSessionAuthorizationCallback(
+		ctx,
+		s.controllerExt,
+		s.kmsCache.GetExternalWrappers(ctx).Bsr(),
+		repo,
+		t,
+		sess,
+		protoWorker,
+	); err != nil {
+		// Errors here will automatically delete the session and associated resources
+		// using deferred statements above.
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }
 
