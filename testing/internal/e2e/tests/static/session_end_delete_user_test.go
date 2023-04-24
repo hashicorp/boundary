@@ -18,6 +18,8 @@ import (
 // TestCliSessionEndWhenUserIsDeleted tests that an active session is canceled when the respective
 // user who started the session is deleted.
 func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
+	deleted := false
+
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
 	require.NoError(t, err)
@@ -50,6 +52,16 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
+	t.Cleanup(func() {
+		if !deleted {
+			t.Log("Deleting user...")
+			boundary.AuthenticateAdminCli(t, context.Background())
+			output := e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("users", "delete", "-id", newUserId),
+			)
+			require.NoError(t, output.Err, string(output.Stderr))
+		}
+	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
 	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
@@ -89,6 +101,7 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	t.Log("Deleting user...")
 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("users", "delete", "-id", newUserId))
 	require.NoError(t, output.Err, string(output.Stderr))
+	deleted = true
 
 	// Check if session has terminated
 	t.Log("Waiting for session to be canceling/terminated...")
