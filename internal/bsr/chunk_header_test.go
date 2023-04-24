@@ -190,3 +190,145 @@ func TestHeaderMarshalData(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeHeader(t *testing.T) {
+	ctx := context.Background()
+
+	ts := time.Date(2023, time.March, 16, 10, 47, 3, 14, time.UTC)
+
+	cases := []struct {
+		name    string
+		bc      *bsr.BaseChunk
+		encoded []byte
+		want    bsr.Chunk
+		wantErr error
+	}{
+		{
+			"header-no-compression",
+			&bsr.BaseChunk{
+				Protocol:  "TEST",
+				Direction: bsr.Inbound,
+				Timestamp: bsr.NewTimestamp(ts),
+				Type:      bsr.ChunkHeader,
+			},
+			[]byte(
+				"" + // so everything else aligns better
+					"\x00" + // compression method
+					"\x00" + // encryption method
+					"sess_123456789" + // data
+					"",
+			),
+			&bsr.HeaderChunk{
+				BaseChunk: &bsr.BaseChunk{
+					Protocol:  "TEST",
+					Direction: bsr.Inbound,
+					Timestamp: bsr.NewTimestamp(ts),
+					Type:      bsr.ChunkHeader,
+				},
+				Compression: bsr.NoCompression,
+				Encryption:  bsr.NoEncryption,
+				SessionId:   "sess_123456789",
+			},
+			nil,
+		},
+		{
+			"header-gzip-compression",
+			&bsr.BaseChunk{
+				Protocol:  "TEST",
+				Direction: bsr.Inbound,
+				Timestamp: bsr.NewTimestamp(ts),
+				Type:      bsr.ChunkHeader,
+			},
+			[]byte(
+				"" + // so everything else aligns better
+					"\x01" + // compression method
+					"\x00" + // encryption method
+					"sess_123456789" + // data
+					"",
+			),
+			&bsr.HeaderChunk{
+				BaseChunk: &bsr.BaseChunk{
+					Protocol:  "TEST",
+					Direction: bsr.Inbound,
+					Timestamp: bsr.NewTimestamp(ts),
+					Type:      bsr.ChunkHeader,
+				},
+				Compression: bsr.GzipCompression,
+				Encryption:  bsr.NoEncryption,
+				SessionId:   "sess_123456789",
+			},
+			nil,
+		},
+		{
+			"header-wrong-type",
+			&bsr.BaseChunk{
+				Protocol:  "TEST",
+				Direction: bsr.Inbound,
+				Timestamp: bsr.NewTimestamp(ts),
+				Type:      "TEST",
+			},
+			[]byte(
+				"" + // so everything else aligns better
+					"\x01" + // compression method
+					"\x00" + // encryption method
+					"sess_123456789" + // data
+					"",
+			),
+			nil,
+			errors.New("bsr.DecodeHeader: invalid chunk type TEST"),
+		},
+		{
+			"header-nil-base-chunk",
+			nil,
+			[]byte(
+				"" + // so everything else aligns better
+					"\x01" + // compression method
+					"\x00" + // encryption method
+					"sess_123456789" + // data
+					"",
+			),
+			nil,
+			errors.New("bsr.DecodeHeader: nil base chunk: invalid parameter"),
+		},
+		{
+			"header-no-data",
+			&bsr.BaseChunk{
+				Protocol:  "TEST",
+				Direction: bsr.Inbound,
+				Timestamp: bsr.NewTimestamp(ts),
+				Type:      bsr.ChunkHeader,
+			},
+			nil,
+			nil,
+			errors.New("bsr.DecodeHeader: not enough data"),
+		},
+		{
+			"header-not-enough-data",
+			&bsr.BaseChunk{
+				Protocol:  "TEST",
+				Direction: bsr.Inbound,
+				Timestamp: bsr.NewTimestamp(ts),
+				Type:      bsr.ChunkHeader,
+			},
+			[]byte(
+				"" + // so everything else aligns better
+					"\x01" + // compression method
+					"",
+			),
+			nil,
+			errors.New("bsr.DecodeHeader: not enough data"),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := bsr.DecodeHeader(ctx, tc.bc, tc.encoded)
+			if tc.wantErr != nil {
+				require.EqualError(t, err, tc.wantErr.Error())
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}

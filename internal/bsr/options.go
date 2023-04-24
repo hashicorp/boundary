@@ -3,6 +3,8 @@
 
 package bsr
 
+import "github.com/hashicorp/boundary/internal/bsr/kms"
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -18,11 +20,13 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withSupportsMultiplex bool
+	withKeys              *kms.Keys
 }
 
 func getDefaultOptions() options {
 	return options{
 		withSupportsMultiplex: false,
+		withKeys:              nil,
 	}
 }
 
@@ -31,5 +35,12 @@ func getDefaultOptions() options {
 func WithSupportsMultiplex(b bool) Option {
 	return func(o *options) {
 		o.withSupportsMultiplex = b
+	}
+}
+
+// WithKeys is used to provide optional kms.Keys.
+func WithKeys(k *kms.Keys) Option {
+	return func(o *options) {
+		o.withKeys = k
 	}
 }

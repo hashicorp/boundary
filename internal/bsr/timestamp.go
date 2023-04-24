@@ -5,6 +5,7 @@ package bsr
 
 import (
 	"encoding/binary"
+	"fmt"
 	"time"
 )
 
@@ -41,6 +42,24 @@ func (t *Timestamp) marshal() []byte {
 	d = binary.BigEndian.AppendUint64(d, seconds)
 	d = binary.BigEndian.AppendUint32(d, nanoseconds)
 	return d
+}
+
+func decodeTimestamp(data []byte) (*Timestamp, error) {
+	const op = "bsr.decodeTimestamp"
+
+	var seconds uint64
+	var nanoseconds uint32
+
+	seconds, data = binary.BigEndian.Uint64(data[:secondSize]), data[secondSize:]
+	nanoseconds, data = binary.BigEndian.Uint32(data[:nanosecondSize]), data[nanosecondSize:]
+	if len(data) != 0 {
+		return nil, fmt.Errorf("%s: extra data", op)
+	}
+
+	tt := time.Unix(int64(seconds), int64(nanoseconds)).UTC()
+
+	t := Timestamp(tt)
+	return &t, nil
 }
 
 // AsTime returns a time.Time for a Timestamp.

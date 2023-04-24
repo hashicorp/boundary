@@ -52,3 +52,15 @@ func (w *nullCompressionWriter) Close() error {
 func newNullCompressionWriter(b *bytes.Buffer) io.WriteCloser {
 	return &nullCompressionWriter{Buffer: b}
 }
+
+type nullCompressionReader struct {
+	*bytes.Buffer
+}
+
+func (w *nullCompressionReader) Close() error {
+	return nil
+}
+
+func newNullCompressionReader(b *bytes.Buffer) io.ReadCloser {
+	return &nullCompressionReader{Buffer: b}
+}

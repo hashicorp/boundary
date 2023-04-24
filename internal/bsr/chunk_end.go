@@ -3,7 +3,12 @@
 
 package bsr
 
-import "context"
+import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/boundary/internal/bsr/internal/is"
+)
 
 // EndChunk identifies the end of the chunks in a BSR data file.
 // An EndChunk in a bsr data file is represented as:
@@ -36,4 +41,20 @@ func NewEnd(ctx context.Context, p Protocol, d Direction, t *Timestamp) (*EndChu
 	return &EndChunk{
 		BaseChunk: bc,
 	}, nil
+}
+
+// DecodeEnd will decode an EndChunk.
+func DecodeEnd(_ context.Context, bc *BaseChunk, data []byte) (Chunk, error) {
+	const op = "bsr.DecodeEnd"
+
+	if is.Nil(bc) {
+		return nil, fmt.Errorf("%s: nil base chunk: %w", op, ErrInvalidParameter)
+	}
+	if bc.Type != ChunkEnd {
+		return nil, fmt.Errorf("%s: invalid chunk type %s", op, bc.Type)
+	}
+	if len(data) != 0 {
+		return nil, fmt.Errorf("%s: %w", op, ErrEndChunkNotEmpty)
+	}
+	return &EndChunk{BaseChunk: bc}, nil
 }

@@ -126,3 +126,80 @@ func TestEndMarshalData(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeEnd(t *testing.T) {
+	ctx := context.Background()
+
+	ts := time.Date(2023, time.March, 16, 10, 47, 3, 14, time.UTC)
+
+	cases := []struct {
+		name    string
+		bc      *bsr.BaseChunk
+		encoded []byte
+		want    bsr.Chunk
+		wantErr error
+	}{
+		{
+			"header-no-compression",
+			&bsr.BaseChunk{
+				Protocol:  "TEST",
+				Direction: bsr.Inbound,
+				Timestamp: bsr.NewTimestamp(ts),
+				Type:      bsr.ChunkEnd,
+			},
+			[]byte(""),
+			&bsr.EndChunk{
+				BaseChunk: &bsr.BaseChunk{
+					Protocol:  "TEST",
+					Direction: bsr.Inbound,
+					Timestamp: bsr.NewTimestamp(ts),
+					Type:      bsr.ChunkEnd,
+				},
+			},
+			nil,
+		},
+		{
+			"header-wrong-type",
+			&bsr.BaseChunk{
+				Protocol:  "TEST",
+				Direction: bsr.Inbound,
+				Timestamp: bsr.NewTimestamp(ts),
+				Type:      "TEST",
+			},
+			[]byte(""),
+			nil,
+			errors.New("bsr.DecodeEnd: invalid chunk type TEST"),
+		},
+		{
+			"header-nil-base-chunk",
+			nil,
+			[]byte(""),
+			nil,
+			errors.New("bsr.DecodeEnd: nil base chunk: invalid parameter"),
+		},
+		{
+			"header-extra-data",
+			&bsr.BaseChunk{
+				Protocol:  "TEST",
+				Direction: bsr.Inbound,
+				Timestamp: bsr.NewTimestamp(ts),
+				Type:      bsr.ChunkEnd,
+			},
+			[]byte("foo"),
+			nil,
+			errors.New("bsr.DecodeEnd: end chunk not empty"),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := bsr.DecodeEnd(ctx, tc.bc, tc.encoded)
+			if tc.wantErr != nil {
+				require.EqualError(t, err, tc.wantErr.Error())
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}

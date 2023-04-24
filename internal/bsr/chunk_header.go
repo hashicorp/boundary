@@ -6,6 +6,8 @@ package bsr
 import (
 	"context"
 	"fmt"
+
+	"github.com/hashicorp/boundary/internal/bsr/internal/is"
 )
 
 // HeaderChunk is the first chunk in a BSR data file.
@@ -59,4 +61,27 @@ func NewHeader(ctx context.Context, p Protocol, d Direction, t *Timestamp, c Com
 		Encryption:  e,
 		SessionId:   sessionId,
 	}, nil
+}
+
+// DecodeHeader will decode a Header chunk.
+func DecodeHeader(_ context.Context, bc *BaseChunk, data []byte) (Chunk, error) {
+	const op = "bsr.DecodeHeader"
+
+	if is.Nil(bc) {
+		return nil, fmt.Errorf("%s: nil base chunk: %w", op, ErrInvalidParameter)
+	}
+	if bc.Type != ChunkHeader {
+		return nil, fmt.Errorf("%s: invalid chunk type %s", op, bc.Type)
+	}
+
+	if uint32(len(data)) < compressionSize+encryptionSize {
+		return nil, fmt.Errorf("%s: not enough data", op)
+	}
+
+	h := &HeaderChunk{BaseChunk: bc}
+	h.Compression, data = Compression(data[:compressionSize][0]), data[compressionSize:]
+	h.Encryption, data = Encryption(data[:encryptionSize][0]), data[encryptionSize:]
+	h.SessionId = string(data)
+
+	return h, nil
 }
