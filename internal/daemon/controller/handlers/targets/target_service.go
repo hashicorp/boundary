@@ -42,6 +42,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	fm "github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
@@ -687,7 +688,7 @@ func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, select
 	return selectedWorkers, nil, nil
 }
 
-func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
+func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (_ *pbs.AuthorizeSessionResponse, retErr error) {
 	const op = "targets.(Service).AuthorizeSession"
 	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
@@ -945,6 +946,16 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if retErr != nil {
+			// Delete created session in case of errors.
+			// Use new context for deletion in case error is because of context cancellation.
+			deleteCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_, err := sessionRepo.DeleteSession(deleteCtx, sess.PublicId)
+			retErr = multierror.Append(retErr, err)
+		}
+	}()
 
 	var dynamic []credential.Dynamic
 	var staticCredsById map[string]credential.Static
@@ -957,6 +968,18 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
+		defer func() {
+			if retErr != nil {
+				// Revoke issued credentials in case of errors.
+				// Use new context for deletion in case error is because of context cancellation.
+				deleteCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				err := credRepo.Revoke(deleteCtx, sess.PublicId)
+				retErr = multierror.Append(retErr, err)
+				// This leaves the credential in a state which will allow it to be cleaned up
+				// by the periodic credential cleanup job.
+			}
+		}()
 	}
 
 	if len(staticIds) > 0 {
@@ -1024,6 +1047,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 
 	if len(workerCreds) > 0 {
 		// store credentials in repo, worker will request creds when a connection is established
+		// These credentials are deleted with the session, so nothing extra to cleanup in case of errors.
 		err = sessionRepo.AddSessionCredentials(ctx, sess.ProjectId, sess.PublicId, workerCreds)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
