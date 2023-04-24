@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/oplog"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	plg "github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/util"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
@@ -71,7 +71,7 @@ func normalizeCatalogAttributes(ctx context.Context, plgClient plgpb.HostPluginS
 // not included in the returned *HostCatalog.
 //
 // Both c.CreateTime and c.UpdateTime are ignored.
-func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Option) (*HostCatalog, *hostplugin.Plugin, error) {
+func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Option) (*HostCatalog, *plg.Plugin, error) {
 	const op = "plugin.(Repository).CreateCatalog"
 	if c == nil {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "nil HostCatalog")
@@ -236,7 +236,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 // updated, along with any secrets included in the new request. This
 // request may alter the returned persisted state. Update of the
 // record in the database is aborted if this call fails.
-func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version uint32, fieldMask []string, _ ...Option) (*HostCatalog, *hostplugin.Plugin, int, error) {
+func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version uint32, fieldMask []string, _ ...Option) (*HostCatalog, *plg.Plugin, int, error) {
 	const op = "plugin.(Repository).UpdateCatalog"
 	if c == nil {
 		return nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "nil HostCatalog")
@@ -570,7 +570,7 @@ func (r *Repository) UpdateCatalog(ctx context.Context, c *HostCatalog, version 
 
 // LookupCatalog returns the HostCatalog for id. Returns nil, nil if no
 // HostCatalog is found for id.
-func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) (*HostCatalog, *hostplugin.Plugin, error) {
+func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) (*HostCatalog, *plg.Plugin, error) {
 	const op = "plugin.(Repository).LookupCatalog"
 	if id == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
@@ -590,7 +590,7 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) 
 }
 
 // ListCatalogs returns a slice of HostCatalogs for the project IDs. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...host.Option) ([]*HostCatalog, []*hostplugin.Plugin, error) {
+func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...host.Option) ([]*HostCatalog, []*plg.Plugin, error) {
 	const op = "plugin.(Repository).ListCatalogs"
 	if len(projectIds) == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
@@ -612,7 +612,7 @@ func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt 
 	for _, c := range hostCatalogs {
 		plgIds = append(plgIds, c.PluginId)
 	}
-	var plgs []*hostplugin.Plugin
+	var plgs []*plg.Plugin
 	if err := r.reader.SearchWhere(ctx, &plgs, "public_id in (?)", []any{plgIds}); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -725,12 +725,12 @@ func (r *Repository) getCatalog(ctx context.Context, id string) (*HostCatalog, *
 	return c, p, nil
 }
 
-func (r *Repository) getPlugin(ctx context.Context, plgId string) (*hostplugin.Plugin, error) {
+func (r *Repository) getPlugin(ctx context.Context, plgId string) (*plg.Plugin, error) {
 	const op = "plugin.(Repository).getPlugin"
 	if plgId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin id")
 	}
-	plg := hostplugin.NewPlugin()
+	plg := plg.NewPlugin()
 	plg.PublicId = plgId
 	if err := r.reader.LookupByPublicId(ctx, plg); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get host plugin with id %q", plgId)))
@@ -777,7 +777,7 @@ func toPluginCatalog(ctx context.Context, in *HostCatalog) (*pb.HostCatalog, err
 	return hc, nil
 }
 
-// toPluginCatalog converts a *HostCatalogSecret from storage to a
+// toPluginPersistedData converts a *HostCatalogSecret from storage to a
 // *plgpb.HostCatalogPersisted expected by a plugin. Project Id must be set.
 func toPluginPersistedData(ctx context.Context, kmsCache *kms.Kms, projectId string, cSecret *HostCatalogSecret) (*plgpb.HostCatalogPersisted, error) {
 	const op = "plugin.(Repository).getPersistedDataForCatalog"

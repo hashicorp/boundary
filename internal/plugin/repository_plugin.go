@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package host
+package plugin
 
 import (
 	"context"
@@ -17,27 +17,26 @@ import (
 // CreatePlugin inserts p into the repository and returns a new
 // Plugin containing the plugin's PublicId. p is not changed. p must
 // contain a valid ScopeID. p must not contain a PublicId. The PublicId is
-// generated and assigned by this method. opt is ignored.
+// generated and assigned by this method, unless supplied by WithPublicId
 //
 // Both p.Name and p.Description are optional. If p.Name is set, it must be
 // unique within p.ScopeID.
 //
-// Both p.CreateTime and c.UpdateTime are ignored.
+// p.CreateTime, p.UpdateTime, and p.Version are ignored and populated on creation.
+//
+// Supported options: WithPublicId
 func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, opt ...Option) (*Plugin, error) {
-	const op = "host.(Repository).CreatePlugin"
-	if p == nil {
+	const op = "plugin.(Repository).CreatePlugin"
+	switch {
+	case p == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil Plugin")
-	}
-	if p.Plugin == nil {
+	case p.Plugin == nil:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil embedded Plugin")
-	}
-	if p.ScopeId == "" {
+	case p.ScopeId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
-	}
-	if p.ScopeId != scope.Global.String() {
+	case p.ScopeId != scope.Global.String():
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "scope id is not 'global'")
-	}
-	if p.PublicId != "" {
+	case p.PublicId != "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
 	p = p.clone()
@@ -73,7 +72,7 @@ func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, opt ...Option)
 				db.WithOplog(oplogWrapper, metadata),
 			)
 			if err != nil {
-				return errors.Wrap(ctx, err, op)
+				return err
 			}
 			return nil
 		},
@@ -91,7 +90,7 @@ func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, opt ...Option)
 // LookupPlugin returns the Plugin for id. Returns nil, nil if no
 // Plugin is found for id.
 func (r *Repository) LookupPlugin(ctx context.Context, id string, _ ...Option) (*Plugin, error) {
-	const op = "host.(Repository).LookupPlugin"
+	const op = "plugin.(Repository).LookupPlugin"
 	if id == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
 	}
@@ -109,7 +108,7 @@ func (r *Repository) LookupPlugin(ctx context.Context, id string, _ ...Option) (
 // LookupPluginByName returns the Plugin for a given name. Returns nil, nil if no
 // Plugin is found with that plugin name.
 func (r *Repository) LookupPluginByName(ctx context.Context, name string, _ ...Option) (*Plugin, error) {
-	const op = "host.(Repository).LookupPluginByName"
+	const op = "plugin.(Repository).LookupPluginByName"
 	if name == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no plugin name")
 	}
@@ -126,7 +125,7 @@ func (r *Repository) LookupPluginByName(ctx context.Context, name string, _ ...O
 
 // ListPlugins returns a slice of Plugins for the scope IDs. WithLimit is the only option supported.
 func (r *Repository) ListPlugins(ctx context.Context, scopeIds []string, opt ...Option) ([]*Plugin, error) {
-	const op = "host.(Repository).ListPlugins"
+	const op = "plugin.(Repository).ListPlugins"
 	if len(scopeIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope id")
 	}
@@ -142,4 +141,35 @@ func (r *Repository) ListPlugins(ctx context.Context, scopeIds []string, opt ...
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return plugins, nil
+}
+
+// AddSupportFlag adds a flag in the database for the current plugin to specify that it is capable
+// of that type's functions
+func (r *Repository) AddSupportFlag(ctx context.Context, plugin *Plugin, flag PluginType) error {
+	const op = "plugin.(Repository).AddSupportFlag"
+
+	var p pluginSupportedTable
+
+	switch flag {
+	case PluginTypeHost:
+		p = &pluginHostSupported{
+			PublicId: plugin.GetPublicId(),
+		}
+	case PluginTypeStorage:
+		p = &pluginStorageSupported{
+			PublicId: plugin.GetPublicId(),
+		}
+	default:
+		return errors.New(ctx, errors.InvalidParameter, op, "plugin type does not exist")
+	}
+
+	if err := r.writer.Create(ctx, p, db.WithOnConflict(
+		&db.OnConflict{
+			Target: db.Columns{"public_id"},
+			Action: db.DoNothing(true),
+		},
+	)); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	return nil
 }

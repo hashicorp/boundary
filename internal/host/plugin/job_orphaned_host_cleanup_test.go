@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -107,7 +107,7 @@ func TestOrphanedHostCleanupJob_Run(t *testing.T) {
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 
 	plgServer := &loopback.TestPluginServer{}
-	plg := hostplg.TestPlugin(t, conn, "run")
+	plg := plugin.TestPlugin(t, conn, "run")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(plgServer),
 	}

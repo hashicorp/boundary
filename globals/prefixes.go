@@ -111,6 +111,9 @@ const (
 
 	// WorkerPrefix is the prefix for workers
 	WorkerPrefix = "w"
+
+	// PluginStorageBucketPrefix is the prefix for plugin storage buckets
+	PluginStorageBucketPrefix = "sb"
 )
 
 var prefixToResourceType = map[string]resource.Type{

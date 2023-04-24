@@ -23,7 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/libs/patchstruct"
 	"github.com/hashicorp/boundary/internal/oplog"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -44,8 +44,8 @@ func TestRepository_CreateSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "create")
-	unimplementedPlugin := hostplg.TestPlugin(t, conn, "unimplemented")
+	plg := plugin.TestPlugin(t, conn, "create")
+	unimplementedPlugin := plugin.TestPlugin(t, conn, "unimplemented")
 
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	unimplementedPluginCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
@@ -460,7 +460,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 	dbKmsCache := kms.TestKms(t, dbConn, dbWrapper)
 	_, projectScope := iam.TestScopes(t, iam.TestRepo(t, dbConn, dbWrapper))
 
-	testPlugin := hostplg.TestPlugin(t, dbConn, "test")
+	testPlugin := plugin.TestPlugin(t, dbConn, "test")
 	dummyPluginMap := map[string]plgpb.HostPluginServiceClient{
 		testPlugin.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &plgpb.UnimplementedHostPluginServiceServer{}},
 	}
@@ -1350,7 +1350,7 @@ func TestRepository_LookupSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "lookup")
+	plg := plugin.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
@@ -1419,7 +1419,7 @@ func TestRepository_Endpoints(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "endpoints")
+	plg := plugin.TestPlugin(t, conn, "endpoints")
 
 	hostlessCatalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	plgm := map[string]plgpb.HostPluginServiceClient{
@@ -1555,7 +1555,7 @@ func TestRepository_ListSets(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "list")
+	plg := plugin.TestPlugin(t, conn, "list")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
@@ -1627,7 +1627,7 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "listlimit")
+	plg := plugin.TestPlugin(t, conn, "listlimit")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
@@ -1706,7 +1706,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "create")
+	plg := plugin.TestPlugin(t, conn, "create")
 
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {

@@ -163,7 +163,6 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/host/store/host.pb.go
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/host/plugin/store/host.pb.go
-	@protoc-go-inject-tag -input=./internal/plugin/host/store/plugin.pb.go
 	@protoc-go-inject-tag -input=./internal/plugin/store/plugin.pb.go
 	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/store/account.pb.go
@@ -194,6 +193,7 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/ldap/store/ldap.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/upstream_message_service.pb.go
+	@protoc-go-inject-tag -input=./internal/storage/plugin/store/storage.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go

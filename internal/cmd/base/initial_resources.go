@@ -11,13 +11,15 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/util"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 )
@@ -550,52 +552,77 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	return tt, nil
 }
 
-// RegisterHostPlugin creates a host plugin in the database if not present.
-// It also registers the plugin in the shared map of running plugins.  Since
-// all boundary provided host plugins must have a name, a name is required
-// when calling RegisterHostPlugin and will be used even if WithName is provided.
-func (b *Server) RegisterHostPlugin(ctx context.Context, name string, plg plgpb.HostPluginServiceClient, opt ...hostplugin.Option) (*hostplugin.Plugin, error) {
-	if name == "" {
-		return nil, fmt.Errorf("no name provided when creating plugin.")
+// RegisterPlugin creates a plugin in the database if not present, and flags
+// the plugin type based on the flags parameter. If the PluginTypeHost flag is
+// set, it also registers the plugin in the shared map of running plugins.
+// Since all boundary provided plugins must have a name, a name is required
+// when calling RegisterPlugin and will be used even if WithName is provided.
+// hostClient must not be nil when host flag is included.
+func (b *Server) RegisterPlugin(ctx context.Context, name string, hostClient plgpb.HostPluginServiceClient, flags []plugin.PluginType, opt ...plugin.Option) (*plugin.Plugin, error) {
+	const op = "base.(Server).RegisterPlugin"
+	switch {
+	case len(flags) == 0:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "plugins must be initialized with at least one plugin type")
+	case name == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no name provided when creating plugin")
 	}
+
 	rw := db.New(b.Database)
 
-	kmsCache, err := kms.New(ctx, rw, rw)
-	if err != nil {
-		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	if b.Kms == nil {
+		var err error
+		if b.Kms, err = kms.New(ctx, rw, rw); err != nil {
+			return nil, fmt.Errorf("error creating kms cache: %w", err)
+		}
 	}
-	if err := kmsCache.AddExternalWrappers(
+	if err := b.Kms.AddExternalWrappers(
 		ctx,
 		kms.WithRootWrapper(b.RootKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	hpRepo, err := hostplugin.NewRepository(rw, rw, kmsCache)
+	hpRepo, err := plugin.NewRepository(ctx, rw, rw, b.Kms)
 	if err != nil {
-		return nil, fmt.Errorf("error creating host plugin repository: %w", err)
+		return nil, fmt.Errorf("error creating plugin repository: %w", err)
 	}
 
-	plugin, err := hpRepo.LookupPluginByName(ctx, name)
+	plg, err := hpRepo.LookupPluginByName(ctx, name)
 	if err != nil {
-		return nil, fmt.Errorf("error looking up host plugin by name: %w", err)
+		return nil, fmt.Errorf("error looking up plugin by name: %w", err)
 	}
 
-	if plugin == nil {
-		opt = append(opt, hostplugin.WithName(name))
-		plugin = hostplugin.NewPlugin(opt...)
-		plugin, err = hpRepo.CreatePlugin(ctx, plugin, opt...)
+	if plg == nil {
+		opt = append(opt, plugin.WithName(name))
+		plg = plugin.NewPlugin(opt...)
+		plg, err = hpRepo.CreatePlugin(ctx, plg, opt...)
 		if err != nil {
-			return nil, fmt.Errorf("error creating host plugin: %w", err)
+			return nil, fmt.Errorf("error creating plugin: %w", err)
 		}
 	}
 
-	if b.HostPlugins == nil {
-		b.HostPlugins = make(map[string]plgpb.HostPluginServiceClient)
+	// TODO: support flags should be moved to the create/update repo calls before plugins are exposed to users
+	for _, flag := range flags {
+		switch flag {
+		case plugin.PluginTypeHost:
+			if util.IsNil(hostClient) {
+				return nil, errors.New(ctx, errors.InvalidParameter, op, "no host client provided when initializing host plugin")
+			}
+			if err := hpRepo.AddSupportFlag(ctx, plg, plugin.PluginTypeHost); err != nil {
+				return nil, err
+			}
+			if b.HostPlugins == nil {
+				b.HostPlugins = make(map[string]plgpb.HostPluginServiceClient)
+			}
+			b.HostPlugins[plg.GetPublicId()] = hostClient
+		case plugin.PluginTypeStorage:
+			if err := hpRepo.AddSupportFlag(ctx, plg, plugin.PluginTypeStorage); err != nil {
+				return nil, err
+			}
+		}
 	}
-	b.HostPlugins[plugin.GetPublicId()] = plg
 
-	return plugin, nil
+	return plg, nil
 }
 
 // unprivilegedDevUserRoleSetup adds dev user to the role that grants

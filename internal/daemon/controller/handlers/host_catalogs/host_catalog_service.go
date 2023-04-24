@@ -17,12 +17,12 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/host/plugin"
+	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	pluginstore "github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/perms"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -62,7 +62,7 @@ var (
 			resource.HostSet: host_sets.CollectionActions,
 			resource.Host:    hosts.CollectionActions,
 		},
-		plugin.Subtype: {
+		hostplugin.Subtype: {
 			resource.HostSet: host_sets.CollectionActions,
 			resource.Host: action.ActionSet{
 				action.List,
@@ -179,8 +179,8 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 			switch item.(type) {
 			case *static.HostCatalog:
 				subtype = static.Subtype
-			case *plugin.HostCatalog:
-				subtype = plugin.Subtype
+			case *hostplugin.HostCatalog:
+				subtype = hostplugin.Subtype
 			}
 			if subtype != "" {
 				collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, item.GetPublicId())
@@ -191,7 +191,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 			}
 		}
 		switch hc := item.(type) {
-		case *plugin.HostCatalog:
+		case *hostplugin.HostCatalog:
 			if plgInfo, ok := pluginInfoMap[hc.GetPluginId()]; ok {
 				outputOpts = append(outputOpts, handlers.WithPlugin(plgInfo))
 			}
@@ -249,8 +249,8 @@ func (s Service) GetHostCatalog(ctx context.Context, req *pbs.GetHostCatalogRequ
 		switch hc.(type) {
 		case *static.HostCatalog:
 			subtype = static.Subtype
-		case *plugin.HostCatalog:
-			subtype = plugin.Subtype
+		case *hostplugin.HostCatalog:
+			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
 			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
@@ -306,8 +306,8 @@ func (s Service) CreateHostCatalog(ctx context.Context, req *pbs.CreateHostCatal
 		switch hc.(type) {
 		case *static.HostCatalog:
 			subtype = static.Subtype
-		case *plugin.HostCatalog:
-			subtype = plugin.Subtype
+		case *hostplugin.HostCatalog:
+			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
 			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
@@ -369,8 +369,8 @@ func (s Service) UpdateHostCatalog(ctx context.Context, req *pbs.UpdateHostCatal
 		switch hc.(type) {
 		case *static.HostCatalog:
 			subtype = static.Subtype
-		case *plugin.HostCatalog:
-			subtype = plugin.Subtype
+		case *hostplugin.HostCatalog:
+			subtype = hostplugin.Subtype
 		}
 		if subtype != "" {
 			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, hc.GetPublicId())
@@ -421,7 +421,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Catalog, *plu
 			return nil, nil, handlers.NotFoundErrorf("Host Catalog %q doesn't exist.", id)
 		}
 		cat = hc
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginHostRepoFn()
 		if err != nil {
 			return nil, nil, err
@@ -491,7 +491,7 @@ func (s Service) createStaticInRepo(ctx context.Context, projId string, item *pb
 	return out, nil
 }
 
-func (s Service) createPluginInRepo(ctx context.Context, projId string, req *pbs.CreateHostCatalogRequest) (*plugin.HostCatalog, *plugins.PluginInfo, error) {
+func (s Service) createPluginInRepo(ctx context.Context, projId string, req *pbs.CreateHostCatalogRequest) (*hostplugin.HostCatalog, *plugins.PluginInfo, error) {
 	const op = "host_catalogs.(Service).createPluginInRepo"
 	item := req.GetItem()
 	pluginId := item.GetPluginId()
@@ -564,7 +564,7 @@ func (s Service) updateStaticInRepo(ctx context.Context, projId, id string, mask
 	return out, nil
 }
 
-func (s Service) updatePluginInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*plugin.HostCatalog, *plugins.PluginInfo, error) {
+func (s Service) updatePluginInRepo(ctx context.Context, projId, id string, mask []string, item *pb.HostCatalog) (*hostplugin.HostCatalog, *plugins.PluginInfo, error) {
 	const op = "host_catalogs.(Service).updatePluginInRepo"
 	h, err := toStoragePluginCatalog(ctx, projId, "", item)
 	if err != nil {
@@ -596,7 +596,7 @@ func (s Service) updateInRepo(ctx context.Context, projId string, req *pbs.Updat
 	switch subtypes.SubtypeFromId(domain, req.GetId()) {
 	case static.Subtype:
 		hc, err = s.updateStaticInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		hc, plg, err = s.updatePluginInRepo(ctx, projId, req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	}
 	return
@@ -615,7 +615,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		if err != nil {
 			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete host"))
 		}
-	case plugin.Subtype:
+	case hostplugin.Subtype:
 		repo, err := s.pluginHostRepoFn()
 		if err != nil {
 			return false, errors.Wrap(ctx, err, op)
@@ -669,7 +669,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			}
 			parentId = cat.GetProjectId()
 			opts = append(opts, auth.WithId(id))
-		case plugin.Subtype:
+		case hostplugin.Subtype:
 			repo, err := s.pluginHostRepoFn()
 			if err != nil {
 				res.Error = err
@@ -692,7 +692,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toPluginInfo(plg *hostplugin.Plugin) *plugins.PluginInfo {
+func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {
 	if plg == nil {
 		return nil
 	}
@@ -722,8 +722,8 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 		switch in.(type) {
 		case *static.HostCatalog:
 			out.Type = static.Subtype.String()
-		case *plugin.HostCatalog:
-			out.Type = plugin.Subtype.String()
+		case *hostplugin.HostCatalog:
+			out.Type = hostplugin.Subtype.String()
 		}
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
@@ -754,7 +754,7 @@ func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.
 		out.AuthorizedCollectionActions = opts.WithAuthorizedCollectionActions
 	}
 	switch h := in.(type) {
-	case *plugin.HostCatalog:
+	case *hostplugin.HostCatalog:
 		if outputFields.Has(globals.PluginIdField) {
 			out.PluginId = h.GetPluginId()
 		}
@@ -793,22 +793,22 @@ func toStorageStaticCatalog(ctx context.Context, projectId string, item *pb.Host
 	return hc, nil
 }
 
-func toStoragePluginCatalog(ctx context.Context, projectId, plgId string, item *pb.HostCatalog) (*plugin.HostCatalog, error) {
+func toStoragePluginCatalog(ctx context.Context, projectId, plgId string, item *pb.HostCatalog) (*hostplugin.HostCatalog, error) {
 	const op = "host_catalog_service.toStoragePluginCatalog"
-	var opts []plugin.Option
+	var opts []hostplugin.Option
 	if name := item.GetName(); name != nil {
-		opts = append(opts, plugin.WithName(item.GetName().GetValue()))
+		opts = append(opts, hostplugin.WithName(item.GetName().GetValue()))
 	}
 	if desc := item.GetDescription(); desc != nil {
-		opts = append(opts, plugin.WithDescription(desc.GetValue()))
+		opts = append(opts, hostplugin.WithDescription(desc.GetValue()))
 	}
 	if attrs := item.GetAttributes(); attrs != nil {
-		opts = append(opts, plugin.WithAttributes(attrs))
+		opts = append(opts, hostplugin.WithAttributes(attrs))
 	}
 	if secrets := item.GetSecrets(); secrets != nil {
-		opts = append(opts, plugin.WithSecrets(secrets))
+		opts = append(opts, hostplugin.WithSecrets(secrets))
 	}
-	hc, err := plugin.NewHostCatalog(ctx, projectId, plgId, opts...)
+	hc, err := hostplugin.NewHostCatalog(ctx, projectId, plgId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for creation"))
 	}
@@ -837,7 +837,7 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 		}
 		switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
 		case static.Subtype:
-		case plugin.Subtype:
+		case hostplugin.Subtype:
 			if req.GetItem().GetPlugin() != nil {
 				badFields[globals.PluginField] = "This is a read only field."
 			}
@@ -850,7 +850,7 @@ func validateCreateRequest(req *pbs.CreateHostCatalogRequest) error {
 				badFields[globals.PluginNameField] = "Can't set the plugin id field along with this field."
 			}
 		default:
-			badFields[globals.TypeField] = fmt.Sprintf("This is a required field and must be either %q or %q.", static.Subtype.String(), plugin.Subtype.String())
+			badFields[globals.TypeField] = fmt.Sprintf("This is a required field and must be either %q or %q.", static.Subtype.String(), hostplugin.Subtype.String())
 		}
 		return badFields
 	})
@@ -870,8 +870,8 @@ func validateUpdateRequest(req *pbs.UpdateHostCatalogRequest) error {
 			if req.GetItem().GetPlugin() != nil {
 				badFields[globals.PluginField] = "This field is unused for this type of host catalog."
 			}
-		case plugin.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != plugin.Subtype {
+		case hostplugin.Subtype:
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != hostplugin.Subtype {
 				badFields[globals.TypeField] = "Cannot modify resource type."
 			}
 			if req.GetItem().GetPlugin() != nil {

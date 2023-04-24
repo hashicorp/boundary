@@ -19,9 +19,9 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
-	hostplgstore "github.com/hashicorp/boundary/internal/plugin/host/store"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
+	plgstore "github.com/hashicorp/boundary/internal/plugin/store"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +38,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
 
-	plg := hostplg.TestPlugin(t, conn, "create")
+	plg := plugin.TestPlugin(t, conn, "create")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&plgpb.UnimplementedHostPluginServiceServer{}),
 	}
@@ -229,7 +229,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 			require.NotNil(repo)
 
 			// Check again, but via performing an explicit list
-			var gotPlg *hostplg.Plugin
+			var gotPlg *plugin.Plugin
 			got, gotPlg, err = repo.ListHostsByCatalogId(ctx, in.catalog.GetPublicId())
 			require.NoError(err)
 			assert.Len(got, len(in.phs))
@@ -252,7 +252,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 				cmp.Diff(
 					plg,
 					gotPlg,
-					cmpopts.IgnoreUnexported(hostplg.Plugin{}, hostplgstore.Plugin{}),
+					cmpopts.IgnoreUnexported(plugin.Plugin{}, plgstore.Plugin{}),
 					cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
 				),
 			)
@@ -280,7 +280,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 					cmp.Diff(
 						plg,
 						gotPlg,
-						cmpopts.IgnoreUnexported(hostplg.Plugin{}, hostplgstore.Plugin{}),
+						cmpopts.IgnoreUnexported(plugin.Plugin{}, plgstore.Plugin{}),
 						cmpopts.IgnoreTypes(&timestamp.Timestamp{}),
 					),
 				)

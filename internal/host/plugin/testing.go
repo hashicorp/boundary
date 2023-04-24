@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -48,7 +48,7 @@ func TestCatalog(t testing.TB, conn *db.DB, projectId, pluginId string, opt ...O
 	require.NoError(t, err)
 	assert.NotNil(t, cat)
 
-	plg := hostplugin.NewPlugin()
+	plg := plugin.NewPlugin()
 	plg.PublicId = pluginId
 	require.NoError(t, w.LookupByPublicId(ctx, plg))
 
@@ -77,7 +77,7 @@ func TestSet(t testing.TB, conn *db.DB, kmsCache *kms.Kms, sched *scheduler.Sche
 	require.NoError(err)
 	require.NotNil(set)
 
-	plg := hostplugin.NewPlugin()
+	plg := plugin.NewPlugin()
 	plg.PublicId = hc.GetPluginId()
 	require.NoError(rw.LookupByPublicId(ctx, plg))
 

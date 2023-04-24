@@ -1,16 +1,16 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package host
+package plugin
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 )
 
@@ -28,10 +28,10 @@ func TestRepository_New(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		args      args
-		want      *Repository
-		wantIsErr errors.Code
+		name    string
+		args    args
+		want    *Repository
+		wantErr string
 	}{
 		{
 			name: "valid",
@@ -69,8 +69,8 @@ func TestRepository_New(t *testing.T) {
 				w:   rw,
 				kms: kmsCache,
 			},
-			want:      nil,
-			wantIsErr: errors.InvalidParameter,
+			want:    nil,
+			wantErr: "nil db.Reader",
 		},
 		{
 			name: "nil-writer",
@@ -79,8 +79,8 @@ func TestRepository_New(t *testing.T) {
 				w:   nil,
 				kms: kmsCache,
 			},
-			want:      nil,
-			wantIsErr: errors.InvalidParameter,
+			want:    nil,
+			wantErr: "nil db.Writer",
 		},
 		{
 			name: "nil-kms",
@@ -89,8 +89,8 @@ func TestRepository_New(t *testing.T) {
 				w:   rw,
 				kms: nil,
 			},
-			want:      nil,
-			wantIsErr: errors.InvalidParameter,
+			want:    nil,
+			wantErr: "nil kms",
 		},
 		{
 			name: "all-nils",
@@ -99,17 +99,18 @@ func TestRepository_New(t *testing.T) {
 				w:   nil,
 				kms: nil,
 			},
-			want:      nil,
-			wantIsErr: errors.InvalidParameter,
+			want:    nil,
+			wantErr: "nil db.Reader", // the first param in the switch
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
-			if tt.wantIsErr != 0 {
-				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
+			ctx := context.Background()
+			got, err := NewRepository(ctx, tt.args.r, tt.args.w, tt.args.kms, tt.args.opts...)
+			if tt.wantErr != "" {
+				assert.ErrorContains(err, tt.wantErr)
 				assert.Nil(got)
 				return
 			}

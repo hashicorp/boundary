@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
@@ -27,7 +27,7 @@ func Test_TestCatalogs(t *testing.T) {
 	require.NotNil(proj)
 	assert.NotEmpty(proj.GetPublicId())
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
@@ -48,7 +48,7 @@ func Test_TestSet(t *testing.T) {
 	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
@@ -66,7 +66,7 @@ func Test_TestHosts(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
@@ -89,7 +89,7 @@ func Test_TestSetMembers(t *testing.T) {
 	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
@@ -113,7 +113,7 @@ func Test_TestRunSetSync(t *testing.T) {
 	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 	pluginServer := &loopback.TestPluginServer{}

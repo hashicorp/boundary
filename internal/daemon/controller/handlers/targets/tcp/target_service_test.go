@@ -33,11 +33,11 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
-	"github.com/hashicorp/boundary/internal/host/plugin"
+	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
@@ -104,8 +104,8 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	vaultCredRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)
@@ -1366,9 +1366,9 @@ func TestAddTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test")
-	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
+	plg := plugin.TestPlugin(t, conn, "test")
+	pluginHc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := hostplugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
@@ -1528,9 +1528,9 @@ func TestSetTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test")
-	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
+	plg := plugin.TestPlugin(t, conn, "test")
+	pluginHc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := hostplugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
@@ -1678,9 +1678,9 @@ func TestRemoveTargetHostSources(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
-	plg := host.TestPlugin(t, conn, "test")
-	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginHs := plugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
+	plg := plugin.TestPlugin(t, conn, "test")
+	pluginHc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginHs := hostplugin.TestSet(t, conn, kms, sche, pluginHc, map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
@@ -2455,7 +2455,7 @@ func TestAuthorizeSession(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(loopback.TestPluginHostServer{
 			ListHostsFn: func(_ context.Context, req *plgpb.ListHostsRequest) (*plgpb.ListHostsResponse, error) {
@@ -2480,8 +2480,8 @@ func TestAuthorizeSession(t *testing.T) {
 			},
 		}),
 	}
-	pluginHostRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	pluginHostRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 
 	loginName := "foo@bar.com"
@@ -2527,11 +2527,11 @@ func TestAuthorizeSession(t *testing.T) {
 	hWithPort, _, err = staticRepo.UpdateHost(ctx, hcWithPort.GetProjectId(), hWithPort, hWithPort.GetVersion(), []string{"address"})
 	require.NoError(t, err)
 
-	phc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	phs := plugin.TestSet(t, conn, kms, sche, phc, plgm, plugin.WithPreferredEndpoints([]string{"cidr:10.0.0.0/24"}))
+	phc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	phs := hostplugin.TestSet(t, conn, kms, sche, phc, plgm, hostplugin.WithPreferredEndpoints([]string{"cidr:10.0.0.0/24"}))
 
 	// Sync the boundary db from the plugins
-	plugin.TestRunSetSync(t, conn, kms, plgm)
+	hostplugin.TestRunSetSync(t, conn, kms, plgm)
 
 	v := vault.NewTestVaultServer(t)
 	v.MountPKI(t, vault.WithTestMountPath("pki/"+userName))
@@ -2740,8 +2740,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -3320,8 +3320,8 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginHostRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	vaultCredRepoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(rw, rw, kms, sche)

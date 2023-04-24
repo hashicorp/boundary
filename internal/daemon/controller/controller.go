@@ -33,7 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/cleaner"
@@ -44,7 +44,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
-	"github.com/hashicorp/boundary/sdk/pbs/plugin"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
@@ -257,15 +257,15 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				return nil, fmt.Errorf("error creating loopback plugin: %w", err)
 			}
 			plg := loopback.NewWrappingPluginHostClient(lp)
-			opts := []host.Option{
-				host.WithDescription("Provides an initial loopback storage and host plugin in Boundary"),
-				host.WithPublicId(conf.DevLoopbackPluginId),
+			opts := []plugin.Option{
+				plugin.WithDescription("Provides an initial loopback storage and host plugin in Boundary"),
+				plugin.WithPublicId(conf.DevLoopbackPluginId),
 			}
 			// TODO(storage): Register loopback as storage supported
-			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
+			if _, err = conf.RegisterPlugin(ctx, "loopback", plg, []plugin.PluginType{plugin.PluginTypeHost}, opts...); err != nil {
 				return nil, err
 			}
-		case base.EnabledPluginHostAzure, base.EnabledPluginAws:
+		case base.EnabledPluginHostAzure:
 			pluginType := strings.ToLower(enabledPlugin.String())
 			client, cleanup, err := external_plugins.CreateHostPlugin(
 				ctx,
@@ -280,14 +280,32 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
 			}
 			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
-			if _, err := conf.RegisterHostPlugin(ctx, pluginType, client, host.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
+			}
+		case base.EnabledPluginAws:
+			pluginType := strings.ToLower(enabledPlugin.String())
+			client, cleanup, err := external_plugins.CreateHostPlugin(
+				ctx,
+				pluginType,
+				external_plugins.WithPluginOptions(
+					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+					pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+				),
+				external_plugins.WithLogger(pluginLogger.Named(pluginType)),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
+			}
+			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost, plugin.PluginTypeStorage}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
 				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
 		}
 	}
 
 	if conf.HostPlugins == nil {
-		conf.HostPlugins = make(map[string]plugin.HostPluginServiceClient)
+		conf.HostPlugins = make(map[string]plgpb.HostPluginServiceClient)
 	}
 
 	// Set up repo stuff
@@ -358,8 +376,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
 		return pluginhost.NewRepository(dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
 	}
-	c.HostPluginRepoFn = func() (*host.Repository, error) {
-		return host.NewRepository(dbase, dbase, c.kms)
+	c.HostPluginRepoFn = func() (*plugin.Repository, error) {
+		return plugin.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(dbase, dbase, c.kms,
