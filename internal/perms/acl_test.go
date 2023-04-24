@@ -391,7 +391,7 @@ func TestACL_ListPermissions(t *testing.T) {
 		expPermissions []Permission
 	}{
 		{
-			name: "Requested scope(s) not present in ACL scope map",
+			name: "scope_not_present_in_scope_map",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -403,11 +403,11 @@ func TestACL_ListPermissions(t *testing.T) {
 				"o_this_one_too":       nil,
 			},
 			resourceType:   resource.Session,
-			actionSet:      action.ActionSet{action.List, action.Read},
+			actionSet:      action.ActionSet{action.Read},
 			expPermissions: []Permission{},
 		},
 		{
-			name: "Requested resource mismatch",
+			name: "requested_resource_mismatch",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -416,11 +416,11 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType:   resource.Session, // We're requesting sessions.
-			actionSet:      action.ActionSet{action.List, action.Read},
+			actionSet:      action.ActionSet{action.Read},
 			expPermissions: []Permission{},
 		},
 		{
-			name: "Requested actions not available for the requested scope id",
+			name: "requested_actions_not_available_for_requested_scope_id",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -429,11 +429,11 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType:   resource.Session,
-			actionSet:      action.ActionSet{action.List, action.Read},
+			actionSet:      action.ActionSet{action.Read},
 			expPermissions: []Permission{},
 		},
 		{
-			name: "No specific id or wildcard provided for `id` field",
+			name: "no_specific_id_or_wildcard_provided",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -442,11 +442,11 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType:   resource.Session,
-			actionSet:      action.ActionSet{action.List, action.Read},
+			actionSet:      action.ActionSet{action.Read},
 			expPermissions: []Permission{},
 		},
 		{
-			name: "Allow all ids",
+			name: "allow_all_ids",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -455,7 +455,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.Read},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -468,7 +468,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "Allow all ids, :self actions",
+			name: "allow_all_ids_read:self_action",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -477,7 +477,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.ReadSelf},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -490,7 +490,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "Allow specific IDs",
+			name: "allow_specific_ids",
 			aclGrants: []scopeGrant{
 				{
 					scope: "o_1",
@@ -503,7 +503,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.Read},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -516,7 +516,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "No specific type 1",
+			name: "no_specific_type_1",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -525,7 +525,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.ReadSelf},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -538,7 +538,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "List + No-op action with id wildcard",
+			name: "list_and_noop_action_with_wildcard_id",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -560,7 +560,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "List + No-op action with id wildcard, read requested",
+			name: "list_and_noop_action_with_wildcard_id_only_read_action_available",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -573,7 +573,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			expPermissions: []Permission{},
 		},
 		{
-			name: "List + No-op action with specific ids",
+			name: "list_and_noop_action_with_pinned_ids",
 			aclGrants: []scopeGrant{
 				{
 					scope: "o_1",
@@ -599,7 +599,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "No specific type 2",
+			name: "no_specific_type_2",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -608,7 +608,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Host,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.ReadSelf},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -621,7 +621,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "Grant hierarchy is respected",
+			name: "grant_hierarchy_is_respected",
 			aclGrants: []scopeGrant{
 				{
 					scope: "o_1",
@@ -646,7 +646,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "Full access 1",
+			name: "full_access_1",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -655,7 +655,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -668,7 +668,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "Full access 2",
+			name: "full_access_2",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -677,7 +677,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Host,
-			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -690,7 +690,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "Multiple scopes",
+			name: "multiple_scopes",
 			aclGrants: []scopeGrant{
 				{
 					scope: "o_1",
@@ -707,7 +707,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.Read, action.ReadSelf},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -728,11 +728,11 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name:         "Allow recovery user full access to sessions",
+			name:         "recovery_user_has_full_access_sessions",
 			userId:       globals.RecoveryUserId,
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -753,11 +753,11 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name:         "Allow recovery user full access to targets",
+			name:         "recovery_user_has_full_access_targets",
 			userId:       globals.RecoveryUserId,
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Target,
-			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -776,6 +776,156 @@ func TestACL_ListPermissions(t *testing.T) {
 					All:         true,
 				},
 			},
+		},
+		{
+			name: "list_type_id_read_grants",
+			aclGrants: []scopeGrant{
+				{
+					scope: "o_1",
+					grants: []string{
+						"type=session;actions=list",
+						"id=s_2;type=session;actions=read",
+					},
+				},
+			},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			resourceType: resource.Session,
+			actionSet:    action.ActionSet{action.Read},
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.List,
+					ResourceIds: []string{"s_2"},
+					OnlySelf:    false,
+					All:         false,
+				},
+			},
+		},
+		{
+			name: "list_type_with_ids_and_wildcard_id_read_grant",
+			aclGrants: []scopeGrant{
+				{
+					scope: "o_1",
+					grants: []string{
+						// This isn't a valid grant because it pins ids and
+						// operates on a collection action.
+						"id=s_1;type=session;actions=list",
+
+						// But this grant allows read on any session, therefore
+						// it also allows list on any session.
+						"id=*;type=session;actions=read",
+					},
+				},
+			},
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			resourceType: resource.Session,
+			actionSet:    action.ActionSet{action.Read},
+			expPermissions: []Permission{
+				{
+					ScopeId:  "o_1",
+					Resource: resource.Session,
+					Action:   action.List,
+					OnlySelf: false,
+					All:      true,
+				},
+			},
+		},
+		{
+			name:         "read:self_override",
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			resourceType: resource.Session,
+			actionSet:    action.ActionSet{action.Read, action.ReadSelf},
+			aclGrants: []scopeGrant{
+				{
+					scope: "o_1",
+					grants: []string{
+						"type=session;actions=list,read:self",
+						"id=s_1;type=session;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.List,
+					ResourceIds: []string{"s_1"},
+					All:         false,
+					OnlySelf:    false,
+				},
+			},
+		},
+		{
+			name:         "other_actions_enable_listing_if_part_of_action_set_1",
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			resourceType: resource.Session,
+			actionSet:    action.ActionSet{action.Read, action.Cancel},
+			aclGrants: []scopeGrant{
+				{
+					scope: "o_1",
+					grants: []string{
+						"type=session;actions=list",
+						"id=s_1;type=session;actions=read",
+						"id=*;type=session;actions=cancel",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.List,
+					ResourceIds: []string{"s_1"},
+					All:         true,
+					OnlySelf:    false,
+				},
+			},
+		},
+		{
+			name:         "other_actions_enable_listing_if_part_of_action_set_2",
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			resourceType: resource.Session,
+			actionSet:    action.ActionSet{action.Read, action.Create},
+			aclGrants: []scopeGrant{
+				{
+					scope: "o_1",
+					grants: []string{
+						"type=session;actions=list",
+						"id=s_1;type=session;actions=read",
+						"id=*;type=session;actions=cancel",
+					},
+				},
+			},
+			expPermissions: []Permission{
+				{
+					ScopeId:     "o_1",
+					Resource:    resource.Session,
+					Action:      action.List,
+					ResourceIds: []string{"s_1"},
+					// Note the grant that otherwise would enable listing all
+					// has "cancel" action which in this test isn't part of the
+					// action set.
+					All:      false,
+					OnlySelf: false,
+				},
+			},
+		},
+		{
+			name:         "mismatched_resource_grants",
+			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
+			resourceType: resource.Session,
+			actionSet:    action.ActionSet{action.Read, action.Cancel},
+			aclGrants: []scopeGrant{
+				{
+					scope: "o_1",
+					grants: []string{
+						"type=target;actions=list",
+						"id=s_1;type=session;actions=read",
+					},
+				},
+			},
+			expPermissions: []Permission{},
 		},
 	}
 
