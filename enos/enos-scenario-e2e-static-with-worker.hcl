@@ -106,7 +106,7 @@ scenario "e2e_static_with_worker" {
   }
 
   step "create_target" {
-    module     = module.target
+    module = module.target
     depends_on = [
       step.create_base_infra,
       step.create_isolated_worker
@@ -143,7 +143,6 @@ scenario "e2e_static_with_worker" {
       target_ip                = step.create_target.target_ips[0]
       target_user              = "ubuntu"
       target_port              = "22"
-      worker_ip                = step.create_isolated_worker.worker_ip
       worker_tags              = step.create_isolated_worker.worker_tags
     }
   }

@@ -10,8 +10,7 @@ type config struct {
 	TargetSshKeyPath string `envconfig:"E2E_SSH_KEY_PATH" required:"true"` // e.g. /Users/username/key.pem
 	TargetSshUser    string `envconfig:"E2E_SSH_USER" required:"true"`     // e.g. ubuntu
 	TargetPort       string `envconfig:"E2E_SSH_PORT" required:"true"`     // e.g. 22
-	WorkerIp         string `envconfig:"E2E_WORKER_IP" required:"true"`    // e.g. 192.168.0.2
-	WorkerTags       string `envconfig:"E2E_WORKER_TAG" required:"true"`   // e.g.
+	WorkerTags       string `envconfig:"E2E_WORKER_TAG" required:"true"`   // e.g. "[\"tag1\", \"tag2\"]"
 }
 
 func loadConfig() (*config, error) {

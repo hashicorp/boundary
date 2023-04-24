@@ -6,6 +6,7 @@ package static_with_worker_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/testing/internal/e2e"
@@ -36,7 +37,7 @@ func TestCliWorker(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "update", "tcp",
 			"-id", newTargetId,
-			"-egress-worker-filter", "\"prod\" in \"/tags/type\"",
+			"-egress-worker-filter", `"prod" in "/tags/type"`,
 			"-format", "json",
 		),
 	)
@@ -59,6 +60,8 @@ func TestCliWorker(t *testing.T) {
 		),
 	)
 	require.Error(t, output.Err, string(output.Stderr))
+	require.Equal(t, output.ExitCode, 255)
+	require.Contains(t, string(output.Stderr), "timed out")
 	t.Logf("Successfully detected connection failure")
 
 	// Set correct worker filter, expect connection success
@@ -72,7 +75,7 @@ func TestCliWorker(t *testing.T) {
 		e2e.WithArgs(
 			"targets", "update", "tcp",
 			"-id", newTargetId,
-			"-egress-worker-filter", "\""+workerTags[0]+"\" in \"/tags/type\"",
+			"-egress-worker-filter", fmt.Sprintf(`"%s" in "/tags/type"`, workerTags[0]),
 			"-format", "json",
 		),
 	)

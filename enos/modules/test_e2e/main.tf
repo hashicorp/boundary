@@ -112,9 +112,6 @@ variable "aws_host_set_ips2" {
   type        = list(string)
   default     = [""]
 }
-variable "worker_ip" {
-  default = ""
-}
 variable "worker_tags" {
   type    = list(string)
   default = [""]
@@ -149,7 +146,6 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1,
     E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2,
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
-    E2E_WORKER_IP                 = var.worker_ip,
     E2E_WORKER_TAG                = jsonencode(var.worker_tags),
   }
 
