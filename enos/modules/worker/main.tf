@@ -81,19 +81,18 @@ resource "aws_security_group" "default" {
     cidr_blocks = ["${data.enos_environment.current.public_ip_address}/32"]
   }
 
-  egress {
-    description = "Communication from Boundary worker to controller"
-    from_port   = 9201
-    to_port     = 9201
+  ingress {
+    description = "Communication from Boundary controller to worker"
+    from_port   = 9202
+    to_port     = 9202
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
-    description = "Communication from Boundary worker to controller"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
