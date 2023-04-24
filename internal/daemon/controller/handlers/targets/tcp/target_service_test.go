@@ -113,7 +113,7 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	staticCredRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
-	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod)
+	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
 }
 
 func TestGet(t *testing.T) {
@@ -2594,7 +2594,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
 	require.NoError(t, err)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2763,7 +2763,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
 	require.NoError(t, err)
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -3336,7 +3336,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
 	require.NoError(t, err)
 
 	// Authorized user gets full permissions

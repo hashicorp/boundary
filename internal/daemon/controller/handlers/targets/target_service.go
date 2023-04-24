@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -119,6 +120,7 @@ type Service struct {
 	downstreams             common.Downstreamers
 	kmsCache                *kms.Kms
 	workerStatusGracePeriod *atomic.Int64
+	controllerExt           intglobals.ControllerExtension
 }
 
 var _ pbs.TargetServiceServer = (*Service)(nil)
@@ -137,8 +139,12 @@ func NewService(
 	staticCredRepoFn common.StaticCredentialRepoFactory,
 	downstreams common.Downstreamers,
 	workerStatusGracePeriod *atomic.Int64,
+	controllerExt intglobals.ControllerExtension,
 ) (Service, error) {
 	const op = "targets.NewService"
+	if kmsCache == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing kms repo")
+	}
 	if repoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing target repository")
 	}
@@ -175,6 +181,7 @@ func NewService(
 		downstreams:             downstreams,
 		kmsCache:                kmsCache,
 		workerStatusGracePeriod: workerStatusGracePeriod,
+		controllerExt:           controllerExt,
 	}, nil
 }
 

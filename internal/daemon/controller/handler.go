@@ -201,7 +201,9 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.VaultCredentialRepoFn,
 			c.StaticCredentialRepoFn,
 			c.downstreamWorkers,
-			c.workerStatusGracePeriod)
+			c.workerStatusGracePeriod,
+			c.ControllerExtension,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create target handler service: %w", err)
 		}
