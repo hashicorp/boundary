@@ -7,7 +7,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -232,8 +234,12 @@ func (l *LoopbackStorage) headObject(ctx context.Context, req *plgpb.HeadObjectR
 			return nil, status.Errorf(err.errCode, "%s: %s", op, err.errMsg)
 		}
 	}
+	var contentLength int64
+	if object.contentLength != nil {
+		contentLength = *object.contentLength
+	}
 	return &plgpb.HeadObjectResponse{
-		ContentLength: *object.contentLength,
+		ContentLength: contentLength,
 		LastModified:  timestamppb.New(*object.lastModified),
 	}, nil
 }
@@ -359,6 +365,19 @@ func (l *LoopbackStorage) putObject(stream plgpb.StoragePluginService_PutObjectS
 		}
 		contentLength := int64(len(objectData))
 		lastModified := time.Now()
+
+		// Ensure all the directories within the object key exist
+		parts := strings.Split(request.Request.GetKey(), "/")
+		tempPath := request.Request.GetBucket().GetBucketPrefix()
+		for _, p := range parts[:len(parts)-1] {
+			// Directories should have trailing `/` in the key
+			tempPath = fmt.Sprintf("%v%v/", tempPath, p)
+			bucket[ObjectName(tempPath)] = &storagePluginStorageInfo{
+				lastModified: &lastModified,
+			}
+		}
+
+		// Now insert the object
 		objectPath := ObjectName(request.Request.GetBucket().GetBucketPrefix() + request.Request.GetKey())
 		bucket[objectPath] = &storagePluginStorageInfo{
 			DataChunks:    objectChunks,

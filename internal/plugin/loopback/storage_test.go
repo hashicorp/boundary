@@ -814,6 +814,23 @@ func TestLoopbackPutObject(t *testing.T) {
 			},
 		},
 		{
+			name: "valid object with dir in key",
+			dataChunks: []Chunk{
+				[]byte("THIS IS A MOCKED OBJECT"),
+			},
+			request: &plgpb.PutObjectRequest{
+				Data: &plgpb.PutObjectRequest_Request{
+					Request: &plgpb.PutObjectMetadata{
+						Bucket: &storagebuckets.StorageBucket{
+							BucketName: "aws_s3_mock",
+							Secrets:    secrets,
+						},
+						Key: "foo/bar/zoo/mocked_object",
+					},
+				},
+			},
+		},
+		{
 			name: "valid object w/ prefix",
 			dataChunks: []Chunk{
 				[]byte("THIS IS A MOCKED OBJECT"),
@@ -948,7 +965,7 @@ func TestLoopbackStoragePlugin(t *testing.T) {
 		Data: &plgpb.PutObjectRequest_Request{
 			Request: &plgpb.PutObjectMetadata{
 				Bucket: bucket,
-				Key:    "mock_object",
+				Key:    "dir1/mock_object",
 			},
 		},
 	})
@@ -969,9 +986,19 @@ func TestLoopbackStoragePlugin(t *testing.T) {
 	require.NoError(err)
 	assert.EqualValues(hash.Sum(nil), putResponse.GetChecksumSha_256())
 
+	// Check directory was created
 	headResponse, err := plg.HeadObject(context.Background(), &plgpb.HeadObjectRequest{
 		Bucket: bucket,
-		Key:    "mock_object",
+		Key:    "dir1/",
+	})
+	require.NoError(err)
+	require.NotNil(headResponse)
+	require.NotNil(headResponse.LastModified)
+	require.Equal(int64(0), headResponse.ContentLength)
+
+	headResponse, err = plg.HeadObject(context.Background(), &plgpb.HeadObjectRequest{
+		Bucket: bucket,
+		Key:    "dir1/mock_object",
 	})
 	require.NoError(err)
 	require.NotNil(headResponse)
@@ -980,7 +1007,7 @@ func TestLoopbackStoragePlugin(t *testing.T) {
 
 	getObjectStream, err := client.GetObject(context.Background(), &plgpb.GetObjectRequest{
 		Bucket: bucket,
-		Key:    "mock_object",
+		Key:    "dir1/mock_object",
 	})
 	assert.NoError(err)
 
