@@ -18,7 +18,7 @@ import (
 // TestCliSessionEndWhenUserIsDeleted tests that an active session is canceled when the respective
 // user who started the session is deleted.
 func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
-	deleted := false
+	userIsDeleted := false
 
 	e2e.MaybeSkipTest(t)
 	c, err := loadConfig()
@@ -53,7 +53,7 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	})
 	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
 	t.Cleanup(func() {
-		if !deleted {
+		if !userIsDeleted {
 			t.Log("Deleting user...")
 			boundary.AuthenticateAdminCli(t, context.Background())
 			output := e2e.RunCommand(ctx, "boundary",
@@ -101,7 +101,7 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	t.Log("Deleting user...")
 	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("users", "delete", "-id", newUserId))
 	require.NoError(t, output.Err, string(output.Stderr))
-	deleted = true
+	userIsDeleted = true
 
 	// Check if session has terminated
 	t.Log("Waiting for session to be canceling/terminated...")
