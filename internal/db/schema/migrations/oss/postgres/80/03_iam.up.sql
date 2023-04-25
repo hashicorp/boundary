@@ -1,0 +1,40 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
+begin;
+
+  create extension if not exists btree_gist;
+
+  create table iam_scope_hst (
+    public_id wt_scope_id not null,
+    name text null,
+    description text null,
+    type text not null
+      constraint iam_scope_type_enm_fkey
+        references iam_scope_type_enm (string)
+        on delete restrict
+        on update cascade,
+    parent_id text null,
+    primary_auth_method_id wt_public_id null,
+    history_id wt_url_safe_id default wt_url_safe_id() primary key,
+    valid_range tstzrange not null default tstzrange(current_timestamp, null),
+    constraint iam_scope_hst_valid_range_excl
+      exclude using gist (public_id with =, valid_range with &&)
+  );
+  comment on table iam_scope_hst is
+    'iam_scope_hst is a history table where each row contains the values from a row '
+    'in the iam_scope table during the time range in the valid_range column.';
+
+  create trigger hst_on_insert after insert on iam_scope
+    for each row execute function hst_on_insert();
+  create trigger hst_on_update after update on iam_scope
+    for each row execute function hst_on_update();
+  create trigger hst_on_delete after delete on iam_scope
+    for each row execute function hst_on_delete();
+
+  insert into iam_scope_hst
+    (public_id, name, description, type, parent_id, primary_auth_method_id)
+  select public_id, name, description, type, parent_id, primary_auth_method_id
+    from iam_scope;
+
+commit;
