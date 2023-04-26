@@ -163,7 +163,7 @@ func (a ACL) Allowed(r Resource, aType action.Type, userId string, opt ...Option
 		case grant.id == r.Id &&
 			grant.id != "" &&
 			grant.id != "*" &&
-			grant.typ == resource.Unknown &&
+			(grant.typ == resource.Unknown || grant.typ == globals.ResourceTypeFromPrefix(grant.id)) &&
 			!action.List.IsActionOrParent(aType) &&
 			!action.Create.IsActionOrParent(aType):
 
@@ -262,7 +262,7 @@ func (a ACL) ListPermissions(requestedScopes map[string]*scopes.ScopeInfo,
 		grants := a.scopeMap[scopeId]
 		for _, grant := range grants {
 			// This grant doesn't match what we're looking for, ignore.
-			if grant.typ != requestedType && grant.typ != resource.All {
+			if grant.typ != requestedType && grant.typ != resource.All && globals.ResourceTypeFromPrefix(grant.id) != requestedType {
 				continue
 			}
 

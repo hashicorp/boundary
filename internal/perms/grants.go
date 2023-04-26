@@ -483,7 +483,7 @@ func Parse(scopeId, grantString string, opt ...Option) (Grant, error) {
 				}
 			}
 			if !allowed {
-				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, "parsed grant string would not result in any action being authorized")
+				return Grant{}, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("parsed grant string %q would not result in any action being authorized", grant.CanonicalString()))
 			}
 		}
 	}
