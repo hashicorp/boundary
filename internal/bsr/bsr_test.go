@@ -282,7 +282,7 @@ func TestBsr(t *testing.T) {
 
 				createdChannels := make([]*channel, 0, len(conn.channels))
 				for _, chann := range conn.channels {
-					ch, err := c.NewChannel(ctx, &bsr.ChannelMeta{Id: chann.id})
+					ch, err := c.NewChannel(ctx, &bsr.ChannelMeta{Id: chann.id, Type: "chan"})
 					require.NoError(t, err)
 					require.NotNil(t, ch)
 
