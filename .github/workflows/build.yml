@@ -405,7 +405,7 @@ jobs:
       docker-image-file: "boundary_default_linux_amd64_${{ needs.set-product-version.outputs.product-version }}_${{ github.sha }}.docker.dev.tar"
     secrets: inherit
   bats:
-    uses: ./.github/workflows/test-cli-ui.yml
+    uses: ./.github/workflows/test-cli-ui_oss.yml
     if: github.event.pull_request.head.repo.fork != 'true'
     needs:
       - set-product-version
