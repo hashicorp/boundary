@@ -72,7 +72,10 @@ func (e ChunkEncoder) Encode(ctx context.Context, c Chunk) (int, error) {
 	if _, err := compressor.Write(data); err != nil {
 		return 0, err
 	}
-	compressor.Close()
+	err = compressor.Close()
+	if err != nil {
+		return 0, err
+	}
 	length := buf.Len()
 
 	t := c.GetTimestamp().marshal()
@@ -86,7 +89,10 @@ func (e ChunkEncoder) Encode(ctx context.Context, c Chunk) (int, error) {
 	crced = append(crced, buf.Bytes()...)
 
 	crc := crc32.NewIEEE()
-	crc.Write(crced)
+	_, err = crc.Write(crced)
+	if err != nil {
+		return 0, err
+	}
 
 	d := make([]byte, 0, chunkBaseSize+length+crcSize)
 	d = binary.BigEndian.AppendUint32(d, uint32(length))

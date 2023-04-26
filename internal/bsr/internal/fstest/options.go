@@ -39,6 +39,7 @@ type options struct {
 	withNewFunc   NewFunc
 	withCloseFunc CloseFunc
 	withStatFunc  StatFunc
+	withReadOnly  bool
 }
 
 func getDefaultOptions() options {
@@ -46,6 +47,7 @@ func getDefaultOptions() options {
 		withNewFunc:   nil,
 		withCloseFunc: nil,
 		withStatFunc:  nil,
+		withReadOnly:  false,
 	}
 }
 
@@ -67,5 +69,12 @@ func WithCloseFunc(f CloseFunc) Option {
 func WithStatFunc(f StatFunc) Option {
 	return func(o *options) {
 		o.withStatFunc = f
+	}
+}
+
+// WithReadOnly is used to set a read only bool
+func WithReadOnly(b bool) Option {
+	return func(o *options) {
+		o.withReadOnly = b
 	}
 }

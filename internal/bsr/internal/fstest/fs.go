@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-// Package fstest provides test implementations of a the fs interfaces.
+// Package fstest provides test implementations of the fs interfaces.
 package fstest
 
 import (
@@ -20,7 +20,8 @@ import (
 type MemFS struct {
 	Containers map[string]*MemContainer
 
-	newFunc NewFunc
+	newFunc  NewFunc
+	readOnly bool
 }
 
 // NewMemFS creates a MemFS. It supports WithNewFunc.
@@ -30,6 +31,7 @@ func NewMemFS(options ...Option) *MemFS {
 	return &MemFS{
 		Containers: make(map[string]*MemContainer),
 		newFunc:    opts.withNewFunc,
+		readOnly:   opts.withReadOnly,
 	}
 }
 
@@ -45,9 +47,10 @@ func (m *MemFS) New(ctx context.Context, n string) (storage.Container, error) {
 		return nil, fmt.Errorf("container %s already exists", n)
 	}
 	c := &MemContainer{
-		Name:  n,
-		Sub:   make(map[string]*MemContainer),
-		Files: make(map[string]*MemFile),
+		Name:     n,
+		Sub:      make(map[string]*MemContainer),
+		Files:    make(map[string]*MemFile),
+		readOnly: m.readOnly,
 	}
 	m.Containers[n] = c
 	return c, nil
@@ -60,7 +63,8 @@ type MemContainer struct {
 	Sub   map[string]*MemContainer
 	Files map[string]*MemFile
 
-	Closed bool
+	Closed   bool
+	readOnly bool
 
 	sync.RWMutex
 }
@@ -82,9 +86,10 @@ func (m *MemContainer) Create(_ context.Context, n string) (storage.File, error)
 		return nil, fmt.Errorf("file %s already exists", n)
 	}
 	f := &MemFile{
-		name: n,
-		Buf:  bytes.NewBuffer([]byte{}),
-		mode: sfs.ModeAppend,
+		name:     n,
+		Buf:      bytes.NewBuffer([]byte{}),
+		mode:     sfs.ModeAppend,
+		ReadOnly: m.readOnly,
 	}
 	m.Files[n] = f
 	return f, nil
@@ -166,7 +171,9 @@ type MemFile struct {
 	statFunc  StatFunc
 	closeFunc CloseFunc
 
-	Closed bool
+	Closed     bool
+	ReadOnly   bool
+	OutOfSpace bool
 
 	sync.RWMutex
 }
@@ -244,6 +251,13 @@ func (m *MemFile) Write(p []byte) (n int, err error) {
 		return 0, fmt.Errorf("write on closed file")
 	}
 
+	if m.ReadOnly {
+		return 0, fmt.Errorf("write on read-only file")
+	}
+
+	if m.OutOfSpace {
+		return 0, fmt.Errorf("write failed, no space left on device")
+	}
 	defer func() {
 		m.modtime = time.Now()
 	}()

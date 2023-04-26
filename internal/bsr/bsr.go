@@ -246,7 +246,10 @@ func (c *Connection) NewMessagesWriter(ctx context.Context, dir Direction) (io.W
 	}
 
 	messagesName := fmt.Sprintf(messagesFile, dir.String())
-	c.container.WriteMeta(ctx, "messages", dir.String())
+	_, err := c.container.WriteMeta(ctx, "messages", dir.String())
+	if err != nil {
+		return nil, err
+	}
 	m, err := c.container.create(ctx, messagesName)
 	if err != nil {
 		return nil, err
@@ -265,7 +268,10 @@ func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (io.W
 	}
 
 	requestName := fmt.Sprintf(requestsFile, dir.String())
-	c.container.WriteMeta(ctx, "requests", dir.String())
+	_, err := c.container.WriteMeta(ctx, "requests", dir.String())
+	if err != nil {
+		return nil, err
+	}
 	m, err := c.container.create(ctx, requestName)
 	if err != nil {
 		return nil, err
@@ -308,7 +314,10 @@ func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (io.Writ
 	}
 
 	messagesName := fmt.Sprintf(messagesFile, dir.String())
-	c.container.WriteMeta(ctx, "messages", dir.String())
+	_, err := c.container.WriteMeta(ctx, "messages", dir.String())
+	if err != nil {
+		return nil, err
+	}
 	m, err := c.container.create(ctx, messagesName)
 	if err != nil {
 		return nil, err
@@ -327,7 +336,10 @@ func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (io.Writ
 	}
 
 	requestName := fmt.Sprintf(requestsFile, dir.String())
-	c.container.WriteMeta(ctx, "requests", dir.String())
+	_, err := c.container.WriteMeta(ctx, "requests", dir.String())
+	if err != nil {
+		return nil, err
+	}
 	m, err := c.container.create(ctx, requestName)
 	if err != nil {
 		return nil, err
