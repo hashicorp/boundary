@@ -11,7 +11,7 @@ module "bats_deps" {
 
 module "boundary" {
   source  = "app.terraform.io/hashicorp-qti/aws-boundary/enos"
-  version = ">= 0.5.0"
+  version = ">= 0.6.2"
 
   project_name = "qti-enos-boundary"
   environment  = var.environment
@@ -22,8 +22,9 @@ module "boundary" {
     "Environment" : var.environment
   }
 
-  ssh_aws_keypair       = var.aws_ssh_keypair_name
   alb_listener_api_port = var.alb_listener_api_port
+  boundary_binary_name  = var.boundary_binary_name
+  ssh_aws_keypair       = var.aws_ssh_keypair_name
 }
 
 module "worker" {
@@ -77,6 +78,10 @@ module "infra" {
     "Enos User" : var.enos_user,
     "Environment" : var.environment
   }
+}
+
+module "read_license" {
+  source = "./modules/read_license"
 }
 
 module "random_stringifier" {
