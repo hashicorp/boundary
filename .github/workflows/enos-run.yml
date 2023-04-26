@@ -304,6 +304,7 @@ jobs:
           ENOS_VAR_crt_bundle_path: ./support/boundary.zip
           ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
           ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
+          ENOS_VAR_boundary_edition: ${{ inputs.edition }}
           ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
           ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
         run: |
