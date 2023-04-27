@@ -27,7 +27,7 @@ jobs:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@633666f66e0061ca3b725c73b2ec20cd13a8fdd1    # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
       - name: Configure AWS credentials
