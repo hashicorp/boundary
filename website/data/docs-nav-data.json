@@ -167,6 +167,10 @@
                 "path": "concepts/security/permissions/assignable-permissions"
               },
               {
+                "title": "Grants",
+                "path": "concepts/security/permissions/grants"
+              },
+              {
                 "title": "Permission grant formats",
                 "path": "concepts/security/permissions/permission-grant-formats"
               },
