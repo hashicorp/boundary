@@ -9,6 +9,9 @@ on:
       artifact-name:
         required: true
         type: string
+      edition:
+        required: true
+        type: string
       go-version:
         required: true
         type: string
@@ -80,7 +83,19 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
+      # Scenario variables
       ENOS_DEBUG_DATA_ROOT_DIR: ./enos/support/debug-data
+      ENOS_VAR_aws_region: us-east-1
+      ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
+      ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
+      ENOS_VAR_local_boundary_dir: ./support/boundary
+      ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
+      ENOS_VAR_crt_bundle_path: ./support/boundary.zip
+      ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
+      ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
+      ENOS_VAR_boundary_edition: ${{ inputs.edition }}
+      ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
+      ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
     steps:
       - name: Checkout
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
@@ -213,18 +228,6 @@ jobs:
         run: npx playwright install --with-deps
         working-directory: enos/support/boundary-ui
       - name: Output Terraform version info
-        # Use the same env vars from the following step
-        env:
-          ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
-          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/boundary
-          ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
-          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
-          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
-          ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
-          ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
@@ -234,17 +237,6 @@ jobs:
         id: run
         # Continue once and retry
         continue-on-error: true
-        env:
-          ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
-          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/boundary
-          ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
-          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
-          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
-          ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
-          ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
@@ -265,17 +257,6 @@ jobs:
       - name: Retry Enos scenario
         id: run_retry
         if: steps.run.outcome == 'failure'
-        env:
-          ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
-          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/boundary
-          ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
-          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
-          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
-          ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
-          ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
@@ -289,17 +270,6 @@ jobs:
           retention-days: 30
       - name: Destroy Enos scenario
         if: ${{ always() && steps.run_retry.outcome == 'failure' }}
-        env:
-          ENOS_VAR_aws_region: us-east-1
-          ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
-          ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-          ENOS_VAR_local_boundary_dir: ./support/boundary
-          ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
-          ENOS_VAR_crt_bundle_path: ./support/boundary.zip
-          ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
-          ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
-          ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
-          ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}

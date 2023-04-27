@@ -78,7 +78,7 @@ resource "aws_security_group" "default" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["${data.enos_environment.current.public_ip_address}/32"]
+    cidr_blocks = flatten([formatlist("%s/32", data.enos_environment.current.public_ipv4_addresses)])
   }
 
   ingress {
