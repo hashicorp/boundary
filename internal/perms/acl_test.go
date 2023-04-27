@@ -404,7 +404,7 @@ func TestACL_ListPermissions(t *testing.T) {
 				"o_this_one_too":       nil,
 			},
 			resourceType:   resource.Session,
-			actionSet:      action.ActionSet{action.List, action.Read},
+			actionSet:      action.ActionSet{action.Read},
 			expPermissions: []Permission{},
 		},
 		{
@@ -417,7 +417,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType:   resource.Session, // We're requesting sessions.
-			actionSet:      action.ActionSet{action.List, action.Read},
+			actionSet:      action.ActionSet{action.Read},
 			expPermissions: []Permission{},
 		},
 		{
@@ -430,7 +430,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:         map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType:   resource.Session,
-			actionSet:      action.ActionSet{action.List, action.Read},
+			actionSet:      action.ActionSet{action.Read},
 			expPermissions: []Permission{},
 		},
 		{
@@ -443,7 +443,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:                      map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType:                resource.Session,
-			actionSet:                   action.ActionSet{action.List, action.Read},
+			actionSet:                   action.ActionSet{action.Read},
 			expPermissions:              []Permission{},
 			skipGrantValidationChecking: true,
 		},
@@ -457,7 +457,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.Read},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -479,7 +479,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.ReadSelf},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -505,7 +505,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.Read},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -527,7 +527,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.ReadSelf},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -549,7 +549,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List},
+			actionSet:    action.ActionSet{action.NoOp},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -562,7 +562,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 		},
 		{
-			name: "List + No-op action with id wildcard, read requested",
+			name: "List + No-op action with id wildcard, read present",
 			aclGrants: []scopeGrant{
 				{
 					scope:  "o_1",
@@ -588,7 +588,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List},
+			actionSet:    action.ActionSet{action.NoOp},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -610,7 +610,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Host,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.ReadSelf},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -657,7 +657,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -679,7 +679,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil},
 			resourceType: resource.Host,
-			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -709,7 +709,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			},
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read},
+			actionSet:    action.ActionSet{action.Read, action.ReadSelf},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -734,7 +734,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			userId:       globals.RecoveryUserId,
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Session,
-			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
@@ -759,7 +759,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			userId:       globals.RecoveryUserId,
 			scopes:       map[string]*scopes.ScopeInfo{"o_1": nil, "o_2": nil},
 			resourceType: resource.Target,
-			actionSet:    action.ActionSet{action.List, action.Read, action.Create, action.Delete},
+			actionSet:    action.ActionSet{action.Read, action.Create, action.Delete},
 			expPermissions: []Permission{
 				{
 					ScopeId:     "o_1",
