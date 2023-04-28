@@ -749,6 +749,9 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		if opts.DisableOidcAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
 		}
+		if opts.DisableOidcAuthMethodCreation {
+			createOpts = append(createOpts, base.WithSkipLdapAuthMethodCreation())
+		}
 		if !opts.DisableDatabaseTemplate {
 			createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
 		}
