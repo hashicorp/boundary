@@ -254,14 +254,32 @@ func (b *Server) CreateDevLdapAuthMethod(ctx context.Context) error {
 		return nil
 	})
 
-	createUsers := []string{"admin"}
 	groups := []*gldap.Entry{
 		testdirectory.NewGroup(tb, "admin", []string{"admin"}),
 	}
-	if createUnpriv {
-		createUsers = append(createUsers, "user")
+
+	createUserFn := func(userName, passwd string, withMembersOf []string) *gldap.Entry {
+		entryAttrs := map[string][]string{
+			"name":     {userName},
+			"email":    {fmt.Sprintf("%s@localhost", userName)},
+			"password": {passwd},
+		}
+		if len(withMembersOf) > 0 {
+			entryAttrs["memberOf"] = withMembersOf
+		}
+		DN := fmt.Sprintf("%s=%s,%s", testdirectory.DefaultUserAttr, userName, testdirectory.DefaultUserDN)
+		return gldap.NewEntry(
+			DN,
+			entryAttrs,
+		)
 	}
-	users := testdirectory.NewUsers(tb, createUsers, testdirectory.WithMembersOf(tb, "admin"))
+	users := []*gldap.Entry{
+		createUserFn(b.DevLoginName, b.DevPassword, []string{"admin"}),
+	}
+
+	if createUnpriv {
+		users = append(users, createUserFn(b.DevUnprivilegedLoginName, b.DevUnprivilegedPassword, nil))
+	}
 	b.DevLdapSetup.testDirectory.SetUsers(users...)
 	b.DevLdapSetup.testDirectory.SetGroups(groups...)
 
