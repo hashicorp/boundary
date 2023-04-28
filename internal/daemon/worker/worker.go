@@ -77,7 +77,15 @@ type downstreamers interface {
 
 // recorderManager updates the status updates with relevant recording
 // information
-type recorderManager any
+type recorderManager interface {
+	// ReauthorizeAllExcept should be called with the result of the status update
+	// to reauthorize all recorders for the relevant sessions except the ones provided
+	ReauthorizeAllExcept(ctx context.Context, closedSessions []string) error
+	// SessionsManaged gets the list of session ids managed by this recorderManager
+	SessionsManaged(ctx context.Context) ([]string, error)
+	// Shutdown must be called prior to exiting the process
+	Shutdown(ctx context.Context)
+}
 
 // reverseConnReceiverFactory provides a simple factory which a Worker can use to
 // create its reverseConnReceiver
@@ -119,11 +127,10 @@ type Worker struct {
 
 	recorderManager recorderManager
 
-	controllerStatusConn *atomic.Value
-	everAuthenticated    *ua.Uint32
-	lastStatusSuccess    *atomic.Value
-	workerStartTime      time.Time
-	operationalState     *atomic.Value
+	everAuthenticated *ua.Uint32
+	lastStatusSuccess *atomic.Value
+	workerStartTime   time.Time
+	operationalState  *atomic.Value
 
 	controllerMultihopConn *atomic.Value
 
@@ -185,7 +192,6 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		conf:                   conf,
 		logger:                 conf.Logger.Named("worker"),
 		started:                ua.NewBool(false),
-		controllerStatusConn:   new(atomic.Value),
 		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
 		lastStatusSuccess:      new(atomic.Value),
 		controllerMultihopConn: new(atomic.Value),
@@ -199,6 +205,8 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		successfulStatusGracePeriod: new(atomic.Int64),
 		statusCallTimeoutDuration:   new(atomic.Int64),
 	}
+
+	w.operationalState.Store(server.UnknownOperationalState)
 
 	if reverseConnReceiverFactory != nil {
 		w.downstreamReceiver = reverseConnReceiverFactory()
@@ -357,8 +365,6 @@ func (w *Worker) Start() error {
 		event.WriteSysEvent(w.baseContext, op, "already started, skipping")
 		return nil
 	}
-
-	w.operationalState.Store(server.UnknownOperationalState)
 
 	if !w.conf.RawConfig.Worker.UseDeprecatedKmsAuthMethod {
 		// In this section, we look for existing worker credentials. The two
@@ -521,7 +527,7 @@ func (w *Worker) Start() error {
 	w.tickerWg.Add(2)
 	go func() {
 		defer w.tickerWg.Done()
-		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers)
+		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers, w.recorderManager)
 	}()
 	go func() {
 		defer w.tickerWg.Done()
@@ -614,6 +620,18 @@ func (w *Worker) Shutdown() error {
 		return fmt.Errorf("error stopping worker servers and listeners: %w", err)
 	}
 
+	var recManWg sync.WaitGroup
+	if w.recorderManager != nil {
+		recManWg.Add(1)
+		go func() {
+			// Shutdown recorder manager to close all recorders, done in a go routine
+			// since it will not force shutdown of channels until the passed in context
+			// is Done.
+			defer recManWg.Done()
+			w.recorderManager.Shutdown(w.baseContext)
+		}()
+	}
+
 	// Shut down all connections.
 	w.cleanupConnections(w.baseContext, true, w.sessionManager)
 
@@ -644,6 +662,7 @@ func (w *Worker) Shutdown() error {
 
 	w.started.Store(false)
 	w.tickerWg.Wait()
+	recManWg.Wait()
 	if w.conf.Eventer != nil {
 		if err := w.conf.Eventer.FlushNodes(context.Background()); err != nil {
 			return fmt.Errorf("error flushing worker eventer nodes: %w", err)

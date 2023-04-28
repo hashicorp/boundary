@@ -33,7 +33,7 @@ type LastStatusInformation struct {
 	LastCalculatedUpstreams []string
 }
 
-func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager session.Manager, addrReceivers *[]addressReceiver) {
+func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager session.Manager, addrReceivers *[]addressReceiver, recorderManager recorderManager) {
 	const op = "worker.(Worker).startStatusTicking"
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	// This function exists to desynchronize calls to controllers from
@@ -65,7 +65,7 @@ func (w *Worker) startStatusTicking(cancelCtx context.Context, sessionManager se
 				continue
 			}
 
-			w.sendWorkerStatus(cancelCtx, sessionManager, addrReceivers)
+			w.sendWorkerStatus(cancelCtx, sessionManager, addrReceivers, recorderManager)
 			timer.Reset(getRandomInterval())
 		}
 	}
@@ -113,14 +113,40 @@ func (w *Worker) WaitForNextSuccessfulStatusUpdate() error {
 	return nil
 }
 
-func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager session.Manager, addressReceivers *[]addressReceiver) {
+func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager session.Manager, addressReceivers *[]addressReceiver, recorderManager recorderManager) {
 	const op = "worker.(Worker).sendWorkerStatus"
 	w.statusLock.Lock()
 	defer w.statusLock.Unlock()
 
+	// Collect the different session ids that are being monitored by this worker
+	var monitoredSessionIds []string
+
+	if recorderManager != nil {
+		recSessIds, err := recorderManager.SessionsManaged(cancelCtx)
+		if err != nil {
+			event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error getting session ids from recorderManager"))
+		} else {
+			monitoredSessionIds = append(monitoredSessionIds, recSessIds...)
+		}
+	}
+
 	// First send info as-is. We'll perform cleanup duties after we
 	// get cancel/job change info back.
 	var activeJobs []*pbs.JobStatus
+
+	for _, sid := range monitoredSessionIds {
+		activeJobs = append(activeJobs, &pbs.JobStatus{
+			Job: &pbs.Job{
+				Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
+				JobInfo: &pbs.Job_MonitorSessionInfo{
+					MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
+						SessionId: sid,
+						Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+					},
+				},
+			},
+		})
+	}
 
 	// Range over known sessions and collect info
 	sessionManager.ForEachLocalSession(func(s session.Session) bool {
@@ -154,7 +180,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 	})
 
 	// Send status information
-	client := w.controllerStatusConn.Load().(pbs.ServerCoordinationServiceClient)
+	client := pbs.NewServerCoordinationServiceClient(w.GrpcClientConn)
 	var tags []*pb.TagPair
 	// If we're not going to request a tag update, no reason to have these
 	// marshaled on every status call.
@@ -283,10 +309,17 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 
 	w.lastStatusSuccess.Store(&LastStatusInformation{StatusResponse: result, StatusTime: time.Now(), LastCalculatedUpstreams: addrs})
 
+	var nonActiveMonitoredSessionIds []string
+
 	for _, request := range result.GetJobsRequests() {
 		switch request.GetRequestType() {
 		case pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE:
 			switch request.GetJob().GetType() {
+			case pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION:
+				si := request.GetJob().GetMonitorSessionInfo()
+				if si != nil && si.Status != pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE {
+					nonActiveMonitoredSessionIds = append(nonActiveMonitoredSessionIds, si.GetSessionId())
+				}
 			case pbs.JOBTYPE_JOBTYPE_SESSION:
 				sessInfo := request.GetJob().GetSessionInfo()
 				sessionId := sessInfo.GetSessionId()
@@ -305,6 +338,11 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 					}
 				}
 			}
+		}
+	}
+	if recorderManager != nil {
+		if err := recorderManager.ReauthorizeAllExcept(cancelCtx, nonActiveMonitoredSessionIds); err != nil {
+			event.WriteError(cancelCtx, op, err)
 		}
 	}
 

@@ -262,7 +262,6 @@ func (w *Worker) createClientConn(addr string) error {
 	}
 
 	w.GrpcClientConn = cc
-	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerMultihopConn.Store(multihop.NewMultihopServiceClient(cc))
 
 	var producer handlers.UpstreamMessageServiceClientProducer

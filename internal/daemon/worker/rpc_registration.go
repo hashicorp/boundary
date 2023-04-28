@@ -37,7 +37,7 @@ func registerWorkerStatusSessionService(ctx context.Context, w *Worker, server *
 		return fmt.Errorf("%s: server is nil", op)
 	}
 
-	statusSessionService := NewWorkerProxyServiceServer(w.GrpcClientConn, w.controllerStatusConn)
+	statusSessionService := NewWorkerProxyServiceServer(w.GrpcClientConn)
 	pbs.RegisterServerCoordinationServiceServer(server, statusSessionService)
 	pbs.RegisterSessionServiceServer(server, statusSessionService)
 	return nil
