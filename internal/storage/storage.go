@@ -11,9 +11,10 @@ import (
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
 
-// RecordingStorage can be used to create a LocalFS usable for session recording.
+// RecordingStorage can be used to create a FS usable for session recording.
 type RecordingStorage interface {
 	NewLocalFS(ctx context.Context, bucket Bucket, _ ...Option) (FS, error)
+	NewRemoteFS(ctx context.Context, bucket Bucket, _ ...Option) (FS, error)
 	PluginClients() map[string]plgpb.StoragePluginServiceClient
 }
 
