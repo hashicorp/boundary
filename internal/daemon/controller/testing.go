@@ -376,6 +376,10 @@ type TestControllerOpts struct {
 	// OIDC listener. Useful for e.g. unix listener tests.
 	DisableOidcAuthMethodCreation bool
 
+	// DisableLdapAuthMethodCreation can be set true to disable the built-in
+	// ldap listener. Useful for e.g. unix listener tests.
+	DisableLdapAuthMethodCreation bool
+
 	// DisableScopesCreation can be set true to disable creating scopes
 	// automatically.
 	DisableScopesCreation bool
@@ -711,6 +715,11 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 					}
 					if !opts.DisableOidcAuthMethodCreation {
 						if err := tc.b.CreateDevOidcAuthMethod(ctx); err != nil {
+							t.Fatal(err)
+						}
+					}
+					if !opts.DisableLdapAuthMethodCreation {
+						if err := tc.b.CreateDevLdapAuthMethod(ctx); err != nil {
 							t.Fatal(err)
 						}
 					}

@@ -54,7 +54,7 @@ func TestRepository_authenticate(t *testing.T) {
 	require.NoError(t, err)
 
 	testAm := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId,
-		[]string{fmt.Sprintf("ldaps://127.0.0.1:%d", td.Port())},
+		[]string{fmt.Sprintf("ldaps://%s:%d", td.Host(), td.Port())},
 		WithCertificates(testCtx, tdCerts...),
 		WithDiscoverDn(testCtx),
 		WithEnableGroups(testCtx),
@@ -238,7 +238,7 @@ func TestRepository_authenticate(t *testing.T) {
 	t.Run("use-token-groups", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		amWithTokenGroups := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId,
-			[]string{fmt.Sprintf("ldaps://127.0.0.1:%d", td.Port())},
+			[]string{fmt.Sprintf("ldaps://%s:%d", td.Host(), td.Port())},
 			WithCertificates(testCtx, tdCerts...),
 			WithDiscoverDn(testCtx),
 			WithEnableGroups(testCtx),
@@ -270,7 +270,7 @@ func TestRepository_authenticate(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 
 		amWithNoCerts := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId,
-			[]string{fmt.Sprintf("ldaps://127.0.0.1:%d", td.Port())},
+			[]string{fmt.Sprintf("ldaps://%s:%d", td.Host(), td.Port())},
 			WithDiscoverDn(testCtx),
 			WithEnableGroups(testCtx),
 			WithUserDn(testCtx, testdirectory.DefaultUserDN),

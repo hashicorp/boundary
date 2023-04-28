@@ -45,6 +45,7 @@ type options struct {
 	withAccountAttributeMap  map[string]AccountToAttribute
 	withMemberOfGroups       string
 	withUrls                 []string
+	withPublicId             string
 }
 
 // Option - how options are passed as args
@@ -360,6 +361,15 @@ func WithMemberOfGroups(ctx context.Context, groupName ...string) Option {
 			return errors.Wrap(ctx, err, op)
 		}
 		o.withMemberOfGroups = string(mg)
+		return nil
+	}
+}
+
+// WithPublicId provides an option for passing a public id to the operation
+func WithPublicId(ctx context.Context, publicId string) Option {
+	const op = "ldap.WithPublicId"
+	return func(o *options) error {
+		o.withPublicId = publicId
 		return nil
 	}
 }

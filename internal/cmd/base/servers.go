@@ -101,6 +101,7 @@ type Server struct {
 
 	DevPasswordAuthMethodId          string
 	DevOidcAuthMethodId              string
+	DevLdapAuthMethodId              string
 	DevLoginName                     string
 	DevPassword                      string
 	DevUserId                        string
@@ -129,6 +130,7 @@ type Server struct {
 	HostPlugins    map[string]plgpb.HostPluginServiceClient
 
 	DevOidcSetup oidcSetup
+	DevLdapSetup ldapSetup
 
 	DatabaseUrl                     string
 	DatabaseMaxOpenConnections      int

@@ -85,6 +85,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withSkipOidcAuthMethodCreation = true
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithSkipLdapAuthMethodCreation", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithSkipLdapAuthMethodCreation())
+		testOpts := getDefaultOptions()
+		testOpts.withSkipLdapAuthMethodCreation = true
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithSkipScopesCreation", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithSkipScopesCreation())
