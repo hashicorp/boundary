@@ -62,7 +62,7 @@ func TestAuthenticate(t *testing.T) {
 	td.SetGroups(groups...)
 
 	testPrimaryAuthMethod := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId,
-		[]string{fmt.Sprintf("ldaps://127.0.0.1:%d", td.Port())},
+		[]string{fmt.Sprintf("ldaps://%s:%d", td.Host(), td.Port())},
 		WithCertificates(testCtx, tdCerts...),
 		WithDiscoverDn(testCtx),
 		WithEnableGroups(testCtx),
@@ -72,7 +72,7 @@ func TestAuthenticate(t *testing.T) {
 	iam.TestSetPrimaryAuthMethod(t, iamRepo, org, testPrimaryAuthMethod.PublicId)
 
 	testNotPrimaryAuthMethod := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId,
-		[]string{fmt.Sprintf("ldaps://127.0.0.1:%d", td.Port())},
+		[]string{fmt.Sprintf("ldaps://%s:%d", td.Host(), td.Port())},
 		WithCertificates(testCtx, tdCerts...),
 		WithDiscoverDn(testCtx),
 		WithEnableGroups(testCtx),

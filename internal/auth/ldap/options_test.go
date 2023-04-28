@@ -315,4 +315,13 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withMemberOfGroups = "[\"test\"]"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithPublicId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithPublicId(testCtx, "test"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withPublicId = "test"
+		assert.Equal(opts, testOpts)
+	})
 }

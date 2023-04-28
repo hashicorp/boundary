@@ -82,7 +82,7 @@ func testServerCommand(t *testing.T, opts testServerCommandOpts) *Command {
 			cmd.Server.DevSecondaryTargetId = defaultSecondaryTestTargetId
 		}
 
-		err = cmd.CreateDevDatabase(cmd.Context, base.WithDatabaseTemplate("boundary_template"), base.WithSkipOidcAuthMethodCreation())
+		err = cmd.CreateDevDatabase(cmd.Context, base.WithDatabaseTemplate("boundary_template"), base.WithSkipOidcAuthMethodCreation(), base.WithSkipLdapAuthMethodCreation())
 		if err != nil {
 			if cmd.DevDatabaseCleanupFunc != nil {
 				require.NoError(cmd.DevDatabaseCleanupFunc())

@@ -6,7 +6,9 @@ package ldap
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -21,7 +23,7 @@ import (
 // The AuthMethod's public id and version must be empty (zero values).
 //
 // All options are ignored.
-func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...Option) (*AuthMethod, error) {
+func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt ...Option) (*AuthMethod, error) {
 	const op = "ldap.(Repository).CreateAuthMethod"
 	switch {
 	case am == nil:
@@ -38,10 +40,21 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, _ ...
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing urls (there must be at least one)")
 	}
 
-	var err error
-	am.PublicId, err = newAuthMethodId(ctx)
+	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	am.PublicId = opts.withPublicId
+	if am.PublicId == "" {
+		id, err := newAuthMethodId(ctx)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		am.PublicId = id
+	} else {
+		if !strings.HasPrefix(am.PublicId, globals.LdapAuthMethodPrefix+"_") {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "wrong auth method id prefix")
+		}
 	}
 
 	cv, err := am.convertValueObjects(ctx)

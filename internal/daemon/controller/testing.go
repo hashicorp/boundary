@@ -50,6 +50,7 @@ const (
 	DefaultProjectId                         = "p_1234567890"
 	DefaultTestPasswordAuthMethodId          = "ampw_1234567890"
 	DefaultTestOidcAuthMethodId              = "amoidc_1234567890"
+	DefaultTestLdapAuthMethodId              = globals.LdapAuthMethodPrefix + "_1234567890"
 	DefaultTestLoginName                     = "admin"
 	DefaultTestUnprivilegedLoginName         = "user"
 	DefaultTestPassword                      = "passpass"
@@ -355,6 +356,9 @@ type TestControllerOpts struct {
 	// DefaultOidcAuthMethodId is the default OIDC method ID to use, if set.
 	DefaultOidcAuthMethodId string
 
+	// DefaultLdapAuthMethodId is the default LDAP method ID to use, if set.
+	DefaultLdapAuthMethodId string
+
 	// DefaultLoginName is the login name used when creating the default admin account.
 	DefaultLoginName string
 
@@ -375,6 +379,10 @@ type TestControllerOpts struct {
 	// DisableOidcAuthMethodCreation can be set true to disable the built-in
 	// OIDC listener. Useful for e.g. unix listener tests.
 	DisableOidcAuthMethodCreation bool
+
+	// DisableLdapAuthMethodCreation can be set true to disable the built-in
+	// ldap listener. Useful for e.g. unix listener tests.
+	DisableLdapAuthMethodCreation bool
 
 	// DisableScopesCreation can be set true to disable creating scopes
 	// automatically.
@@ -564,6 +572,11 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 	} else {
 		tc.b.DevOidcAuthMethodId = DefaultTestOidcAuthMethodId
 	}
+	if opts.DefaultLdapAuthMethodId != "" {
+		tc.b.DevLdapAuthMethodId = opts.DefaultLdapAuthMethodId
+	} else {
+		tc.b.DevLdapAuthMethodId = DefaultTestLdapAuthMethodId
+	}
 	if opts.DefaultLoginName != "" {
 		tc.b.DevLoginName = opts.DefaultLoginName
 	} else {
@@ -643,6 +656,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		suffix := opts.InitialResourcesSuffix
 		tc.b.DevPasswordAuthMethodId = "ampw_" + suffix
 		tc.b.DevOidcAuthMethodId = "amoidc_" + suffix
+		tc.b.DevLdapAuthMethodId = globals.LdapAuthMethodPrefix + "_" + suffix
 		tc.b.DevHostCatalogId = "hcst_" + suffix
 		tc.b.DevHostId = "hst_" + suffix
 		tc.b.DevHostSetId = "hsst_" + suffix
@@ -714,6 +728,11 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 							t.Fatal(err)
 						}
 					}
+					if !opts.DisableLdapAuthMethodCreation {
+						if err := tc.b.CreateDevLdapAuthMethod(ctx); err != nil {
+							t.Fatal(err)
+						}
+					}
 					if !opts.DisableScopesCreation {
 						if _, _, err := tc.b.CreateInitialScopes(ctx); err != nil {
 							t.Fatal(err)
@@ -740,6 +759,9 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		if opts.DisableOidcAuthMethodCreation {
 			createOpts = append(createOpts, base.WithSkipOidcAuthMethodCreation())
 		}
+		if opts.DisableOidcAuthMethodCreation {
+			createOpts = append(createOpts, base.WithSkipLdapAuthMethodCreation())
+		}
 		if !opts.DisableDatabaseTemplate {
 			createOpts = append(createOpts, base.WithDatabaseTemplate("boundary_template"))
 		}
@@ -764,6 +786,7 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		DatabaseUrl:                     tc.c.conf.DatabaseUrl,
 		DefaultPasswordAuthMethodId:     tc.c.conf.DevPasswordAuthMethodId,
 		DefaultOidcAuthMethodId:         tc.c.conf.DevOidcAuthMethodId,
+		DefaultLdapAuthMethodId:         tc.c.conf.DevLdapAuthMethodId,
 		RootKms:                         tc.c.conf.RootKms,
 		WorkerAuthKms:                   tc.c.conf.WorkerAuthKms,
 		DownstreamWorkerAuthKms:         tc.c.conf.DownstreamWorkerAuthKms,

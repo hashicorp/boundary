@@ -460,6 +460,7 @@ func (c *Command) Run(args []string) int {
 		}
 		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", globals.PasswordAuthMethodPrefix, c.flagIdSuffix)
 		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", globals.OidcAuthMethodPrefix, c.flagIdSuffix)
+		c.DevLdapAuthMethodId = fmt.Sprintf("%s_%s", globals.LdapAuthMethodPrefix, c.flagIdSuffix)
 		c.DevUserId = fmt.Sprintf("%s_%s", globals.UserPrefix, c.flagIdSuffix)
 		c.DevPasswordAccountId = fmt.Sprintf("%s_%s", globals.PasswordAccountPrefix, c.flagIdSuffix)
 		c.DevOidcAccountId = fmt.Sprintf("%s_%s", globals.OidcAccountPrefix, c.flagIdSuffix)
