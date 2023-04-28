@@ -24,6 +24,7 @@ type option struct {
 	setDisableDatabaseDestruction  bool
 	setDefaultPasswordAuthMethodId bool
 	setDefaultOidcAuthMethodId     bool
+	setDefaultLdapAuthMethodId     bool
 	setDefaultLoginName            bool
 	setDefaultPassword             bool
 	setRootKms                     bool
@@ -51,6 +52,7 @@ func getOpts(opt ...Option) (*controller.TestControllerOpts, error) {
 	var setDbParams bool
 	if opts.setDefaultPasswordAuthMethodId ||
 		opts.setDefaultOidcAuthMethodId ||
+		opts.setDefaultLdapAuthMethodId ||
 		opts.setDefaultLoginName ||
 		opts.setDefaultPassword {
 		setDbParams = true
@@ -143,6 +145,14 @@ func WithDefaultOidcAuthMethodId(id string) Option {
 	return func(c *option) error {
 		c.setDefaultOidcAuthMethodId = true
 		c.tcOptions.DefaultOidcAuthMethodId = id
+		return nil
+	}
+}
+
+func WithDefaultLdapAuthMethodId(id string) Option {
+	return func(c *option) error {
+		c.setDefaultLdapAuthMethodId = true
+		c.tcOptions.DefaultLdapAuthMethodId = id
 		return nil
 	}
 }
