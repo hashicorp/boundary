@@ -152,6 +152,7 @@ var prefixToResourceType = map[string]resource.Type{
 	TcpTargetPrefix:                            resource.Target,
 	SshTargetPrefix:                            resource.Target,
 	WorkerPrefix:                               resource.Worker,
+	PluginStorageBucketPrefix:                  resource.StorageBucket,
 }
 
 // ResourceTypeFromPrefix takes in a resource ID (or a prefix) and returns the

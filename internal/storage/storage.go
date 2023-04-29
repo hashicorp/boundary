@@ -8,20 +8,25 @@ import (
 	"io"
 	"io/fs"
 
+	"github.com/hashicorp/boundary/internal/boundary"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
 
 // RecordingStorage can be used to create a FS usable for session recording.
 type RecordingStorage interface {
-	NewLocalFS(ctx context.Context, bucket Bucket, _ ...Option) (FS, error)
-	NewRemoteFS(ctx context.Context, bucket Bucket, _ ...Option) (FS, error)
+	NewLocalFS(ctx context.Context, bucket *storagebuckets.StorageBucket, _ ...Option) (FS, error)
+	NewRemoteFS(ctx context.Context, bucket *storagebuckets.StorageBucket, _ ...Option) (FS, error)
 	PluginClients() map[string]plgpb.StoragePluginServiceClient
 }
 
 // Bucket is a resource that represents a bucket in an external object store
 type Bucket interface {
+	boundary.Resource
+	GetScopeId() string
 	GetBucketName() string
 	GetBucketPrefix() string
+	GetWorkerFilter() string
 }
 
 // FS is a filesystem for creating or reading files and containers.

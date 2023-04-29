@@ -51,6 +51,9 @@
       "name": "controller.api.services.v1.SessionService"
     },
     {
+      "name": "controller.api.services.v1.StorageBucketService"
+    },
+    {
       "name": "controller.api.services.v1.TargetService"
     },
     {
@@ -2956,6 +2959,160 @@
         ]
       }
     },
+    "/v1/storage-buckets": {
+      "get": {
+        "summary": "Gets a list of Storage Buckets.",
+        "operationId": "StorageBucketService_ListStorageBuckets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListStorageBucketsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.StorageBucketService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a Storage Bucket",
+        "operationId": "StorageBucketService_CreateStorageBucket",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          },
+          {
+            "name": "plugin_name",
+            "description": "As an alternative to providing the plugin id in the provided StorageBucket,\nthis field can be used to lookup the plugin using its name.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.StorageBucketService"
+        ]
+      }
+    },
+    "/v1/storage-buckets/{id}": {
+      "get": {
+        "summary": "Gets a single Storage Bucket.",
+        "operationId": "StorageBucketService_GetStorageBucket",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.StorageBucketService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Storage Bucket",
+        "operationId": "StorageBucketService_DeleteStorageBucket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteStorageBucketResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.StorageBucketService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Storage Bucket",
+        "operationId": "StorageBucketService_UpdateStorageBucket",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          },
+          {
+            "name": "update_mask",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.StorageBucketService"
+        ]
+      }
+    },
     "/v1/targets": {
       "get": {
         "summary": "Lists all Targets.",
@@ -5759,6 +5916,93 @@
         }
       }
     },
+    "controller.api.resources.storagebuckets.v1.StorageBucket": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the storage bucket.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The ID of the Scope of which this storage bucket is a part."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Output only. Scope information for this resource.",
+          "readOnly": true
+        },
+        "plugin_id": {
+          "type": "string",
+          "description": "The ID of the plugin of which this storage bucket is created."
+        },
+        "plugin": {
+          "$ref": "#/definitions/controller.api.resources.plugins.v1.PluginInfo",
+          "description": "Output only. Plugin information for this resource.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name for identification purposes."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional user-set description for identification purposes."
+        },
+        "bucket_name": {
+          "type": "string",
+          "description": "The name of the bucket within the external object store service."
+        },
+        "bucket_prefix": {
+          "type": "string",
+          "description": "The prefix used to organize the data held within the external object store."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was last updated.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Attributes specific to the catalog type."
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Secrets specific to the storage bucket type. These are never output."
+        },
+        "secrets_hmac": {
+          "type": "string",
+          "description": "Output only. The HMAC of the last secrets supplied via the API, if any.",
+          "readOnly": true
+        },
+        "worker_filter": {
+          "type": "string",
+          "title": "Filters to the worker(s) that can handle requests for this storage bucket"
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        }
+      },
+      "title": "StorageBucket manages external object stores"
+    },
     "controller.api.resources.targets.v1.CredentialSource": {
       "type": "object",
       "properties": {
@@ -6589,6 +6833,17 @@
         }
       }
     },
+    "controller.api.services.v1.CreateStorageBucketResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string"
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+        }
+      }
+    },
     "controller.api.services.v1.CreateTargetResponse": {
       "type": "object",
       "properties": {
@@ -6659,6 +6914,9 @@
       "type": "object"
     },
     "controller.api.services.v1.DeleteScopeResponse": {
+      "type": "object"
+    },
+    "controller.api.services.v1.DeleteStorageBucketResponse": {
       "type": "object"
     },
     "controller.api.services.v1.DeleteTargetResponse": {
@@ -6808,6 +7066,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+        }
+      }
+    },
+    "controller.api.services.v1.GetStorageBucketResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
         }
       }
     },
@@ -7019,6 +7285,17 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListStorageBucketsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
           }
         }
       }
@@ -7315,6 +7592,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+        }
+      }
+    },
+    "controller.api.services.v1.UpdateStorageBucketResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
         }
       }
     },

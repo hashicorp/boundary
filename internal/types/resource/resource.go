@@ -29,6 +29,7 @@ const (
 	CredentialStore
 	CredentialLibrary
 	Credential
+	StorageBucket
 	// NOTE: When adding a new type, be sure to update:
 	//
 	// * The Grant.validateType function and test
@@ -65,6 +66,7 @@ func (r Type) String() string {
 		"credential-store",
 		"credential-library",
 		"credential",
+		"storage-bucket",
 	}[r]
 }
 
@@ -98,6 +100,7 @@ var Map = map[string]Type{
 	CredentialStore.String():   CredentialStore,
 	CredentialLibrary.String(): CredentialLibrary,
 	Credential.String():        Credential,
+	StorageBucket.String():     StorageBucket,
 }
 
 // Parent returns the parent type for a given type; if there is no parent, it
@@ -138,6 +141,7 @@ func TopLevelType(typ Type) bool {
 		Session,
 		Target,
 		User,
+		StorageBucket,
 		Worker:
 		return true
 	}

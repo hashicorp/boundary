@@ -36,6 +36,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/sessions"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/storage_buckets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
@@ -133,7 +134,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 	currentServices := s.GetServiceInfo()
 
 	if _, ok := currentServices[services.HostCatalogService_ServiceDesc.ServiceName]; !ok {
-		hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn, c.HostPluginRepoFn, c.IamRepoFn)
+		hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn, c.PluginRepoFn, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create host catalog handler service: %w", err)
 		}
@@ -187,6 +188,18 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			return fmt.Errorf("failed to create user handler service: %w", err)
 		}
 		services.RegisterUserServiceServer(s, us)
+	}
+	if _, ok := currentServices[services.StorageBucketService_ServiceDesc.ServiceName]; !ok {
+		sbs, err := storage_buckets.NewServiceFn(
+			c.baseContext,
+			c.PluginStorageBucketRepoFn,
+			c.IamRepoFn,
+			c.PluginRepoFn,
+			c.ControllerExtension)
+		if err != nil {
+			return fmt.Errorf("failed to create storage bucket handler service: %w", err)
+		}
+		services.RegisterStorageBucketServiceServer(s, sbs)
 	}
 	if _, ok := currentServices[services.TargetService_ServiceDesc.ServiceName]; !ok {
 		ts, err := targets.NewService(
@@ -331,6 +344,9 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 	}
 	if err := services.RegisterSessionRecordingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register session recording service handler: %w", err)
+	}
+	if err := services.RegisterStorageBucketServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register storage bucket handler: %w", err)
 	}
 
 	return nil

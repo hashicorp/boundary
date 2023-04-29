@@ -88,7 +88,7 @@ type Service struct {
 
 	staticRepoFn     common.StaticRepoFactory
 	pluginHostRepoFn common.PluginHostRepoFactory
-	pluginRepoFn     common.HostPluginRepoFactory
+	pluginRepoFn     common.PluginRepoFactory
 	iamRepoFn        common.IamRepoFactory
 }
 
@@ -96,7 +96,7 @@ var _ pbs.HostCatalogServiceServer = (*Service)(nil)
 
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
-func NewService(repoFn common.StaticRepoFactory, pluginHostRepoFn common.PluginHostRepoFactory, hostPluginRepoFn common.HostPluginRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(repoFn common.StaticRepoFactory, pluginHostRepoFn common.PluginHostRepoFactory, hostPluginRepoFn common.PluginRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "host_catalogs.NewService"
 	if repoFn == nil {
 		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")

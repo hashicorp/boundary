@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
@@ -703,6 +704,39 @@ var inputStructs = []*structInfo{
 		parentTypeName:      "credential-store",
 		versionEnabled:      true,
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+	},
+
+	// Storage related resources
+	{
+		inProto: &storagebuckets.StorageBucket{},
+		outFile: "storagebuckets/storage_bucket.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			commonCreateTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		extraFields: []fieldInfo{
+			{
+				Name:        "PluginName",
+				ProtoName:   "plugin_name",
+				FieldType:   "string",
+				SkipDefault: true,
+				Query:       true,
+			},
+		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "PluginId",
+				SkipDefault: true,
+			},
+		},
+		pluralResourceName:  "storage-buckets",
+		versionEnabled:      true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+		recursiveListing:    true,
 	},
 
 	// Host related resources

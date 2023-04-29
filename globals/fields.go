@@ -99,4 +99,5 @@ const (
 	TotalCountField                             = "total_count"
 	DirectlyConnectedDownstreamWorkersField     = "directly_connected_downstream_workers"
 	AttributesAddressField                      = "attributes.address"
+	SecretsField                                = "secrets"
 )

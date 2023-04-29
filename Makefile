@@ -212,6 +212,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/host_catalog_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/hostsets/host_set.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/host_set_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/storagebuckets/storage_bucket.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/storage_bucket_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authtokens/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/authtokens_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/managedgroups/managed_group.pb.go

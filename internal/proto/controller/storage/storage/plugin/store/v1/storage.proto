@@ -52,14 +52,23 @@ message StorageBucket {
 
   // The name of the external storage bucket (as opposed to the name within boundary)
   // @inject_tag: `gorm:"not_null"`
-  string bucket_name = 9;
+  string bucket_name = 9 [(custom_options.v1.mask_mapping) = {
+    this: "BucketName"
+    that: "bucket_name"
+  }];
 
   // @inject_tag: `gorm:"default:null"`
-  string bucket_prefix = 10;
+  string bucket_prefix = 10 [(custom_options.v1.mask_mapping) = {
+    this: "BucketPrefix"
+    that: "bucket_prefix"
+  }];
 
   // A boolean expression that allows filtering the workers that can handle a storage buckets
   // @inject_tag: `gorm:"not_null"`
-  string worker_filter = 11;
+  string worker_filter = 11 [(custom_options.v1.mask_mapping) = {
+    this: "WorkerFilter"
+    that: "worker_filter"
+  }];
 
   // attributes is a json formatted field.
   // @inject_tag: `gorm:"not_null"`

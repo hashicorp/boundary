@@ -6,28 +6,101 @@ syntax = "proto3";
 package controller.api.resources.storagebuckets.v1;
 
 import "controller/api/resources/plugins/v1/plugin.proto";
+import "controller/api/resources/scopes/v1/scope.proto";
 import "controller/custom_options/v1/options.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets;storagebuckets";
 
-// TODO: this definition is not complete and
-// is empty because the message is being used in
-// plugin/v1/storage_plugin_service.proto
 // StorageBucket manages external object stores
 message StorageBucket {
-  // The name of the resource that is managed by an external object store service.
-  string bucket_name = 10; // @gotags: `class:"public"`
+  // Output only. The ID of the storage bucket.
+  string id = 10; // @gotags: `class:"public"`
 
-  // The prefix used to organize the data held within the external object store.
-  string bucket_prefix = 20; // @gotags: `class:"public"`
+  // The ID of the Scope of which this storage bucket is a part.
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
 
-  // Attributes specific to the storage bucket type.
-  google.protobuf.Struct attributes = 30 [(custom_options.v1.generate_sdk_option) = true]; // @gotags: `class:"public"`
+  // Output only. Scope information for this resource.
+  resources.scopes.v1.ScopeInfo scope = 30; // @gotags: `class:"public"`
 
-  // Secrets specific to the storage bucket type. These are never output.
-  google.protobuf.Struct secrets = 40 [(custom_options.v1.generate_sdk_option) = true];
+  // The ID of the plugin of which this storage bucket is created.
+  string plugin_id = 34 [
+    json_name = "plugin_id",
+    (custom_options.v1.generate_sdk_option) = true
+  ]; // @gotags: `class:"public"`
 
   // Output only. Plugin information for this resource.
-  resources.plugins.v1.PluginInfo plugin = 50;
+  resources.plugins.v1.PluginInfo plugin = 35; // @gotags: `class:"public"`
+
+  // Optional name for identification purposes.
+  google.protobuf.StringValue name = 40 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "name"
+      that: "Name"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Optional user-set description for identification purposes.
+  google.protobuf.StringValue description = 50 [
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "description"
+      that: "Description"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // The name of the bucket within the external object store service.
+  string bucket_name = 60 [
+    json_name = "bucket_name",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "bucket_name"
+      that: "BucketName"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // The prefix used to organize the data held within the external object store.
+  string bucket_prefix = 70 [
+    json_name = "bucket_prefix",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "bucket_prefix"
+      that: "BucketPrefix"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Output only. The time this resource was created.
+  google.protobuf.Timestamp created_time = 80 [json_name = "created_time"]; // @gotags: `class:"public"`
+
+  // Output only. The time this resource was last updated.
+  google.protobuf.Timestamp updated_time = 90 [json_name = "updated_time"]; // @gotags: `class:"secret"`
+
+  // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
+  // The mutation will fail if the version does not match the latest known good version.
+  uint32 version = 100; // @gotags: `class:"public"`
+
+  // Attributes specific to the catalog type.
+  google.protobuf.Struct attributes = 120 [(custom_options.v1.generate_sdk_option) = true]; // @gotags: `class:"public"`
+
+  // Secrets specific to the storage bucket type. These are never output.
+  google.protobuf.Struct secrets = 130 [(custom_options.v1.generate_sdk_option) = true]; // @gotags: `class:"public"`
+
+  // Output only. The HMAC of the last secrets supplied via the API, if any.
+  string secrets_hmac = 140; // @gotags: `class:"public"`
+
+  // Filters to the worker(s) that can handle requests for this storage bucket
+  string worker_filter = 150 [
+    json_name = "worker_filter",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "worker_filter"
+      that: "WorkerFilter"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // Output only. The available actions on this resource for this user.
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }

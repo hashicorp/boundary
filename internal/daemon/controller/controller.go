@@ -41,6 +41,7 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	serversjob "github.com/hashicorp/boundary/internal/server/job"
 	"github.com/hashicorp/boundary/internal/session"
+	pluginstorage "github.com/hashicorp/boundary/internal/storage/plugin"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
@@ -118,21 +119,22 @@ type Controller struct {
 	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
-	AuthTokenRepoFn         common.AuthTokenRepoFactory
-	VaultCredentialRepoFn   common.VaultCredentialRepoFactory
-	StaticCredentialRepoFn  common.StaticCredentialRepoFactory
-	IamRepoFn               common.IamRepoFactory
-	OidcRepoFn              common.OidcAuthRepoFactory
-	LdapRepoFn              common.LdapAuthRepoFactory
-	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
-	ServersRepoFn           common.ServersRepoFactory
-	SessionRepoFn           session.RepositoryFactory
-	ConnectionRepoFn        common.ConnectionRepoFactory
-	StaticHostRepoFn        common.StaticRepoFactory
-	PluginHostRepoFn        common.PluginHostRepoFactory
-	HostPluginRepoFn        common.HostPluginRepoFactory
-	TargetRepoFn            target.RepositoryFactory
-	WorkerAuthRepoStorageFn common.WorkerAuthRepoStorageFactory
+	AuthTokenRepoFn           common.AuthTokenRepoFactory
+	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
+	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
+	IamRepoFn                 common.IamRepoFactory
+	OidcRepoFn                common.OidcAuthRepoFactory
+	LdapRepoFn                common.LdapAuthRepoFactory
+	PasswordAuthRepoFn        common.PasswordAuthRepoFactory
+	ServersRepoFn             common.ServersRepoFactory
+	SessionRepoFn             session.RepositoryFactory
+	ConnectionRepoFn          common.ConnectionRepoFactory
+	StaticHostRepoFn          common.StaticRepoFactory
+	PluginHostRepoFn          common.PluginHostRepoFactory
+	PluginStorageBucketRepoFn common.PluginStorageBucketRepoFactory
+	PluginRepoFn              common.PluginRepoFactory
+	TargetRepoFn              target.RepositoryFactory
+	WorkerAuthRepoStorageFn   common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -261,8 +263,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 				plugin.WithDescription("Provides an initial loopback storage and host plugin in Boundary"),
 				plugin.WithPublicId(conf.DevLoopbackPluginId),
 			}
-			// TODO(storage): Register loopback as storage supported
-			if _, err = conf.RegisterPlugin(ctx, "loopback", plg, []plugin.PluginType{plugin.PluginTypeHost}, opts...); err != nil {
+			if _, err = conf.RegisterPlugin(ctx, "loopback", plg, []plugin.PluginType{plugin.PluginTypeHost, plugin.PluginTypeStorage}, opts...); err != nil {
 				return nil, err
 			}
 		case base.EnabledPluginHostAzure:
@@ -376,8 +377,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
 		return pluginhost.NewRepository(dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
 	}
-	c.HostPluginRepoFn = func() (*plugin.Repository, error) {
+	c.PluginRepoFn = func() (*plugin.Repository, error) {
 		return plugin.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.PluginStorageBucketRepoFn = func() (*pluginstorage.Repository, error) {
+		return pluginstorage.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(dbase, dbase, c.kms,

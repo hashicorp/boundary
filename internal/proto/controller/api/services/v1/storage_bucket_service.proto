@@ -1,0 +1,119 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "controller/api/resources/storagebuckets/v1/storage_bucket.proto";
+import "controller/custom_options/v1/options.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/field_mask.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+option (custom_options.v1.domain) = "storage";
+
+service StorageBucketService {
+  // GetStorageBucket returns a stored Storage Bucket if present.  The provided
+  // request must include the ID for the Storage Bucket being retrieved.
+  // If missing, malformed, or referencing a non-existing resource an error is
+  // returned.
+  rpc GetStorageBucket(GetStorageBucketRequest) returns (GetStorageBucketResponse) {
+    option (google.api.http) = {
+      get: "/v1/storage-buckets/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a single Storage Bucket."};
+  }
+
+  // ListStorageBuckets returns a list of stored Storage Buckets which exist inside
+  // the scope referenced in the request. The request must include the scope
+  // ID and if it is  missing, malformed, or references a non-existing resource
+  // an error is returned.
+  rpc ListStorageBuckets(ListStorageBucketsRequest) returns (ListStorageBucketsResponse) {
+    option (google.api.http) = {get: "/v1/storage-buckets"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Gets a list of Storage Buckets."};
+  }
+
+  // CreateStorageBucket creates and stores a Storage Bucket in boundary.  The
+  // provided request must include the scope ID in which the Storage Bucket will be
+  // created. If any of these required fields are missing, malformed, or reference a
+  // non-existing parent resource an error is returned.
+  rpc CreateStorageBucket(CreateStorageBucketRequest) returns (CreateStorageBucketResponse) {
+    option (google.api.http) = {
+      post: "/v1/storage-buckets"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Creates a Storage Bucket"};
+  }
+
+  // UpdateStorageBucket updates an existing Storage Bucket in Boundary. The
+  // provided Storage Bucket must not have any read only fields set. The update
+  // mask must be provided and include at least 1 mutable field. To unset a
+  // field's value include that field name in the update mask and don't set the
+  // field in the Storage Bucket.
+  rpc UpdateStorageBucket(UpdateStorageBucketRequest) returns (UpdateStorageBucketResponse) {
+    option (google.api.http) = {
+      patch: "/v1/storage-buckets/{id}"
+      body: "item"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Updates a Storage Bucket"};
+  }
+
+  // DeleteStorageBucket removes a Storage Bucket  from Boundary.
+  // If the provided Storage Bucket ID is malformed or not
+  // provided DeleteStorageBucket returns an error.
+  rpc DeleteStorageBucket(DeleteStorageBucketRequest) returns (DeleteStorageBucketResponse) {
+    option (google.api.http) = {delete: "/v1/storage-buckets/{id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Deletes a Storage Bucket"};
+  }
+}
+
+message GetStorageBucketRequest {
+  string id = 1; // @gotags: `class:"public"`
+}
+
+message GetStorageBucketResponse {
+  api.resources.storagebuckets.v1.StorageBucket item = 1;
+}
+
+message ListStorageBucketsRequest {
+  string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
+}
+
+message ListStorageBucketsResponse {
+  repeated api.resources.storagebuckets.v1.StorageBucket items = 1;
+}
+
+message CreateStorageBucketRequest {
+  api.resources.storagebuckets.v1.StorageBucket item = 1;
+  // As an alternative to providing the plugin id in the provided StorageBucket,
+  // this field can be used to lookup the plugin using its name.
+  string plugin_name = 2 [json_name = "plugin_name"]; // @gotags: `class:"public"`
+}
+
+message CreateStorageBucketResponse {
+  string uri = 1; // @gotags: `class:"public"`
+  api.resources.storagebuckets.v1.StorageBucket item = 2;
+}
+
+message UpdateStorageBucketRequest {
+  string id = 1; // @gotags: `class:"public"`
+  api.resources.storagebuckets.v1.StorageBucket item = 2;
+  google.protobuf.FieldMask update_mask = 3;
+}
+
+message UpdateStorageBucketResponse {
+  api.resources.storagebuckets.v1.StorageBucket item = 1;
+}
+
+message DeleteStorageBucketRequest {
+  string id = 1; // @gotags: `class:"public"`
+}
+
+message DeleteStorageBucketResponse {}
