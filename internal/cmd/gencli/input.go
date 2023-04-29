@@ -566,6 +566,25 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:    []string{"cancel"},
 		},
 	},
+	"storagebuckets": {
+		{
+			ResourceType:         resource.StorageBucket.String(),
+			Pkg:                  "storagebuckets",
+			StdActions:           []string{"create", "update", "read", "delete", "list"},
+			SkipNormalHelp:       true,
+			HasExtraHelpFunc:     true,
+			HasExtraCommandVars:  true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			IsPluginType:         true,
+			VersionedActions:     []string{"update"},
+			NeedsSubtypeInCreate: true,
+			HasGenericAttributes: true,
+			HasGenericSecrets:    true,
+		},
+	},
 	"targets": {
 		{
 			ResourceType:        resource.Target.String(),

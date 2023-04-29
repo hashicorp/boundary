@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/storagebucketscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/userscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/version"
@@ -1020,6 +1021,42 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "cancel",
+			}, nil
+		},
+
+		"storage-buckets": func() (cli.Command, error) {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"storage-buckets read": func() (cli.Command, error) {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"storage-buckets delete": func() (cli.Command, error) {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "delete",
+			}, nil
+		},
+		"storage-buckets list": func() (cli.Command, error) {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
+			}, nil
+		},
+		"storage-buckets create": func() (cli.Command, error) {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}, nil
+		},
+		"storage-buckets update": func() (cli.Command, error) {
+			return &storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "update",
 			}, nil
 		},
 
