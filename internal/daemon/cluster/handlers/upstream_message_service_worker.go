@@ -23,7 +23,7 @@ import (
 type UpstreamMessageServiceClientProducer func(context.Context) (pbs.UpstreamMessageServiceClient, error)
 
 // workerUpstreamMessageServiceServer implements the
-// SessionRecordingServiceServer for workers and always forwards requests using
+// UpstreamMessageServiceServer for workers and always forwards requests using
 // its clients
 type workerUpstreamMessageServiceServer struct {
 	pbs.UnimplementedUpstreamMessageServiceServer
