@@ -97,10 +97,10 @@ require (
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c893099f13
 	github.com/hashicorp/go-version v1.3.0
 	github.com/hashicorp/nodeenrollment v0.2.0
-	github.com/jimlambrt/gldap v0.1.5
+	github.com/jimlambrt/gldap v0.1.6-0.20230501161051-4e73db4906d4
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
-	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
 	golang.org/x/net v0.7.0
 )
 
