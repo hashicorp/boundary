@@ -254,7 +254,7 @@ func (b *Server) CreateDevLdapAuthMethod(ctx context.Context) error {
 		return nil
 	})
 	b.InfoKeys = append(b.InfoKeys, "generated ldap auth method host:port")
-	b.Info["generated ldap auth method host:port"] = fmt.Sprintf("%s:%d (does not have a root DSE; use simple bind, ou=people,ex)", host, port)
+	b.Info["generated ldap auth method host:port"] = fmt.Sprintf("%s:%d (does not have a root DSE; use simple bind)", host, port)
 
 	// users="ou=people,dc=example,dc=org" groups="ou=groups,dc=example,dc=org"
 	b.InfoKeys = append(b.InfoKeys, "generated ldap auth method base search DNs")
