@@ -253,6 +253,12 @@ func (b *Server) CreateDevLdapAuthMethod(ctx context.Context) error {
 		b.DevLdapSetup.testDirectory.Stop()
 		return nil
 	})
+	b.InfoKeys = append(b.InfoKeys, "generated ldap auth method host:port")
+	b.Info["generated ldap auth method host:port"] = fmt.Sprintf("%s:%d (does not have a root DSE; use simple bind, ou=people,ex)", host, port)
+
+	// users="ou=people,dc=example,dc=org" groups="ou=groups,dc=example,dc=org"
+	b.InfoKeys = append(b.InfoKeys, "generated ldap auth method base search DNs")
+	b.Info["generated ldap auth method base search DNs"] = `users="ou=people,dc=example,dc=org" groups="ou=groups,dc=example,dc=org"`
 
 	groups := []*gldap.Entry{
 		testdirectory.NewGroup(tb, "admin", []string{"admin"}),
