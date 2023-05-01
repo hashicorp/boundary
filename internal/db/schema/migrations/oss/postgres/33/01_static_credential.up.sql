@@ -88,6 +88,7 @@ begin;
     -- is 68 characters.
     --
     -- https://www.postgresql.org/docs/current/limits.html
+    -- Constraint renamed in 67/01_rename_constraints.up.sql
     constraint credential_static_username_password_store_id_public_id_uq
       unique(store_id, public_id)
   );

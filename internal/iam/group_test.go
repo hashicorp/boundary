@@ -282,7 +282,7 @@ func Test_GroupUpdate(t *testing.T) {
 			},
 			wantErr:    true,
 			wantDup:    true,
-			wantErrMsg: `db.Update: duplicate key value violates unique constraint "iam_group_name_scope_id_key": unique constraint violation: integrity violation: error #1002`,
+			wantErrMsg: `db.Update: duplicate key value violates unique constraint "iam_group_name_scope_id_uq": unique constraint violation: integrity violation: error #1002`,
 		},
 		{
 			name: "set description null",
