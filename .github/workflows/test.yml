@@ -37,6 +37,7 @@ jobs:
         uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
+          cache: false
       - name: Determine go cache key
         id: go-cache-key
         run: |
@@ -95,6 +96,7 @@ jobs:
         uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
+          cache: false
       - name: Set up Go modules cache
         uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
@@ -122,6 +124,7 @@ jobs:
         uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
+          cache: false
       - name: Set up Go modules cache
         uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
@@ -157,6 +160,7 @@ jobs:
         uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
+          cache: false
       - name: Set up Go modules cache
         uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:

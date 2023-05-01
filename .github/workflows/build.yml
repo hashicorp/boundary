@@ -45,6 +45,7 @@ jobs:
         uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
+          cache: false
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
@@ -135,6 +136,7 @@ jobs:
         uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: ${{ matrix.go }}
+          cache: false
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
@@ -208,6 +210,7 @@ jobs:
         uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: ${{ matrix.go }}
+          cache: false
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
@@ -306,6 +309,7 @@ jobs:
         uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: ${{ matrix.go }}
+          cache: false
       - name: Determine Go cache paths
         id: go-cache-paths
         run: |
