@@ -34,9 +34,9 @@ type StoragePluginServiceClient interface {
 	HeadObject(ctx context.Context, in *HeadObjectRequest, opts ...grpc.CallOption) (*HeadObjectResponse, error)
 	// GetObject is a hook that retrieves objects.
 	GetObject(ctx context.Context, in *GetObjectRequest, opts ...grpc.CallOption) (StoragePluginService_GetObjectClient, error)
-	// PutObject is a hook that streams chunks of a file to be stored
-	// in an external object store.
-	PutObject(ctx context.Context, opts ...grpc.CallOption) (StoragePluginService_PutObjectClient, error)
+	// PutObject is a hook that reads a file stored on local disk and
+	// stores it to an external object store.
+	PutObject(ctx context.Context, in *PutObjectRequest, opts ...grpc.CallOption) (*PutObjectResponse, error)
 }
 
 type storagePluginServiceClient struct {
@@ -124,38 +124,13 @@ func (x *storagePluginServiceGetObjectClient) Recv() (*GetObjectResponse, error)
 	return m, nil
 }
 
-func (c *storagePluginServiceClient) PutObject(ctx context.Context, opts ...grpc.CallOption) (StoragePluginService_PutObjectClient, error) {
-	stream, err := c.cc.NewStream(ctx, &StoragePluginService_ServiceDesc.Streams[1], "/plugin.v1.StoragePluginService/PutObject", opts...)
+func (c *storagePluginServiceClient) PutObject(ctx context.Context, in *PutObjectRequest, opts ...grpc.CallOption) (*PutObjectResponse, error) {
+	out := new(PutObjectResponse)
+	err := c.cc.Invoke(ctx, "/plugin.v1.StoragePluginService/PutObject", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &storagePluginServicePutObjectClient{stream}
-	return x, nil
-}
-
-type StoragePluginService_PutObjectClient interface {
-	Send(*PutObjectRequest) error
-	CloseAndRecv() (*PutObjectResponse, error)
-	grpc.ClientStream
-}
-
-type storagePluginServicePutObjectClient struct {
-	grpc.ClientStream
-}
-
-func (x *storagePluginServicePutObjectClient) Send(m *PutObjectRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *storagePluginServicePutObjectClient) CloseAndRecv() (*PutObjectResponse, error) {
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	m := new(PutObjectResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 // StoragePluginServiceServer is the server API for StoragePluginService service.
@@ -178,9 +153,9 @@ type StoragePluginServiceServer interface {
 	HeadObject(context.Context, *HeadObjectRequest) (*HeadObjectResponse, error)
 	// GetObject is a hook that retrieves objects.
 	GetObject(*GetObjectRequest, StoragePluginService_GetObjectServer) error
-	// PutObject is a hook that streams chunks of a file to be stored
-	// in an external object store.
-	PutObject(StoragePluginService_PutObjectServer) error
+	// PutObject is a hook that reads a file stored on local disk and
+	// stores it to an external object store.
+	PutObject(context.Context, *PutObjectRequest) (*PutObjectResponse, error)
 	mustEmbedUnimplementedStoragePluginServiceServer()
 }
 
@@ -206,8 +181,8 @@ func (UnimplementedStoragePluginServiceServer) HeadObject(context.Context, *Head
 func (UnimplementedStoragePluginServiceServer) GetObject(*GetObjectRequest, StoragePluginService_GetObjectServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetObject not implemented")
 }
-func (UnimplementedStoragePluginServiceServer) PutObject(StoragePluginService_PutObjectServer) error {
-	return status.Errorf(codes.Unimplemented, "method PutObject not implemented")
+func (UnimplementedStoragePluginServiceServer) PutObject(context.Context, *PutObjectRequest) (*PutObjectResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PutObject not implemented")
 }
 func (UnimplementedStoragePluginServiceServer) mustEmbedUnimplementedStoragePluginServiceServer() {}
 
@@ -333,30 +308,22 @@ func (x *storagePluginServiceGetObjectServer) Send(m *GetObjectResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _StoragePluginService_PutObject_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(StoragePluginServiceServer).PutObject(&storagePluginServicePutObjectServer{stream})
-}
-
-type StoragePluginService_PutObjectServer interface {
-	SendAndClose(*PutObjectResponse) error
-	Recv() (*PutObjectRequest, error)
-	grpc.ServerStream
-}
-
-type storagePluginServicePutObjectServer struct {
-	grpc.ServerStream
-}
-
-func (x *storagePluginServicePutObjectServer) SendAndClose(m *PutObjectResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *storagePluginServicePutObjectServer) Recv() (*PutObjectRequest, error) {
-	m := new(PutObjectRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _StoragePluginService_PutObject_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PutObjectRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(StoragePluginServiceServer).PutObject(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/plugin.v1.StoragePluginService/PutObject",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoragePluginServiceServer).PutObject(ctx, req.(*PutObjectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 // StoragePluginService_ServiceDesc is the grpc.ServiceDesc for StoragePluginService service.
@@ -386,17 +353,16 @@ var StoragePluginService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "HeadObject",
 			Handler:    _StoragePluginService_HeadObject_Handler,
 		},
+		{
+			MethodName: "PutObject",
+			Handler:    _StoragePluginService_PutObject_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "GetObject",
 			Handler:       _StoragePluginService_GetObject_Handler,
 			ServerStreams: true,
-		},
-		{
-			StreamName:    "PutObject",
-			Handler:       _StoragePluginService_PutObject_Handler,
-			ClientStreams: true,
 		},
 	},
 	Metadata: "plugin/v1/storage_plugin_service.proto",

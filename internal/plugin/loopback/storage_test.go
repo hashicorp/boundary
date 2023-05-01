@@ -8,6 +8,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"io"
+	"io/fs"
+	"os"
+	"path"
+	"strings"
 	"sync"
 	"testing"
 
@@ -666,62 +670,68 @@ func TestLoopbackGetObject(t *testing.T) {
 }
 
 func TestLoopbackPutObject(t *testing.T) {
-	require, assert := tr.New(t), ta.New(t)
+	require := tr.New(t)
+	td := t.TempDir()
 
 	mockStorageMapData := map[BucketName]Bucket{
-		"aws_s3_mock": {},
-		"aws_s3_err":  {},
+		"object_store":     {},
+		"object_store_err": {},
 	}
 
 	plg, err := NewLoopbackPlugin(
 		WithMockBuckets(mockStorageMapData),
 		WithMockError(PluginMockError{
-			bucketName: "aws_s3_err",
+			bucketName: "object_store_err",
 			objectKey:  "mock_object",
 			errMsg:     "invalid credentials",
 			errCode:    codes.PermissionDenied,
 		}),
 	)
-	assert.NoError(err)
+	require.NoError(err)
+	require.NotNil(plg)
 
 	client := NewWrappingPluginStorageClient(plg)
 
-	secrets := &structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			"AWS_ACCESS_KEY_ID":     structpb.NewStringValue("access_key_id"),
-			"AWS_SECRET_ACCESS_KEY": structpb.NewStringValue("secret_access_key"),
-		},
-	}
-
 	tests := []struct {
-		name        string
-		request     *plgpb.PutObjectRequest
-		dataChunks  []Chunk
-		expectedErr codes.Code
+		name            string
+		request         *plgpb.PutObjectRequest
+		file            *os.File
+		expectedErr     codes.Code
+		expectedContent string
 	}{
 		{
-			name: "missing request metadata",
+			name:        "missing-request",
+			expectedErr: codes.InvalidArgument,
+		},
+		{
+			name:        "missing-bucket",
+			request:     &plgpb.PutObjectRequest{},
+			expectedErr: codes.InvalidArgument,
+		},
+		{
+			name: "missing-bucket-name",
 			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{},
+				Bucket: &storagebuckets.StorageBucket{},
 			},
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing storage bucket",
+			name: "missing-secrets",
 			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{
-					Request: &plgpb.PutObjectMetadata{},
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
 				},
 			},
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing secrets",
+			name: "missing-key",
 			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{
-					Request: &plgpb.PutObjectMetadata{
-						Bucket: &storagebuckets.StorageBucket{
-							BucketName: "aws_s3_mock",
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
+					Secrets: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
 					},
 				},
@@ -729,210 +739,210 @@ func TestLoopbackPutObject(t *testing.T) {
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing object key",
+			name: "missing-path",
 			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{
-					Request: &plgpb.PutObjectMetadata{
-						Bucket: &storagebuckets.StorageBucket{
-							BucketName: "aws_s3_mock",
-							Secrets:    secrets,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
+					Secrets: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
 					},
 				},
+				Key: "test-file",
 			},
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "empty object data",
-			dataChunks: []Chunk{
-				[]byte(""),
-			},
+			name: "file-not-found",
 			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{
-					Request: &plgpb.PutObjectMetadata{
-						Bucket: &storagebuckets.StorageBucket{
-							BucketName: "aws_s3_mock",
-							Secrets:    secrets,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
+					Secrets: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
-						Key: "mock_object",
 					},
 				},
+				Key:  "test-file",
+				Path: path.Join(td, "test-file"),
 			},
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "bucket not found",
-			dataChunks: []Chunk{
-				[]byte("THIS IS A MOCKED OBJECT"),
-			},
+			name: "path-is-directory",
 			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{
-					Request: &plgpb.PutObjectMetadata{
-						Bucket: &storagebuckets.StorageBucket{
-							BucketName: "invalid_bucket",
-							Secrets:    secrets,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
+					Secrets: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
-						Key: "mock_object",
 					},
 				},
+				Key:  "test-directory",
+				Path: path.Join(td, "test-directory"),
 			},
-			expectedErr: codes.NotFound,
+			file: func() *os.File {
+				err := os.Mkdir(path.Join(td, "test-directory"), fs.ModeAppend)
+				require.NoError(err)
+				return nil
+			}(),
+			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "mock error",
-			dataChunks: []Chunk{
-				[]byte("THIS IS A MOCKED OBJECT"),
-			},
+			name: "bucket-not-found",
 			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{
-					Request: &plgpb.PutObjectMetadata{
-						Bucket: &storagebuckets.StorageBucket{
-							BucketName: "aws_s3_err",
-							Secrets:    secrets,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store_dne",
+					Secrets: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
-						Key: "mock_object",
 					},
 				},
+				Key:  "test-bucket-not-found",
+				Path: path.Join(td, "test-bucket-not-found"),
 			},
+			file: func() *os.File {
+				file, err := os.Create(path.Join(td, "test-bucket-not-found"))
+				require.NoError(err)
+				return file
+			}(),
+			expectedErr: codes.InvalidArgument,
+		},
+		{
+			name: "mock-error",
+			request: &plgpb.PutObjectRequest{
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store_err",
+					Secrets: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
+						},
+					},
+				},
+				Key:  "mock_object",
+				Path: path.Join(td, "test-bucket-not-found"),
+			},
+			file: func() *os.File {
+				file, err := os.Create(path.Join(td, "test-mock-error"))
+				require.NoError(err)
+				return file
+			}(),
 			expectedErr: codes.PermissionDenied,
 		},
 		{
-			name: "valid object",
-			dataChunks: []Chunk{
-				[]byte("THIS IS A MOCKED OBJECT"),
-			},
+			name: "emtpy-object-data",
 			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{
-					Request: &plgpb.PutObjectMetadata{
-						Bucket: &storagebuckets.StorageBucket{
-							BucketName: "aws_s3_mock",
-							Secrets:    secrets,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
+					Secrets: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
-						Key: "mock_object",
 					},
 				},
+				Key:  "test-empty-object-data",
+				Path: path.Join(td, "test-empty-object-data"),
 			},
+			file: func() *os.File {
+				file, err := os.Create(path.Join(td, "test-empty-object-data"))
+				require.NoError(err)
+				require.NoError(file.Close())
+				return file
+			}(),
+			expectedErr: codes.InvalidArgument,
 		},
 		{
 			name: "valid object with dir in key",
-			dataChunks: []Chunk{
-				[]byte("THIS IS A MOCKED OBJECT"),
-			},
 			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{
-					Request: &plgpb.PutObjectMetadata{
-						Bucket: &storagebuckets.StorageBucket{
-							BucketName: "aws_s3_mock",
-							Secrets:    secrets,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "object_store",
+					Secrets: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
-						Key: "foo/bar/zoo/mocked_object",
 					},
 				},
+				Key:  "foo/bar/zoo/mocked_object",
+				Path: path.Join(td, "test-valid-object-dir-in-key"),
 			},
+			file: func() *os.File {
+				file, err := os.Create(path.Join(td, "test-valid-object-dir-in-key"))
+				require.NoError(err)
+				n, err := file.WriteString("TEST OBJ WITH DIR IN KEY!")
+				require.NoError(err)
+				require.Equal(len("TEST OBJ WITH DIR IN KEY!"), n)
+				require.NoError(file.Close())
+				return file
+			}(),
+			expectedContent: "TEST OBJ WITH DIR IN KEY!",
 		},
 		{
 			name: "valid object w/ prefix",
-			dataChunks: []Chunk{
-				[]byte("THIS IS A MOCKED OBJECT"),
-			},
 			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{
-					Request: &plgpb.PutObjectMetadata{
-						Bucket: &storagebuckets.StorageBucket{
-							BucketName:   "aws_s3_mock",
-							BucketPrefix: "/filtered/",
-							Secrets:      secrets,
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName:   "object_store",
+					BucketPrefix: "/filtered/",
+					Secrets: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
-						Key: "mock_object",
 					},
 				},
+				Key:  "mocked_object",
+				Path: path.Join(td, "test-valid-object-prefix"),
 			},
-		},
-		{
-			name: "valid object w/ multiple chunks",
-			dataChunks: []Chunk{
-				[]byte("PART A: 1234567890"),
-				[]byte("PART B: 0987654321"),
-				[]byte("PART C: qwertyuiop"),
-				[]byte("PART D: poiuytrewq"),
-				[]byte("PART E: asdfghjkl"),
-				[]byte("PART F: lkjhgfdsa"),
-				[]byte("PART G: zxcvbnm"),
-				[]byte("PART H: mnbvcxz"),
-			},
-			request: &plgpb.PutObjectRequest{
-				Data: &plgpb.PutObjectRequest_Request{
-					Request: &plgpb.PutObjectMetadata{
-						Bucket: &storagebuckets.StorageBucket{
-							BucketName: "aws_s3_mock",
-							Secrets:    secrets,
-						},
-						Key: "multi_chunk_object",
-					},
-				},
-			},
+			file: func() *os.File {
+				file, err := os.Create(path.Join(td, "test-valid-object-prefix"))
+				require.NoError(err)
+				n, err := file.WriteString("TEST OBJ WITH PREFIX!")
+				require.NoError(err)
+				require.Equal(len("TEST OBJ WITH PREFIX!"), n)
+				require.NoError(file.Close())
+				return file
+			}(),
+			expectedContent: "TEST OBJ WITH PREFIX!",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stream, err := client.PutObject(context.Background())
-			assert.NoError(err)
-			assert.NotNil(stream)
-
-			var objectData []byte
-			var closeResponse *plgpb.PutObjectResponse
-			var closeErr error
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				err = stream.Send(tt.request)
-				assert.NoError(err)
-
-				for _, chunk := range tt.dataChunks {
-					objectData = append(objectData, chunk...)
-					err = stream.Send(&plgpb.PutObjectRequest{
-						Data: &plgpb.PutObjectRequest_FileChunk{
-							FileChunk: chunk,
-						},
-					})
-					assert.NoError(err)
-				}
-
-				closeResponse, closeErr = stream.CloseAndRecv()
-			}()
-			wg.Wait()
-
+			resp, err := client.PutObject(context.Background(), tt.request)
 			if tt.expectedErr != codes.OK {
-				assert.Error(closeErr)
-				assert.Nil(closeResponse)
-				s, ok := status.FromError(closeErr)
+				require.Error(err)
+				require.Nil(resp)
+				s, ok := status.FromError(err)
 				require.True(ok, "invalid error type")
-				assert.Equal(s.Code(), tt.expectedErr)
+				require.Equal(s.Code(), tt.expectedErr)
 				return
 			}
+			require.NoError(err)
+			require.NotNil(resp)
 
-			assert.NoError(closeErr)
-			require.NotNil(closeResponse)
-
-			var actualObject *storagePluginStorageInfo
-			objectPath := ObjectName(tt.request.GetRequest().GetBucket().GetBucketPrefix() + tt.request.GetRequest().GetKey())
-			if obj, ok := mockStorageMapData[BucketName(tt.request.GetRequest().GetBucket().GetBucketName())][objectPath]; ok {
-				actualObject = obj
+			actualBucket, ok := plg.buckets[BucketName(tt.request.Bucket.BucketName)]
+			require.True(ok)
+			require.NotEmpty(actualBucket)
+			actualObject, ok := actualBucket[ObjectName(path.Join(tt.request.Bucket.BucketPrefix, tt.request.Key))]
+			require.True(ok)
+			require.NotEmpty(actualObject)
+			actualData := []byte{}
+			for _, c := range actualObject.DataChunks {
+				actualData = append(actualData, c...)
 			}
-			require.NotNil(actualObject)
-			assert.EqualValues(tt.dataChunks, actualObject.DataChunks)
-			assert.NotEmpty(closeResponse.ChecksumSha_256)
+			require.Equal(tt.expectedContent, string(actualData))
 
 			hash := sha256.New()
-			_, err = io.Copy(hash, bytes.NewReader(objectData))
+			_, err = io.Copy(hash, bytes.NewReader(actualData))
 			require.NoError(err)
-			assert.Equal(hash.Sum(nil), closeResponse.ChecksumSha_256)
+			require.ElementsMatch(hash.Sum(nil), resp.ChecksumSha_256)
 		})
 	}
 }
 
 func TestLoopbackStoragePlugin(t *testing.T) {
+	td := t.TempDir()
+
 	require, assert := tr.New(t), ta.New(t)
 
 	mockStorageMapData := map[BucketName]Bucket{
@@ -951,38 +961,31 @@ func TestLoopbackStoragePlugin(t *testing.T) {
 		},
 	}
 
+	objectData := "THIS IS A MOCKED OBJECT"
 	bucket := &storagebuckets.StorageBucket{
 		BucketName:   "aws_s3_mock",
 		BucketPrefix: "/filtered/path/",
 		Secrets:      secrets,
 	}
-	objectData := []byte("THIS IS A MOCKED OBJECT")
 
-	putObjectStream, err := client.PutObject(context.Background())
-	assert.NoError(err)
-
-	err = putObjectStream.Send(&plgpb.PutObjectRequest{
-		Data: &plgpb.PutObjectRequest_Request{
-			Request: &plgpb.PutObjectMetadata{
-				Bucket: bucket,
-				Key:    "dir1/mock_object",
-			},
-		},
-	})
-	assert.NoError(err)
-	err = putObjectStream.Send(&plgpb.PutObjectRequest{
-		Data: &plgpb.PutObjectRequest_FileChunk{
-			FileChunk: objectData,
-		},
-	})
-	assert.NoError(err)
-
-	putResponse, err := putObjectStream.CloseAndRecv()
+	file, err := os.Create(path.Join(td, "test-put-object"))
 	require.NoError(err)
+	n, err := file.WriteString(objectData)
+	require.NoError(err)
+	require.Equal(len(objectData), n)
+	require.NoError(file.Close())
+
+	putResponse, err := client.PutObject(
+		context.Background(), &plgpb.PutObjectRequest{
+			Bucket: bucket,
+			Key:    "dir1/mock_object",
+			Path:   path.Join(td, "test-put-object"),
+		})
+	assert.NoError(err)
 	require.NotNil(putResponse)
 	assert.NotEmpty(putResponse.GetChecksumSha_256())
 	hash := sha256.New()
-	_, err = io.Copy(hash, bytes.NewReader(objectData))
+	_, err = io.Copy(hash, strings.NewReader(objectData))
 	require.NoError(err)
 	assert.EqualValues(hash.Sum(nil), putResponse.GetChecksumSha_256())
 

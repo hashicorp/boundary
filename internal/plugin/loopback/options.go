@@ -35,6 +35,7 @@ type TestOption func(*TestOptions) error
 type TestOptions struct {
 	withMockBuckets map[BucketName]Bucket
 	withMockError   []PluginMockError
+	withChunkSize   int
 }
 
 // getTestOpts - iterate the inbound Options and return a struct
@@ -49,7 +50,9 @@ func getTestOpts(opt ...TestOption) (TestOptions, error) {
 }
 
 func getDefaultTestOptions() TestOptions {
-	return TestOptions{}
+	return TestOptions{
+		withChunkSize: 8,
+	}
 }
 
 // WithMockBuckets provides an option to create mocked external object store buckets.
@@ -64,6 +67,14 @@ func WithMockBuckets(buckets map[BucketName]Bucket) TestOption {
 func WithMockError(err PluginMockError) TestOption {
 	return func(o *TestOptions) error {
 		o.withMockError = append(o.withMockError, err)
+		return nil
+	}
+}
+
+// WithChunkSize provides an option to set the chunkSize used for grpc streams.
+func WithChunkSize(size int) TestOption {
+	return func(o *TestOptions) error {
+		o.withChunkSize = size
 		return nil
 	}
 }

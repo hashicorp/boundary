@@ -99,10 +99,6 @@ func (tpc *WrappingPluginStorageClient) GetObject(ctx context.Context, req *plgp
 	return stream.client, nil
 }
 
-func (tpc *WrappingPluginStorageClient) PutObject(ctx context.Context, opts ...grpc.CallOption) (plgpb.StoragePluginService_PutObjectClient, error) {
-	stream := newPutObjectStream()
-	if err := tpc.Server.PutObject(stream.server); err != nil {
-		return nil, err
-	}
-	return stream.client, nil
+func (tpc *WrappingPluginStorageClient) PutObject(ctx context.Context, req *plgpb.PutObjectRequest, opts ...grpc.CallOption) (*plgpb.PutObjectResponse, error) {
+	return tpc.Server.PutObject(ctx, req)
 }

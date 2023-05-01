@@ -35,9 +35,9 @@ service StoragePluginService {
   // GetObject is a hook that retrieves objects.
   rpc GetObject(GetObjectRequest) returns (stream GetObjectResponse);
 
-  // PutObject is a hook that streams chunks of a file to be stored
-  // in an external object store.
-  rpc PutObject(stream PutObjectRequest) returns (PutObjectResponse);
+  // PutObject is a hook that reads a file stored on local disk and
+  // stores it to an external object store.
+  rpc PutObject(PutObjectRequest) returns (PutObjectResponse);
 }
 
 message OnCreateStorageBucketRequest {
@@ -116,22 +116,15 @@ message GetObjectResponse {
   bytes file_chunk = 10;
 }
 
-message PutObjectMetadata {
+message PutObjectRequest {
   // Required. The existing state of the storage bucket.
   controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
 
   // Required. The path of the object.
   string key = 20;
-}
 
-message PutObjectRequest {
-  oneof data {
-    // Object data.
-    // Recommended chunk size should be between 16KiB to 64KiB.
-    bytes file_chunk = 10;
-
-    PutObjectMetadata request = 20;
-  }
+  // Required. The path of the object on local disk.
+  string path = 30;
 }
 
 message PutObjectResponse {

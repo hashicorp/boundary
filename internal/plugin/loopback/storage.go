@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -29,7 +30,7 @@ type TestPluginStorageServer struct {
 	ValidatePermissionsFn   func(context.Context, *plgpb.ValidatePermissionsRequest) (*plgpb.ValidatePermissionsResponse, error)
 	HeadObjectFn            func(context.Context, *plgpb.HeadObjectRequest) (*plgpb.HeadObjectResponse, error)
 	GetObjectFn             func(*plgpb.GetObjectRequest, plgpb.StoragePluginService_GetObjectServer) error
-	PutObjectFn             func(plgpb.StoragePluginService_PutObjectServer) error
+	PutObjectFn             func(context.Context, *plgpb.PutObjectRequest) (*plgpb.PutObjectResponse, error)
 	plgpb.UnimplementedStoragePluginServiceServer
 }
 
@@ -75,11 +76,11 @@ func (t TestPluginStorageServer) GetObject(req *plgpb.GetObjectRequest, stream p
 	return t.GetObjectFn(req, stream)
 }
 
-func (t TestPluginStorageServer) PutObject(stream plgpb.StoragePluginService_PutObjectServer) error {
+func (t TestPluginStorageServer) PutObject(ctx context.Context, req *plgpb.PutObjectRequest) (*plgpb.PutObjectResponse, error) {
 	if t.PutObjectFn == nil {
-		return t.UnimplementedStoragePluginServiceServer.PutObject(stream)
+		return t.UnimplementedStoragePluginServiceServer.PutObject(ctx, req)
 	}
-	return t.PutObjectFn(stream)
+	return t.PutObjectFn(ctx, req)
 }
 
 type (
@@ -106,19 +107,20 @@ type storagePluginStorageInfo struct {
 type LoopbackStorage struct {
 	m sync.Mutex
 
-	buckets map[BucketName]Bucket
-	errs    []PluginMockError
+	chunksSize int
+	buckets    map[BucketName]Bucket
+	errs       []PluginMockError
 }
 
 func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.OnCreateStorageBucketRequest) (*plgpb.OnCreateStorageBucketResponse, error) {
-	const op = "loopback.(LoopbackPlugin).onCreateStorageBucket"
+	const op = "loopback.(LoopbackStorage).onCreateStorageBucket"
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: request is nil", op)
 	}
-	if req.Bucket == nil {
+	if req.GetBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.GetBucket().Secrets == nil {
+	if req.GetBucket().GetSecrets() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
 	}
 	l.m.Lock()
@@ -139,14 +141,14 @@ func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.
 }
 
 func (l *LoopbackStorage) onUpdateStorageBucket(ctx context.Context, req *plgpb.OnUpdateStorageBucketRequest) (*plgpb.OnUpdateStorageBucketResponse, error) {
-	const op = "loopback.(LoopbackPlugin).onUpdateStorageBucket"
+	const op = "loopback.(LoopbackStorage).onUpdateStorageBucket"
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: request is nil", op)
 	}
-	if req.NewBucket == nil {
+	if req.GetNewBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.GetNewBucket().Secrets == nil {
+	if req.GetNewBucket().GetSecrets() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
 	}
 	l.m.Lock()
@@ -167,28 +169,28 @@ func (l *LoopbackStorage) onUpdateStorageBucket(ctx context.Context, req *plgpb.
 }
 
 func (l *LoopbackStorage) onDeleteStorageBucket(ctx context.Context, req *plgpb.OnDeleteStorageBucketRequest) (*plgpb.OnDeleteStorageBucketResponse, error) {
-	const op = "loopback.(LoopbackPlugin).onDeleteStorageBucket"
+	const op = "loopback.(LoopbackStorage).onDeleteStorageBucket"
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: request is nil", op)
 	}
-	if req.Bucket == nil {
+	if req.GetBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.GetBucket().Secrets == nil {
+	if req.GetBucket().GetSecrets() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
 	}
 	return &plgpb.OnDeleteStorageBucketResponse{}, nil
 }
 
 func (l *LoopbackStorage) validatePermissions(ctx context.Context, req *plgpb.ValidatePermissionsRequest) (*plgpb.ValidatePermissionsResponse, error) {
-	const op = "loopback.(LoopbackPlugin).validatePermissions"
+	const op = "loopback.(LoopbackStorage).validatePermissions"
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: request is nil", op)
 	}
-	if req.Bucket == nil {
+	if req.GetBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.GetBucket().Secrets == nil {
+	if req.GetBucket().GetSecrets() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
 	}
 	l.m.Lock()
@@ -205,17 +207,17 @@ func (l *LoopbackStorage) validatePermissions(ctx context.Context, req *plgpb.Va
 }
 
 func (l *LoopbackStorage) headObject(ctx context.Context, req *plgpb.HeadObjectRequest) (*plgpb.HeadObjectResponse, error) {
-	const op = "loopback.(LoopbackPlugin).headObject"
+	const op = "loopback.(LoopbackStorage).headObject"
 	if req == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: request is nil", op)
 	}
-	if req.Bucket == nil {
+	if req.GetBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "$%s: missing storage bucket", op)
 	}
-	if req.GetBucket().Secrets == nil {
+	if req.GetBucket().GetSecrets() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
 	}
-	if req.Key == "" {
+	if req.GetKey() == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "%s; missing object key", op)
 	}
 	l.m.Lock()
@@ -245,17 +247,17 @@ func (l *LoopbackStorage) headObject(ctx context.Context, req *plgpb.HeadObjectR
 }
 
 func (l *LoopbackStorage) getObject(req *plgpb.GetObjectRequest, stream plgpb.StoragePluginService_GetObjectServer) error {
-	const op = "loopback.(LoopbackPlugin).getObject"
+	const op = "loopback.(LoopbackStorage).getObject"
 	if req == nil {
 		return status.Errorf(codes.InvalidArgument, "%s: request is nil", op)
 	}
-	if req.Bucket == nil {
+	if req.GetBucket() == nil {
 		return status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.GetBucket().Secrets == nil {
+	if req.GetBucket().GetSecrets() == nil {
 		return status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
 	}
-	if req.Key == "" {
+	if req.GetKey() == "" {
 		return status.Errorf(codes.InvalidArgument, "%s; missing object key", op)
 	}
 	l.m.Lock()
@@ -288,110 +290,93 @@ func (l *LoopbackStorage) getObject(req *plgpb.GetObjectRequest, stream plgpb.St
 	return nil
 }
 
-func (l *LoopbackStorage) putObject(stream plgpb.StoragePluginService_PutObjectServer) error {
-	const op = "loopback.(LoopbackPlugin).putObject"
-	if stream == nil {
-		return status.Errorf(codes.Internal, "%s: missing stream", op)
+func (l *LoopbackStorage) putObject(ctx context.Context, req *plgpb.PutObjectRequest) (*plgpb.PutObjectResponse, error) {
+	const op = "loopback.(LoopbackStorage).putObject"
+	if req == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: request is nil", op)
 	}
-	go func() {
-		var (
-			request      *plgpb.PutObjectRequest_Request
-			objectChunks []Chunk
-			objectData   []byte
-		)
-		for {
-			req, err := stream.Recv()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				_ = stream.SendMsg(status.Errorf(codes.Internal, "%s: failed to recv message from stream: %v", op, err))
-				return
-			}
-			switch data := req.Data.(type) {
-			case *plgpb.PutObjectRequest_Request:
-				if data.Request == nil {
-					_ = stream.SendMsg(status.Errorf(codes.InvalidArgument, "%s: missing request metadata", op))
-					return
-				}
-				if data.Request.GetBucket() == nil {
-					_ = stream.SendMsg(status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op))
-					return
-				}
-				if data.Request.GetBucket().GetSecrets() == nil {
-					_ = stream.SendMsg(status.Errorf(codes.InvalidArgument, "%s: missing secrets", op))
-					return
-				}
-				if data.Request.Key == "" {
-					_ = stream.SendMsg(status.Errorf(codes.InvalidArgument, "%s; missing object key", op))
-					return
-				}
-				request = data
-			case *plgpb.PutObjectRequest_FileChunk:
-				objectChunks = append(objectChunks, data.FileChunk)
-				objectData = append(objectData, data.FileChunk...)
-			case nil:
-				continue
-			default:
-				_ = stream.SendMsg(status.Errorf(codes.Internal, "%s: unknown message type: %v", op, data))
-				return
-			}
+	if req.GetBucket() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
+	}
+	if req.GetBucket().GetBucketName() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing bucket name", op)
+	}
+	if req.GetBucket().GetSecrets() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
+	}
+	if req.GetKey() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "%s; missing object key", op)
+	}
+	if req.GetPath() == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "%s; missing path", op)
+	}
+	info, err := os.Stat(req.Path)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: file check failed: %v", op, err)
+	}
+	if info == nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to get file info", op)
+	}
+	if info.IsDir() {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: path is a directory", op)
+	}
+	l.m.Lock()
+	defer l.m.Unlock()
+	bucket, ok := l.buckets[BucketName(req.GetBucket().GetBucketName())]
+	if !ok {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: bucket not found", op)
+	}
+	for _, err := range l.errs {
+		if err.match(req.GetBucket(), req.GetKey()) {
+			return nil, status.Errorf(err.errCode, "%s: %s", op, err.errMsg)
 		}
-		if request == nil {
-			_ = stream.SendMsg(status.Errorf(codes.InvalidArgument, "%s: request is nil", op))
-			return
-		}
-		if len(objectData) <= 0 {
-			_ = stream.SendMsg(status.Errorf(codes.InvalidArgument, "%s: missing object data", op))
-			return
-		}
-		l.m.Lock()
-		defer l.m.Unlock()
-		bucket, ok := l.buckets[BucketName(request.Request.GetBucket().GetBucketName())]
-		if !ok {
-			_ = stream.SendMsg(status.Errorf(codes.NotFound, "%s: bucket not found", op))
-			return
-		}
-		for _, err := range l.errs {
-			if err.match(request.Request.GetBucket(), request.Request.GetKey()) {
-				_ = stream.SendMsg(status.Errorf(err.errCode, "%s: %s", op, err.errMsg))
-				return
-			}
-		}
-		hash := sha256.New()
-		if _, err := io.Copy(hash, bytes.NewReader(objectData)); err != nil {
-			_ = stream.SendMsg(status.Errorf(codes.Internal, "%s: failed to hash object: %v", op, err))
-			return
-		}
-		contentLength := int64(len(objectData))
-		lastModified := time.Now()
+	}
 
-		// Ensure all the directories within the object key exist
-		parts := strings.Split(request.Request.GetKey(), "/")
-		tempPath := request.Request.GetBucket().GetBucketPrefix()
-		for _, p := range parts[:len(parts)-1] {
-			// Directories should have trailing `/` in the key
-			tempPath = fmt.Sprintf("%v%v/", tempPath, p)
-			bucket[ObjectName(tempPath)] = &storagePluginStorageInfo{
-				lastModified: &lastModified,
-			}
-		}
+	lastModified := time.Now()
+	objectData, err := os.ReadFile(req.Path)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to read file", op)
+	}
+	if len(objectData) == 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "%s: missing object data", op)
+	}
+	contentLength := int64(len(objectData))
 
-		// Now insert the object
-		objectPath := ObjectName(request.Request.GetBucket().GetBucketPrefix() + request.Request.GetKey())
-		bucket[objectPath] = &storagePluginStorageInfo{
-			DataChunks:    objectChunks,
-			contentLength: &contentLength,
-			lastModified:  &lastModified,
+	parts := strings.Split(req.GetKey(), "/")
+	tempPath := req.GetBucket().GetBucketPrefix()
+	for _, p := range parts[:len(parts)-1] {
+		// Directories should have trailing `/` in the key
+		tempPath = fmt.Sprintf("%v%v/", tempPath, p)
+		bucket[ObjectName(tempPath)] = &storagePluginStorageInfo{
+			lastModified: &lastModified,
 		}
-		if err := stream.SendAndClose(&plgpb.PutObjectResponse{
-			ChecksumSha_256: hash.Sum(nil),
-		}); err != nil {
-			_ = stream.SendMsg(status.Errorf(codes.Internal, "%s: failed to close stream: %v", op, err))
-			return
+	}
+
+	objectChunks := []Chunk{}
+	for i := 0; i < len(objectData); i = i + l.chunksSize {
+		j := i + l.chunksSize
+		if j > len(objectData) {
+			j = len(objectData)
 		}
-	}()
-	return nil
+		objectChunks = append(objectChunks, copyBytes(objectData[i:j]))
+	}
+
+	// Now insert the object
+	objectPath := ObjectName(req.GetBucket().GetBucketPrefix() + req.GetKey())
+	bucket[objectPath] = &storagePluginStorageInfo{
+		DataChunks:    objectChunks,
+		contentLength: &contentLength,
+		lastModified:  &lastModified,
+	}
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, bytes.NewReader(objectData)); err != nil {
+		return nil, status.Errorf(codes.Internal, "%s: failed to hash object: %v", op, err)
+	}
+
+	return &plgpb.PutObjectResponse{
+		ChecksumSha_256: hash.Sum(nil),
+	}, nil
 }
 
 func MockObject(data []Chunk) *storagePluginStorageInfo {
