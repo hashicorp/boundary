@@ -870,6 +870,12 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
+	if len(selectedWorkers) == 0 {
+		return nil, handlers.ApiErrorWithCodeAndMessage(
+			codes.FailedPrecondition,
+			"No workers are available to handle this session.")
+	}
+
 	selectedWorkers, err = AuthorizeSessionWorkerFilterFn(ctx, t, selectedWorkers, h, s.downstreams)
 	if err != nil {
 		return nil, err
