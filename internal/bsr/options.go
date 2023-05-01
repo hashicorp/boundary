@@ -21,12 +21,14 @@ type Option func(*options)
 type options struct {
 	withSupportsMultiplex bool
 	withKeys              *kms.Keys
+	withSha256Sum         []byte
 }
 
 func getDefaultOptions() options {
 	return options{
 		withSupportsMultiplex: false,
 		withKeys:              nil,
+		withSha256Sum:         nil,
 	}
 }
 
@@ -42,5 +44,12 @@ func WithSupportsMultiplex(b bool) Option {
 func WithKeys(k *kms.Keys) Option {
 	return func(o *options) {
 		o.withKeys = k
+	}
+}
+
+// WithSha256Sum is used to provide a hex encoded SHA256SUM.
+func WithSha256Sum(b []byte) Option {
+	return func(o *options) {
+		o.withSha256Sum = b
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -111,8 +112,8 @@ func (d *ChunkDecoder) Decode(ctx context.Context) (Chunk, error) {
 
 	_, err := io.ReadAtLeast(d.r, buf, chunkBaseSize)
 	if err != nil {
-		if err == io.EOF {
-			return nil, err
+		if err == io.EOF || errors.Is(err, io.EOF) {
+			return nil, io.EOF
 		}
 		return nil, fmt.Errorf("%s: %w: %w", op, err, ErrChunkDecode)
 	}

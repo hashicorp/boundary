@@ -21,6 +21,7 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := options{
 			withSupportsMultiplex: false,
 			withKeys:              nil,
+			withSha256Sum:         nil,
 		}
 		assert.Equal(opts, testOpts)
 	})
@@ -42,6 +43,15 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithKeys(keys))
 		testOpts := getDefaultOptions()
 		testOpts.withKeys = keys
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithSha256Sum", func(t *testing.T) {
+		// echo "test" | sha256sum
+		sum := []byte(`f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2`)
+		assert := assert.New(t)
+		opts := getOpts(WithSha256Sum(sum))
+		testOpts := getDefaultOptions()
+		testOpts.withSha256Sum = sum
 		assert.Equal(opts, testOpts)
 	})
 }

@@ -32,4 +32,10 @@ var (
 
 	// ErrChunkDecode indicates an error when decoding a chunk.
 	ErrChunkDecode = errors.New("error decoding chunk")
+
+	// ErrInvalidMagic is used when a binary bsr file is missing the magic string.
+	ErrInvalidMagic = errors.New("invalid magic string")
+
+	// ErrChecksum indicates that a checksum did not match.
+	ErrChecksum = errors.New("computed checksum did NOT match")
 )
