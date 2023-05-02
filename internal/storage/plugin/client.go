@@ -13,9 +13,9 @@ import (
 // to a worker through a CommandClientProducer to a corresponding storage plugin.
 type StorageProxyClient interface {
 	// OnCreateStorageBucket is a hook that runs when a storage bucket is created.
-	OnCreateStorageBucket(context.Context, *wpbs.OnCreateStorageBucketRequest) (*wpbs.OnCreateStorageBucketResponse, error)
+	OnCreateStorageBucket(context.Context, string, *wpbs.OnCreateStorageBucketRequest) (*wpbs.OnCreateStorageBucketResponse, error)
 	// OnUpdateStorageBucket is a hook that runs when a storage bucket is updated.
-	OnUpdateStorageBucket(context.Context, *wpbs.OnUpdateStorageBucketRequest) (*wpbs.OnUpdateStorageBucketResponse, error)
+	OnUpdateStorageBucket(context.Context, string, *wpbs.OnUpdateStorageBucketRequest) (*wpbs.OnUpdateStorageBucketResponse, error)
 	// OnDeleteStorageBucket is a hook that runs when a storage bucket is deleted.
-	OnDeleteStorageBucket(context.Context, *wpbs.OnDeleteStorageBucketRequest) (*wpbs.OnDeleteStorageBucketResponse, error)
+	OnDeleteStorageBucket(context.Context, string, *wpbs.OnDeleteStorageBucketRequest) (*wpbs.OnDeleteStorageBucketResponse, error)
 }

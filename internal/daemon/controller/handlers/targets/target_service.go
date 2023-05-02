@@ -42,7 +42,6 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	fm "github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mr-tron/base58"
@@ -690,7 +689,7 @@ func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, select
 	return selectedWorkers, nil, nil
 }
 
-func DefaultPostSessionAuthorizationCallback(context.Context, intglobals.ControllerExtension, wrapping.Wrapper, *target.Repository, target.Target, *session.Session, *server.Worker) error {
+func DefaultPostSessionAuthorizationCallback(context.Context, intglobals.ControllerExtension, *kms.Kms, *target.Repository, target.Target, *session.Session, *server.Worker) error {
 	return nil
 }
 
@@ -1104,7 +1103,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if err := PostSessionAuthorizationCallback(
 		ctx,
 		s.controllerExt,
-		s.kmsCache.GetExternalWrappers(ctx).Bsr(),
+		s.kmsCache,
 		repo,
 		t,
 		sess,

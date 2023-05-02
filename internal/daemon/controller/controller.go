@@ -83,7 +83,7 @@ var (
 	downstreamersFactory           func(context.Context, string, string) (common.Downstreamers, error)
 	downstreamWorkersTickerFactory func(context.Context, string, string, common.Downstreamers, downstreamReceiver) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
-	extControllerFactory           func(ctx context.Context, c *Controller, r db.Reader, w db.Writer) (intglobals.ControllerExtension, error)
+	extControllerFactory           func(ctx context.Context, c *Controller, r db.Reader, w db.Writer, kms *kms.Kms) (intglobals.ControllerExtension, error)
 )
 
 type Controller struct {
@@ -448,7 +448,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 
 	if extControllerFactory != nil {
-		if c.ControllerExtension, err = extControllerFactory(ctx, c, dbase, dbase); err != nil {
+		if c.ControllerExtension, err = extControllerFactory(ctx, c, dbase, dbase, c.kms); err != nil {
 			return nil, fmt.Errorf("unable to extend controller: %w", err)
 		}
 	}
