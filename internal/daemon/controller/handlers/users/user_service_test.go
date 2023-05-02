@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -770,6 +771,7 @@ func TestUpdate(t *testing.T) {
 func TestAddAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
@@ -798,6 +800,14 @@ func TestAddAccount(t *testing.T) {
 	)
 	oidcAcct := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+	ldapAcct := ldap.TestAccount(t, conn, ldapAm, "test-acct",
+		ldap.WithMemberOfGroups(ctx, "admin"),
+		ldap.WithFullName(ctx, "test-name"),
+		ldap.WithEmail(ctx, "test-email"),
+		ldap.WithDn(ctx, "test-dn"),
+	)
+
 	addCases := []struct {
 		name           string
 		setup          func(*iam.User)
@@ -816,6 +826,12 @@ func TestAddAccount(t *testing.T) {
 			setup:          func(u *iam.User) {},
 			addAccounts:    []string{oidcAcct.GetPublicId()},
 			resultAccounts: []string{oidcAcct.GetPublicId()},
+		},
+		{
+			name:           "Add ldap account on empty user",
+			setup:          func(u *iam.User) {},
+			addAccounts:    []string{ldapAcct.GetPublicId()},
+			resultAccounts: []string{ldapAcct.GetPublicId()},
 		},
 		{
 			name: "Add account on populated user",
@@ -915,6 +931,7 @@ func TestAddAccount(t *testing.T) {
 func TestSetAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
@@ -943,6 +960,14 @@ func TestSetAccount(t *testing.T) {
 	)
 	oidcAcct := oidc.TestAccount(t, conn, oidcAm, "test-subject")
 
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+	ldapAcct := ldap.TestAccount(t, conn, ldapAm, "test-acct",
+		ldap.WithMemberOfGroups(ctx, "admin"),
+		ldap.WithFullName(ctx, "test-name"),
+		ldap.WithEmail(ctx, "test-email"),
+		ldap.WithDn(ctx, "test-dn"),
+	)
+
 	setCases := []struct {
 		name           string
 		setup          func(*iam.User)
@@ -961,6 +986,12 @@ func TestSetAccount(t *testing.T) {
 			setup:          func(u *iam.User) {},
 			setAccounts:    []string{oidcAcct.GetPublicId()},
 			resultAccounts: []string{oidcAcct.GetPublicId()},
+		},
+		{
+			name:           "Set ldap account on empty user",
+			setup:          func(u *iam.User) {},
+			setAccounts:    []string{ldapAcct.GetPublicId()},
+			resultAccounts: []string{ldapAcct.GetPublicId()},
 		},
 		{
 			name: "Set account on populated user",
@@ -1062,6 +1093,7 @@ func TestSetAccount(t *testing.T) {
 func TestRemoveAccount(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
+	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrap)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
@@ -1089,6 +1121,14 @@ func TestRemoveAccount(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	oidcAcct := oidc.TestAccount(t, conn, oidcAm, "test-subject")
+
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+	ldapAcct := ldap.TestAccount(t, conn, ldapAm, "test-acct",
+		ldap.WithMemberOfGroups(ctx, "admin"),
+		ldap.WithFullName(ctx, "test-name"),
+		ldap.WithEmail(ctx, "test-email"),
+		ldap.WithDn(ctx, "test-dn"),
+	)
 
 	addCases := []struct {
 		name           string
@@ -1135,6 +1175,17 @@ func TestRemoveAccount(t *testing.T) {
 			},
 			removeAccounts: []string{accts[1].GetPublicId(), accts[1].GetPublicId()},
 			resultAccounts: []string{accts[0].GetPublicId()},
+		},
+		{
+			name: "Remove 1 ldap account of 3 accounts from user",
+			setup: func(u *iam.User) {
+				_, err := iamRepo.SetUserAccounts(context.Background(), u.GetPublicId(), u.GetVersion(),
+					[]string{accts[0].GetPublicId(), oidcAcct.GetPublicId(), ldapAcct.GetPublicId()})
+				require.NoError(t, err)
+				u.Version = u.Version + 1
+			},
+			removeAccounts: []string{ldapAcct.GetPublicId()},
+			resultAccounts: []string{accts[0].GetPublicId(), oidcAcct.GetPublicId()},
 		},
 		{
 			name: "Remove all accounts from user",

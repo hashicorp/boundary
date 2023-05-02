@@ -720,6 +720,7 @@ func validateAddUserAccountsRequest(req *pbs.AddUserAccountsRequest) error {
 			globals.PasswordAccountPreviousPrefix,
 			globals.PasswordAccountPrefix,
 			globals.OidcAccountPrefix,
+			globals.LdapAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
@@ -745,6 +746,7 @@ func validateSetUserAccountsRequest(req *pbs.SetUserAccountsRequest) error {
 			globals.PasswordAccountPreviousPrefix,
 			globals.PasswordAccountPrefix,
 			globals.OidcAccountPrefix,
+			globals.LdapAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
@@ -773,6 +775,7 @@ func validateRemoveUserAccountsRequest(req *pbs.RemoveUserAccountsRequest) error
 			globals.PasswordAccountPreviousPrefix,
 			globals.PasswordAccountPrefix,
 			globals.OidcAccountPrefix,
+			globals.LdapAccountPrefix,
 		) {
 			badFields["account_ids"] = "Values must be valid account ids."
 			break
