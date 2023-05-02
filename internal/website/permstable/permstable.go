@@ -866,7 +866,7 @@ var worker = &Resource{
 		{
 			Path: "/workers",
 			Params: map[string]string{
-				"Type": "workers",
+				"Type": "worker",
 			},
 			Actions: append(
 				lActions("a worker"),
@@ -892,7 +892,7 @@ var worker = &Resource{
 			Path: "/workers/<id>",
 			Params: map[string]string{
 				"ID":   "<id>",
-				"Type": "workers",
+				"Type": "worker",
 			},
 			Actions: append(
 				rudActions("a worker", false),
