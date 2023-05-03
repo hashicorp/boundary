@@ -1,3 +1,17 @@
 id: session_123456789
 protocol: SSH
+user_publicId: user123
+user_scope_publicId: global
+user_scope_type: global
+target_publicId: target123
+target_scope_publicId: global
+target_scope_type: global
+target_projectId: proj123
+target_defaultPort: 0
+target_sessionMaxSeconds: 0
+target_sessionConnectionLimit: 0
+staticHost_publicId: host123
+staticHostCatalog_publicId: staticcat123
+staticHostCatalog_projectId: proj123
+staticHost_address: 127.0.0.1
 connection: conn_1.connection

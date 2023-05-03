@@ -234,7 +234,8 @@ func TestBsr(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: tc.id, Protocol: ssh.Protocol}, tc.c, tc.keys, tc.opts...)
+			sessionMeta := bsr.TestSessionMeta(tc.id, ssh.Protocol)
+			s, err := bsr.NewSession(ctx, sessionMeta, tc.c, tc.keys, tc.opts...)
 			require.NoError(t, err)
 			require.NotNil(t, s)
 
@@ -385,28 +386,28 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"empty-session-id",
-			&bsr.SessionMeta{Id: ""},
+			bsr.TestSessionMeta("", ssh.Protocol),
 			&fstest.MemFS{},
 			keys,
 			errors.New("bsr.NewSession: missing session id: invalid parameter"),
 		},
 		{
 			"nil-fs",
-			&bsr.SessionMeta{Id: "session"},
+			bsr.TestSessionMeta("session", ssh.Protocol),
 			nil,
 			keys,
 			errors.New("bsr.NewSession: missing storage fs: invalid parameter"),
 		},
 		{
 			"nil-keys",
-			&bsr.SessionMeta{Id: "session"},
+			bsr.TestSessionMeta("session", ssh.Protocol),
 			&fstest.MemFS{},
 			nil,
 			errors.New("bsr.NewSession: missing kms keys: invalid parameter"),
 		},
 		{
 			"missing-bsr-signature",
-			&bsr.SessionMeta{Id: "session"},
+			bsr.TestSessionMeta("session", ssh.Protocol),
 			&fstest.MemFS{},
 			&kms.Keys{
 				PubKey:              keys.PubKey,
@@ -418,7 +419,7 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"missing-pub-signature",
-			&bsr.SessionMeta{Id: "session"},
+			bsr.TestSessionMeta("session", ssh.Protocol),
 			&fstest.MemFS{},
 			&kms.Keys{
 				PubKey:             keys.PubKey,
@@ -430,7 +431,7 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"missing-pub-key",
-			&bsr.SessionMeta{Id: "session"},
+			bsr.TestSessionMeta("session", ssh.Protocol),
 			&fstest.MemFS{},
 			&kms.Keys{
 				WrappedBsrKey:       keys.WrappedBsrKey,
@@ -442,7 +443,7 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"missing-wrapped-bsr-key",
-			&bsr.SessionMeta{Id: "session"},
+			bsr.TestSessionMeta("session", ssh.Protocol),
 			&fstest.MemFS{},
 			&kms.Keys{
 				PubKey:              keys.PubKey,
@@ -454,7 +455,7 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"missing-wrapped-priv-key",
-			&bsr.SessionMeta{Id: "session"},
+			bsr.TestSessionMeta("session", ssh.Protocol),
 			&fstest.MemFS{},
 			&kms.Keys{
 				PubKey:              keys.PubKey,
@@ -466,7 +467,7 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"fs-new-error",
-			&bsr.SessionMeta{Id: "session"},
+			bsr.TestSessionMeta("session", ssh.Protocol),
 			fstest.NewMemFS(fstest.WithNewFunc(func(_ context.Context, _ string) (storage.Container, error) {
 				return nil, errors.New("fs new error")
 			})),
@@ -499,7 +500,7 @@ func TestNewConnectionErrors(t *testing.T) {
 		{
 			"nil-meta",
 			func() *bsr.Session {
-				s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: "session"}, &fstest.MemFS{}, keys)
+				s, err := bsr.NewSession(ctx, bsr.TestSessionMeta("session", ssh.Protocol), &fstest.MemFS{}, keys)
 				require.NoError(t, err)
 				return s
 			}(),
@@ -509,7 +510,7 @@ func TestNewConnectionErrors(t *testing.T) {
 		{
 			"empty-connection-id",
 			func() *bsr.Session {
-				s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: "session"}, &fstest.MemFS{}, keys)
+				s, err := bsr.NewSession(ctx, bsr.TestSessionMeta("session", ssh.Protocol), &fstest.MemFS{}, keys)
 				require.NoError(t, err)
 				return s
 			}(),
@@ -533,6 +534,7 @@ func TestNewChannelErrors(t *testing.T) {
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
 	require.NoError(t, err)
 
+	sessionMeta := bsr.TestSessionMeta("session", ssh.Protocol)
 	cases := []struct {
 		name       string
 		connection *bsr.Connection
@@ -542,7 +544,7 @@ func TestNewChannelErrors(t *testing.T) {
 		{
 			"nil-meta",
 			func() *bsr.Connection {
-				s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: "session"}, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
+				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
 				require.NoError(t, err)
 
 				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
@@ -555,7 +557,7 @@ func TestNewChannelErrors(t *testing.T) {
 		{
 			"empty-connection-id",
 			func() *bsr.Connection {
-				s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: "session"}, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
+				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
 				require.NoError(t, err)
 
 				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
@@ -568,7 +570,7 @@ func TestNewChannelErrors(t *testing.T) {
 		{
 			"not-multiplexed",
 			func() *bsr.Connection {
-				s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: "session"}, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(false))
+				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(false))
 				require.NoError(t, err)
 
 				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
@@ -581,7 +583,7 @@ func TestNewChannelErrors(t *testing.T) {
 		{
 			"not-multiplexed-default",
 			func() *bsr.Connection {
-				s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: "session"}, &fstest.MemFS{}, keys)
+				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys)
 				require.NoError(t, err)
 
 				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
@@ -608,6 +610,7 @@ func TestChannelNewMessagesWriterErrors(t *testing.T) {
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
 	require.NoError(t, err)
 
+	sessionMeta := bsr.TestSessionMeta("session", ssh.Protocol)
 	cases := []struct {
 		name      string
 		channel   *bsr.Channel
@@ -617,7 +620,7 @@ func TestChannelNewMessagesWriterErrors(t *testing.T) {
 		{
 			"invalid-dir",
 			func() *bsr.Channel {
-				s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: "session"}, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
+				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
 				require.NoError(t, err)
 
 				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
@@ -647,6 +650,7 @@ func TestChannelNewRequestsWriterErrors(t *testing.T) {
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
 	require.NoError(t, err)
 
+	sessionMeta := bsr.TestSessionMeta("session", ssh.Protocol)
 	cases := []struct {
 		name      string
 		channel   *bsr.Channel
@@ -656,7 +660,7 @@ func TestChannelNewRequestsWriterErrors(t *testing.T) {
 		{
 			"invalid-dir",
 			func() *bsr.Channel {
-				s, err := bsr.NewSession(ctx, &bsr.SessionMeta{Id: "session"}, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
+				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
 				require.NoError(t, err)
 
 				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
