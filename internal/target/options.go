@@ -46,6 +46,8 @@ type options struct {
 	WithIngressWorkerFilter    string
 	WithTargetIds              []string
 	WithAddress                string
+	WithStorageBucketId        string
+	WithEnableSessionRecording bool
 }
 
 func getDefaultOptions() options {
@@ -226,5 +228,20 @@ func WithPermissions(perms []perms.Permission) Option {
 func WithAddress(address string) Option {
 	return func(o *options) {
 		o.WithAddress = address
+	}
+}
+
+// WithEnableSessionRecording provides an option to enable session recording on
+// the target
+func WithEnableSessionRecording(enable bool) Option {
+	return func(o *options) {
+		o.WithEnableSessionRecording = enable
+	}
+}
+
+// WithStorageBucketId provides an option to set a storage bucket on a target
+func WithStorageBucketId(id string) Option {
+	return func(o *options) {
+		o.WithStorageBucketId = id
 	}
 }

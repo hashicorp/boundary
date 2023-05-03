@@ -147,6 +147,14 @@ func (t *Target) GetCredentialSources() []target.CredentialSource {
 	return t.CredentialSources
 }
 
+func (t *Target) GetEnableSessionRecording() bool {
+	return false
+}
+
+func (t *Target) GetStorageBucketId() string {
+	return ""
+}
+
 func (t *Target) Clone() target.Target {
 	cp := proto.Clone(t.Target)
 	return &Target{
@@ -225,6 +233,10 @@ func (t *Target) SetHostSources(sources []target.HostSource) {
 func (t *Target) SetCredentialSources(sources []target.CredentialSource) {
 	t.CredentialSources = sources
 }
+
+func (t *Target) SetEnableSessionRecording(_ bool) {}
+
+func (t *Target) SetStorageBucketId(_ string) {}
 
 func (t *Target) Oplog(op oplog.OpType) oplog.Metadata {
 	return oplog.Metadata{

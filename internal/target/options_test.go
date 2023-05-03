@@ -212,4 +212,18 @@ func Test_GetOpts(t *testing.T) {
 		}
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithStorageBucketId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithStorageBucketId("testId"))
+		testOpts := getDefaultOptions()
+		testOpts.WithStorageBucketId = "testId"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithEnableSessionRecording", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithEnableSessionRecording(true))
+		testOpts := getDefaultOptions()
+		testOpts.WithEnableSessionRecording = true
+		assert.Equal(opts, testOpts)
+	})
 }

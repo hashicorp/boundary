@@ -259,6 +259,18 @@ func DefaultEgressWorkerFilter() Option {
 	}
 }
 
+func WithSshTargetEnableSessionRecording(inEnableSessionRecording bool) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["enable_session_recording"] = inEnableSessionRecording
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithHostId(inHostId string) Option {
 	return func(o *options) {
 		o.postMap["host_id"] = inHostId
@@ -334,6 +346,30 @@ func WithSessionMaxSeconds(inSessionMaxSeconds uint32) Option {
 func DefaultSessionMaxSeconds() Option {
 	return func(o *options) {
 		o.postMap["session_max_seconds"] = nil
+	}
+}
+
+func WithSshTargetStorageBucketId(inStorageBucketId string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["storage_bucket_id"] = inStorageBucketId
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultSshTargetStorageBucketId() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["storage_bucket_id"] = nil
+		o.postMap["attributes"] = val
 	}
 }
 

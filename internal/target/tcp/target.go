@@ -148,6 +148,14 @@ func (t *Target) GetCredentialSources() []target.CredentialSource {
 	return t.CredentialSources
 }
 
+func (t *Target) GetEnableSessionRecording() bool {
+	return false
+}
+
+func (t *Target) GetStorageBucketId() string {
+	return ""
+}
+
 func (t *Target) SetPublicId(ctx context.Context, publicId string) error {
 	const op = "tcp.(Target).SetPublicId"
 	if !strings.HasPrefix(publicId, TargetPrefix+"_") {
@@ -221,3 +229,6 @@ func (t *Target) SetHostSources(sources []target.HostSource) {
 func (t *Target) SetCredentialSources(sources []target.CredentialSource) {
 	t.CredentialSources = sources
 }
+
+func (t *Target) SetEnableSessionRecording(_ bool) {}
+func (t *Target) SetStorageBucketId(_ string)      {}

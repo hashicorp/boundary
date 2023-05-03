@@ -886,6 +886,12 @@ var inputStructs = []*structInfo{
 		templates: []*template.Template{
 			mapstructureConversionTemplate,
 		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "EnableSessionRecording",
+				SkipDefault: true,
+			},
+		},
 	},
 	{
 		inProto: &targets.Target{},

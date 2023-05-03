@@ -71,6 +71,14 @@ message TargetView {
 
   // @inject_tag: `gorm:"default:null"`
   string ingress_worker_filter = 140;
+
+  // A boolean indicating if session recording has been enabled
+  // @inject_tag: `gorm:"default:null"`
+  bool enable_session_recording = 150;
+
+  // PublicId of the storage bucket associated with the target
+  // @inject_tag: `gorm:"default:null"`
+  string storage_bucket_id = 160;
 }
 
 message TargetHostSet {
