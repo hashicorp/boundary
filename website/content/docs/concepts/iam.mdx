@@ -58,25 +58,21 @@ be added to. After adding the user to each role, grants need to be written to gi
 Here are a few examples of access management for personas, using this sample scope structure. In this structure, there are 7 scopes overall: 1 global, 2 Orgs, and 4 
 Projects. To learn more about writing grants, see here.
 
-DIAGRAM HERE
-
-DIAGRAM HERE 
-
-DIAGRAM HERE 
-
-DIAGRAM HERE  
+![IAM Example](/img/iam-example-structure.png)
 
 #### Boundary Admin
 1. All 7 scopes **each** require a role (ex. “admin”)
 2. Each role needs to have the user added to it
 3. Each role needs to have the grants of
-    - id=\*;type=\*;actions=\*
+
+    `id=*;type=*;actions=*`
 
 #### Boundary Viewer
 1. All 7 scopes **each** require a role (ex. “viewer”)
 2. Each role needs to have the user added to it
 3. Each role needs to have the grants of
-    - id=\*;type=\*;actions=read,list
+
+    `id=*;type=*;actions=read,list`
 
 #### Org_A Admin
 1. The following scopes **each** require a role (ex. “admin”)
@@ -85,20 +81,23 @@ DIAGRAM HERE
     - Project_2
 2. Each role needs to have the user added to it
 3. Each role needs to have the grants of
-    - id=\*;type=\*;actions=\*
+
+    `id=*;type=*;actions=*`
 
 #### Project_1 Admin
 1. Project_1 requires a role (ex. “admin”)
 2. The role needs to have the user added to it
 3. The role needs to have the grants of
-    - id=\*;type=\*;actions=\*
+
+    `id=*;type=*;actions=*`
 
 #### Project_1 Target Access
 1. Project_1 requires a role (ex. “target_access”)
 2. The role needs to have the user added to it
 3. The role needs to have the grants of
-    - id=\*;type=target;actions=list,read,authorize-session
-    - id=\*;type=session;actions=read:self,cancel:self,list
+
+    `id=*;type=target;actions=list,read,authorize-session`
+    `id=*;type=session;actions=read:self,cancel:self,list`
 
 -> **Tip:** The same roles can be used across “Boundary Admin”, “Org_A Admin”, and “Project_1 Admin” since the scopes and grants are the same. The only difference is 
 the users that are added to each role. 
