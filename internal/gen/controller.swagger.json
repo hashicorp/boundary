@@ -5609,17 +5609,13 @@
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
           "description": "The scope that the Session Recording is in.\nThis is inferred from the storage bucket associated\nwith the target."
         },
-        "user": {
-          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.User",
-          "description": "Information about the User that created the Session."
-        },
         "session_id": {
           "type": "string",
           "description": "The ID of the Session which this Session Recording recorded."
         },
-        "target": {
-          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Target",
-          "description": "Information about the Target the Session connected to."
+        "storage_bucket_id": {
+          "type": "string",
+          "description": "The ID of the Storage Bucket for the Target of this Session Recording."
         },
         "bytes_up": {
           "type": "string",
@@ -5668,6 +5664,10 @@
           },
           "description": "The recordings of the connections that were created in the Session.\nThis field may be unset when listing Session recordings."
         },
+        "create_time_values": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.ValuesAtTime",
+          "description": "create_time_values contains the values of related fields at the time\nthis Session Recording was created. This may be unset when listing."
+        },
         "authorized_actions": {
           "type": "array",
           "items": {
@@ -5678,6 +5678,17 @@
       },
       "description": "SessionRecording contains information about the recording of a Session."
     },
+    "controller.api.resources.sessionrecordings.v1.SshTargetAttributes": {
+      "type": "object",
+      "properties": {
+        "default_port": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The default SSH port that is used when connecting to the endpoint."
+        }
+      },
+      "title": "SshTargetAttributes contains attributes relevant to Targets of type \"ssh\""
+    },
     "controller.api.resources.sessionrecordings.v1.Target": {
       "type": "object",
       "properties": {
@@ -5685,17 +5696,43 @@
           "type": "string",
           "description": "The ID of the Target."
         },
-        "name": {
-          "type": "string",
-          "description": "The name of the Target."
-        },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
           "description": "The project that the Target is in."
         },
-        "storage_bucket_id": {
+        "name": {
           "type": "string",
-          "description": "The ID of the storage bucket this Target's recordings use."
+          "description": "The name of the Target, if set."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the Target, if set."
+        },
+        "session_max_seconds": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum total lifetime of a created Session, in seconds."
+        },
+        "session_connection_limit": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1."
+        },
+        "worker_filter": {
+          "type": "string",
+          "description": "Optional boolean expression to filter the workers that are allowed to satisfy this request."
+        },
+        "egress_worker_filter": {
+          "type": "string",
+          "description": "Optional boolean expressions to filter the egress workers that are allowed to satisfy this request."
+        },
+        "ingress_worker_filter": {
+          "type": "string",
+          "description": "Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request."
+        },
+        "attributes": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SshTargetAttributes",
+          "description": "The attributes that are applicable for the specific Target."
         }
       },
       "description": "Target describes a target in Boundary."
@@ -5715,28 +5752,26 @@
           "type": "string",
           "description": "The description of the User that created the Session."
         },
-        "full_name": {
-          "type": "string",
-          "description": "The full name of the User that created the Session,\ninferred from the account used by the user."
-        },
-        "login_name": {
-          "type": "string",
-          "description": "The login name of the User that created the Session,\ninferred from the account used by the user."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email of the User that created the Session,\ninferred from the account used by the user."
-        },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
           "description": "The scope that the User is in."
-        },
-        "account_id": {
-          "type": "string",
-          "description": "The ID of the account that the User that created the Session authenticated with."
         }
       },
       "description": "User describes an authenticated user in Boundary."
+    },
+    "controller.api.resources.sessionrecordings.v1.ValuesAtTime": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.User",
+          "description": "Information about the User that created the Session."
+        },
+        "target": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Target",
+          "description": "Information about the Target the Session connected to."
+        }
+      },
+      "description": "ValuesAtTime contain information about other Boundary resources as they\nwere at a certain time through the lifetime of the Session Recording."
     },
     "controller.api.resources.sessions.v1.Connection": {
       "type": "object",
