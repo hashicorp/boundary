@@ -27,45 +27,33 @@ When you create grants, you should consider the following questions:
 A [grant](/boundary/docs/concepts/security/permissions#grant-strings) string can be composed of up to 4 parts: [ID](#id), [Type](#type), [Actions](#actions), and [Output Fields](#output-fields).
 The format of the grant string is:
 
-```
-id=<id>;type=<type>;actions=<action-list>;output_fields=<fields-list>
-```
+- &#32 `id=<id>;type=<type>;actions=<action-list>;output_fields=<fields-list>`
 
-## ID
+#### ID
 
 The **ID** is the specific resource that you select for the grant.
 You can use a [wildcard](/boundary/docs/concepts/security/permissions/permission-grant-formats#wildcard-id) (*) to include all resources of the type and scope.
 Each grant string supports only 1 ID or a wildcard.
 For example:
 
-- `id=*(all)`
-- `id=ttcp_123456789`
-- `id=w_abcdefghi`
+- &#32 `id=*` (all)
+- &#32 `id=ttcp_123456789`
+- &#32 `id=w_abcdefghi`
 
-## Type
+#### Type
 
 The **Type** is the type of resource that you select for the grant.
 You can use a [wildcard](/boundary/docs/concepts/security/permissions/permission-grant-formats#wildcard-id) (*) to include all resource types in the scope.
 Each grant string supports only 1 type or a wildcard.
 The valid types are:
 
-- *(all)
-- `account`
-- `auth-method`
-- `auth-token`
-- `group`
-- `host`
-- `host-catalog`
-- `host-set`
-- `managed-group`
-- `role`
-- `scope`
-- `session`
-- `target`
-- `user`
-- `worker`
+- &#32 `*` (all)
+- &#32 `session`
+- &#32 `target`
+- &#32 `user`
+- &#32 `worker`
 
-## Actions
+#### Actions
 
 [Actions](/boundary/docs/concepts/security/permissions/assignable-permissions#actions) convey the ability to perform some action against a resource or collection.
 You can select which actions you want to apply to a grant.
@@ -74,14 +62,14 @@ Each grant string can include one or more comma separated actions.
 Refer to the [resource table](/boundary/docs/concepts/security/permissons/resource-table) to find all of the valid actions for each resource type.
 Some commonly used actions include:
 
-- *(all)
-- `list`
-- `create`
-- `read`
-- `update`
-- `delete`
+- &#32 `*` (all)
+- &#32 `list`
+- &#32 `create`
+- &#32 `read`
+- &#32 `update`
+- &#32 `delete`
 
-## Output fields
+#### Output fields
 
 [Output fields](/boundary/docs/concepts/security/permissions/assignable-permissions#output-fields) are top-level fields that are returned in the response.
 They are not commonly used.
@@ -90,47 +78,45 @@ They are not commonly used.
 
 Listed below are some commonly used grant strings for specific roles and scopes.
 
-The **[Any Scope] All Actions** grant string lets users perform any actions on any resources in the scope:
+**[Any Scope] All Actions** 
 
-```
-id=*;type=*;actions=*
-```
+This grant string allows users to perform any actions on any resources in the scope:
 
-The **[Any Scope] View All** grant string lets users list and read any resources in the scope:
+- &#32 `id=*;type=*;actions=*`
 
-```
-id=*;type=*;actions=read,list
-```
+**[Any Scope] View All** 
 
-The **[Project] View Targets Only** grant string lets users list and read any targets in the specific project.
+This grant string allows users to list and read any resources in the scope:
+
+- &#32 `id=*;type=*;actions=read,list`
+
+**[Project] View Targets Only** 
+
+This grant string allows users to list and read any targets in the specific project.
 This example is only applicable to project scopes because targets can only exist inside a project:
 
-```
-id=*;type=target;actions=read,list
-```
+- &#32 `id=*;type=target;actions=read,list`
 
-The **[Project] Connect To Any Target** grant strings let users list, read, and connect to any targets in a specific project.
+**[Project] Connect To Any Target**
+
+This grant string allows users to list, read, and connect to any targets in a specific project.
 In addition, these grants allow the user to list, read, and cancel any sessions initiated by the same user.
 This example is only applicable to project scopes, since targets can only exist in a project:
 
-```
-id=*;type=target;actions=list,read,authorize-session
+- &#32 `id=*;type=target;actions=list,read,authorize-session`
+- &#32 `id=*;type=session;actions=read:self,cancel:self,list`
 
-id=*;type=session;actions=read:self,cancel:self,list
-```
+**[Project] Connect To A Specific Target** 
 
-The **[Project] Connect To A Specific Target** grant strings let users list, read, and connect to a specific target.
+This grant string allows users to list, read, and connect to a specific target.
 In addition, these grants let users list, read, and cancel any sessions initiated by the same user.
 If you want to include several specific targets, you can duplicate the first grant string using the respective IDs of those targets.
 This example is only applicable to project scopes, since targets can only exist in a project:
 
-```
-id=<target-id>;actions=read,authorize-session
+- &#32 `id=<target-id>;actions=read,authorize-session`
+- &#32 `type=target;actions=list`
+- &#32 `id=*;type=session;actions=read:self,cancel:self,list`
 
-type=target;actions=list
-
-id=*;type=session;actions=read:self,cancel:self,list
-```
 <Note>
 There is a known issue that affects the [Project] Connect To A Specific Target grant strings.
 Currently, the grants do not list any defined targets in the CLI or UI.
@@ -143,28 +129,18 @@ The following are examples of general grants that you can apply to any scope:
 
 **Manage all of 1 resource type**
 
-```
-id=*;type=<resource-type>;actions=*
-```
+- &#32 `id=*;type=<resource-type>;actions=*`
 
 **View all of 1 resource type**
 
-```
-id=*;type=<resource-type>;actions=list,read
-```
+- &#32 `id=*;type=<resource-type>;actions=list,read`
 
 **Manage a specific resource item**
 
-```
-type=<resource-type>;actions=list
-
-id=<resource-id>; actions=*
-```
+- &#32 `type=<resource-type>;actions=list`
+- &#32 `id=<resource-id>;actions=*`
 
 **View a specific resource item**
 
-```
-type=<resource-type>;actions=list
-
-id=<resource-id>;actions=read
-```
+- &#32 `type=<resource-type>;actions=list`
+- &#32 `id=<resource-id>;actions=read`
