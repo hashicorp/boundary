@@ -21,6 +21,16 @@ begin;
         on delete set null -- Set null if associated session is deleted
         on update cascade
       constraint recording_session_session_id_uq unique,
+    user_scope_hst_id wt_url_safe_id not null
+      constraint iam_scope_hst_fk
+        references iam_scope_hst (history_id)
+        on delete restrict -- History records with session recordings cannot be deleted
+        on update cascade,
+    user_hst_id wt_url_safe_id not null
+      constraint iam_user_hst_fk
+        references iam_user_hst (history_id)
+        on delete restrict -- History records with session recordings cannot be deleted
+        on update cascade,
     create_time wt_timestamp not null,
     update_time wt_timestamp not null,
     start_time rec_timestamp null, -- When the session recording was started in the worker
@@ -42,25 +52,56 @@ begin;
     for each row execute procedure default_create_time();
 
   create trigger immutable_columns before update on recording_session
-    for each row execute procedure immutable_columns('public_id', 'storage_bucket_id', 'create_time');
-  
+    for each row execute procedure immutable_columns('public_id', 'storage_bucket_id', 'create_time',
+        'user_scope_hst_id', 'user_hst_id');
+
   create trigger set_once_columns before update on recording_session
     for each row execute procedure set_once_columns('start_time', 'end_time');
 
-  create function check_session_id_not_null() returns trigger
+  create function insert_session_recording() returns trigger
   as $$
+  declare
+    _usr_ids record;
   begin
     if new.session_id is null then
       raise exception 'a new recorded session must have a session_id';
     end if;
+
+    with
+    session_values(user_id, user_scope_id) as (
+      select session.user_id, iam_user.scope_id
+        from session
+        join iam_user on iam_user.public_id = session.user_id
+       where session.public_id = new.session_id
+    ),
+    user_hst(id) as (
+      select iam_user_hst.history_id
+        from iam_user_hst
+        join session_values on iam_user_hst.public_id = session_values.user_id
+       where iam_user_hst.valid_range @> current_timestamp
+    ),
+    user_scope_hst(id) as (
+      select iam_scope_hst.history_id
+        from iam_scope_hst
+        join session_values on iam_scope_hst.public_id = session_values.user_scope_id
+       where iam_scope_hst.valid_range @> current_timestamp
+    )
+    select user_hst.id as user_hst_id,
+           user_scope_hst.id as user_scope_hst_id
+      into strict _usr_ids
+      from user_hst, user_scope_hst;
+
+    new.user_scope_hst_id := _usr_ids.user_scope_hst_id;
+    new.user_hst_id := _usr_ids.user_hst_id;
     return new;
+
   end;
   $$ language plpgsql;
-  comment on function check_session_id_not_null is
-    'check_session_id_not_null ensures that new recorded sessions have a session associated with them.';
+  comment on function insert_session_recording is
+    'insert_session_recording is a before insert trigger for the recording_session table.';
 
-  create trigger check_session_id_not_null before insert on recording_session
-    for each row execute procedure check_session_id_not_null();
+  create trigger insert_session_recording before insert on recording_session
+    for each row execute procedure insert_session_recording();
 
   create table recording_connection (
     public_id wt_public_id primary key,

@@ -8,10 +8,41 @@
 --    end_time_null_or_after_start_time
 
 begin;
-  select plan(7);
+  select plan(19);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'sessions');
-  
+
+  -- tests a fk column referencing a history table
+  -- add 5 to the plan for each time this function is called
+  create function hst_fk_column(column_name name, pk_table name) returns text
+  as $$
+    select * from collect_tap(
+      has_column('recording_session', column_name),
+      col_not_null('recording_session', column_name),
+      col_type_is('recording_session', column_name, 'wt_url_safe_id'), -- should be the same type as the operational table
+      col_hasnt_default('recording_session', column_name),
+      fk_ok('recording_session', column_name, pk_table, 'history_id')
+    );
+  $$ language sql;
+
+  -- check the recording_session scheme
+  select hst_fk_column('user_scope_hst_id', 'iam_scope_hst');
+  select hst_fk_column('user_hst_id', 'iam_user_hst');
+
   insert into storage_bucket (public_id, scope_id) values ('sb_123456789', 'global');
+
+  -- test insert trigger can handle more than one row of history
+  -- update the iam_scope of test user 's1_____clare'
+  select is(count(*), 1::bigint)
+    from iam_scope_hst
+   where public_id = 'p____bcolors';
+
+  update iam_scope
+     set description = 'updated description'
+   where public_id = 'p____bcolors';
+
+  select is(count(*), 2::bigint)
+    from iam_scope_hst
+   where public_id = 'p____bcolors';
 
   -- Try to insert row with null session id
   prepare insert_invalid_recording_session as
