@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/storage/plugin/store"
 	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
@@ -183,6 +184,20 @@ func (sbs *StorageBucketSecret) decrypt(ctx context.Context, cipher wrapping.Wra
 	}
 	sbs.CtSecrets = nil
 	return nil
+}
+
+func (sbs *StorageBucketSecret) toPersisted(ctx context.Context) (*storagebuckets.StorageBucketPersisted, error) {
+	const op = "plugin.(StorageBucketSecret).toPersisted"
+	if sbs.Secrets == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "secret data not populated")
+	}
+	sec := &storagebuckets.StorageBucketPersisted{
+		Data: &structpb.Struct{},
+	}
+	if err := proto.Unmarshal(sbs.Secrets, sec.Data); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
+	}
+	return sec, nil
 }
 
 type storageBucketAgg struct {

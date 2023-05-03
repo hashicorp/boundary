@@ -6,7 +6,6 @@ syntax = "proto3";
 package plugin.v1;
 
 import "controller/api/resources/storagebuckets/v1/storage_bucket.proto";
-import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/plugin;plugin";
@@ -49,7 +48,7 @@ message OnCreateStorageBucketRequest {
 
 message OnCreateStorageBucketResponse {
   // The persisted data represents state persisted between storage bucket calls.
-  StorageBucketPersisted persisted = 10;
+  controller.api.resources.storagebuckets.v1.StorageBucketPersisted persisted = 10;
 }
 
 message OnUpdateStorageBucketRequest {
@@ -62,12 +61,12 @@ message OnUpdateStorageBucketRequest {
   controller.api.resources.storagebuckets.v1.StorageBucket new_bucket = 20;
 
   // Required. The existing persisted secret data.
-  StorageBucketPersisted persisted = 30;
+  controller.api.resources.storagebuckets.v1.StorageBucketPersisted persisted = 30;
 }
 
 message OnUpdateStorageBucketResponse {
   // The persisted data represents state persisted between storage bucket calls.
-  StorageBucketPersisted persisted = 10;
+  controller.api.resources.storagebuckets.v1.StorageBucketPersisted persisted = 10;
 }
 
 message OnDeleteStorageBucketRequest {
@@ -75,7 +74,7 @@ message OnDeleteStorageBucketRequest {
   controller.api.resources.storagebuckets.v1.StorageBucket bucket = 10;
 
   // Required. The existing persisted secret data.
-  StorageBucketPersisted persisted = 20;
+  controller.api.resources.storagebuckets.v1.StorageBucketPersisted persisted = 20;
 }
 
 message OnDeleteStorageBucketResponse {}
@@ -130,17 +129,4 @@ message PutObjectRequest {
 message PutObjectResponse {
   // 256-bit SHA-256 digest of the object.
   bytes checksum_sha_256 = 10;
-}
-
-// StorageBucketPersisted is data that the plugin can read from and write
-// to that will always be provided by the host.
-message StorageBucketPersisted {
-  // Data has no explicit structure other than valid json.
-  // Data may contain sensitive information, such as
-  // credentials, rotated secrets, or configuration data.
-  // Data can be anything that may need to be provided to
-  // a series of different method calls.
-  // Data is encrypted at-rest by Boundary.
-  // Data is never returned to the end user.
-  google.protobuf.Struct data = 10;
 }

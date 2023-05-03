@@ -223,6 +223,62 @@ func (x *StorageBucket) GetAuthorizedActions() []string {
 	return nil
 }
 
+// StorageBucketPersisted is data that the plugin can read from and write
+// to that will always be provided by the host.
+type StorageBucketPersisted struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// Data has no explicit structure other than valid json.
+	// Data may contain sensitive information, such as
+	// credentials, rotated secrets, or configuration data.
+	// Data can be anything that may need to be provided to
+	// a series of different method calls.
+	// Data is encrypted at-rest by Boundary.
+	// Data is never returned to the end user.
+	Data *structpb.Struct `protobuf:"bytes,10,opt,name=data,proto3" json:"data,omitempty"`
+}
+
+func (x *StorageBucketPersisted) Reset() {
+	*x = StorageBucketPersisted{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *StorageBucketPersisted) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StorageBucketPersisted) ProtoMessage() {}
+
+func (x *StorageBucketPersisted) ProtoReflect() protoreflect.Message {
+	mi := &file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StorageBucketPersisted.ProtoReflect.Descriptor instead.
+func (*StorageBucketPersisted) Descriptor() ([]byte, []int) {
+	return file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *StorageBucketPersisted) GetData() *structpb.Struct {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
 var File_controller_api_resources_storagebuckets_v1_storage_bucket_proto protoreflect.FileDescriptor
 
 var file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_rawDesc = []byte{
@@ -309,14 +365,18 @@ var file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_rawDesc
 	0x77, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x5f, 0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x12, 0x2f, 0x0a,
 	0x12, 0x61, 0x75, 0x74, 0x68, 0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64, 0x5f, 0x61, 0x63, 0x74, 0x69,
 	0x6f, 0x6e, 0x73, 0x18, 0xac, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x12, 0x61, 0x75, 0x74, 0x68,
-	0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64, 0x5f, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x42, 0x5e,
-	0x5a, 0x5c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73,
-	0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f,
-	0x73, 0x64, 0x6b, 0x2f, 0x70, 0x62, 0x73, 0x2f, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c,
-	0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73,
-	0x2f, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x3b,
-	0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x6f, 0x72, 0x69, 0x7a, 0x65, 0x64, 0x5f, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22, 0x45,
+	0x0a, 0x16, 0x53, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x50,
+	0x65, 0x72, 0x73, 0x69, 0x73, 0x74, 0x65, 0x64, 0x12, 0x2b, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x61,
+	0x18, 0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x52,
+	0x04, 0x64, 0x61, 0x74, 0x61, 0x42, 0x5e, 0x5a, 0x5c, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x62, 0x6f,
+	0x75, 0x6e, 0x64, 0x61, 0x72, 0x79, 0x2f, 0x73, 0x64, 0x6b, 0x2f, 0x70, 0x62, 0x73, 0x2f, 0x63,
+	0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x2f, 0x61, 0x70, 0x69, 0x2f, 0x72, 0x65,
+	0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x73, 0x2f, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x62,
+	0x75, 0x63, 0x6b, 0x65, 0x74, 0x73, 0x3b, 0x73, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x62, 0x75,
+	0x63, 0x6b, 0x65, 0x74, 0x73, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -331,29 +391,31 @@ func file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_rawDes
 	return file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_rawDescData
 }
 
-var file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_goTypes = []interface{}{
 	(*StorageBucket)(nil),          // 0: controller.api.resources.storagebuckets.v1.StorageBucket
-	(*scopes.ScopeInfo)(nil),       // 1: controller.api.resources.scopes.v1.ScopeInfo
-	(*plugins.PluginInfo)(nil),     // 2: controller.api.resources.plugins.v1.PluginInfo
-	(*wrapperspb.StringValue)(nil), // 3: google.protobuf.StringValue
-	(*timestamppb.Timestamp)(nil),  // 4: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),        // 5: google.protobuf.Struct
+	(*StorageBucketPersisted)(nil), // 1: controller.api.resources.storagebuckets.v1.StorageBucketPersisted
+	(*scopes.ScopeInfo)(nil),       // 2: controller.api.resources.scopes.v1.ScopeInfo
+	(*plugins.PluginInfo)(nil),     // 3: controller.api.resources.plugins.v1.PluginInfo
+	(*wrapperspb.StringValue)(nil), // 4: google.protobuf.StringValue
+	(*timestamppb.Timestamp)(nil),  // 5: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),        // 6: google.protobuf.Struct
 }
 var file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_depIdxs = []int32{
-	1, // 0: controller.api.resources.storagebuckets.v1.StorageBucket.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
-	2, // 1: controller.api.resources.storagebuckets.v1.StorageBucket.plugin:type_name -> controller.api.resources.plugins.v1.PluginInfo
-	3, // 2: controller.api.resources.storagebuckets.v1.StorageBucket.name:type_name -> google.protobuf.StringValue
-	3, // 3: controller.api.resources.storagebuckets.v1.StorageBucket.description:type_name -> google.protobuf.StringValue
-	4, // 4: controller.api.resources.storagebuckets.v1.StorageBucket.created_time:type_name -> google.protobuf.Timestamp
-	4, // 5: controller.api.resources.storagebuckets.v1.StorageBucket.updated_time:type_name -> google.protobuf.Timestamp
-	5, // 6: controller.api.resources.storagebuckets.v1.StorageBucket.attributes:type_name -> google.protobuf.Struct
-	5, // 7: controller.api.resources.storagebuckets.v1.StorageBucket.secrets:type_name -> google.protobuf.Struct
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	2, // 0: controller.api.resources.storagebuckets.v1.StorageBucket.scope:type_name -> controller.api.resources.scopes.v1.ScopeInfo
+	3, // 1: controller.api.resources.storagebuckets.v1.StorageBucket.plugin:type_name -> controller.api.resources.plugins.v1.PluginInfo
+	4, // 2: controller.api.resources.storagebuckets.v1.StorageBucket.name:type_name -> google.protobuf.StringValue
+	4, // 3: controller.api.resources.storagebuckets.v1.StorageBucket.description:type_name -> google.protobuf.StringValue
+	5, // 4: controller.api.resources.storagebuckets.v1.StorageBucket.created_time:type_name -> google.protobuf.Timestamp
+	5, // 5: controller.api.resources.storagebuckets.v1.StorageBucket.updated_time:type_name -> google.protobuf.Timestamp
+	6, // 6: controller.api.resources.storagebuckets.v1.StorageBucket.attributes:type_name -> google.protobuf.Struct
+	6, // 7: controller.api.resources.storagebuckets.v1.StorageBucket.secrets:type_name -> google.protobuf.Struct
+	6, // 8: controller.api.resources.storagebuckets.v1.StorageBucketPersisted.data:type_name -> google.protobuf.Struct
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_init() }
@@ -374,6 +436,18 @@ func file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_init()
 				return nil
 			}
 		}
+		file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*StorageBucketPersisted); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -381,7 +455,7 @@ func file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_init()
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_controller_api_resources_storagebuckets_v1_storage_bucket_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

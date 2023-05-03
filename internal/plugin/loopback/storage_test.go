@@ -145,6 +145,9 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 			"AWS_SECRET_ACCESS_KEY": structpb.NewStringValue("secret_access_key"),
 		},
 	}
+	persisted := &storagebuckets.StorageBucketPersisted{
+		Data: secrets,
+	}
 
 	tests := []struct {
 		name        string
@@ -165,6 +168,7 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 			request: &plgpb.OnUpdateStorageBucketRequest{
 				NewBucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
 				},
 			},
 			expectedErr: codes.InvalidArgument,
@@ -176,6 +180,7 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 					BucketName: "bucket_dne",
 					Secrets:    secrets,
 				},
+				Persisted: persisted,
 			},
 			expectedErr: codes.NotFound,
 		},
@@ -186,6 +191,7 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 					BucketName: "aws_s3_err",
 					Secrets:    secrets,
 				},
+				Persisted: persisted,
 			},
 			expectedErr: codes.PermissionDenied,
 		},
@@ -196,6 +202,7 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
 				},
+				Persisted: persisted,
 			},
 		},
 	}
@@ -233,6 +240,9 @@ func TestLoopbackOnDeleteStorageBucket(t *testing.T) {
 			"AWS_SECRET_ACCESS_KEY": structpb.NewStringValue("secret_access_key"),
 		},
 	}
+	persisted := &storagebuckets.StorageBucketPersisted{
+		Data: secrets,
+	}
 
 	tests := []struct {
 		name        string
@@ -253,6 +263,7 @@ func TestLoopbackOnDeleteStorageBucket(t *testing.T) {
 			request: &plgpb.OnDeleteStorageBucketRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
 				},
 			},
 			expectedErr: codes.InvalidArgument,
@@ -264,6 +275,7 @@ func TestLoopbackOnDeleteStorageBucket(t *testing.T) {
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
 				},
+				Persisted: persisted,
 			},
 		},
 	}

@@ -104,3 +104,16 @@ message StorageBucket {
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }
+
+// StorageBucketPersisted is data that the plugin can read from and write
+// to that will always be provided by the host.
+message StorageBucketPersisted {
+  // Data has no explicit structure other than valid json.
+  // Data may contain sensitive information, such as
+  // credentials, rotated secrets, or configuration data.
+  // Data can be anything that may need to be provided to
+  // a series of different method calls.
+  // Data is encrypted at-rest by Boundary.
+  // Data is never returned to the end user.
+  google.protobuf.Struct data = 10;
+}

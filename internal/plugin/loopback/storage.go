@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -134,7 +135,7 @@ func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.
 		}
 	}
 	return &plgpb.OnCreateStorageBucketResponse{
-		Persisted: &plgpb.StorageBucketPersisted{
+		Persisted: &storagebuckets.StorageBucketPersisted{
 			Data: req.GetBucket().GetSecrets(),
 		},
 	}, nil
@@ -148,7 +149,7 @@ func (l *LoopbackStorage) onUpdateStorageBucket(ctx context.Context, req *plgpb.
 	if req.GetNewBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.GetNewBucket().GetSecrets() == nil {
+	if req.Persisted == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
 	}
 	l.m.Lock()
@@ -161,10 +162,16 @@ func (l *LoopbackStorage) onUpdateStorageBucket(ctx context.Context, req *plgpb.
 			return nil, status.Errorf(err.errCode, "%s: %s", op, err.errMsg)
 		}
 	}
-	return &plgpb.OnUpdateStorageBucketResponse{
-		Persisted: &plgpb.StorageBucketPersisted{
+	var sec *storagebuckets.StorageBucketPersisted
+	if req.NewBucket.Secrets != nil {
+		sec = &storagebuckets.StorageBucketPersisted{
 			Data: req.GetNewBucket().GetSecrets(),
-		},
+		}
+	} else {
+		sec = req.Persisted
+	}
+	return &plgpb.OnUpdateStorageBucketResponse{
+		Persisted: sec,
 	}, nil
 }
 
@@ -176,7 +183,7 @@ func (l *LoopbackStorage) onDeleteStorageBucket(ctx context.Context, req *plgpb.
 	if req.GetBucket() == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing storage bucket", op)
 	}
-	if req.GetBucket().GetSecrets() == nil {
+	if req.Persisted == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing secrets", op)
 	}
 	return &plgpb.OnDeleteStorageBucketResponse{}, nil
