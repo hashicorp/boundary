@@ -46,3 +46,8 @@ output "secret_access_key" {
   value     = aws_iam_access_key.boundary.secret
   sensitive = true
 }
+
+output "user_name" {
+  description = "The name of the user created by this module."
+  value       = aws_iam_user.boundary.name
+}
