@@ -524,9 +524,42 @@ func (f *FlagSets) Completions() complete.Flags {
 	return f.completions
 }
 
+// reparseArgs is because of this really stupid and annoying thing where the
+// stdlib Go flag code won't find explicit "true/false" after a bool var unless
+// there is an equal sign. And when it doesn't find it, it shortcuts to code
+// that assumes that there is no value and sets it true. So we have to rewrite
+// args to be able to handle the BoolVar AllowUnset case. Argggghhhhh.
+func reparseArgs(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+
+	newArgs := make([]string, 0, len(args)*2)
+	for i := 0; i < len(args); i++ {
+		// If empty or not a flag or we're at the end with no follow-on
+		// args, leave alone
+		if args[i] == "" || args[i][0] != '-' || i == len(args)-1 {
+			newArgs = append(newArgs, args[i])
+			continue
+		}
+		// It's a flag, so see if it's followed by true or false
+		if args[i+1] == "true" || args[i+1] == "false" {
+			// Combine them
+			newArgs = append(newArgs, fmt.Sprintf("%s=%s", args[i], args[i+1]))
+			// Skip the next arg
+			i++
+		} else {
+			newArgs = append(newArgs, args[i])
+		}
+	}
+
+	return newArgs
+}
+
 // Parse parses the given flags, returning any errors.
 func (f *FlagSets) Parse(args []string) error {
-	return f.mainSet.Parse(args)
+	newArgs := reparseArgs(args)
+	return f.mainSet.Parse(newArgs)
 }
 
 // Parsed reports whether the command-line flags have been parsed.

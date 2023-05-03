@@ -6,9 +6,207 @@ package base
 import (
 	"testing"
 
+	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestFlagSet_BoolVar(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		setString         string
+		allowUnset        bool
+		def               bool
+		wantPanicContains string
+		wantErrContains   string
+		target            func() any
+		wantTarget        func() any
+	}{
+		{
+			name:      "normal-default-false",
+			setString: "",
+			target: func() any {
+				return new(bool)
+			},
+			wantTarget: func() any {
+				return new(bool)
+			},
+		},
+		{
+			name:      "normal-default-true",
+			setString: "",
+			target: func() any {
+				return new(bool)
+			},
+			def: true,
+			wantTarget: func() any {
+				b := new(bool)
+				*b = true
+				return b
+			},
+		},
+		{
+			name:      "normal-set-false",
+			setString: "false",
+			target: func() any {
+				return new(bool)
+			},
+			def: true,
+			wantTarget: func() any {
+				return new(bool)
+			},
+		},
+		{
+			name:      "normal-set-true",
+			setString: "true",
+			target: func() any {
+				return new(bool)
+			},
+			def: false,
+			wantTarget: func() any {
+				b := new(bool)
+				*b = true
+				return b
+			},
+		},
+		{
+			name:      "panic-nil-target",
+			setString: "",
+			target: func() any {
+				return nil
+			},
+			wantPanicContains: "nil Target",
+		},
+		{
+			name:       "panic-allow-unset-bool-pointer",
+			setString:  "",
+			allowUnset: true,
+			target: func() any {
+				return new(bool)
+			},
+			wantPanicContains: "has AllowUnset but not using correct type",
+		},
+		{
+			name:      "panic-nil-bool-pointer",
+			setString: "",
+			target: func() any {
+				return (*bool)(nil)
+			},
+			wantPanicContains: "Target is nil pointer",
+		},
+		{
+			name:      "panic-no-unset-double-pointer",
+			setString: "",
+			target: func() any {
+				b := new(bool)
+				return &b
+			},
+			wantPanicContains: "not using AllowUnset but has type",
+		},
+		{
+			name:      "panic-invalid-type-string",
+			setString: "",
+			target: func() any {
+				return "foo"
+			},
+			wantPanicContains: "unhandled Target type",
+		},
+		{
+			name:      "panic-invalid-type-bool",
+			setString: "",
+			target: func() any {
+				return false
+			},
+			wantPanicContains: "unhandled Target type",
+		},
+		{
+			name:      "allowunset-no-set-string",
+			setString: "",
+			target: func() any {
+				b := new(bool)
+				return &b
+			},
+			allowUnset: true,
+			wantTarget: func() any {
+				return new(*bool)
+			},
+		},
+		{
+			name:      "allowunset-set-false",
+			setString: "false",
+			target: func() any {
+				b := new(bool)
+				return &b
+			},
+			allowUnset: true,
+			wantTarget: func() any {
+				b := new(*bool)
+				*b = new(bool)
+				return b
+			},
+		},
+		{
+			name:      "allowunset-set-true",
+			setString: "true",
+			target: func() any {
+				b := new(bool)
+				return &b
+			},
+			allowUnset: true,
+			wantTarget: func() any {
+				b := new(*bool)
+				*b = new(bool)
+				**b = true
+				return b
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			sets := NewFlagSets(cli.NewMockUi())
+			f := sets.NewFlagSet("Testing")
+
+			var wantTarget any
+			if tt.wantTarget != nil {
+				wantTarget = tt.wantTarget()
+			}
+			target := tt.target()
+			boolVar := &BoolVar{
+				Name:       "test",
+				Default:    tt.def,
+				Target:     target,
+				AllowUnset: tt.allowUnset,
+			}
+
+			if tt.wantPanicContains != "" {
+				defer func() {
+					r := recover()
+					require.NotNil(r)
+					assert.Contains(r, tt.wantPanicContains)
+				}()
+			}
+			f.BoolVar(boolVar)
+
+			var args []string
+			if tt.setString != "" {
+				args = []string{"-test", tt.setString}
+			}
+			err := sets.Parse(args)
+			if tt.wantErrContains != "" {
+				require.Error(err)
+				assert.Contains(err.Error(), tt.wantErrContains)
+				return
+			}
+
+			require.NoError(err)
+			assert.Equal(wantTarget, target)
+		})
+	}
+}
 
 func TestFlagSet_StringSliceMapVar(t *testing.T) {
 	t.Parallel()

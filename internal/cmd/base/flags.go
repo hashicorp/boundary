@@ -45,55 +45,125 @@ type BoolVar struct {
 	Default    bool
 	Hidden     bool
 	EnvVar     string
-	Target     *bool
+	Target     any
+	AllowUnset bool
 	Completion complete.Predictor
 }
 
 func (f *FlagSet) BoolVar(i *BoolVar) {
+	// def will be used as default in newBoolValue unless AllowUnset is used
 	def := i.Default
+
+	// Get the right pointer for setting target based on whether we're using
+	// AllowUnset or not
+	target := new(*bool)
+	switch t := i.Target.(type) {
+	case nil:
+		panic("BoolVar has nil Target value")
+	case *bool:
+		if i.AllowUnset {
+			panic("BoolVar has AllowUnset but not using correct type of *bool for Target")
+		}
+		if t == nil {
+			panic("BoolVar Target is nil pointer and not using AllowUnset")
+		}
+		*target = t
+	case **bool:
+		if !i.AllowUnset {
+			panic("BoolVar not using AllowUnset but has type **bool for Target")
+		}
+		target = t
+		// Clear the current value in case it was already initialized as we
+		// don't want to default to false if nothing is parsed
+		*target = nil
+	default:
+		panic("BoolVar has unhandled Target type")
+	}
 	if v, exist := os.LookupEnv(i.EnvVar); exist {
 		if b, err := strconv.ParseBool(v); err == nil {
 			def = b
 		}
 	}
 
-	f.VarFlag(&VarFlag{
+	varFlag := &VarFlag{
 		Name:       i.Name,
 		Aliases:    i.Aliases,
 		Usage:      i.Usage,
-		Default:    strconv.FormatBool(i.Default),
 		EnvVar:     i.EnvVar,
-		Value:      newBoolValue(def, i.Target, i.Hidden),
+		Value:      newBoolValue(def, target, i.Hidden, i.AllowUnset),
 		Completion: i.Completion,
-	})
+	}
+
+	if !i.AllowUnset {
+		varFlag.Default = strconv.FormatBool(i.Default)
+	}
+
+	f.VarFlag(varFlag)
 }
 
 type boolValue struct {
-	hidden bool
-	target *bool
+	hidden     bool
+	allowUnset bool
+	target     **bool
 }
 
-func newBoolValue(def bool, target *bool, hidden bool) *boolValue {
-	*target = def
+func newBoolValue(def bool, target **bool, hidden, allowUnset bool) *boolValue {
+	if !allowUnset {
+		// We will always use some value so specify it now
+		**target = def
+	}
 
 	return &boolValue{
-		hidden: hidden,
-		target: target,
+		allowUnset: allowUnset,
+		hidden:     hidden,
+		target:     target,
 	}
 }
 
 func (b *boolValue) Set(s string) error {
-	v, err := strconv.ParseBool(s)
-	if err != nil {
-		return err
-	}
+	switch {
+	case s == "" && !b.allowUnset:
+		return errors.New("empty bool value and not using allow unset")
 
-	*b.target = v
-	return nil
+	case s == "":
+		// We've already set default, just return
+		return nil
+
+	case !b.allowUnset:
+		v, err := strconv.ParseBool(s)
+		if err != nil {
+			return err
+		}
+		**b.target = v
+		return nil
+
+	default:
+		if s == "" {
+			*b.target = nil
+			return nil
+		}
+		v, err := strconv.ParseBool(s)
+		if err != nil {
+			return err
+		}
+		*b.target = &v
+		return nil
+	}
 }
 
-func (b *boolValue) Get() any         { return *b.target }
-func (b *boolValue) String() string   { return strconv.FormatBool(*b.target) }
+func (b *boolValue) Get() any {
+	if b.allowUnset {
+		return *b.target
+	}
+	return **b.target
+}
+
+func (b *boolValue) String() string {
+	if *b.target != nil {
+		return strconv.FormatBool(**b.target)
+	}
+	return "(unset)"
+}
 func (b *boolValue) Example() string  { return "" }
 func (b *boolValue) Hidden() bool     { return b.hidden }
 func (b *boolValue) IsBoolFlag() bool { return true }
