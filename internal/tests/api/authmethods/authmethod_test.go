@@ -201,9 +201,10 @@ func TestList(t *testing.T) {
 
 	result, err := amClient.List(tc.Context(), global)
 	require.NoError(err)
-	require.Len(result.Items, 2)
+	require.Len(result.Items, 3)
 	genOIDCAM := result.Items[0]
 	genPWAM := result.Items[1]
+	genLDAPAM := result.Items[2]
 
 	pwAM, err := amClient.Create(tc.Context(), "password", global,
 		authmethods.WithName("bar"),
@@ -217,11 +218,11 @@ func TestList(t *testing.T) {
 
 	result, err = amClient.List(tc.Context(), global)
 	require.NoError(err)
-	require.Len(result.Items, 3)
+	require.Len(result.Items, 4)
 	assert.Empty(
 		cmp.Diff(
 			result.Items,
-			[]*authmethods.AuthMethod{genOIDCAM, genPWAM, pwAM.Item},
+			[]*authmethods.AuthMethod{genOIDCAM, genPWAM, genLDAPAM, pwAM.Item},
 			cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
@@ -243,11 +244,11 @@ func TestList(t *testing.T) {
 
 	result, err = amClient.List(tc.Context(), global)
 	require.NoError(err)
-	require.Len(result.Items, 4)
+	require.Len(result.Items, 5)
 	assert.Empty(
 		cmp.Diff(
 			result.Items,
-			[]*authmethods.AuthMethod{genOIDCAM, genPWAM, pwAM.Item, oidcAM.Item},
+			[]*authmethods.AuthMethod{genOIDCAM, genPWAM, genLDAPAM, pwAM.Item, oidcAM.Item},
 			cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
@@ -266,11 +267,11 @@ func TestList(t *testing.T) {
 
 	result, err = amClient.List(tc.Context(), global)
 	require.NoError(err)
-	require.Len(result.Items, 5)
+	require.Len(result.Items, 6)
 	assert.Empty(
 		cmp.Diff(
 			result.Items,
-			[]*authmethods.AuthMethod{genOIDCAM, genPWAM, pwAM.Item, oidcAM.Item, ldapAm.Item},
+			[]*authmethods.AuthMethod{genOIDCAM, genPWAM, genLDAPAM, pwAM.Item, oidcAM.Item, ldapAm.Item},
 			cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
