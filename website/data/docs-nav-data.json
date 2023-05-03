@@ -208,6 +208,10 @@
         "path": "concepts"
       },
       {
+        "title": "Identity and Access Management",
+        "path": "concepts/iam"
+      },
+      {
         "title": "Service Discovery",
         "path": "concepts/service-discovery"
       },

@@ -1,0 +1,104 @@
+---
+layout: docs
+page_title: Identity and Access Management (IAM)
+description: |-
+  Identity and Access Management in Boundary
+---
+
+# Identity and Access Management (IAM)
+## IAM Components
+There are 5 key components to Boundary's identity and access management system: **Scopes**, **Auth Methods**, **Accounts**, **Users**, **Groups**, and **Roles**.
+
+#### Scopes
+[Scopes](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes) are containers for all of Boundary's resources and have their own permissions 
+boundary, isolated from other scopes at the same level. **Each scope has its own set of resources and permissions**. There are three types of scopes:
+- **Global** - The single, outermost scope of Boundary that cannot be deleted.
+- **Org (Organization)** - Org scopes are contained in the global scope and are typically used to represent business units, organizations, or departments. Org scopes 
+are also utilized when there are multiple production-level auth methods that need to be kept in separate scopes.
+- **Project** - Project scopes are contained in Org scopes and contain infrastructure resources.
+
+#### Auth Methods
+[Auth Methods](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-methods) are resources that provide a mechanism for users to authenticate to 
+Boundary. Auth methods can only be contained by the global or Org scope. The available auth methods are:
+- Username/Password
+- [OIDC](https://developer.hashicorp.com/boundary/tutorials/access-management/oidc-auth)
+
+#### Accounts
+[Accounts](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/accounts) are resources that represent a set of credentials used to establish the 
+identity of a user. An account is created with an auth method, and can be associated with a single user. Accounts can be contained by any scope.
+
+#### Users
+[Users](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/users) are resources that represent an individual person or entity for the purposes of 
+access control. A user can contain multiple accounts from multiple auth methods, and can be contained by any scope.
+
+#### Groups
+[Groups](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/groups) are resources that represent a collection of users, and can be contained by any 
+scope. [Managed groups](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/managed-groups) are a special kind of group that syncs with the auth 
+method's identity provider to provide up to date information.
+
+#### Roles
+[Roles](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles) are resources that contain a collection of 
+[permissions](https://developer.hashicorp.com/boundary/docs/concepts/security/permissions) which are granted to any principal (user or group) from any scope. Roles 
+can be contained by any scope, and can specify which scope the permissions will apply to.
+
+## Access Management
+#### Configuring Users
+When adding new users to Boundary using the password auth method, there are 3 steps to follow. Note: for OIDC auth methods, the following will be auto-generated using 
+information provided by the identity provider.
+1. **Auth Method** - Choose the scope and the auth method that the user will use to authenticate to Boundary. If the desired auth method does not exist, a new one needs 
+to be created.
+2. **Account** - After the auth method is selected, an account can be created under the auth method.
+3. **User** - In the same scope, create a new user, and then attach the new account to the new user. The user is now able to authenticate to Boundary.
+
+#### Granting Permissions
+When setting up access controls for a user, it is important to first consider which scopes the user needs access to. **Each scope needs its own role** which the user must 
+be added to. After adding the user to each role, grants need to be written to give the user permissions to perform actions in each role. 
+
+## Examples 
+Here are a few examples of access management for personas, using this sample scope structure. In this structure, there are 7 scopes overall: 1 global, 2 Orgs, and 4 
+Projects. To learn more about writing grants, see here.
+
+DIAGRAM HERE
+
+DIAGRAM HERE 
+
+DIAGRAM HERE 
+
+DIAGRAM HERE  
+
+#### Boundary Admin
+1. All 7 scopes **each** require a role (ex. “admin”)
+2. Each role needs to have the user added to it
+3. Each role needs to have the grants of
+    - id=\*;type=\*;actions=\*
+
+#### Boundary Viewer
+1. All 7 scopes **each** require a role (ex. “viewer”)
+2. Each role needs to have the user added to it
+3. Each role needs to have the grants of
+    - id=\*;type=\*;actions=read,list
+
+#### Org_A Admin
+1. The following scopes **each** require a role (ex. “admin”)
+    - Org_A
+    - Project_1
+    - Project_2
+2. Each role needs to have the user added to it
+3. Each role needs to have the grants of
+    - id=\*;type=\*;actions=\*
+
+#### Project_1 Admin
+1. Project_1 requires a role (ex. “admin”)
+2. The role needs to have the user added to it
+3. The role needs to have the grants of
+    - id=\*;type=\*;actions=\*
+
+#### Project_1 Target Access
+1. Project_1 requires a role (ex. “target_access”)
+2. The role needs to have the user added to it
+3. The role needs to have the grants of
+    - id=\*;type=target;actions=list,read,authorize-session
+    - id=\*;type=session;actions=read:self,cancel:self,list
+
+-> **Tip:** The same roles can be used across “Boundary Admin”, “Org_A Admin”, and “Project_1 Admin” since the scopes and grants are the same. The only difference is 
+the users that are added to each role. 
