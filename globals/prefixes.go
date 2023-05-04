@@ -114,6 +114,13 @@ const (
 
 	// PluginStorageBucketPrefix is the prefix for plugin storage buckets
 	PluginStorageBucketPrefix = "sb"
+
+	// SessionRecordingPrefix is the prefix for session recordings
+	SessionRecordingPrefix = "sr"
+	// ConnectionRecordingPrefix is the prefix for connection recordings
+	ConnectionRecordingPrefix = "cr"
+	// ChannelRecordingPrefix is the prefix for channel recordings
+	ChannelRecordingPrefix = "chr"
 )
 
 var prefixToResourceType = map[string]resource.Type{
