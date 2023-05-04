@@ -136,6 +136,12 @@ configuration of `pass` or other alternatives is beyond the scope of this
 article; consult the documentation for `pass` or your specific OS distribution
 help pages.
 
+Note that if `-format json` is used on this command, Boundary will not save the
+token to the system password store. In this case, the authentication information
+will only be printed to your terminal in JSON format. You can use the
+`BOUNDARY_TOKEN` environment variable or `-token` flag to provide the token in
+subsequent commands.
+
 </Tab>
 <Tab heading="Desktop Client">
 
