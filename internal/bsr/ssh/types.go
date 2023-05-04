@@ -19,15 +19,18 @@ import (
 type SessionProgram string
 
 // SessionPrograms
+// If the channel type is not of type session, then NotApplicable is expected
+// If the session program is not exec, shell, or subsystem, then None is used
 const (
 	NotApplicable SessionProgram = "not applicable"
+	None          SessionProgram = "none"
 	Exec          SessionProgram = "exec"
 	Shell         SessionProgram = "shell"
 	Subsystem     SessionProgram = "subsystem"
 )
 
-// ValidChannelProgram checks if a given SessionProgram is valid.
-func ValidChannelProgram(d SessionProgram) bool {
+// ValidSessionProgram checks if a given SessionProgram is valid.
+func ValidSessionProgram(d SessionProgram) bool {
 	switch d {
 	case Exec, Shell, Subsystem, NotApplicable:
 		return true
