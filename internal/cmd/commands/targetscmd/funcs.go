@@ -791,8 +791,10 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 }
 
 var keySubstMap = map[string]string{
-	"default_port":        "Default Port",
-	"default_client_port": "Default Client Port",
+	"default_port":             "Default Port",
+	"default_client_port":      "Default Client Port",
+	"enable_session_recording": "Enable Session Recording",
+	"storage_bucket_id":        "Storage Bucket ID",
 }
 
 func exampleOutput() string {

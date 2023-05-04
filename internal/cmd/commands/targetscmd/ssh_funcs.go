@@ -22,8 +22,16 @@ func init() {
 
 func extraSshActionsFlagsMapFuncImpl() map[string][]string {
 	return map[string][]string{
-		"create": {"address", "default-port", "default-client-port", "session-max-seconds", "session-connection-limit", "egress-worker-filter", "ingress-worker-filter"},
-		"update": {"address", "default-port", "default-client-port", "session-max-seconds", "session-connection-limit", "worker-filter", "egress-worker-filter", "ingress-worker-filter"},
+		"create": {
+			"address", "default-port", "default-client-port", "session-max-seconds", "session-connection-limit",
+			"egress-worker-filter", "ingress-worker-filter", "enable-session-recording",
+			"storage-bucket-id",
+		},
+		"update": {
+			"address", "default-port", "default-client-port", "session-max-seconds", "session-connection-limit",
+			"worker-filter", "egress-worker-filter", "ingress-worker-filter", "enable-session-recording",
+			"storage-bucket-id",
+		},
 	}
 }
 
@@ -36,6 +44,8 @@ type extraSshCmdVars struct {
 	flagEgressWorkerFilter     string
 	flagIngressWorkerFilter    string
 	flagAddress                string
+	flagStorageBucketId        string
+	flagEnableSessionRecording string
 }
 
 func (c *SshCommand) extraSshHelpFunc(helpMap map[string]func() string) string {
@@ -118,6 +128,18 @@ func extraSshFlagsFuncImpl(c *SshCommand, set *base.FlagSets, f *base.FlagSet) {
 				Name:   "ingress-worker-filter",
 				Target: &c.flagIngressWorkerFilter,
 				Usage:  "A boolean expression to filter which ingress workers can handle sessions for this target.",
+			})
+		case "storage-bucket-id":
+			fs.StringVar(&base.StringVar{
+				Name:   "storage-bucket-id",
+				Target: &c.flagStorageBucketId,
+				Usage:  "The public ID of the storage bucket to associate with this target.",
+			})
+		case "enable-session-recording":
+			fs.StringVar(&base.StringVar{
+				Name:   "enable-session-recording",
+				Target: &c.flagEnableSessionRecording,
+				Usage:  "A boolean indicating if session recording is enabled for this target.",
 			})
 		}
 	}
@@ -224,6 +246,25 @@ func extraSshFlagsHandlingFuncImpl(c *SshCommand, _ *base.FlagSets, opts *[]targ
 		*opts = append(*opts, targets.DefaultAddress())
 	default:
 		*opts = append(*opts, targets.WithAddress(c.flagAddress))
+	}
+
+	switch c.flagStorageBucketId {
+	case "":
+	case "null":
+		*opts = append(*opts, targets.DefaultSshTargetStorageBucketId())
+	default:
+		*opts = append(*opts, targets.WithSshTargetStorageBucketId(c.flagStorageBucketId))
+	}
+
+	switch c.flagEnableSessionRecording {
+	case "":
+	case "false":
+		*opts = append(*opts, targets.WithSshTargetEnableSessionRecording(false))
+	case "true":
+		*opts = append(*opts, targets.WithSshTargetEnableSessionRecording(true))
+	default:
+		c.UI.Error(fmt.Sprintf("Invalid bool value for enable-session-recording %v", c.flagEnableSessionRecording))
+		return false
 	}
 
 	return true
