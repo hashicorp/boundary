@@ -14,7 +14,7 @@ begin;
 
   create function op_table(history_table_name name) returns text
   as $$
-    select trim(trailing '_hst' from history_table_name);
+    select left(history_table_name, -4);
   $$ language sql;
 
   create function has_operational_table(history_table_name name) returns text
