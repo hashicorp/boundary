@@ -10,15 +10,14 @@ description: |-
 There are 5 key components to Boundary's identity and access management system: **Scopes**, **Auth Methods**, **Accounts**, **Users**, **Groups**, and **Roles**.
 
 #### Scopes
-[Scopes](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes) are containers for all of Boundary's resources and have their own permissions 
-boundary, isolated from other scopes at the same level. **Each scope has its own set of resources and permissions**. There are three types of scopes:
-- **Global** - The single, outermost scope of Boundary that cannot be deleted.
-- **Org (Organization)** - Org scopes are contained in the global scope and are typically used to represent business units, organizations, or departments. Org scopes 
-are also utilized when there are multiple production-level auth methods that need to be kept in separate scopes.
-- **Project** - Project scopes are contained in Org scopes and contain infrastructure resources.
+[Scopes](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes) can be considered as containers for its own resources and permissions. Each scope also has a permissions boundary that is isolated from other scopes on the same level. There are three types of scopes:
+- **Global** - The highest-level scope of Boundary where administrators configure and manage Boundary for the entire company.
+- **Org (Organization)** - Org scopes are contained in the global scope and are typically used to represent business units, organizations, or departments. 
+You can also use Org scopes to contain multiple production-level auth methods in separate scopes.
+- **Project** - Project scopes are contained in Org scopes and be used to separate different business workflows. For example, Projects can be used to represent different teams, products, or environments (test, dev, prod).
 
 #### Auth Methods
-[Auth Methods](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-methods) are resources that provide a mechanism for users to authenticate to 
+[Auth Methods](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-methods) are resources that authenticate users to 
 Boundary. Auth methods can only be contained by the global or Org scope. The available auth methods are:
 - Username/Password
 - [OIDC](https://developer.hashicorp.com/boundary/tutorials/access-management/oidc-auth)
@@ -34,7 +33,7 @@ access control. A user can contain multiple accounts from multiple auth methods,
 #### Groups
 [Groups](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/groups) are resources that represent a collection of users, and can be contained by any 
 scope. [Managed groups](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/managed-groups) are a special kind of group that syncs with the auth 
-method's identity provider to provide up to date information.
+method's identity provider to provide up-to-date information.
 
 #### Roles
 [Roles](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles) are resources that contain a collection of 
