@@ -63,6 +63,8 @@ type ComposedOf struct {
 	// StaticCredentials are static credentials that will be retrieved
 	// for the session. StaticCredentials optional.
 	StaticCredentials []*StaticCredential
+	// Which worker is performing protocol-related tasks
+	ProtocolWorkerId string
 }
 
 // Session contains information about a user's session with a target
@@ -129,6 +131,9 @@ type Session struct {
 	// HostId of the session
 	HostId string `gorm:"-"`
 
+	// ProtocolWorkerId of the session
+	ProtocolWorkerId string `gorm:"-"`
+
 	// Connections for the session are for read only and are ignored during write operations
 	Connections []*Connection `gorm:"-"`
 
@@ -171,6 +176,7 @@ func New(c ComposedOf, _ ...Option) (*Session, error) {
 		IngressWorkerFilter: c.IngressWorkerFilter,
 		DynamicCredentials:  c.DynamicCredentials,
 		StaticCredentials:   c.StaticCredentials,
+		ProtocolWorkerId:    c.ProtocolWorkerId,
 	}
 	if err := s.validateNewSession(); err != nil {
 		return nil, errors.WrapDeprecated(err, op)
@@ -201,6 +207,7 @@ func (s *Session) Clone() any {
 		EgressWorkerFilter:  s.EgressWorkerFilter,
 		IngressWorkerFilter: s.IngressWorkerFilter,
 		KeyId:               s.KeyId,
+		ProtocolWorkerId:    s.ProtocolWorkerId,
 	}
 	if len(s.States) > 0 {
 		clone.States = make([]*State, 0, len(s.States))
@@ -322,6 +329,8 @@ func (s *Session) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType
 			return errors.New(ctx, errors.InvalidParameter, op, "dynamic credentials are immutable")
 		case contains(opts.WithFieldMaskPaths, "StaticCredentials"):
 			return errors.New(ctx, errors.InvalidParameter, op, "static credentials are immutable")
+		case contains(opts.WithFieldMaskPaths, "ProtocolWorkerId"):
+			return errors.New(ctx, errors.InvalidParameter, op, "protocol worker id is immutable")
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
 			if _, err := convertToReason(s.TerminationReason); err != nil {
 				return errors.Wrap(ctx, err, op)
@@ -376,7 +385,8 @@ func (s *Session) validateNewSession() error {
 	if s.CtTofuToken != nil {
 		return errors.NewDeprecated(errors.InvalidParameter, op, "ct must be empty")
 	}
-	// It is okay for the worker filter to be empty, so it is not checked here.
+	// It is okay for the worker filter and protocol worker ID to be empty, so
+	// they are not checked here.
 	return nil
 }
 
@@ -548,6 +558,7 @@ type sessionListView struct {
 	Endpoint                string               `json:"-" gorm:"default:null"`
 	ConnectionLimit         int32                `json:"connection_limit,omitempty" gorm:"default:null"`
 	KeyId                   string               `json:"key_id,omitempty" gorm:"default:null"`
+	ProtocolWorkerId        string               `json:"protocol_worker_id,omitempty" gorm:"default:null"`
 
 	// State fields
 	Status          string               `json:"state,omitempty" gorm:"column:state"`
