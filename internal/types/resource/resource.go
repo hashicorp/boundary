@@ -25,6 +25,7 @@ const (
 	Controller
 	Worker
 	Session
+	SessionRecording
 	ManagedGroup
 	CredentialStore
 	CredentialLibrary
@@ -62,6 +63,7 @@ func (r Type) String() string {
 		"controller",
 		"worker",
 		"session",
+		"session-recording",
 		"managed-group",
 		"credential-store",
 		"credential-library",
@@ -96,6 +98,7 @@ var Map = map[string]Type{
 	Controller.String():        Controller,
 	Worker.String():            Worker,
 	Session.String():           Session,
+	SessionRecording.String():  SessionRecording,
 	ManagedGroup.String():      ManagedGroup,
 	CredentialStore.String():   CredentialStore,
 	CredentialLibrary.String(): CredentialLibrary,
@@ -139,6 +142,7 @@ func TopLevelType(typ Type) bool {
 		Role,
 		Scope,
 		Session,
+		SessionRecording,
 		Target,
 		User,
 		StorageBucket,
