@@ -188,13 +188,13 @@ func StartVault(t testing.TB, pool *dockertest.Pool, network *dockertest.Network
 		Networks:     []*dockertest.Network{network},
 		ExposedPorts: []string{"8200"},
 		PortBindings: map[docker.Port][]docker.PortBinding{
-			"8200/tcp": {{HostIP: "localhost", HostPort: "8200/tcp"}},
+			"8200/tcp": {{HostIP: "localhost", HostPort: "8210/tcp"}},
 		},
 		CapAdd: []string{"IPC_LOCK"},
 	})
 	require.NoError(t, err)
 
-	uriLocalhost := "http://localhost:8200"
+	uriLocalhost := "http://localhost:8210"
 
 	return &Container{
 			Resource:     resource,
