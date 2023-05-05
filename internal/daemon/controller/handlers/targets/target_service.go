@@ -922,6 +922,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		DynamicCredentials:  dynCreds,
 		StaticCredentials:   staticCreds,
 	}
+	if protoWorker != nil {
+		sessionComposition.ProtocolWorkerId = protoWorker.GetPublicId()
+	}
 	sess, err := session.New(sessionComposition)
 	if err != nil {
 		return nil, err

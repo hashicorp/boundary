@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
@@ -282,6 +283,7 @@ func TestRepository_CreateSession(t *testing.T) {
 	ctx := context.Background()
 	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
+	worker := server.TestKmsWorker(t, conn, wrapper)
 
 	workerAddresses := []string{"1.2.3.4"}
 	type args struct {
@@ -317,6 +319,30 @@ func TestRepository_CreateSession(t *testing.T) {
 				workerAddresses: workerAddresses,
 			},
 			wantErr: false,
+		},
+		{
+			name: "valid-with-protocol-worker",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.ProtocolWorkerId = worker.PublicId
+					return c
+				}(),
+				workerAddresses: workerAddresses,
+			},
+		},
+		{
+			name: "invalid-protocol-worker",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.ProtocolWorkerId = "something"
+					return c
+				}(),
+				workerAddresses: workerAddresses,
+			},
+			wantErr:     true,
+			wantIsError: errors.CheckConstraint,
 		},
 		{
 			name: "empty-host-source-endpoint",
@@ -445,6 +471,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				ConnectionLimit:    tt.args.composedOf.ConnectionLimit,
 				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
 				StaticCredentials:  tt.args.composedOf.StaticCredentials,
+				ProtocolWorkerId:   tt.args.composedOf.ProtocolWorkerId,
 			}
 			ses, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
 

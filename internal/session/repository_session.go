@@ -112,6 +112,17 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				}
 			}
 
+			if newSession.ProtocolWorkerId != "" {
+				swp, err := NewSessionWorkerProtocol(ctx, newSession.PublicId, newSession.ProtocolWorkerId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if err = w.Create(ctx, swp); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				returnedSession.ProtocolWorkerId = swp.WorkerId
+			}
+
 			for _, cred := range newSession.DynamicCredentials {
 				cred.SessionId = newSession.PublicId
 			}
@@ -224,6 +235,12 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 			}
 			session.HostSetId = sessionHostSetHost.HostSetId
 			session.HostId = sessionHostSetHost.HostId
+
+			sessionWorkerProtocol := AllocSessionWorkerProtocol()
+			if err := read.LookupWhere(ctx, sessionWorkerProtocol, "session_id = ?", []any{sessionId}); err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			session.ProtocolWorkerId = sessionWorkerProtocol.WorkerId
 
 			connections, err := fetchConnections(ctx, read, sessionId, db.WithOrder("create_time desc"))
 			if err != nil {
