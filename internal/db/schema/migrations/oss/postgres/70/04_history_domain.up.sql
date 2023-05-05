@@ -45,4 +45,18 @@ begin;
   comment on function wt_url_safe_id is
     'Returns a random ID of 14 characters containing URL safe characters only';
 
+  create function immutable_table() returns trigger
+  as $$
+  begin
+    raise exception 'immutable table: %', tg_table_name using
+      errcode = '23603',
+      schema = tg_table_schema,
+      table = tg_table_name;
+    return null;
+  end;
+  $$ language plpgsql;
+  comment on function immutable_table is
+    'immutable_table() is a trigger function that prevents all changes to a table. '
+    'It must be added as a trigger to a table before insert, update, and delete events.';
+
 commit;

@@ -29,6 +29,7 @@ TESTS ?= tests/setup/*.sql \
 		 tests/hcp/*/*.sql \
 		 tests/kms/*.sql \
 		 tests/storage/*.sql \
+		 tests/domain/*.sql \
 		 tests/history/*.sql \
 		 tests/recording/*.sql
 

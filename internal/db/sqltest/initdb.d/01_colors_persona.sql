@@ -279,6 +279,22 @@ begin;
          static_host_set as s
    where h.catalog_id = s.catalog_id;
 
+  insert into plugin
+    (scope_id, public_id,       name)
+  values
+    ('global', 'plg_____chost', 'Colors Host Plugin');
+
+  insert into plugin_host_supported
+    (public_id)
+  values
+    ('plg_____chost');
+
+  insert into host_plugin_catalog
+    (project_id,     plugin_id,       public_id,       name,                        attributes)
+  values
+    ('p____bcolors', 'plg_____chost', 'c___cb-plghcl', 'Blue Color Plugin Catalog', ''),
+    ('p____rcolors', 'plg_____chost', 'c___cr-plghcl', 'Red Color Plugin Catalog',  '');
+
   insert into target_tcp
     (project_id, public_id, name)
   values
