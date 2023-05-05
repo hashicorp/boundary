@@ -5641,11 +5641,6 @@
           "type": "string",
           "description": "The total duration of the Session."
         },
-        "delete_on": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The time that the Session recording will be deleted."
-        },
         "type": {
           "type": "string",
           "description": "Type of the Session that was recorded (e.g. ssh)."
@@ -5695,10 +5690,6 @@
         "id": {
           "type": "string",
           "description": "The ID of the Target."
-        },
-        "scope": {
-          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
-          "description": "The project that the Target is in."
         },
         "name": {
           "type": "string",

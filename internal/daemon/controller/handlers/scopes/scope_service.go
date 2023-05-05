@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/session_recordings"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/sessions"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/storage_buckets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
@@ -68,24 +69,26 @@ var (
 
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
 		scope.Global.String(): {
-			resource.AuthMethod:    authmethods.CollectionActions,
-			resource.StorageBucket: storage_buckets.CollectionActions,
-			resource.AuthToken:     authtokens.CollectionActions,
-			resource.Group:         groups.CollectionActions,
-			resource.Role:          roles.CollectionActions,
-			resource.Scope:         CollectionActions,
-			resource.User:          users.CollectionActions,
-			resource.Worker:        workers.CollectionActions,
+			resource.AuthMethod:       authmethods.CollectionActions,
+			resource.StorageBucket:    storage_buckets.CollectionActions,
+			resource.AuthToken:        authtokens.CollectionActions,
+			resource.Group:            groups.CollectionActions,
+			resource.Role:             roles.CollectionActions,
+			resource.Scope:            CollectionActions,
+			resource.User:             users.CollectionActions,
+			resource.Worker:           workers.CollectionActions,
+			resource.SessionRecording: session_recordings.CollectionActions,
 		},
 
 		scope.Org.String(): {
-			resource.AuthMethod:    authmethods.CollectionActions,
-			resource.StorageBucket: storage_buckets.CollectionActions,
-			resource.AuthToken:     authtokens.CollectionActions,
-			resource.Group:         groups.CollectionActions,
-			resource.Role:          roles.CollectionActions,
-			resource.Scope:         CollectionActions,
-			resource.User:          users.CollectionActions,
+			resource.AuthMethod:       authmethods.CollectionActions,
+			resource.StorageBucket:    storage_buckets.CollectionActions,
+			resource.AuthToken:        authtokens.CollectionActions,
+			resource.Group:            groups.CollectionActions,
+			resource.Role:             roles.CollectionActions,
+			resource.Scope:            CollectionActions,
+			resource.User:             users.CollectionActions,
+			resource.SessionRecording: session_recordings.CollectionActions,
 		},
 
 		scope.Project.String(): {

@@ -93,29 +93,26 @@ message Target {
   // The ID of the Target.
   string id = 1; // @gotags: class:"public"
 
-  // The project that the Target is in.
-  resources.scopes.v1.ScopeInfo scope = 2; // @gotags: class:"public"
-
   // The name of the Target, if set.
-  string name = 3; // @gotags: class:"public"
+  string name = 2; // @gotags: class:"public"
 
   // The description of the Target, if set.
-  string description = 4; // @gotags: class:"public"
+  string description = 3; // @gotags: class:"public"
 
   // Maximum total lifetime of a created Session, in seconds.
-  uint32 session_max_seconds = 5 [json_name = "session_max_seconds"]; // @gotags: class:"public"
+  uint32 session_max_seconds = 4 [json_name = "session_max_seconds"]; // @gotags: class:"public"
 
   // Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
-  int32 session_connection_limit = 6 [json_name = "session_connection_limit"]; // @gotags: class:"public"
+  int32 session_connection_limit = 5 [json_name = "session_connection_limit"]; // @gotags: class:"public"
 
   // Optional boolean expression to filter the workers that are allowed to satisfy this request.
-  string worker_filter = 7 [json_name = "worker_filter"]; // @gotags: class:"public"
+  string worker_filter = 6 [json_name = "worker_filter"]; // @gotags: class:"public"
 
   // Optional boolean expressions to filter the egress workers that are allowed to satisfy this request.
-  string egress_worker_filter = 8 [json_name = "egress_worker_filter"]; // @gotags: class:"public"
+  string egress_worker_filter = 7 [json_name = "egress_worker_filter"]; // @gotags: class:"public"
 
   // Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request.
-  string ingress_worker_filter = 9 [json_name = "ingress_worker_filter"]; // @gotags: class:"public"
+  string ingress_worker_filter = 8 [json_name = "ingress_worker_filter"]; // @gotags: class:"public"
 
   oneof attrs {
     // We are using the name attributes here because at the time of
@@ -130,7 +127,7 @@ message Target {
     // to the end user.
 
     // The attributes that are applicable for the specific Target.
-    SshTargetAttributes attributes = 10;
+    SshTargetAttributes attributes = 9;
   }
 }
 
@@ -185,25 +182,22 @@ message SessionRecording {
   // The total duration of the Session.
   google.protobuf.Duration duration = 9; // @gotags: class:"public"
 
-  // The time that the Session recording will be deleted.
-  google.protobuf.Timestamp delete_on = 10 [json_name = "delete_on"]; // @gotags: class:"public"
-
   // Type of the Session that was recorded (e.g. ssh).
-  string type = 11; // @gotags: class:"public"
+  string type = 10; // @gotags: class:"public"
 
   // MimeTypes define the mime types that can
   // be used to consume the recording of this Session.
   // No mime types are currently supported.
-  repeated string mime_types = 12 [json_name = "mime_types"]; // @gotags: class:"public"
+  repeated string mime_types = 11 [json_name = "mime_types"]; // @gotags: class:"public"
 
   // The recordings of the connections that were created in the Session.
   // This field may be unset when listing Session recordings.
-  repeated ConnectionRecording connection_recordings = 13 [json_name = "connection_recordings"];
+  repeated ConnectionRecording connection_recordings = 12 [json_name = "connection_recordings"];
 
   // create_time_values contains the values of related fields at the time
   // this Session Recording was created. This may be unset when listing.
-  ValuesAtTime create_time_values = 14 [json_name = "create_time_values"]; // @gotags: class:"public"
+  ValuesAtTime create_time_values = 13 [json_name = "create_time_values"]; // @gotags: class:"public"
 
   // The available actions on this resource for this user.
-  repeated string authorized_actions = 15 [json_name = "authorized_actions"]; // @gotags: class:"public"
+  repeated string authorized_actions = 14 [json_name = "authorized_actions"]; // @gotags: class:"public"
 }

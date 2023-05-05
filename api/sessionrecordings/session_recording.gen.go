@@ -24,7 +24,6 @@ type SessionRecording struct {
 	StartTime            time.Time              `json:"start_time,omitempty"`
 	EndTime              time.Time              `json:"end_time,omitempty"`
 	Duration             time.Duration          `json:"duration,omitempty"`
-	DeleteOn             time.Time              `json:"delete_on,omitempty"`
 	Type                 string                 `json:"type,omitempty"`
 	MimeTypes            []string               `json:"mime_types,omitempty"`
 	ConnectionRecordings []*ConnectionRecording `json:"connection_recordings,omitempty"`

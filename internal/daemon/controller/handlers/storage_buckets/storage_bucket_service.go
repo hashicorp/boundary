@@ -43,7 +43,7 @@ var NewServiceFn = func(ctx context.Context,
 }
 
 type Service struct {
-	pbs.UnsafeStorageBucketServiceServer
+	pbs.UnimplementedStorageBucketServiceServer
 }
 
 var _ pbs.StorageBucketServiceServer = (*Service)(nil)
