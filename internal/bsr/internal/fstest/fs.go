@@ -56,6 +56,19 @@ func (m *MemFS) New(ctx context.Context, n string) (storage.Container, error) {
 	return c, nil
 }
 
+// Open opens an existing a storage.Container from the MemFS.
+func (m *MemFS) Open(_ context.Context, n string) (storage.Container, error) {
+	if m.Containers == nil {
+		return nil, fmt.Errorf("container %s not found", n)
+	}
+
+	c, ok := m.Containers[n]
+	if !ok {
+		return nil, fmt.Errorf("container %s not found", n)
+	}
+	return c, nil
+}
+
 // MemContainer is a storage.Container that resides in memory.
 type MemContainer struct {
 	Name string
