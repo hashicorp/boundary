@@ -334,7 +334,8 @@ begin;
     select h.public_id, s.public_id, s.catalog_id
       from host_plugin_host as h,
            host_plugin_set as s
-     where h.catalog_id = s.catalog_id;
+     where h.catalog_id = s.catalog_id
+       and h.external_id like '%widget';
   end;
   $$ language plpgsql;
 

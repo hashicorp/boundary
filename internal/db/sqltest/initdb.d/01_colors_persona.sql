@@ -295,6 +295,57 @@ begin;
     ('p____bcolors', 'plg_____chost', 'c___cb-plghcl', 'Blue Color Plugin Catalog', ''),
     ('p____rcolors', 'plg_____chost', 'c___cr-plghcl', 'Red Color Plugin Catalog',  '');
 
+  insert into host_plugin_host
+    (catalog_id,      public_id,           external_id)
+  values
+    ('c___cb-plghcl', 'h_____cb__01-plgh', '1 blue color'),
+    ('c___cb-plghcl', 'h_____cb__02-plgh', '2 blue color'),
+    ('c___cb-plghcl', 'h_____cb__03-plgh', '3 blue color'),
+
+    ('c___cr-plghcl', 'h_____cr__01-plgh', '1 red color'),
+    ('c___cr-plghcl', 'h_____cr__02-plgh', '2 red color'),
+    ('c___cr-plghcl', 'h_____cr__03-plgh', '3 red color');
+
+  insert into host_dns_name
+    (host_id,             name)
+  values
+    ('h_____cb__01-plgh', '1.blue.color'),
+    ('h_____cb__02-plgh', '2.blue.color'),
+    ('h_____cb__03-plgh', '3.blue.color'),
+
+    ('h_____cr__01-plgh', '1.red.color'),
+    ('h_____cr__02-plgh', '2.red.color'),
+    ('h_____cr__03-plgh', '3.red.color');
+
+  insert into host_ip_address
+    (host_id,             address)
+  values
+    ('h_____cb__01-plgh', '1.1.1.1'),
+    ('h_____cb__02-plgh', 'fe80::2222:2222:2222:2222'),
+    -- host 3 only has a dns name so the set of addresses are the same
+    -- between the static and plugin based host
+
+    ('h_____cr__01-plgh', '11.11.11.11'),
+    ('h_____cr__02-plgh', '2001:4860:4860::2222'),
+    ('h_____cr__03-plgh', '33.33.33.33');
+
+  insert into host_plugin_set
+    (catalog_id,      public_id,       name,                      attributes, need_sync)
+  values
+    ('c___cb-plghcl', 's___1cb-plghs', 'Blue Color Plugin Set 1', '',         false),
+    ('c___cb-plghcl', 's___2cb-plghs', 'Blue Color Plugin Set 2', '',         false),
+    ('c___cr-plghcl', 's___1cr-plghs', 'Red Color Plugin Set 1',  '',         false),
+    ('c___cr-plghcl', 's___2cr-plghs', 'Red Color Plugin Set 2',  '',         false);
+
+  insert
+    into host_plugin_set_member
+         ( host_id,     set_id,      catalog_id)
+  select h.public_id, s.public_id, s.catalog_id
+    from host_plugin_host as h,
+         host_plugin_set as s
+   where h.catalog_id = s.catalog_id
+     and h.external_id like '%color';
+
   insert into target_tcp
     (project_id, public_id, name)
   values

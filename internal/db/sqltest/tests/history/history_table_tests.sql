@@ -3,6 +3,24 @@
 
 begin;
 
+  create function get_columns(history_table_name name) returns setof text
+  as $$
+  begin
+    return query
+         select quote_ident(attname)
+           from pg_attribute
+          where attrelid = op_table(history_table_name)::regclass
+            and not attisdropped   -- no dropped (dead) columns
+            and attnum > 0         -- no system columns
+      intersect
+         select quote_ident(attname)
+           from pg_attribute
+          where attrelid = history_table_name::regclass
+            and not attisdropped   -- no dropped (dead) columns
+            and attnum > 0;        -- no system columns
+  end;
+  $$ language plpgsql;
+
   create function get_history_tables() returns setof name
   as $$
     select c.relname
@@ -44,17 +62,44 @@ begin;
   end;
   $$ language plpgsql;
 
-  create function migrations_have_run(history_table_name name) returns text
+  create function has_expected_row_count(history_table_name name) returns text
   as $$
   declare
     result text;
   begin
-    execute format('select is(count(opt.*), count(hst.*)) '
-        'from %I opt, %I hst', op_table(history_table_name), history_table_name)
+    execute format('select results_eq( '
+        ' ''select count(*) from %I'', '
+        ' ''select count(*) from %I'') ',
+        op_table(history_table_name), history_table_name)
     into result;
     return result;
   end;
   $$ language plpgsql;
+
+  create function has_expected_content(history_table_name name) returns text
+  as $$
+  declare
+    _cols text;
+    _q1 text;
+    _q2 text;
+  begin
+    select into _cols
+         string_agg(quote_ident(get_columns), ', ')
+    from get_columns(history_table_name);
+    select into _q1 format('select %s from %s', _cols, history_table_name);
+    select into _q2 format('select %s from %s', _cols, op_table(history_table_name));
+    return results_eq(_q1, _q2);
+
+  end;
+  $$ language plpgsql;
+
+  create function has_expected_data(history_table_name name) returns text
+  as $$
+    select * from collect_tap(
+      has_expected_row_count(history_table_name),
+      has_expected_content(history_table_name)
+    );
+  $$ language sql;
 
   -- tests the tables exist and follow the required naming pattern
   create function has_correct_tables(history_table_name name) returns text
@@ -62,7 +107,7 @@ begin;
     select * from collect_tap(
       has_table(history_table_name),
       has_operational_table(history_table_name),
-      migrations_have_run(history_table_name)
+      has_expected_data(history_table_name)
     );
   $$ language sql;
 
@@ -144,10 +189,10 @@ begin;
     );
   $$ language sql;
 
-  -- 27 tests for each history table
+  -- 28 tests for each history table
   select plan(a.table_count::integer)
     from (
-      select 27 * count(*) as table_count
+      select 28 * count(*) as table_count
         from get_history_tables()
     ) as a;
 
