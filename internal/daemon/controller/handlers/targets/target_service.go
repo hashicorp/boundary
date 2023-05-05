@@ -648,7 +648,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 
 // If set, use the worker_filter or egress_worker_filter to filter the selected workers
 // and ensure we have workers available to service this request.
-func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, selectedWorkers wl.WorkerList, _ string, _ common.Downstreamers) (wl.WorkerList, error) {
+func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, selectedWorkers wl.WorkerList, _ string, _ common.Downstreamers) (wl.WorkerList, *server.Worker, error) {
 	if len(selectedWorkers) > 0 {
 		var eval *bexpr.Evaluator
 		var err error
@@ -658,25 +658,25 @@ func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, select
 		case len(t.GetWorkerFilter()) > 0:
 			eval, err = bexpr.CreateEvaluator(t.GetWorkerFilter())
 		default: // No filter
-			return selectedWorkers, nil
+			return selectedWorkers, nil, nil
 		}
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		selectedWorkers, err = selectedWorkers.Filtered(eval)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	if len(selectedWorkers) == 0 {
-		return nil, handlers.ApiErrorWithCodeAndMessage(
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(
 			codes.FailedPrecondition,
 			"No workers are available to handle this session, or all have been filtered.")
 	}
 
-	return selectedWorkers, nil
+	return selectedWorkers, nil, nil
 }
 
 func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
@@ -876,7 +876,8 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			"No workers are available to handle this session.")
 	}
 
-	selectedWorkers, err = AuthorizeSessionWorkerFilterFn(ctx, t, selectedWorkers, h, s.downstreams)
+	var protoWorker *server.Worker
+	selectedWorkers, protoWorker, err = AuthorizeSessionWorkerFilterFn(ctx, t, selectedWorkers, h, s.downstreams)
 	if err != nil {
 		return nil, err
 	}
