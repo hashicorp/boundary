@@ -47,6 +47,7 @@ module "build_crt" {
 module "build_local" {
   source = "./modules/build_local"
 
+  binary_name  = var.boundary_binary_name
   build_target = var.local_build_target
 }
 
