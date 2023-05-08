@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr/internal/is"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
 	"github.com/hashicorp/boundary/internal/storage"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/crypto"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -43,6 +44,7 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 		return nil, fmt.Errorf("%s: missing session meta file: %w", op, ErrInvalidParameter)
 	}
 
+	connections := make(map[string]bool)
 	s := &SessionMeta{}
 	user := &User{Scope: Scope{}}
 	target := &Target{Scope: Scope{}}
@@ -171,6 +173,10 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 			dHost.Catalog.PluginId = v
 		case k == "dynamicHostCatalog_attributes":
 			dHost.Catalog.Attributes = v
+
+		// connections
+		case k == "connection":
+			connections[v] = true
 		}
 	}
 
@@ -182,6 +188,7 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 	if dHost.PublicId != "" {
 		s.DynamicHost = dHost
 	}
+	s.connections = connections
 
 	return s, nil
 }
@@ -303,12 +310,60 @@ func persistBsrSessionKeys(ctx context.Context, keys *kms.Keys, c *container) er
 // Fields on the underlying container will be populated so that the returned Session can be used for BSR
 // playback and conversion to formats such as asciinema
 func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*Session, error) {
-	panic("not implemented")
+	const op = "bsr.OpenSession"
+	switch {
+	case sessionRecordingId == "":
+		return nil, fmt.Errorf("%s: missing session recording id: %w", op, ErrInvalidParameter)
+	case f == nil:
+		return nil, fmt.Errorf("%s: missing storage: %w", op, ErrInvalidParameter)
+	case keyUnwrapFn == nil:
+		return nil, fmt.Errorf("%s: missing key unwrap function: %w", op, ErrInvalidParameter)
+	}
+
+	c, err := f.Open(ctx, fmt.Sprintf(bsrFile, sessionRecordingId))
+	if err != nil {
+		return nil, err
+	}
+
+	keyPopFn := func(c *container) (*kms.Keys, error) {
+		return c.loadKeys(ctx, keyUnwrapFn)
+	}
+	cc, err := openContainer(ctx, sessionContainer, c, keyPopFn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load and verify session metadata
+	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	sm, err := decodeSessionMeta(ctx, sha256Reader)
+	if err != nil {
+		return nil, err
+	}
+	err = cc.verifyMetadata(ctx, sha256Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	session := &Session{
+		container: cc,
+		Meta:      sm,
+	}
+
+	return session, nil
+}
+
+// Close closes the Session container.
+func (s *Session) Close(ctx context.Context) error {
+	return s.container.close(ctx)
 }
 
 // ConnectionMeta contains metadata about a connection in a BSR.
 type ConnectionMeta struct {
-	Id string
+	Id       string
+	channels map[string]bool
 }
 
 func (c ConnectionMeta) isValid() bool {
@@ -320,6 +375,15 @@ func (c ConnectionMeta) isValid() bool {
 	}
 }
 
+// Connection is a container in a bsr for a specific connection in a session
+// container. It contains the files for the recorded connection.
+type Connection struct {
+	*container
+	multiplexed bool
+
+	Meta *ConnectionMeta
+}
+
 // decodeConnectionMeta will populate the ConnectionMeta for a BSR Connection
 // TODO Unmarshal without brute force
 func decodeConnectionMeta(ctx context.Context, r io.Reader) (*ConnectionMeta, error) {
@@ -329,8 +393,8 @@ func decodeConnectionMeta(ctx context.Context, r io.Reader) (*ConnectionMeta, er
 	case r == nil:
 		return nil, fmt.Errorf("%s: missing connection meta file: %w", op, ErrInvalidParameter)
 	}
-
 	c := &ConnectionMeta{}
+	channels := make(map[string]bool)
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		l := scanner.Text()
@@ -345,8 +409,11 @@ func decodeConnectionMeta(ctx context.Context, r io.Reader) (*ConnectionMeta, er
 		switch {
 		case k == "id":
 			c.Id = v
+		case k == "channel":
+			channels[v] = true
 		}
 	}
+	c.channels = channels
 
 	return c, nil
 }
@@ -385,18 +452,49 @@ func (s *Session) NewConnection(ctx context.Context, meta *ConnectionMeta) (*Con
 	}, nil
 }
 
-// Close closes the Session container.
-func (s *Session) Close(ctx context.Context) error {
-	return s.container.close(ctx)
-}
+// OpenConnection will open and validate a BSR connection
+func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connection, error) {
+	const op = "bsr.OpenConnection"
+	switch {
+	case connId == "":
+		return nil, fmt.Errorf("%s: missing connection id: %w", op, ErrInvalidParameter)
+	case !s.Meta.connections[connId]:
+		return nil, fmt.Errorf("%s: connection id does not exist within this session: %w", op, ErrInvalidParameter)
+	}
 
-// Connection is a container in a bsr for a specific connection in a session
-// container. It contains the files for the recorded connection.
-type Connection struct {
-	*container
-	multiplexed bool
+	c, err := s.container.container.SubContainer(ctx, connId)
+	if err != nil {
+		return nil, err
+	}
 
-	Meta *ConnectionMeta
+	keyPopFn := func(c *container) (*kms.Keys, error) {
+		return s.keys, nil
+	}
+	cc, err := openContainer(ctx, connectionContainer, c, keyPopFn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load and verify connection metadata
+	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	sm, err := decodeConnectionMeta(ctx, sha256Reader)
+	if err != nil {
+		return nil, err
+	}
+	err = cc.verifyMetadata(ctx, sha256Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	connection := &Connection{
+		container: cc,
+		Meta:      sm,
+	}
+
+	return connection, nil
 }
 
 // ChannelMeta contains metadata about a channel in a BSR.
@@ -486,6 +584,51 @@ func (c *Connection) NewChannel(ctx context.Context, meta *ChannelMeta) (*Channe
 		container: nc,
 		Meta:      meta,
 	}, nil
+}
+
+// OpenChannel will open and validate a BSR channel
+func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, error) {
+	const op = "bsr.OpenChannel"
+	switch {
+	case chanId == "":
+		return nil, fmt.Errorf("%s: missing channel id: %w", op, ErrInvalidParameter)
+	case !c.Meta.channels[chanId]:
+		return nil, fmt.Errorf("%s: channel id does not exist within this connection: %w", op, ErrInvalidParameter)
+	}
+
+	con, err := c.container.container.SubContainer(ctx, chanId)
+	if err != nil {
+		return nil, err
+	}
+
+	keyPopFn := func(cn *container) (*kms.Keys, error) {
+		return c.keys, nil
+	}
+	cc, err := openContainer(ctx, channelContainer, con, keyPopFn)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load and verify channel metadata
+	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	sm, err := decodeChannelMeta(ctx, sha256Reader)
+	if err != nil {
+		return nil, err
+	}
+	err = cc.verifyMetadata(ctx, sha256Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	channel := &Channel{
+		container: cc,
+		Meta:      sm,
+	}
+
+	return channel, nil
 }
 
 // NewMessagesWriter creates a writer for recording channel messages.

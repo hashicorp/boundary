@@ -4,15 +4,21 @@
 package bsr
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/checksum"
+	"github.com/hashicorp/boundary/internal/bsr/internal/is"
 	"github.com/hashicorp/boundary/internal/bsr/internal/journal"
 	"github.com/hashicorp/boundary/internal/bsr/internal/sign"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
 	"github.com/hashicorp/boundary/internal/storage"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/crypto"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -37,16 +43,22 @@ const (
 // Each container has corresponding .meta, .summary, SHA256SUM, and SHA256SUM.sig files.
 type container struct {
 	container storage.Container
-	journal   *journal.Journal
 
-	metaName  string
+	// Fields primarily used for writing
+	journal   *journal.Journal
 	sumName   string
 	meta      *checksum.File
 	sum       *checksum.File
 	checksums *sign.File
 	sigs      storage.File
 
-	keys *kms.Keys
+	// Field used for reading
+	shaSums  checksum.Sha256Sums
+	metaFile storage.File
+
+	// Field used for reading and writing
+	keys     *kms.Keys
+	metaName string
 }
 
 // newContainer creates a container for the given type backed by the provide storage.Container.
@@ -103,6 +115,227 @@ func newContainer(ctx context.Context, t containerType, c storage.Container, key
 	}
 
 	return cc, nil
+}
+
+type populateKeyFunc func(c *container) (*kms.Keys, error)
+
+// openContainer will set keys and load and verify the checksums for this container
+func openContainer(ctx context.Context, t containerType, c storage.Container, keyGetFunc populateKeyFunc) (*container, error) {
+	const op = "bsr.openContainer"
+	switch {
+	case t == "":
+		return nil, fmt.Errorf("%s: missing container type: %w", op, ErrInvalidParameter)
+	case is.Nil(c):
+		return nil, fmt.Errorf("%s: missing container: %w", op, ErrInvalidParameter)
+	case is.Nil(keyGetFunc):
+		return nil, fmt.Errorf("%s: missing key function: %w", op, ErrInvalidParameter)
+	}
+
+	cc := &container{
+		container: c,
+	}
+
+	keys, err := keyGetFunc(cc)
+	if err != nil {
+		return nil, err
+	}
+	cc.keys = keys
+
+	err = cc.loadChecksums(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load the meta file
+	cc.metaName = fmt.Sprintf(metaFile, t)
+	mFile, err := cc.container.OpenFile(ctx, cc.metaName)
+	if err != nil {
+		return nil, err
+	}
+	cc.metaFile = mFile
+
+	return cc, nil
+}
+
+func (c *container) loadChecksums(ctx context.Context) error {
+	const op = "bsr.(container).loadChecksums"
+
+	// Open and extract checksum signature
+	checksumsSigFile, err := c.container.OpenFile(ctx, sigFile)
+	if err != nil {
+		return err
+	}
+	checksumSigBytes := new(bytes.Buffer)
+	_, err = checksumSigBytes.ReadFrom(checksumsSigFile)
+	if err != nil {
+		return err
+	}
+
+	sig := new(wrapping.SigInfo)
+	err = proto.Unmarshal(checksumSigBytes.Bytes(), sig)
+	if err != nil {
+		return err
+	}
+
+	// Open and extract checksum file bytes
+	checksumsFile, err := c.container.OpenFile(ctx, checksumFile)
+	if err != nil {
+		return err
+	}
+	var checksumsBuffer bytes.Buffer
+	cTee := io.TeeReader(checksumsFile, &checksumsBuffer)
+
+	checksumBytes := new(bytes.Buffer)
+	_, err = checksumBytes.ReadFrom(cTee)
+	if err != nil {
+		return err
+	}
+
+	verified, err := c.keys.VerifySignatureWithPubKey(ctx, sig, checksumBytes.Bytes())
+	if err != nil {
+		return err
+	}
+	if !verified {
+		return fmt.Errorf("%s: failed to verify checksums signature: %w", op, ErrSignatureVerification)
+	}
+
+	// Load checksums
+	sums, err := checksum.LoadSha256Sums(&checksumsBuffer)
+	if err != nil {
+		return err
+	}
+	c.shaSums = sums
+
+	return nil
+}
+
+func (c *container) loadKey(ctx context.Context, keyFileName string) (*wrapping.KeyInfo, error) {
+	keyFile, err := c.container.OpenFile(ctx, keyFileName)
+	if err != nil {
+		return nil, err
+	}
+
+	keyBytes := new(bytes.Buffer)
+	_, err = keyBytes.ReadFrom(keyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	key := new(wrapping.KeyInfo)
+	err = proto.Unmarshal(keyBytes.Bytes(), key)
+	if err != nil {
+		return nil, err
+	}
+
+	return key, nil
+}
+
+func (c *container) loadSignature(ctx context.Context, sigFileName string) (*wrapping.SigInfo, error) {
+	sigFile, err := c.container.OpenFile(ctx, sigFileName)
+	if err != nil {
+		return nil, err
+	}
+
+	sigBytes := new(bytes.Buffer)
+	_, err = sigBytes.ReadFrom(sigFile)
+	if err != nil {
+		return nil, err
+	}
+
+	signature := new(wrapping.SigInfo)
+	err = proto.Unmarshal(sigBytes.Bytes(), signature)
+	if err != nil {
+		return nil, err
+	}
+
+	return signature, nil
+}
+
+// loadKeys will load the BSR keys from storage, unmarshal and unwrap them.
+// After unwrapping, it will verify the key signature files before setting the keys
+// on the container
+func (c *container) loadKeys(ctx context.Context, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*kms.Keys, error) {
+	const op = "bsr.(container).loadKeys"
+
+	switch {
+	case keyUnwrapFn == nil:
+		return nil, fmt.Errorf("%s: missing key unwrap function: %w", op, ErrInvalidParameter)
+	}
+
+	bsrPubKey, err := c.loadKey(ctx, bsrPubKeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	wrappedBsrKey, err := c.loadKey(ctx, wrappedBsrKeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	wrappedPrivKey, err := c.loadKey(ctx, wrappedPrivKeyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	pubKeyBsrSignature, err := c.loadSignature(ctx, pubKeyBsrSignatureFile)
+	if err != nil {
+		return nil, err
+	}
+
+	pubKeySelfSignature, err := c.loadSignature(ctx, pubKeySelfSignatureFile)
+	if err != nil {
+		return nil, err
+	}
+
+	unwrappedKeys, err := keyUnwrapFn(kms.WrappedKeys{
+		WrappedBsrKey:  wrappedBsrKey,
+		WrappedPrivKey: wrappedPrivKey,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	keys := &kms.Keys{
+		PubKey:              bsrPubKey,
+		BsrKey:              unwrappedKeys.BsrKey,
+		PrivKey:             unwrappedKeys.PrivKey,
+		PubKeyBsrSignature:  pubKeyBsrSignature,
+		PubKeySelfSignature: pubKeySelfSignature,
+	}
+
+	verified, err := keys.VerifyPubKeySelfSignature(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !verified {
+		return nil, fmt.Errorf("%s: failed to verify public self signed key: %w", op, ErrSignatureVerification)
+	}
+
+	verified, err = keys.VerifyPubKeyBsrSignature(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !verified {
+		return nil, fmt.Errorf("%s: failed to verify pub key signature: %w", op, ErrSignatureVerification)
+	}
+
+	return keys, nil
+}
+
+func (c *container) verifyMetadata(ctx context.Context, sha256Reader *crypto.Sha256SumReader) error {
+	const op = "bsr.(container).verifyMetadata"
+	metaSum, err := sha256Reader.Sum(ctx, crypto.WithHexEncoding(true))
+	if err != nil {
+		return err
+	}
+	expectedMetaSum, err := c.shaSums.Sum(c.metaName)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(expectedMetaSum, metaSum) {
+		return fmt.Errorf("%s: meta checksum did not match expected value", op)
+	}
+	return nil
 }
 
 // create creates a new file in the container for writing.

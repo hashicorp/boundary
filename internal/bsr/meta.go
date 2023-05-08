@@ -727,6 +727,8 @@ type SessionMeta struct {
 
 	StaticCredentialStore []StaticCredentialStore
 	VaultCredentialStore  []VaultCredentialStore
+
+	connections map[string]bool
 }
 
 func (s SessionMeta) writeMeta(ctx context.Context, c *container) error {

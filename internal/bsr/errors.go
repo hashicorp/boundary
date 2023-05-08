@@ -20,6 +20,9 @@ var (
 	// ErrSummaryUnavailable indicates a BSR summary is unavailable
 	ErrSummaryUnavailable = errors.New("summary not available")
 
+	// ErrSignatureVerification indicates a failure in verifying a signature
+	ErrSignatureVerification = errors.New("could not verify signature")
+
 	// ErrNotSupported represents an operation that is not supported for a
 	// particular protocol.
 	ErrNotSupported = errors.New("not supported by protocol")

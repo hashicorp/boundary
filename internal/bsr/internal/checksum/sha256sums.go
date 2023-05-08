@@ -37,7 +37,6 @@ func LoadSha256Sums(r io.Reader) (Sha256Sums, error) {
 	for scanner.Scan() {
 		var sum, file string
 		var ok bool
-
 		sum, file, ok = strings.Cut(scanner.Text(), sha256sumSep)
 		if !ok {
 			sum, file, ok = strings.Cut(scanner.Text(), sha256sumBinarySep)
