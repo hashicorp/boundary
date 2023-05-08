@@ -7,16 +7,15 @@ import (
 	"fmt"
 
 	_struct "github.com/golang/protobuf/ptypes/struct"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/iancoleman/strcase"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-
-	"github.com/hashicorp/boundary/sdk/pbs/controller/protooptions"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
-
-	"github.com/iancoleman/strcase"
 )
 
 func printDebug(desc protoreflect.MessageDescriptor) {
@@ -106,6 +105,7 @@ var (
 	int32ValueName  = (&wrapperspb.Int32Value{}).ProtoReflect().Descriptor().FullName()
 	structValueName = (&_struct.Struct{}).ProtoReflect().Descriptor().FullName()
 	timestampName   = (&timestamppb.Timestamp{}).ProtoReflect().Descriptor().FullName()
+	durationName    = (&durationpb.Duration{}).ProtoReflect().Descriptor().FullName()
 	valueName       = (&_struct.Value{}).ProtoReflect().Descriptor().FullName()
 )
 
@@ -125,6 +125,8 @@ func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
 		return "", "", "interface{}"
 	case timestampName:
 		return "", "time", "Time"
+	case durationName:
+		return "", "time", "Duration"
 	default:
 		return "*", packageFromFullName(fd.Message().FullName()), string(fd.Message().Name())
 	}

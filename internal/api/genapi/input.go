@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/session_recordings"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
@@ -1006,6 +1007,43 @@ var inputStructs = []*structInfo{
 		fieldFilter:         []string{"private_key"},
 		versionEnabled:      true,
 		recursiveListing:    true,
+	},
+	{
+		inProto: &session_recordings.SessionRecording{},
+		outFile: "sessionrecordings/session_recording.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			readTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "session-recordings",
+		createResponseTypes: []string{ReadResponseType, ListResponseType},
+		recursiveListing:    true,
+		versionEnabled:      false,
+	},
+	{
+		inProto: &session_recordings.User{},
+		outFile: "sessionrecordings/user.gen.go",
+	},
+	{
+		inProto: &session_recordings.Target{},
+		outFile: "sessionrecordings/target.gen.go",
+	},
+	{
+		inProto: &session_recordings.SshTargetAttributes{},
+		outFile: "sessionrecordings/ssh_target_attributes.gen.go",
+	},
+	{
+		inProto: &session_recordings.ValuesAtTime{},
+		outFile: "sessionrecordings/values_at_time.gen.go",
+	},
+	{
+		inProto: &session_recordings.ConnectionRecording{},
+		outFile: "sessionrecordings/connection_recording.gen.go",
+	},
+	{
+		inProto: &session_recordings.ChannelRecording{},
+		outFile: "sessionrecordings/channel_recording.gen.go",
 	},
 	{
 		inProto: &workers.Certificate{},
