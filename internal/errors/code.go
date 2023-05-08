@@ -56,7 +56,7 @@ const (
 
 	// Note: Storage errors are currently unused in OSS
 	StorageFileClosed         = 126 // StorageFileClose represents an error when a file has been closed and a read/write operation is attempted on it
-	StorageContainerClosed    = 127 // StorageContainerClosed represents an error when a container has been closed and a read/write operation is attempted on it
+	StorageContainerClosed    = 127 // StorageContainerClosed represents an error when a container has been closed and a I/O operation is attempted on it
 	StorageFileReadOnly       = 128 // StorageFileReadOnly represents an error when a file is readonly and a write operation is attempted on it
 	StorageFileWriteOnly      = 129 // StorageFileWriteOnly represents an error when a file is write only and a read operation is attempted on it
 	StorageFileAlreadyExists  = 130 // StorageFileAlreadyExists represents an error when a file already exists during an attempt to create it

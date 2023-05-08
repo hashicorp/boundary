@@ -8,25 +8,77 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+// Method is used to determine if an error should be returned to a specific storage plugin method.
+type Method uint8
+
+const (
+	// Any will return an error for any of the method defined in the storage plugin.
+	Any Method = iota
+
+	// Will return an error for the OnCreateStorageBucket method
+	OnCreateStorageBucket
+
+	// Will return an error for the OnUpdateStorageBucket method
+	OnUpdateStorageBucket
+
+	// Will return an error for the OnDeleteStorageBucket method
+	OnDeleteStorageBucket
+
+	// Will return an error for the ValidatePermissions method
+	ValidatePermissions
+
+	// Will return an error for the HeadObject method
+	HeadObject
+
+	// Will return an error for the GetObject method
+	GetObject
+
+	// Will return an error for the PutObject method
+	PutObject
+)
+
 // PluginMockError is used to mock an error when interacting with an external object store.
 type PluginMockError struct {
-	bucketName   string
-	bucketPrefix string
-	objectKey    string
-	errMsg       string
-	errCode      codes.Code
+	BucketName   string
+	BucketPrefix string
+	ObjectKey    string
+	ErrMsg       string
+	ErrCode      codes.Code
+	ErrMethod    Method
 }
 
-func (e PluginMockError) match(bucket *storagebuckets.StorageBucket, key string) bool {
-	if key != "" && e.objectKey != key {
+// match compares the given values from the parameters to the values provided in the mocked error.
+// The bucket and key parameter values should be provided from the plugin request. The method
+// value should be based on the plugin method that is calling this function.
+//
+// When match returns false, the mocked error should not be used for the plugin response.
+// When match returns true, the mocked error should be used for the plugin response.
+func (e PluginMockError) match(bucket *storagebuckets.StorageBucket, key string, method Method) bool {
+	// if the mocked error object key does not match the request's object key, return false.
+	// the object key comparison is ignored when the given key is empty because the following
+	// plugin methods do not provide key values: onCreateStorageBucket, onUpdateStorageBucket,
+	// onDeleteStorageBucket
+	if key != "" && e.ObjectKey != key {
 		return false
 	}
-	if e.bucketName != bucket.BucketName {
+	// if the mocked error bucket name does not match the request's bucket name, return false.
+	if e.BucketName != bucket.BucketName {
 		return false
 	}
-	if bucket.BucketPrefix != "" && e.bucketPrefix != bucket.BucketPrefix {
+	// if the request has a bucket prefix and it does not match the mocked error bucket prefix, return false.
+	if bucket.BucketPrefix != "" && e.BucketPrefix != bucket.BucketPrefix {
 		return false
 	}
+	// if the mocked error method is set to Any, return true. This means that the mocked error response
+	// will be utilized by all the plugin methods.
+	if e.ErrMethod == Any {
+		return true
+	}
+	// if the mocked error method does match the given method, return false.
+	if e.ErrMethod != method {
+		return false
+	}
+	// all checks comparison checks passed, return true.
 	return true
 }
 

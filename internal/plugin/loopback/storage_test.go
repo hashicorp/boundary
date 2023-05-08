@@ -33,9 +33,9 @@ func TestLoopbackOnCreateStorageBucket(t *testing.T) {
 			"aws_s3_err":  {},
 		}),
 		WithMockError(PluginMockError{
-			bucketName: "aws_s3_err",
-			errMsg:     "invalid credentials",
-			errCode:    codes.PermissionDenied,
+			BucketName: "aws_s3_err",
+			ErrMsg:     "invalid credentials",
+			ErrCode:    codes.PermissionDenied,
 		}),
 	)
 	assert.NoError(err)
@@ -131,9 +131,9 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 			"aws_s3_err":  {},
 		}),
 		WithMockError(PluginMockError{
-			bucketName: "aws_s3_err",
-			errMsg:     "invalid credentials",
-			errCode:    codes.PermissionDenied,
+			BucketName: "aws_s3_err",
+			ErrMsg:     "invalid credentials",
+			ErrCode:    codes.PermissionDenied,
 		}),
 	)
 	assert.NoError(err)
@@ -306,9 +306,9 @@ func TestLoopbackValidatePermissions(t *testing.T) {
 			"aws_s3_err":  {},
 		}),
 		WithMockError(PluginMockError{
-			bucketName: "aws_s3_err",
-			errMsg:     "invalid credentials",
-			errCode:    codes.PermissionDenied,
+			BucketName: "aws_s3_err",
+			ErrMsg:     "invalid credentials",
+			ErrCode:    codes.PermissionDenied,
 		}),
 	)
 	assert.NoError(err)
@@ -411,10 +411,10 @@ func TestLoopbackHeadObject(t *testing.T) {
 	plg, err := NewLoopbackPlugin(
 		WithMockBuckets(mockStorageMapData),
 		WithMockError(PluginMockError{
-			bucketName: "aws_s3_err",
-			objectKey:  "mock_object",
-			errMsg:     "invalid credentials",
-			errCode:    codes.PermissionDenied,
+			BucketName: "aws_s3_err",
+			ObjectKey:  "mock_object",
+			ErrMsg:     "invalid credentials",
+			ErrCode:    codes.PermissionDenied,
 		}),
 	)
 	assert.NoError(err)
@@ -545,10 +545,10 @@ func TestLoopbackGetObject(t *testing.T) {
 	plg, err := NewLoopbackPlugin(
 		WithMockBuckets(mockStorageMapData),
 		WithMockError(PluginMockError{
-			bucketName: "aws_s3_err",
-			objectKey:  "mock_object",
-			errMsg:     "invalid credentials",
-			errCode:    codes.PermissionDenied,
+			BucketName: "aws_s3_err",
+			ObjectKey:  "mock_object",
+			ErrMsg:     "invalid credentials",
+			ErrCode:    codes.PermissionDenied,
 		}),
 	)
 	assert.NoError(err)
@@ -693,10 +693,10 @@ func TestLoopbackPutObject(t *testing.T) {
 	plg, err := NewLoopbackPlugin(
 		WithMockBuckets(mockStorageMapData),
 		WithMockError(PluginMockError{
-			bucketName: "object_store_err",
-			objectKey:  "mock_object",
-			errMsg:     "invalid credentials",
-			errCode:    codes.PermissionDenied,
+			BucketName: "object_store_err",
+			ObjectKey:  "mock_object",
+			ErrMsg:     "invalid credentials",
+			ErrCode:    codes.PermissionDenied,
 		}),
 	)
 	require.NoError(err)

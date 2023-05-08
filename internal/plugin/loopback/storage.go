@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -130,8 +131,8 @@ func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.
 		return nil, status.Errorf(codes.NotFound, "%s: bucket not found", op)
 	}
 	for _, err := range l.errs {
-		if err.match(req.GetBucket(), "") {
-			return nil, status.Errorf(err.errCode, err.errMsg)
+		if err.match(req.GetBucket(), "", OnCreateStorageBucket) {
+			return nil, status.Errorf(err.ErrCode, err.ErrMsg)
 		}
 	}
 	return &plgpb.OnCreateStorageBucketResponse{
@@ -158,8 +159,8 @@ func (l *LoopbackStorage) onUpdateStorageBucket(ctx context.Context, req *plgpb.
 		return nil, status.Errorf(codes.NotFound, "%s: bucket not found", op)
 	}
 	for _, err := range l.errs {
-		if err.match(req.GetNewBucket(), "") {
-			return nil, status.Errorf(err.errCode, "%s: %s", op, err.errMsg)
+		if err.match(req.GetNewBucket(), "", OnUpdateStorageBucket) {
+			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
 	var sec *storagebuckets.StorageBucketPersisted
@@ -206,8 +207,8 @@ func (l *LoopbackStorage) validatePermissions(ctx context.Context, req *plgpb.Va
 		return nil, status.Errorf(codes.NotFound, "%s: bucket not found", op)
 	}
 	for _, err := range l.errs {
-		if err.match(req.GetBucket(), "") {
-			return nil, status.Errorf(err.errCode, "%s: %s", op, err.errMsg)
+		if err.match(req.GetBucket(), "", ValidatePermissions) {
+			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
 	return &plgpb.ValidatePermissionsResponse{}, nil
@@ -239,8 +240,8 @@ func (l *LoopbackStorage) headObject(ctx context.Context, req *plgpb.HeadObjectR
 		return nil, status.Errorf(codes.NotFound, "%s: object %s not found", op, objectPath)
 	}
 	for _, err := range l.errs {
-		if err.match(req.GetBucket(), req.GetKey()) {
-			return nil, status.Errorf(err.errCode, "%s: %s", op, err.errMsg)
+		if err.match(req.GetBucket(), req.GetKey(), HeadObject) {
+			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
 	var contentLength int64
@@ -279,8 +280,8 @@ func (l *LoopbackStorage) getObject(req *plgpb.GetObjectRequest, stream plgpb.St
 		return status.Errorf(codes.NotFound, "%s: object %s not found", op, objectPath)
 	}
 	for _, err := range l.errs {
-		if err.match(req.GetBucket(), req.GetKey()) {
-			return status.Errorf(err.errCode, "%s: %s", op, err.errMsg)
+		if err.match(req.GetBucket(), req.GetKey(), GetObject) {
+			return status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
 	go func() {
@@ -334,8 +335,8 @@ func (l *LoopbackStorage) putObject(ctx context.Context, req *plgpb.PutObjectReq
 		return nil, status.Errorf(codes.InvalidArgument, "%s: bucket not found", op)
 	}
 	for _, err := range l.errs {
-		if err.match(req.GetBucket(), req.GetKey()) {
-			return nil, status.Errorf(err.errCode, "%s: %s", op, err.errMsg)
+		if err.match(req.GetBucket(), req.GetKey(), PutObject) {
+			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
 		}
 	}
 
@@ -354,8 +355,11 @@ func (l *LoopbackStorage) putObject(ctx context.Context, req *plgpb.PutObjectReq
 	for _, p := range parts[:len(parts)-1] {
 		// Directories should have trailing `/` in the key
 		tempPath = fmt.Sprintf("%v%v/", tempPath, p)
+		emptyContent := int64(0)
 		bucket[ObjectName(tempPath)] = &storagePluginStorageInfo{
-			lastModified: &lastModified,
+			lastModified:  &lastModified,
+			contentLength: &emptyContent,
+			DataChunks:    []Chunk{},
 		}
 	}
 
@@ -369,7 +373,7 @@ func (l *LoopbackStorage) putObject(ctx context.Context, req *plgpb.PutObjectReq
 	}
 
 	// Now insert the object
-	objectPath := ObjectName(req.GetBucket().GetBucketPrefix() + req.GetKey())
+	objectPath := ObjectName(path.Join(req.GetBucket().GetBucketPrefix(), req.GetKey()))
 	bucket[objectPath] = &storagePluginStorageInfo{
 		DataChunks:    objectChunks,
 		contentLength: &contentLength,
@@ -384,6 +388,53 @@ func (l *LoopbackStorage) putObject(ctx context.Context, req *plgpb.PutObjectReq
 	return &plgpb.PutObjectResponse{
 		ChecksumSha_256: hash.Sum(nil),
 	}, nil
+}
+
+// CloneBucket returns a clone of the bucket.
+// returns nil when the bucket is not found.
+func (l *LoopbackStorage) CloneBucket(name string) Bucket {
+	l.m.Lock()
+	defer l.m.Unlock()
+	if _, ok := l.buckets[BucketName(name)]; !ok {
+		return nil
+	}
+	bucket := Bucket{}
+	for objName, obj := range l.buckets[BucketName(name)] {
+		if obj != nil {
+			bucket[objName] = copyStorageInfo(obj)
+		}
+	}
+	return bucket
+}
+
+// CloneStorageInfo returns a clone of the object stored in memory.
+// Returns nil when the bucket or object is not found.
+func (l *LoopbackStorage) CloneStorageInfo(bucketName, objectName string) *storagePluginStorageInfo {
+	l.m.Lock()
+	defer l.m.Unlock()
+	bucket, ok := l.buckets[BucketName(bucketName)]
+	if !ok {
+		return nil
+	}
+	obj, ok := bucket[ObjectName(objectName)]
+	if !ok {
+		return nil
+	}
+	return copyStorageInfo(obj)
+}
+
+func copyStorageInfo(obj *storagePluginStorageInfo) *storagePluginStorageInfo {
+	chunks := make([]Chunk, len(obj.DataChunks))
+	for i, c := range obj.DataChunks {
+		chunks[i] = copyBytes(c)
+	}
+	contentLength := *obj.contentLength
+	lastModified := *obj.lastModified
+	return &storagePluginStorageInfo{
+		DataChunks:    chunks,
+		lastModified:  &lastModified,
+		contentLength: &contentLength,
+	}
 }
 
 func MockObject(data []Chunk) *storagePluginStorageInfo {
