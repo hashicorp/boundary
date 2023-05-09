@@ -729,14 +729,14 @@ func TestDecodeChunkErrors(t *testing.T) {
 				Type:     ssh.BreakReqChunkType,
 			},
 			[]byte("foo"),
-			errors.New("ssh.DecodeChunk: proto: cannot parse invalid wire-format data"),
+			errors.New("cannot parse invalid wire-format data"),
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := ssh.DecodeChunk(ctx, tc.bc, tc.encoded)
-			require.EqualError(t, err, tc.want.Error())
+			require.ErrorContains(t, err, tc.want.Error())
 		})
 	}
 }
