@@ -55,16 +55,6 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	return opts, apiOpts
 }
 
-// If set, and if the version is zero during an update, the API will perform a
-// fetch to get the current version of the resource and populate it during the
-// update call. This is convenient but opens up the possibility for subtle
-// order-of-modification issues, so use carefully.
-func WithAutomaticVersioning(enable bool) Option {
-	return func(o *options) {
-		o.withAutomaticVersioning = enable
-	}
-}
-
 // WithSkipCurlOutput tells the API to not use the current call for cURL output.
 // Useful for when we need to look up versions.
 func WithSkipCurlOutput(skip bool) Option {

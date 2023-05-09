@@ -194,6 +194,7 @@ func fillTemplates() {
 			Package:          pkg,
 			Fields:           fields,
 			RecursiveListing: inputMap[pkg].recursiveListing,
+			VersionEnabled:   inputMap[pkg].versionEnabled,
 		}
 
 		if err := optionTemplate.Execute(outBuf, input); err != nil {
@@ -683,6 +684,9 @@ var optionTemplate = template.Must(template.New("").Funcs(
 		"removeDups": removeDups,
 	},
 ).Parse(`
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package {{ .Package }}
 
 import (
@@ -736,6 +740,7 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	return opts, apiOpts
 }
 
+{{ if .VersionEnabled }}
 // If set, and if the version is zero during an update, the API will perform a
 // fetch to get the current version of the resource and populate it during the
 // update call. This is convenient but opens up the possibility for subtle
@@ -745,6 +750,7 @@ func WithAutomaticVersioning(enable bool) Option {
 		o.withAutomaticVersioning = enable
 	}
 }
+{{ end }}
 
 // WithSkipCurlOutput tells the API to not use the current call for cURL output.
 // Useful for when we need to look up versions.
