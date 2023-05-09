@@ -4,10 +4,10 @@
 package kms
 
 import (
-	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/subtle"
 	"fmt"
 	"sync"
 
@@ -505,7 +505,7 @@ func (k *Keys) VerifySignatureWithBsrKey(ctx context.Context, sig *wrapping.SigI
 	if sig.KeyInfo.KeyId != bsrKeyId {
 		return false, fmt.Errorf("%s: signature key id %q doesn't match verifying key id %q: %w", op, k.PubKeyBsrSignature.KeyInfo.KeyId, bsrKeyId, ErrInvalidParameter)
 	}
-	if bytes.Equal(sig.Signature, sigInfo.Signature) {
+	if subtle.ConstantTimeCompare(sig.Signature, sigInfo.Signature) == 1 {
 		return true, nil
 	}
 	return false, nil
