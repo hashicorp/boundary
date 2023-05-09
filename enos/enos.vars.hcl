@@ -57,3 +57,6 @@
 // would not be able to access the environment variables needed to test locally. Enabling this
 // will ensure that the enos scenario passes.
 // e2e_debug_no_run = true
+
+// Timeout for `go test` execution in the e2e tests, 10m default
+// test_timeout = "10m"
