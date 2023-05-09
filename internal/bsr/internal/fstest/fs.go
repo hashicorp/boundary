@@ -16,6 +16,11 @@ import (
 	"github.com/hashicorp/boundary/internal/storage"
 )
 
+const (
+	defaultContainerPerm = 0o775
+	defaultFilePerm      = 0o644
+)
+
 // MemFS is a storage.FS that only resides in memory.
 type MemFS struct {
 	Containers map[string]*MemContainer
@@ -24,7 +29,7 @@ type MemFS struct {
 	readOnly bool
 }
 
-// NewMemFS creates a MemFS. It supports WithNewFunc.
+// NewMemFS creates a MemFS. It supports WithNewFunc, WithReadOnly.
 func NewMemFS(options ...Option) *MemFS {
 	opts := getOpts(options...)
 
@@ -40,17 +45,24 @@ func (m *MemFS) New(ctx context.Context, n string) (storage.Container, error) {
 	if m.newFunc != nil {
 		return m.newFunc(ctx, n)
 	}
+
+	if m.readOnly {
+		return nil, fmt.Errorf("cannot create new container from read-only fs")
+	}
+
 	if m.Containers == nil {
 		m.Containers = make(map[string]*MemContainer)
 	}
 	if _, exists := m.Containers[n]; exists {
 		return nil, fmt.Errorf("container %s already exists", n)
 	}
+
 	c := &MemContainer{
-		Name:     n,
-		Sub:      make(map[string]*MemContainer),
-		Files:    make(map[string]*MemFile),
-		readOnly: m.readOnly,
+		Name:       n,
+		Sub:        make(map[string]*MemContainer),
+		Files:      make(map[string]*MemFile),
+		mode:       defaultContainerPerm,
+		accessMode: storage.ReadWrite,
 	}
 	m.Containers[n] = c
 	return c, nil
@@ -66,6 +78,7 @@ func (m *MemFS) Open(_ context.Context, n string) (storage.Container, error) {
 	if !ok {
 		return nil, fmt.Errorf("container %s not found", n)
 	}
+	c.Closed = false
 	return c, nil
 }
 
@@ -76,8 +89,10 @@ type MemContainer struct {
 	Sub   map[string]*MemContainer
 	Files map[string]*MemFile
 
-	Closed   bool
-	readOnly bool
+	Closed bool
+
+	accessMode storage.AccessMode
+	mode       sfs.FileMode
 
 	sync.RWMutex
 }
@@ -91,21 +106,11 @@ func (m *MemContainer) Close() error {
 }
 
 // Create makes a new storage.File in the container.
-func (m *MemContainer) Create(_ context.Context, n string) (storage.File, error) {
+func (m *MemContainer) Create(ctx context.Context, n string) (storage.File, error) {
 	if m.Closed {
 		return nil, fmt.Errorf("create on closed container")
 	}
-	if _, exists := m.Files[n]; exists {
-		return nil, fmt.Errorf("file %s already exists", n)
-	}
-	f := &MemFile{
-		name:     n,
-		Buf:      bytes.NewBuffer([]byte{}),
-		mode:     sfs.ModeAppend,
-		ReadOnly: m.readOnly,
-	}
-	m.Files[n] = f
-	return f, nil
+	return m.OpenFile(ctx, n, storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadWrite))
 }
 
 // OpenFile creates a storage.File in the container using the provided options
@@ -114,47 +119,74 @@ func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.O
 	m.Lock()
 	defer m.Unlock()
 
-	opts := storage.GetOpts(option...)
 	if m.Closed {
 		return nil, fmt.Errorf("create on closed container")
 	}
-	if _, exists := m.Files[n]; exists {
-		return nil, fmt.Errorf("file %s already exists", n)
+	opts := storage.GetOpts(option...)
+
+	if m.accessMode == storage.ReadOnly && opts.WithFileAccessMode != storage.ReadOnly {
+		return nil, fmt.Errorf("cannot create writeable file in readonly container")
 	}
 
-	var mode sfs.FileMode
-
-	switch opts.WithCloseSyncMode {
-	case storage.NoSync:
-		mode = sfs.ModeAppend | sfs.ModeTemporary
-	default:
-		mode = sfs.ModeAppend
+	if opts.WithCreateFile && opts.WithFileAccessMode == storage.ReadOnly {
+		return nil, fmt.Errorf("cannot create file in read-only mode")
 	}
 
-	f := &MemFile{
-		name: n,
-		Buf:  bytes.NewBuffer([]byte{}),
-		mode: mode,
+	var f *MemFile
+
+	if opts.WithCreateFile {
+		// create or truncate just like os.Create
+		f = &MemFile{
+			Buf: bytes.NewBuffer([]byte{}),
+		}
+	} else {
+		var ok bool
+		f, ok = m.Files[n]
+		if !ok {
+			return nil, fmt.Errorf("file %s does not exist", n)
+		}
 	}
+
+	f.name = n
+	f.syncMode = opts.WithCloseSyncMode
+	f.accessMode = opts.WithFileAccessMode
+	f.mode = defaultFilePerm
+	f.Closed = false
 	m.Files[n] = f
 	return f, nil
 }
 
 // SubContainer creates a new storage.Container in the container.
-func (m *MemContainer) SubContainer(_ context.Context, n string, _ ...storage.Option) (storage.Container, error) {
+func (m *MemContainer) SubContainer(_ context.Context, n string, option ...storage.Option) (storage.Container, error) {
 	m.Lock()
 	defer m.Unlock()
 	if m.Closed {
 		return nil, fmt.Errorf("subcontainer on closed container")
 	}
-	if _, exists := m.Sub[n]; exists {
-		return nil, fmt.Errorf("container %s already exists", n)
+	opts := storage.GetOpts(option...)
+
+	c, exists := m.Sub[n]
+
+	if opts.WithCreateFile && opts.WithFileAccessMode == storage.ReadOnly {
+		return nil, fmt.Errorf("cannot create container in read-only mode")
 	}
-	c := &MemContainer{
-		Name:  n,
-		Sub:   make(map[string]*MemContainer),
-		Files: make(map[string]*MemFile),
+
+	if opts.WithCreateFile {
+		if exists {
+			return nil, fmt.Errorf("container %s already exists", n)
+		}
+		c = &MemContainer{
+			Name:  n,
+			Sub:   make(map[string]*MemContainer),
+			Files: make(map[string]*MemFile),
+		}
+	} else {
+		if !exists {
+			return nil, fmt.Errorf("container %s does not exist", n)
+		}
 	}
+	c.accessMode = opts.WithFileAccessMode
+	c.Closed = false
 	m.Sub[n] = c
 	return c, nil
 }
@@ -185,8 +217,10 @@ type MemFile struct {
 	closeFunc CloseFunc
 
 	Closed     bool
-	ReadOnly   bool
 	OutOfSpace bool
+
+	syncMode   storage.SyncMode
+	accessMode storage.AccessMode
 
 	sync.RWMutex
 }
@@ -196,12 +230,32 @@ type MemFile struct {
 func NewMemFile(n string, mode sfs.FileMode, options ...Option) *MemFile {
 	opts := getOpts(options...)
 
+	storageOpts := storage.GetOpts(opts.withStorageOptions...)
+
 	return &MemFile{
-		name:      n,
-		Buf:       bytes.NewBuffer([]byte{}),
-		mode:      mode,
-		statFunc:  opts.withStatFunc,
-		closeFunc: opts.withCloseFunc,
+		name:       n,
+		Buf:        bytes.NewBuffer([]byte{}),
+		mode:       mode,
+		accessMode: storageOpts.WithFileAccessMode,
+		syncMode:   storageOpts.WithCloseSyncMode,
+		statFunc:   opts.withStatFunc,
+		closeFunc:  opts.withCloseFunc,
+	}
+}
+
+// NewWritableMemFile is a convinence function to create a MemFile with the
+// WriteOnly storage access mode.
+func NewWritableMemFile(n string, options ...Option) *MemFile {
+	opts := getOpts(options...)
+
+	return &MemFile{
+		name:       n,
+		Buf:        bytes.NewBuffer([]byte{}),
+		mode:       0o664,
+		accessMode: storage.WriteOnly,
+		syncMode:   storage.Asynchronous,
+		statFunc:   opts.withStatFunc,
+		closeFunc:  opts.withCloseFunc,
 	}
 }
 
@@ -228,6 +282,10 @@ func (m *MemFile) Stat() (sfs.FileInfo, error) {
 func (m *MemFile) Read(p []byte) (int, error) {
 	m.RLock()
 	defer m.RUnlock()
+
+	if m.accessMode == storage.WriteOnly {
+		return 0, fmt.Errorf("read on write-only file")
+	}
 
 	if m.Closed {
 		return 0, fmt.Errorf("read on closed file")
@@ -264,7 +322,7 @@ func (m *MemFile) Write(p []byte) (n int, err error) {
 		return 0, fmt.Errorf("write on closed file")
 	}
 
-	if m.ReadOnly {
+	if m.accessMode == storage.ReadOnly {
 		return 0, fmt.Errorf("write on read-only file")
 	}
 

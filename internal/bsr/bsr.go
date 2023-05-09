@@ -363,7 +363,7 @@ func (s *Session) NewConnection(ctx context.Context, meta *ConnectionMeta) (*Con
 	}
 
 	name := fmt.Sprintf(connectionFile, meta.Id)
-	sc, err := s.container.container.SubContainer(ctx, name)
+	sc, err := s.container.container.SubContainer(ctx, name, storage.WithCreateFile(), storage.WithFileAccessMode(storage.WriteOnly))
 	if err != nil {
 		return nil, err
 	}
@@ -465,7 +465,7 @@ func (c *Connection) NewChannel(ctx context.Context, meta *ChannelMeta) (*Channe
 	}
 
 	name := fmt.Sprintf(channelFile, meta.Id)
-	sc, err := c.container.container.SubContainer(ctx, name)
+	sc, err := c.container.container.SubContainer(ctx, name, storage.WithCreateFile(), storage.WithFileAccessMode(storage.WriteOnly))
 	if err != nil {
 		return nil, err
 	}

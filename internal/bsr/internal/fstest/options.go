@@ -36,18 +36,20 @@ type StatFunc func() (fs.FileInfo, error)
 
 // options = how options are represented
 type options struct {
-	withNewFunc   NewFunc
-	withCloseFunc CloseFunc
-	withStatFunc  StatFunc
-	withReadOnly  bool
+	withNewFunc        NewFunc
+	withCloseFunc      CloseFunc
+	withStatFunc       StatFunc
+	withReadOnly       bool
+	withStorageOptions []storage.Option
 }
 
 func getDefaultOptions() options {
 	return options{
-		withNewFunc:   nil,
-		withCloseFunc: nil,
-		withStatFunc:  nil,
-		withReadOnly:  false,
+		withNewFunc:        nil,
+		withCloseFunc:      nil,
+		withStatFunc:       nil,
+		withReadOnly:       false,
+		withStorageOptions: nil,
 	}
 }
 
@@ -76,5 +78,12 @@ func WithStatFunc(f StatFunc) Option {
 func WithReadOnly(b bool) Option {
 	return func(o *options) {
 		o.withReadOnly = b
+	}
+}
+
+// WithStorageOptions is used to pass through storage options.
+func WithStorageOptions(opts []storage.Option) Option {
+	return func(o *options) {
+		o.withStorageOptions = opts
 	}
 }

@@ -61,7 +61,7 @@ func TestFile(t *testing.T) {
 	}{
 		{
 			"success",
-			fstest.NewMemFile("test", 0o664),
+			fstest.NewWritableMemFile("test"),
 			bytes.NewBuffer([]byte{}),
 			keys,
 			testString,
@@ -83,7 +83,7 @@ func TestFile(t *testing.T) {
 		},
 		{
 			"nil-sign-writer",
-			fstest.NewMemFile("test", 0o664),
+			fstest.NewWritableMemFile("test"),
 			nil,
 			keys,
 			testString,
@@ -94,7 +94,7 @@ func TestFile(t *testing.T) {
 		},
 		{
 			"nil-keys",
-			fstest.NewMemFile("test", 0o664),
+			fstest.NewWritableMemFile("test"),
 			bytes.NewBuffer([]byte{}),
 			nil,
 			testString,
@@ -105,7 +105,7 @@ func TestFile(t *testing.T) {
 		},
 		{
 			"close-error",
-			fstest.NewMemFile("test", 0o664, fstest.WithCloseFunc(func() error { return errors.New("close error") })),
+			fstest.NewWritableMemFile("test", fstest.WithCloseFunc(func() error { return errors.New("close error") })),
 			bytes.NewBuffer([]byte{}),
 			keys,
 			testString,
@@ -120,7 +120,7 @@ func TestFile(t *testing.T) {
 		},
 		{
 			"write-error",
-			fstest.NewMemFile("test", 0o664),
+			fstest.NewWritableMemFile("test"),
 			&badWriter{},
 			keys,
 			testString,

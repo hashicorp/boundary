@@ -53,7 +53,7 @@ func TestFile(t *testing.T) {
 	}{
 		{
 			"success",
-			fstest.NewMemFile("test", 0o664),
+			fstest.NewWritableMemFile("test"),
 			bytes.NewBuffer([]byte{}),
 			testString,
 			testSum + "  test\n",
@@ -73,7 +73,7 @@ func TestFile(t *testing.T) {
 		},
 		{
 			"nil-checksum-writer",
-			fstest.NewMemFile("test", 0o664),
+			fstest.NewWritableMemFile("test"),
 			nil,
 			testString,
 			testSum + "  test\n",
@@ -83,7 +83,7 @@ func TestFile(t *testing.T) {
 		},
 		{
 			"close-error",
-			fstest.NewMemFile("test", 0o664, fstest.WithCloseFunc(func() error { return errors.New("close error") })),
+			fstest.NewWritableMemFile("test", fstest.WithCloseFunc(func() error { return errors.New("close error") })),
 			bytes.NewBuffer([]byte{}),
 			testString,
 			testSum + "  test\n",
@@ -97,7 +97,7 @@ func TestFile(t *testing.T) {
 		},
 		{
 			"stat-error",
-			fstest.NewMemFile("test", 0o664, fstest.WithStatFunc(func() (fs.FileInfo, error) { return nil, errors.New("stat error") })),
+			fstest.NewWritableMemFile("test", fstest.WithStatFunc(func() (fs.FileInfo, error) { return nil, errors.New("stat error") })),
 			bytes.NewBuffer([]byte{}),
 			testString,
 			testSum + "  test\n",
@@ -111,7 +111,7 @@ func TestFile(t *testing.T) {
 		},
 		{
 			"write-error",
-			fstest.NewMemFile("test", 0o664),
+			fstest.NewWritableMemFile("test"),
 			&badWriter{},
 			testString,
 			testSum + "  test\n",
