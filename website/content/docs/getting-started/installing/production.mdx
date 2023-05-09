@@ -129,7 +129,7 @@ worker {
   # Name attr must be unique
 	name = "demo-worker-${count.index}"
 	description = "A default worker created demonstration"
-	controllers = [
+	initial_upstreams = [
     "${aws_instance.controller[0].private_ip}",
     "${aws_instance.controller[1].private_ip}",
     "${aws_instance.controller[2].private_ip}"
