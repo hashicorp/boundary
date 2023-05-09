@@ -325,8 +325,6 @@ func (k *Keys) VerifyPubKeySelfSignature(ctx context.Context) (bool, error) {
 	if k == nil {
 		return false, fmt.Errorf("%s: bsr keys: %w", op, ErrInvalidParameter)
 	}
-	k.l.RLock()
-	defer k.l.RUnlock()
 
 	switch {
 	case k.PubKey == nil:
@@ -345,16 +343,7 @@ func (k *Keys) VerifyPubKeySelfSignature(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("%s: pub self signature key id %q doesn't match verifying pub key id %q: %w", op, k.PubKeySelfSignature.KeyInfo.KeyId, k.PubKey.KeyId, ErrInvalidParameter)
 	}
 
-	verifier, err := wrappingEd.NewVerifier(ctx, wrappingEd.WithPubKey(k.PubKey.Key))
-	if err != nil {
-		return false, fmt.Errorf("%s: %w", op, err)
-	}
-
-	ok, err := verifier.Verify(ctx, k.PubKey.Key, k.PubKeySelfSignature)
-	if err != nil {
-		return false, fmt.Errorf("%s: %w", op, err)
-	}
-	return ok, nil
+	return k.VerifySignatureWithPubKey(ctx, k.PubKeySelfSignature, k.PubKey.Key)
 }
 
 // SignWithPrivKey will sign the msg with the BsrKeys.PrivKey (aka the BSR's
@@ -400,6 +389,46 @@ func (k *Keys) SignWithPrivKey(ctx context.Context, msg []byte) (*wrapping.SigIn
 		return nil, fmt.Errorf("%s: %w: %w", op, err, ErrSign)
 	}
 	return si, nil
+}
+
+// VerifySignatureWithPubKey will verify a signature using the k.PubKey.
+//
+// This is a concurrently safe operation.
+func (k *Keys) VerifySignatureWithPubKey(ctx context.Context, sig *wrapping.SigInfo, msg []byte) (bool, error) {
+	const op = "kms.(BsrKeys).VerifySignatureWithPubKey"
+	if k == nil {
+		return false, fmt.Errorf("%s: bsr keys: %w", op, ErrInvalidParameter)
+	}
+	k.l.RLock()
+	defer k.l.RUnlock()
+
+	switch {
+	case k.PubKey == nil:
+		return false, fmt.Errorf("%s: missing pub key: %w", op, ErrInvalidParameter)
+	case k.PubKey.Key == nil:
+		return false, fmt.Errorf("%s: missing pub key bytes: %w", op, ErrInvalidParameter)
+	case k.PubKey.KeyType != wrapping.KeyType_Ed25519:
+		return false, keyTypeError(ctx, op, wrapping.KeyType_Ed25519, k.PubKey.KeyType)
+	case k.PubKey.KeyEncoding != wrapping.KeyEncoding_Bytes:
+		return false, keyEncodingError(ctx, op, wrapping.KeyEncoding_Bytes, k.PubKey.KeyEncoding)
+	case len(k.PubKey.Key) != ed25519.PublicKeySize:
+		return false, fmt.Errorf("%s: expected public key with %d bytes and got %d: %w", op, ed25519.PublicKeySize, len(k.PubKey.Key), ErrInvalidParameter)
+	case sig == nil:
+		return false, fmt.Errorf("%s: missing signature info: %w", op, ErrInvalidParameter)
+	case msg == nil:
+		return false, fmt.Errorf("%s: missing message: %w", op, ErrInvalidParameter)
+	}
+
+	verifier, err := wrappingEd.NewVerifier(ctx, wrappingEd.WithPubKey(k.PubKey.Key))
+	if err != nil {
+		return false, fmt.Errorf("%s: %w", op, err)
+	}
+
+	ok, err := verifier.Verify(ctx, msg, sig)
+	if err != nil {
+		return false, fmt.Errorf("%s: %w", op, err)
+	}
+	return ok, nil
 }
 
 func (k *Keys) VerifySignatureWithBsrKey(ctx context.Context, sig *wrapping.SigInfo, msg []byte, opt ...Option) (bool, error) {

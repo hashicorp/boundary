@@ -1206,6 +1206,133 @@ func TestBsrKeys_VerifyPubKeySelfSignature(t *testing.T) {
 	}
 }
 
+func TestBsrKeys_VerifySignatureWithPubKey(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+
+	keys, err := kms.CreateKeys(testCtx, kms.TestWrapper(t), "session")
+	require.NoError(t, err)
+
+	message := "this is a super secret message!"
+	sig, err := keys.SignWithPrivKey(testCtx, []byte(message))
+	require.NoError(t, err)
+	require.NotNil(t, sig)
+	badMessage := "bad message###oh nooo"
+
+	tests := []struct {
+		name            string
+		bsrKeys         *kms.Keys
+		verifyMessage   string
+		opt             []kms.Option
+		want            bool
+		wantErr         bool
+		wantErrMatch    error
+		wantErrContains string
+	}{
+		{
+			name:          "success",
+			bsrKeys:       keys,
+			verifyMessage: message,
+			want:          true,
+		},
+		{
+			name:          "message-not-verified",
+			bsrKeys:       keys,
+			verifyMessage: badMessage,
+			want:          false,
+		},
+		{
+			name: "missing-pub-key",
+			bsrKeys: &kms.Keys{
+				PubKeySelfSignature: keys.PubKeySelfSignature,
+			},
+			wantErr:         true,
+			wantErrMatch:    kms.ErrInvalidParameter,
+			wantErrContains: "missing pub key",
+		},
+
+		{
+			name: "missing-pub-key-bytes",
+			bsrKeys: &kms.Keys{
+				PubKey: &wrapping.KeyInfo{
+					KeyId:       keys.PubKey.KeyId,
+					KeyType:     keys.PubKey.KeyType,
+					KeyEncoding: keys.PubKey.KeyEncoding,
+				},
+				PubKeySelfSignature: keys.PubKeySelfSignature,
+			},
+			wantErr:         true,
+			wantErrMatch:    kms.ErrInvalidParameter,
+			wantErrContains: "missing pub key bytes",
+		},
+		{
+			name: "invalid-key-type",
+			bsrKeys: &kms.Keys{
+				PubKey: &wrapping.KeyInfo{
+					Key:         keys.PubKey.Key,
+					KeyId:       keys.PubKey.KeyId,
+					KeyType:     wrapping.KeyType_Aes256,
+					KeyEncoding: keys.PubKey.KeyEncoding,
+				},
+				PubKeySelfSignature: keys.PubKeySelfSignature,
+			},
+			wantErr:         true,
+			wantErrMatch:    kms.ErrInvalidParameter,
+			wantErrContains: "unexpected key type \"Aes256\"; expected \"Ed25519\"",
+		},
+		{
+			name: "invalid-key-encoding",
+			bsrKeys: &kms.Keys{
+				PubKey: &wrapping.KeyInfo{
+					Key:         keys.PubKey.Key,
+					KeyId:       keys.PubKey.KeyId,
+					KeyType:     keys.PubKey.KeyType,
+					KeyEncoding: wrapping.KeyEncoding_Pkcs8,
+				},
+				PubKeySelfSignature: keys.PubKeySelfSignature,
+			},
+			wantErr:         true,
+			wantErrMatch:    kms.ErrInvalidParameter,
+			wantErrContains: "unexpected key encoding \"Pkcs8\"; expected \"Bytes\"",
+		},
+		{
+			name: "bad-pub-key",
+			bsrKeys: &kms.Keys{
+				PubKey: &wrapping.KeyInfo{
+					Key:         []byte("bad-pub-key"),
+					KeyId:       keys.PubKey.KeyId,
+					KeyType:     keys.PubKey.KeyType,
+					KeyEncoding: keys.PubKey.KeyEncoding,
+				},
+				PubKeySelfSignature: keys.PubKeySelfSignature,
+			},
+			wantErr:         true,
+			wantErrMatch:    kms.ErrInvalidParameter,
+			wantErrContains: "expected public key with 32 bytes and got 11",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			got, err := tc.bsrKeys.VerifySignatureWithPubKey(testCtx, sig, []byte(tc.verifyMessage))
+			if tc.wantErr {
+				require.Error(err)
+				assert.Empty(got)
+				if tc.wantErrMatch != nil {
+					assert.ErrorIsf(err, tc.wantErrMatch, "expected %q and got err: %+v", tc.wantErrMatch, err)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tc.want, got)
+		})
+	}
+}
+
 func TestBsrKeys_SignWithPrivKey(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()

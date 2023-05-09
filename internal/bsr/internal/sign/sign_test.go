@@ -177,6 +177,10 @@ func TestFile(t *testing.T) {
 			err = proto.Unmarshal(tc.sig.Bytes(), sigInfo)
 			require.NoError(t, err)
 
+			verified, err := keys.VerifySignatureWithPubKey(ctx, sigInfo, []byte(tc.write))
+			require.NoError(t, err)
+			require.True(t, verified)
+
 			want, err := keys.SignWithPrivKey(ctx, []byte(tc.write))
 			require.NoError(t, err)
 			assert.Empty(t,
