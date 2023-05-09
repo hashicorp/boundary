@@ -8,8 +8,10 @@
 --    end_time_null_or_after_start_time
 
 begin;
-  select plan(19);
+  select plan(21);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'sessions');
+
+  select has_view('session_recording_aggregate', 'view for aggregating session recording info does not exist');
 
   -- tests a fk column referencing a history table
   -- add 5 to the plan for each time this function is called
@@ -71,6 +73,18 @@ begin;
       end_time = clock_timestamp()::timestamptz + '1s'::interval
     where public_id = 'sr_123456789';
   select lives_ok('close_recording_session');
+
+  prepare select_session_recordings as
+    select public_id::text, storage_bucket_id::text, storage_bucket_scope_id::text, session_id::text, user_history_public_id::text, user_history_name::text, user_history_scope_id::text, user_scope_history_type::text
+    from session_recording_aggregate
+    where public_id in ('sr_123456789')
+    order by public_id;
+
+  select results_eq(
+    'select_session_recordings',
+    $$VALUES
+      ('sr_123456789', 'sb_________g', 'global', 's1_____clare', 'u______clare', 'Clare', 'o_____colors', 'org')$$
+         );
 
   -- Closing a second time should error
   select throws_ok('close_recording_session', '23602', null, 'closing a recording_session twice succeeded');

@@ -79,7 +79,7 @@ begin;
   drop view if exists whx_credential_dimension_source;
   drop view if exists target_all_subtypes;
 
-  -- Replaced in oss/70/08_targets.up.sql
+  -- Replaced in oss/70/09_targets.up.sql
   create view target_all_subtypes as
   select
     public_id,
@@ -116,7 +116,7 @@ begin;
   from
     target_ssh;
 
-  -- Replaced in oss/70/08_targets.up.sql
+  -- Replaced in oss/70/09_targets.up.sql
   create view whx_host_dimension_source as
   with 
   host_sources (
@@ -249,7 +249,7 @@ begin;
 
   -- The whx_credential_dimension_source view shows the current values in the
   -- operational tables of the credential dimension.
-  -- Replaced in oss/70/08_targets.up.sql
+  -- Replaced in oss/70/09_targets.up.sql
   create view whx_credential_dimension_source as
     with vault_generic_library as (
       select vcl.public_id                                        as public_id,
