@@ -140,7 +140,7 @@ func (c *Command) Help() string {
 			"",
 			"  Example:",
 			"",
-			`      $ boundary connect -target-id ttcp_1234567890"`,
+			`      $ boundary connect -target-id ttcp_1234567890`,
 			"",
 			"",
 		}) + c.Flags().Help()
@@ -153,7 +153,7 @@ func (c *Command) Help() string {
 			"",
 			"  Example:",
 			"",
-			fmt.Sprintf(`      $ boundary connect %s -target-id ttcp_1234567890"`, c.Func),
+			fmt.Sprintf(`      $ boundary connect %s -target-id ttcp_1234567890`, c.Func),
 			"",
 			"",
 		}) + c.Flags().Help()
