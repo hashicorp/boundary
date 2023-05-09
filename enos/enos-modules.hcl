@@ -118,7 +118,8 @@ module "vault" {
 }
 
 module "test_e2e" {
-  source = "./modules/test_e2e"
+  source       = "./modules/test_e2e"
+  test_timeout = var.go_test_timeout
 }
 
 module "test_e2e_ui" {

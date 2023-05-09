@@ -116,6 +116,10 @@ variable "worker_tags" {
   type    = list(string)
   default = [""]
 }
+variable "test_timeout" {
+  type    = string
+  default = "10m"
+}
 
 locals {
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
@@ -149,7 +153,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_WORKER_TAG                = jsonencode(var.worker_tags),
   }
 
-  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json | tparse -follow -format plain 2>&1 | tee ${path.module}/../../test-e2e-${local.package_name}.log"]
+  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json -timeout ${var.test_timeout}| tparse -follow -format plain 2>&1 | tee ${path.module}/../../test-e2e-${local.package_name}.log"]
 }
 
 output "test_results" {
