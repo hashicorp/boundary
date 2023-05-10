@@ -4,7 +4,7 @@
 begin;
 select plan(9);
 
-select has_view('hcp_billing_daily_sessions_current_day', 'view for hcp billing does not exist');
+select has_view('hcp_billing_daily_sessions_yesterday', 'view for hcp billing does not exist');
 
 select lives_ok('truncate wh_session_connection_accumulating_fact, wh_session_accumulating_fact',
                 'Truncate tables in preparation for testing');
@@ -13,9 +13,10 @@ select lives_ok('truncate wh_session_connection_accumulating_fact, wh_session_ac
 select is(count(*), 0::bigint, 'wh_session_connection_accumulating_fact is not empty') from wh_session_connection_accumulating_fact;
 select is(count(*), 0::bigint, 'wh_session_accumulating_fact is not empty' ) from wh_session_accumulating_fact;
 
-select is(count(*), 1::bigint, 'hcp_billing_daily_sessions_current_day should always return 1 row') from hcp_billing_daily_sessions_current_day;
+select is(count(*), 1::bigint, 'hcp_billing_daily_sessions_yesterday should always return 1 row') from hcp_billing_daily_sessions_yesterday;
 
--- insert one session per minute from midnight of current date until current hour
+-- insert one session per minute from one minute before midnight of yesterday until one minute past midnight today
+-- 1442 total sessions
 with
     dim_keys (host_key, user_key, credential_group_key) as (
         select h.key, u.key, 'no credentials'
@@ -25,8 +26,8 @@ with
     time_series (date_key, time_key, time) as (
         select wh_date_key(time), wh_time_key(time), time
         from generate_series(
-                         current_date,
-                         date_trunc('hour', current_timestamp),
+                         timestamp 'yesterday' - interval '1 minute',
+                         timestamp 'today' + interval '1 minute',
                          interval '1 minute'
                  ) as time
     ),
@@ -49,24 +50,24 @@ select session_id, auth_token_id,
        session_pending_date_key, session_pending_time_key, session_pending_time
 from fake_sessions;
 
-select is(count(*), 1::bigint, 'hcp_billing_daily_sessions_current_day should always return 1 row') from hcp_billing_daily_sessions_current_day;
+select is(count(*), 1::bigint, 'hcp_billing_daily_sessions_yesterday should always return 1 row') from hcp_billing_daily_sessions_yesterday;
 
 select results_eq(
                'select count(*)::bigint from wh_session_accumulating_fact',
-               'select sum(sessions_pending_count)::bigint + 1 from hcp_billing_daily_sessions_current_day',
-               'hcp_billing_daily_sessions_current_day: the sum of sessions is incorrect'
+               'select sum(sessions_pending_count)::bigint + 3 from hcp_billing_daily_sessions_yesterday',
+               'hcp_billing_daily_sessions_yesterday: the sum of sessions is incorrect'
            );
 
 select results_eq(
-               'select sessions_pending_count::bigint from hcp_billing_daily_sessions_current_day limit 1',
-               'select extract(hour from now())::bigint * 60',
-               'hcp_billing_daily_sessions_current_day: session count for the current day is incorrect'
+               'select sessions_pending_count::bigint from hcp_billing_daily_sessions_yesterday limit 1',
+               'select 1440::bigint',
+               'hcp_billing_daily_sessions_yesterday: session count for the current day is incorrect'
            );
 
 select results_eq(
-               'select * from hcp_billing_daily_sessions_current_day',
+               'select * from hcp_billing_daily_sessions_yesterday',
                'select * from hcp_billing_daily_sessions_all limit 1',
-               'hcp_billing_daily_sessions_current_day and hcp_billing_daily_sessions_all: latest day should be equal'
+               'hcp_billing_daily_sessions_yesterday and hcp_billing_daily_sessions_all: latest day should be equal'
            );
 
 select * from finish();

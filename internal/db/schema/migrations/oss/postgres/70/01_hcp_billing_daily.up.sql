@@ -2,45 +2,44 @@
 -- SPDX-License-Identifier: MPL-2.0
 
 begin;
-drop view if exists hcp_billing_daily_sessions_current_day;
-create view hcp_billing_daily_sessions_current_day as
-with
-    daily_counts (day, sessions_pending_count) as (
-        select date_trunc('day', session_pending_time), count(*)
+  create table if not exists sessions_pending_daily_snapshot (
+    date date primary key,
+    sessions_pending_count bigint not null
+  );
+
+  create view hcp_billing_daily_sessions_pending_yesterday as
+  with
+  daily_counts (day, sessions_pending_count) as (
+      select date_trunc('day', session_pending_time), count(*)
         from wh_session_accumulating_fact
-        where session_pending_time >= date_trunc('day', now())
-          and session_pending_time < date_trunc('hour', now())
-        group by date_trunc('day', session_pending_time)
+       where session_pending_time >= date_trunc('day', timestamp 'yesterday')
+         and session_pending_time < date_trunc('day', timestamp 'today')
+    group by date_trunc('day', session_pending_time)
     ),
     daily_range (day) as (
-        select date_trunc('day', now())
+        select date_trunc('day', timestamp 'yesterday')
     ),
-    final (start_time, end_time, sessions_pending_count) as (
-        select daily_range.day, -- start
-               case when daily_range.day = date_trunc('day', now())
-                        then date_trunc('hour', now())
-                    else daily_range.day + interval '1 day'
-                   end,
+    final (start_date, sessions_pending_count) as (
+        select daily_range.day,
                coalesce(daily_counts.sessions_pending_count, 0)
         from daily_range
                  left join daily_counts on daily_range.day = daily_counts.day
     )
-select start_time, end_time, sessions_pending_count
-from final
-order by start_time desc;
-comment on view hcp_billing_daily_sessions_current_day is
-    'hcp_billing_daily_sessions_current_day is a view that contains '
+  select start_date, sessions_pending_count
+  from final
+  order by start_date desc;
+  comment on view hcp_billing_daily_sessions_pending_yesterday is
+    'hcp_billing_daily_sessions_pending_yesterday is a view that contains '
         'the sum of pending sessions '
-        'from the beginning of the current day '
-        'until the start of the current hour (exclusive).';
+        'from the beginning of the previous day '
+        'until the start of the current day (exclusive).';
 
-drop view if exists hcp_billing_daily_sessions_all;
-create view hcp_billing_daily_sessions_all as
-with
+  create view hcp_billing_daily_sessions_pending_all as
+  with
     daily_counts (day, sessions_pending_count) as (
         select date_trunc('day', session_pending_time), count(*)
         from wh_session_accumulating_fact
-        where session_pending_time < date_trunc('hour', now())
+        where session_pending_time < date_trunc('day', timestamp 'today')
         group by date_trunc('day', session_pending_time)
     ),
     daily_range (day) as (
@@ -51,23 +50,16 @@ with
                      '1 day'::interval
                  ) as time
     ),
-    final (start_time, end_time, sessions_pending_count) as (
-        -- select daily_range.day - interval '1 day', -- start
-        select daily_range.day, -- start
-               case when daily_range.day = date_trunc('day', now())
-                        then date_trunc('hour', now())
-                    else daily_range.day + interval '1 day'
-                   end,
+    final (start_date, sessions_pending_count) as (
+        select daily_range.day::timestamp without time zone,
                coalesce(daily_counts.sessions_pending_count, 0)
         from daily_range
                  left join daily_counts on daily_range.day = daily_counts.day
     )
-select start_time, end_time, sessions_pending_count
-from final
-order by start_time desc;
-comment on view hcp_billing_daily_sessions_all is
-    'hcp_billing_daily_sessions_all is a view that contains '
-        'the sum of pending sessions for the current month and all previous months. '
-        'The current month is a sum from the beginning of the current month '
-        'until the start of the current hour (exclusive).';
+  select start_date, sessions_pending_count
+  from final
+  order by start_date desc;
+  comment on view hcp_billing_daily_sessions_pending_all is
+    'hcp_billing_daily_sessions_pending_all is a view that contains '
+      'the sum of pending sessions for yesterday and all previous days.';
 commit;
