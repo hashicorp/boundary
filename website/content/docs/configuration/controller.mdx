@@ -74,7 +74,7 @@ description will be read.
 - `public_cluster_addr` - Specifies the public host or IP address (and
   optionally port) at which the controller can be reached _by workers_. This will
   be used by workers after initial connection to controllers via the worker's
-  `controllers` block. This defaults to the address of the listener marked for
+  `initial_upstreams` block. This defaults to the address of the listener marked for
   `cluster` purpose. This is especially useful for cloud environments that do not
   bind a publicly accessible IP to a NIC on the host directly, such as an Amazon
   EIP. This value can be a direct address string, can refer to a file on disk (file://)

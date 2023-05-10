@@ -47,6 +47,7 @@ module "build_crt" {
 module "build_local" {
   source = "./modules/build_local"
 
+  binary_name  = var.boundary_binary_name
   build_target = var.local_build_target
 }
 
@@ -117,7 +118,8 @@ module "vault" {
 }
 
 module "test_e2e" {
-  source = "./modules/test_e2e"
+  source       = "./modules/test_e2e"
+  test_timeout = var.go_test_timeout
 }
 
 module "test_e2e_ui" {

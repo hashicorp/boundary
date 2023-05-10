@@ -172,3 +172,9 @@ variable "boundary_license_path" {
   type        = string
   default     = null
 }
+
+variable "go_test_timeout" {
+  description = "Timeout for go test used in e2e tests"
+  type        = string
+  default     = "10m"
+}

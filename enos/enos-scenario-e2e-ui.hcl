@@ -83,6 +83,7 @@ scenario "e2e_ui" {
     ]
 
     variables {
+      boundary_binary_name     = var.boundary_binary_name
       boundary_install_dir     = local.boundary_install_dir
       boundary_license         = var.boundary_edition != "oss" ? step.read_license.license : null
       common_tags              = local.tags

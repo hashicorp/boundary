@@ -25,6 +25,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   never result in permissions being granted, causing confusion. As a result,
   attempting to write such grants into roles may now result in an error; the
   error message gives hints for resolution.
+* `WithAutomaticVersioning` for auth tokens in Go SDK: this option was
+  incorrectly being generated for auth token resources, which do not support
+  versioning. This is technically a breaking change, but it was a no-op option
+  anyways that there was no reason to be using. It has now been removed.
 
 ### New and Improved
 

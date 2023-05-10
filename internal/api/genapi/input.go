@@ -757,6 +757,15 @@ var inputStructs = []*structInfo{
 		recursiveListing:    true,
 	},
 	{
+		inProto:        &hosts.StaticHostAttributes{},
+		outFile:        "hosts/static_host_attributes.gen.go",
+		subtypeName:    "StaticHost",
+		parentTypeName: "Host",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &hosts.Host{},
 		outFile: "hosts/host.gen.go",
 		templates: []*template.Template{
@@ -771,15 +780,6 @@ var inputStructs = []*structInfo{
 		parentTypeName:      "host-catalog",
 		versionEnabled:      true,
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
-	},
-	{
-		inProto:        &hosts.StaticHostAttributes{},
-		outFile:        "hosts/static_host_attributes.gen.go",
-		subtypeName:    "StaticHost",
-		parentTypeName: "Host",
-		templates: []*template.Template{
-			mapstructureConversionTemplate,
-		},
 	},
 	{
 		inProto: &hostsets.HostSet{},
@@ -964,6 +964,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "sessions",
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		fieldFilter:         []string{"private_key"},
+		versionEnabled:      true,
 		recursiveListing:    true,
 	},
 	{
