@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -333,4 +334,32 @@ func (m *MemFile) Write(p []byte) (n int, err error) {
 		m.modtime = time.Now()
 	}()
 	return m.Buf.Write(p)
+}
+
+// TempFile implements storage.TempFile
+type TempFile struct {
+	*os.File
+}
+
+// NewTempFile creates a TempFile.
+func NewTempFile(n string) (*TempFile, error) {
+	f, err := os.CreateTemp("", n)
+	if err != nil {
+		return nil, err
+	}
+	return &TempFile{
+		File: f,
+	}, nil
+}
+
+// Close will close and remove the TempFile
+func (t *TempFile) Close() error {
+	fname, err := t.File.Stat()
+	if err != nil {
+		return err
+	}
+	if err := t.File.Close(); err != nil {
+		return err
+	}
+	return os.Remove(fname.Name())
 }
