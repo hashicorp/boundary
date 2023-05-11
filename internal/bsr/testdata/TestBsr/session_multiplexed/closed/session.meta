@@ -1,5 +1,5 @@
 id: session_123456789
-protocol: SSH
+protocol: TEST
 user_publicId: user123
 user_scope_publicId: global
 user_scope_type: global
