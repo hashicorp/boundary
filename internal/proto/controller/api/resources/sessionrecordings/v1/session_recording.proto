@@ -99,20 +99,23 @@ message Target {
   // The description of the Target, if set.
   string description = 3; // @gotags: class:"public"
 
+  // The scope that the Target is in.
+  resources.scopes.v1.ScopeInfo scope = 4;
+
   // Maximum total lifetime of a created Session, in seconds.
-  uint32 session_max_seconds = 4 [json_name = "session_max_seconds"]; // @gotags: class:"public"
+  uint32 session_max_seconds = 5 [json_name = "session_max_seconds"]; // @gotags: class:"public"
 
   // Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1.
-  int32 session_connection_limit = 5 [json_name = "session_connection_limit"]; // @gotags: class:"public"
+  int32 session_connection_limit = 6 [json_name = "session_connection_limit"]; // @gotags: class:"public"
 
   // Optional boolean expression to filter the workers that are allowed to satisfy this request.
-  string worker_filter = 6 [json_name = "worker_filter"]; // @gotags: class:"public"
+  string worker_filter = 7 [json_name = "worker_filter"]; // @gotags: class:"public"
 
   // Optional boolean expressions to filter the egress workers that are allowed to satisfy this request.
-  string egress_worker_filter = 7 [json_name = "egress_worker_filter"]; // @gotags: class:"public"
+  string egress_worker_filter = 8 [json_name = "egress_worker_filter"]; // @gotags: class:"public"
 
   // Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request.
-  string ingress_worker_filter = 8 [json_name = "ingress_worker_filter"]; // @gotags: class:"public"
+  string ingress_worker_filter = 9 [json_name = "ingress_worker_filter"]; // @gotags: class:"public"
 
   oneof attrs {
     // We are using the name attributes here because at the time of
@@ -127,7 +130,7 @@ message Target {
     // to the end user.
 
     // The attributes that are applicable for the specific Target.
-    SshTargetAttributes attributes = 9;
+    SshTargetAttributes attributes = 10;
   }
 }
 

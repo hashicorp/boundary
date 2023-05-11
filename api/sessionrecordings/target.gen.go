@@ -4,10 +4,15 @@
 
 package sessionrecordings
 
+import (
+	"github.com/hashicorp/boundary/api/scopes"
+)
+
 type Target struct {
 	Id                     string               `json:"id,omitempty"`
 	Name                   string               `json:"name,omitempty"`
 	Description            string               `json:"description,omitempty"`
+	Scope                  *scopes.ScopeInfo    `json:"scope,omitempty"`
 	SessionMaxSeconds      uint32               `json:"session_max_seconds,omitempty"`
 	SessionConnectionLimit int32                `json:"session_connection_limit,omitempty"`
 	WorkerFilter           string               `json:"worker_filter,omitempty"`

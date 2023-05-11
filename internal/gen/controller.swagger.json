@@ -5699,6 +5699,10 @@
           "type": "string",
           "description": "The description of the Target, if set."
         },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "The scope that the Target is in."
+        },
         "session_max_seconds": {
           "type": "integer",
           "format": "int64",

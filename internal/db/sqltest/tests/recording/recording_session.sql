@@ -93,7 +93,9 @@ begin;
   select lives_ok('close_recording_session');
 
   prepare select_session_recordings as
-    select public_id::text, storage_bucket_id::text, storage_bucket_scope_id::text, session_id::text, user_history_public_id::text, user_history_name::text, user_history_scope_id::text, user_scope_history_type::text
+    select public_id::text, storage_bucket_id::text, storage_bucket_scope_id::text, session_id::text,
+           user_history_public_id::text, user_history_name::text, user_history_scope_id::text, user_scope_history_type::text,
+           target_history_public_id::text, target_history_name::text, target_scope_history_public_id::text
     from session_recording_aggregate
     where public_id in ('sr_________1')
     order by public_id;
@@ -101,7 +103,9 @@ begin;
   select results_eq(
     'select_session_recordings',
     $$VALUES
-      ('sr_________1', 'sb____global', 'global', 's2_____clare', 'u______clare', 'Clare', 'o_____colors', 'org')$$
+      ('sr_________1', 'sb____global', 'global', 's2_____clare',
+       'u______clare', 'Clare', 'o_____colors', 'org',
+       'tssh______cb', 'Blue Color SSH Target', 'p____bcolors')$$
          );
 
   -- Closing a second time should error
