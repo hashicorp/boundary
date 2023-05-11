@@ -19,3 +19,6 @@ var ErrNotSupported = errors.New("not supported by protocol")
 
 // ErrBsrKeyPersistenceFailure indicates a failure in persisting BSR encryption keys
 var ErrBsrKeyPersistenceFailure = errors.New("could not persist BSR keys")
+
+// ErrSummaryUnavailable indicates a BSR summary is unavailable
+var ErrSummaryUnavailable = errors.New("summary not available")

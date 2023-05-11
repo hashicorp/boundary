@@ -13,6 +13,7 @@ type (
 		ConnectionCount uint64
 		StartTime       time.Time
 		EndTime         time.Time
+		Errors          error
 	}
 
 	// ConnectionSummary encapsulates data for a connection, including its connection id, channel count,
