@@ -733,8 +733,7 @@ func printCustomActionOutputImpl(c *Command) (bool, error) {
 
 					var secretStr []string
 					switch cred.CredentialSource.Type {
-					case vault.Subtype.String(), vault.GenericLibrarySubtype.String(),
-						vault.SSHCertificateLibrarySubtype.String(), static.Subtype.String():
+					case vault.Subtype.String(), vault.GenericLibrarySubtype.String(), static.Subtype.String():
 						switch {
 						case cred.Credential != nil:
 							maxLength := 0
