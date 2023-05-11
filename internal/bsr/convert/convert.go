@@ -11,10 +11,10 @@ import (
 	"github.com/hashicorp/boundary/internal/storage"
 )
 
-// ToAsciinema accepts a bsr.Session and will convert the underlying BSR connection or channel file to an asciinema file.
+// ToAsciicast accepts a bsr.Session and will convert the underlying BSR connection or channel file to an asciinema file.
 // The tempFs will be used to write the asciinema file to disk
 // It returns an io.Reader to the converted asciinema file
 // Supports WithChannelId() to indicate this conversion should occur on a chanel on a multiplexed session
-func ToAsciinema(ctx context.Context, session bsr.Session, tempFs storage.FS, connectionId string, options ...Option) (io.Reader, error) {
+func ToAsciicast(ctx context.Context, session bsr.Session, tmp storage.TempFile, connectionId string, options ...Option) (io.ReadCloser, error) {
 	panic("not implemented")
 }
