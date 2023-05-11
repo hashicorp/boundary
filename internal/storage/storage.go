@@ -23,6 +23,8 @@ type RecordingStorage interface {
 
 	// PluginClients returns a map of storage plugin clients keyed on the plugin name.
 	PluginClients() map[string]plgpb.StoragePluginServiceClient
+
+	CreateTemp(ctx context.Context, p string) (TempFile, error)
 }
 
 // Bucket is a resource that represents a bucket in an external object store
@@ -53,4 +55,10 @@ type File interface {
 	fs.File
 	io.Writer
 	io.StringWriter
+}
+
+// TempFile is a temporary File. It will get removed when Closed.
+type TempFile interface {
+	File
+	io.Seeker
 }
