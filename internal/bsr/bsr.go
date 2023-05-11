@@ -1000,3 +1000,35 @@ func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (io.Writ
 
 	return checksum.NewFile(ctx, m, c.checksums)
 }
+
+// OpenMessageScanner opens a ChunkScanner for a channel's recorded messages.
+func (c *Channel) OpenMessageScanner(ctx context.Context, dir Direction) (*ChunkScanner, error) {
+	const op = "bsr.(Channel).OpenMessageScanner"
+
+	messagesName := fmt.Sprintf(messagesFile, dir.String())
+	m, err := c.container.container.OpenFile(ctx, messagesName, storage.WithFileAccessMode(storage.ReadOnly))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	expectedSum, err := c.shaSums.Sum(messagesName)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return NewChunkScanner(ctx, m, WithSha256Sum(expectedSum))
+}
+
+// OpenRequestScanner opens a ChunkScanner for a channel's recorded requests.
+func (c *Channel) OpenRequestScanner(ctx context.Context, dir Direction) (*ChunkScanner, error) {
+	const op = "bsr.(Channel).OpenRequestScanner"
+
+	requestName := fmt.Sprintf(requestsFile, dir.String())
+	m, err := c.container.container.OpenFile(ctx, requestName, storage.WithFileAccessMode(storage.ReadOnly))
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	expectedSum, err := c.shaSums.Sum(requestName)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return NewChunkScanner(ctx, m, WithSha256Sum(expectedSum))
+}
