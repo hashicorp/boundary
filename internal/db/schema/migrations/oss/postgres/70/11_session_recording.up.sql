@@ -7,6 +7,24 @@ begin;
   comment on domain rec_timestamp is
     'a nullable timestamp with a time zone used for start and end times of recordings';
 
+
+  create table recording_session_state_enm (
+    name text primary key
+      constraint only_predefined_states_allowed
+        check(name in ('unknown', 'started', 'available'))
+  );
+  comment on table recording_session_state_enm is
+    'recording_session_state_enm holds valid values for the state of a recording_session row.';
+
+  insert into recording_session_state_enm (name)
+  values
+    ('unknown'),
+    ('started'),
+    ('available');
+
+  create trigger immutable_columns before update on recording_session_state_enm
+    for each row execute procedure immutable_columns('name');
+
   create table recording_session (
     public_id wt_public_id primary key,
     storage_bucket_id wt_public_id not null
@@ -58,8 +76,22 @@ begin;
     end_time rec_timestamp null
       constraint end_time_null_or_after_start_time
         check (end_time > start_time),
+    state text not null default 'started'
+      constraint recording_session_state_enm_fkey
+        references recording_session_state_enm (name)
+        on delete restrict
+        on update cascade,
+    error_details wt_sentinel not null default wt_to_sentinel('no error details'), 
     constraint recording_session_session_id_public_id_uq
-      unique (session_id, public_id)
+      unique (session_id, public_id),
+    -- Error details are allowed two different types of values:
+    --  - e'\ufffeno error details\uffff', the sentinel value for "no error details", only when the recording is in the started or available state.
+    --  - some error message when the recording is in the unknown state.
+    constraint error_details_set_iff_state_not_started
+      check (
+        (error_details = wt_to_sentinel('no error details') and state in ('started', 'available')) or
+        (error_details != wt_to_sentinel('no error details') and state = 'unknown')
+      )
   );
   comment on table recording_session is
     'recording_session holds metadata for the recording of a session. It outlives the session itself.';
@@ -85,6 +117,9 @@ begin;
   begin
     if new.session_id is null then
       raise exception 'a new recorded session must have a session_id';
+    end if;
+    if new.state is not null and new.state != 'started' then
+      raise exception 'state can only be set to ''started'' on insert';
     end if;
 
     select * into strict _session
@@ -159,6 +194,21 @@ begin;
 
   create trigger insert_session_recording before insert on recording_session
     for each row execute procedure insert_session_recording();
+
+  create function update_session_recording() returns trigger
+  as $$
+  begin
+    if new.state != old.state and old.state != 'started' then
+      raise exception 'state can only be updated once';
+    end if;
+    return new;
+  end;
+  $$ language plpgsql;
+  comment on function update_session_recording is
+    'update_session_recording is a before update trigger for the recording_session table.';
+
+  create trigger update_session_recording before update on recording_session
+    for each row execute procedure update_session_recording();
 
   create table recording_connection (
     public_id wt_public_id primary key,

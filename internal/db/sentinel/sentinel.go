@@ -17,6 +17,8 @@ const (
 	// ExternalIdNone is a Boundary sentinel indicating that no id was provided by an
 	// external system.
 	ExternalIdNone = "\ufffenone\uffff"
+	// ErrorDetailsNone is a Boundary sentinel indicating that there were no error details.
+	NoErrorDetails = "\ufffeno error details\uffff"
 )
 
 // Is returns true if s is a valid sentinel.

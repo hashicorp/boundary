@@ -4,11 +4,13 @@
 -- recording_session tests the following triggers:
 --    insert_session_recording
 --    set_once_columns
+--    insert_session_recording
+--    update_session_recording
 -- and the following constraints:
 --    end_time_null_or_after_start_time
 
 begin;
-  select plan(44);
+  select plan(53);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'sessions');
 
   select has_view('session_recording_aggregate', 'view for aggregating session recording info does not exist');
@@ -58,16 +60,24 @@ begin;
   -- Try to insert row with null session id
   prepare insert_invalid_recording_session as
     insert into recording_session
-      (public_id,      storage_bucket_id, session_id)
+      (public_id,      storage_bucket_id, session_id, state)
     values
-      ('sr_________1', 'sb____global',    null);
+      ('sr_________1', 'sb____global',    null,       'started');
   select throws_ok('insert_invalid_recording_session', null, null, 'insert invalid recording_session succeeded');
+
+  -- Try to insert row with non-started state
+  prepare insert_with_invalid_state as
+    insert into recording_session
+      (public_id,      storage_bucket_id, session_id,     state)
+    values
+      ('sr_________1', 'sb_________g',    's1_____clare', 'available');
+  select throws_ok('insert_with_invalid_state', null, null, 'insert invalid recording_session state succeeded');
 
   prepare insert_recording_session as
     insert into recording_session
-      (public_id,      storage_bucket_id, session_id)
+      (public_id,      storage_bucket_id, session_id,     state)
     values
-      ('sr_________1', 'sb____global',    's2_____clare');
+      ('sr_________1', 'sb____global',    's2_____clare', 'started');
   select lives_ok('insert_recording_session');
 
   prepare insert_recording_session_target_address as
@@ -84,6 +94,65 @@ begin;
       end_time = clock_timestamp()::timestamptz - '1s'::interval
     where public_id = 'sr_________1';
   select throws_ok('invalid_close_recording_session', '23514', null, 'setting end_time before start_time succeeded');
+
+  -- Try to set state to unknown without setting error_details
+  prepare update_state_to_unknown_without_error as
+    update recording_session set
+      state = 'unknown'
+    where public_id = 'sr_________1';
+  select throws_ok('update_state_to_unknown_without_error', 23514, null, 'updating the state to ''unknown'' without setting error_details succeeded');
+
+  -- Try to set state to available while setting error details to a non-sentinel value
+  prepare update_state_to_available_without_sentinel_error as
+    update recording_session set
+      state = 'available',
+      error_details = 'an actual error'
+    where public_id = 'sr_________1';
+  select throws_ok('update_state_to_available_without_sentinel_error', 23514, null, 'updating the state to ''available'' without setting error_details to the sentinel value succeeded');
+
+  -- Try to set state to unknown while setting error_details to the no error sentinel value
+  prepare update_state_to_unknown_with_sentinel_error as
+    update recording_session set
+      state = 'unknown',
+      error_details = wt_to_sentinel('no error details')
+    where public_id = 'sr_________1';
+  select throws_ok('update_state_to_unknown_with_sentinel_error', 23514, null, 'updating the state to ''unknown'' while setting error_details to the no error sentinel value succeeded');
+
+  -- Try to set error_details without updating state
+  prepare update_error_details_without_updating_state as
+    update recording_session set
+      error_details = 'some error'
+    where public_id = 'sr_________1';
+  select throws_ok('update_error_details_without_updating_state', 23514, null, 'setting error_details without updating the state succeeded');
+
+  prepare update_state_to_available as
+    update recording_session set
+      state = 'available'
+    where public_id = 'sr_________1';
+  select lives_ok('update_state_to_available');
+
+  -- Updating state again should error
+  prepare update_state_to_unknown as
+    update recording_session set
+      state = 'unknown',
+      error_details = 'some error'
+    where public_id = 'sr_________1';
+  select throws_ok('update_state_to_unknown', null, null, 'updating the state away from ''available'' succeeded');
+
+  prepare update_state_to_unknown_with_error as
+    update recording_session set
+      state = 'unknown',
+      error_details = 'some error'
+    where public_id = 'sr_________2';
+  select lives_ok('update_state_to_unknown_with_error');
+
+  -- Updating state again should error
+  prepare update_state_to_available_again as
+    update recording_session set
+      state = 'available',
+      error_details = wt_to_sentinel('no error details')
+    where public_id = 'sr_________2';
+  select throws_ok('update_state_to_available_again', null, null, 'updating the state away from ''unknown'' succeeded');
 
   prepare close_recording_session as
     update recording_session set
