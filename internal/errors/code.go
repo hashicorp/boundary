@@ -65,6 +65,7 @@ const (
 
 	WorkerNotFoundForRequest = 133 // WorkerNotFoundForRequest represents an error when no appropriate worker is found which meets the conditions required to handle a request
 	Closed                   = 134 // Closed represents an error when an operation cannot be completed because the thing being operated on is closed
+	ChecksumMismatch         = 135 // ChecksumMismatch represents an error when a checksum is mismatched
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
@@ -130,7 +131,8 @@ const (
 	MigrationLock      Code = 2001 // MigrationLock represents an error related to locking of the DB
 
 	// External system errors are reserved codes 3000-3999
-	Unavailable Code = 3000 // Unavailable represents that an external system is unavailable
+	Unavailable    Code = 3000 // Unavailable represents that an external system is unavailable
+	ExternalPlugin Code = 3001 // ExternalPlugin represent an error that occurred on a plugin external to Boundary
 
 	// Vault specific errors
 	VaultTokenNotOrphan           Code = 3010 // VaultTokenNotOrphan represents an error for a Vault token that is not an orphan token

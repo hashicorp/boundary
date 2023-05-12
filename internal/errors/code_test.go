@@ -400,6 +400,16 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    Closed,
 			want: Closed,
 		},
+		{
+			name: "ExternalPlugin",
+			c:    ExternalPlugin,
+			want: ExternalPlugin,
+		},
+		{
+			name: "ChecksumMismatch",
+			c:    ChecksumMismatch,
+			want: ChecksumMismatch,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

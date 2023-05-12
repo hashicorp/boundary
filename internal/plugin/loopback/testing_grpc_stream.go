@@ -30,6 +30,9 @@ type getObjectStream struct {
 
 	m            *sync.Mutex
 	streamClosed bool
+
+	ctx       context.Context
+	cancelCtx context.CancelFunc
 }
 
 // IsStreamClosed returns true if the stream is closed.
@@ -47,6 +50,8 @@ func (s *getObjectStream) Close() {
 	if s.streamClosed {
 		return
 	}
+	// Cancel ctx to notify writers chan is closing
+	s.cancelCtx()
 	close(s.messages)
 	s.streamClosed = true
 }
@@ -125,6 +130,8 @@ func (c *getObjectClient) RecvMsg(m interface{}) error {
 // getObjectServer is used to mock the server stream
 // interactions for the GetObject method.
 type getObjectServer struct {
+	ctx context.Context
+
 	// sendToClient is used to mock the server sending messages to the client.
 	sendToClient chan *getObjectStreamResponse
 
@@ -148,7 +155,12 @@ func (s *getObjectServer) Send(resp *plgpb.GetObjectResponse) error {
 	if s.isStreamClosed() {
 		return fmt.Errorf("stream is closed")
 	}
-	s.sendToClient <- &getObjectStreamResponse{msg: resp}
+
+	select {
+	case s.sendToClient <- &getObjectStreamResponse{msg: resp}:
+	case <-s.ctx.Done():
+		return fmt.Errorf("stream is closed")
+	}
 	return nil
 }
 
@@ -189,13 +201,21 @@ func (s *getObjectServer) SendMsg(m interface{}) error {
 		if s.isStreamClosed() {
 			return fmt.Errorf("stream is closed")
 		}
-		s.sendToClient <- &getObjectStreamResponse{msg: msg}
+		select {
+		case s.sendToClient <- &getObjectStreamResponse{msg: msg}:
+		case <-s.ctx.Done():
+			return fmt.Errorf("stream is closed")
+		}
 	case error:
 		if s.isStreamClosed() {
 			return fmt.Errorf("stream is closed")
 		}
 		defer s.closeStream()
-		s.sendToClient <- &getObjectStreamResponse{err: msg}
+		select {
+		case s.sendToClient <- &getObjectStreamResponse{err: msg}:
+		case <-s.ctx.Done():
+			return fmt.Errorf("stream is closed")
+		}
 	default:
 		return fmt.Errorf("invalid argument %v", m)
 	}
@@ -213,9 +233,12 @@ func (s *getObjectServer) RecvMsg(m interface{}) error {
 // The client and server stream is mocked by creating a GetObjectResponse
 // channel and an error channel that is shared between the client and server.
 func newGetObjectStream() *getObjectStream {
+	ctx, cnl := context.WithCancel(context.Background())
 	stream := &getObjectStream{
-		m:        new(sync.Mutex),
-		messages: make(chan *getObjectStreamResponse),
+		ctx:       ctx,
+		cancelCtx: cnl,
+		m:         new(sync.Mutex),
+		messages:  make(chan *getObjectStreamResponse),
 	}
 	stream.client = &getObjectClient{
 		sentFromServer: stream.messages,
@@ -223,6 +246,7 @@ func newGetObjectStream() *getObjectStream {
 		isStreamClosed: stream.IsStreamClosed,
 	}
 	stream.server = &getObjectServer{
+		ctx:            ctx,
 		sendToClient:   stream.messages,
 		closeStream:    stream.Close,
 		isStreamClosed: stream.IsStreamClosed,

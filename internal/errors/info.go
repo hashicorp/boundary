@@ -335,4 +335,12 @@ var errorCodeInfo = map[Code]Info{
 		Message: "closed",
 		Kind:    State,
 	},
+	ExternalPlugin: {
+		Message: "plugin error",
+		Kind:    External,
+	},
+	ChecksumMismatch: {
+		Message: "checksum mismatch",
+		Kind:    Integrity,
+	},
 }
