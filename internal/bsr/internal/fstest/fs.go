@@ -7,6 +7,7 @@ package fstest
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -15,6 +16,14 @@ import (
 	sfs "io/fs"
 
 	"github.com/hashicorp/boundary/internal/storage"
+)
+
+// Common erorrs
+var (
+	ErrClosed        = errors.New("closed")
+	ErrAlreadyExists = errors.New("already exists")
+	ErrDoesNotExist  = errors.New("does not exist")
+	ErrReadOnly      = errors.New("read-only")
 )
 
 const (
@@ -48,14 +57,14 @@ func (m *MemFS) New(ctx context.Context, n string) (storage.Container, error) {
 	}
 
 	if m.readOnly {
-		return nil, fmt.Errorf("cannot create new container from read-only fs")
+		return nil, fmt.Errorf("cannot create new container from read-only fs: %w", ErrReadOnly)
 	}
 
 	if m.Containers == nil {
 		m.Containers = make(map[string]*MemContainer)
 	}
 	if _, exists := m.Containers[n]; exists {
-		return nil, fmt.Errorf("container %s already exists", n)
+		return nil, fmt.Errorf("container %s already exists: %w", n, ErrAlreadyExists)
 	}
 
 	c := &MemContainer{
@@ -72,12 +81,12 @@ func (m *MemFS) New(ctx context.Context, n string) (storage.Container, error) {
 // Open opens an existing a storage.Container from the MemFS.
 func (m *MemFS) Open(_ context.Context, n string) (storage.Container, error) {
 	if m.Containers == nil {
-		return nil, fmt.Errorf("container %s not found", n)
+		return nil, fmt.Errorf("container %s not found: %w", n, ErrDoesNotExist)
 	}
 
 	c, ok := m.Containers[n]
 	if !ok {
-		return nil, fmt.Errorf("container %s not found", n)
+		return nil, fmt.Errorf("container %s not found: %w", n, ErrDoesNotExist)
 	}
 	c.Closed = false
 	return c, nil
@@ -109,7 +118,7 @@ func (m *MemContainer) Close() error {
 // Create makes a new storage.File in the container.
 func (m *MemContainer) Create(ctx context.Context, n string) (storage.File, error) {
 	if m.Closed {
-		return nil, fmt.Errorf("create on closed container")
+		return nil, fmt.Errorf("create on closed container: %w", ErrClosed)
 	}
 	return m.OpenFile(ctx, n, storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadWrite))
 }
@@ -121,16 +130,16 @@ func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.O
 	defer m.Unlock()
 
 	if m.Closed {
-		return nil, fmt.Errorf("create on closed container")
+		return nil, fmt.Errorf("create on closed container: %w", ErrClosed)
 	}
 	opts := storage.GetOpts(option...)
 
 	if m.accessMode == storage.ReadOnly && opts.WithFileAccessMode != storage.ReadOnly {
-		return nil, fmt.Errorf("cannot create writeable file in readonly container")
+		return nil, fmt.Errorf("cannot create writeable file in readonly container: %w", ErrReadOnly)
 	}
 
 	if opts.WithCreateFile && opts.WithFileAccessMode == storage.ReadOnly {
-		return nil, fmt.Errorf("cannot create file in read-only mode")
+		return nil, fmt.Errorf("cannot create file in read-only mode: %w", ErrReadOnly)
 	}
 
 	var f *MemFile
@@ -144,7 +153,7 @@ func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.O
 		var ok bool
 		f, ok = m.Files[n]
 		if !ok {
-			return nil, fmt.Errorf("file %s does not exist", n)
+			return nil, fmt.Errorf("file %s does not exist: %w", n, ErrDoesNotExist)
 		}
 	}
 
@@ -162,19 +171,19 @@ func (m *MemContainer) SubContainer(_ context.Context, n string, option ...stora
 	m.Lock()
 	defer m.Unlock()
 	if m.Closed {
-		return nil, fmt.Errorf("subcontainer on closed container")
+		return nil, fmt.Errorf("subcontainer on closed container: %w", ErrClosed)
 	}
 	opts := storage.GetOpts(option...)
 
 	c, exists := m.Sub[n]
 
 	if opts.WithCreateFile && opts.WithFileAccessMode == storage.ReadOnly {
-		return nil, fmt.Errorf("cannot create container in read-only mode")
+		return nil, fmt.Errorf("cannot create container in read-only mode: %w", ErrReadOnly)
 	}
 
 	if opts.WithCreateFile {
 		if exists {
-			return nil, fmt.Errorf("container %s already exists", n)
+			return nil, fmt.Errorf("container %s already exists: %w", n, ErrAlreadyExists)
 		}
 		c = &MemContainer{
 			Name:  n,
@@ -183,7 +192,7 @@ func (m *MemContainer) SubContainer(_ context.Context, n string, option ...stora
 		}
 	} else {
 		if !exists {
-			return nil, fmt.Errorf("container %s does not exist", n)
+			return nil, fmt.Errorf("container %s does not exist: %w", n, ErrDoesNotExist)
 		}
 	}
 	c.accessMode = opts.WithFileAccessMode
