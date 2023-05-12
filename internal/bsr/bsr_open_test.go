@@ -5,7 +5,6 @@ package bsr
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
@@ -114,13 +113,13 @@ func TestOpenBSRMethods(t *testing.T) {
 	sesh.Meta.connections = opSesh.Meta.connections
 	require.Equal(t, sesh.Meta, opSesh.Meta)
 
-	opConn, err := opSesh.OpenConnection(ctx, fmt.Sprintf("connection.%s", connectionId))
+	opConn, err := opSesh.OpenConnection(ctx, connectionId)
 	require.NoError(t, err)
 	require.NotNil(t, opConn)
 	conn.Meta.channels = opConn.Meta.channels
 	require.Equal(t, conn.Meta, opConn.Meta)
 
-	opChan, err := opConn.OpenChannel(ctx, fmt.Sprintf("channel.%s", channelId))
+	opChan, err := opConn.OpenChannel(ctx, channelId)
 	require.NoError(t, err)
 	require.NotNil(t, opChan)
 	require.Equal(t, ch.Meta, opChan.Meta)
@@ -204,14 +203,14 @@ func TestOpenConnection(t *testing.T) {
 		{
 			name:            "no-conn-id",
 			wantErr:         true,
-			wantErrContains: "bsr.OpenConnection: missing connection id: invalid parameter",
+			wantErrContains: "bsr.(Session).OpenConnection: missing connection id: invalid parameter",
 		},
 
 		{
 			name:            "bad-conn-id",
 			id:              "bogus",
 			wantErr:         true,
-			wantErrContains: "bsr.OpenConnection: connection id does not exist within this session: invalid parameter",
+			wantErrContains: "bsr.(Session).OpenConnection: connection id does not exist within this session: invalid parameter",
 		},
 	}
 	for _, tc := range cases {

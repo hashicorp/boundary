@@ -718,15 +718,20 @@ func (s *Session) NewConnection(ctx context.Context, meta *ConnectionMeta) (*Con
 
 // OpenConnection will open and validate a BSR connection
 func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connection, error) {
-	const op = "bsr.OpenConnection"
+	const op = "bsr.(Session).OpenConnection"
 	switch {
 	case connId == "":
 		return nil, fmt.Errorf("%s: missing connection id: %w", op, ErrInvalidParameter)
-	case !s.Meta.connections[connId]:
+	}
+
+	name := fmt.Sprintf(connectionFile, connId)
+
+	switch {
+	case !s.Meta.connections[name]:
 		return nil, fmt.Errorf("%s: connection id does not exist within this session: %w", op, ErrInvalidParameter)
 	}
 
-	c, err := s.container.container.SubContainer(ctx, connId)
+	c, err := s.container.container.SubContainer(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -856,11 +861,15 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 	switch {
 	case chanId == "":
 		return nil, fmt.Errorf("%s: missing channel id: %w", op, ErrInvalidParameter)
-	case !c.Meta.channels[chanId]:
+	}
+
+	name := fmt.Sprintf(channelFile, chanId)
+	switch {
+	case !c.Meta.channels[name]:
 		return nil, fmt.Errorf("%s: channel id does not exist within this connection: %w", op, ErrInvalidParameter)
 	}
 
-	con, err := c.container.container.SubContainer(ctx, chanId)
+	con, err := c.container.container.SubContainer(ctx, name)
 	if err != nil {
 		return nil, err
 	}
