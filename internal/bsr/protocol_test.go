@@ -35,39 +35,3 @@ func TestValidProtocol(t *testing.T) {
 		})
 	}
 }
-
-func TestToText(t *testing.T) {
-	cases := []struct {
-		name string
-		in   bsr.Protocol
-		want string
-	}{
-		{
-			"all ascii",
-			bsr.Protocol("BOOM"),
-			"BOOM",
-		},
-		{
-			"not all ascii",
-			bsr.Protocol("SSH\x87"),
-			"SSH",
-		},
-		{
-			"mostly not ascii",
-			bsr.Protocol("S\x89\x99\x87"),
-			"S",
-		},
-		{
-			"no ascii",
-			bsr.Protocol("\x95\x89\x99\x87"),
-			"",
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.in.ToText()
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}

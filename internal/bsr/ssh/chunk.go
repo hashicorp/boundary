@@ -44,7 +44,7 @@ func init() {
 
 const (
 	// Protocol is used to identify chunks that are recorded from SSH.
-	Protocol bsr.Protocol = "SSH\x87"
+	Protocol bsr.Protocol = "BSSH"
 
 	// MaxPacketSize is used by the DataWriter to determine if SSH data should
 	// be broken into multiple chunks.

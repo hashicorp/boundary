@@ -21,10 +21,10 @@ func TestPopulateMeta(t *testing.T) {
 	require.NoError(t, err)
 
 	sessionId := "session"
-	sessionProtocol := "TEST"
+	sessionProtocol := Protocol("TEST")
 
 	// Populate session meta
-	sessionMeta := TestSessionMeta(sessionId, Protocol((sessionProtocol)))
+	sessionMeta := TestSessionMeta(sessionId, sessionProtocol)
 	s, err := NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, WithSupportsMultiplex(true))
 	require.NoError(t, err)
 	require.NotNil(t, s)
@@ -35,7 +35,7 @@ func TestPopulateMeta(t *testing.T) {
 	require.NoError(t, err)
 	s.Meta = sm
 	require.Equal(t, s.Meta.Id, sessionId)
-	require.Equal(t, s.Meta.Protocol.ToText(), sessionProtocol)
+	require.Equal(t, s.Meta.Protocol, sessionProtocol)
 	require.Equal(t, s.Meta.Target, sessionMeta.Target)
 	require.Equal(t, s.Meta.User, sessionMeta.User)
 	require.Equal(t, s.Meta.StaticHost, sessionMeta.StaticHost)

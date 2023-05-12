@@ -738,7 +738,7 @@ func (s SessionMeta) writeMeta(ctx context.Context, c *container) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.WriteMeta(ctx, "protocol", s.Protocol.ToText())
+	_, err = c.WriteMeta(ctx, "protocol", string(s.Protocol))
 	if err != nil {
 		return err
 	}
