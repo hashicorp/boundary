@@ -105,6 +105,11 @@ var globalAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("destroy-key-version"),
 		},
 	},
+	"session-recordings": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("list"),
+		},
+	},
 	"storage-buckets": {
 		Values: []*structpb.Value{
 			structpb.NewStringValue("create"),
@@ -160,6 +165,11 @@ var orgAuthorizedCollectionActions = map[string]*structpb.ListValue{
 			structpb.NewStringValue("rotate-keys"),
 			structpb.NewStringValue("list-key-version-destruction-jobs"),
 			structpb.NewStringValue("destroy-key-version"),
+		},
+	},
+	"session-recordings": {
+		Values: []*structpb.Value{
+			structpb.NewStringValue("list"),
 		},
 	},
 	"storage-buckets": {
