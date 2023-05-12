@@ -15,8 +15,13 @@ import (
 
 // RecordingStorage can be used to create a FS usable for session recording.
 type RecordingStorage interface {
-	NewLocalFS(ctx context.Context, bucket *storagebuckets.StorageBucket, _ ...Option) (FS, error)
+	// NewSyncingFS returns a FS that will use local storage as a cache and sync files when they are closed.
+	NewSyncingFS(ctx context.Context, bucket *storagebuckets.StorageBucket, _ ...Option) (FS, error)
+
+	// NewRemoteFS returns a ReadOnly FS that can be used to retrieve files from a storage bucket.
 	NewRemoteFS(ctx context.Context, bucket *storagebuckets.StorageBucket, _ ...Option) (FS, error)
+
+	// PluginClients returns a map of storage plugin clients keyed on the plugin name.
 	PluginClients() map[string]plgpb.StoragePluginServiceClient
 }
 
