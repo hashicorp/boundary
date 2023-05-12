@@ -25,6 +25,8 @@ type SessionRecording struct {
 	EndTime              time.Time              `json:"end_time,omitempty"`
 	Duration             time.Duration          `json:"duration,omitempty"`
 	Type                 string                 `json:"type,omitempty"`
+	State                string                 `json:"state,omitempty"`
+	ErrorDetails         string                 `json:"error_details,omitempty"`
 	MimeTypes            []string               `json:"mime_types,omitempty"`
 	ConnectionRecordings []*ConnectionRecording `json:"connection_recordings,omitempty"`
 	CreateTimeValues     *ValuesAtTime          `json:"create_time_values,omitempty"`

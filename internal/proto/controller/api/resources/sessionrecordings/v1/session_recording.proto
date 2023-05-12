@@ -188,19 +188,27 @@ message SessionRecording {
   // Type of the Session that was recorded (e.g. ssh).
   string type = 10; // @gotags: class:"public"
 
+  // The current state of the session recording. One of
+  // "started", "available" and "unknown".
+  string state = 11; // @gotags: class:"public"
+
+  // Any error seen during the closing of the session recording.
+  // Currently only set if state is "unknown".
+  string error_details = 13; // @gotags: class:"public"
+
   // MimeTypes define the mime types that can
   // be used to consume the recording of this Session.
   // No mime types are currently supported.
-  repeated string mime_types = 11 [json_name = "mime_types"]; // @gotags: class:"public"
+  repeated string mime_types = 14 [json_name = "mime_types"]; // @gotags: class:"public"
 
   // The recordings of the connections that were created in the Session.
   // This field may be unset when listing Session recordings.
-  repeated ConnectionRecording connection_recordings = 12 [json_name = "connection_recordings"];
+  repeated ConnectionRecording connection_recordings = 15 [json_name = "connection_recordings"];
 
   // create_time_values contains the values of related fields at the time
   // this Session Recording was created. This may be unset when listing.
-  ValuesAtTime create_time_values = 13 [json_name = "create_time_values"]; // @gotags: class:"public"
+  ValuesAtTime create_time_values = 16 [json_name = "create_time_values"]; // @gotags: class:"public"
 
   // The available actions on this resource for this user.
-  repeated string authorized_actions = 14 [json_name = "authorized_actions"]; // @gotags: class:"public"
+  repeated string authorized_actions = 17 [json_name = "authorized_actions"]; // @gotags: class:"public"
 }

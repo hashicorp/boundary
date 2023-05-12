@@ -109,6 +109,8 @@ const (
 	StartTimeField                              = "start_time"
 	EndTimeField                                = "end_time"
 	DurationField                               = "duration"
+	StateField                                  = "state"
+	ErrorDetailsField                           = "error_details"
 	ConnectionRecordingsField                   = "connection_recordings"
 	CreateTimeValues                            = "create_time_values"
 )

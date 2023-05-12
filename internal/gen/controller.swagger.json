@@ -5645,6 +5645,14 @@
           "type": "string",
           "description": "Type of the Session that was recorded (e.g. ssh)."
         },
+        "state": {
+          "type": "string",
+          "description": "The current state of the session recording. One of\n\"started\", \"available\" and \"unknown\"."
+        },
+        "error_details": {
+          "type": "string",
+          "description": "Any error seen during the closing of the session recording.\nCurrently only set if state is \"unknown\"."
+        },
         "mime_types": {
           "type": "array",
           "items": {
