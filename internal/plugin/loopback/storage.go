@@ -109,9 +109,10 @@ type storagePluginStorageInfo struct {
 type LoopbackStorage struct {
 	m sync.Mutex
 
-	chunksSize int
-	buckets    map[BucketName]Bucket
-	errs       []PluginMockError
+	chunksSize        int
+	buckets           map[BucketName]Bucket
+	errs              []PluginMockError
+	putObjectResponse []PluginMockPutObjectResponse
 }
 
 func (l *LoopbackStorage) onCreateStorageBucket(ctx context.Context, req *plgpb.OnCreateStorageBucketRequest) (*plgpb.OnCreateStorageBucketResponse, error) {
@@ -334,9 +335,16 @@ func (l *LoopbackStorage) putObject(ctx context.Context, req *plgpb.PutObjectReq
 	if !ok {
 		return nil, status.Errorf(codes.InvalidArgument, "%s: bucket not found", op)
 	}
+	// return an expected mock error if one was provided
 	for _, err := range l.errs {
 		if err.match(req.GetBucket(), req.GetKey(), PutObject) {
 			return nil, status.Errorf(err.ErrCode, "%s: %s", op, err.ErrMsg)
+		}
+	}
+	// return an expected mock response if one was provided
+	for _, mock := range l.putObjectResponse {
+		if mock.match(req.GetBucket(), req.GetKey()) {
+			return mock.Response, nil
 		}
 	}
 

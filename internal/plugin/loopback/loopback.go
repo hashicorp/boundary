@@ -52,9 +52,10 @@ func NewLoopbackPlugin(opt ...TestOption) (*LoopbackPlugin, error) {
 			hostMap: make(map[string][]*loopbackPluginHostInfo),
 		},
 		LoopbackStorage: &LoopbackStorage{
-			chunksSize: opts.withChunkSize,
-			buckets:    map[BucketName]Bucket{"default": {}},
-			errs:       make([]PluginMockError, 0),
+			chunksSize:        opts.withChunkSize,
+			buckets:           map[BucketName]Bucket{"default": {}},
+			errs:              make([]PluginMockError, 0),
+			putObjectResponse: make([]PluginMockPutObjectResponse, 0),
 		},
 	}
 
@@ -79,6 +80,9 @@ func NewLoopbackPlugin(opt ...TestOption) (*LoopbackPlugin, error) {
 	}
 	if len(opts.withMockError) > 0 {
 		ret.errs = opts.withMockError
+	}
+	if len(opts.withMockPutObjectResponse) > 0 {
+		ret.putObjectResponse = opts.withMockPutObjectResponse
 	}
 
 	return ret, nil

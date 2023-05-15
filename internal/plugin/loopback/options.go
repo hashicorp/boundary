@@ -5,6 +5,7 @@ package loopback
 
 import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"google.golang.org/grpc/codes"
 )
 
@@ -82,12 +83,43 @@ func (e PluginMockError) match(bucket *storagebuckets.StorageBucket, key string,
 	return true
 }
 
+// PluginMockPutObjectResponse is used to mock a response when calling putObject.
+type PluginMockPutObjectResponse struct {
+	BucketName   string
+	BucketPrefix string
+	ObjectKey    string
+	Response     *plgpb.PutObjectResponse
+}
+
+// match compares the given values from the parameters to the values provided in the mocked response.
+// The bucket and key parameter values should be provided from the plugin request.
+//
+// When match returns false, the mocked response should not be used for the plugin response.
+// When match returns true, the mocked response should be used for the plugin response.
+func (r PluginMockPutObjectResponse) match(bucket *storagebuckets.StorageBucket, key string) bool {
+	// if the mocked response object key does not match the request's object key, return false.
+	if r.ObjectKey != key {
+		return false
+	}
+	// if the mocked response bucket name does not match the request's bucket name, return false.
+	if r.BucketName != bucket.BucketName {
+		return false
+	}
+	// if the request has a bucket prefix and it does not match the mocked response bucket prefix, return false.
+	if bucket.BucketPrefix != "" && r.BucketPrefix != bucket.BucketPrefix {
+		return false
+	}
+	// all checks comparison checks passed, return true.
+	return true
+}
+
 type TestOption func(*TestOptions) error
 
 type TestOptions struct {
-	withMockBuckets map[BucketName]Bucket
-	withMockError   []PluginMockError
-	withChunkSize   int
+	withMockBuckets           map[BucketName]Bucket
+	withMockError             []PluginMockError
+	withMockPutObjectResponse []PluginMockPutObjectResponse
+	withChunkSize             int
 }
 
 // getTestOpts - iterate the inbound Options and return a struct
@@ -119,6 +151,13 @@ func WithMockBuckets(buckets map[BucketName]Bucket) TestOption {
 func WithMockError(err PluginMockError) TestOption {
 	return func(o *TestOptions) error {
 		o.withMockError = append(o.withMockError, err)
+		return nil
+	}
+}
+
+func WithMockPutObjectResponse(response PluginMockPutObjectResponse) TestOption {
+	return func(o *TestOptions) error {
+		o.withMockPutObjectResponse = append(o.withMockPutObjectResponse, response)
 		return nil
 	}
 }
