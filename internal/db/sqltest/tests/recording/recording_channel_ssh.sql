@@ -11,8 +11,10 @@
 --    subsystem_shorter_than_1024_bytes
 
 begin;
-  select plan(12);
+  select plan(14);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'sessions');
+
+  select has_view('recording_channel_ssh_aggregate', 'view for aggregating channel recording info does not exist');
 
   insert into recording_session
     (public_id,      storage_bucket_id, session_id,     state)
@@ -90,6 +92,22 @@ begin;
     (recording_channel_id, subsystem_name)
   values
     ('chr_456789123', 'sftp');
+
+  prepare select_session_recordings as
+    select public_id::text, recording_connection_id::text, bytes_up::int, bytes_down::int,
+           channel_type::text, channel_program::text
+    from recording_channel_ssh_aggregate
+    order by public_id;
+
+  select results_eq(
+    'select_session_recordings',
+    $$VALUES
+      ('chr_123456789', 'cr_123456789', 10, 10, 'session', 'none'),
+      ('chr_234567891', 'cr_123456789', 10, 10, 'session', 'shell'),
+      ('chr_345678912', 'cr_123456789', 10, 10, 'session', 'exec'),
+      ('chr_456789123', 'cr_123456789', 10, 10, 'session', 'subsystem'),
+      ('chr_567891234', 'cr_123456789', 10, 10, 'x11', null)$$
+         );
 
   -- Check that the rows were inserted
   select is(count(*), 5::bigint) from recording_channel_ssh where recording_connection_id = 'cr_123456789';

@@ -3,6 +3,25 @@
 
 begin;
 
+create view recording_channel_ssh_aggregate as
+select
+  rch.public_id,
+  rch.recording_connection_id,
+  rch.create_time,
+  rch.update_time,
+  rch.start_time,
+  rch.end_time,
+  rch.bytes_up,
+  rch.bytes_down,
+  rch.channel_type,
+  rchsc.program as channel_program
+from recording_channel_ssh rch
+  left join recording_channel_ssh_session_channel rchsc on
+    rch.public_id = rchsc.recording_channel_id;
+comment on view recording_channel_ssh_aggregate is
+  'recording_channel_ssh_aggregate contains the ssh channel recording info along with other info needed for displaying it on the api.';
+
+
 create view session_recording_aggregate as
 select
   rs.public_id,
