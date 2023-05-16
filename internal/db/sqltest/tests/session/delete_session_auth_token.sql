@@ -12,7 +12,7 @@ begin;
 
   -- Check that we have a session for both auth token
   select is(count(*), 2::bigint) from session where auth_token_id = 'tok____clare';
-  select is(count(*), 1::bigint) from session where auth_token_id = 'tok____carly';
+  select is(count(*), 2::bigint) from session where auth_token_id = 'tok____carly';
   
   -- Delete auth tokens, expect no errors
   delete from auth_token where public_id = 'tok____clare' or public_id = 'tok____carly';

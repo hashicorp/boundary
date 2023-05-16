@@ -385,6 +385,7 @@ begin;
     ('p____rcolors', 't_________cr', 's___2cr-sths'),
     ('p____bcolors', 'tssh______cb', 's___1cb-sths'),
     ('p____bcolors', 'tssh______cb', 's___2cb-sths'),
+    ('p____bcolors', 'tssh______cb', 's___1cb-plghs'),
     ('p____rcolors', 'tssh______cr', 's___1cr-sths'),
     ('p____rcolors', 'tssh______cr', 's___2cr-sths');
 
@@ -457,15 +458,17 @@ begin;
     ('p____bcolors', 't_________cb', 's1_____ciara', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1'),
     ('p____bcolors', 't_________cb', 's1_____carly', 'u______carly', 'tok____carly', 'abc'::bytea, 'ep1'),
     ('p____gcolors', 'tssh______cg', 's1______cora', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1'),
-    --- the next two are used in recording_session tests
+    --- the next are used in recording_session tests
     ('p____bcolors', 'tssh______cb', 's2_____clare', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep2'),
-    ('p____gcolors', 'tssh______cg', 's2______cora', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep3');
+    ('p____gcolors', 'tssh______cg', 's2______cora', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep3'),
+    ('p____bcolors', 'tssh______cb', 's2_____carly', 'u______carly', 'tok____carly', 'abc'::bytea, 'ep4');
 
   insert into session_credential_static
     (session_id,     credential_static_id, credential_purpose)
   values
     ('s1_____clare', 'csj__bcolors',       'injected_application'), -- tssh______cb
     ('s2_____clare', 'csj__bcolors',       'injected_application'), -- tssh______cb
+    ('s2_____carly', 'csj__bcolors',       'injected_application'), -- tssh______cb
     ('s1_____cindy', 'csj__bcolors',       'brokered'),             -- t_________cb
     ('s1_____ciara', 'csj__bcolors',       'brokered'),             -- t_________cb
     ('s1_____carly', 'csj__bcolors',       'brokered'),             -- t_________cb
@@ -482,7 +485,8 @@ begin;
     ('s2_____clare', 's___1cb-sths', 'h_____cb__01'),
     ('s1_____cindy', 's___1cb-sths', 'h_____cb__01'),
     ('s1_____ciara', 's___1cb-sths', 'h_____cb__01'),
-    ('s1_____carly', 's___1cb-sths', 'h_____cb__01');
+    ('s1_____carly', 's___1cb-sths', 'h_____cb__01'),
+    ('s2_____carly', 's___1cb-plghs', 'h_____cb__01-plgh');
 
   insert into session_target_address
     (session_id,     target_id)

@@ -10,7 +10,7 @@
 --    end_time_null_or_after_start_time
 
 begin;
-  select plan(56);
+  select plan(57);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'sessions');
 
   select has_view('session_recording_aggregate', 'view for aggregating session recording info does not exist');
@@ -99,6 +99,13 @@ begin;
     'select endpoint from recording_session where public_id = ''sr_________2''',
     'select endpoint from session where public_id = ''s2______cora''');
 
+  prepare insert_recording_session_plugin_host as
+    insert into recording_session
+    (public_id,      storage_bucket_id, session_id)
+    values
+      ('sr_________3', 'sb____global',    's2_____carly');
+  select lives_ok('insert_recording_session_plugin_host');
+
   -- Try to set end_time before start_time
   prepare invalid_close_recording_session as
     update recording_session set
@@ -176,9 +183,11 @@ begin;
   prepare select_session_recordings as
     select public_id::text, storage_bucket_id::text, storage_bucket_scope_id::text, session_id::text,
            user_history_public_id::text, user_history_name::text, user_history_scope_id::text, user_scope_history_type::text,
-           target_history_public_id::text, target_history_name::text, target_scope_history_public_id::text
+           target_history_public_id::text, target_history_name::text, target_scope_history_public_id::text,
+           static_catalog_history_public_id::text, static_host_history_public_id::text,
+           plugin_catalog_history_public_id::text, plugin_host_history_public_id::text, plugin_catalog_history_plugin_id::text
     from session_recording_aggregate
-    where public_id in ('sr_________1')
+    where public_id in ('sr_________1', 'sr_________2', 'sr_________3')
     order by public_id;
 
   select results_eq(
@@ -186,7 +195,19 @@ begin;
     $$VALUES
       ('sr_________1', 'sb____global', 'global', 's2_____clare',
        'u______clare', 'Clare', 'o_____colors', 'org',
-       'tssh______cb', 'Blue Color SSH Target', 'p____bcolors')$$
+       'tssh______cb', 'Blue Color SSH Target', 'p____bcolors',
+       'c___cb-sthcl', 'h_____cb__01', null, null,
+        null),
+        ('sr_________2', 'sb____global', 'global', 's2______cora',
+       'u_______cora', 'Cora', 'o_____colors', 'org',
+       'tssh______cg', 'Green Color SSH Target', 'p____gcolors',
+       null, null, null, null,
+        null),
+       ('sr_________3', 'sb____global', 'global', 's2_____carly',
+       'u______carly', 'Carly', 'o_____colors', 'org',
+       'tssh______cb', 'Blue Color SSH Target', 'p____bcolors',
+       null, null, 'c___cb-plghcl', 'h_____cb__01-plgh',
+        'plg_____chost')$$
          );
 
   -- Closing a second time should error

@@ -11,7 +11,7 @@ begin;
   select is(count(*), 1::bigint) from session_state where session_id = 's1_____carly' and state='active';
 
   -- Check that we have 5 sessions using this project
-  select is(count(*), 5::bigint) from session where project_id = 'p____bcolors';
+  select is(count(*), 6::bigint) from session where project_id = 'p____bcolors';
 
   -- Delete project, expect no errors
   delete from iam_scope_project where scope_id = 'p____bcolors';

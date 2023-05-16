@@ -12,7 +12,7 @@ begin;
 
   -- Check that we have a session for both users
   select is(count(*), 2::bigint) from session where user_id = 'u______clare';
-  select is(count(*), 1::bigint) from session where user_id = 'u______carly';
+  select is(count(*), 2::bigint) from session where user_id = 'u______carly';
 
   -- Delete users, expect no errors
   delete from iam_user where public_id = 'u______clare' or public_id = 'u______carly';

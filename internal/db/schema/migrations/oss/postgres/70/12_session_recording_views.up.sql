@@ -62,7 +62,33 @@ select
   tsh.description as target_scope_history_description,
   tsh.type as target_scope_history_type,
   tsh.parent_id as target_scope_history_parent_id,
-  tsh.primary_auth_method_id as target_scope_history_primary_auth_method_id
+  tsh.primary_auth_method_id as target_scope_history_primary_auth_method_id,
+  -- static
+  -- host catalogs
+  shch.public_id as static_catalog_history_public_id,
+  shch.project_id as static_catalog_history_project_id,
+  shch.name as static_catalog_history_name,
+  shch.description as static_catalog_history_description,
+  -- hosts
+  shh.public_id as static_host_history_public_id,
+  shh.name as static_host_history_name,
+  shh.description as static_host_history_description,
+  shh.address as static_host_history_address,
+
+  -- plugin
+  -- host catalogs
+  hpch.public_id as plugin_catalog_history_public_id,
+  hpch.project_id as plugin_catalog_history_project_id,
+  hpch.name as plugin_catalog_history_name,
+  hpch.description as plugin_catalog_history_description,
+  hpch.attributes as plugin_catalog_history_attributes,
+  hpch.plugin_id as plugin_catalog_history_plugin_id,
+  -- hosts
+  hph.public_id as plugin_host_history_public_id,
+  hph.name as plugin_host_history_name,
+  hph.description as plugin_host_history_description,
+  hph.external_id as plugin_host_history_external_id
+
 from recording_session rs
  join storage_plugin_storage_bucket sb on
     rs.storage_bucket_id = sb.public_id
@@ -73,7 +99,15 @@ from recording_session rs
  join target_ssh_hst th on
     rs.target_hst_id = th.history_id
  join iam_scope_hst as tsh on
-    rs.target_project_hst_id = tsh.history_id;
+    rs.target_project_hst_id = tsh.history_id
+ left join static_host_catalog_hst as shch on
+    rs.host_catalog_hst_id = shch.history_id
+ left join host_plugin_catalog_hst as hpch on
+    rs.host_catalog_hst_id = hpch.history_id
+ left join static_host_hst as shh on
+    rs.host_hst_id = shh.history_id
+ left join host_plugin_host_hst as hph on
+    rs.host_hst_id = hph.history_id;
 comment on view session_recording_aggregate is
   'session_recording_aggregate contains the session recording resource with its storage bucket scope info and historical user info.';
 

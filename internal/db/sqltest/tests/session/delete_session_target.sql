@@ -11,7 +11,7 @@ begin;
   select is(count(*), 1::bigint) from session_state where session_id = 's1_____carly' and state='active';
 
   select is(count(*), 3::bigint) from session where target_id = 't_________cb';
-  select is(count(*), 2::bigint) from session where target_id = 'tssh______cb';
+  select is(count(*), 3::bigint) from session where target_id = 'tssh______cb';
 
   -- Delete target, expect no errors
   delete from target where public_id='t_________cb';
