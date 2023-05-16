@@ -21,7 +21,7 @@ import (
 // that target and verifies that the connection was successful.
 func TestCliConnectTargetBasic(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -67,7 +67,7 @@ func TestCliConnectTargetBasic(t *testing.T) {
 
 func TestCliConnectTargetWithTargetClientPort(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()

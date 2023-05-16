@@ -18,7 +18,7 @@ import (
 // TestCliSessionCancelAdmin uses the boundary cli to start and then cancel a session
 func TestCliSessionCancelAdmin(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()

@@ -35,7 +35,7 @@ const (
 // TestCliStaticCredentialStore validates various credential-store operations using the cli
 func TestCliStaticCredentialStore(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -175,7 +175,7 @@ func createPrivateKeyPemFile(fileName string) error {
 // boundary's built-in credential store. The test then attaches that credential to a target.
 func TestApiStaticCredentialStore(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	client, err := boundary.NewApiClient()

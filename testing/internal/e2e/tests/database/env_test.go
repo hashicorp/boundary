@@ -15,7 +15,7 @@ type config struct {
 	AwsHostSetFilter   string `envconfig:"E2E_AWS_HOST_SET_FILTER" required:"true"` // e.g. "tag:testtag=true"
 }
 
-func loadConfig() (*config, error) {
+func loadTestConfig() (*config, error) {
 	var c config
 	err := envconfig.Process("", &c)
 	if err != nil {

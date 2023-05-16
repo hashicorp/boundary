@@ -28,7 +28,7 @@ import (
 // one of the host sets, and attempts to connect to the target.
 func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -138,7 +138,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 // host set.
 func TestApiCreateAwsDynamicHostCatalog(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	client, err := boundary.NewApiClient()

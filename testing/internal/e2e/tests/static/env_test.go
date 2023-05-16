@@ -12,7 +12,7 @@ type config struct {
 	TargetPort       string `envconfig:"E2E_SSH_PORT" required:"true"`
 }
 
-func loadConfig() (*config, error) {
+func loadTestConfig() (*config, error) {
 	var c config
 	err := envconfig.Process("", &c)
 	if err != nil {
