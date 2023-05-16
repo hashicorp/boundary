@@ -20,7 +20,7 @@ import (
 // session correctly increase when data is transmitting during a session.
 func TestCliBytesUpDownEmpty(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()

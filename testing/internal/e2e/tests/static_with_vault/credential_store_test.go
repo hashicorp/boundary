@@ -24,7 +24,7 @@ import (
 // vault
 func TestCliVaultCredentialStore(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -187,7 +187,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 // with vault
 func TestApiVaultCredentialStore(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	client, err := boundary.NewApiClient()
