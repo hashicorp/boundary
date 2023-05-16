@@ -27,7 +27,7 @@ should_pull=true
 # Clone the dev-portal project, if needed
 if [ ! -d "$PREVIEW_DIR" ]; then
     echo "⏳ Cloning the $REPO_TO_CLONE repo, this might take a while..."
-    git clone --depth=1 https://github.com/hashicorp/$REPO_TO_CLONE.git "$PREVIEW_DIR"
+    git clone https://github.com/hashicorp/$REPO_TO_CLONE.git "$PREVIEW_DIR"
     should_pull=false
 fi
 
@@ -38,10 +38,10 @@ if [ "$should_pull" = true ]; then
     git pull origin main
 fi
 
+git checkout zs.upgrade-boundary-api-docs
+
 # Run the dev-portal content-repo start script
 REPO=$PRODUCT \
 PREVIEW_FROM_REPO=$PRODUCT \
-LOCAL_CONTENT_DIR=$LOCAL_CONTENT_DIR \
-CURRENT_GIT_BRANCH=$CURRENT_GIT_BRANCH \
 PREVIEW_MODE=$PREVIEW_MODE \
 npm run start:local-preview
