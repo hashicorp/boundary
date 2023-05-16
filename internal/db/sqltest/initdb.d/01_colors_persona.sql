@@ -53,7 +53,7 @@ begin;
   insert into kms_data_key_version
     (private_id,           data_key_id,       root_key_version_id, key)
   values
-	  ('kdkv_______colors', 'kdk_______colors', 'krkv_______colors', '_______color2'::bytea);
+	  ('kdkv__colors', 'kdk_______colors', 'krkv_______colors', '_______color2'::bytea);
 
   insert into iam_group
     (scope_id, public_id, name)
@@ -156,11 +156,11 @@ begin;
   insert into auth_token
     (key_id, auth_account_id, public_id, token)
   values
-    ('kdkv_______colors', 'apa____clare', 'tok____clare', 'tok____clare'::bytea),
-    ('kdkv_______colors', 'apa____cindy', 'tok____cindy', 'tok____cindy'::bytea),
-    ('kdkv_______colors', 'apa____ciara', 'tok____ciara', 'tok____ciara'::bytea),
-    ('kdkv_______colors', 'apa____carly', 'tok____carly', 'tok____carly'::bytea),
-    ('kdkv_______colors', 'apa_____cora', 'tok_____cora', 'tok_____cora'::bytea);
+    ('kdkv__colors', 'apa____clare', 'tok____clare', 'tok____clare'::bytea),
+    ('kdkv__colors', 'apa____cindy', 'tok____cindy', 'tok____cindy'::bytea),
+    ('kdkv__colors', 'apa____ciara', 'tok____ciara', 'tok____ciara'::bytea),
+    ('kdkv__colors', 'apa____carly', 'tok____carly', 'tok____carly'::bytea),
+    ('kdkv__colors', 'apa_____cora', 'tok_____cora', 'tok_____cora'::bytea);
 
   insert into static_host
     (catalog_id, public_id, address)
@@ -184,7 +184,7 @@ begin;
     ('c___cr-sthcl', 'h_____cr__07', '7.red.color'),
     ('c___cr-sthcl', 'h_____cr__08', '8.red.color'),
     ('c___cr-sthcl', 'h_____cr__09', '9.red.color'),
-    
+
     ('c___cg-sthcl', 'h_____cg__01', '1.green.color'),
     ('c___cg-sthcl', 'h_____cg__02', '2.green.color'),
     ('c___cg-sthcl', 'h_____cg__03', '3.green.color'),
@@ -217,7 +217,7 @@ begin;
     ('h_____cr__07', '7.red.color'),
     ('h_____cr__08', '8.red.color'),
     ('h_____cr__09', '9.red.color'),
-    
+
     ('h_____cg__01', '1.green.color'),
     ('h_____cg__02', '2.green.color'),
     ('h_____cg__03', '3.green.color'),
@@ -250,7 +250,7 @@ begin;
     ('h_____cr__07', '77.77.77.77'),
     ('h_____cr__08', '2001:4860:4860::8888'),
     ('h_____cr__09', '99.99.99.99'),
-    
+
     ('h_____cg__01', '111.111.111.111'),
     ('h_____cg__02', '3001:5860:5860::3333'),
     ('h_____cg__03', '112.112.112.112'),
@@ -350,7 +350,7 @@ begin;
     (scope_id, public_id,       name)
   values
     ('global', 'plg____sb-plg', 'Storage Bucket Plugin');
-    
+
   insert into plugin_storage_supported
     (public_id)
   values
@@ -405,6 +405,42 @@ begin;
     (store_id,        public_id,     name,                  description, vault_path, http_method)
   values
     ('vs_______cvs1', 'vl______cvl', 'color vault library', 'None',      '/secrets', 'GET');
+
+  insert into credential_static_store
+    (project_id,     public_id,      name,                            description)
+  values
+    ('p____bcolors', 'css__bcolors', 'Blue Static Credential Store',  'Static Credential Store for the Blue project'),
+    ('p____rcolors', 'css__rcolors', 'Red Static Credential Store',   'Static Credential Store for the Red project'),
+    ('p____gcolors', 'css__gcolors', 'Green Static Credential Store', 'Static Credential Store for the Green project');
+
+  insert into credential_static_json_credential
+    (key_id,         project_id,     store_id,       public_id,      name,              object_encrypted,   object_hmac)
+  values
+    ('kdkv__colors', 'p____bcolors', 'css__bcolors', 'csj__bcolors', 'Blue json cred',  'bjson-enc'::bytea, 'bjson-hmac'::bytea),
+    ('kdkv__colors', 'p____rcolors', 'css__rcolors', 'csj__rcolors', 'Red json cred',   'rjson-enc'::bytea, 'rjson-hmac'::bytea),
+    ('kdkv__colors', 'p____gcolors', 'css__gcolors', 'csj__gcolors', 'Green json cred', 'gjson-enc'::bytea, 'gjson-hmac'::bytea);
+
+  insert into credential_static_username_password_credential
+    (key_id,         project_id,     store_id,       public_id,      name,                           username, password_encrypted,   password_hmac)
+  values
+    ('kdkv__colors', 'p____bcolors', 'css__bcolors', 'csu__bcolors', 'Blue username password cred',  'buser',  'bpasswd-enc'::bytea, 'bpasswd-hmac'::bytea),
+    ('kdkv__colors', 'p____rcolors', 'css__rcolors', 'csu__rcolors', 'Red username password cred',   'ruser',  'rpasswd-enc'::bytea, 'rpasswd-hmac'::bytea),
+    ('kdkv__colors', 'p____gcolors', 'css__gcolors', 'csu__gcolors', 'Green username password cred', 'guser',  'gpasswd-enc'::bytea, 'gpasswd-hmac'::bytea);
+
+  insert into credential_static_ssh_private_key_credential
+    (key_id,         project_id,     store_id,       public_id,      name,                           username, private_key_encrypted, private_key_hmac)
+  values
+    ('kdkv__colors', 'p____bcolors', 'css__bcolors', 'cspk_bcolors', 'Blue username password cred',  'buser',  'bprivkey-enc'::bytea, 'bprivkey-hmac'::bytea),
+    ('kdkv__colors', 'p____rcolors', 'css__rcolors', 'cspk_rcolors', 'Red username password cred',   'ruser',  'rprivkey-enc'::bytea, 'rprivkey-hmac'::bytea),
+    ('kdkv__colors', 'p____gcolors', 'css__gcolors', 'cspk_gcolors', 'Green username password cred', 'guser',  'gprivkey-enc'::bytea, 'gprivkey-hmac'::bytea);
+
+  insert into target_static_credential
+    (project_id,     target_id,      credential_static_id, credential_purpose)
+  values
+    ('p____bcolors', 't_________cb', 'csj__bcolors',       'brokered'),
+    ('p____bcolors', 'tssh______cb', 'csj__bcolors',       'injected_application'),
+    ('p____gcolors', 'tssh______cg', 'csj__gcolors',       'brokered'),
+    ('p____gcolors', 'tssh______cg', 'cspk_gcolors',       'injected_application');
 
   insert into target_credential_library
     (project_id,     target_id,      credential_library_id, credential_purpose)

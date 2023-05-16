@@ -26,7 +26,7 @@ begin;
     insert into kms_data_key_version_destruction_job
       (key_id)
     values
-      ('kdkv_______colors');
+      ('kdkv__colors');
   select lives_ok('insert_new_key_id', 'insert of valid key_id in kms_data_key_version_destruction_job failed');
 
   -- Should fail when inserting an unknown table_name

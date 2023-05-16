@@ -69,8 +69,9 @@ begin;
   begin
     execute format('select results_eq( '
         ' ''select count(*) from %I'', '
-        ' ''select count(*) from %I'') ',
-        op_table(history_table_name), history_table_name)
+        ' ''select count(*) from %I'', '
+        ' ''%I failed has_expected_row_count'') ',
+        op_table(history_table_name), history_table_name, history_table_name)
     into result;
     return result;
   end;
@@ -88,7 +89,7 @@ begin;
     from get_columns(history_table_name);
     select into _q1 format('select %s from %s', _cols, history_table_name);
     select into _q2 format('select %s from %s', _cols, op_table(history_table_name));
-    return results_eq(_q1, _q2);
+    return results_eq(_q1, _q2, history_table_name || ' failed has_expected_content');
 
   end;
   $$ language plpgsql;
@@ -149,7 +150,11 @@ begin;
   -- tests for an exclusion index
   create function has_exclusion_index(history_table_name name) returns text
   as $$
-    select has_index(history_table_name, history_table_name || '_valid_range_excl', array['public_id', 'valid_range']);
+    select case when length(history_table_name || '_valid_range_excl') > 63
+           then hasnt_index(history_table_name, history_table_name || '_valid_range_excl', 'Index name to long: ' || history_table_name || '_valid_range_excl')
+           else collect_tap(
+                has_index(history_table_name, history_table_name || '_valid_range_excl', array['public_id', 'valid_range'])
+              ) end;
   $$ language sql;
 
   -- tests to verify certain columns are not in the history table
