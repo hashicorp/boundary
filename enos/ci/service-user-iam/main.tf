@@ -216,7 +216,10 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "rds:ListTagsForResource",
       "rds:ModifyDBInstance",
       "rds:ModifyDBSubnetGroup",
-      "rds:RemoveTagsFromResource"
+      "rds:RemoveTagsFromResource",
+      "s3:ListAllMyBuckets",
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
     ]
     resources = ["*"]
   }
@@ -243,7 +246,9 @@ data "aws_iam_policy_document" "aws_nuke_policy_document" {
       "iam:ListUserTags",
       "iam:ListUsers",
       "iam:UntagUser",
-      "servicequotas:ListServiceQuotas"
+      "servicequotas:ListServiceQuotas",
+      "s3:ListAllMyBuckets",
+      "s3:DeleteBucket",
     ]
     resources = ["*"]
   }
