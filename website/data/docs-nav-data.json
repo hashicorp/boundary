@@ -46,33 +46,36 @@
     ]
   },
   {
-    "title": "Getting Started",
+    "title": "Get Started",
     "routes": [
       {
         "title": "Overview",
         "path": "getting-started"
       },
       {
-        "title": "Installing",
-        "hidden": true,
+        "title": "Self-managed Boundary quick start",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/oss-getting-started/"
+      },
+      {
+        "title": "HCP Boundary quick start",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/hcp-getting-started/"
+      },
+      {
+        "title": "Dev Mode quick start",
         "routes": [
           {
-            "title": "Overview",
-            "path": "getting-started/installing"
+            "title": "What is Dev Mode",
+            "path": "getting-started/dev-mode/dev-mode"
           },
           {
-            "title": "Production",
-            "path": "getting-started/installing/production"
+            "title": "Run and log in",
+            "path": "getting-started/dev-mode/run-and-login"
+          },
+          {
+            "title": "Connect to a target",
+            "path": "getting-started/dev-mode/connect-to-dev-target"
           }
         ]
-      },
-      {
-        "title": "Deploy and Login",
-        "path": "getting-started/deploy-and-login"
-      },
-      {
-        "title": "Connect to Target",
-        "path": "getting-started/connect-to-target"
       }
     ]
   },
@@ -354,6 +357,23 @@
     ]
   },
   {
+    "title": "Operations",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "operations"
+      },
+      {
+        "title": "Metrics",
+        "path": "operations/metrics"
+      },
+      {
+        "title": "Health Endpoint",
+        "path": "operations/health"
+      }
+    ]
+  },
+  {
     "title": "Troubleshoot",
     "routes": [
       {
@@ -365,10 +385,6 @@
         "path": "troubleshoot/faq"
       }
     ]
-  },
-  {
-    "title": "Common Workflows",
-    "href": "https://learn.hashicorp.com/boundary"
   },
   {
     "title": "Common Workflows",
@@ -435,6 +451,23 @@
     ]
   },
   {
+    "title": "Develop Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "developing"
+      },
+      {
+        "title": "Building",
+        "path": "developing/building"
+      },
+      {
+        "title": "Developing the UI",
+        "path": "developing/ui"
+      }
+    ]
+  },
+  {
     "divider": true
   },
   {
@@ -450,18 +483,6 @@
           {
             "title": "Overview",
             "path": "oss/installing"
-          },
-          {
-            "title": "Dev Mode",
-            "path": "oss/installing/dev-mode"
-          },
-          {
-            "title": "Run and Login",
-            "path": "oss/installing/run-and-login"
-          },
-          {
-            "title": "Connect to Dev Target",
-            "path": "oss/installing/connect-to-dev-target"
           },
           {
             "title": "Non-Dev Environments",
@@ -484,40 +505,6 @@
             "path": "oss/installing/reference-architectures"
           }
         ]
-      },
-      {
-        "title": "Operations",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "oss/operations"
-          },
-          {
-            "title": "Metrics",
-            "path": "oss/operations/metrics"
-          },
-          {
-            "title": "Health Endpoint",
-            "path": "oss/operations/health"
-          }
-        ]
-      },
-      {
-        "title": "Developing Boundary",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "oss/developing"
-          },
-          {
-            "title": "Building",
-            "path": "oss/developing/building"
-          },
-          {
-            "title": "Developing the UI",
-            "path": "oss/developing/ui"
-          }
-        ]
       }
     ]
   },
@@ -526,7 +513,25 @@
   },
   {
     "title": "HCP Boundary",
-    "href": "https://cloud.hashicorp.com/docs/boundary/"
+    "routes": [
+      {
+        "title": "Get started with HCP Boundary",
+        "routes": [
+          {
+            "title": "Deploy and login",
+            "path": "hcp/get-started/deploy-and-login"
+          },
+          {
+            "title": "Connect to target",
+            "path": "hcp/get-started/connect-to-target"
+          }
+        ]
+      },
+      {
+        "title": "HCP Boundary documentation",
+        "href": "https://cloud.hashicorp.com/docs/boundary/"
+      }
+    ]
   },
   {
     "divider": true

@@ -27,4 +27,70 @@ module.exports = [
     destination: 'boundary/docs/overview/what-is-boundary',
     permanent: true,
   },
+  {
+    source: '/boundary/docs/getting-started/connect-to-target',
+    destination: '/boundary/docs/hcp/get-started/connect-to-target',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/getting-started/deploy-and-login',
+    destination: '/boundary/docs/hcp/get-started/deploy-and-login',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/getting-started/installing',
+    destination: '/boundary/docs/getting-started',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/getting-started/installing/production',
+    destination: '/boundary/docs/getting-started',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/developing/building',
+    destination: '/boundary/docs/developing/building',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/developing',
+    destination: '/boundary/docs/developing',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/developing/ui',
+    destination: '/boundary/docs/developing/ui',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/connect-to-dev-target',
+    destination:
+      '/boundary/docs/getting-started/dev-mode/connect-to-dev-target',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/dev-mode',
+    destination: '/boundary/docs/getting-started/dev-mode/dev-mode',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/run-and-login',
+    destination: '/boundary/docs/getting-started/dev-mode/run-and-login',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/operations/health',
+    destination: '/boundary/docs/operations/health',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/operations',
+    destination: '/boundary/docs/operations',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/operations/metrics',
+    destination: '/boundary/docs/operations/metrics',
+    permanent: true,
+  },
 ]

@@ -5,7 +5,7 @@ description: |-
   Obtain visibility of various components of a running Boundary
 ---
 
-## Boundary Metrics
+# Boundary metrics
 
 Boundary provides metrics through the `/metrics` path using a listener with the
 `"ops"` purpose. By default, a listener with that purpose runs on port `9203`.
@@ -22,7 +22,7 @@ exposition](https://prometheus.io/docs/instrumenting/exposition_formats/#openmet
 format which can be read by
 [Prometheus](https://prometheus.io/docs/introduction/overview/).
 
-### Controller
+## Controller
 
 The following table lists the current names and descriptions of metrics provided
 by controllers.
@@ -34,7 +34,7 @@ by controllers.
 | `boundary_controller_api_http_response_size_bytes`            | Histogram of response sizes for HTTP requests. |
 | `boundary_controller_cluster_grpc_request_duration_seconds`   | Histogram of latencies for requests made to the gRPC service running on the cluster listener. |
 
-### Worker
+## Worker
 
 The following table lists the current names and descriptions of metrics provided
 by workers.
@@ -46,7 +46,7 @@ by workers.
 | `boundary_worker_proxy_websocket_received_bytes_total`        | Count of received bytes sent over all proxy connections handled by the worker. |
 | `boundary_worker_proxy_websocket_sent_bytes_total`            | Count of sent bytes sent over all proxy connections handled by the worker. |
 
-### Other
+## Other
 
 The following table lists the current miscellaneous metrics provided by Boundary.
 
@@ -54,13 +54,13 @@ The following table lists the current miscellaneous metrics provided by Boundary
 |---------------------------------------------------------------|-----------------------------------------------|
 | `boundary_build_info`    | A gauge set to 1 with label values detailing the current Go version, git revision, and Boundary version. |
 
-### Metric Labels
+## Metric labels
 
 Each metric uses labels to help organize and narrow its scope so that users can
 filter for different characteristics, allowing more flexible analysis of the
 measurements collected.
 
-#### Metrics for HTTP requests include the following labels:
+### Metrics for HTTP requests include the following labels:
 
 | Label        | Description                                                    |
 |--------------|----------------------------------------------------------------|
@@ -69,7 +69,7 @@ measurements collected.
 | `method`     | The name of the method on the HTTP request.  For example "GET", “POST”, “DELETE”. |
 
 
-#### Metrics for gRPC requests include the following labels:
+### Metrics for gRPC requests include the following labels:
 
 | Label           | Description                                                     |
 |-----------------|-----------------------------------------------------------------|
