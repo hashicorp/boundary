@@ -5598,6 +5598,74 @@
       },
       "description": "ConnectionRecording contains the recording of a single Connection within a Session."
     },
+    "controller.api.resources.sessionrecordings.v1.Host": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "The ID of the Host"
+        },
+        "host_catalog": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.HostCatalog",
+          "title": "The Host Catalog this Host is in"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the Host, if set."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the Host, if set."
+        },
+        "type": {
+          "type": "string",
+          "title": "The type of the host. This will be either \"static\" or \"plugin\""
+        },
+        "attributes": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.StaticHostAttributes",
+          "description": "The attributes that are applicable for the specific Host."
+        },
+        "external_id": {
+          "type": "string",
+          "description": "The external id of the Host, if any."
+        }
+      },
+      "description": "Host describes the Host that was chosen for the recorded session."
+    },
+    "controller.api.resources.sessionrecordings.v1.HostCatalog": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "The ID of the Host Catalog"
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "title": "The scope that the Host Catalog is in"
+        },
+        "plugin_id": {
+          "type": "string",
+          "description": "The plugin id used by this Host Catalog, if any."
+        },
+        "name": {
+          "type": "string",
+          "title": "The name of the Host Catalog, if set"
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the Host Catalog."
+        },
+        "type": {
+          "type": "string",
+          "title": "The type of the Host Catalog.  This will be either \"static\" or \"plugin\""
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes of the Host Catalog."
+        }
+      },
+      "description": "HostCatalog describes the HostCatalog that contains the host chosen for the\nrecorded session."
+    },
     "controller.api.resources.sessionrecordings.v1.SessionRecording": {
       "type": "object",
       "properties": {
@@ -5706,6 +5774,15 @@
       },
       "title": "SshTargetAttributes contains attributes relevant to Targets of type \"ssh\""
     },
+    "controller.api.resources.sessionrecordings.v1.StaticHostAttributes": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "title": "The address specified on a static host"
+        }
+      }
+    },
     "controller.api.resources.sessionrecordings.v1.Target": {
       "type": "object",
       "properties": {
@@ -5786,6 +5863,10 @@
         "target": {
           "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Target",
           "description": "Information about the Target the Session connected to."
+        },
+        "host": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Host",
+          "description": "Information about the Host chosen for the session."
         }
       },
       "description": "ValuesAtTime contain information about other Boundary resources as they\nwere at a certain time through the lifetime of the Session Recording."

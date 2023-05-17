@@ -7,6 +7,7 @@ package controller.api.resources.sessionrecordings.v1;
 
 import "controller/api/resources/scopes/v1/scope.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/session_recordings;session_recordings";
@@ -88,6 +89,75 @@ message User {
   resources.scopes.v1.ScopeInfo scope = 7;
 }
 
+// HostCatalog describes the HostCatalog that contains the host chosen for the
+// recorded session.
+message HostCatalog {
+  // The ID of the Host Catalog
+  string id = 1; // @gotags: class:"public"
+
+  // The scope that the Host Catalog is in
+  resources.scopes.v1.ScopeInfo scope = 2; // @gotags: class:"public"
+
+  // The plugin id used by this Host Catalog, if any.
+  string plugin_id = 3 [json_name = "plugin_id"]; // @gotags: class:"public"
+
+  // The name of the Host Catalog, if set
+  string name = 4; // @gotags: class:"public"
+
+  // The description of the Host Catalog.
+  string description = 5; // @gotags: class:"public"
+
+  // The type of the Host Catalog.  This will be either "static" or "plugin"
+  string type = 6; // @gotags: class:"public"
+
+  oneof attrs {
+    // The attributes of the Host Catalog.
+    google.protobuf.Struct attributes = 7; // @gotags: class:"public"
+  }
+}
+
+// Host describes the Host that was chosen for the recorded session.
+message Host {
+  // The ID of the Host
+  string id = 1; // @gotags: class:"public"
+
+  // The Host Catalog this Host is in
+  HostCatalog host_catalog = 2 [json_name = "host_catalog"]; // @gotags: class:"public"
+
+  // The name of the Host, if set.
+  string name = 3; // @gotags: class:"public"
+
+  // The description of the Host, if set.
+  string description = 4; // @gotags: class:"public"
+
+  // The type of the host. This will be either "static" or "plugin"
+  string type = 5; // @gotags: class:"public"
+
+  oneof attrs {
+    // We are using the name attributes here because at the time of
+    // writing this there is only ssh target attributes for Session Recordings.
+    // When we add another target type for Session Recordings we will need to
+    // add a generic Struct with the field named "attributes", and then use the
+    // method used in other places that assign to these strongly typed
+    // attributes and then use a response interceptor to populate the
+    // struct field named "attributes" from the other oneof fields.  This is
+    // going to be a breaking change (in terms of proto compatibility) but
+    // since this is only consumed in JSON format, that should be transparent
+    // to the end user.
+
+    // The attributes that are applicable for the specific Host.
+    StaticHostAttributes attributes = 6; // @gotags: class:"public"
+  }
+
+  // The external id of the Host, if any.
+  string external_id = 7 [json_name = "external_id"]; // @gotags: class:"public"
+}
+
+message StaticHostAttributes {
+  // The address specified on a static host
+  string address = 1; // @gotags: class:"public"
+}
+
 // Target describes a target in Boundary.
 message Target {
   // The ID of the Target.
@@ -144,10 +214,13 @@ message SshTargetAttributes {
 // were at a certain time through the lifetime of the Session Recording.
 message ValuesAtTime {
   // Information about the User that created the Session.
-  User user = 1;
+  User user = 1; // @gotags: class:"public"
 
   // Information about the Target the Session connected to.
-  Target target = 2;
+  Target target = 2; // @gotags: class:"public"
+
+  // Information about the Host chosen for the session.
+  Host host = 3; // @gotags: class:"public"
 }
 
 // SessionRecording contains information about the recording of a Session.

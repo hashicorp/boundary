@@ -1021,6 +1021,18 @@ var inputStructs = []*structInfo{
 		outFile: "sessionrecordings/ssh_target_attributes.gen.go",
 	},
 	{
+		inProto: &session_recordings.Host{},
+		outFile: "sessionrecordings/host.gen.go",
+	},
+	{
+		inProto: &session_recordings.StaticHostAttributes{},
+		outFile: "sessionrecordings/static_host_attributes.gen.go",
+	},
+	{
+		inProto: &session_recordings.HostCatalog{},
+		outFile: "sessionrecordings/host_catalog.gen.go",
+	},
+	{
 		inProto: &session_recordings.ValuesAtTime{},
 		outFile: "sessionrecordings/values_at_time.gen.go",
 	},
