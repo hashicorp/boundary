@@ -11,14 +11,14 @@ begin;
   select is(count(*), 1::bigint) from session_state where session_id = 's1_____carly' and state='active';
 
   -- Check that we have 5 sessions using this host
-  select is(count(*), 5::bigint) from session_host_set_host where host_id = 'h_____cb__01';
+  select is(count(*), 5::bigint) from session_host_set_host where host_id = 'h___st____b1';
 
   -- Delete host, expect no errors
-  delete from host where public_id = 'h_____cb__01';
-  select is(count(*), 0::bigint) from host where public_id = 'h_____cb__01';
+  delete from host where public_id = 'h___st____b1';
+  select is(count(*), 0::bigint) from host where public_id = 'h___st____b1';
 
   -- Ensure we no longer have sessions associated with this host
-  select is(count(*), 0::bigint) from session_host_set_host where host_id = 'h_____cb__01';
+  select is(count(*), 0::bigint) from session_host_set_host where host_id = 'h___st____b1';
 
   -- Ensure sessions that were pending or active are now in canceling state
   select is(count(*), 1::bigint) from session_state where state = 'canceling' and session_id = 's1_____clare';

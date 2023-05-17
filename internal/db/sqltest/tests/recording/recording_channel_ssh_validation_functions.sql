@@ -14,7 +14,7 @@ begin;
   insert into recording_connection
     (public_id,      session_id,     session_connection_id, recording_session_id)
   values
-    ('cr_123456789', 's1_____clare', 'sc1_____clare',       'sr1____clare');
+    ('cr_123456789', 's1_____clare', 's1c1___clare',        'sr1____clare');
   insert into recording_channel_ssh
     (public_id,       recording_connection_id, start_time,                     end_time,                                        bytes_up, bytes_down, channel_type)
   values

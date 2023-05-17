@@ -196,7 +196,7 @@ begin;
       ('sr_________1', 'sb____global', 'global', 's2_____clare',
        'u______clare', 'Clare', 'o_____colors', 'org',
        'tssh______cb', 'Blue Color SSH Target', 'p____bcolors',
-       'c___cb-sthcl', 'h_____cb__01', null, null,
+       'hc__st_____b', 'h___st____b1', null, null,
         null),
         ('sr_________2', 'sb____global', 'global', 's2______cora',
        'u_______cora', 'Cora', 'o_____colors', 'org',
@@ -206,8 +206,8 @@ begin;
        ('sr_________3', 'sb____global', 'global', 's2_____carly',
        'u______carly', 'Carly', 'o_____colors', 'org',
        'tssh______cb', 'Blue Color SSH Target', 'p____bcolors',
-       null, null, 'c___cb-plghcl', 'h_____cb__01-plgh',
-        'plg_____chost')$$
+       null, null, 'hc__plg____b', 'h___plg___b1',
+        'plg____chost')$$
          );
 
   -- Closing a second time should error

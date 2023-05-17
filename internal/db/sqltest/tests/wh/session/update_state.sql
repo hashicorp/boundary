@@ -13,7 +13,7 @@ begin;
     bytes_up = 10,
     bytes_down = 5,
     closed_reason = 'closed by end-user'
-  where public_id = 'sc1_____clare';
+  where public_id = 's1c1___clare';
   update session set
     termination_reason = 'closed by end-user'
   where public_id = 's1_____clare';
