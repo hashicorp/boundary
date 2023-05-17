@@ -28,6 +28,7 @@ type SessionRecording struct {
 	State                string                 `json:"state,omitempty"`
 	ErrorDetails         string                 `json:"error_details,omitempty"`
 	MimeTypes            []string               `json:"mime_types,omitempty"`
+	Endpoint             string                 `json:"endpoint,omitempty"`
 	ConnectionRecordings []*ConnectionRecording `json:"connection_recordings,omitempty"`
 	CreateTimeValues     *ValuesAtTime          `json:"create_time_values,omitempty"`
 	AuthorizedActions    []string               `json:"authorized_actions,omitempty"`

@@ -5660,6 +5660,10 @@
           },
           "description": "MimeTypes define the mime types that can\nbe used to consume the recording of this Session.\nNo mime types are currently supported."
         },
+        "endpoint": {
+          "type": "string",
+          "description": "The endpoint of the Session; that is, the address to which the egress worker connected."
+        },
         "connection_recordings": {
           "type": "array",
           "items": {
