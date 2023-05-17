@@ -1001,17 +1001,7 @@ func TestLoopbackStoragePlugin(t *testing.T) {
 	require.NoError(err)
 	assert.EqualValues(hash.Sum(nil), putResponse.GetChecksumSha_256())
 
-	// Check directory was created
 	headResponse, err := plg.HeadObject(context.Background(), &plgpb.HeadObjectRequest{
-		Bucket: bucket,
-		Key:    "dir1/",
-	})
-	require.NoError(err)
-	require.NotNil(headResponse)
-	require.NotNil(headResponse.LastModified)
-	require.Equal(int64(0), headResponse.ContentLength)
-
-	headResponse, err = plg.HeadObject(context.Background(), &plgpb.HeadObjectRequest{
 		Bucket: bucket,
 		Key:    "dir1/mock_object",
 	})

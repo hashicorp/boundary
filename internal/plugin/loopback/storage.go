@@ -7,11 +7,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"fmt"
 	"io"
 	"os"
 	"path"
-	"strings"
 	"sync"
 	"time"
 
@@ -357,19 +355,6 @@ func (l *LoopbackStorage) putObject(ctx context.Context, req *plgpb.PutObjectReq
 		return nil, status.Errorf(codes.InvalidArgument, "%s: missing object data", op)
 	}
 	contentLength := int64(len(objectData))
-
-	parts := strings.Split(req.GetKey(), "/")
-	tempPath := req.GetBucket().GetBucketPrefix()
-	for _, p := range parts[:len(parts)-1] {
-		// Directories should have trailing `/` in the key
-		tempPath = fmt.Sprintf("%v%v/", tempPath, p)
-		emptyContent := int64(0)
-		bucket[ObjectName(tempPath)] = &storagePluginStorageInfo{
-			lastModified:  &lastModified,
-			contentLength: &emptyContent,
-			DataChunks:    []Chunk{},
-		}
-	}
 
 	objectChunks := []Chunk{}
 	for i := 0; i < len(objectData); i = i + l.chunksSize {
