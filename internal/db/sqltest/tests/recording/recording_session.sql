@@ -10,7 +10,7 @@
 --    end_time_null_or_after_start_time
 
 begin;
-  select plan(53);
+  select plan(56);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'sessions');
 
   select has_view('session_recording_aggregate', 'view for aggregating session recording info does not exist');
@@ -57,6 +57,10 @@ begin;
     'select host_hst_id from recording_session where public_id = ''sr1_____cora''',
     'select history_id from no_host_history');
 
+  select results_eq(
+    'select endpoint from recording_session where public_id = ''sr1_____cora''',
+    'select endpoint from session where public_id = ''s1______cora''');
+
   -- Try to insert row with null session id
   prepare insert_invalid_recording_session as
     insert into recording_session
@@ -80,12 +84,20 @@ begin;
       ('sr_________1', 'sb____global',    's2_____clare', 'started');
   select lives_ok('insert_recording_session');
 
+  select results_eq(
+    'select endpoint from recording_session where public_id = ''sr_________1''',
+    'select endpoint from session where public_id = ''s2_____clare''');
+
   prepare insert_recording_session_target_address as
     insert into recording_session
       (public_id,      storage_bucket_id, session_id)
     values
       ('sr_________2', 'sb____global',    's2______cora');
   select lives_ok('insert_recording_session_target_address');
+
+  select results_eq(
+    'select endpoint from recording_session where public_id = ''sr_________2''',
+    'select endpoint from session where public_id = ''s2______cora''');
 
   -- Try to set end_time before start_time
   prepare invalid_close_recording_session as

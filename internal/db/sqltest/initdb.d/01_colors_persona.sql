@@ -458,8 +458,8 @@ begin;
     ('p____bcolors', 't_________cb', 's1_____carly', 'u______carly', 'tok____carly', 'abc'::bytea, 'ep1'),
     ('p____gcolors', 'tssh______cg', 's1______cora', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1'),
     --- the next two are used in recording_session tests
-    ('p____bcolors', 'tssh______cb', 's2_____clare', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1'),
-    ('p____gcolors', 'tssh______cg', 's2______cora', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1');
+    ('p____bcolors', 'tssh______cb', 's2_____clare', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep2'),
+    ('p____gcolors', 'tssh______cg', 's2______cora', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep3');
 
   insert into session_credential_static
     (session_id,     credential_static_id, credential_purpose)

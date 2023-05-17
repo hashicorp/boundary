@@ -68,6 +68,7 @@ begin;
         references host_history_base (history_id)
         on delete restrict -- History records with session recordings cannot be deleted
         on update cascade,
+    endpoint text null,
     create_time wt_timestamp not null,
     update_time wt_timestamp not null,
     start_time rec_timestamp null, -- When the session recording was started in the worker
@@ -125,6 +126,8 @@ begin;
     select * into strict _session
       from session
      where public_id = new.session_id;
+
+    new.endpoint = _session.endpoint;
 
     select history_id into strict new.user_hst_id
       from iam_user_hst
