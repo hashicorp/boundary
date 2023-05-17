@@ -20,16 +20,16 @@ select is(count(*), 1::bigint, 'hcp_billing_daily_sessions_yesterday should alwa
 with
     dim_keys (host_key, user_key, credential_group_key) as (
         select h.key, u.key, 'no credentials'
-        from (select key from wh_host_dimension limit 1) as h,
-             (select key from wh_user_dimension limit 1) as u
+          from (select key from wh_host_dimension limit 1) as h,
+               (select key from wh_user_dimension limit 1) as u
     ),
     time_series (date_key, time_key, time) as (
         select wh_date_key(time), wh_time_key(time), time
-        from generate_series(
+          from generate_series(
                          timestamp 'yesterday' - interval '1 minute',
                          timestamp 'today' + interval '1 minute',
                          interval '1 minute'
-                 ) as time
+               ) as time
     ),
     fake_sessions (session_id, auth_token_id,
                    host_key, user_key, credential_group_key,
@@ -37,14 +37,14 @@ with
         select concat('s__________', t.date_key, t.time_key), concat('a__________', t.date_key, t.time_key),
                k.host_key, k.user_key, k.credential_group_key,
                t.date_key, t.time_key,t.time
-        from dim_keys as k,
-             time_series as t
+          from dim_keys    as k,
+               time_series as t
     )
 insert into wh_session_accumulating_fact
-(session_id, auth_token_id,
- host_key, user_key, credential_group_key,
- session_pending_date_key, session_pending_time_key, session_pending_time
-)
+      (session_id, auth_token_id,
+       host_key, user_key, credential_group_key,
+       session_pending_date_key, session_pending_time_key, session_pending_time
+      )
 select session_id, auth_token_id,
        host_key, user_key, credential_group_key,
        session_pending_date_key, session_pending_time_key, session_pending_time
