@@ -6,13 +6,13 @@ package connect
 import (
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/mitchellh/mapstructure"
 )
 
 func generateSessionInfoTableOutput(in SessionInfo) string {
@@ -101,58 +101,41 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 	}
 
 	// The following operations are performed to better format unspecified credential types.
-	// Credential values (with the exception of Vault metadata) are printed with no indentation
-	// so that X.509 certificates can be easily copied and pasted by the user.
+	// Credential values are printed with no indentation so that X.509 certificates can be
+	// easily copied and pasted by the user.
 	var out []string
 	var baseCredMap map[string]any
-	mdMap := make(map[string]any)
 	err = json.Unmarshal(in, &baseCredMap)
 	if err != nil {
 		return origSecret
 	}
 	for k, iface := range baseCredMap {
-
-		// Treat the Vault credential metadata as an exception case, to apply the better-looking
-		// base.WrapMap formatting.
-		if k == "metadata" {
-			md := make(map[string]any)
-			if err := mapstructure.Decode(iface, &md); err != nil {
-				// Return a best-effort representation of the metadata if it is
-				// unable to be decoded.
-				mdMap[k] = iface
-				continue
-			}
-			mdMap[k] = md
-			continue
-		}
-
-		// Print all other credential fields with no spacing for the values
 		switch iface := iface.(type) {
 		case nil:
 			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
-		case map[string]string:
-			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
-			for kk, vv := range iface {
-				out = append(out, fmt.Sprintf("%s      %s:", prefixStr, kk))
-				out = append(out, fmt.Sprintf("%s\n", vv))
-			}
 		case map[string]any:
 			// TODO: check if this is the only possible case for an 'unspecified' type credential
 			// and get rid of the other cases if this is so.
 			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+			certs := make(map[string]any, len(iface))
 			for kk, vv := range iface {
-				out = append(out, fmt.Sprintf("%s      %s:", prefixStr, kk))
-				out = append(out, fmt.Sprintf("%v\n", vv))
+				if p, _ := pem.Decode([]byte(fmt.Sprintf("%v", vv))); p != nil {
+					// iface is a certificate. Print without indents.
+					certs[kk] = vv
+				}
+			}
+			for c := range certs {
+				delete(iface, c)
+				out = append(out, fmt.Sprintf("%s      %s:", prefixStr, c))
+				out = append(out, fmt.Sprintf("%v\n", certs[c]))
+			}
+			if len(iface) > 0 {
+				out = append(out, base.WrapMap(indent+6, 0, iface))
 			}
 		default:
 			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
-			out = append(out, fmt.Sprintf("%v\n", iface))
+			out = append(out, fmt.Sprintf("%s      %v\n", prefixStr, iface))
 		}
-	}
-
-	for k, v := range mdMap {
-		out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
-		out = append(out, base.WrapMap(indent+6, 0, v.(map[string]any)))
 	}
 
 	return out
