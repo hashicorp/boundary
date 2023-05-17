@@ -4,7 +4,6 @@
 package connect
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/mitchellh/mapstructure"
 )
 
 func generateSessionInfoTableOutput(in SessionInfo) string {
@@ -99,15 +99,63 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 	if err != nil {
 		return origSecret
 	}
-	dst := new(bytes.Buffer)
-	if err := json.Indent(dst, in, fmt.Sprintf("%s    ", prefixStr), fmt.Sprintf("%s  ", prefixStr)); err != nil {
+
+	// The following operations are performed to better format unspecified credential types.
+	// Credential values (with the exception of Vault metadata) are printed with no indentation
+	// so that X.509 certificates can be easily copied and pasted by the user.
+	var out []string
+	var baseCredMap map[string]any
+	mdMap := make(map[string]any)
+	err = json.Unmarshal(in, &baseCredMap)
+	if err != nil {
 		return origSecret
 	}
-	secretStr := strings.Split(dst.String(), "\n")
-	if len(secretStr) > 0 {
-		secretStr[0] = fmt.Sprintf("%s    %s", prefixStr, secretStr[0])
+	for k, iface := range baseCredMap {
+
+		// Treat the Vault credential metadata as an exception case, to apply the better-looking
+		// base.WrapMap formatting.
+		if k == "metadata" {
+			md := make(map[string]any)
+			if err := mapstructure.Decode(iface, &md); err != nil {
+				// Return a best-effort representation of the metadata if it is
+				// unable to be decoded.
+				mdMap[k] = iface
+				continue
+			}
+			mdMap[k] = md
+			continue
+		}
+
+		// Print all other credential fields with no spacing for the values
+		switch iface := iface.(type) {
+		case nil:
+			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+		case map[string]string:
+			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+			for kk, vv := range iface {
+				out = append(out, fmt.Sprintf("%s      %s:", prefixStr, kk))
+				out = append(out, fmt.Sprintf("%s\n", vv))
+			}
+		case map[string]any:
+			// TODO: check if this is the only possible case for an 'unspecified' type credential
+			// and get rid of the other cases if this is so.
+			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+			for kk, vv := range iface {
+				out = append(out, fmt.Sprintf("%s      %s:", prefixStr, kk))
+				out = append(out, fmt.Sprintf("%v\n", vv))
+			}
+		default:
+			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+			out = append(out, fmt.Sprintf("%v\n", iface))
+		}
 	}
-	return secretStr
+
+	for k, v := range mdMap {
+		out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+		out = append(out, base.WrapMap(indent+6, 0, v.(map[string]any)))
+	}
+
+	return out
 }
 
 func generateConnectionInfoTableOutput(in ConnectionInfo) string {
