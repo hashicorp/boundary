@@ -2,7 +2,9 @@ package worker
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
+	"fmt"
 	"time"
 
 	berrors "github.com/hashicorp/boundary/internal/errors"
@@ -61,24 +63,77 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 
 			// Check the certificates to see if it's time
 			if len(currentNodeCreds.CertificateBundles) != 2 {
-				// Likely this means we haven't been authorized yet, and
-				// unclear what to do in any other situation
+				// Likely this means we haven't been authorized yet, and unclear
+				// what to do in any other situation. However, we should try
+				// again fairly quickly because this may also be prior to the
+				// first rotation and we want to ensure the validity period is
+				// checked soon.
+				resetDuration = 5 * time.Second
 				continue
 			}
 
 			var earliestValid, latestValid time.Time
 			// Go through the bundles and find the full range of time that we
 			// have valid certificates
-			for _, bundle := range currentNodeCreds.CertificateBundles {
+			var args []any
+			for i, bundle := range currentNodeCreds.CertificateBundles {
 				if curr := bundle.CertificateNotBefore.AsTime(); earliestValid.IsZero() || curr.Before(earliestValid) {
 					earliestValid = curr
 				}
 				if curr := bundle.CertificateNotAfter.AsTime(); latestValid.IsZero() || curr.After(latestValid) {
 					latestValid = curr
 				}
+
+				cert, err := x509.ParseCertificate(bundle.CertificateDer)
+				if err != nil {
+					event.WriteError(cancelCtx, op, fmt.Errorf("error parsing leaf certificate in current worker auth bundle: %w", err))
+					continue
+				}
+				certPkixBytes, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
+				if err != nil {
+					event.WriteError(cancelCtx, op, fmt.Errorf("error marshaling leaf certificate public key in current worker auth bundle: %w", err))
+					continue
+				}
+				certKeyId, err := nodeenrollment.KeyIdFromPkix(certPkixBytes)
+				if err != nil {
+					event.WriteError(cancelCtx, op, fmt.Errorf("error deriving pkix string from leaf certificate public key in current worker auth bundle: %w", err))
+					continue
+				}
+				args = append(args,
+					fmt.Sprintf("leaf_cert_%d_id", i), certKeyId,
+					fmt.Sprintf("leaf_cert_%d_not_before", i), cert.NotBefore.Format(time.RFC3339),
+					fmt.Sprintf("leaf_cert_%d_not_after", i), cert.NotAfter.Format(time.RFC3339),
+				)
+				caCert, err := x509.ParseCertificate(bundle.CaCertificateDer)
+				if err != nil {
+					event.WriteError(cancelCtx, op, fmt.Errorf("error parsing CA certificate in current worker auth bundle: %w", err))
+					continue
+				}
+				caCertPkixBytes, err := x509.MarshalPKIXPublicKey(caCert.PublicKey)
+				if err != nil {
+					event.WriteError(cancelCtx, op, fmt.Errorf("error marshaling CA certificate public key in current worker auth bundle: %w", err))
+					continue
+				}
+				caCertKeyId, err := nodeenrollment.KeyIdFromPkix(caCertPkixBytes)
+				if err != nil {
+					event.WriteError(cancelCtx, op, fmt.Errorf("error deriving pkix string from CA certificate public key in current worker auth bundle: %w", err))
+					continue
+				}
+				args = append(args,
+					fmt.Sprintf("ca_cert_%d_id", i), caCertKeyId,
+					fmt.Sprintf("ca_cert_%d_not_before", i), caCert.NotBefore.Format(time.RFC3339),
+					fmt.Sprintf("ca_cert_%d_not_after", i), caCert.NotAfter.Format(time.RFC3339),
+				)
 			}
 			// Ensure that our time periods aren't somehow quite messed up
 			now := time.Now()
+			event.WriteSysEvent(cancelCtx, op, "checking if worker auth should rotate", append(
+				args,
+				"now", now.Format(time.RFC3339),
+				"earliest_valid", earliestValid.Format(time.RFC3339),
+				"latest_valid", latestValid.Format(time.RFC3339),
+			)...,
+			)
 			if earliestValid.After(now) || latestValid.Before(now) || earliestValid.After(latestValid) {
 				// We basically have no valid creds so we can't rotate.
 				// TODO (maybe): Have this trigger a new set of creds and request?
@@ -88,15 +143,21 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 
 			// Figure out the midpoint; if we're after it, try to rotate
 			var shouldRotate bool
+			delta := latestValid.Sub(earliestValid)
 			switch {
 			case w.TestOverrideAuthRotationPeriod != 0:
 				shouldRotate = true
 			default:
-				delta := latestValid.Sub(earliestValid)
+				resetDuration = latestValid.Sub(now) / 2
 				shouldRotate = now.After(earliestValid.Add(delta / 2))
 			}
 
 			if !shouldRotate {
+				event.WriteSysEvent(cancelCtx, op, "not time to rotate yet",
+					"now", now.Format(time.RFC3339),
+					"midpoint", earliestValid.Add(delta/2).Format(time.RFC3339),
+					"next_check", now.Add(resetDuration).Format(time.RFC3339),
+				)
 				continue
 			}
 
@@ -104,7 +165,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 				event.WriteError(cancelCtx, op, err)
 				continue
 			}
-			event.WriteSysEvent(cancelCtx, op, "worker credentials rotated")
+			event.WriteSysEvent(cancelCtx, op, "worker credentials rotated", "next_check", now.Add(resetDuration).Format(time.RFC3339))
 
 			// TODO (maybe): Calculate new delta and set a custom retry time on the timer?
 		}
@@ -197,6 +258,51 @@ func rotateWorkerAuth(ctx context.Context, w *Worker, currentNodeCreds *types.No
 		return berrors.Wrap(ctx, err, op)
 	}
 	w.WorkerAuthCurrentKeyId.Store(newKeyId)
+
+	var args []any
+	for i, bundle := range newNodeCreds.GetCertificateBundles() {
+		cert, err := x509.ParseCertificate(bundle.CertificateDer)
+		if err != nil {
+			event.WriteError(ctx, op, fmt.Errorf("error parsing leaf certificate in new worker auth bundle: %w", err))
+			continue
+		}
+		certPkixBytes, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
+		if err != nil {
+			event.WriteError(ctx, op, fmt.Errorf("error marshaling leaf certificate public key in new worker auth bundle: %w", err))
+			continue
+		}
+		certKeyId, err := nodeenrollment.KeyIdFromPkix(certPkixBytes)
+		if err != nil {
+			event.WriteError(ctx, op, fmt.Errorf("error deriving pkix string from leaf certificate public key in new worker auth bundle: %w", err))
+			continue
+		}
+		args = append(args,
+			fmt.Sprintf("leaf_cert_%d_id", i), certKeyId,
+			fmt.Sprintf("leaf_cert_%d_not_before", i), cert.NotBefore.Format(time.RFC3339),
+			fmt.Sprintf("leaf_cert_%d_not_after", i), cert.NotAfter.Format(time.RFC3339),
+		)
+		caCert, err := x509.ParseCertificate(bundle.CaCertificateDer)
+		if err != nil {
+			event.WriteError(ctx, op, fmt.Errorf("error parsing CA certificate in new worker auth bundle: %w", err))
+			continue
+		}
+		caCertPkixBytes, err := x509.MarshalPKIXPublicKey(caCert.PublicKey)
+		if err != nil {
+			event.WriteError(ctx, op, fmt.Errorf("error marshaling CA certificate public key in new worker auth bundle: %w", err))
+			continue
+		}
+		caCertKeyId, err := nodeenrollment.KeyIdFromPkix(caCertPkixBytes)
+		if err != nil {
+			event.WriteError(ctx, op, fmt.Errorf("error deriving pkix string from CA certificate public key in new worker auth bundle: %w", err))
+			continue
+		}
+		args = append(args,
+			fmt.Sprintf("ca_cert_%d_id", i), caCertKeyId,
+			fmt.Sprintf("ca_cert_%d_not_before", i), caCert.NotBefore.Format(time.RFC3339),
+			fmt.Sprintf("ca_cert_%d_not_after", i), caCert.NotAfter.Format(time.RFC3339),
+		)
+	}
+	event.WriteSysEvent(ctx, op, "rotate worker auth job finished successfully", args...)
 
 	return nil
 }

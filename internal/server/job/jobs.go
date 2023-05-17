@@ -11,7 +11,7 @@ import (
 )
 
 // RegisterJobs registers the rotate roots job with the provided scheduler.
-func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Reader, w db.Writer, kms *kms.Kms) error {
+func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) error {
 	const op = "server.(Jobs).RegisterJobs"
 
 	if isNil(scheduler) {
@@ -27,7 +27,7 @@ func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Read
 		return errors.New(ctx, errors.InvalidParameter, op, "missing kms")
 	}
 
-	rotateRootsJob, err := newRotateRootsJob(ctx, r, w, kms)
+	rotateRootsJob, err := newRotateRootsJob(ctx, r, w, kms, opt...)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

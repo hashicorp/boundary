@@ -60,44 +60,45 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                     string
-	flagLogFormat                    string
-	flagCombineLogs                  bool
-	flagLoginName                    string
-	flagPassword                     string
-	flagUnprivilegedLoginName        string
-	flagUnprivilegedPassword         string
-	flagIdSuffix                     string
-	flagSecondaryIdSuffix            string
-	flagHostAddress                  string
-	flagTargetDefaultPort            int
-	flagTargetSessionMaxSeconds      int
-	flagTargetSessionConnectionLimit int
-	flagControllerAPIListenAddr      string
-	flagControllerClusterListenAddr  string
-	flagControllerPublicClusterAddr  string
-	flagControllerOnly               bool
-	flagWorkerAuthKey                string
-	flagWorkerProxyListenAddr        string
-	flagWorkerPublicAddr             string
-	flagOpsListenAddr                string
-	flagUiPassthroughDir             string
-	flagRecoveryKey                  string
-	flagDatabaseUrl                  string
-	flagContainerImage               string
-	flagDisableDatabaseDestruction   bool
-	flagEventFormat                  string
-	flagAudit                        string
-	flagObservations                 string
-	flagSysEvents                    string
-	flagEveryEventAllowFilters       []string
-	flagEveryEventDenyFilters        []string
-	flagCreateLoopbackHostPlugin     bool
-	flagPluginExecutionDir           string
-	flagWorkerAuthMethod             string
-	flagWorkerAuthStorageDir         string
-	flagWorkerAuthStorageSkipCleanup bool
-	flagWorkerAuthRotationInterval   time.Duration
+	flagLogLevel                         string
+	flagLogFormat                        string
+	flagCombineLogs                      bool
+	flagLoginName                        string
+	flagPassword                         string
+	flagUnprivilegedLoginName            string
+	flagUnprivilegedPassword             string
+	flagIdSuffix                         string
+	flagSecondaryIdSuffix                string
+	flagHostAddress                      string
+	flagTargetDefaultPort                int
+	flagTargetSessionMaxSeconds          int
+	flagTargetSessionConnectionLimit     int
+	flagControllerAPIListenAddr          string
+	flagControllerClusterListenAddr      string
+	flagControllerPublicClusterAddr      string
+	flagControllerOnly                   bool
+	flagWorkerAuthKey                    string
+	flagWorkerProxyListenAddr            string
+	flagWorkerPublicAddr                 string
+	flagOpsListenAddr                    string
+	flagUiPassthroughDir                 string
+	flagRecoveryKey                      string
+	flagDatabaseUrl                      string
+	flagContainerImage                   string
+	flagDisableDatabaseDestruction       bool
+	flagEventFormat                      string
+	flagAudit                            string
+	flagObservations                     string
+	flagSysEvents                        string
+	flagEveryEventAllowFilters           []string
+	flagEveryEventDenyFilters            []string
+	flagCreateLoopbackHostPlugin         bool
+	flagPluginExecutionDir               string
+	flagWorkerAuthMethod                 string
+	flagWorkerAuthStorageDir             string
+	flagWorkerAuthStorageSkipCleanup     bool
+	flagWorkerAuthWorkerRotationInterval time.Duration
+	flagWorkerAuthCaCertificateLifetime  time.Duration
 }
 
 func (c *Command) Synopsis() string {
@@ -375,8 +376,13 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.DurationVar(&base.DurationVar{
-		Name:   "worker-auth-rotation-interval",
-		Target: &c.flagWorkerAuthRotationInterval,
+		Name:   "worker-auth-worker-rotation-interval",
+		Target: &c.flagWorkerAuthWorkerRotationInterval,
+		Hidden: true,
+	})
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-ca-certificate-lifetime",
+		Target: &c.flagWorkerAuthCaCertificateLifetime,
 		Hidden: true,
 	})
 
@@ -691,6 +697,7 @@ func (c *Command) Run(args []string) int {
 		conf := &controller.Config{
 			RawConfig: c.Config,
 			Server:    c.Server,
+			TestOverrideWorkerAuthCaCertificateLifetime: c.flagWorkerAuthCaCertificateLifetime,
 		}
 
 		var err error
@@ -725,10 +732,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(fmt.Errorf("Error initializing worker: %w", err).Error())
 			return base.CommandCliError
 		}
-
-		if c.flagWorkerAuthRotationInterval > 0 {
-			c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthRotationInterval
-		}
+		c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthWorkerRotationInterval
 
 		// Note: this should be done before starting the worker so that the
 		// activation token is populated
