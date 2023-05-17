@@ -19,7 +19,7 @@ type config struct {
 	WorkerTags         string `envconfig:"E2E_WORKER_TAG" required:"true"`           // e.g. "[\"tag1\", \"tag2\"]"
 }
 
-func loadConfig() (*config, error) {
+func loadTestConfig() (*config, error) {
 	var c config
 	err := envconfig.Process("", &c)
 	if err != nil {

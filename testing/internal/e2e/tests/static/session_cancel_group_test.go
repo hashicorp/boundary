@@ -27,7 +27,7 @@ import (
 // cancel the user's session.
 func TestCliSessionCancelGroup(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)
@@ -155,7 +155,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 // TestApiCreateGroup uses the Go api to create a new group and add some grants to the group
 func TestApiCreateGroup(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	client, err := boundary.NewApiClient()

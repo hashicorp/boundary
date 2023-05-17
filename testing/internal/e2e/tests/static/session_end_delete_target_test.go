@@ -19,7 +19,7 @@ import (
 // target for the session is deleted.
 func TestCliSessionEndWhenTargetIsDeleted(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)

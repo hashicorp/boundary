@@ -15,7 +15,7 @@ type config struct {
 	VaultSecretPath string `envconfig:"E2E_VAULT_SECRET_PATH" default:"e2e_secrets"`
 }
 
-func loadConfig() (*config, error) {
+func loadTestConfig() (*config, error) {
 	var c config
 	err := envconfig.Process("", &c)
 	if err != nil {
