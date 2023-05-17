@@ -440,6 +440,7 @@ begin;
     ('p____bcolors', 't_________cb', 'csj__bcolors',       'brokered'),
     ('p____bcolors', 'tssh______cb', 'csj__bcolors',       'injected_application'),
     ('p____gcolors', 'tssh______cg', 'csj__gcolors',       'brokered'),
+    ('p____gcolors', 'tssh______cg', 'csu__gcolors',       'brokered'),
     ('p____gcolors', 'tssh______cg', 'cspk_gcolors',       'injected_application');
 
   insert into target_credential_library
@@ -449,16 +450,30 @@ begin;
     ('p____bcolors', 'tssh______cb', 'vl______cvl',         'brokered');
 
   insert into session
-    (project_id,     target_id,      user_id,        auth_token_id,  certificate,  endpoint, public_id)
-  values
-    ('p____bcolors', 'tssh______cb', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's1_____clare'),
-    ('p____bcolors', 't_________cb', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____cindy'),
-    ('p____bcolors', 't_________cb', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____ciara'),
-    ('p____bcolors', 't_________cb', 'u______carly', 'tok____carly', 'abc'::bytea, 'ep1',    's1_____carly'),
-    ('p____gcolors', 'tssh______cg', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1',    's1______cora'),
+    (project_id,     target_id,      public_id,      user_id,        auth_token_id,  certificate,  endpoint)
+             values
+    ('p____bcolors', 'tssh______cb', 's1_____clare', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1'),
+    ('p____bcolors', 't_________cb', 's1_____cindy', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1'),
+    ('p____bcolors', 't_________cb', 's1_____ciara', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1'),
+    ('p____bcolors', 't_________cb', 's1_____carly', 'u______carly', 'tok____carly', 'abc'::bytea, 'ep1'),
+    ('p____gcolors', 'tssh______cg', 's1______cora', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1'),
     --- the next two are used in recording_session tests
-    ('p____bcolors', 'tssh______cb', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's2_____clare'),
-    ('p____gcolors', 'tssh______cg', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1',    's2______cora');
+    ('p____bcolors', 'tssh______cb', 's2_____clare', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1'),
+    ('p____gcolors', 'tssh______cg', 's2______cora', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1');
+
+  insert into session_credential_static
+    (session_id,     credential_static_id, credential_purpose)
+  values
+    ('s1_____clare', 'csj__bcolors',       'injected_application'), -- tssh______cb
+    ('s2_____clare', 'csj__bcolors',       'injected_application'), -- tssh______cb
+    ('s1_____cindy', 'csj__bcolors',       'brokered'),             -- t_________cb
+    ('s1_____ciara', 'csj__bcolors',       'brokered'),             -- t_________cb
+    ('s1_____carly', 'csj__bcolors',       'brokered'),             -- t_________cb
+    ('s1______cora', 'csj__gcolors',       'brokered'),             -- tssh______cg
+    ('s1______cora', 'csu__gcolors',       'brokered'),             -- tssh______cg
+    ('s1______cora', 'cspk_gcolors',       'injected_application'), -- tssh______cg
+    ('s2______cora', 'csj__gcolors',       'brokered'),             -- tssh______cg
+    ('s2______cora', 'cspk_gcolors',       'injected_application'); -- tssh______cg
 
   insert into session_host_set_host
     (session_id,     host_set_id,    host_id)
