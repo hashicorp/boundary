@@ -120,7 +120,7 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 			certs := make(map[string]any, len(iface))
 			for kk, vv := range iface {
 				if p, _ := pem.Decode([]byte(fmt.Sprintf("%v", vv))); p != nil {
-					// iface is a certificate. Print without indents.
+					// If the value is PEM formatted, add it to a map to be formatted without indents.
 					certs[kk] = vv
 				}
 			}
