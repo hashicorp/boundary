@@ -718,6 +718,7 @@ func (c *Command) Run(args []string) int {
 		c.DevLoopbackPluginId = "pl_1234567890"
 		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginLoopback)
 		c.Config.Controller.Scheduler.JobRunIntervalDuration = 100 * time.Millisecond
+		c.Info["Generated Dev Loopback plugin id"] = c.DevLoopbackPluginId
 	}
 	switch c.flagDatabaseUrl {
 	case "":

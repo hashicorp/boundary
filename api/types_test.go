@@ -25,6 +25,11 @@ func TestTypes(t *testing.T) {
 			want: Duration{Duration: 12345000000000},
 		},
 		{
+			name: "Duration-valid-with-float",
+			json: `"1.2345s"`,
+			want: Duration{Duration: 1234500000},
+		},
+		{
 			name: "Duration-valid",
 			json: `"1h"`,
 			want: Duration{Duration: 3600000000000},

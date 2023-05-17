@@ -19,11 +19,11 @@ type SessionRecording struct {
 	Scope                *scopes.ScopeInfo      `json:"scope,omitempty"`
 	SessionId            string                 `json:"session_id,omitempty"`
 	StorageBucketId      string                 `json:"storage_bucket_id,omitempty"`
-	BytesUp              uint64                 `json:"bytes_up,omitempty"`
-	BytesDown            uint64                 `json:"bytes_down,omitempty"`
+	BytesUp              uint64                 `json:"bytes_up,string,omitempty"`
+	BytesDown            uint64                 `json:"bytes_down,string,omitempty"`
 	StartTime            time.Time              `json:"start_time,omitempty"`
 	EndTime              time.Time              `json:"end_time,omitempty"`
-	Duration             time.Duration          `json:"duration,omitempty"`
+	Duration             api.Duration           `json:"duration,omitempty"`
 	Type                 string                 `json:"type,omitempty"`
 	State                string                 `json:"state,omitempty"`
 	ErrorDetails         string                 `json:"error_details,omitempty"`

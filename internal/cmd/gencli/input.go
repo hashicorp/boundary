@@ -566,6 +566,17 @@ var inputStructs = map[string][]*cmdInfo{
 			VersionedActions:    []string{"cancel"},
 		},
 	},
+	"sessionrecordings": {
+		{
+			ResourceType:        resource.SessionRecording.String(),
+			Pkg:                 "sessionrecordings",
+			StdActions:          []string{"read", "list"},
+			Container:           "Scope",
+			HasExtraCommandVars: true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+		},
+	},
 	"storagebuckets": {
 		{
 			ResourceType:         resource.StorageBucket.String(),

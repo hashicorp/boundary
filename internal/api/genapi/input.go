@@ -1009,19 +1009,6 @@ var inputStructs = []*structInfo{
 		recursiveListing:    true,
 	},
 	{
-		inProto: &session_recordings.SessionRecording{},
-		outFile: "sessionrecordings/session_recording.gen.go",
-		templates: []*template.Template{
-			clientTemplate,
-			readTemplate,
-			listTemplate,
-		},
-		pluralResourceName:  "session-recordings",
-		createResponseTypes: []string{ReadResponseType, ListResponseType},
-		recursiveListing:    true,
-		versionEnabled:      false,
-	},
-	{
 		inProto: &session_recordings.User{},
 		outFile: "sessionrecordings/user.gen.go",
 	},
@@ -1040,10 +1027,47 @@ var inputStructs = []*structInfo{
 	{
 		inProto: &session_recordings.ConnectionRecording{},
 		outFile: "sessionrecordings/connection_recording.gen.go",
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "BytesUp", JsonTags: []string{"string"}},
+			{Name: "BytesDown", JsonTags: []string{"string"}},
+		},
 	},
 	{
 		inProto: &session_recordings.ChannelRecording{},
 		outFile: "sessionrecordings/channel_recording.gen.go",
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "BytesUp", JsonTags: []string{"string"}},
+			{Name: "BytesDown", JsonTags: []string{"string"}},
+		},
+	},
+	{
+		// this must be the last block of session recording blocks, otherwise
+		// the bits beyond inProto and outFile will get overwritten by
+		// subsequent session recording blocks
+		inProto: &session_recordings.SessionRecording{},
+		outFile: "sessionrecordings/session_recording.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			readTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "session-recordings",
+		createResponseTypes: []string{ReadResponseType, ListResponseType},
+		recursiveListing:    true,
+		versionEnabled:      false,
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "BytesUp", JsonTags: []string{"string"}},
+			{Name: "BytesDown", JsonTags: []string{"string"}},
+		},
 	},
 	{
 		inProto: &workers.Certificate{},

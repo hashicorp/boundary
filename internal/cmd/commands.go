@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
+	"github.com/hashicorp/boundary/internal/cmd/commands/sessionrecordingscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/storagebucketscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
@@ -1021,6 +1022,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "cancel",
+			}, nil
+		},
+
+		"session-recordings": func() (cli.Command, error) {
+			return &sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"session-recordings read": func() (cli.Command, error) {
+			return &sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "read",
+			}, nil
+		},
+		"session-recordings list": func() (cli.Command, error) {
+			return &sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "list",
 			}, nil
 		},
 
