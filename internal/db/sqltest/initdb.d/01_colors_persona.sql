@@ -440,6 +440,13 @@ begin;
     ('cvs__rcolors', 'cvl_______r1', 'red vault library',   'None',      '/secrets', 'GET'),
     ('cvs__gcolors', 'cvl_______g1', 'green vault library', 'None',      '/secrets', 'GET');
 
+  insert into credential_vault_ssh_cert_library
+    (store_id,       public_id,      name,                      vault_path,         username, key_type,  key_bits)
+  values
+    ('cvs__bcolors', 'cvl__ssh__b1', 'blue vault ssh library',  '/ssh/sign/blue',   'admin',  'ed25519', 0),
+    ('cvs__rcolors', 'cvl__ssh__r1', 'red vault ssh library',   '/ssh/issue/red',   'webdev', 'ecdsa',   521),
+    ('cvs__gcolors', 'cvl__ssh__g1', 'green vault ssh library', '/ssh/issue/green', 'dba',    'rsa',     4096);
+
   insert into credential_static_store
     (project_id,     public_id,      name,                            description)
   values
@@ -480,8 +487,10 @@ begin;
   insert into target_credential_library
     (project_id,     target_id,      credential_library_id, credential_purpose)
   values
-    ('p____bcolors', 't_________cb', 'cvl_______b1',         'brokered'),
-    ('p____bcolors', 'tssh______cb', 'cvl_______b1',         'brokered');
+    ('p____bcolors', 't_________cb', 'cvl_______b1',        'brokered'),
+    ('p____bcolors', 'tssh______cb', 'cvl__ssh__b1',        'brokered'),
+    ('p____gcolors', 'tssh______cg', 'cvl_______g1',        'brokered'),
+    ('p____gcolors', 'tssh______cg', 'cvl__ssh__g1',        'injected_application');
 
   insert into session
     (project_id,     target_id,      public_id,      user_id,        auth_token_id,  certificate,  endpoint)
@@ -510,6 +519,12 @@ begin;
     ('s1______cora', 'cspk_gcolors',       'injected_application'), -- tssh______cg
     ('s2______cora', 'csj__gcolors',       'brokered'),             -- tssh______cg
     ('s2______cora', 'cspk_gcolors',       'injected_application'); -- tssh______cg
+
+  insert into session_credential_dynamic
+    (session_id,     library_id,     credential_purpose)
+  values
+    ('s1______cora', 'cvl_______g1', 'brokered'),             -- tssh______cg
+    ('s1______cora', 'cvl__ssh__g1', 'injected_application'); -- tssh______cg
 
   insert into session_host_set_host
     (session_id,     host_set_id,    host_id)
