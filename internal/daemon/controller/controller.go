@@ -43,6 +43,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
+	"github.com/hashicorp/nodeenrollment"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -384,7 +385,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to instantiate worker auth repository: %w", err)
 	}
-	_, err = server.RotateRoots(ctx, serversRepo)
+	_, err = server.RotateRoots(ctx, serversRepo, nodeenrollment.WithCertificateLifetime(conf.TestOverrideWorkerAuthCaCertificateLifetime))
 	if err != nil {
 		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
 	}
@@ -510,7 +511,14 @@ func (c *Controller) registerJobs() error {
 	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.workerStatusGracePeriod); err != nil {
 		return err
 	}
-	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
+	var serverJobOpts []serversjob.Option
+	if c.conf.TestOverrideWorkerAuthCaCertificateLifetime > 0 {
+		serverJobOpts = append(serverJobOpts,
+			serversjob.WithCertificateLifetime(c.conf.TestOverrideWorkerAuthCaCertificateLifetime),
+			serversjob.WithRotationFrequency(c.conf.TestOverrideWorkerAuthCaCertificateLifetime/2),
+		)
+	}
+	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, serverJobOpts...); err != nil {
 		return err
 	}
 	if err := kmsjob.RegisterJobs(c.baseContext, c.scheduler, c.kms); err != nil {

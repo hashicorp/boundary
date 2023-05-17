@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"time"
+
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 )
@@ -14,4 +16,6 @@ type Config struct {
 	RawConfig *config.Config
 	// If set, authorization checking occurrs but failures are ignored
 	DisableAuthorizationFailures bool
+	// Override worker auth CA certificate lifetime for testing
+	TestOverrideWorkerAuthCaCertificateLifetime time.Duration
 }

@@ -59,9 +59,11 @@ type Command struct {
 	flagLogFormat   string
 	flagCombineLogs bool
 
-	reloadedCh   chan struct{}  // for tests
-	startedCh    chan struct{}  // for tests
-	presetConfig *atomic.String // for tests
+	reloadedCh                           chan struct{}  // for tests
+	startedCh                            chan struct{}  // for tests
+	presetConfig                         *atomic.String // for tests
+	flagWorkerAuthWorkerRotationInterval time.Duration  // for tests
+	flagWorkerAuthCaCertificateLifetime  time.Duration  // for tests
 }
 
 func (c *Command) Synopsis() string {
@@ -121,6 +123,17 @@ func (c *Command) Flags() *base.FlagSets {
 		Target:     &c.flagLogFormat,
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format, mostly as a fallback for events. Supported values are "standard" and "json".`,
+	})
+
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-worker-rotation-interval",
+		Target: &c.flagWorkerAuthWorkerRotationInterval,
+		Hidden: true,
+	})
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-ca-certificate-lifetime",
+		Target: &c.flagWorkerAuthCaCertificateLifetime,
+		Hidden: true,
 	})
 
 	return set
@@ -574,6 +587,7 @@ func (c *Command) StartController(ctx context.Context) error {
 	conf := &controller.Config{
 		RawConfig: c.Config,
 		Server:    c.Server,
+		TestOverrideWorkerAuthCaCertificateLifetime: c.flagWorkerAuthCaCertificateLifetime,
 	}
 
 	var err error
@@ -605,6 +619,7 @@ func (c *Command) StartWorker() error {
 	if err != nil {
 		return fmt.Errorf("Error initializing worker: %w", err)
 	}
+	c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthWorkerRotationInterval
 
 	if err := c.worker.Start(); err != nil {
 		retErr := fmt.Errorf("Error starting worker: %w", err)
