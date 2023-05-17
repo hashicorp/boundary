@@ -383,7 +383,7 @@ func lookupSessionWorkerFilter(ctx context.Context, sessionInfo *session.Session
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error creating worker filter evaluator", "worker_id", req.WorkerId))
 		return status.Errorf(codes.Internal, "Error creating worker filter evaluator: %v", err)
 	}
-	filterInput := map[string]interface{}{
+	filterInput := map[string]any{
 		"name": w.GetName(),
 		"tags": tagMap,
 	}

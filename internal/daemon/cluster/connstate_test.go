@@ -65,7 +65,7 @@ func TestWorkerConnectionInfo_errors(t *testing.T) {
 	})
 
 	t.Run("wrong type in struct", func(t *testing.T) {
-		st, err := structpb.NewStruct(map[string]interface{}{
+		st, err := structpb.NewStruct(map[string]any{
 			"worker_id": 1.2480,
 		})
 		require.NoError(t, err)

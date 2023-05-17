@@ -44,7 +44,7 @@ func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId st
 	var creds []*credential
 	// An index exists on (session_id, credential_sha256), so we can query workers via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.
-	rows, err := reader.Query(ctx, sessionCredentialRewrapQuery, []interface{}{scopeId, dataKeyVersionId})
+	rows, err := reader.Query(ctx, sessionCredentialRewrapQuery, []any{scopeId, dataKeyVersionId})
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
 	}
@@ -75,7 +75,7 @@ func sessionCredentialRewrapFn(ctx context.Context, dataKeyVersionId, scopeId st
 		if err := cred.encrypt(ctx, wrapper); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to re-encrypt session credential"))
 		}
-		if _, err := writer.Exec(ctx, sessionCredentialRewrapUpdate, []interface{}{
+		if _, err := writer.Exec(ctx, sessionCredentialRewrapUpdate, []any{
 			cred.CtCredential,
 			cred.KeyId,
 			cred.SessionId,
@@ -95,7 +95,7 @@ func sessionRewrapFn(ctx context.Context, dataKeyVersionId string, scopeId strin
 	var sessions []*Session
 	// An index exists on (project_id, user_id, termination_reason), so we can query sessions via scope and refine with key id.
 	// This is the fastest query we can use without creating a new index on key_id.
-	if err := reader.SearchWhere(ctx, &sessions, "project_id=? and key_id=?", []interface{}{scopeId, dataKeyVersionId}, db.WithLimit(-1)); err != nil {
+	if err := reader.SearchWhere(ctx, &sessions, "project_id=? and key_id=?", []any{scopeId, dataKeyVersionId}, db.WithLimit(-1)); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query sql for rows that need rewrapping"))
 	}
 	for _, session := range sessions {

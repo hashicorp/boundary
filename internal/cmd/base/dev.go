@@ -687,6 +687,6 @@ func (_ *oidcLogger) caller() event.Op {
 	return caller
 }
 
-func (l *oidcLogger) Log(args ...interface{}) {
+func (l *oidcLogger) Log(args ...any) {
 	event.WriteSysEvent(l.Ctx, l.caller(), fmt.Sprintf("%v", args...))
 }

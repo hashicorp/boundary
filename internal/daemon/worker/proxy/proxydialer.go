@@ -19,7 +19,7 @@ var GetEndpointDialer = directDialer
 
 // directDialer returns a ProxyDialer which tcp dials directly to the provided
 // endpoint.
-func directDialer(ctx context.Context, endpoint string, _ string, _ proto.Message, _ interface{}) (*ProxyDialer, error) {
+func directDialer(ctx context.Context, endpoint string, _ string, _ proto.Message, _ any) (*ProxyDialer, error) {
 	const op = "proxy.directDialer"
 	if len(endpoint) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "endpoint is empty")

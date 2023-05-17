@@ -75,7 +75,8 @@ build-memprof:
 # https://pkg.go.dev/cmd/go#hdr-Generate_Go_files_by_processing_source
 .PHONY: fmt
 fmt:
-	grep -L -R "^\/\/ Code generated .* DO NOT EDIT\.$$" --exclude-dir=.git --include="*.go" . | xargs gofumpt -w
+	grep -L -R "^// Code generated .* DO NOT EDIT\.$$" --exclude-dir=.git --include="*.go" . | xargs gofmt -r 'interface{} -> any' -w
+	grep -L -R "^// Code generated .* DO NOT EDIT\.$$" --exclude-dir=.git --include="*.go" . | xargs gofumpt -w
 	buf format -w
 
 lint:

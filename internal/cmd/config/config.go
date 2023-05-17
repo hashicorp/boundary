@@ -179,7 +179,7 @@ type Controller struct {
 	// TODO: This isn't documented (on purpose) because the right place for this
 	// is central configuration so you can't drift across controllers, but we
 	// don't have that yet.
-	WorkerStatusGracePeriod         interface{}   `hcl:"worker_status_grace_period"`
+	WorkerStatusGracePeriod         any           `hcl:"worker_status_grace_period"`
 	WorkerStatusGracePeriodDuration time.Duration `hcl:"-"`
 
 	// LivenessTimeToStale represents the period of time (as a duration) after
@@ -189,7 +189,7 @@ type Controller struct {
 	// TODO: This isn't documented (on purpose) because the right place for this
 	// is central configuration so you can't drift across controllers, but we
 	// don't have that yet.
-	LivenessTimeToStale         interface{}   `hcl:"liveness_time_to_stale"`
+	LivenessTimeToStale         any           `hcl:"liveness_time_to_stale"`
 	LivenessTimeToStaleDuration time.Duration `hcl:"-"`
 
 	// SchedulerRunJobInterval is the time interval between waking up the
@@ -246,7 +246,7 @@ type Worker struct {
 	// canceling it to try again.
 	//
 	// TODO: This is currently not documented and considered internal.
-	StatusCallTimeout         interface{}   `hcl:"status_call_timeout"`
+	StatusCallTimeout         any           `hcl:"status_call_timeout"`
 	StatusCallTimeoutDuration time.Duration `hcl:"-"`
 
 	// SuccessfulStatusGracePeriod represents the period of time (as a duration)
@@ -255,7 +255,7 @@ type Worker struct {
 	// less than StatusCallTimeout.
 	//
 	// TODO: This is currently not documented and considered internal.
-	SuccessfulStatusGracePeriod         interface{}   `hcl:"successful_status_grace_period"`
+	SuccessfulStatusGracePeriod         any           `hcl:"successful_status_grace_period"`
 	SuccessfulStatusGracePeriodDuration time.Duration `hcl:"-"`
 
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
