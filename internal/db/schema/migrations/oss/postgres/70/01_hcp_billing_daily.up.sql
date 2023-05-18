@@ -42,12 +42,12 @@ begin;
     group by date_trunc('day', session_pending_time)
   ),
   daily_range (day) as (
-      select date_trunc('day', time)
-        from generate_series(
-                   (select min(session_pending_time) from wh_session_accumulating_fact),
-                   now(),
+      select bucket
+      from generate_series(
+                   date_trunc('day', (select min(session_pending_time) from wh_session_accumulating_fact)),
+                   timestamp with time zone 'yesterday',
                    '1 day'::interval
-             ) as time
+               ) as bucket
   ),
   final (day, sessions_pending_count) as (
          select daily_range.day::timestamp without time zone,

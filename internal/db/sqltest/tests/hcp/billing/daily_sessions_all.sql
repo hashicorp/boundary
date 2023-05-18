@@ -51,10 +51,10 @@ select session_id, auth_token_id,
 from fake_sessions;
 
 select is(count(*), 1::bigint, 'hcp_billing_daily_sessions_yesterday should always return 1 rows') from hcp_billing_daily_sessions_yesterday;
-select is(count(*), 8::bigint, 'hcp_billing_daily_sessions_all should return 8 rows') from hcp_billing_daily_sessions_all;
+select is(count(*), 7::bigint, 'hcp_billing_daily_sessions_all should return 7 rows') from hcp_billing_daily_sessions_all;
 
 select results_eq(
-               'select sessions_pending_count::bigint from hcp_billing_daily_sessions_all limit 1 offset 1',
+               'select sessions_pending_count::bigint from hcp_billing_daily_sessions_all limit 1',
                'select 1440::bigint',
                'hcp_billing_daily_sessions_all: session count for the previous day is incorrect'
            );

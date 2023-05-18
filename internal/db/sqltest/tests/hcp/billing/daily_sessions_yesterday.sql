@@ -61,7 +61,7 @@ select results_eq(
 select results_eq(
                'select sessions_pending_count::bigint from hcp_billing_daily_sessions_yesterday limit 1',
                'select 1440::bigint',
-               'hcp_billing_daily_sessions_yesterday: session count for the current day is incorrect'
+               'hcp_billing_daily_sessions_yesterday: session count for the previous day is incorrect'
            );
 
 select results_eq(
