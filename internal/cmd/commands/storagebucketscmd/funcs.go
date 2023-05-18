@@ -14,9 +14,9 @@ import (
 )
 
 func init() {
-	extraFlagsFunc = extraPluginFlagsFuncImpl
-	extraActionsFlagsMapFunc = extraPluginActionsFlagsMapFuncImpl
-	extraFlagsHandlingFunc = extraPluginFlagHandlingFuncImpl
+	extraFlagsFunc = extraFlagsFuncImpl
+	extraActionsFlagsMapFunc = extraActionsFlagsMapFuncImpl
+	extraFlagsHandlingFunc = extraFlagHandlingFuncImpl
 }
 
 const (
@@ -31,7 +31,7 @@ type extraCmdVars struct {
 	flagWorkerFilter string
 }
 
-func extraPluginActionsFlagsMapFuncImpl() map[string][]string {
+func extraActionsFlagsMapFuncImpl() map[string][]string {
 	flags := map[string][]string{
 		"create": {
 			bucketNameFlagName,
@@ -45,7 +45,7 @@ func extraPluginActionsFlagsMapFuncImpl() map[string][]string {
 	return flags
 }
 
-func extraPluginFlagsFuncImpl(c *Command, set *base.FlagSets, _ *base.FlagSet) {
+func extraFlagsFuncImpl(c *Command, set *base.FlagSets, _ *base.FlagSet) {
 	f := set.NewFlagSet("Storage Bucket Options")
 
 	for _, name := range flagsMap[c.Func] {
@@ -73,7 +73,7 @@ func extraPluginFlagsFuncImpl(c *Command, set *base.FlagSets, _ *base.FlagSet) {
 	}
 }
 
-func extraPluginFlagHandlingFuncImpl(c *Command, f *base.FlagSets, opts *[]storagebuckets.Option) bool {
+func extraFlagHandlingFuncImpl(c *Command, f *base.FlagSets, opts *[]storagebuckets.Option) bool {
 	switch c.flagBucketName {
 	case "":
 	default:
@@ -100,34 +100,6 @@ func extraPluginFlagHandlingFuncImpl(c *Command, f *base.FlagSets, opts *[]stora
 	return true
 }
 
-func (c *Command) extraPluginHelpFunc(helpMap map[string]func() string) string {
-	var helpStr string
-	switch c.Func {
-	case "create":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary storage-buckets create [options] [args]",
-			"",
-			"  Create a storage bucket. Example:",
-			"",
-			`    $ boundary storage-buckets create -scope-id global -bucket-name test -name prodops -description "Storage bucket for ProdOps"`,
-			"",
-			"",
-		})
-
-	case "update":
-		helpStr = base.WrapForHelpText([]string{
-			"Usage: boundary storage-buckets update [options] [args]",
-			"",
-			"  Update a storage bucket given its ID. Example:",
-			"",
-			`    $ boundary storage-buckets update -id sb_1234567890 -name "devops" -description "Storage bucket for DevOps"`,
-			"",
-			"",
-		})
-	}
-	return helpStr + c.Flags().Help()
-}
-
 func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 	var helpStr string
 	switch c.Func {
@@ -151,7 +123,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Create a storage bucket:",
 			"",
-			`      $ boundary storage-buckets create plugin -bucket-name prod_bucket`,
+			`      $ boundary storage-buckets create -plugin-name aws -bucket-name prod_bucket`,
 			"",
 			"  Please see the subcommand help for detailed usage information.",
 		})
@@ -163,7 +135,7 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			"    Update a storage bucket:",
 			"",
-			`      $ boundary storage-buckets update plugin -id sb_1234567890 -name devops -description "For DevOps usage"`,
+			`      $ boundary storage-buckets update -id sb_1234567890 -name devops -description "For DevOps usage"`,
 			"",
 			"  Please see the subcommand help for detailed usage information.",
 		})

@@ -70,6 +70,21 @@ func (c *Command) Help() string {
 
 	switch c.Func {
 
+	case "create":
+		helpStr = helpMap[c.Func]() + c.Flags().Help()
+
+	case "update":
+		helpStr = helpMap[c.Func]() + c.Flags().Help()
+
+	case "read":
+		helpStr = helpMap[c.Func]() + c.Flags().Help()
+
+	case "delete":
+		helpStr = helpMap[c.Func]() + c.Flags().Help()
+
+	case "list":
+		helpStr = helpMap[c.Func]() + c.Flags().Help()
+
 	default:
 
 		helpStr = c.extraHelpFunc(helpMap)
