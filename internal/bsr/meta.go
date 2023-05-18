@@ -92,7 +92,6 @@ func (u User) writeMeta(ctx context.Context, c *container) error {
 // Target contains information about the target for this session
 type Target struct {
 	PublicId               string
-	ProjectId              string
 	Scope                  Scope
 	Name                   string // optional field
 	Description            string // optional field
@@ -110,10 +109,6 @@ func (t Target) writeMeta(ctx context.Context, c *container) error {
 		return err
 	}
 	err = t.Scope.writeMeta(ctx, c, "target")
-	if err != nil {
-		return err
-	}
-	_, err = c.WriteMeta(ctx, "target_projectId", t.ProjectId)
 	if err != nil {
 		return err
 	}

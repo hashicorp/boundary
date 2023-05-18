@@ -4,9 +4,9 @@ user_publicId: user123
 user_scope_publicId: global
 user_scope_type: global
 target_publicId: target123
-target_scope_publicId: global
-target_scope_type: global
-target_projectId: proj123
+target_scope_publicId: proj123
+target_scope_type: project
+target_scope_parentId: org123
 target_defaultPort: 0
 target_sessionMaxSeconds: 0
 target_sessionConnectionLimit: 0

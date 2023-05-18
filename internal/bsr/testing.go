@@ -59,9 +59,12 @@ func TestSessionMeta(s string, p Protocol) *SessionMeta {
 			Address:  "127.0.0.1",
 		},
 		Target: &Target{
-			PublicId:               "target123",
-			ProjectId:              "proj123",
-			Scope:                  scope,
+			PublicId: "target123",
+			Scope: Scope{
+				PublicId: "proj123",
+				Type:     "project",
+				ParentId: "org123",
+			},
 			DefaultPort:            0,
 			SessionMaxSeconds:      0,
 			SessionConnectionLimit: 0,
