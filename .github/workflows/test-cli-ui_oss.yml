@@ -112,7 +112,7 @@ jobs:
           make -C internal/tests/cli test-vault-down
       - name: Send Slack message
         if: ${{ failure() }}
-        uses: slackapi/slack-github-action@007b2c3c751a190b6f0f040e47ed024deaa72844 # v1.23.0
+        uses: slackapi/slack-github-action@e28cf165c92ffef168d23c5c9000cffc8a25e117 # v1.24.0
         with:
           channel-id: ${{ secrets.SLACK_BOUNDARY_TEST_BOT_CHANNEL_ID }}
           payload: |
