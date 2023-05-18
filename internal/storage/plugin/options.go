@@ -32,6 +32,7 @@ type options struct {
 	withWorkerFilter string
 	withBucketPrefix string
 	withLimit        int
+	withVersion      uint32
 }
 
 func getDefaultOptions() options {
@@ -101,5 +102,12 @@ func WithWorkerFilter(wf string) Option {
 func WithLimit(l int) Option {
 	return func(o *options) {
 		o.withLimit = l
+	}
+}
+
+// WithVersion provides an optional version number
+func WithVersion(v uint32) Option {
+	return func(o *options) {
+		o.withVersion = v
 	}
 }
