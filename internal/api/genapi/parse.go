@@ -126,7 +126,7 @@ func messageKind(fd protoreflect.FieldDescriptor) (ptr, pkg, name string) {
 	case timestampName:
 		return "", "time", "Time"
 	case durationName:
-		return "", "time", "Duration"
+		return "", "api", "Duration"
 	default:
 		return "*", packageFromFullName(fd.Message().FullName()), string(fd.Message().Name())
 	}
