@@ -5627,6 +5627,16 @@
           "format": "uint64",
           "description": "The total number of bytes downloaded to the client in the Session.\nThis includes all bytes downloaded over all Connections, including\nany protocol overhead."
         },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Session Recording was created in the controller."
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time of the most recent update to the Session Recording."
+        },
         "start_time": {
           "type": "string",
           "format": "date-time",

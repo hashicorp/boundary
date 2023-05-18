@@ -75,6 +75,16 @@ func (c *Command) printListTable(items []*sessionrecordings.SessionRecording) st
 				fmt.Sprintf("    Storage Bucket ID:   %s", item.StorageBucketId),
 			)
 		}
+		if !item.CreatedTime.IsZero() {
+			output = append(output,
+				fmt.Sprintf("    Created Time:          %s", item.CreatedTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if !item.UpdatedTime.IsZero() {
+			output = append(output,
+				fmt.Sprintf("    Updated Time:            %s", item.UpdatedTime.Local().Format(time.RFC1123)),
+			)
+		}
 		if !item.StartTime.IsZero() {
 			output = append(output,
 				fmt.Sprintf("    Start Time:          %s", item.StartTime.Local().Format(time.RFC1123)),
@@ -128,6 +138,12 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 	}
 	if item.BytesDown != 0 {
 		nonAttributeMap["Bytes Down"] = item.BytesDown
+	}
+	if !item.CreatedTime.IsZero() {
+		nonAttributeMap["Created Time"] = item.CreatedTime.Local().Format(time.RFC1123)
+	}
+	if !item.UpdatedTime.IsZero() {
+		nonAttributeMap["Updated Time"] = item.UpdatedTime.Local().Format(time.RFC1123)
 	}
 	if !item.StartTime.IsZero() {
 		nonAttributeMap["Start Time"] = item.StartTime.Local().Format(time.RFC1123)

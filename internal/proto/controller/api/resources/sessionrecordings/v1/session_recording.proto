@@ -176,42 +176,48 @@ message SessionRecording {
   // any protocol overhead.
   uint64 bytes_down = 6 [json_name = "bytes_down"]; // @gotags: class:"public"
 
+  // The time the Session Recording was created in the controller.
+  google.protobuf.Timestamp created_time = 7 [json_name = "created_time"]; // @gotags: class:"public"
+
+  // The time of the most recent update to the Session Recording.
+  google.protobuf.Timestamp updated_time = 8 [json_name = "updated_time"]; // @gotags: class:"public"
+
   // The time the Session started.
-  google.protobuf.Timestamp start_time = 7 [json_name = "start_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp start_time = 9 [json_name = "start_time"]; // @gotags: class:"public"
 
   // The time the Session ended.
-  google.protobuf.Timestamp end_time = 8 [json_name = "end_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp end_time = 10 [json_name = "end_time"]; // @gotags: class:"public"
 
   // The total duration of the Session.
-  google.protobuf.Duration duration = 9; // @gotags: class:"public"
+  google.protobuf.Duration duration = 11; // @gotags: class:"public"
 
   // Type of the Session that was recorded (e.g. ssh).
-  string type = 10; // @gotags: class:"public"
+  string type = 12; // @gotags: class:"public"
 
   // The current state of the session recording. One of
   // "started", "available" and "unknown".
-  string state = 11; // @gotags: class:"public"
+  string state = 13; // @gotags: class:"public"
 
   // Any error seen during the closing of the session recording.
   // Currently only set if state is "unknown".
-  string error_details = 13; // @gotags: class:"public"
+  string error_details = 14; // @gotags: class:"public"
 
   // MimeTypes define the mime types that can
   // be used to consume the recording of this Session.
   // No mime types are currently supported.
-  repeated string mime_types = 14 [json_name = "mime_types"]; // @gotags: class:"public"
+  repeated string mime_types = 15 [json_name = "mime_types"]; // @gotags: class:"public"
 
   // The endpoint of the Session; that is, the address to which the egress worker connected.
-  string endpoint = 15; // @gotags: class:"public"
+  string endpoint = 16; // @gotags: class:"public"
 
   // The recordings of the connections that were created in the Session.
   // This field may be unset when listing Session recordings.
-  repeated ConnectionRecording connection_recordings = 16 [json_name = "connection_recordings"];
+  repeated ConnectionRecording connection_recordings = 17 [json_name = "connection_recordings"];
 
   // create_time_values contains the values of related fields at the time
   // this Session Recording was created. This may be unset when listing.
-  ValuesAtTime create_time_values = 17 [json_name = "create_time_values"]; // @gotags: class:"public"
+  ValuesAtTime create_time_values = 18 [json_name = "create_time_values"]; // @gotags: class:"public"
 
   // The available actions on this resource for this user.
-  repeated string authorized_actions = 18 [json_name = "authorized_actions"]; // @gotags: class:"public"
+  repeated string authorized_actions = 19 [json_name = "authorized_actions"]; // @gotags: class:"public"
 }

@@ -21,6 +21,8 @@ type SessionRecording struct {
 	StorageBucketId      string                 `json:"storage_bucket_id,omitempty"`
 	BytesUp              uint64                 `json:"bytes_up,string,omitempty"`
 	BytesDown            uint64                 `json:"bytes_down,string,omitempty"`
+	CreatedTime          time.Time              `json:"created_time,omitempty"`
+	UpdatedTime          time.Time              `json:"updated_time,omitempty"`
 	StartTime            time.Time              `json:"start_time,omitempty"`
 	EndTime              time.Time              `json:"end_time,omitempty"`
 	Duration             api.Duration           `json:"duration,omitempty"`
