@@ -4,8 +4,10 @@
 package target
 
 import (
+	"net"
 	"time"
 
+	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
@@ -42,12 +44,14 @@ type options struct {
 	WithPermissions            []perms.Permission
 	WithPublicId               string
 	WithWorkerFilter           string
+	WithTestWorkerFilter       string
 	WithEgressWorkerFilter     string
 	WithIngressWorkerFilter    string
 	WithTargetIds              []string
 	WithAddress                string
 	WithStorageBucketId        string
 	WithEnableSessionRecording bool
+	WithNetResolver            intglobals.NetIpResolver
 }
 
 func getDefaultOptions() options {
@@ -70,9 +74,11 @@ func getDefaultOptions() options {
 		WithPermissions:            nil,
 		WithPublicId:               "",
 		WithWorkerFilter:           "",
+		WithTestWorkerFilter:       "",
 		WithEgressWorkerFilter:     "",
 		WithIngressWorkerFilter:    "",
 		WithAddress:                "",
+		WithNetResolver:            net.DefaultResolver,
 	}
 }
 
@@ -195,6 +201,13 @@ func WithWorkerFilter(filter string) Option {
 	}
 }
 
+// WithTestWorkerFilter provides an optional worker filter used only in testing
+func WithTestWorkerFilter(filter string) Option {
+	return func(o *options) {
+		o.WithTestWorkerFilter = filter
+	}
+}
+
 // WithEgressWorkerFilter provides an optional egress worker filter
 func WithEgressWorkerFilter(filter string) Option {
 	return func(o *options) {
@@ -243,5 +256,12 @@ func WithEnableSessionRecording(enable bool) Option {
 func WithStorageBucketId(id string) Option {
 	return func(o *options) {
 		o.WithStorageBucketId = id
+	}
+}
+
+// WithNetResolver provides an option to specify a custom DNS resolver
+func WithNetResolver(resolver intglobals.NetIpResolver) Option {
+	return func(o *options) {
+		o.WithNetResolver = resolver
 	}
 }

@@ -20,6 +20,7 @@ const (
 	CredentialLibraryVaultSubtype
 	UseTargetIdForHostId
 	RequireVersionInWorkerInfo
+	SshSessionRecording
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -66,6 +67,9 @@ func init() {
 	// RequireVersionInWorkerInfo allows us to take action on various workers
 	// based on their version, e.g. to prevent incompatibilities
 	featureMap[RequireVersionInWorkerInfo] = MetadataConstraint{
+		Constraints: mustNewConstraints(">= 0.13.0"),
+	}
+	featureMap[SshSessionRecording] = MetadataConstraint{
 		Constraints: mustNewConstraints(">= 0.13.0"),
 	}
 }

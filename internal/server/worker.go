@@ -106,7 +106,7 @@ type Worker struct {
 // not set any of the worker reported values.
 func NewWorker(scopeId string, opt ...Option) *Worker {
 	opts := GetOpts(opt...)
-	return &Worker{
+	worker := &Worker{
 		Worker: &store.Worker{
 			ScopeId:          scopeId,
 			Name:             opts.withName,
@@ -117,6 +117,10 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 		},
 		inputTags: opts.withWorkerTags,
 	}
+	if opts.withTestUseInputTagsAsApiTags {
+		worker.apiTags = worker.inputTags
+	}
+	return worker
 }
 
 // allocWorker will allocate a Worker
@@ -162,7 +166,7 @@ func (w *Worker) ActiveConnectionCount() uint32 {
 // CanonicalTags is the deduplicated set of tags contained on both the resource
 // set over the API as well as the tags reported by the worker itself. This
 // function is guaranteed to return a non-nil map.
-func (w *Worker) CanonicalTags() map[string][]string {
+func (w *Worker) CanonicalTags(opt ...Option) map[string][]string {
 	dedupedTags := make(map[Tag]struct{})
 	for _, t := range w.apiTags {
 		dedupedTags[*t] = struct{}{}

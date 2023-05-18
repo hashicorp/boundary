@@ -5,6 +5,7 @@ package globals
 
 import (
 	"context"
+	"net/netip"
 )
 
 // ControllerExtension defines the interface implemented
@@ -13,4 +14,10 @@ import (
 // handlers and repositories.
 type ControllerExtension interface {
 	Start(context.Context) error
+}
+
+// This is an interface satisfied by net.DefaultResolver but can be replaced for
+// tests
+type NetIpResolver interface {
+	LookupNetIP(context.Context, string, string) ([]netip.Addr, error)
 }
