@@ -163,6 +163,29 @@ func (t Target) writeMeta(ctx context.Context, c *container) error {
 	return nil
 }
 
+// Worker contains information about the worker used to record this session
+type Worker struct {
+	PublicId string
+	Version  string
+	Sha      string
+}
+
+func (w Worker) writeMeta(ctx context.Context, c *container) error {
+	_, err := c.WriteMeta(ctx, "worker_publicId", w.PublicId)
+	if err != nil {
+		return err
+	}
+	_, err = c.WriteMeta(ctx, "worker_version", w.Version)
+	if err != nil {
+		return err
+	}
+	_, err = c.WriteMeta(ctx, "worker_sha", w.Sha)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // StaticHostCatalog contains information about the static host catalog for this session
 type StaticHostCatalog struct {
 	PublicId    string
@@ -702,6 +725,7 @@ type SessionMeta struct {
 	Protocol Protocol
 	User     *User
 	Target   *Target
+	Worker   *Worker
 	// StaticHost and DynamicHost are mutually exclusive
 	StaticHost  *StaticHost
 	DynamicHost *DynamicHost
@@ -724,6 +748,10 @@ func (s SessionMeta) writeMeta(ctx context.Context, c *container) error {
 		return err
 	}
 	err = s.Target.writeMeta(ctx, c)
+	if err != nil {
+		return err
+	}
+	err = s.Worker.writeMeta(ctx, c)
 	if err != nil {
 		return err
 	}

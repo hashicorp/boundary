@@ -10,6 +10,9 @@ target_projectId: proj123
 target_defaultPort: 0
 target_sessionMaxSeconds: 0
 target_sessionConnectionLimit: 0
+worker_publicId: w_12345
+worker_version: 0.25.5
+worker_sha: beepboopgitsha
 staticHost_publicId: host123
 staticHostCatalog_publicId: staticcat123
 staticHostCatalog_projectId: proj123

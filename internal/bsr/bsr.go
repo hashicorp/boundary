@@ -58,6 +58,8 @@ func NewSession(ctx context.Context, meta *SessionMeta, f storage.FS, keys *kms.
 		return nil, fmt.Errorf("%s: missing session user: %w", op, ErrInvalidParameter)
 	case is.Nil(meta.Target):
 		return nil, fmt.Errorf("%s: missing session target: %w", op, ErrInvalidParameter)
+	case is.Nil(meta.Worker):
+		return nil, fmt.Errorf("%s: missing session worker: %w", op, ErrInvalidParameter)
 	case is.Nil(f):
 		return nil, fmt.Errorf("%s: missing storage fs: %w", op, ErrInvalidParameter)
 	case is.Nil(keys):

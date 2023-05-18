@@ -66,6 +66,11 @@ func TestSessionMeta(s string, p Protocol) *SessionMeta {
 			SessionMaxSeconds:      0,
 			SessionConnectionLimit: 0,
 		},
+		Worker: &Worker{
+			PublicId: "w_12345",
+			Version:  "0.25.5",
+			Sha:      "beepboopgitsha",
+		},
 		StaticCredentialStore: staticCredentialStore,
 		VaultCredentialStore:  vaultCredentialStore,
 	}
