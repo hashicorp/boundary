@@ -458,11 +458,11 @@
         "path": "developing"
       },
       {
-        "title": "Building",
+        "title": "Build Boundary",
         "path": "developing/building"
       },
       {
-        "title": "Developing the UI",
+        "title": "Develop the UI",
         "path": "developing/ui"
       }
     ]
@@ -515,7 +515,7 @@
     "title": "HCP Boundary",
     "routes": [
       {
-        "title": "Get started with HCP Boundary",
+        "title": "Get started",
         "routes": [
           {
             "title": "Deploy and login",
@@ -528,7 +528,7 @@
         ]
       },
       {
-        "title": "HCP Boundary documentation",
+        "title": "Documentation",
         "href": "https://cloud.hashicorp.com/docs/boundary/"
       }
     ]
