@@ -515,6 +515,10 @@
     "title": "HCP Boundary",
     "routes": [
       {
+        "title": "Overview",
+        "path": "hcp"
+      },
+      {
         "title": "Get started",
         "routes": [
           {
