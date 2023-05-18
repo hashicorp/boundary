@@ -4,6 +4,7 @@
 package connect
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
@@ -134,7 +135,21 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 			}
 		default:
 			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
-			out = append(out, fmt.Sprintf("%s      %v\n", prefixStr, iface))
+			data, err := json.Marshal(iface)
+			if err != nil {
+				out = append(out, fmt.Sprintf("%s      %v\n", prefixStr, iface))
+				continue
+			}
+			dst := new(bytes.Buffer)
+			if err := json.Indent(dst, data, fmt.Sprintf("%s    ", prefixStr), fmt.Sprintf("%s  ", prefixStr)); err != nil {
+				out = append(out, fmt.Sprintf("%s      %v\n", prefixStr, iface))
+				continue
+			}
+			secretStr := strings.Split(dst.String(), "\n")
+			if len(secretStr) > 0 {
+				secretStr[0] = fmt.Sprintf("%s    %s", prefixStr, secretStr[0])
+			}
+			return secretStr
 		}
 	}
 
