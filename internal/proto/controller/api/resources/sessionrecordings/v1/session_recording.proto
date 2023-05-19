@@ -24,19 +24,25 @@ message ChannelRecording {
   // The total number of bytes downloaded to the client in the Channel.
   uint64 bytes_down = 3 [json_name = "bytes_down"]; // @gotags: class:"public"
 
+  // The time the Channel was created in the controller.
+  google.protobuf.Timestamp created_time = 4 [json_name = "created_time"]; // @gotags: class:"public"
+
+  // The time of the most recent update to the Channel.
+  google.protobuf.Timestamp updated_time = 5 [json_name = "updated_time"]; // @gotags: class:"public"
+
   // The time the Channel started.
-  google.protobuf.Timestamp start_time = 4 [json_name = "start_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp start_time = 6 [json_name = "start_time"]; // @gotags: class:"public"
 
   // The time the Channel ended.
-  google.protobuf.Timestamp end_time = 5 [json_name = "end_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp end_time = 7 [json_name = "end_time"]; // @gotags: class:"public"
 
   // The total duration of the Channel.
-  google.protobuf.Duration duration = 6; // @gotags: class:"public"
+  google.protobuf.Duration duration = 8; // @gotags: class:"public"
 
   // MimeTypes define the mime types that can
   // be used to consume the recording of this Channel.
   // The only supported mime type is "application/x-asciicast".
-  repeated string mime_types = 7 [json_name = "mime_types"]; // @gotags: class:"public"
+  repeated string mime_types = 9 [json_name = "mime_types"]; // @gotags: class:"public"
 }
 
 // ConnectionRecording contains the recording of a single Connection within a Session.
@@ -55,23 +61,29 @@ message ConnectionRecording {
   // This includes any protocol overhead.
   uint64 bytes_down = 4 [json_name = "bytes_down"]; // @gotags: class:"public"
 
+  // The time the Connection was created in the controller.
+  google.protobuf.Timestamp created_time = 5 [json_name = "created_time"]; // @gotags: class:"public"
+
+  // The time of the most recent update to the Connection.
+  google.protobuf.Timestamp updated_time = 6 [json_name = "updated_time"]; // @gotags: class:"public"
+
   // The time the Connection started.
-  google.protobuf.Timestamp start_time = 5 [json_name = "start_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp start_time = 7 [json_name = "start_time"]; // @gotags: class:"public"
 
   // The time the Connection ended.
-  google.protobuf.Timestamp end_time = 6 [json_name = "end_time"]; // @gotags: class:"public"
+  google.protobuf.Timestamp end_time = 8 [json_name = "end_time"]; // @gotags: class:"public"
 
   // The total duration of the Connection.
-  google.protobuf.Duration duration = 7; // @gotags: class:"public"
+  google.protobuf.Duration duration = 9; // @gotags: class:"public"
 
   // MimeTypes define the mime types that can
   // be used to consume the recording of this Connection.
   // No mime types are currently supported.
-  repeated string mime_types = 8 [json_name = "mime_types"]; // @gotags: class:"public"
+  repeated string mime_types = 10 [json_name = "mime_types"]; // @gotags: class:"public"
 
   // Optionally, the channels used in this Connection,
   // if it is using a multiplexed protocol, such as SSH.
-  repeated ChannelRecording channel_recordings = 9 [json_name = "channel_recordings"];
+  repeated ChannelRecording channel_recordings = 11 [json_name = "channel_recordings"];
 }
 
 // User describes an authenticated user in Boundary.

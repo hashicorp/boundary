@@ -5522,6 +5522,16 @@
           "format": "uint64",
           "description": "The total number of bytes downloaded to the client in the Channel."
         },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Channel was created in the controller."
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time of the most recent update to the Channel."
+        },
         "start_time": {
           "type": "string",
           "format": "date-time",
@@ -5566,6 +5576,16 @@
           "type": "string",
           "format": "uint64",
           "description": "The total number of bytes downloaded to the client in the Connection.\nThis includes any protocol overhead."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Connection was created in the controller."
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time of the most recent update to the Connection."
         },
         "start_time": {
           "type": "string",
