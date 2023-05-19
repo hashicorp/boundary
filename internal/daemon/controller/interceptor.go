@@ -42,11 +42,25 @@ const (
 	apiErrHeader = "x-api-err"
 )
 
-// requestCtxInterceptor creates an unary server interceptor that pulls grpc
-// metadata into a ctx for the request.  The metadata must be set in an upstream
-// http handler/middleware by marshalling a RequestInfo protobuf into the
-// requestInfoMdKey header (see: controller.wrapHandlerWithCommonFuncs).
-func requestCtxInterceptor(
+// customContextServerStream wraps the grpc.ServerStream interface and lets us
+// set a custom context
+type customContextServerStream struct {
+	grpc.ServerStream
+	customContext context.Context
+}
+
+func (c *customContextServerStream) Context() context.Context {
+	if c.customContext != nil {
+		return c.customContext
+	}
+	return c.ServerStream.Context()
+}
+
+// requestCtxUnaryInterceptor creates an unary server interceptor that pulls
+// grpc metadata into a ctx for the request. The metadata must be set in an
+// upstream http handler/middleware by marshalling a RequestInfo protobuf into
+// the requestInfoMdKey header (see: controller.wrapHandlerWithCommonFuncs).
+func requestCtxUnaryInterceptor(
 	ctx context.Context,
 	iamRepoFn common.IamRepoFactory,
 	authTokenRepoFn common.AuthTokenRepoFactory,
@@ -58,96 +72,209 @@ func requestCtxInterceptor(
 	ticket string,
 	eventer *event.Eventer,
 ) (grpc.UnaryServerInterceptor, error) {
-	const op = "controller.requestCtxInterceptor"
-	if iamRepoFn == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing iam repo function")
+	const op = "controller.requestCtxUnaryInterceptor"
+	if err := sharedRequestInterceptorValidation(
+		ctx,
+		op,
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		kms,
+		ticket,
+		eventer,
+	); err != nil {
+		return nil, err
 	}
-	if authTokenRepoFn == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token repo function")
-	}
-	if serversRepoFn == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing server repo function")
-	}
-	if kms == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
-	}
-	if ticket == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing ticket")
-	}
-	if eventer == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing eventer")
-	}
-	// Authorization unary interceptor function to handle authorize per RPC call
+
 	return func(interceptorCtx context.Context,
 		req any,
 		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {
-		md, ok := metadata.FromIncomingContext(interceptorCtx)
-		if !ok {
-			return nil, errors.New(interceptorCtx, errors.Internal, op, "No metadata")
-		}
-
-		values := md.Get(requestInfoMdKey)
-		if len(values) == 0 {
-			return nil, errors.New(interceptorCtx, errors.Internal, op, "Missing request metadata")
-		}
-		if len(values) > 1 {
-			return nil, errors.New(interceptorCtx, errors.Internal, op, fmt.Sprintf("expected 1 value for %s metadata and got %d", requestInfoMdKey, len(values)))
-		}
-
-		decoded, err := base58.FastBase58Decoding(values[0])
+		updatedCtx, err := sharedRequestInterceptorLogic(
+			interceptorCtx,
+			op,
+			iamRepoFn,
+			authTokenRepoFn,
+			serversRepoFn,
+			passwordAuthRepoFn,
+			oidcAuthRepoFn,
+			ldapAuthRepoFn,
+			kms,
+			ticket,
+			eventer,
+		)
 		if err != nil {
-			return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to decode request info"))
+			return nil, err
 		}
-		var requestInfo authpb.RequestInfo
-		if err := proto.Unmarshal(decoded, &requestInfo); err != nil {
-			return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to unmarshal request info"))
-		}
-		switch {
-		case requestInfo.Ticket == "":
-			return nil, errors.New(interceptorCtx, errors.Internal, op, "Invalid context (missing ticket)")
-		case requestInfo.Ticket != ticket:
-			return nil, errors.New(interceptorCtx, errors.Internal, op, "Invalid context (bad ticket)")
-		}
-
-		interceptorCtx = auth.NewVerifierContextWithAccounts(interceptorCtx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, ldapAuthRepoFn, kms, &requestInfo)
-
-		// Add general request information to the context. The information from
-		// the auth verifier context is pretty specifically curated to
-		// authentication/authorization verification so this is more
-		// general-purpose.
-		//
-		// We could use requests.NewRequestContext but this saves an immediate
-		// lookup.
-		interceptorCtx = context.WithValue(interceptorCtx, requests.ContextRequestInformationKey, &requests.RequestContext{
-			Path:   requestInfo.Path,
-			Method: requestInfo.Method,
-		})
-
-		// This event request info is required by downstream handlers
-		info := &event.RequestInfo{
-			EventId:  requestInfo.EventId,
-			Id:       requestInfo.TraceId,
-			PublicId: requestInfo.PublicId,
-			Method:   requestInfo.Method,
-			Path:     requestInfo.Path,
-			ClientIp: requestInfo.ClientIp,
-		}
-		interceptorCtx, err = event.NewRequestInfoContext(interceptorCtx, info)
-		if err != nil {
-			return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to create context with request info"))
-		}
-		interceptorCtx, err = event.NewEventerContext(interceptorCtx, eventer)
-		if err != nil {
-			return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to create context with eventer"))
-		}
-
-		// Calls the handler
-		h, err := handler(interceptorCtx, req)
-
-		return h, err // not convinced we want to wrap every error and turn them into domain errors...
+		return handler(updatedCtx, req)
 	}, nil
+}
+
+// requestCtxStreamInterceptor creates a stream server interceptor that pulls
+// grpc metadata into a ctx for the request. The metadata must be set in an
+// upstream http handler/middleware by marshalling a RequestInfo protobuf into
+// the requestInfoMdKey header (see: controller.wrapHandlerWithCommonFuncs).
+func requestCtxStreamInterceptor(
+	ctx context.Context,
+	iamRepoFn common.IamRepoFactory,
+	authTokenRepoFn common.AuthTokenRepoFactory,
+	serversRepoFn common.ServersRepoFactory,
+	passwordAuthRepoFn common.PasswordAuthRepoFactory,
+	oidcAuthRepoFn common.OidcAuthRepoFactory,
+	ldapAuthRepoFn common.LdapAuthRepoFactory,
+	kms *kms.Kms,
+	ticket string,
+	eventer *event.Eventer,
+) (grpc.StreamServerInterceptor, error) {
+	const op = "controller.requestCtxStreamInterceptor"
+	if err := sharedRequestInterceptorValidation(
+		ctx,
+		op,
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		kms,
+		ticket,
+		eventer,
+	); err != nil {
+		return nil, err
+	}
+	return func(srv any,
+		ss grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
+		updatedCtx, err := sharedRequestInterceptorLogic(
+			ss.Context(),
+			op,
+			iamRepoFn,
+			authTokenRepoFn,
+			serversRepoFn,
+			passwordAuthRepoFn,
+			oidcAuthRepoFn,
+			ldapAuthRepoFn,
+			kms,
+			ticket,
+			eventer,
+		)
+		if err != nil {
+			return err
+		}
+		css := &customContextServerStream{
+			ServerStream:  ss,
+			customContext: updatedCtx,
+		}
+		return handler(srv, css)
+	}, nil
+}
+
+func sharedRequestInterceptorValidation(
+	ctx context.Context,
+	op errors.Op,
+	iamRepoFn common.IamRepoFactory,
+	authTokenRepoFn common.AuthTokenRepoFactory,
+	serversRepoFn common.ServersRepoFactory,
+	kms *kms.Kms,
+	ticket string,
+	eventer *event.Eventer,
+) error {
+	if iamRepoFn == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing iam repo function")
+	}
+	if authTokenRepoFn == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing auth token repo function")
+	}
+	if serversRepoFn == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing server repo function")
+	}
+	if kms == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing kms")
+	}
+	if ticket == "" {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing ticket")
+	}
+	if eventer == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "missing eventer")
+	}
+
+	return nil
+}
+
+func sharedRequestInterceptorLogic(
+	interceptorCtx context.Context,
+	op errors.Op,
+	iamRepoFn common.IamRepoFactory,
+	authTokenRepoFn common.AuthTokenRepoFactory,
+	serversRepoFn common.ServersRepoFactory,
+	passwordAuthRepoFn common.PasswordAuthRepoFactory,
+	oidcAuthRepoFn common.OidcAuthRepoFactory,
+	ldapAuthRepoFn common.LdapAuthRepoFactory,
+	kms *kms.Kms,
+	ticket string,
+	eventer *event.Eventer,
+) (context.Context, error) {
+	md, ok := metadata.FromIncomingContext(interceptorCtx)
+	if !ok {
+		return nil, errors.New(interceptorCtx, errors.Internal, op, "No metadata")
+	}
+
+	values := md.Get(requestInfoMdKey)
+	if len(values) == 0 {
+		return nil, errors.New(interceptorCtx, errors.Internal, op, "Missing request metadata")
+	}
+	if len(values) > 1 {
+		return nil, errors.New(interceptorCtx, errors.Internal, op, fmt.Sprintf("expected 1 value for %s metadata and got %d", requestInfoMdKey, len(values)))
+	}
+
+	decoded, err := base58.FastBase58Decoding(values[0])
+	if err != nil {
+		return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to decode request info"))
+	}
+	var requestInfo authpb.RequestInfo
+	if err := proto.Unmarshal(decoded, &requestInfo); err != nil {
+		return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to unmarshal request info"))
+	}
+	switch {
+	case requestInfo.Ticket == "":
+		return nil, errors.New(interceptorCtx, errors.Internal, op, "Invalid context (missing ticket)")
+	case requestInfo.Ticket != ticket:
+		return nil, errors.New(interceptorCtx, errors.Internal, op, "Invalid context (bad ticket)")
+	}
+
+	interceptorCtx = auth.NewVerifierContextWithAccounts(interceptorCtx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, ldapAuthRepoFn, kms, &requestInfo)
+
+	// Add general request information to the context. The information from
+	// the auth verifier context is pretty specifically curated to
+	// authentication/authorization verification so this is more
+	// general-purpose.
+	//
+	// We could use requests.NewRequestContext but this saves an immediate
+	// lookup.
+	interceptorCtx = context.WithValue(interceptorCtx, requests.ContextRequestInformationKey, &requests.RequestContext{
+		Path:   requestInfo.Path,
+		Method: requestInfo.Method,
+	})
+
+	// This event request info is required by downstream handlers
+	info := &event.RequestInfo{
+		EventId:  requestInfo.EventId,
+		Id:       requestInfo.TraceId,
+		PublicId: requestInfo.PublicId,
+		Method:   requestInfo.Method,
+		Path:     requestInfo.Path,
+		ClientIp: requestInfo.ClientIp,
+	}
+	interceptorCtx, err = event.NewRequestInfoContext(interceptorCtx, info)
+	if err != nil {
+		return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to create context with request info"))
+	}
+	interceptorCtx, err = event.NewEventerContext(interceptorCtx, eventer)
+	if err != nil {
+		return nil, errors.Wrap(interceptorCtx, err, op, errors.WithCode(errors.Internal), errors.WithMsg("unable to create context with eventer"))
+	}
+
+	return interceptorCtx, err // not convinced we want to wrap every error and turn them into domain errors...
 }
 
 func errorInterceptor(
