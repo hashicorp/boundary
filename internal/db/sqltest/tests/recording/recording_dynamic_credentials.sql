@@ -2,9 +2,11 @@
 -- SPDX-License-Identifier: MPL-2.0
 
 begin;
-  select plan(27);
+  select plan(31);
 
   select has_table('recording_dynamic_credential');
+  select has_view('credential_vault_library_hst_aggregate', 'view for aggregate vault library history info does not exist');
+  select has_view('credential_vault_ssh_cert_library_hst_aggregate', 'view for aggregate vault ssh cert library history info does not exist');
 
   -- tests a fk column referencing a history table
   -- add 5 to the plan for each time this function is called
@@ -50,6 +52,30 @@ begin;
       and session_id = 's1______cora';
 
   select results_eq('get_target_creds', 'get_session_creds');
+
+  prepare select_recording_vault_libraries as
+    select recording_id::text, public_id::text, store_public_id::text, purposes::text
+    from credential_vault_library_hst_aggregate
+    where recording_id = 'sr1_____cora'
+    order by public_id;
+
+  select results_eq(
+     'select_recording_vault_libraries',
+         $$VALUES
+    ('sr1_____cora', 'cvl_______g1', 'cvs__gcolors', 'brokered')$$
+       );
+
+  prepare select_recording_vault_ssh_cert_libraries as
+    select recording_id::text, public_id::text, store_public_id::text, purposes::text
+    from credential_vault_ssh_cert_library_hst_aggregate
+    where recording_id = 'sr1_____cora'
+    order by public_id;
+
+  select results_eq(
+     'select_recording_vault_ssh_cert_libraries',
+       $$VALUES
+    ('sr1_____cora', 'cvl__ssh__g1', 'cvs__gcolors', 'injected_application')$$
+     );
 
   select is(count(*), 2::bigint)
     from target_credential_library
