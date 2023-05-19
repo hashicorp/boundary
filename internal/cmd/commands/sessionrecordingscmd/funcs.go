@@ -77,12 +77,12 @@ func (c *Command) printListTable(items []*sessionrecordings.SessionRecording) st
 		}
 		if !item.CreatedTime.IsZero() {
 			output = append(output,
-				fmt.Sprintf("    Created Time:          %s", item.CreatedTime.Local().Format(time.RFC1123)),
+				fmt.Sprintf("    Created Time:        %s", item.CreatedTime.Local().Format(time.RFC1123)),
 			)
 		}
 		if !item.UpdatedTime.IsZero() {
 			output = append(output,
-				fmt.Sprintf("    Updated Time:            %s", item.UpdatedTime.Local().Format(time.RFC1123)),
+				fmt.Sprintf("    Updated Time:        %s", item.UpdatedTime.Local().Format(time.RFC1123)),
 			)
 		}
 		if !item.StartTime.IsZero() {
@@ -211,6 +211,12 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 			if cr.BytesDown != 0 {
 				cm["Bytes Down"] = cr.BytesDown
 			}
+			if !cr.CreatedTime.IsZero() {
+				cm["Created Time"] = cr.CreatedTime.Local().Format(time.RFC1123)
+			}
+			if !cr.UpdatedTime.IsZero() {
+				cm["Updated Time"] = cr.UpdatedTime.Local().Format(time.RFC1123)
+			}
 			if !cr.StartTime.IsZero() {
 				cm["Start Time"] = cr.StartTime.Local().Format(time.RFC1123)
 			}
@@ -239,6 +245,12 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 					}
 					if chr.BytesDown != 0 {
 						chrm["Bytes Down"] = chr.BytesDown
+					}
+					if !chr.CreatedTime.IsZero() {
+						chrm["Created Time"] = chr.CreatedTime.Local().Format(time.RFC1123)
+					}
+					if !chr.UpdatedTime.IsZero() {
+						chrm["Updated Time"] = chr.UpdatedTime.Local().Format(time.RFC1123)
 					}
 					if !chr.StartTime.IsZero() {
 						chrm["Start Time"] = chr.StartTime.Local().Format(time.RFC1123)
