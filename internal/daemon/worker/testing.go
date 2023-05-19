@@ -406,10 +406,12 @@ func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext
 	})
 	t.Cleanup(pkiWorker.Shutdown)
 
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
+
 	// Get a server repo and worker auth repo
 	serversRepo, err := serversRepoFn()
 	require.NoError(err)
-
 	// Perform initial authentication of worker to controller
 	reqBytes, err := base58.FastBase58Decoding(pkiWorker.Worker().WorkerAuthRegistrationRequest)
 	require.NoError(err)
@@ -438,6 +440,9 @@ func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext
 		Config:           childPkiWorkerConf,
 	})
 
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
+
 	// Perform initial authentication of worker to controller
 	reqBytes, err = base58.FastBase58Decoding(childPkiWorker.Worker().WorkerAuthRegistrationRequest)
 	require.NoError(err)
@@ -452,8 +457,8 @@ func NewTestMultihopWorkers(t testing.TB, logger hclog.Logger, controllerContext
 	}, server.WithFetchNodeCredentialsRequest(childPkiWorkerReq))
 	require.NoError(err)
 
-	// Sleep so that workers can startup and connect.
-	time.Sleep(10 * time.Second)
+	// Sleep so that workers can finish getting ready
+	time.Sleep(2 * time.Second)
 
 	return kmsWorker, pkiWorker, childPkiWorker
 }

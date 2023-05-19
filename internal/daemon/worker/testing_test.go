@@ -167,9 +167,10 @@ func TestNewTestMultihopWorkers(t *testing.T) {
 		c.Config().WorkerAuthKms, c.Controller().ServersRepoFn, pkiTags, childPkiTags)
 
 	srvRepo, err := c.Controller().ServersRepoFn()
-	workers, err := srvRepo.ListWorkers(ctx, []string{"global"})
-	assert.Len(t, workers, 3)
 	require.NoError(t, err)
+	workers, err := srvRepo.ListWorkers(ctx, []string{"global"})
+	require.NoError(t, err)
+	assert.Len(t, workers, 3)
 	var kmsW, pkiW, childPkiW *server.Worker
 	for _, w := range workers {
 		switch w.GetAddress() {
@@ -181,9 +182,9 @@ func TestNewTestMultihopWorkers(t *testing.T) {
 			childPkiW = w
 		}
 	}
-	assert.NotNil(t, kmsW)
-	assert.NotNil(t, pkiW)
-	assert.NotNil(t, childPkiW)
+	require.NotNil(t, kmsW)
+	require.NotNil(t, pkiW)
+	require.NotNil(t, childPkiW)
 
 	assert.NotZero(t, kmsW.GetLastStatusTime())
 	assert.NotZero(t, pkiW.GetLastStatusTime())

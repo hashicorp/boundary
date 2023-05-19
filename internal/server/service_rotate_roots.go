@@ -31,8 +31,6 @@ func RotateRoots(ctx context.Context, workerAuthRepo *WorkerAuthRepositoryStorag
 	}
 	opt = append(opt,
 		nodeenrollment.WithState(rootCerts.GetState()),
-		nodeenrollment.WithNotAfterClockSkew(0),
-		nodeenrollment.WithNotBeforeClockSkew(0),
 	)
 
 	var current, next string
