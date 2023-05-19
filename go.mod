@@ -95,7 +95,7 @@ require (
 	github.com/creack/pty v1.1.11
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c893099f13
 	github.com/hashicorp/go-version v1.3.0
-	github.com/hashicorp/nodeenrollment v0.1.19-0.20230518221723-c435bcd172bb
+	github.com/hashicorp/nodeenrollment v0.1.19-0.20230519142449-95bf595bf00c
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870
