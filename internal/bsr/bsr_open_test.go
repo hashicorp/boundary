@@ -112,18 +112,18 @@ func TestOpenBSRMethods(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, opSesh)
 	sesh.Meta.connections = opSesh.Meta.connections
-	require.Equal(t, opSesh.Meta, sesh.Meta)
+	require.Equal(t, sesh.Meta, opSesh.Meta)
 
 	opConn, err := opSesh.OpenConnection(ctx, fmt.Sprintf("connection.%s", connectionId))
 	require.NoError(t, err)
 	require.NotNil(t, opConn)
 	conn.Meta.channels = opConn.Meta.channels
-	require.Equal(t, opConn.Meta, conn.Meta)
+	require.Equal(t, conn.Meta, opConn.Meta)
 
 	opChan, err := opConn.OpenChannel(ctx, fmt.Sprintf("channel.%s", channelId))
 	require.NoError(t, err)
 	require.NotNil(t, opChan)
-	require.Equal(t, opChan.Meta, ch.Meta)
+	require.Equal(t, ch.Meta, opChan.Meta)
 }
 
 func TestOpenSession(t *testing.T) {

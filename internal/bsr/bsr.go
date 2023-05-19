@@ -48,8 +48,16 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 	s := &SessionMeta{}
 	user := &User{Scope: Scope{}}
 	target := &Target{Scope: Scope{}}
+	worker := &Worker{}
 	sHost := &StaticHost{Catalog: StaticHostCatalog{}}
 	dHost := &DynamicHost{Catalog: DynamicHostCatalog{}}
+	staticCredStore := make(map[string]StaticCredentialStore)
+	scStoreToJsonCreds := make(map[string]StaticJsonCredential)
+	scStoreToUPCreds := make(map[string]StaticUsernamePasswordCredential)
+	scStoreToSshCreds := make(map[string]StaticSshPrivateKeyCredential)
+	vaultCredStore := make(map[string]VaultCredentialStore)
+	vsStoreToVaultLib := make(map[string]VaultLibrary)
+	vsStoreToVaultSshCertLib := make(map[string]VaultSshCertLibrary)
 
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
@@ -91,8 +99,6 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 		// Target
 		case k == "target_publicId":
 			target.PublicId = v
-		case k == "target_projectId":
-			target.ProjectId = v
 		case k == "target_name":
 			target.Name = v
 		case k == "target_description":
@@ -134,6 +140,14 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 		case k == "target_scope_primaryAuthMethod":
 			target.Scope.PrimaryAuthMethodId = v
 
+		// Worker
+		case k == "worker_publicId":
+			worker.PublicId = v
+		case k == "worker_version":
+			worker.Version = v
+		case k == "worker_sha":
+			worker.Sha = v
+
 		// Static Host
 		case k == "staticHost_publicId":
 			sHost.PublicId = v
@@ -174,6 +188,202 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 		case k == "dynamicHostCatalog_attributes":
 			dHost.Catalog.Attributes = v
 
+		// Static Credential Store
+		case strings.Contains(k, "staticCredentialStore_"):
+			idx := strings.Index(k, "_staticCredentialStore")
+			sId := k[:idx]
+			scs, ok := staticCredStore[sId]
+			if !ok {
+				scs = StaticCredentialStore{
+					PublicId: sId,
+				}
+			}
+			switch {
+			case strings.Contains(k, "staticJsonCredential"):
+				idxEnd := strings.Index(k, "_staticJsonCredential")
+				idxStart := strings.Index(k, "_credential_") + len("_credential_")
+				credId := k[idxStart:idxEnd]
+				// credstoreid - staticJsonCredentialid in the map
+				mapId := fmt.Sprintf("%s-%s", sId, credId)
+				c, ok := scStoreToJsonCreds[mapId]
+				if !ok {
+					c = StaticJsonCredential{
+						PublicId: credId,
+					}
+				}
+				switch {
+				case strings.Contains(k, "_projectId"):
+					c.ProjectId = v
+				case strings.Contains(k, "_name"):
+					c.Name = v
+				case strings.Contains(k, "_description"):
+					c.Description = v
+				case strings.Contains(k, "_objectHmac"):
+					c.ObjectHmac = []byte(v)
+				}
+				scStoreToJsonCreds[mapId] = c
+			case strings.Contains(k, "staticUsernamePasswordCredential"):
+				idxEnd := strings.Index(k, "_staticJUsernamePasswordCredential")
+				idxStart := strings.Index(k, "_credential_") + len("_credential_")
+				credId := k[idxStart:idxEnd]
+				// credstoreid - UsernamePasswordCredentialid in the map
+				mapId := fmt.Sprintf("%s-%s", sId, credId)
+				c, ok := scStoreToUPCreds[mapId]
+				if !ok {
+					c = StaticUsernamePasswordCredential{
+						PublicId: credId,
+					}
+				}
+				switch {
+				case strings.Contains(k, "_projectId"):
+					c.ProjectId = v
+				case strings.Contains(k, "_name"):
+					c.Name = v
+				case strings.Contains(k, "_description"):
+					c.Description = v
+				case strings.Contains(k, "_passwordHmac"):
+					c.PasswordHmac = []byte(v)
+				}
+				scStoreToUPCreds[mapId] = c
+			case strings.Contains(k, "staticSshPrivateKeyCredential"):
+				idxEnd := strings.Index(k, "_staticSshPrivateKeyCredential")
+				idxStart := strings.Index(k, "_credential_") + len("_credential_")
+				credId := k[idxStart:idxEnd]
+				// credstoreid - staticSshPrivateKeyid in the map
+				mapId := fmt.Sprintf("%s-%s", sId, credId)
+				c, ok := scStoreToSshCreds[mapId]
+				if !ok {
+					c = StaticSshPrivateKeyCredential{
+						PublicId: credId,
+					}
+				}
+				switch {
+				case strings.Contains(k, "_projectId"):
+					c.ProjectId = v
+				case strings.Contains(k, "_name"):
+					c.Name = v
+				case strings.Contains(k, "_description"):
+					c.Description = v
+				case strings.Contains(k, "_privateKeyHmac"):
+					c.PrivateKeyHmac = []byte(v)
+				case strings.Contains(k, "_privateKeyPassphraseHmac"):
+					c.PrivateKeyPassphraseHmac = []byte(v)
+				}
+				scStoreToSshCreds[mapId] = c
+			case strings.Contains(k, "_projectId"):
+				scs.ProjectId = v
+			case strings.Contains(k, "_name"):
+				scs.Name = v
+			case strings.Contains(k, "_description"):
+				scs.Description = v
+			}
+			staticCredStore[sId] = scs
+
+		// Vault Credential Store
+		case strings.Contains(k, "vaultCredentialStore_"):
+			idx := strings.Index(k, "_vaultCredentialStore")
+			vId := k[:idx]
+			vcs, ok := vaultCredStore[vId]
+			if !ok {
+				vcs = VaultCredentialStore{
+					PublicId: vId,
+				}
+			}
+			switch {
+			case strings.Contains(k, "vaultLibrary"):
+				idxEnd := strings.Index(k, "_vaultLibrary")
+				idxStart := strings.Index(k, "_credential_") + len("_credential_")
+				credId := k[idxStart:idxEnd]
+				// credstoreid - vaultLibraryid in the map
+				mapId := fmt.Sprintf("%s-%s", vId, credId)
+				c, ok := vsStoreToVaultLib[mapId]
+				if !ok {
+					c = VaultLibrary{
+						PublicId: credId,
+					}
+				}
+				switch {
+				case strings.Contains(k, "_projectId"):
+					c.ProjectId = v
+				case strings.Contains(k, "_name"):
+					c.Name = v
+				case strings.Contains(k, "_description"):
+					c.Description = v
+				case strings.Contains(k, "_vaultPath"):
+					c.VaultPath = v
+				case strings.Contains(k, "_httpMethod"):
+					c.HttpMethod = v
+				case strings.Contains(k, "_httpRequestBody"):
+					c.HttpRequestBody = []byte(v)
+				case strings.Contains(k, "_credentialType"):
+					c.CredentialType = v
+				}
+				vsStoreToVaultLib[mapId] = c
+			case strings.Contains(k, "vaultSshCertLibrary"):
+				idxEnd := strings.Index(k, "_vaultSshCertLibrary")
+				idxStart := strings.Index(k, "_credential_") + len("_credential_")
+				credId := k[idxStart:idxEnd]
+				// credstoreid - vaultSshCertLibraryid in the map
+				mapId := fmt.Sprintf("%s-%s", vId, credId)
+				c, ok := vsStoreToVaultSshCertLib[mapId]
+				if !ok {
+					c = VaultSshCertLibrary{
+						PublicId: credId,
+					}
+				}
+				switch {
+				case strings.Contains(k, "_projectId"):
+					c.ProjectId = v
+				case strings.Contains(k, "_username"):
+					c.Username = v
+				case strings.Contains(k, "_name"):
+					c.Name = v
+				case strings.Contains(k, "_description"):
+					c.Description = v
+				case strings.Contains(k, "_vaultPath"):
+					c.VaultPath = v
+				case strings.Contains(k, "_keyType"):
+					c.KeyType = v
+				case strings.Contains(k, "_keyBits"):
+					var err error
+					c.KeyBits, err = strconv.Atoi(v)
+					if err != nil {
+						return nil, err
+					}
+				case strings.Contains(k, "_ttl"):
+					c.Ttl = v
+				case strings.Contains(k, "_criticalOptions"):
+					c.CriticalOptions = []byte(v)
+				case strings.Contains(k, "_extensions"):
+					c.Extensions = []byte(v)
+				case strings.Contains(k, "_credentialType"):
+					c.CredentialType = v
+				}
+				vsStoreToVaultSshCertLib[mapId] = c
+			case strings.Contains(k, "_projectId"):
+				vcs.ProjectId = v
+			case strings.Contains(k, "_namespace"):
+				vcs.Namespace = v
+			case strings.Contains(k, "_name"):
+				vcs.Name = v
+			case strings.Contains(k, "_description"):
+				vcs.Description = v
+			case strings.Contains(k, "_vaultAddress"):
+				vcs.VaultAddress = v
+
+			case strings.Contains(k, "_tlsServerName"):
+				vcs.TlsServerName = v
+			case strings.Contains(k, "_tlsSkipVerify"):
+				var err error
+				vcs.TlsSkipVerify, err = strconv.ParseBool(v)
+				if err != nil {
+					return nil, err
+				}
+			case strings.Contains(k, "_workerFilter"):
+				vcs.WorkerFilter = v
+			}
+			vaultCredStore[vId] = vcs
+
 		// connections
 		case k == "connection":
 			connections[v] = true
@@ -181,6 +391,7 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 	}
 
 	s.Target = target
+	s.Worker = worker
 	s.User = user
 	if sHost.PublicId != "" {
 		s.StaticHost = sHost
@@ -188,6 +399,59 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 	if dHost.PublicId != "" {
 		s.DynamicHost = dHost
 	}
+
+	for k, v := range scStoreToJsonCreds {
+		scId, _, ok := strings.Cut(k, "-")
+		if ok {
+			staticCred := staticCredStore[scId]
+			staticCred.Credentials = append(staticCred.Credentials, v)
+			staticCredStore[scId] = staticCred
+		}
+	}
+	for k, v := range scStoreToUPCreds {
+		scId, _, ok := strings.Cut(k, "-")
+		if ok {
+			staticCred := staticCredStore[scId]
+			staticCred.Credentials = append(staticCred.Credentials, v)
+			staticCredStore[scId] = staticCred
+		}
+	}
+	for k, v := range scStoreToSshCreds {
+		scId, _, ok := strings.Cut(k, "-")
+		if ok {
+			staticCred := staticCredStore[scId]
+			staticCred.Credentials = append(staticCred.Credentials, v)
+			staticCredStore[scId] = staticCred
+		}
+	}
+	scStores := make([]StaticCredentialStore, 0)
+	for _, v := range staticCredStore {
+		scStores = append(scStores, v)
+	}
+
+	for k, v := range vsStoreToVaultSshCertLib {
+		vlId, _, ok := strings.Cut(k, "-")
+		if ok {
+			vaultLib := vaultCredStore[vlId]
+			vaultLib.CredentialLibraries = append(vaultLib.CredentialLibraries, v)
+			vaultCredStore[vlId] = vaultLib
+		}
+	}
+	for k, v := range vsStoreToVaultLib {
+		vlId, _, ok := strings.Cut(k, "-")
+		if ok {
+			vaultLib := vaultCredStore[vlId]
+			vaultLib.CredentialLibraries = append(vaultLib.CredentialLibraries, v)
+			vaultCredStore[vlId] = vaultLib
+		}
+	}
+	vcStores := make([]VaultCredentialStore, 0)
+	for _, v := range vaultCredStore {
+		vcStores = append(vcStores, v)
+	}
+
+	s.StaticCredentialStore = scStores
+	s.VaultCredentialStore = vcStores
 	s.connections = connections
 
 	return s, nil

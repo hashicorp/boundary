@@ -365,8 +365,9 @@ func (s StaticCredentialStore) writeMeta(ctx context.Context, c *container) erro
 		}
 	}
 	if len(s.Credentials) > 0 {
+		credentialPrefix := fmt.Sprintf("%s_credential", prefix)
 		for _, sc := range s.Credentials {
-			err = sc.writeStaticCredentialMeta(ctx, c, prefix)
+			err = sc.writeStaticCredentialMeta(ctx, c, credentialPrefix)
 			if err != nil {
 				return err
 			}
@@ -560,8 +561,9 @@ func (v VaultCredentialStore) writeMeta(ctx context.Context, c *container) error
 		}
 	}
 	if len(v.CredentialLibraries) > 0 {
+		credentialPrefix := fmt.Sprintf("%s_credential", prefix)
 		for _, cl := range v.CredentialLibraries {
-			err = cl.writeDynamicCredentialLibraryMeta(ctx, c, prefix)
+			err = cl.writeDynamicCredentialLibraryMeta(ctx, c, credentialPrefix)
 			if err != nil {
 				return err
 			}
