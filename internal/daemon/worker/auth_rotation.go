@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sync/atomic"
 	"time"
 
 	berrors "github.com/hashicorp/boundary/internal/errors"
@@ -19,9 +20,13 @@ import (
 // we can't get a better reset time
 const defaultAuthRotationResetDuration = 5 * time.Second
 
-// Putting this here allows us to view it from tests, which allows us to get
-// test timing right. It'll start at 0 which will cause us to run immediately.
+// AuthRotationResetDuration allows us to view it from tests, which allows us to
+// get test timing right. It'll start at 0 which will cause us to run
+// immediately.
 var AuthRotationResetDuration time.Duration
+
+// AuthRotationNextRotation is useful in tests to understand how long to sleep
+var AuthRotationNextRotation atomic.Pointer[time.Time]
 
 func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 	const op = "worker.(Worker).startAuthRotationTicking"
@@ -29,6 +34,10 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 		event.WriteSysEvent(cancelCtx, op, "using kms worker authentication; pki auth rotation ticking not running")
 		return
 	}
+
+	// Get a valid value in
+	startNow := time.Now()
+	AuthRotationNextRotation.Store(&startNow)
 
 	timer := time.NewTimer(defaultAuthRotationResetDuration)
 	lastRotation := time.Time{}.UTC()
@@ -181,6 +190,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			}
 			lastRotation = now
 			nextRotation = lastRotation.Add(newRotationInterval / 2)
+			AuthRotationNextRotation.Store(&nextRotation)
 			AuthRotationResetDuration = nextRotation.Sub(now)
 			event.WriteSysEvent(cancelCtx, op, "worker credentials rotated", "next_rotation", nextRotation)
 		}

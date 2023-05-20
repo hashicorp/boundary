@@ -100,7 +100,8 @@ func TestRotationTicking(t *testing.T) {
 	// creds on the worker after each rotation period
 	for i := 2; i < 5; i++ {
 		t.Log("iteration", i)
-		time.Sleep(worker.AuthRotationResetDuration)
+		nextRotation := worker.AuthRotationNextRotation.Load()
+		time.Sleep((*nextRotation).Sub(time.Now()) + 5*time.Second)
 
 		// Verify we see 2- after credentials have rotated, we should see current and previous
 		auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
