@@ -15,6 +15,14 @@ import (
 	"github.com/hashicorp/nodeenrollment/types"
 )
 
+// The default time to use when we encounter an error or some other reason
+// we can't get a better reset time
+const defaultAuthRotationResetDuration = 5 * time.Second
+
+// Putting this here allows us to view it from tests, which allows us to get
+// test timing right. It'll start at 0 which will cause us to run immediately.
+var AuthRotationResetDuration time.Duration
+
 func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 	const op = "worker.(Worker).startAuthRotationTicking"
 	if w.conf.WorkerAuthKms != nil && !w.conf.DevUsePkiForUpstream {
@@ -22,11 +30,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 		return
 	}
 
-	// The default time to use when we encounter an error or some other reason
-	// we can't get a better reset time
-	const defaultResetDuration = 5 * time.Second
-	var resetDuration time.Duration // will start at 0, so we run immediately
-	timer := time.NewTimer(defaultResetDuration)
+	timer := time.NewTimer(defaultAuthRotationResetDuration)
 	lastRotation := time.Time{}.UTC()
 	for {
 		// Per the example in the docs, if you stop a timer you should drain the
@@ -40,9 +44,9 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 		}
 
 		if w.TestOverrideAuthRotationPeriod != 0 {
-			resetDuration = w.TestOverrideAuthRotationPeriod
+			AuthRotationResetDuration = w.TestOverrideAuthRotationPeriod
 		}
-		timer.Reset(resetDuration)
+		timer.Reset(AuthRotationResetDuration)
 
 		select {
 		case <-cancelCtx.Done():
@@ -53,7 +57,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			// Add some jitter in case there is some issue to prevent thundering
 			// herd
 			jitter := time.Duration(rand.Intn(6)) * time.Second
-			resetDuration = defaultResetDuration + jitter
+			AuthRotationResetDuration = defaultAuthRotationResetDuration + jitter
 
 			// Check if it's time to rotate and if not don't do anything
 			currentNodeCreds, err := types.LoadNodeCredentials(cancelCtx, w.WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
@@ -166,7 +170,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			// See if we don't need to do anything, and if so calculate reset
 			// duration and loop back
 			if !lastRotation.IsZero() && now.Before(nextRotation) {
-				resetDuration = lastRotation.Add(rotationInterval / 2).Sub(now)
+				AuthRotationResetDuration = lastRotation.Add(rotationInterval / 2).Sub(now)
 				continue
 			}
 
@@ -177,7 +181,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			}
 			lastRotation = now
 			nextRotation = lastRotation.Add(newRotationInterval / 2)
-			resetDuration = nextRotation.Sub(now)
+			AuthRotationResetDuration = nextRotation.Sub(now)
 			event.WriteSysEvent(cancelCtx, op, "worker credentials rotated", "next_rotation", nextRotation)
 		}
 	}
