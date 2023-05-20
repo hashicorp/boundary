@@ -36,7 +36,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func Test_requestCtxInterceptor(t *testing.T) {
+func Test_unaryCtxInterceptor(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -91,13 +91,13 @@ func Test_requestCtxInterceptor(t *testing.T) {
 		return ctx, nil
 	}
 
-	c := event.TestEventerConfig(t, "Test_requestCtxInterceptor", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
+	c := event.TestEventerConfig(t, "Test_unaryCtxInterceptor", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 		Name:  "test",
 	})
-	testEventer, err := event.NewEventer(testLogger, testLock, "Test_requestCtxInterceptor", c.EventerConfig)
+	testEventer, err := event.NewEventer(testLogger, testLock, "Test_unaryCtxInterceptor", c.EventerConfig)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -404,13 +404,13 @@ func Test_streamCtxInterceptor(t *testing.T) {
 
 	factoryCtx := context.Background()
 
-	c := event.TestEventerConfig(t, "Test_requestCtxInterceptor", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
+	c := event.TestEventerConfig(t, "Test_streamCtxInterceptor", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 		Name:  "test",
 	})
-	testEventer, err := event.NewEventer(testLogger, testLock, "Test_requestCtxInterceptor", c.EventerConfig)
+	testEventer, err := event.NewEventer(testLogger, testLock, "Test_streamCtxInterceptor", c.EventerConfig)
 	require.NoError(t, err)
 	tests := []struct {
 		name                   string
@@ -780,13 +780,13 @@ func Test_workerRequestInfoInterceptor(t *testing.T) {
 		return ctx, nil
 	}
 
-	c := event.TestEventerConfig(t, "Test_requestCtxInterceptor", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
+	c := event.TestEventerConfig(t, "Test_unaryCtxInterceptor", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
 		Mutex: testLock,
 		Name:  "test",
 	})
-	testEventer, err := event.NewEventer(testLogger, testLock, "Test_requestCtxInterceptor", c.EventerConfig)
+	testEventer, err := event.NewEventer(testLogger, testLock, "Test_unaryCtxInterceptor", c.EventerConfig)
 	require.NoError(t, err)
 
 	tests := []struct {

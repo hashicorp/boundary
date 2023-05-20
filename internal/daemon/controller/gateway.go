@@ -81,7 +81,7 @@ func newGrpcServer(
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate gateway ticket"))
 	}
-	requestCtxInterceptor, err := requestCtxUnaryInterceptor(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, ldapAuthRepoFn, kms, ticket, eventer)
+	unaryCtxInterceptor, err := requestCtxUnaryInterceptor(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, ldapAuthRepoFn, kms, ticket, eventer)
 	if err != nil {
 		return nil, "", err
 	}
@@ -111,7 +111,7 @@ func newGrpcServer(
 		),
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
-				requestCtxInterceptor,                         // populated requestInfo from headers into the request ctx
+				unaryCtxInterceptor,                           // populated requestInfo from headers into the request ctx
 				errorInterceptor(ctx),                         // convert domain and api errors into headers for the http proxy
 				subtypes.AttributeTransformerInterceptor(ctx), // convert to/from generic attributes from/to subtype specific attributes
 				auditRequestInterceptor(ctx),                  // before we get started, audit the request

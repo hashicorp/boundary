@@ -28,6 +28,15 @@ func (c *Command) extraHelpFunc(helpMap map[string]func() string) string {
 			"",
 			`      $ boundary session-recordings read -id s_1234567890`,
 			"",
+			"    List session recording:",
+			"",
+			`      $ boundary session-recordings list -scope-id global`,
+			"",
+			"    Download a session recording:",
+			"",
+			`      $ boundary session-recordings download -id chr_1234567890`,
+			"",
+
 			"  Please see the sessions subcommand help for detailed usage information.",
 		})
 

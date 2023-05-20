@@ -1042,6 +1042,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "list",
 			}, nil
 		},
+		"session-recordings download": func() (cli.Command, error) {
+			return &sessionrecordingscmd.DownloadCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 
 		"storage-buckets": func() (cli.Command, error) {
 			return &storagebucketscmd.Command{

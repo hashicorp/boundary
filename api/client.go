@@ -44,6 +44,9 @@ const (
 	EnvBoundaryToken         = "BOUNDARY_TOKEN"
 	EnvBoundaryRateLimit     = "BOUNDARY_RATE_LIMIT"
 	EnvBoundarySRVLookup     = "BOUNDARY_SRV_LOOKUP"
+
+	AsciiCastMimeType = "application/x-asciicast"
+	StreamChunkSize   = 1024 * 64 // stream chuck buffer size
 )
 
 // Config is used to configure the creation of the client

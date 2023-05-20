@@ -4,14 +4,18 @@
 package sessionrecordings
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
+
+	"github.com/hashicorp/boundary/api"
 )
 
-const chunkSize = 64 * 1024 // assume we're using 64 KiB see: https://github.com/grpc/grpc.github.io/issues/371
-
+// Download will of course download the request session recording resource.
+// Currently it always requests a mime-type of asciicast.
 func (c *Client) Download(ctx context.Context, contentId string, opt ...Option) (io.ReadCloser, error) {
 	switch {
 	case contentId == "":
@@ -22,11 +26,12 @@ func (c *Client) Download(ctx context.Context, contentId string, opt ...Option) 
 
 	opts, apiOpts := getOpts(opt...)
 
-	req, err := c.client.NewRequest(ctx, "GET", "session_recordings/"+url.PathEscape(contentId)+":download", nil, apiOpts...)
+	req, err := c.client.NewRequest(ctx, "GET", "session-recordings/"+url.PathEscape(contentId)+":download", nil, apiOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating download request: %w", err)
 	}
-	req.Header.Set("Accept", "application/x-asciicast")
+	opts.queryMap["mime_type"] = api.AsciiCastMimeType
+	req.Header.Set("Accept", api.AsciiCastMimeType)
 
 	if len(opts.queryMap) > 0 {
 		q := url.Values{}
@@ -39,6 +44,16 @@ func (c *Client) Download(ctx context.Context, contentId string, opt ...Option) 
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error performing client request during download call: %w", err)
+	}
+	if resp.StatusCode() >= 400 {
+		resp.Body = new(bytes.Buffer)
+		if _, err := resp.Body.ReadFrom(resp.HttpResponse().Body); err != nil {
+			return nil, fmt.Errorf("error reading response body: %w", err)
+		}
+		if resp.Body.Len() > 0 {
+			return nil, errors.New(resp.Body.String())
+		}
+		return nil, fmt.Errorf("error reading response body: status was %d", resp.StatusCode())
 	}
 	return resp.HttpResponse().Body, nil
 }
