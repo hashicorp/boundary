@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 
 	berrors "github.com/hashicorp/boundary/internal/errors"
@@ -49,7 +50,10 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			return
 
 		case <-timer.C:
-			resetDuration = defaultResetDuration
+			// Add some jitter in case there is some issue to prevent thundering
+			// herd
+			jitter := time.Duration(rand.Intn(6)) * time.Second
+			resetDuration = defaultResetDuration + jitter
 
 			// Check if it's time to rotate and if not don't do anything
 			currentNodeCreds, err := types.LoadNodeCredentials(cancelCtx, w.WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
