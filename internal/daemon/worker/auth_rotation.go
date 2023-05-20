@@ -155,6 +155,9 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			// halfway through the current rotation interval
 			now := time.Now().UTC()
 			nextRotation := lastRotation.Add(rotationInterval / 2)
+			if lastRotation.IsZero() {
+				nextRotation = now
+			}
 			event.WriteSysEvent(cancelCtx, op, "checking if worker auth should rotate", append(
 				args,
 				"now", now.Format(time.RFC3339),
@@ -176,7 +179,7 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 				event.WriteError(cancelCtx, op, err)
 				continue
 			}
-			lastRotation := now
+			lastRotation = now
 			nextRotation = lastRotation.Add(newRotationInterval / 2)
 			resetDuration = nextRotation.Sub(now)
 			event.WriteSysEvent(cancelCtx, op, "worker credentials rotated", "next_rotation", nextRotation)
