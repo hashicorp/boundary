@@ -81,13 +81,34 @@ func newGrpcServer(
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate gateway ticket"))
 	}
-	requestCtxInterceptor, err := requestCtxInterceptor(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, ldapAuthRepoFn, kms, ticket, eventer)
+	requestCtxInterceptor, err := requestCtxUnaryInterceptor(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, ldapAuthRepoFn, kms, ticket, eventer)
+	if err != nil {
+		return nil, "", err
+	}
+
+	streamCtxInterceptor, err := requestCtxStreamInterceptor(
+		ctx,
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		passwordAuthRepoFn,
+		oidcAuthRepoFn,
+		ldapAuthRepoFn,
+		kms,
+		ticket,
+		eventer,
+	)
 	if err != nil {
 		return nil, "", err
 	}
 	return grpc.NewServer(
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
+		grpc.StreamInterceptor(
+			grpc_middleware.ChainStreamServer(
+				streamCtxInterceptor,
+			),
+		),
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				requestCtxInterceptor,                         // populated requestInfo from headers into the request ctx
