@@ -139,6 +139,7 @@ type Controller struct {
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
+	const op = "controller.New"
 	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
 	c := &Controller{
 		conf:                    conf,
@@ -387,7 +388,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	_, err = server.RotateRoots(ctx, serversRepo, nodeenrollment.WithCertificateLifetime(conf.TestOverrideWorkerAuthCaCertificateLifetime))
 	if err != nil {
-		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
+		event.WriteSysEvent(ctx, op, "unable to ensure worker auth roots exist, may be due to multiple controllers starting at once, continuing")
 	}
 
 	if downstreamersFactory != nil {
