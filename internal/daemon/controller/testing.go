@@ -458,6 +458,9 @@ type TestControllerOpts struct {
 	// The amount of time between the scheduler waking up to run it's registered
 	// jobs.
 	SchedulerRunJobInterval time.Duration
+
+	// The time to use for CA certificate lifetime for worker auth
+	WorkerAuthCaCertificateLifetime time.Duration
 }
 
 func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
@@ -761,6 +764,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		RawConfig:                    opts.Config,
 		Server:                       tc.b,
 		DisableAuthorizationFailures: opts.DisableAuthorizationFailures,
+		TestOverrideWorkerAuthCaCertificateLifetime: opts.WorkerAuthCaCertificateLifetime,
 	}
 }
 

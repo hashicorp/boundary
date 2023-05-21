@@ -5,6 +5,8 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"math/rand"
+	"sync/atomic"
 	"time"
 
 	berrors "github.com/hashicorp/boundary/internal/errors"
@@ -14,6 +16,18 @@ import (
 	"github.com/hashicorp/nodeenrollment/types"
 )
 
+// The default time to use when we encounter an error or some other reason
+// we can't get a better reset time
+const defaultAuthRotationResetDuration = 5 * time.Second
+
+// AuthRotationResetDuration allows us to view it from tests, which allows us to
+// get test timing right. It'll start at 0 which will cause us to run
+// immediately.
+var AuthRotationResetDuration time.Duration
+
+// AuthRotationNextRotation is useful in tests to understand how long to sleep
+var AuthRotationNextRotation atomic.Pointer[time.Time]
+
 func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 	const op = "worker.(Worker).startAuthRotationTicking"
 	if w.conf.WorkerAuthKms != nil && !w.conf.DevUsePkiForUpstream {
@@ -21,22 +35,27 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 		return
 	}
 
-	// The default time to use when we encounter an error or some other reason
-	// we can't get a better reset time
-	const defaultResetDuration = time.Hour
-	var resetDuration time.Duration // will start at 0, so we run immediately
-	timer := time.NewTimer(defaultResetDuration)
+	// Get a valid value in
+	startNow := time.Now()
+	AuthRotationNextRotation.Store(&startNow)
+
+	timer := time.NewTimer(defaultAuthRotationResetDuration)
 	lastRotation := time.Time{}.UTC()
 	for {
-		// You're not supposed to call reset on timers that haven't been stopped or
-		// expired, so we stop it here and reset it to the current resetDuration. That way if
-		// we want to adjust time, e.g. for tests, we can set the resetDuration
-		// value from within the loop
+		// Per the example in the docs, if you stop a timer you should drain the
+		// channel if it returns false. However, their example of blindly
+		// reading from the channel can deadlock. So we just do a select here to
+		// be safer.
 		timer.Stop()
-		if w.TestOverrideAuthRotationPeriod != 0 {
-			resetDuration = w.TestOverrideAuthRotationPeriod
+		select {
+		case <-timer.C:
+		default:
 		}
-		timer.Reset(resetDuration)
+
+		if w.TestOverrideAuthRotationPeriod != 0 {
+			AuthRotationResetDuration = w.TestOverrideAuthRotationPeriod
+		}
+		timer.Reset(AuthRotationResetDuration)
 
 		select {
 		case <-cancelCtx.Done():
@@ -44,24 +63,24 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			return
 
 		case <-timer.C:
-			resetDuration = defaultResetDuration
+			// Add some jitter in case there is some issue to prevent thundering
+			// herd
+			jitter := time.Duration(rand.Intn(6)) * time.Second
+			AuthRotationResetDuration = defaultAuthRotationResetDuration + jitter
 
 			// Check if it's time to rotate and if not don't do anything
 			currentNodeCreds, err := types.LoadNodeCredentials(cancelCtx, w.WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.conf.WorkerAuthStorageKms))
 			if err != nil {
 				if errors.Is(err, nodeenrollment.ErrNotFound) {
-					// Be silent, but check again soon
-					resetDuration = 5 * time.Second
+					// Be silent as we likely haven't authorized yet
 					continue
 				}
 				event.WriteError(cancelCtx, op, err)
-				resetDuration = 5 * time.Second
 				continue
 			}
 
 			if currentNodeCreds == nil {
 				event.WriteSysEvent(cancelCtx, op, "no error loading worker pki auth creds but nil creds, skipping rotation")
-				resetDuration = 5 * time.Second
 				continue
 			}
 
@@ -72,7 +91,6 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 				// again fairly quickly because this may also be prior to the
 				// first rotation and we want to ensure the validity period is
 				// checked soon.
-				resetDuration = 5 * time.Second
 				continue
 			}
 
@@ -158,21 +176,22 @@ func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 			)...,
 			)
 
-			// See if we don't need to do anything
+			// See if we don't need to do anything, and if so calculate reset
+			// duration and loop back
 			if !lastRotation.IsZero() && now.Before(nextRotation) {
-				resetDuration = lastRotation.Add(rotationInterval / 2).Sub(now)
+				AuthRotationResetDuration = lastRotation.Add(rotationInterval / 2).Sub(now)
 				continue
 			}
 
 			newRotationInterval, err := rotateWorkerAuth(cancelCtx, w, currentNodeCreds)
 			if err != nil {
-				resetDuration = 5 * time.Second
 				event.WriteError(cancelCtx, op, err)
 				continue
 			}
 			lastRotation = now
 			nextRotation = lastRotation.Add(newRotationInterval / 2)
-			resetDuration = nextRotation.Sub(now)
+			AuthRotationNextRotation.Store(&nextRotation)
+			AuthRotationResetDuration = nextRotation.Sub(now)
 			event.WriteSysEvent(cancelCtx, op, "worker credentials rotated", "next_rotation", nextRotation)
 		}
 	}

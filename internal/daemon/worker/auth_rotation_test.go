@@ -27,16 +27,17 @@ func TestRotationTicking(t *testing.T) {
 		Level: hclog.Trace,
 	})
 
+	const rotationPeriod = 20 * time.Second
+
 	conf, err := config.DevController()
 	require.NoError(err)
 
 	c := controller.NewTestController(t, &controller.TestControllerOpts{
-		Config: conf,
-		Logger: logger.Named("controller"),
+		Config:                          conf,
+		Logger:                          logger.Named("controller"),
+		WorkerAuthCaCertificateLifetime: rotationPeriod,
 	})
 	t.Cleanup(c.Shutdown)
-
-	const rotationPeriod = 20 * time.Second
 
 	// names should not be set when using pki workers
 	wConf, err := config.DevWorker()
@@ -44,10 +45,9 @@ func TestRotationTicking(t *testing.T) {
 	wConf.Worker.Name = ""
 	wConf.Worker.InitialUpstreams = c.ClusterAddrs()
 	w := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		InitialUpstreams:   c.ClusterAddrs(),
-		Logger:             logger.Named("worker"),
-		AuthRotationPeriod: rotationPeriod,
-		Config:             wConf,
+		InitialUpstreams: c.ClusterAddrs(),
+		Logger:           logger.Named("worker"),
+		Config:           wConf,
 	})
 	t.Cleanup(w.Shutdown)
 
@@ -73,17 +73,21 @@ func TestRotationTicking(t *testing.T) {
 	// Decode the proto into the request and create the worker
 	req := new(types.FetchNodeCredentialsRequest)
 	require.NoError(proto.Unmarshal(reqBytes, req))
-	worker, err := serversRepo.CreateWorker(c.Context(), &server.Worker{
+	newWorker, err := serversRepo.CreateWorker(c.Context(), &server.Worker{
 		Worker: &store.Worker{
 			ScopeId: scope.Global.String(),
 		},
 	}, server.WithFetchNodeCredentialsRequest(req))
 	require.NoError(err)
 
-	// Verify we see one authorized set of credentials now
+	// Wait for a short while; there will be an initial rotation of credentials
+	// after authentication
+	time.Sleep(rotationPeriod / 2)
+
+	// Verify we see authorized credentials now
 	auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
 	require.NoError(err)
-	assert.Len(auths, 1)
+	assert.Len(auths, 2)
 	// Fetch creds and store current key
 	currNodeCreds, err := types.LoadNodeCredentials(w.Context(), w.Worker().WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithWrapper(w.Config().WorkerAuthStorageKms))
 	require.NoError(err)
@@ -95,7 +99,9 @@ func TestRotationTicking(t *testing.T) {
 	// Now we wait and check that we see new values in the DB and different
 	// creds on the worker after each rotation period
 	for i := 2; i < 5; i++ {
-		time.Sleep(rotationPeriod)
+		t.Log("iteration", i)
+		nextRotation := worker.AuthRotationNextRotation.Load()
+		time.Sleep((*nextRotation).Sub(time.Now()) + 5*time.Second)
 
 		// Verify we see 2- after credentials have rotated, we should see current and previous
 		auths, err = workerAuthRepo.List(c.Context(), (*types.NodeInformation)(nil))
@@ -117,7 +123,7 @@ func TestRotationTicking(t *testing.T) {
 		assert.Equal(priorKeyId, previousKeyId)
 
 		// Get workerAuthSet for this worker id and compare keys
-		workerAuthSet, err := workerAuthRepo.FindWorkerAuthByWorkerId(c.Context(), worker.PublicId)
+		workerAuthSet, err := workerAuthRepo.FindWorkerAuthByWorkerId(c.Context(), newWorker.PublicId)
 		require.NoError(err)
 		assert.NotNil(workerAuthSet)
 		assert.NotNil(workerAuthSet.Previous)
