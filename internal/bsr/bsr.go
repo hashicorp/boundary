@@ -191,6 +191,9 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 		// Static Credential Store
 		case strings.Contains(k, "staticCredentialStore_"):
 			idx := strings.Index(k, "_staticCredentialStore")
+			if idx == -1 {
+				break
+			}
 			sId := k[:idx]
 			scs, ok := staticCredStore[sId]
 			if !ok {
@@ -202,6 +205,9 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 			case strings.Contains(k, "staticJsonCredential"):
 				idxEnd := strings.Index(k, "_staticJsonCredential")
 				idxStart := strings.Index(k, "_credential_") + len("_credential_")
+				if idxStart == -1 || idxEnd == -1 {
+					break
+				}
 				credId := k[idxStart:idxEnd]
 				// credstoreid - staticJsonCredentialid in the map
 				mapId := fmt.Sprintf("%s-%s", sId, credId)
@@ -225,6 +231,9 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 			case strings.Contains(k, "staticUsernamePasswordCredential"):
 				idxEnd := strings.Index(k, "_staticJUsernamePasswordCredential")
 				idxStart := strings.Index(k, "_credential_") + len("_credential_")
+				if idxStart == -1 || idxEnd == -1 {
+					break
+				}
 				credId := k[idxStart:idxEnd]
 				// credstoreid - UsernamePasswordCredentialid in the map
 				mapId := fmt.Sprintf("%s-%s", sId, credId)
@@ -248,6 +257,9 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 			case strings.Contains(k, "staticSshPrivateKeyCredential"):
 				idxEnd := strings.Index(k, "_staticSshPrivateKeyCredential")
 				idxStart := strings.Index(k, "_credential_") + len("_credential_")
+				if idxStart == -1 || idxEnd == -1 {
+					break
+				}
 				credId := k[idxStart:idxEnd]
 				// credstoreid - staticSshPrivateKeyid in the map
 				mapId := fmt.Sprintf("%s-%s", sId, credId)
@@ -282,6 +294,9 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 		// Vault Credential Store
 		case strings.Contains(k, "vaultCredentialStore_"):
 			idx := strings.Index(k, "_vaultCredentialStore")
+			if idx == -1 {
+				break
+			}
 			vId := k[:idx]
 			vcs, ok := vaultCredStore[vId]
 			if !ok {
@@ -293,6 +308,9 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 			case strings.Contains(k, "vaultLibrary"):
 				idxEnd := strings.Index(k, "_vaultLibrary")
 				idxStart := strings.Index(k, "_credential_") + len("_credential_")
+				if idxStart == -1 || idxEnd == -1 {
+					break
+				}
 				credId := k[idxStart:idxEnd]
 				// credstoreid - vaultLibraryid in the map
 				mapId := fmt.Sprintf("%s-%s", vId, credId)
@@ -322,6 +340,9 @@ func decodeSessionMeta(ctx context.Context, r io.Reader) (*SessionMeta, error) {
 			case strings.Contains(k, "vaultSshCertLibrary"):
 				idxEnd := strings.Index(k, "_vaultSshCertLibrary")
 				idxStart := strings.Index(k, "_credential_") + len("_credential_")
+				if idxStart == -1 || idxEnd == -1 {
+					break
+				}
 				credId := k[idxStart:idxEnd]
 				// credstoreid - vaultSshCertLibraryid in the map
 				mapId := fmt.Sprintf("%s-%s", vId, credId)
