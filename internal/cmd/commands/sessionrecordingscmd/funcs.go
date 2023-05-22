@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/api/sessionrecordings"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 )
@@ -203,6 +204,116 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 		)
 	}
 
+	if item.CreateTimeValues != nil {
+		if item.CreateTimeValues.User != nil {
+			userMap := map[string]any{
+				"ID": item.CreateTimeValues.User.Id,
+			}
+			if item.CreateTimeValues.User.Name != "" {
+				userMap["Name"] = item.CreateTimeValues.User.Name
+			}
+			if item.CreateTimeValues.User.Description != "" {
+				userMap["Description"] = item.CreateTimeValues.User.Description
+			}
+			maxUserLength := base.MaxAttributesLength(userMap, nil, nil)
+			ret = append(ret,
+				"",
+				"  User Info:",
+				base.WrapMap(4, maxUserLength+2, userMap),
+				"    Scope:", customScopeInfoForOutput(item.CreateTimeValues.User.Scope, maxUserLength, 6),
+			)
+		}
+		if item.CreateTimeValues.Target != nil {
+			targetMap := map[string]any{
+				"ID": item.CreateTimeValues.Target.Id,
+			}
+			if item.CreateTimeValues.Target.Name != "" {
+				targetMap["Name"] = item.CreateTimeValues.Target.Name
+			}
+			if item.CreateTimeValues.Target.Description != "" {
+				targetMap["Description"] = item.CreateTimeValues.Target.Description
+			}
+			if item.CreateTimeValues.Target.SessionMaxSeconds != 0 {
+				targetMap["Session Max Seconds"] = item.CreateTimeValues.Target.SessionMaxSeconds
+			}
+			if item.CreateTimeValues.Target.SessionConnectionLimit != 0 {
+				targetMap["Session Connection Limit"] = item.CreateTimeValues.Target.SessionConnectionLimit
+			}
+			if item.CreateTimeValues.Target.WorkerFilter != "" {
+				targetMap["Worker Filter"] = item.CreateTimeValues.Target.WorkerFilter
+			}
+			if item.CreateTimeValues.Target.EgressWorkerFilter != "" {
+				targetMap["Egress Worker Filter"] = item.CreateTimeValues.Target.EgressWorkerFilter
+			}
+			if item.CreateTimeValues.Target.IngressWorkerFilter != "" {
+				targetMap["Ingress Worker Filter"] = item.CreateTimeValues.Target.IngressWorkerFilter
+			}
+			if item.CreateTimeValues.Target.Attributes != nil {
+				if item.CreateTimeValues.Target.Attributes.DefaultPort != 0 {
+					targetMap["Default Port"] = item.CreateTimeValues.Target.Attributes.DefaultPort
+				}
+			}
+			maxTargetLength := base.MaxAttributesLength(targetMap, nil, nil)
+			ret = append(ret,
+				"",
+				"  Target Info:",
+				base.WrapMap(4, maxTargetLength+2, targetMap),
+				"    Scope:", customScopeInfoForOutput(item.CreateTimeValues.Target.Scope, maxTargetLength, 6),
+			)
+		}
+		if item.CreateTimeValues.Host != nil {
+			hostMap := map[string]any{
+				"ID": item.CreateTimeValues.Host.Id,
+			}
+			if item.CreateTimeValues.Host.Name != "" {
+				hostMap["Name"] = item.CreateTimeValues.Host.Name
+			}
+			if item.CreateTimeValues.Host.Description != "" {
+				hostMap["Description"] = item.CreateTimeValues.Host.Description
+			}
+			if item.CreateTimeValues.Host.Type != "" {
+				hostMap["Type"] = item.CreateTimeValues.Host.Type
+			}
+			if item.CreateTimeValues.Host.ExternalId != "" {
+				hostMap["External ID"] = item.CreateTimeValues.Host.ExternalId
+			}
+			if item.CreateTimeValues.Host.Attributes != nil {
+				if item.CreateTimeValues.Host.Attributes.Address != "" {
+					hostMap["Address"] = item.CreateTimeValues.Host.Attributes.Address
+				}
+			}
+			maxHostLength := base.MaxAttributesLength(hostMap, nil, nil)
+			ret = append(ret,
+				"",
+				"  Host Info:", base.WrapMap(4, maxHostLength+2, hostMap),
+			)
+
+			if item.CreateTimeValues.Host.HostCatalog != nil {
+				catMap := map[string]any{
+					"ID": item.CreateTimeValues.Host.HostCatalog.Id,
+				}
+				if item.CreateTimeValues.Host.HostCatalog.Name != "" {
+					hostMap["Name"] = item.CreateTimeValues.Host.HostCatalog.Name
+				}
+				if item.CreateTimeValues.Host.HostCatalog.Description != "" {
+					hostMap["Description"] = item.CreateTimeValues.Host.HostCatalog.Description
+				}
+				if item.CreateTimeValues.Host.HostCatalog.PluginId != "" {
+					hostMap["Plugin ID"] = item.CreateTimeValues.Host.HostCatalog.PluginId
+				}
+				if item.CreateTimeValues.Host.HostCatalog.Type != "" {
+					hostMap["Type"] = item.CreateTimeValues.Host.HostCatalog.Type
+				}
+				maxCatLength := base.MaxAttributesLength(catMap, nil, nil)
+
+				ret = append(ret,
+					"    HostCatalog:", base.WrapMap(6, maxCatLength, catMap),
+					"      Scope:", customScopeInfoForOutput(item.CreateTimeValues.Host.HostCatalog.Scope, maxHostLength, 8),
+				)
+			}
+		}
+	}
+
 	if len(item.ConnectionRecordings) > 0 {
 		maxAttrLen := len(durationKey)
 		ret = append(ret,
@@ -289,4 +400,19 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 		}
 	}
 	return base.WrapForHelpText(ret)
+}
+
+func customScopeInfoForOutput(scp *scopes.ScopeInfo, maxLength int, prefixSpaces int) string {
+	if scp == nil {
+		return "    <not included in response>"
+	}
+	vals := map[string]any{
+		"ID":   scp.Id,
+		"Type": scp.Type,
+		"Name": scp.Name,
+	}
+	if scp.ParentScopeId != "" {
+		vals["Parent Scope ID"] = scp.ParentScopeId
+	}
+	return base.WrapMap(prefixSpaces, maxLength, vals)
 }
