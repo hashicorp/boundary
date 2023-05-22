@@ -284,9 +284,21 @@ func (l *LoopbackStorage) getObject(req *plgpb.GetObjectRequest, stream plgpb.St
 		}
 	}
 	go func() {
+		chunkSize := req.GetChunkSize()
+		if chunkSize == 0 {
+			chunkSize = defaultStreamChunckSize
+		}
+		data := []byte{}
 		for _, chunk := range object.DataChunks {
+			data = append(data, chunk...)
+		}
+		for i := 0; i < len(data); i += int(chunkSize) {
+			end := i + int(chunkSize)
+			if end > len(data) {
+				end = len(data)
+			}
 			if err := stream.Send(&plgpb.GetObjectResponse{
-				FileChunk: chunk,
+				FileChunk: append([]byte{}, data[i:end]...),
 			}); err != nil {
 				stream.SendMsg(status.Errorf(codes.Internal, "%s: failed to send object data: %v", op, err))
 				return

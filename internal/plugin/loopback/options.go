@@ -38,6 +38,10 @@ const (
 	PutObject
 )
 
+const (
+	defaultStreamChunckSize = 8
+)
+
 // PluginMockError is used to mock an error when interacting with an external object store.
 type PluginMockError struct {
 	BucketName   string

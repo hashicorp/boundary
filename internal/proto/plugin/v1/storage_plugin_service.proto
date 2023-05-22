@@ -108,6 +108,9 @@ message GetObjectRequest {
 
   // Required. The path of the object.
   string key = 20;
+
+  // Optional. The maximum size of the stream response message. Defaults to 64KiB.
+  uint32 chunk_size = 30;
 }
 
 message GetObjectResponse {

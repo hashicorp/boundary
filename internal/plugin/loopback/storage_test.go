@@ -630,6 +630,18 @@ func TestLoopbackGetObject(t *testing.T) {
 			expectedErr: codes.PermissionDenied,
 		},
 		{
+			name: "with chunk size",
+			request: &plgpb.GetObjectRequest{
+				Key: "mock_object",
+				Bucket: &storagebuckets.StorageBucket{
+					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
+				},
+				ChunkSize: 3,
+			},
+			expectedObj: mockStorageMapData["aws_s3_mock"]["mock_object"],
+		},
+		{
 			name: "object retrieved",
 			request: &plgpb.GetObjectRequest{
 				Key: "mock_object",

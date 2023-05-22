@@ -24,7 +24,7 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withChunkSize    int
+	withChunkSize    uint32
 	withName         string
 	withDescription  string
 	withAttributes   *structpb.Struct
@@ -47,7 +47,7 @@ func getDefaultOptions() options {
 // send to the plugin in a single request. If not provided,
 // the default is 64KiB. The recommended chunk size for
 // streamed messages is 16KiB to 64KiB.
-func WithChunkSize(chunkSize int) Option {
+func WithChunkSize(chunkSize uint32) Option {
 	return func(o *options) {
 		o.withChunkSize = chunkSize
 	}
