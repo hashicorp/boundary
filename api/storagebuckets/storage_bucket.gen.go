@@ -29,6 +29,7 @@ type StorageBucket struct {
 	CreatedTime       time.Time              `json:"created_time,omitempty"`
 	UpdatedTime       time.Time              `json:"updated_time,omitempty"`
 	Version           uint32                 `json:"version,omitempty"`
+	Type              string                 `json:"type,omitempty"`
 	Attributes        map[string]interface{} `json:"attributes,omitempty"`
 	Secrets           map[string]interface{} `json:"secrets,omitempty"`
 	SecretsHmac       string                 `json:"secrets_hmac,omitempty"`

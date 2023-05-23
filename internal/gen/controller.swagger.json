@@ -6128,6 +6128,10 @@
           "format": "int64",
           "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
         },
+        "type": {
+          "type": "string",
+          "description": "The type of Storage Bucket (currently only plugin)."
+        },
         "attributes": {
           "type": "object",
           "description": "Attributes specific to the catalog type."

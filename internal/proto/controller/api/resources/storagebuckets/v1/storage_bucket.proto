@@ -82,6 +82,9 @@ message StorageBucket {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 100; // @gotags: `class:"public"`
 
+  // The type of Storage Bucket (currently only plugin).
+  string type = 110; // @gotags: `class:"public"`
+
   // Attributes specific to the catalog type.
   google.protobuf.Struct attributes = 120 [(custom_options.v1.generate_sdk_option) = true]; // @gotags: `class:"public"`
 
