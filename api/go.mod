@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230228185604-529de2006180
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/hashicorp/go-rootcerts v1.0.2
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7
