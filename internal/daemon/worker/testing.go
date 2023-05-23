@@ -463,10 +463,12 @@ func NewTestMultihopWorkers(t testing.TB,
 	})
 	t.Cleanup(pkiWorker.Shutdown)
 
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
+
 	// Get a server repo and worker auth repo
 	serversRepo, err := serversRepoFn()
 	require.NoError(err)
-
 	// Perform initial authentication of worker to controller
 	reqBytes, err := base58.FastBase58Decoding(pkiWorker.Worker().WorkerAuthRegistrationRequest)
 	require.NoError(err)
@@ -495,6 +497,9 @@ func NewTestMultihopWorkers(t testing.TB,
 		Config:                     childPkiWorkerConf,
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 	})
+
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
 
 	// Perform initial authentication of worker to controller
 	reqBytes, err = base58.FastBase58Decoding(childPkiWorker.Worker().WorkerAuthRegistrationRequest)
