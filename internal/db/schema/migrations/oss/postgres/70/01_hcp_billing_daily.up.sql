@@ -50,7 +50,7 @@ begin;
                ) as bucket
   ),
   final (day, sessions_pending_count) as (
-         select daily_range.day::timestamp without time zone,
+         select daily_range.day::timestamp,
                 coalesce(daily_counts.sessions_pending_count, 0)
            from daily_range
       left join daily_counts on daily_range.day = daily_counts.day
