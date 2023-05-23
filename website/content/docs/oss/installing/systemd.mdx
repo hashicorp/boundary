@@ -54,7 +54,7 @@ systemd unit file, and enables it at startup:
 TYPE=$1
 NAME=boundary
 
-sudo cat << EOF > /etc/systemd/system/${NAME}-${TYPE}.service
+sudo bash -c "cat << EOF > /etc/systemd/system/${NAME}-${TYPE}.service
 [Unit]
 Description=${NAME} ${TYPE}
 
@@ -68,7 +68,7 @@ CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
 
 [Install]
 WantedBy=multi-user.target
-EOF
+EOF"
 
 # Add the boundary system user and group to ensure we have a no-login
 # user capable of owning and running Boundary
