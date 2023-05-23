@@ -45,7 +45,7 @@ begin;
       select bucket
       from generate_series(
                    date_trunc('day', (select min(session_pending_time) from wh_session_accumulating_fact)),
-                   timestamp with time zone 'yesterday',
+                   timestamp 'yesterday',
                    '1 day'::interval
                ) as bucket
   ),
