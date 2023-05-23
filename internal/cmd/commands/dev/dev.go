@@ -479,18 +479,21 @@ func (c *Command) Run(args []string) int {
 	c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
-	c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
 
-	c.Config.Worker.RecordingStoragePath = c.flagWorkerRecordingStorageDir
-	if c.Config.Worker.RecordingStoragePath == "" {
-		// Create a temp dir for recording storage
-		const pattern = "recordingstorage"
-		c.Config.Worker.RecordingStoragePath, err = os.MkdirTemp("", pattern)
-		if err != nil {
-			c.UI.Error(fmt.Errorf("Error creating storage temp dir: %w", err).Error())
-			return base.CommandCliError
+	if !c.flagControllerOnly {
+		c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
+		c.Config.Worker.RecordingStoragePath = c.flagWorkerRecordingStorageDir
+
+		if c.Config.Worker.RecordingStoragePath == "" {
+			// Create a temp dir for recording storage
+			const pattern = "recordingstorage"
+			c.Config.Worker.RecordingStoragePath, err = os.MkdirTemp("", pattern)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error creating storage temp dir: %w", err).Error())
+				return base.CommandCliError
+			}
+			c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return os.RemoveAll(c.Config.Worker.RecordingStoragePath) })
 		}
-		c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return os.RemoveAll(c.Config.Worker.RecordingStoragePath) })
 	}
 
 	if c.flagIdSuffix != "" {
