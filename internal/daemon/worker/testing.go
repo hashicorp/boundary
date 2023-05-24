@@ -445,6 +445,10 @@ func NewTestMultihopWorkers(t testing.TB,
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 		DownstreamWorkerAuthKms:    childDownstreamWrapper,
 	})
+	t.Cleanup(kmsWorker.Shutdown)
+
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
 
 	// names should not be set when using pki workers
 	pkiWorkerConf, err := config.DevWorker()
@@ -497,6 +501,7 @@ func NewTestMultihopWorkers(t testing.TB,
 		Config:                     childPkiWorkerConf,
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 	})
+	t.Cleanup(childPkiWorker.Shutdown)
 
 	// Give time for it to be inserted into the database
 	time.Sleep(2 * time.Second)
@@ -532,9 +537,10 @@ func NewTestMultihopWorkers(t testing.TB,
 		WorkerAuthKms:              childDownstreamWrapper2,
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 	})
+	t.Cleanup(childKmsWorker.Shutdown)
 
 	// Sleep so that workers can startup and connect.
-	time.Sleep(10 * time.Second)
+	time.Sleep(12 * time.Second)
 
 	return kmsWorker, pkiWorker, childPkiWorker, childKmsWorker
 }
