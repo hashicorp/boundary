@@ -43,7 +43,7 @@ begin;
   ),
   daily_range (day) as (
       select bucket
-      from generate_series(
+        from generate_series(
                    date_trunc('day', (select min(session_pending_time) from wh_session_accumulating_fact)),
                    timestamp 'yesterday',
                    '1 day'::interval

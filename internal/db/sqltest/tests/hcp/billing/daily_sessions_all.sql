@@ -48,7 +48,7 @@ insert into wh_session_accumulating_fact
 select session_id, auth_token_id,
        host_key, user_key, credential_group_key,
        session_pending_date_key, session_pending_time_key, session_pending_time
-from fake_sessions;
+  from fake_sessions;
 
 select is(count(*), 1::bigint, 'hcp_billing_daily_sessions_yesterday should always return 1 rows') from hcp_billing_daily_sessions_yesterday;
 select is(count(*), 7::bigint, 'hcp_billing_daily_sessions_all should return 7 rows') from hcp_billing_daily_sessions_all;
