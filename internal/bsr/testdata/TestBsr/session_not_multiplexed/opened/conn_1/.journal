@@ -2,7 +2,7 @@ CREATING SHA256SUM.sig
 CREATED SHA256SUM.sig
 CREATING SHA256SUM
 CREATED SHA256SUM
-CREATING connection.meta
-CREATED connection.meta
-CREATING connection.summary
-CREATED connection.summary
+CREATING connection-recording.meta
+CREATED connection-recording.meta
+CREATING connection-recording-summary.json
+CREATED connection-recording-summary.json

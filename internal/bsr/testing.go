@@ -3,60 +3,30 @@
 
 package bsr
 
-func TestSessionMeta(s string, p Protocol) *SessionMeta {
-	scope := Scope{
-		PublicId: "global",
-		Type:     "global",
-	}
-	staticCatalog := StaticHostCatalog{
-		PublicId:  "staticcat123",
-		ProjectId: "proj123",
-	}
-	creds := make([]StaticCredential, 0)
-	c := StaticJsonCredential{
-		PublicId:   "scjson123",
-		ProjectId:  "proj123",
-		ObjectHmac: []byte("hmac"),
-	}
-	creds = append(creds, c)
-	staticCredentialStore := make([]StaticCredentialStore, 0)
-	scs := StaticCredentialStore{
-		PublicId:    "scs123",
-		ProjectId:   "proj123",
-		Credentials: creds,
-	}
-	staticCredentialStore = append(staticCredentialStore, scs)
-	vcreds := make([]DynamicCredentialLibraries, 0)
-	v := VaultLibrary{
-		PublicId:       "vl123",
-		ProjectId:      "proj123",
-		VaultPath:      "/a/path",
-		HttpMethod:     "GET",
-		CredentialType: "magic",
-	}
-	vcreds = append(vcreds, v)
-	vaultCredentialStore := make([]VaultCredentialStore, 0)
-	vcs := VaultCredentialStore{
-		PublicId:            "vcs123",
-		ProjectId:           "proj123",
-		VaultAddress:        "an/address",
-		Namespace:           "name",
-		TlsServerName:       "imaserver",
-		TlsSkipVerify:       false,
-		CredentialLibraries: vcreds,
-	}
-	vaultCredentialStore = append(vaultCredentialStore, vcs)
-	sessionMeta := &SessionMeta{
+func TestSessionRecordingMeta(s string, p Protocol) *SessionRecordingMeta {
+	return &SessionRecordingMeta{
 		Id:       s,
 		Protocol: p,
+	}
+}
+
+func TestSessionMeta(s string) *SessionMeta {
+	return &SessionMeta{
+		PublicId: s,
 		User: &User{
 			PublicId: "user123",
-			Scope:    scope,
+			Scope: Scope{
+				PublicId: "global",
+				Type:     "global",
+			},
 		},
 		StaticHost: &StaticHost{
 			PublicId: "host123",
-			Catalog:  staticCatalog,
-			Address:  "127.0.0.1",
+			Catalog: StaticHostCatalog{
+				PublicId:  "staticcat123",
+				ProjectId: "proj123",
+			},
+			Address: "127.0.0.1",
 		},
 		Target: &Target{
 			PublicId: "target123",
@@ -74,8 +44,37 @@ func TestSessionMeta(s string, p Protocol) *SessionMeta {
 			Version:  "0.25.5",
 			Sha:      "beepboopgitsha",
 		},
-		StaticCredentialStore: staticCredentialStore,
-		VaultCredentialStore:  vaultCredentialStore,
+		StaticCredentialStore: []StaticCredentialStore{
+			{
+				PublicId:  "scs123",
+				ProjectId: "proj123",
+				StaticJsonCredentials: []StaticJsonCredential{
+					{
+						PublicId:   "scjson123",
+						ProjectId:  "proj123",
+						ObjectHmac: []byte("hmac"),
+					},
+				},
+			},
+		},
+		VaultCredentialStore: []VaultCredentialStore{
+			{
+				PublicId:      "vcs123",
+				ProjectId:     "proj123",
+				VaultAddress:  "an/address",
+				Namespace:     "name",
+				TlsServerName: "imaserver",
+				TlsSkipVerify: false,
+				VaultGenericLibraries: []VaultLibrary{
+					{
+						PublicId:       "vl123",
+						ProjectId:      "proj123",
+						VaultPath:      "/a/path",
+						HttpMethod:     "GET",
+						CredentialType: "magic",
+					},
+				},
+			},
+		},
 	}
-	return sessionMeta
 }

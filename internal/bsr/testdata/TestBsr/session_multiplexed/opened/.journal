@@ -2,10 +2,13 @@ CREATING SHA256SUM.sig
 CREATED SHA256SUM.sig
 CREATING SHA256SUM
 CREATED SHA256SUM
-CREATING session.meta
-CREATED session.meta
-CREATING session.summary
-CREATED session.summary
+CREATING session-recording.meta
+CREATED session-recording.meta
+CREATING session-meta.json
+CREATED session-meta.json
+CLOSED session-meta.json
+CREATING session-recording-summary.json
+CREATED session-recording-summary.json
 CREATING bsrKey.pub
 CREATED bsrKey.pub
 CLOSING bsrKey.pub

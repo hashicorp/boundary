@@ -25,6 +25,7 @@ type (
 		EndTime      time.Time
 		BytesUp      uint64
 		BytesDown    uint64
+		Errors       error
 	}
 
 	// ChannelSummary encapsulates data for a channel, including its id, channel type,

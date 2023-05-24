@@ -10,7 +10,9 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
 	"github.com/hashicorp/boundary/internal/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 func TestPopulateMeta(t *testing.T) {
@@ -19,34 +21,42 @@ func TestPopulateMeta(t *testing.T) {
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
 	require.NoError(t, err)
 
-	sessionId := "session"
-	sessionProtocol := Protocol("TEST")
+	sessionId := "s_01234567890"
+	srm := &SessionRecordingMeta{
+		Id:       "sr_012344567890",
+		Protocol: Protocol("TEST"),
+	}
 
 	// Populate session meta
-	sessionMeta := TestSessionMeta(sessionId, sessionProtocol)
-	s, err := NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, WithSupportsMultiplex(true))
+	sessionMeta := TestSessionMeta(sessionId)
+	s, err := NewSession(ctx, srm, sessionMeta, &fstest.MemFS{}, keys, WithSupportsMultiplex(true))
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
 	// Reset meta and populate it from the meta file
-	s.Meta = &SessionMeta{}
-	sm, err := decodeSessionMeta(ctx, s.container.meta)
+	s.Meta = &SessionRecordingMeta{}
+	sm, err := decodeSessionRecordingMeta(ctx, s.container.meta)
 	require.NoError(t, err)
 	s.Meta = sm
-	require.Equal(t, s.Meta.Id, sessionId)
-	require.Equal(t, s.Meta.Protocol, sessionProtocol)
-	require.Equal(t, s.Meta.Target, sessionMeta.Target)
-	require.Equal(t, s.Meta.User, sessionMeta.User)
-	require.Equal(t, s.Meta.StaticHost, sessionMeta.StaticHost)
+	require.Equal(t, s.Meta.Id, srm.Id)
+	require.Equal(t, s.Meta.Protocol, srm.Protocol)
+
+	gotSessionMeta := &SessionMeta{}
+	r, err := s.container.container.OpenFile(ctx, sessionMetaFile)
+	require.NoError(t, err)
+	dec := json.NewDecoder(r)
+	err = dec.Decode(gotSessionMeta)
+	require.NoError(t, err)
+	assert.Equal(t, sessionMeta, gotSessionMeta)
 
 	// Populate connection meta
 	connectionId := "connection"
-	c, err := s.NewConnection(ctx, &ConnectionMeta{Id: connectionId})
+	c, err := s.NewConnection(ctx, &ConnectionRecordingMeta{Id: connectionId})
 	require.NoError(t, err)
 	require.NotNil(t, c)
 
-	c.Meta = &ConnectionMeta{}
-	cm, err := decodeConnectionMeta(ctx, c.container.meta)
+	c.Meta = &ConnectionRecordingMeta{}
+	cm, err := decodeConnectionRecordingMeta(ctx, c.container.meta)
 	require.NoError(t, err)
 	c.Meta = cm
 	require.Equal(t, c.Meta.Id, connectionId)
@@ -54,12 +64,12 @@ func TestPopulateMeta(t *testing.T) {
 	// Populate channel meta
 	channelId := "channel"
 	channelType := "mythical"
-	ch, err := c.NewChannel(ctx, &ChannelMeta{Id: channelId, Type: channelType})
+	ch, err := c.NewChannel(ctx, &ChannelRecordingMeta{Id: channelId, Type: channelType})
 	require.NoError(t, err)
 	require.NotNil(t, ch)
 
-	ch.Meta = &ChannelMeta{}
-	chM, err := decodeChannelMeta(ctx, ch.container.meta)
+	ch.Meta = &ChannelRecordingMeta{}
+	chM, err := decodeChannelRecordingMeta(ctx, ch.container.meta)
 	require.NoError(t, err)
 	ch.Meta = chM
 	require.Equal(t, ch.Meta.Id, channelId)
@@ -73,21 +83,25 @@ func TestOpenBSRMethods(t *testing.T) {
 	require.NoError(t, err)
 
 	f := &fstest.MemFS{}
-	sessionId := "session"
-	sessionMeta := TestSessionMeta(sessionId, Protocol("test"))
+	sessionId := "s_01234567890"
+	srm := &SessionRecordingMeta{
+		Id:       "sr_012344567890",
+		Protocol: Protocol("TEST"),
+	}
+	sessionMeta := TestSessionMeta(sessionId)
 
-	sesh, err := NewSession(ctx, sessionMeta, f, keys, WithSupportsMultiplex(true))
+	sesh, err := NewSession(ctx, srm, sessionMeta, f, keys, WithSupportsMultiplex(true))
 	require.NoError(t, err)
 	require.NotNil(t, sesh)
 
 	connectionId := "connection"
-	connMeta := &ConnectionMeta{Id: connectionId}
+	connMeta := &ConnectionRecordingMeta{Id: connectionId}
 	conn, err := sesh.NewConnection(ctx, connMeta)
 	require.NoError(t, err)
 	require.NotNil(t, conn)
 
 	channelId := "channel"
-	chanMeta := &ChannelMeta{
+	chanMeta := &ChannelRecordingMeta{
 		Id:   channelId,
 		Type: "chan",
 	}
@@ -107,7 +121,7 @@ func TestOpenBSRMethods(t *testing.T) {
 		return u, nil
 	}
 
-	opSesh, err := OpenSession(ctx, sessionId, f, keyFn)
+	opSesh, err := OpenSession(ctx, srm.Id, f, keyFn)
 	require.NoError(t, err)
 	require.NotNil(t, opSesh)
 	sesh.Meta.connections = opSesh.Meta.connections
@@ -191,8 +205,13 @@ func TestOpenConnection(t *testing.T) {
 
 	connMap := make(map[string]bool)
 	connMap["connection"] = true
-	meta := TestSessionMeta("sessionId", Protocol("test"))
-	meta.connections = connMap
+	sessionId := "s_01234567890"
+	srm := &SessionRecordingMeta{
+		Id:          "sr_012344567890",
+		Protocol:    Protocol("TEST"),
+		connections: connMap,
+	}
+	meta := TestSessionMeta(sessionId)
 
 	cases := []struct {
 		name            string
@@ -216,7 +235,8 @@ func TestOpenConnection(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			sesh := Session{
-				Meta: meta,
+				Meta:        srm,
+				SessionMeta: meta,
 			}
 			got, err := sesh.OpenConnection(ctx, tc.id)
 			if tc.wantErr {
@@ -258,7 +278,7 @@ func TestOpenChannel(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			conn := Connection{
-				Meta: &ConnectionMeta{
+				Meta: &ConnectionRecordingMeta{
 					channels: chanMap,
 				},
 			}

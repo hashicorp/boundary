@@ -3,3 +3,4 @@
 .*  wrappedPrivKey
 .*  pubKeyBsrSignature.sign
 .*  pubKeySelfSignature.sign
+.*  session-meta.json

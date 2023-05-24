@@ -5,6 +5,7 @@ package bsr_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -32,18 +33,18 @@ func assertContainer(ctx context.Context, t *testing.T, path, state string, typ 
 	td := filepath.Join("testdata", t.Name(), state, path)
 
 	// meta
-	wantMeta, err := os.ReadFile(filepath.Join(td, string(typ)+".meta"))
+	wantMeta, err := os.ReadFile(filepath.Join(td, string(typ)+"-recording.meta"))
 	require.NoError(t, err, "unable to find test data file")
-	meta, ok := fs.Files[string(typ)+".meta"]
+	meta, ok := fs.Files[string(typ)+"-recording.meta"]
 	require.True(t, ok, "container is missing meta file")
 	wantChecksumsRegex, err := regexp.Compile(string(wantMeta))
 	require.NoError(t, err)
 	assert.True(t, wantChecksumsRegex.MatchString(meta.Buf.String()))
 
 	// summary
-	wantSummary, err := os.ReadFile(filepath.Join(td, string(typ)+".summary"))
+	wantSummary, err := os.ReadFile(filepath.Join(td, string(typ)+"-recording-summary.json"))
 	require.NoError(t, err, "unable to find test data file")
-	summary, ok := fs.Files[string(typ)+".summary"]
+	summary, ok := fs.Files[string(typ)+"-recording-summary.json"]
 	require.True(t, ok, "container is missing summary file")
 	assert.Equal(t, string(wantSummary), summary.Buf.String())
 
@@ -60,7 +61,7 @@ func assertContainer(ctx context.Context, t *testing.T, path, state string, typ 
 		wChecksumsRegex = append(wChecksumsRegex, r)
 	}
 	for _, cr := range wChecksumsRegex {
-		assert.True(t, cr.MatchString(checksums.Buf.String()))
+		assert.True(t, cr.MatchString(checksums.Buf.String()), "got:\n%s\nmust match:\n%s", checksums.Buf.String(), cr.String())
 	}
 
 	// SHA256SUM.sig signature file
@@ -99,7 +100,7 @@ func assertContainer(ctx context.Context, t *testing.T, path, state string, typ 
 		wJournalRegex = append(wJournalRegex, r)
 	}
 	for _, cr := range wJournalRegex {
-		assert.True(t, cr.MatchString(journal.Buf.String()))
+		assert.True(t, cr.MatchString(journal.Buf.String()), "got:\n%s\nmust match:\n%s", journal.Buf.String(), cr.String())
 	}
 
 	if typ == "session" {
@@ -123,6 +124,14 @@ func assertContainer(ctx context.Context, t *testing.T, path, state string, typ 
 		pubKeySelfSignature, ok := fs.Files["pubKeySelfSignature.sign"]
 		require.True(t, ok, "container is missing pubKeySelfSignature.sign file")
 		assert.NotEmpty(t, pubKeySelfSignature.Buf.String())
+
+		sessionMeta, ok := fs.Files["session-meta.json"]
+		require.True(t, ok, "container is missing session-meta.json file")
+		assert.NotEmpty(t, sessionMeta.Buf.String())
+		sm := &bsr.SessionMeta{}
+		err = json.Unmarshal(sessionMeta.Buf.Bytes(), sm)
+		require.NoError(t, err)
+		assert.Equal(t, sm, bsr.TestSessionMeta(strings.ReplaceAll(fs.Name, ".bsr", "")))
 	}
 }
 
@@ -233,8 +242,12 @@ func TestBsr(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sessionMeta := bsr.TestSessionMeta(tc.id, "TEST")
-			s, err := bsr.NewSession(ctx, sessionMeta, tc.c, tc.keys, tc.opts...)
+			srm := &bsr.SessionRecordingMeta{
+				Id:       tc.id,
+				Protocol: bsr.Protocol("TEST"),
+			}
+			sessionMeta := bsr.TestSessionMeta(tc.id)
+			s, err := bsr.NewSession(ctx, srm, sessionMeta, tc.c, tc.keys, tc.opts...)
 			require.NoError(t, err)
 			require.NotNil(t, s)
 
@@ -247,7 +260,7 @@ func TestBsr(t *testing.T) {
 
 			// create all the things
 			for _, conn := range tc.conns {
-				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: conn.id})
+				c, err := s.NewConnection(ctx, &bsr.ConnectionRecordingMeta{Id: conn.id})
 				require.NoError(t, err)
 				require.NotNil(t, c)
 
@@ -281,7 +294,7 @@ func TestBsr(t *testing.T) {
 
 				createdChannels := make([]*channel, 0, len(conn.channels))
 				for _, chann := range conn.channels {
-					ch, err := c.NewChannel(ctx, &bsr.ChannelMeta{Id: chann.id, Type: "chan"})
+					ch, err := c.NewChannel(ctx, &bsr.ChannelRecordingMeta{Id: chann.id, Type: "chan"})
 					require.NoError(t, err)
 					require.NotNil(t, ch)
 
@@ -370,14 +383,24 @@ func TestNewSessionErrors(t *testing.T) {
 	require.NoError(t, err)
 
 	cases := []struct {
-		name      string
-		meta      *bsr.SessionMeta
-		f         storage.FS
-		keys      *kms.Keys
-		wantError error
+		name        string
+		meta        *bsr.SessionRecordingMeta
+		sessionMeta *bsr.SessionMeta
+		f           storage.FS
+		keys        *kms.Keys
+		wantError   error
 	}{
 		{
 			"nil-meta",
+			nil,
+			bsr.TestSessionMeta("session"),
+			&fstest.MemFS{},
+			keys,
+			errors.New("bsr.NewSession: missing meta: invalid parameter"),
+		},
+		{
+			"nil-session-meta",
+			bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")),
 			nil,
 			&fstest.MemFS{},
 			keys,
@@ -385,28 +408,32 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"empty-session-id",
-			bsr.TestSessionMeta("", "TEST"),
+			bsr.TestSessionRecordingMeta("", bsr.Protocol("TEST")),
+			bsr.TestSessionMeta("session"),
 			&fstest.MemFS{},
 			keys,
 			errors.New("bsr.NewSession: missing session id: invalid parameter"),
 		},
 		{
 			"nil-fs",
-			bsr.TestSessionMeta("session", "TEST"),
+			bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")),
+			bsr.TestSessionMeta("session"),
 			nil,
 			keys,
 			errors.New("bsr.NewSession: missing storage fs: invalid parameter"),
 		},
 		{
 			"nil-keys",
-			bsr.TestSessionMeta("session", "TEST"),
+			bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")),
+			bsr.TestSessionMeta("session"),
 			&fstest.MemFS{},
 			nil,
 			errors.New("bsr.NewSession: missing kms keys: invalid parameter"),
 		},
 		{
 			"missing-bsr-signature",
-			bsr.TestSessionMeta("session", "TEST"),
+			bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")),
+			bsr.TestSessionMeta("session"),
 			&fstest.MemFS{},
 			&kms.Keys{
 				PubKey:              keys.PubKey,
@@ -418,7 +445,8 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"missing-pub-signature",
-			bsr.TestSessionMeta("session", "TEST"),
+			bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")),
+			bsr.TestSessionMeta("session"),
 			&fstest.MemFS{},
 			&kms.Keys{
 				PubKey:             keys.PubKey,
@@ -430,7 +458,8 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"missing-pub-key",
-			bsr.TestSessionMeta("session", "TEST"),
+			bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")),
+			bsr.TestSessionMeta("session"),
 			&fstest.MemFS{},
 			&kms.Keys{
 				WrappedBsrKey:       keys.WrappedBsrKey,
@@ -442,7 +471,8 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"missing-wrapped-bsr-key",
-			bsr.TestSessionMeta("session", "TEST"),
+			bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")),
+			bsr.TestSessionMeta("session"),
 			&fstest.MemFS{},
 			&kms.Keys{
 				PubKey:              keys.PubKey,
@@ -454,7 +484,8 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"missing-wrapped-priv-key",
-			bsr.TestSessionMeta("session", "TEST"),
+			bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")),
+			bsr.TestSessionMeta("session"),
 			&fstest.MemFS{},
 			&kms.Keys{
 				PubKey:              keys.PubKey,
@@ -466,7 +497,8 @@ func TestNewSessionErrors(t *testing.T) {
 		},
 		{
 			"fs-new-error",
-			bsr.TestSessionMeta("session", "TEST"),
+			bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")),
+			bsr.TestSessionMeta("session"),
 			fstest.NewMemFS(fstest.WithNewFunc(func(_ context.Context, _ string) (storage.Container, error) {
 				return nil, errors.New("fs new error")
 			})),
@@ -477,7 +509,7 @@ func TestNewSessionErrors(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := bsr.NewSession(ctx, tc.meta, tc.f, tc.keys)
+			_, err := bsr.NewSession(ctx, tc.meta, tc.sessionMeta, tc.f, tc.keys)
 			require.Error(t, err)
 			assert.EqualError(t, err, tc.wantError.Error())
 		})
@@ -493,13 +525,13 @@ func TestNewConnectionErrors(t *testing.T) {
 	cases := []struct {
 		name      string
 		session   *bsr.Session
-		meta      *bsr.ConnectionMeta
+		meta      *bsr.ConnectionRecordingMeta
 		wantError error
 	}{
 		{
 			"nil-meta",
 			func() *bsr.Session {
-				s, err := bsr.NewSession(ctx, bsr.TestSessionMeta("session", "TEST"), &fstest.MemFS{}, keys)
+				s, err := bsr.NewSession(ctx, bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")), bsr.TestSessionMeta("session"), &fstest.MemFS{}, keys)
 				require.NoError(t, err)
 				return s
 			}(),
@@ -509,11 +541,11 @@ func TestNewConnectionErrors(t *testing.T) {
 		{
 			"empty-connection-id",
 			func() *bsr.Session {
-				s, err := bsr.NewSession(ctx, bsr.TestSessionMeta("session", "TEST"), &fstest.MemFS{}, keys)
+				s, err := bsr.NewSession(ctx, bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST")), bsr.TestSessionMeta("session"), &fstest.MemFS{}, keys)
 				require.NoError(t, err)
 				return s
 			}(),
-			&bsr.ConnectionMeta{Id: ""},
+			&bsr.ConnectionRecordingMeta{Id: ""},
 			errors.New("bsr.(Session).NewConnection: missing connection id: invalid parameter"),
 		},
 	}
@@ -533,20 +565,21 @@ func TestNewChannelErrors(t *testing.T) {
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
 	require.NoError(t, err)
 
-	sessionMeta := bsr.TestSessionMeta("session", "TEST")
+	srm := bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST"))
+	sessionMeta := bsr.TestSessionMeta("session")
 	cases := []struct {
 		name       string
 		connection *bsr.Connection
-		meta       *bsr.ChannelMeta
+		meta       *bsr.ChannelRecordingMeta
 		wantError  error
 	}{
 		{
 			"nil-meta",
 			func() *bsr.Connection {
-				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
+				s, err := bsr.NewSession(ctx, srm, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
 				require.NoError(t, err)
 
-				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
+				c, err := s.NewConnection(ctx, &bsr.ConnectionRecordingMeta{Id: "connection"})
 				require.NoError(t, err)
 				return c
 			}(),
@@ -556,40 +589,40 @@ func TestNewChannelErrors(t *testing.T) {
 		{
 			"empty-connection-id",
 			func() *bsr.Connection {
-				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
+				s, err := bsr.NewSession(ctx, srm, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
 				require.NoError(t, err)
 
-				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
+				c, err := s.NewConnection(ctx, &bsr.ConnectionRecordingMeta{Id: "connection"})
 				require.NoError(t, err)
 				return c
 			}(),
-			&bsr.ChannelMeta{Id: ""},
+			&bsr.ChannelRecordingMeta{Id: ""},
 			errors.New("bsr.(Connection).NewChannel: missing channel id: invalid parameter"),
 		},
 		{
 			"not-multiplexed",
 			func() *bsr.Connection {
-				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(false))
+				s, err := bsr.NewSession(ctx, srm, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(false))
 				require.NoError(t, err)
 
-				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
+				c, err := s.NewConnection(ctx, &bsr.ConnectionRecordingMeta{Id: "connection"})
 				require.NoError(t, err)
 				return c
 			}(),
-			&bsr.ChannelMeta{Id: ""},
+			&bsr.ChannelRecordingMeta{Id: ""},
 			errors.New("bsr.(Connection).NewChannel: connection cannot make channels: not supported by protocol"),
 		},
 		{
 			"not-multiplexed-default",
 			func() *bsr.Connection {
-				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys)
+				s, err := bsr.NewSession(ctx, srm, sessionMeta, &fstest.MemFS{}, keys)
 				require.NoError(t, err)
 
-				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
+				c, err := s.NewConnection(ctx, &bsr.ConnectionRecordingMeta{Id: "connection"})
 				require.NoError(t, err)
 				return c
 			}(),
-			&bsr.ChannelMeta{Id: ""},
+			&bsr.ChannelRecordingMeta{Id: ""},
 			errors.New("bsr.(Connection).NewChannel: connection cannot make channels: not supported by protocol"),
 		},
 	}
@@ -609,7 +642,8 @@ func TestChannelNewMessagesWriterErrors(t *testing.T) {
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
 	require.NoError(t, err)
 
-	sessionMeta := bsr.TestSessionMeta("session", "TEST")
+	srm := bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST"))
+	sessionMeta := bsr.TestSessionMeta("session")
 	cases := []struct {
 		name      string
 		channel   *bsr.Channel
@@ -619,13 +653,13 @@ func TestChannelNewMessagesWriterErrors(t *testing.T) {
 		{
 			"invalid-dir",
 			func() *bsr.Channel {
-				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
+				s, err := bsr.NewSession(ctx, srm, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
 				require.NoError(t, err)
 
-				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
+				c, err := s.NewConnection(ctx, &bsr.ConnectionRecordingMeta{Id: "connection"})
 				require.NoError(t, err)
 
-				ch, err := c.NewChannel(ctx, &bsr.ChannelMeta{Id: "channel"})
+				ch, err := c.NewChannel(ctx, &bsr.ChannelRecordingMeta{Id: "channel"})
 				require.NoError(t, err)
 				return ch
 			}(),
@@ -649,7 +683,8 @@ func TestChannelNewRequestsWriterErrors(t *testing.T) {
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
 	require.NoError(t, err)
 
-	sessionMeta := bsr.TestSessionMeta("session", "TEST")
+	srm := bsr.TestSessionRecordingMeta("session_recording", bsr.Protocol("TEST"))
+	sessionMeta := bsr.TestSessionMeta("session")
 	cases := []struct {
 		name      string
 		channel   *bsr.Channel
@@ -659,13 +694,13 @@ func TestChannelNewRequestsWriterErrors(t *testing.T) {
 		{
 			"invalid-dir",
 			func() *bsr.Channel {
-				s, err := bsr.NewSession(ctx, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
+				s, err := bsr.NewSession(ctx, srm, sessionMeta, &fstest.MemFS{}, keys, bsr.WithSupportsMultiplex(true))
 				require.NoError(t, err)
 
-				c, err := s.NewConnection(ctx, &bsr.ConnectionMeta{Id: "connection"})
+				c, err := s.NewConnection(ctx, &bsr.ConnectionRecordingMeta{Id: "connection"})
 				require.NoError(t, err)
 
-				ch, err := c.NewChannel(ctx, &bsr.ChannelMeta{Id: "channel"})
+				ch, err := c.NewChannel(ctx, &bsr.ChannelRecordingMeta{Id: "channel"})
 				require.NoError(t, err)
 				return ch
 			}(),

@@ -3,5 +3,6 @@
 .*  wrappedPrivKey
 .*  pubKeyBsrSignature.sign
 .*  pubKeySelfSignature.sign
-1aac36a2c36e4de69c5bf3522ada1c7f080ac807f2182c013ec8ddf60bedae10  session.meta
-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  session.summary
+.*  session-meta.json
+523569b06adc4a1996c7d3833105a48485428e663bf8a11ed9b4d8f84f68b85c  session-recording.meta
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  session-recording-summary.json

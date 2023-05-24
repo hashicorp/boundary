@@ -6,6 +6,7 @@ package bsr
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -22,8 +23,8 @@ import (
 )
 
 const (
-	metaFile     = "%s.meta"
-	summaryFile  = "%s.summary"
+	metaFile     = "%s-recording.meta"
+	summaryFile  = "%s-recording-summary.json"
 	checksumFile = "SHA256SUM"
 	sigFile      = "SHA256SUM.sig"
 	journalFile  = ".journal"
@@ -45,12 +46,13 @@ type container struct {
 	container storage.Container
 
 	// Fields primarily used for writing
-	journal   *journal.Journal
-	sumName   string
-	meta      *checksum.File
-	sum       *checksum.File
-	checksums *sign.File
-	sigs      storage.File
+	journal    *journal.Journal
+	sumName    string
+	meta       *checksum.File
+	sum        *checksum.File
+	sumEncoder *json.Encoder
+	checksums  *sign.File
+	sigs       storage.File
 
 	// Field used for reading
 	shaSums  checksum.Sha256Sums
@@ -113,6 +115,8 @@ func newContainer(ctx context.Context, t containerType, c storage.Container, key
 	if err != nil {
 		return nil, err
 	}
+	cc.sumEncoder = json.NewEncoder(cc.sum)
+	cc.sumEncoder.SetIndent("", "  ")
 
 	return cc, nil
 }
@@ -369,6 +373,53 @@ func (c *container) create(ctx context.Context, s string, options ...storage.Opt
 	return jf, nil
 }
 
+func (c *container) decodeJsonFile(ctx context.Context, s string, v any) error {
+	const op = "bsr.(container).decodeJsonFile"
+
+	return c.decodeFile(ctx, s, func(_ context.Context, r io.Reader) error {
+		dec := json.NewDecoder(r)
+		if err := dec.Decode(v); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		return nil
+	})
+}
+
+func (c *container) decodeFile(ctx context.Context, s string, fn func(context.Context, io.Reader) error) error {
+	const op = "bsr.(container).decodeFile"
+
+	expectedSum, err := c.shaSums.Sum(s)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	f, err := c.container.OpenFile(ctx, s)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	sha256Reader, err := crypto.NewSha256SumReader(ctx, f)
+	if err != nil {
+		f.Close()
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	defer sha256Reader.Close()
+
+	if err := fn(ctx, sha256Reader); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	gotSum, err := sha256Reader.Sum(ctx, crypto.WithHexEncoding(true))
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	if !bytes.Equal(expectedSum, gotSum) {
+		return fmt.Errorf("%s: checksum did not match expected value", op)
+	}
+
+	return nil
+}
+
 // syncBsrKey will take the marshalled bytes of a key, write its contents to a local file,
 // and then close it. The key file is created using the synchronous storage option, so
 // close will block until the file is synced to remote storage
@@ -421,19 +472,9 @@ func (c *container) WriteMeta(_ context.Context, k, v string) (int, error) {
 	return c.meta.WriteString(fmt.Sprintf("%s: %s\n", k, v))
 }
 
-// writeSummaryString writes a string to the container's summary file.
-func (c *container) writeSummaryString(_ context.Context, s string) (int, error) {
-	return c.sum.WriteString(s)
-}
-
-// WriteSummary writes a new line terminated key : value pair to the container's summary file
-func (c *container) WriteSummary(_ context.Context, k, v string) (int, error) {
-	return c.sum.WriteString(fmt.Sprintf("%s: %s\n", k, v))
-}
-
-// WriteSummaryLine writes a new line terminated string to the container's summary file.
-func (c *container) WriteSummaryLine(_ context.Context, s string) (int, error) {
-	return c.sum.WriteString(s + "\n")
+// EncodeSummary writes a new line terminated key : value pair to the container's summary file
+func (c *container) EncodeSummary(_ context.Context, s any) error {
+	return c.sumEncoder.Encode(s)
 }
 
 // WriteBinaryChecksum writes a checksum for a binary file to the checksum file.
