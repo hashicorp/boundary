@@ -55,21 +55,13 @@ message StorageBucket {
   // The name of the bucket within the external object store service.
   string bucket_name = 60 [
     json_name = "bucket_name",
-    (custom_options.v1.generate_sdk_option) = true,
-    (custom_options.v1.mask_mapping) = {
-      this: "bucket_name"
-      that: "BucketName"
-    }
+    (custom_options.v1.generate_sdk_option) = true
   ]; // @gotags: `class:"public"`
 
   // The prefix used to organize the data held within the external object store.
   string bucket_prefix = 70 [
     json_name = "bucket_prefix",
-    (custom_options.v1.generate_sdk_option) = true,
-    (custom_options.v1.mask_mapping) = {
-      this: "bucket_prefix"
-      that: "BucketPrefix"
-    }
+    (custom_options.v1.generate_sdk_option) = true
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
