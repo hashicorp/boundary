@@ -71,6 +71,7 @@ begin;
     'The current month is a sum from the beginning of the current month '
     'until the start of the current hour (exclusive).';
 
+  -- replaced in 70/03_hcp_billing_monthly.up.sql
   drop view if exists hcp_billing_monthly_sessions_all;
   create view hcp_billing_monthly_sessions_all as
   with
@@ -107,4 +108,5 @@ begin;
     'the sum of pending sessions for the current month and all previous months. '
     'The current month is a sum from the beginning of the current month '
     'until the start of the current hour (exclusive).';
+
 commit;

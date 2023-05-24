@@ -72,6 +72,7 @@ begin;
       '169 rows are returned: 1 for the current hour plus 168 for the previous 7 days. '
       'Rows are sorted by the hour in descending order.';
 
+  -- replaced in 70/02_hcp_billing_hourly.up.sql
   drop view if exists hcp_billing_hourly_sessions_all;
   create view hcp_billing_hourly_sessions_all as
   with
