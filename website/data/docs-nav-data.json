@@ -80,6 +80,35 @@
     ]
   },
   {
+    "title": "Install Boundary",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "install-boundary"
+      },
+      {
+        "title": "Non-Dev Environments",
+        "path": "install-boundary/no-gen-resources"
+      },
+      {
+        "title": "Systemd Install",
+        "path": "install-boundary/systemd"
+      },
+      {
+        "title": "Postgres Install",
+        "path": "install-boundary/postgres"
+      },
+      {
+        "title": "High Availability Install",
+        "path": "install-boundary/high-availability"
+      },
+      {
+        "title": "Reference Architectures",
+        "path": "install-boundary/reference-architectures"
+      }
+    ]
+  },
+  {
     "title": "Configuration",
     "routes": [
       {
@@ -472,44 +501,13 @@
   },
   {
     "title": "Boundary OSS",
+    "hidden": true,
     "routes": [
       {
         "title": "Overview",
         "path": "oss"
-      },
-      {
-        "title": "Installation",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "oss/installing"
-          },
-          {
-            "title": "Non-Dev Environments",
-            "path": "oss/installing/no-gen-resources"
-          },
-          {
-            "title": "Systemd Install",
-            "path": "oss/installing/systemd"
-          },
-          {
-            "title": "Postgres Install",
-            "path": "oss/installing/postgres"
-          },
-          {
-            "title": "High Availability Install",
-            "path": "oss/installing/high-availability"
-          },
-          {
-            "title": "Reference Architectures",
-            "path": "oss/installing/reference-architectures"
-          }
-        ]
       }
     ]
-  },
-  {
-    "divider": true
   },
   {
     "title": "HCP Boundary",

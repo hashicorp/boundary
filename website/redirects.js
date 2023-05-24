@@ -93,4 +93,34 @@ module.exports = [
     destination: '/boundary/docs/operations/metrics',
     permanent: true,
   },
+  {
+    source: '/boundary/docs/oss/installing/high-availability',
+    destination: '/boundary/docs/install-boundary/high-availability',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing',
+    destination: '/boundary/docs/install-boundary',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/no-gen-resources',
+    destination: '/boundary/docs/install-boundary/no-gen-resources',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/postgres',
+    destination: '/boundary/docs/install-boundary/postgres',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/reference-architectures',
+    destination: '/boundary/docs/install-boundary/reference-architectures',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/oss/installing/systemd',
+    destination: '/boundary/docs/install-boundary/systemd',
+    permanent: true,
+  },
 ]
