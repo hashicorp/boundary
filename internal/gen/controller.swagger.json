@@ -5642,7 +5642,7 @@
           "title": "The type of the host. This will be either \"static\" or \"plugin\""
         },
         "attributes": {
-          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.StaticHostAttributes",
+          "type": "object",
           "description": "The attributes that are applicable for the specific Host."
         },
         "external_id": {
@@ -5783,26 +5783,6 @@
       },
       "description": "SessionRecording contains information about the recording of a Session."
     },
-    "controller.api.resources.sessionrecordings.v1.SshTargetAttributes": {
-      "type": "object",
-      "properties": {
-        "default_port": {
-          "type": "integer",
-          "format": "int64",
-          "description": "The default SSH port that is used when connecting to the endpoint."
-        }
-      },
-      "title": "SshTargetAttributes contains attributes relevant to Targets of type \"ssh\""
-    },
-    "controller.api.resources.sessionrecordings.v1.StaticHostAttributes": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string",
-          "title": "The address specified on a static host"
-        }
-      }
-    },
     "controller.api.resources.sessionrecordings.v1.Target": {
       "type": "object",
       "properties": {
@@ -5844,8 +5824,12 @@
           "type": "string",
           "description": "Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request."
         },
+        "type": {
+          "type": "string",
+          "description": "The type of the Target."
+        },
         "attributes": {
-          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SshTargetAttributes",
+          "type": "object",
           "description": "The attributes that are applicable for the specific Target."
         }
       },

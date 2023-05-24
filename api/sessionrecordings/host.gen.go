@@ -5,11 +5,11 @@
 package sessionrecordings
 
 type Host struct {
-	Id          string                `json:"id,omitempty"`
-	HostCatalog *HostCatalog          `json:"host_catalog,omitempty"`
-	Name        string                `json:"name,omitempty"`
-	Description string                `json:"description,omitempty"`
-	Type        string                `json:"type,omitempty"`
-	Attributes  *StaticHostAttributes `json:"attributes,omitempty"`
-	ExternalId  string                `json:"external_id,omitempty"`
+	Id          string                 `json:"id,omitempty"`
+	HostCatalog *HostCatalog           `json:"host_catalog,omitempty"`
+	Name        string                 `json:"name,omitempty"`
+	Description string                 `json:"description,omitempty"`
+	Type        string                 `json:"type,omitempty"`
+	Attributes  map[string]interface{} `json:"attributes,omitempty"`
+	ExternalId  string                 `json:"external_id,omitempty"`
 }

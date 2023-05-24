@@ -146,19 +146,14 @@ message Host {
   string type = 5; // @gotags: class:"public"
 
   oneof attrs {
-    // We are using the name attributes here because at the time of
-    // writing this there is only ssh target attributes for Session Recordings.
-    // When we add another target type for Session Recordings we will need to
-    // add a generic Struct with the field named "attributes", and then use the
-    // method used in other places that assign to these strongly typed
-    // attributes and then use a response interceptor to populate the
-    // struct field named "attributes" from the other oneof fields.  This is
-    // going to be a breaking change (in terms of proto compatibility) but
-    // since this is only consumed in JSON format, that should be transparent
-    // to the end user.
+    // Here we use the google.protobuf.Struct so the generated structs in
+    // api/ are map[string]interface{}.  Future work will include having
+    // well defined proto messages which contain exactly the fields expected
+    // in the attributes depending on the type of this resource, similar to
+    // how attributes are done when attributes is a top level field.
 
     // The attributes that are applicable for the specific Host.
-    StaticHostAttributes attributes = 6; // @gotags: class:"public"
+    google.protobuf.Struct attributes = 6; // @gotags: class:"public"
   }
 
   // The external id of the Host, if any.
@@ -199,20 +194,18 @@ message Target {
   // Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request.
   string ingress_worker_filter = 9 [json_name = "ingress_worker_filter"]; // @gotags: class:"public"
 
+  // The type of the Target.
+  string type = 10; // @gotags: `class:"public"`
+
   oneof attrs {
-    // We are using the name attributes here because at the time of
-    // writing this there is only ssh target attributes for Session Recordings.
-    // When we add another target type for Session Recordings we will need to
-    // add a generic Struct with the field named "attributes", and then use the
-    // method used in other places that assign to these strongly typed
-    // attributes and then use a response interceptor to populate the
-    // struct field named "attributes" from the other oneof fields.  This is
-    // going to be a breaking change (in terms of proto compatibility) but
-    // since this is only consumed in JSON format, that should be transparent
-    // to the end user.
+    // Here we use the google.protobuf.Struct so the generated structs in
+    // api/ are map[string]interface{}.  Future work will include having
+    // well defined proto messages which contain exactly the fields expected
+    // in the attributes depending on the type of this resource, similar to
+    // how attributes are done when attributes is a top level field.
 
     // The attributes that are applicable for the specific Target.
-    SshTargetAttributes attributes = 10;
+    google.protobuf.Struct attributes = 11; // @gotags: class:"public"
   }
 }
 

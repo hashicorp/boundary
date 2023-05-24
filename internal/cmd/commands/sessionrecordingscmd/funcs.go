@@ -249,8 +249,8 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 				targetMap["Ingress Worker Filter"] = item.CreateTimeValues.Target.IngressWorkerFilter
 			}
 			if item.CreateTimeValues.Target.Attributes != nil {
-				if item.CreateTimeValues.Target.Attributes.DefaultPort != 0 {
-					targetMap["Default Port"] = item.CreateTimeValues.Target.Attributes.DefaultPort
+				if attr, err := item.CreateTimeValues.Target.GetSshTargetAttributes(); err == nil && attr != nil && attr.DefaultPort != 0 {
+					targetMap["Default Port"] = attr.DefaultPort
 				}
 			}
 			maxTargetLength := base.MaxAttributesLength(targetMap, nil, nil)
@@ -278,8 +278,8 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 				hostMap["External ID"] = item.CreateTimeValues.Host.ExternalId
 			}
 			if item.CreateTimeValues.Host.Attributes != nil {
-				if item.CreateTimeValues.Host.Attributes.Address != "" {
-					hostMap["Address"] = item.CreateTimeValues.Host.Attributes.Address
+				if attr, err := item.CreateTimeValues.Host.GetStaticHostAttributes(); err == nil && attr != nil && attr.Address != "" {
+					hostMap["Address"] = attr.Address
 				}
 			}
 			maxHostLength := base.MaxAttributesLength(hostMap, nil, nil)

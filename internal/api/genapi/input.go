@@ -1017,16 +1017,26 @@ var inputStructs = []*structInfo{
 		outFile: "sessionrecordings/target.gen.go",
 	},
 	{
-		inProto: &session_recordings.SshTargetAttributes{},
-		outFile: "sessionrecordings/ssh_target_attributes.gen.go",
+		inProto:        &session_recordings.SshTargetAttributes{},
+		outFile:        "sessionrecordings/ssh_target_attributes.gen.go",
+		subtypeName:    "Ssh",
+		parentTypeName: "Target",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto: &session_recordings.Host{},
 		outFile: "sessionrecordings/host.gen.go",
 	},
 	{
-		inProto: &session_recordings.StaticHostAttributes{},
-		outFile: "sessionrecordings/static_host_attributes.gen.go",
+		inProto:        &session_recordings.StaticHostAttributes{},
+		outFile:        "sessionrecordings/static_host_attributes.gen.go",
+		subtypeName:    "Static",
+		parentTypeName: "Host",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto: &session_recordings.HostCatalog{},
