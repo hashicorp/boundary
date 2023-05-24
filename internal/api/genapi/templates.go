@@ -51,6 +51,7 @@ type templateInput struct {
 	ExtraFields           []fieldInfo
 	VersionEnabled        bool
 	CreateResponseTypes   []string
+	SkipListFiltering     bool
 	RecursiveListing      bool
 }
 
@@ -69,6 +70,7 @@ func fillTemplates() {
 			ExtraFields:         in.extraFields,
 			VersionEnabled:      in.versionEnabled,
 			CreateResponseTypes: in.createResponseTypes,
+			SkipListFiltering:   in.skipListFiltering,
 			RecursiveListing:    in.recursiveListing,
 		}
 		if in.packageOverride != "" {
@@ -191,10 +193,11 @@ func fillTemplates() {
 		}
 
 		input := templateInput{
-			Package:          pkg,
-			Fields:           fields,
-			RecursiveListing: inputMap[pkg].recursiveListing,
-			VersionEnabled:   inputMap[pkg].versionEnabled,
+			Package:           pkg,
+			Fields:            fields,
+			SkipListFiltering: inputMap[pkg].skipListFiltering,
+			RecursiveListing:  inputMap[pkg].recursiveListing,
+			VersionEnabled:    inputMap[pkg].versionEnabled,
 		}
 
 		if err := optionTemplate.Execute(outBuf, input); err != nil {
@@ -763,6 +766,7 @@ func WithSkipCurlOutput(skip bool) Option {
 	}
 }
 
+{{ if not .SkipListFiltering }}
 // WithFilter tells the API to filter the items returned using the provided
 // filter term.  The filter should be in a format supported by
 // hashicorp/go-bexpr.
@@ -771,6 +775,7 @@ func WithFilter(filter string) Option {
 		o.withFilter = strings.TrimSpace(filter)
 	}
 }
+{{ end }}
 {{ if .RecursiveListing }}
 // WithRecursive tells the API to use recursion for listing operations on this
 // resource

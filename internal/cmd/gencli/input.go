@@ -86,6 +86,8 @@ type cmdInfo struct {
 	// SkipClientCallActions allows skipping creation of an actual client
 	// call for an action in favor of custom logic in extra actions
 	SkipClientCallActions []string
+
+	SkipFiltering bool
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -575,6 +577,7 @@ var inputStructs = map[string][]*cmdInfo{
 			HasExtraCommandVars: true,
 			HasExtraHelpFunc:    true,
 			HasId:               true,
+			SkipFiltering:       true,
 		},
 	},
 	"storagebuckets": {

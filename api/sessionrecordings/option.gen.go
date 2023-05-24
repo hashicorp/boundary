@@ -6,7 +6,6 @@ package sessionrecordings
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/hashicorp/boundary/api"
 )
@@ -61,15 +60,6 @@ func getOpts(opt ...Option) (options, []api.Option) {
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
 		o.withSkipCurlOutput = true
-	}
-}
-
-// WithFilter tells the API to filter the items returned using the provided
-// filter term.  The filter should be in a format supported by
-// hashicorp/go-bexpr.
-func WithFilter(filter string) Option {
-	return func(o *options) {
-		o.withFilter = strings.TrimSpace(filter)
 	}
 }
 

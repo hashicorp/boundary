@@ -109,6 +109,10 @@ type structInfo struct {
 	// useful to avoid collisions
 	nameOverride string
 
+	// skipListFiltering indicates that the collection doesn't support
+	// filtering when listing
+	skipListFiltering bool
+
 	// recursiveListing indicates that the collection supports recursion when
 	// listing
 	recursiveListing bool
@@ -1082,6 +1086,7 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "session-recordings",
 		createResponseTypes: []string{ReadResponseType, ListResponseType},
 		recursiveListing:    true,
+		skipListFiltering:   true,
 		versionEnabled:      false,
 		fieldOverrides: []fieldInfo{
 			// int64 fields get marshalled by protobuf as strings, so we have
