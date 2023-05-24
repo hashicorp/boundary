@@ -382,7 +382,7 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 						chrm[durationKey] = chr.Duration.Seconds()
 					}
 					if len(chr.MimeTypes) > 0 {
-						chrm["Mine Types"] = strings.Join(chr.MimeTypes, ", ")
+						chrm["Mime Types"] = strings.Join(chr.MimeTypes, ", ")
 					}
 					channelRecordings = append(channelRecordings, chrm)
 				}
