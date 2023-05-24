@@ -3,7 +3,7 @@
 
 begin;
   create table sessions_pending_daily_snapshot (
-    date date primary key,
+    snapshot_date date primary key,
     sessions_pending_count bigint not null
   );
 
