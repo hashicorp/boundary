@@ -37,6 +37,7 @@ type Bucket interface {
 // FS is a filesystem for creating or reading files and containers.
 type FS interface {
 	New(ctx context.Context, name string) (Container, error)
+	Open(ctx context.Context, name string) (Container, error)
 }
 
 // A Container is a filesystem abstraction that can create files or other containers.
