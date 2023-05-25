@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/google/go-cmp/cmp"
@@ -739,6 +740,56 @@ func TestCreate(t *testing.T) {
 			},
 		},
 		{
+			name:    "Create a valid org with leading and trailing whitespace on name and description",
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateScopeRequest{
+				Item: &pb.Scope{
+					ScopeId:     scope.Global.String(),
+					Description: &wrapperspb.StringValue{Value: "  test description with whitespace      "},
+					Type:        scope.Org.String(),
+					Name:        &wrapperspb.StringValue{Value: "  test org name with whitespace     "},
+				},
+			},
+			res: &pbs.CreateScopeResponse{
+				Uri: "scopes/o_",
+				Item: &pb.Scope{
+					ScopeId:                     scope.Global.String(),
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+					Description:                 &wrapperspb.StringValue{Value: "test description with whitespace"}, // assert the whitespace is trimmed
+					Name:                        &wrapperspb.StringValue{Value: "test org name with whitespace"},    // assert the whitespace is trimmed
+					Version:                     1,
+					Type:                        scope.Org.String(),
+					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name:    "Create a global type scope",
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateScopeRequest{
+				Item: &pb.Scope{
+					ScopeId:     scope.Global.String(),
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        scope.Global.String(),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Create with a custom version number",
+			scopeId: scope.Global.String(),
+			req: &pbs.CreateScopeRequest{
+				Item: &pb.Scope{
+					ScopeId:     scope.Global.String(),
+					Description: &wrapperspb.StringValue{Value: "desc"},
+					Type:        scope.Org.String(),
+					Version:     5,
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
 			name:    "Project with bad type specified",
 			scopeId: defaultOrg.GetPublicId(),
 			req: &pbs.CreateScopeRequest{
@@ -809,7 +860,26 @@ func TestCreate(t *testing.T) {
 				require.NoError(err, "Error when getting new project service.")
 
 				if name != "" {
-					name = fmt.Sprintf("%s-%t", name, withUserId)
+					// Test cases can specify names with leading and trailing
+					// whitespace to test for Boundary's whitespace removal.
+					// Since we're adding to the name before we send the request
+					// off, we need to make sure we keep it as we found it.
+
+					// Find where leading whitespace ends, add withUserId there.
+					idx := 0
+					for i, r := range name {
+						if !unicode.IsSpace(r) {
+							idx = i
+							break
+						}
+					}
+
+					if idx == 0 {
+						name = fmt.Sprintf("%t-%s", withUserId, name)
+					} else {
+						name = fmt.Sprintf("%s%t-%s", name[:idx], withUserId, name[idx:])
+					}
+
 					req.GetItem().GetName().Value = name
 				}
 				var userId string
@@ -866,7 +936,7 @@ func TestCreate(t *testing.T) {
 					}
 
 					// Clear all values which are hard to compare against.
-					assert.Equal(name, got.GetItem().GetName().GetValue())
+					assert.Equal(strings.TrimSpace(name), got.GetItem().GetName().GetValue())
 					got.Item.Name = tc.res.GetItem().GetName()
 					got.Uri, tc.res.Uri = "", ""
 					got.Item.Id, tc.res.Item.Id = "", ""
@@ -995,6 +1065,33 @@ func TestUpdate(t *testing.T) {
 			},
 		},
 		{
+			name:    "Update org name and description with whitespace",
+			scopeId: scope.Global.String(),
+			req: &pbs.UpdateScopeRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "  new name     "},
+					Description: &wrapperspb.StringValue{Value: "         new desc    "},
+					Type:        scope.Org.String(),
+				},
+			},
+			res: &pbs.UpdateScopeResponse{
+				Item: &pb.Scope{
+					Id:                          org.GetPublicId(),
+					ScopeId:                     scope.Global.String(),
+					Scope:                       &pb.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+					Name:                        &wrapperspb.StringValue{Value: "new name"},
+					Description:                 &wrapperspb.StringValue{Value: "new desc"},
+					CreatedTime:                 org.GetCreateTime().GetTimestamp(),
+					Type:                        scope.Org.String(),
+					AuthorizedActions:           testAuthorizedActions,
+					AuthorizedCollectionActions: orgAuthorizedCollectionActions,
+				},
+			},
+		},
+		{
 			name:    "Update global",
 			scopeId: scope.Global.String(),
 			req: &pbs.UpdateScopeRequest{
@@ -1079,6 +1176,117 @@ func TestUpdate(t *testing.T) {
 				Item: &pb.Scope{
 					Name:        &wrapperspb.StringValue{Value: "updated name"},
 					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Invalidly formatted scope id - org scope",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
+				Id:         "o_!@£$*",
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Invalidly formatted scope id - proj scope",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
+				Id:         "p_!@£$*",
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Invalidly formatted scope id - unknown scope",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
+				Id:         "bla_123",
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Unknown scope type - org scope",
+			scopeId: org.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
+				Id:         org.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Scope{
+					Type:        "test",
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Unknown scope type - proj scope",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
+				Id:         proj.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Scope{
+					Type:        "test",
+					Name:        &wrapperspb.StringValue{Value: "updated name"},
+					Description: &wrapperspb.StringValue{Value: "updated desc"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Unknown primary auth method id",
+			scopeId: proj.GetPublicId(),
+			req: &pbs.UpdateScopeRequest{
+				Id:         proj.GetPublicId(),
+				UpdateMask: &field_mask.FieldMask{Paths: []string{}},
+				Item: &pb.Scope{
+					Name:                &wrapperspb.StringValue{Value: "updated name"},
+					Description:         &wrapperspb.StringValue{Value: "updated desc"},
+					PrimaryAuthMethodId: &wrapperspb.StringValue{Value: "test_123"},
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Update org name and description with whitespace only",
+			scopeId: scope.Global.String(),
+			req: &pbs.UpdateScopeRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "     "},
+					Description: &wrapperspb.StringValue{Value: "     "},
+					Type:        scope.Org.String(),
+				},
+			},
+			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Update org name and description with non-printable characters",
+			scopeId: scope.Global.String(),
+			req: &pbs.UpdateScopeRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"name", "description"},
+				},
+				Item: &pb.Scope{
+					Name:        &wrapperspb.StringValue{Value: "    na\u200Bme   "},
+					Description: &wrapperspb.StringValue{Value: "   desc\u200Bription "},
+					Type:        scope.Org.String(),
 				},
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
