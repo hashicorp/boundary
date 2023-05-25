@@ -4,10 +4,12 @@
 package targets
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
@@ -35,10 +37,15 @@ type attributeFunc func(any) Attributes
 
 type setAttributeFunc func(target.Target, *pb.Target) error
 
+// validateSessionStateFunc validates a session's state for the specific target
+// type.
+type validateSessionStateFunc func(context.Context, *session.Session) error
+
 type registryEntry struct {
-	maskManager handlers.MaskManager
-	attrFunc    attributeFunc
-	setAttrFunc setAttributeFunc
+	maskManager              handlers.MaskManager
+	attrFunc                 attributeFunc
+	setAttrFunc              setAttributeFunc
+	validateSessionStateFunc validateSessionStateFunc
 }
 
 type registry struct {
@@ -99,11 +106,12 @@ var subtypeRegistry = registry{
 }
 
 // Register registers a subtype for used by the service handler.
-func Register(s subtypes.Subtype, maskManager handlers.MaskManager, af attributeFunc, sf setAttributeFunc) {
+func Register(s subtypes.Subtype, maskManager handlers.MaskManager, af attributeFunc, sf setAttributeFunc, vsf validateSessionStateFunc) {
 	if _, existed := subtypeRegistry.LoadOrStore(s, &registryEntry{
-		maskManager: maskManager,
-		attrFunc:    af,
-		setAttrFunc: sf,
+		maskManager:              maskManager,
+		attrFunc:                 af,
+		setAttrFunc:              sf,
+		validateSessionStateFunc: vsf,
 	}); existed {
 		panic(fmt.Sprintf("subtype %s already registered", s))
 	}

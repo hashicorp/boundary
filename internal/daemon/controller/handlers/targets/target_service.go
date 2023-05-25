@@ -970,6 +970,15 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		}
 	}()
 
+	subtype := target.SubtypeFromId(req.GetId())
+	subtypeEntry, err := subtypeRegistry.get(subtype)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if err := subtypeEntry.validateSessionStateFunc(ctx, sess); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
 	var dynamic []credential.Dynamic
 	var staticCredsById map[string]credential.Static
 	if len(vaultReqs) > 0 {
