@@ -2,7 +2,10 @@
 
 package config
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -25,7 +28,22 @@ type options struct {
 }
 
 func getDefaultOptions() options {
-	return options{}
+	opts := options{}
+
+	if os.Getenv("BOUNDARY_ENABLE_TEST_SYS_EVENTS") != "" {
+		opts.withSysEventsEnabled = true
+	}
+	if os.Getenv("BOUNDARY_ENABLE_TEST_AUDIT_EVENTS") != "" {
+		opts.withAuditEventsEnabled = true
+	}
+	if os.Getenv("BOUNDARY_ENABLE_TEST_OBSERVATIONS") != "" {
+		opts.withObservationsEnabled = true
+	}
+	if os.Getenv("BOUNDARY_ENABLE_TEST_ERROR_EVENTS") != "" {
+		opts.testWithErrorEventsEnabled = true
+	}
+
+	return opts
 }
 
 // WithSysEventsEnabled provides an option for enabling system events
