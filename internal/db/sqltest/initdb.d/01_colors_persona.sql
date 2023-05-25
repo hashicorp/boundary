@@ -286,6 +286,23 @@ begin;
     ('p____rcolors', 't_________cr', 'Red Color Target'),
     ('p____gcolors', 't_________cg', 'Green Color Target');
 
+  insert into plugin
+    (scope_id, public_id, name)
+  values
+    ('global', 'plg____sb-plg', 'Storage Bucket Plugin');
+    
+  insert into plugin_storage_supported
+    (public_id)
+  values
+    ('plg____sb-plg');
+
+  insert into storage_plugin_storage_bucket
+    (public_id,     scope_id,       plugin_id,       bucket_name,        worker_filter,        secrets_hmac)
+  values
+    ('sb_________o','o_____colors', 'plg____sb-plg', 'test bucket name', 'test worker filter', '\xdeadbeef'),
+    ('sb_________g','global',       'plg____sb-plg', 'test bucket name', 'test worker filter', '\xdeadbeef');
+
+
   insert into target_host_set
     (project_id, target_id, host_set_id)
   values

@@ -2,84 +2,60 @@
 -- SPDX-License-Identifier: MPL-2.0
 
 begin;
-  create table if not exists target_ssh (
-    public_id wt_public_id primary key
-      constraint target_fkey
-        references target(public_id)
-        on delete cascade
-        on update cascade,
-    project_id wt_scope_id not null,
-    name text not null, -- name is not optional for a target subtype
-    description text,
-    default_port int, -- default_port can be null
-     -- max duration of the session in seconds.
-     -- default is 8 hours
-    session_max_seconds int not null default 28800
-      constraint session_max_seconds_must_be_greater_than_0
-      check(session_max_seconds > 0),
-    -- limit on number of session connections allowed. -1 equals no limit
-    session_connection_limit int not null default 1
-      constraint session_connection_limit_must_be_greater_than_0_or_negative_1
-      check(session_connection_limit > 0 or session_connection_limit = -1),
-    create_time wt_timestamp,
-    update_time wt_timestamp,
-    version wt_version,
-    worker_filter wt_bexprfilter,
-    egress_worker_filter wt_bexprfilter,
-    ingress_worker_filter wt_bexprfilter,
-    constraint target_ssh_project_id_name_uq
-      unique(project_id, name) -- name must be unique within a project scope.
-  );
-  comment on table target_ssh is
-    'target_ssh is a table where each row is a resource that represents an ssh target. '
-    'It is a target subtype.';
+  
+  create function validate_target_storage_bucket() returns trigger
+    as $$
+    declare storage_bucket_scope_id text;
+    begin
+      -- Ensure enable_session_recording is not true if no storage_bucket is associated
+      if new.enable_session_recording = true and new.storage_bucket_id is null then
+        raise exception 'session recording enabled without storage bucket';
+      end if;
 
-  drop trigger if exists insert_target_subtype on target_ssh;
-  create trigger insert_target_subtype before insert on target_ssh
-    for each row execute procedure insert_target_subtype();
+      -- If storage bucket is null no need to validate further
+      if new.storage_bucket_id is null then 
+        return new; 
+      end if;
 
-  drop trigger if exists delete_target_subtype on target_ssh;
-  create trigger delete_target_subtype after delete on target_ssh
-    for each row execute procedure delete_target_subtype();
+      -- Look up the scope ID for the storage bucket
+      select sb.scope_id from storage_plugin_storage_bucket sb where sb.public_id = new.storage_bucket_id into strict storage_bucket_scope_id;
 
-  -- define the immutable fields for target
-  drop trigger if exists immutable_columns on target_ssh;
-  create trigger immutable_columns before update on target_ssh
-    for each row execute procedure immutable_columns('public_id', 'project_id', 'create_time');
+      -- Global storage bucket can be associated with any target
+      if storage_bucket_scope_id = 'global' then
+        return new;
+      end if;
+      
+      -- Validate that the target project id parents scope is the storage bucket scope id
+      perform from iam_scope_project where scope_id = new.project_id and parent_id = storage_bucket_scope_id;
+      if not found then
+        raise exception 'invalid scope type for target storage bucket association';
+      end if;
+      return new;
+    end;
+    $$ language plpgsql;
+  comment on function validate_target_storage_bucket() is
+    'validate_target_storage_bucket validates that the storage bucket associated with target_ssh, '
+    'is within the global scope or within the org scope that is the parent of the target_ssh projectId. '
+    'It also validates that enable_session_recording is only set if a valid storage_bucket_id is also set.';
+ 
+  create trigger validate_target_storage_bucket after insert or update on target_ssh
+    for each row execute procedure validate_target_storage_bucket();
 
-  drop trigger if exists update_version_column on target_ssh;
-  create trigger update_version_column after update on target_ssh
-    for each row execute procedure update_version_column();
-
-  drop trigger if exists update_time_column on target_ssh;
-  create trigger update_time_column before update on target_ssh
-    for each row execute procedure update_time_column();
-
-  drop trigger if exists default_create_time_column on target_ssh;
-  create trigger default_create_time_column before insert on target_ssh
-    for each row execute procedure default_create_time();
-
-  drop trigger if exists update_ssh_target_filter_validate on target_ssh;
-  create trigger update_ssh_target_filter_validate before update on target_ssh
-    for each row execute procedure validate_filter_values_on_update();
-
-  drop trigger if exists insert_ssh_target_filter_validate on target_ssh;
-  create trigger insert_ssh_target_filter_validate before insert on target_ssh
-    for each row execute procedure validate_filter_values_on_insert();
-
-  insert into oplog_ticket
-    (name,         version)
-  values
-    ('target_ssh', 1)
-  on conflict do nothing;
+  alter table target_ssh
+    add column enable_session_recording bool not null default false,
+    add column storage_bucket_id wt_public_id, -- storage_bucket_id can be null
+    add constraint storage_plugin_storage_bucket_fkey foreign key (storage_bucket_id)
+        references storage_plugin_storage_bucket (public_id)
+        on delete set null
+        on update cascade;
 
   -- The whx_* views here depend on target_all_subtypes, so we need to drop
   -- these first.
-  drop view if exists whx_host_dimension_source;
-  drop view if exists whx_credential_dimension_source;
-  drop view if exists target_all_subtypes;
+  drop view whx_host_dimension_source;
+  drop view whx_credential_dimension_source;
+  drop view target_all_subtypes;
 
-  -- Replaced in oss/70/08_targets.up.sql
+  -- replaces target_all_subtypes defined in oss/64/01_ssh_targets.up.sql
   create view target_all_subtypes as
   select
     public_id,
@@ -95,6 +71,9 @@ begin;
     worker_filter,
     egress_worker_filter,
     ingress_worker_filter,
+    default_client_port,
+    null as storage_bucket_id,
+    false as enable_session_recording,
     'tcp' as type
   from target_tcp
   union
@@ -112,11 +91,14 @@ begin;
     worker_filter,
     egress_worker_filter,
     ingress_worker_filter,
+    default_client_port,
+    storage_bucket_id,
+    enable_session_recording,
     'ssh' as type
   from
     target_ssh;
 
-  -- Replaced in oss/70/08_targets.up.sql
+  -- replaces whx_host_dimension_source defined in oss/64/01_ssh_targets.up.sql
   create view whx_host_dimension_source as
   with 
   host_sources (
@@ -249,7 +231,7 @@ begin;
 
   -- The whx_credential_dimension_source view shows the current values in the
   -- operational tables of the credential dimension.
-  -- Replaced in oss/70/08_targets.up.sql
+  -- Replaces whx_credential_dimension_source defined in oss/64/01_ssh_targets.up.sql.sql
   create view whx_credential_dimension_source as
     with vault_generic_library as (
       select vcl.public_id                                        as public_id,
@@ -362,4 +344,5 @@ begin;
            organization_name,
            organization_description
       from final;
+
 commit;

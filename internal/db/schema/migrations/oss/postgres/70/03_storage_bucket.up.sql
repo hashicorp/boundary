@@ -3,16 +3,6 @@
 
 begin;
 
-  create table storage_bucket (
-    public_id wt_public_id primary key,
-    scope_id wt_scope_id
-      constraint iam_scope_fkey
-        references iam_scope (public_id)
-        on delete restrict -- Scopes with storage buckets cannot be deleted
-        on update cascade
-  );
-  comment on table storage_bucket is 'storage_bucket entries represent external storage buckets that boundary has access to.';
-
   create table plugin_storage_supported (
   public_id wt_plugin_id primary key
     references plugin(public_id)
@@ -30,10 +20,7 @@ begin;
   where name = 'aws';
 
   create table storage_plugin_storage_bucket (
-    public_id wt_public_id primary key
-      references storage_bucket(public_id)
-      on delete cascade
-      on update cascade,
+    public_id wt_public_id primary key,
     scope_id wt_scope_id not null
       constraint iam_scope_fkey
       references iam_scope(public_id)
@@ -75,45 +62,6 @@ begin;
 
   create trigger immutable_columns before update on storage_plugin_storage_bucket
     for each row execute procedure immutable_columns('public_id', 'scope_id', 'create_time', 'bucket_name');
-
-  -- insert_storage_bucket_subtype() is a trigger function for
-  -- subtypes of storage_bucket
-  create or replace function insert_storage_bucket_subtype() returns trigger
-  as $$
-  begin
-
-    insert into storage_bucket
-      (public_id, scope_id)
-    values
-      (new.public_id, new.scope_id);
-
-    return new;
-
-  end;
-  $$ language plpgsql;
-  comment on function insert_storage_bucket_subtype is
-    'insert_storage_bucket_subtype is a trigger function for subtypes of storage_bucket that ensures values exist in the parent storage_bucket table.';
-
-  create trigger insert_storage_bucket_subtype before insert on storage_plugin_storage_bucket
-    for each row execute procedure insert_storage_bucket_subtype();
-
-  -- delete_storage_bucket_subtype() is a trigger function for
-  -- subtypes of storage_bucket
-  create or replace function delete_storage_bucket_subtype() returns trigger
-  as $$
-  begin
-
-    delete from storage_bucket
-    where public_id = old.public_id;
-    return null; -- result is ignored since this is an after trigger
-
-  end;
-  $$ language plpgsql;
-  comment on function delete_storage_bucket_subtype is
-    'delete_storage_bucket_subtype is a trigger function for subtypes of storage_bucket that removes the associated values in the storage_bucket table on delete.';
-
-  create trigger delete_storage_bucket_subtype after delete on storage_plugin_storage_bucket
-    for each row execute procedure delete_storage_bucket_subtype();
 
   -- storage_bucket_scope_id_valid() is a trigger function for
   -- subtypes of storage_bucket

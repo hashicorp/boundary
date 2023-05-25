@@ -28,8 +28,6 @@ begin;
   select hst_fk_column('user_scope_hst_id', 'iam_scope_hst');
   select hst_fk_column('user_hst_id', 'iam_user_hst');
 
-  insert into storage_bucket (public_id, scope_id) values ('sb_123456789', 'global');
-
   -- test insert trigger can handle more than one row of history
   -- update the iam_scope of test user 's1_____clare'
   select is(count(*), 1::bigint)
@@ -49,14 +47,14 @@ begin;
     insert into recording_session
       (public_id,      storage_bucket_id, session_id)
     values
-      ('sr_123456789', 'sb_123456789',    null);
+      ('sr_123456789', 'sb_________g',    null);
   select throws_ok('insert_invalid_recording_session', null, null, 'insert invalid recording_session succeeded');
 
   prepare insert_recording_session as
     insert into recording_session
       (public_id,      storage_bucket_id, session_id)
     values
-      ('sr_123456789', 'sb_123456789',    's1_____clare');
+      ('sr_123456789', 'sb_________g',    's1_____clare');
   select lives_ok('insert_recording_session');
 
   -- Try to set end_time before start_time
@@ -84,8 +82,8 @@ begin;
 
   -- Deleting the storage bucket with active recordings should fail
   prepare delete_bucket as
-    delete from storage_bucket where public_id = 'sb_123456789';
-  select throws_ok('delete_bucket', null, null, 'deleting a storage_bucket with recordings succeeded');
+    delete from storage_plugin_storage_bucket where public_id = 'sb_________g';
+  select throws_ok('delete_bucket', null, null, 'deleting a storage_plugin_storage_bucket with recordings succeeded');
 
   select * from finish();
 rollback;

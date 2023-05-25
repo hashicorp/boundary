@@ -11,8 +11,8 @@ begin;
   create table recording_session (
     public_id wt_public_id primary key,
     storage_bucket_id wt_public_id not null
-      constraint storage_bucket_fkey
-        references storage_bucket (public_id)
+      constraint storage_plugin_storage_bucket_fkey
+        references storage_plugin_storage_bucket (public_id)
         on delete restrict -- Storage buckets with session recordings cannot be deleted
         on update cascade,
     session_id wt_public_id null -- Can be null if associated session has been deleted
