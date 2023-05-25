@@ -1,6 +1,7 @@
 package worker_test
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -32,12 +33,14 @@ func TestRotationTicking(t *testing.T) {
 	conf, err := config.DevController()
 	require.NoError(err)
 
+	workerAuthDebugEnabled := new(atomic.Bool)
+	workerAuthDebugEnabled.Store(true)
 	c := controller.NewTestController(t, &controller.TestControllerOpts{
 		Config:                          conf,
 		Logger:                          logger.Named("controller"),
 		WorkerAuthCaCertificateLifetime: rotationPeriod,
+		WorkerAuthDebuggingEnabled:      workerAuthDebugEnabled,
 	})
-	t.Cleanup(c.Shutdown)
 
 	// names should not be set when using pki workers
 	wConf, err := config.DevWorker()
@@ -45,9 +48,10 @@ func TestRotationTicking(t *testing.T) {
 	wConf.Worker.Name = ""
 	wConf.Worker.InitialUpstreams = c.ClusterAddrs()
 	w := worker.NewTestWorker(t, &worker.TestWorkerOpts{
-		InitialUpstreams: c.ClusterAddrs(),
-		Logger:           logger.Named("worker"),
-		Config:           wConf,
+		InitialUpstreams:           c.ClusterAddrs(),
+		Logger:                     logger.Named("worker"),
+		Config:                     wConf,
+		WorkerAuthDebuggingEnabled: workerAuthDebugEnabled,
 	})
 	t.Cleanup(w.Shutdown)
 
@@ -99,8 +103,7 @@ func TestRotationTicking(t *testing.T) {
 	// Now we wait and check that we see new values in the DB and different
 	// creds on the worker after each rotation period
 	for i := 2; i < 5; i++ {
-		t.Log("iteration", i)
-		nextRotation := worker.AuthRotationNextRotation.Load()
+		nextRotation := w.Worker().AuthRotationNextRotation.Load()
 		time.Sleep((*nextRotation).Sub(time.Now()) + 5*time.Second)
 
 		// Verify we see 2- after credentials have rotated, we should see current and previous

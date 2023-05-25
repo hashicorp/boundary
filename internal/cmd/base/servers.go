@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -132,6 +133,8 @@ type Server struct {
 	DevDatabaseCleanupFunc func() error
 
 	Database *db.DB
+
+	WorkerAuthDebuggingEnabled *atomic.Bool
 }
 
 // NewServer creates a new Server.
