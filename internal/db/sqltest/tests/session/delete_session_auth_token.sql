@@ -11,7 +11,7 @@ begin;
   select is(count(*), 1::bigint) from session_state where session_id = 's1_____carly' and state='active';
 
   -- Check that we have a session for both auth token
-  select is(count(*), 1::bigint) from session where auth_token_id = 'tok____clare';
+  select is(count(*), 2::bigint) from session where auth_token_id = 'tok____clare';
   select is(count(*), 1::bigint) from session where auth_token_id = 'tok____carly';
   
   -- Delete auth tokens, expect no errors

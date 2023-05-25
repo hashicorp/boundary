@@ -12,19 +12,19 @@
 begin;
   select plan(9);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'sessions');
-  
+
   insert into recording_session
     (public_id,      storage_bucket_id, session_id)
   values
-    ('sr_123456789', 'sb_________g',    's1_____clare');
+    ('sr_123456789', 'sb____global',    's2_____clare');
   insert into session_connection
     (public_id,      session_id)
   values
-    ('sc_123456789', 's1_____clare');
+    ('sc_123456789', 's2_____clare');
   insert into recording_connection
     (public_id,      session_id,     session_connection_id, recording_session_id)
   values
-    ('cr_123456789', 's1_____clare', 'sc_123456789',        'sr_123456789');
+    ('cr_123456789', 's2_____clare', 'sc_123456789',        'sr_123456789');
 
   -- Try to set end_time before start_time
   prepare end_time_before_start_time as
@@ -60,14 +60,14 @@ begin;
 
   -- Check that a row was inserted
   select is(count(*), 1::bigint) from recording_channel where public_id = 'chr_123456789' and recording_connection_id = 'cr_123456789';
-  
+
   -- Deleting the session connection should leave the recording in place
   delete from session_connection where public_id = 'sc_123456789';
   -- Row should still be present
   select is(count(*), 1::bigint) from recording_channel where public_id = 'chr_123456789';
 
   -- Deleting the session should leave the recording in place
-  delete from session where public_id = 's1_____clare';
+  delete from session where public_id = 's2_____clare';
   -- Row should still be present
   select is(count(*), 1::bigint) from recording_channel where public_id = 'chr_123456789';
 

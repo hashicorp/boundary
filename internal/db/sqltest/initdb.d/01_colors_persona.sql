@@ -346,15 +346,8 @@ begin;
    where h.catalog_id = s.catalog_id
      and h.external_id like '%color';
 
-  insert into target_tcp
-    (project_id, public_id, name)
-  values
-    ('p____bcolors', 't_________cb', 'Blue Color Target'),
-    ('p____rcolors', 't_________cr', 'Red Color Target'),
-    ('p____gcolors', 't_________cg', 'Green Color Target');
-
   insert into plugin
-    (scope_id, public_id, name)
+    (scope_id, public_id,       name)
   values
     ('global', 'plg____sb-plg', 'Storage Bucket Plugin');
     
@@ -364,24 +357,42 @@ begin;
     ('plg____sb-plg');
 
   insert into storage_plugin_storage_bucket
-    (public_id,     scope_id,       plugin_id,       bucket_name,        worker_filter,        secrets_hmac)
+    (plugin_id,       scope_id,       public_id,      bucket_name,             worker_filter,        secrets_hmac)
   values
-    ('sb_________o','o_____colors', 'plg____sb-plg', 'test bucket name', 'test worker filter', '\xdeadbeef'),
-    ('sb_________g','global',       'plg____sb-plg', 'test bucket name', 'test worker filter', '\xdeadbeef');
+    ('plg____sb-plg', 'global',       'sb____global', 'Global Storage Bucket', 'test worker filter', '\xdeadbeef'),
+    ('plg____sb-plg', 'o_____colors', 'sb____colors', 'Colors Storage Bucket', 'test worker filter', '\xdeadbeef');
 
+  insert into target_tcp
+    (project_id,     public_id,      name)
+  values
+    ('p____bcolors', 't_________cb', 'Blue Color Target'),
+    ('p____rcolors', 't_________cr', 'Red Color Target'),
+    ('p____gcolors', 't_________cg', 'Green Color Target');
+
+  insert into target_ssh
+    (project_id,     public_id,      name,                     enable_session_recording, storage_bucket_id)
+  values
+    ('p____bcolors', 'tssh______cb', 'Blue Color SSH Target',  true,                     'sb____global'),
+    ('p____rcolors', 'tssh______cr', 'Red Color SSH Target',   false,                    null),
+    ('p____gcolors', 'tssh______cg', 'Green Color SSH Target', true,                     'sb____colors');
 
   insert into target_host_set
-    (project_id, target_id, host_set_id)
+    (project_id,     target_id,      host_set_id)
   values
     ('p____bcolors', 't_________cb', 's___1cb-sths'),
     ('p____bcolors', 't_________cb', 's___2cb-sths'),
     ('p____rcolors', 't_________cr', 's___1cr-sths'),
-    ('p____rcolors', 't_________cr', 's___2cr-sths');
+    ('p____rcolors', 't_________cr', 's___2cr-sths'),
+    ('p____bcolors', 'tssh______cb', 's___1cb-sths'),
+    ('p____bcolors', 'tssh______cb', 's___2cb-sths'),
+    ('p____rcolors', 'tssh______cr', 's___1cr-sths'),
+    ('p____rcolors', 'tssh______cr', 's___2cr-sths');
 
   insert into target_address
-    (target_id, address)
+    (target_id,      address)
   values
-    ('t_________cg', '8.8.8.8');
+    ('t_________cg', '8.8.8.8'),
+    ('tssh______cg', '8.8.8.8');
 
   insert into credential_vault_store
     (project_id,     public_id,       name,                  description, vault_address,         namespace)
@@ -398,32 +409,46 @@ begin;
   insert into target_credential_library
     (project_id,     target_id,      credential_library_id, credential_purpose)
   values
-    ('p____bcolors', 't_________cb', 'vl______cvl',         'brokered');
+    ('p____bcolors', 't_________cb', 'vl______cvl',         'brokered'),
+    ('p____bcolors', 'tssh______cb', 'vl______cvl',         'brokered');
 
   insert into session
-    ( project_id,     target_id,     user_id,        auth_token_id,  certificate,  endpoint, public_id)
+    (project_id,     target_id,      user_id,        auth_token_id,  certificate,  endpoint, public_id)
   values
-    ('p____bcolors', 't_________cb', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's1_____clare'),
+    ('p____bcolors', 'tssh______cb', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's1_____clare'),
     ('p____bcolors', 't_________cb', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____cindy'),
     ('p____bcolors', 't_________cb', 'u______cindy', 'tok____cindy', 'abc'::bytea, 'ep1',    's1_____ciara'),
     ('p____bcolors', 't_________cb', 'u______carly', 'tok____carly', 'abc'::bytea, 'ep1',    's1_____carly'),
-    ('p____gcolors', 't_________cg', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1',    's1______cora');
+    ('p____gcolors', 'tssh______cg', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1',    's1______cora'),
+    --- the next two are used in recording_session tests
+    ('p____bcolors', 'tssh______cb', 'u______clare', 'tok____clare', 'abc'::bytea, 'ep1',    's2_____clare'),
+    ('p____gcolors', 'tssh______cg', 'u_______cora', 'tok_____cora', 'abc'::bytea, 'ep1',    's2______cora');
 
   insert into session_host_set_host
-    (session_id, host_set_id, host_id)
+    (session_id,     host_set_id,    host_id)
   values
     ('s1_____clare', 's___1cb-sths', 'h_____cb__01'),
+    ('s2_____clare', 's___1cb-sths', 'h_____cb__01'),
     ('s1_____cindy', 's___1cb-sths', 'h_____cb__01'),
     ('s1_____ciara', 's___1cb-sths', 'h_____cb__01'),
     ('s1_____carly', 's___1cb-sths', 'h_____cb__01');
 
   insert into session_target_address
-    (session_id, target_id)
+    (session_id,     target_id)
   values
-    ('s1______cora', 't_________cg');
+    ('s1______cora', 't_________cg'),
+    ('s2______cora', 't_________cg');
 
   insert into session_connection
-    (session_id, public_id)
+    (session_id,     public_id)
   values
-    ('s1_____clare', 'sc1_____clare');
+    ('s1_____clare', 'sc1_____clare'),
+    ('s2_____clare', 'sc2_____clare');
+
+  insert into recording_session
+    (session_id,     storage_bucket_id, public_id)
+  values
+    ('s1_____clare', 'sb____global',    'sr1____clare'),
+    ('s1______cora', 'sb____colors',    'sr1_____cora');
+
 commit;

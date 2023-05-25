@@ -10,9 +10,9 @@ begin;
   select is(count(*), 1::bigint) from session_state where session_id = 's1_____ciara' and state='canceling';
   select is(count(*), 1::bigint) from session_state where session_id = 's1_____carly' and state='active';
 
-  -- Check that we have 4 sessions using this host
-  select is(count(*), 4::bigint) from session_host_set_host where host_id = 'h_____cb__01';
-  
+  -- Check that we have 5 sessions using this host
+  select is(count(*), 5::bigint) from session_host_set_host where host_id = 'h_____cb__01';
+
   -- Delete host, expect no errors
   delete from host where public_id = 'h_____cb__01';
   select is(count(*), 0::bigint) from host where public_id = 'h_____cb__01';

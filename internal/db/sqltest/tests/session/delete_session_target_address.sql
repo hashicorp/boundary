@@ -11,9 +11,9 @@ begin;
   select is(count(*), 1::bigint) from session_state where session_id = 's1_____ciara' and state='canceling';
   select is(count(*), 1::bigint) from session_state where session_id = 's1_____carly' and state='active';
 
-  -- Check that we have a session using this target address
-  select is(count(*), 1::bigint) from session_target_address where target_id = 't_________cg';
-  
+  -- Check that we have 2 sessions using this target address
+  select is(count(*), 2::bigint) from session_target_address where target_id = 't_________cg';
+
   -- Delete target address, expect no errors
   delete from target_address where target_id = 't_________cg';
   select is(count(*), 0::bigint) from target_address where target_id = 't_________cg';

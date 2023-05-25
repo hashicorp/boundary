@@ -7,7 +7,6 @@ begin;
   comment on domain rec_timestamp is
     'a nullable timestamp with a time zone used for start and end times of recordings';
 
-
   create table recording_session (
     public_id wt_public_id primary key,
     storage_bucket_id wt_public_id not null
@@ -22,13 +21,33 @@ begin;
         on update cascade
       constraint recording_session_session_id_uq unique,
     user_scope_hst_id wt_url_safe_id not null
-      constraint iam_scope_hst_fk
+      constraint user_iam_scope_hst_fk
         references iam_scope_hst (history_id)
         on delete restrict -- History records with session recordings cannot be deleted
         on update cascade,
     user_hst_id wt_url_safe_id not null
       constraint iam_user_hst_fk
         references iam_user_hst (history_id)
+        on delete restrict -- History records with session recordings cannot be deleted
+        on update cascade,
+    target_project_hst_id wt_url_safe_id not null
+      constraint project_iam_scope_hst_fk
+        references iam_scope_hst (history_id)
+        on delete restrict -- History records with session recordings cannot be deleted
+        on update cascade,
+    target_hst_id wt_url_safe_id not null
+      constraint target_ssh_hst_fk
+        references target_ssh_hst (history_id)
+        on delete restrict -- History records with session recordings cannot be deleted
+        on update cascade,
+    host_catalog_hst_id wt_url_safe_id not null
+      constraint host_catalog_history_base_fk
+        references host_catalog_history_base (history_id)
+        on delete restrict -- History records with session recordings cannot be deleted
+        on update cascade,
+    host_hst_id wt_url_safe_id not null
+      constraint host_history_base_fk
+        references host_history_base (history_id)
         on delete restrict -- History records with session recordings cannot be deleted
         on update cascade,
     create_time wt_timestamp not null,
@@ -61,40 +80,78 @@ begin;
   create function insert_session_recording() returns trigger
   as $$
   declare
-    _usr_ids record;
+    _session session%rowtype;
+    _host host%rowtype;
   begin
     if new.session_id is null then
       raise exception 'a new recorded session must have a session_id';
     end if;
 
-    with
-    session_values(user_id, user_scope_id) as (
-      select session.user_id, iam_user.scope_id
-        from session
-        join iam_user on iam_user.public_id = session.user_id
-       where session.public_id = new.session_id
-    ),
-    user_hst(id) as (
-      select iam_user_hst.history_id
-        from iam_user_hst
-        join session_values on iam_user_hst.public_id = session_values.user_id
-       where iam_user_hst.valid_range @> current_timestamp
-    ),
-    user_scope_hst(id) as (
-      select iam_scope_hst.history_id
-        from iam_scope_hst
-        join session_values on iam_scope_hst.public_id = session_values.user_scope_id
-       where iam_scope_hst.valid_range @> current_timestamp
-    )
-    select user_hst.id as user_hst_id,
-           user_scope_hst.id as user_scope_hst_id
-      into strict _usr_ids
-      from user_hst, user_scope_hst;
+    select * into strict _session
+      from session
+     where public_id = new.session_id;
 
-    new.user_scope_hst_id := _usr_ids.user_scope_hst_id;
-    new.user_hst_id := _usr_ids.user_hst_id;
+    select history_id into strict new.user_hst_id
+      from iam_user_hst
+     where public_id = _session.user_id
+       and valid_range @> current_timestamp;
+
+    select iam_scope_hst.history_id into strict new.user_scope_hst_id
+      from iam_scope_hst
+     where public_id = (select scope_id
+                          from iam_user
+                         where public_id = _session.user_id)
+       and valid_range @> current_timestamp;
+
+    select history_id into strict new.target_project_hst_id
+      from iam_scope_hst
+     where public_id = _session.project_id
+       and valid_range @> current_timestamp;
+
+    select history_id into strict new.target_hst_id
+      from target_ssh_hst
+     where public_id = _session.target_id
+       and valid_range @> current_timestamp;
+
+    select * into _host
+      from host
+     where public_id = (select host_id
+                          from session_host_set_host
+                         where session_id = _session.public_id);
+
+      case when found then
+        select history_id into strict new.host_hst_id
+          from (
+            select history_id
+              from static_host_hst
+             where public_id = _host.public_id
+               and valid_range @> current_timestamp
+             union
+            select history_id
+              from host_plugin_host_hst
+             where public_id = _host.public_id
+               and valid_range @> current_timestamp
+            ) as h;
+        select history_id into strict new.host_catalog_hst_id
+          from (
+            select history_id
+              from static_host_catalog_hst
+             where public_id = _host.catalog_id
+               and valid_range @> current_timestamp
+             union
+            select history_id
+              from host_plugin_catalog_hst
+             where public_id = _host.catalog_id
+               and valid_range @> current_timestamp
+            ) as h;
+      else
+        select history_id into strict new.host_hst_id
+          from no_host_history;
+        select history_id into strict new.host_catalog_hst_id
+          from no_host_catalog_history;
+      end case;
+
     return new;
-
   end;
   $$ language plpgsql;
   comment on function insert_session_recording is

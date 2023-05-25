@@ -21,53 +21,51 @@ begin;
   insert into target_ssh
     (project_id,     public_id,      enable_session_recording, storage_bucket_id, name)
   values
-    ('p____swidget', 'tssh___small', false,                     'sb_________o',              'Small Widget SSH Target');
+    ('p____swidget', 'tssh___small', false,                    'sb____colors',    'Small Widget SSH Target');
   select throws_ok('invalid_storage_bucket_insert', null, null, 'insert of invalid storage bucket state succeeded');
 
   -- insert targets with valid storage buckets
   insert into target_ssh
     (project_id,     public_id,      enable_session_recording, storage_bucket_id, name)
   values
-    ('p____bcolors', 'tssh_______b', true,                     'sb_________o',    'Blue Color SSH Target'),
-    ('p____rcolors', 'tssh_______r', true,                     'sb_________g',    'Red Color SSH Target'),
     ('p____bwidget', 'tssh_____big', false,                    null,              'Big Widget SSH Target');
 
-  select is(count(*), 1::bigint) from target_ssh where public_id = 'tssh_______b' and storage_bucket_id = 'sb_________o';
-  select is(count(*), 1::bigint) from target_ssh where public_id = 'tssh_______r' and storage_bucket_id = 'sb_________g';
+  select is(count(*), 1::bigint) from target_ssh where public_id = 'tssh______cb' and storage_bucket_id = 'sb____global';
+  select is(count(*), 1::bigint) from target_ssh where public_id = 'tssh______cg' and storage_bucket_id = 'sb____colors';
   select is(count(*), 1::bigint) from target_ssh where public_id = 'tssh_____big' and storage_bucket_id is null;
 
   -- update storage bucket to null without disabling session recording
   prepare invalid_session_recording_update as
   update target_ssh
     set storage_bucket_id = null
-    where public_id = 'tssh_______b';
+    where public_id = 'tssh______cb';
   select throws_ok('invalid_session_recording_enabled', null, null, 'update to invalid session recording state succeeded');
-  
+
   prepare valid_session_recording_update as
   update target_ssh
     set storage_bucket_id = null, enable_session_recording = false
-    where public_id = 'tssh_______b';
+    where public_id = 'tssh______cb';
   select lives_ok('valid_session_recording_update', 'update to valid session recording state failed');
 
   -- Update target with storage bucket from an org not the parent of its project
   prepare invalid_storage_bucket_update as
   update target_ssh
-    set storage_bucket_id = 'sb_________o'
+    set storage_bucket_id = 'sb____colors'
     where public_id = 'tssh_____big';
   select throws_ok('invalid_storage_bucket_update', null, null, 'update to invalid storage bucket state succeeded');
 
-  -- update storage bucket to global scope 
+  -- update storage bucket to global scope
   prepare valid_storage_bucket_global_update as
   update target_ssh
-    set storage_bucket_id = 'sb_________g'
-    where public_id = 'tssh_______r';
+    set storage_bucket_id = 'sb____global'
+    where public_id = 'tssh______cr';
   select lives_ok('valid_storage_bucket_global_update', 'update to valid storage bucket state failed');
 
   -- disable session recording without removing storage bucket
   prepare valid_disable_session_recording as
   update target_ssh
     set enable_session_recording = false
-    where public_id = 'tssh_______r';
+    where public_id = 'tssh______cr';
   select lives_ok('valid_disable_session_recording', 'update to valid storage bucket state failed');
 
   select * from finish();

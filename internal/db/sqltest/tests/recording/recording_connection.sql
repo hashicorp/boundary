@@ -12,15 +12,15 @@
 begin;
   select plan(10);
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'sessions');
-  
+
   insert into recording_session
     (public_id,      storage_bucket_id, session_id)
   values
-    ('sr_123456789', 'sb_________g',    's1_____clare');
+    ('sr_123456789', 'sb____global',    's2_____clare');
   insert into session_connection
     (public_id,      session_id)
   values
-    ('sc_123456789', 's1_____clare');
+    ('sc_123456789', 's2_____clare');
 
   -- Try to insert row with null session id
   prepare insert_recording_connection_with_null_session_id as
@@ -29,19 +29,19 @@ begin;
     values
       ('cr_123456789', null,       'sc_123456789',        'sr_123456789');
   select throws_ok('insert_recording_connection_with_null_session_id', null, null, 'insert recording_connection with null session_id succeeded');
-  
+
   -- Try to insert row with null session connection id
   prepare insert_recording_connection_with_null_session_connection_id as
     insert into recording_connection
       (public_id,      session_id,     session_connection_id, recording_session_id)
     values
-      ('cr_123456789', 's1_____clare', null,                  'sr_123456789');
+      ('cr_123456789', 's2_____clare', null,                  'sr_123456789');
   select throws_ok('insert_recording_connection_with_null_session_connection_id', null, null, 'insert recording_connection with null session_connection_id succeeded');
 
   insert into recording_connection
     (public_id,      session_id,     session_connection_id, recording_session_id)
   values
-    ('cr_123456789', 's1_____clare', 'sc_123456789',        'sr_123456789');
+    ('cr_123456789', 's2_____clare', 'sc_123456789',        'sr_123456789');
 
   -- Try to set end_time before start_time
   prepare set_end_time_before_start_time as
@@ -84,14 +84,14 @@ begin;
 
   -- Closing again should fail
   select throws_ok('close_recording_connection', '23602', null, 'closing a recording_connection twice succeeded');
-  
+
   -- Deleting the session connection should leave the recording in place
   delete from session_connection where public_id = 'sc_123456789';
   -- Row should still be present
   select is(count(*), 1::bigint) from recording_connection where public_id = 'cr_123456789';
 
   -- Deleting the session should leave the recording in place
-  delete from session where public_id = 's1_____clare';
+  delete from session where public_id = 's2_____clare';
   -- Row should still be present
   select is(count(*), 1::bigint) from recording_connection where public_id = 'cr_123456789';
 
