@@ -216,22 +216,17 @@ func ctMsg(ctx context.Context, keySource nodeenrollment.X25519KeyProducer, msgT
 	}, nil
 }
 
+var entMsgTypeResolver func(ctx context.Context, m proto.Message) (pbs.MsgType, error)
+
 func toMsgType(ctx context.Context, m proto.Message) (pbs.MsgType, error) {
 	const op = "handlers.toMsgType"
 	switch t := m.(type) {
 	case *pbs.EchoUpstreamMessageRequest, *pbs.EchoUpstreamMessageResponse:
 		return pbs.MsgType_MSG_TYPE_ECHO, nil
-	case *pbs.UnwrapKeysRequest, *pbs.UnwrapKeysResponse:
-		return pbs.MsgType_MSG_TYPE_UNWRAP_KEYS, nil
-	case *pbs.VerifySignatureRequest, *pbs.VerifySignatureResponse:
-		return pbs.MsgType_MSG_TYPE_VERIFY_SIGNATURE, nil
-	case *pbs.CloseSessionRecordingRequest, *pbs.CloseSessionRecordingResponse:
-		return pbs.MsgType_MSG_TYPE_CLOSE_SESSION_RECORDING, nil
-	case *pbs.CloseConnectionRecordingRequest, *pbs.CloseConnectionRecordingResponse:
-		return pbs.MsgType_MSG_TYPE_CLOSE_CONNECTION_RECORDING, nil
-	case *pbs.CreateChannelRecordingRequest, *pbs.CreateChannelRecordingResponse:
-		return pbs.MsgType_MSG_TYPE_CREATE_CHANNEL_RECORDING, nil
 	default:
+		if entMsgTypeResolver != nil {
+			return entMsgTypeResolver(ctx, m)
+		}
 		return pbs.MsgType_MSG_TYPE_UNSPECIFIED, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%q is an unknown msg type", t))
 	}
 }
