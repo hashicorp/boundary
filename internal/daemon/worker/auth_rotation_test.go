@@ -56,7 +56,6 @@ func TestRotationTicking(t *testing.T) {
 		Config:                     wConf,
 		WorkerAuthDebuggingEnabled: workerAuthDebugEnabled,
 	})
-	t.Cleanup(w.Shutdown)
 
 	// Get a server repo and worker auth repo
 	serversRepo, err := c.Controller().ServersRepoFn()

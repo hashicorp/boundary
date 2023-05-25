@@ -1315,7 +1315,6 @@ func TestUpdate(t *testing.T) {
 
 func TestListKeys(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
-	t.Cleanup(tc.Shutdown)
 
 	aToken := tc.Token()
 	uToken := tc.UnprivilegedToken()
@@ -1806,7 +1805,6 @@ func TestListKeys(t *testing.T) {
 
 func TestRotateKeys(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
-	t.Cleanup(tc.Shutdown)
 
 	aToken := tc.Token()
 	uToken := tc.UnprivilegedToken()
@@ -1964,7 +1962,6 @@ func TestRotateKeys(t *testing.T) {
 
 func TestListKeyVersionDestructionJobs(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
-	t.Cleanup(tc.Shutdown)
 
 	aToken := tc.Token()
 	uToken := tc.UnprivilegedToken()
@@ -2189,7 +2186,6 @@ func TestListKeyVersionDestructionJobs(t *testing.T) {
 
 func TestDestroyKeyVersion(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
-	t.Cleanup(tc.Shutdown)
 
 	aToken := tc.Token()
 	uToken := tc.UnprivilegedToken()

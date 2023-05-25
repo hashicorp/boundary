@@ -573,7 +573,6 @@ func TestHealthEndpointLifecycle(t *testing.T) {
 	// Start controller. This sets `cmd.controller`.
 	err = tc.Controller().Start()
 	require.NoError(t, err)
-	t.Cleanup(tc.Shutdown)
 
 	// Controller has started and is set onto our Command object, start ops.
 	opsServer, err := NewServer(hclog.Default(), tc.Controller(), nil, tc.Config().Listeners...)
@@ -767,14 +766,12 @@ func TestCreateOpsHandler(t *testing.T) {
 			var c *controller.Controller
 			if tt.setupController {
 				tc := controller.NewTestController(t, &controller.TestControllerOpts{})
-				t.Cleanup(tc.Shutdown)
 
 				c = tc.Controller()
 			}
 			var w *worker.Worker
 			if tt.setupWorker {
 				tc := worker.NewTestWorker(t, &worker.TestWorkerOpts{})
-				t.Cleanup(tc.Shutdown)
 				w = tc.Worker()
 			}
 

@@ -28,7 +28,6 @@ func TestDeleteConnectedWorkers(t *testing.T) {
 		Config: conf,
 		Logger: logger.Named("controller"),
 	})
-	t.Cleanup(c.Shutdown)
 	_, directPkiWorker, multiHoppedPkiWorker, multiHoppedKmsWorker := NewTestMultihopWorkers(t, logger, c.Context(), c.ClusterAddrs(),
 		c.Config().WorkerAuthKms, c.Controller().ServersRepoFn, nil, nil, nil, nil)
 
