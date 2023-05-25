@@ -13,9 +13,9 @@ import (
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 )
 
-// RecordingStorage can be used to create a FS usable for session recording.
+// RecordingStorage can be used to create an FS usable for session recording.
 type RecordingStorage interface {
-	// NewSyncingFS returns a FS that will use local storage as a cache and sync files when they are closed.
+	// NewSyncingFS returns an FS that will use local storage as a cache and sync files when they are closed.
 	NewSyncingFS(ctx context.Context, bucket *storagebuckets.StorageBucket, _ ...Option) (FS, error)
 
 	// NewRemoteFS returns a ReadOnly FS that can be used to retrieve files from a storage bucket.
@@ -24,6 +24,8 @@ type RecordingStorage interface {
 	// PluginClients returns a map of storage plugin clients keyed on the plugin name.
 	PluginClients() map[string]plgpb.StoragePluginServiceClient
 
+	// CreateTemp creates a temporary file that is cleaned up when closed. All temp files
+	// are also removed when storage is initialized.
 	CreateTemp(ctx context.Context, p string) (TempFile, error)
 }
 

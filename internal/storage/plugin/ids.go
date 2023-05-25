@@ -20,7 +20,6 @@ func init() {
 	}
 }
 
-// PublicId prefixes for the resources in the plugin package.
 const (
 	Subtype = subtypes.Subtype("plugin")
 )

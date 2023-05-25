@@ -46,7 +46,7 @@ func getDefaultOptions() options {
 // with a StorageClient. ChunkSize is the number of bytes to
 // send to the plugin in a single request. If not provided,
 // the default is 64KiB. The recommended chunk size for
-// streamed messages is 16KiB to 64KiB.
+// GRPC streamed messages is 16KiB to 64KiB.
 func WithChunkSize(chunkSize uint32) Option {
 	return func(o *options) {
 		o.withChunkSize = chunkSize

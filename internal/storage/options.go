@@ -8,7 +8,8 @@ type SyncMode uint8
 
 const (
 	// Asynchronous mode will trigger a file to sync to the storage
-	// bucket on a recurring interval once it has been closed.
+	// bucket on a recurring interval once it has been closed. It will continue
+	// retrying until the root container is closed.
 	// Asynchronous is the default sync mode.
 	Asynchronous SyncMode = iota
 
