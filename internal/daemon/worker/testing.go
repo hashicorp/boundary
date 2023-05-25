@@ -251,6 +251,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		shutdownDoneCh: make(chan struct{}),
 		shutdownOnce:   new(sync.Once),
 	}
+	t.Cleanup(tw.Shutdown)
 
 	if opts == nil {
 		opts = new(TestWorkerOpts)

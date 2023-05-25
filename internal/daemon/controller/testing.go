@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -476,6 +477,9 @@ type TestControllerOpts struct {
 
 	// The time to use for CA certificate lifetime for worker auth
 	WorkerAuthCaCertificateLifetime time.Duration
+
+	// Toggle worker auth debugging
+	WorkerAuthDebuggingEnabled *atomic.Bool
 }
 
 func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
@@ -494,6 +498,7 @@ func NewTestController(t testing.TB, opts *TestControllerOpts) *TestController {
 		shutdownDoneCh: make(chan struct{}),
 		shutdownOnce:   new(sync.Once),
 	}
+	t.Cleanup(tc.Shutdown)
 
 	conf := TestControllerConfig(t, ctx, tc, opts)
 	var err error
@@ -546,6 +551,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		ContextCancel: cancel,
 		ShutdownCh:    make(chan struct{}),
 	})
+	tc.b.WorkerAuthDebuggingEnabled = opts.WorkerAuthDebuggingEnabled
 
 	// Get dev config, or use a provided one
 	var err error
@@ -804,6 +810,8 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		PublicClusterAddr:               opts.PublicClusterAddr,
 		WorkerStatusGracePeriodDuration: opts.WorkerStatusGracePeriodDuration,
 		LivenessTimeToStaleDuration:     opts.LivenessTimeToStaleDuration,
+		WorkerAuthCaCertificateLifetime: tc.c.conf.TestOverrideWorkerAuthCaCertificateLifetime,
+		WorkerAuthDebuggingEnabled:      tc.c.conf.WorkerAuthDebuggingEnabled,
 	}
 	if opts.Logger != nil {
 		nextOpts.Logger = opts.Logger
