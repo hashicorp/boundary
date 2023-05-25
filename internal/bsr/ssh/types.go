@@ -59,6 +59,16 @@ func ValidExecApplicationProgram(d ExecApplicationProgram) bool {
 	return false
 }
 
+// FileTransferDirection indicates the direction of a file transfer.
+type FileTransferDirection string
+
+// Valid file transfer directions.
+const (
+	FileTransferNotApplicable FileTransferDirection = "not applicable"
+	FileTransferUpload        FileTransferDirection = "upload"
+	FileTransferDownload      FileTransferDirection = "download"
+)
+
 // ChannelSummary encapsulates data for a channel
 // SessionProgram can only be one of the following: exec, shell, or subsystem
 // SubsystemName is only populated if SessionProgram is subsystem
@@ -66,8 +76,9 @@ func ValidExecApplicationProgram(d ExecApplicationProgram) bool {
 //
 //	scp, rsync, or unknown
 type ChannelSummary struct {
-	ChannelSummary *bsr.ChannelSummary
-	SessionProgram SessionProgram
-	SubsystemName  string
-	ExecProgram    ExecApplicationProgram
+	ChannelSummary        *bsr.ChannelSummary
+	SessionProgram        SessionProgram
+	SubsystemName         string
+	ExecProgram           ExecApplicationProgram
+	FileTransferDirection FileTransferDirection
 }
