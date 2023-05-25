@@ -80,30 +80,32 @@ type DynamicHost struct {
 
 // StaticCredentialStore represents a static credential store used for this session
 type StaticCredentialStore struct {
-	PublicId                          string
-	ProjectId                         string
-	Name                              string // optional field
-	Description                       string // optional field
-	StaticJsonCredentials             []StaticJsonCredential
-	StaticUsernamePasswordCredentials []StaticUsernamePasswordCredential
-}
-
-// StaticJsonCredential represents a static json credential used for this session
-type StaticJsonCredential struct {
 	PublicId    string
 	ProjectId   string
 	Name        string // optional field
 	Description string // optional field
-	ObjectHmac  []byte
+}
+
+// StaticJsonCredential represents a static json credential used for this session
+type StaticJsonCredential struct {
+	PublicId        string
+	ProjectId       string
+	Name            string // optional field
+	Description     string // optional field
+	ObjectHmac      []byte
+	Purposes        []string
+	CredentialStore StaticCredentialStore
 }
 
 // StaticUsernamePasswordCredential represents a Static username password credential used for this session
 type StaticUsernamePasswordCredential struct {
-	PublicId     string
-	ProjectId    string
-	Name         string // optional field
-	Description  string // optional field
-	PasswordHmac []byte
+	PublicId        string
+	ProjectId       string
+	Name            string // optional field
+	Description     string // optional field
+	PasswordHmac    []byte
+	Purposes        []string
+	CredentialStore StaticCredentialStore
 }
 
 // StaticSshPrivateKeyCredential represents a Static Ssh private key credential used for this session
@@ -114,21 +116,21 @@ type StaticSshPrivateKeyCredential struct {
 	Description              string // optional field
 	PrivateKeyHmac           []byte
 	PrivateKeyPassphraseHmac []byte // optional field
+	Purposes                 []string
+	CredentialStore          StaticCredentialStore
 }
 
 // VaultCredentialStore represents a Vault credential store used for this session
 type VaultCredentialStore struct {
-	PublicId              string
-	ProjectId             string
-	Name                  string // optional field
-	Description           string // optional field
-	VaultAddress          string
-	Namespace             string
-	TlsServerName         string
-	TlsSkipVerify         bool
-	WorkerFilter          string // optional field
-	VaultGenericLibraries []VaultLibrary
-	VaultSshCertLibraries []VaultSshCertLibrary
+	PublicId      string
+	ProjectId     string
+	Name          string // optional field
+	Description   string // optional field
+	VaultAddress  string
+	Namespace     string
+	TlsServerName string
+	TlsSkipVerify bool
+	WorkerFilter  string // optional field
 }
 
 // VaultLibrary contains information about the Vault library used for this session
@@ -141,6 +143,8 @@ type VaultLibrary struct {
 	HttpMethod      string
 	HttpRequestBody []byte // optional field
 	CredentialType  string
+	Purposes        []string
+	CredentialStore VaultCredentialStore
 }
 
 // VaultSshCertLibrary contains information about a Vault Ssh Cert library for this session
@@ -157,6 +161,8 @@ type VaultSshCertLibrary struct {
 	CriticalOptions []byte // optional field
 	Extensions      []byte // optional field
 	CredentialType  string // optional field
+	Purposes        []string
+	CredentialStore VaultCredentialStore
 }
 
 // SessionMeta contains metadata about a session in a BSR.
@@ -170,6 +176,9 @@ type SessionMeta struct {
 	StaticHost  *StaticHost
 	DynamicHost *DynamicHost
 
-	StaticCredentialStore []StaticCredentialStore
-	VaultCredentialStore  []VaultCredentialStore
+	StaticJSONCredentials             []StaticJsonCredential
+	StaticUsernamePasswordCredentials []StaticUsernamePasswordCredential
+	StaticSshPrivateKeyCredentials    []StaticSshPrivateKeyCredential
+	VaultLibraries                    []VaultLibrary
+	VaultSshCertLibraries             []VaultSshCertLibrary
 }

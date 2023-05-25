@@ -45,35 +45,31 @@ func TestSessionMeta(s string) *SessionMeta {
 			Version:  "0.25.5",
 			Sha:      "beepboopgitsha",
 		},
-		StaticCredentialStore: []StaticCredentialStore{
+		StaticJSONCredentials: []StaticJsonCredential{
 			{
-				PublicId:  "scs123",
-				ProjectId: "proj123",
-				StaticJsonCredentials: []StaticJsonCredential{
-					{
-						PublicId:   "scjson123",
-						ProjectId:  "proj123",
-						ObjectHmac: []byte("hmac"),
-					},
+				PublicId:   "scjson123",
+				ProjectId:  "proj123",
+				ObjectHmac: []byte("hmac"),
+				CredentialStore: StaticCredentialStore{
+					PublicId:  "scs123",
+					ProjectId: "proj123",
 				},
 			},
 		},
-		VaultCredentialStore: []VaultCredentialStore{
+		VaultLibraries: []VaultLibrary{
 			{
-				PublicId:      "vcs123",
-				ProjectId:     "proj123",
-				VaultAddress:  "an/address",
-				Namespace:     "name",
-				TlsServerName: "imaserver",
-				TlsSkipVerify: false,
-				VaultGenericLibraries: []VaultLibrary{
-					{
-						PublicId:       "vl123",
-						ProjectId:      "proj123",
-						VaultPath:      "/a/path",
-						HttpMethod:     "GET",
-						CredentialType: "magic",
-					},
+				PublicId:       "vl123",
+				ProjectId:      "proj123",
+				VaultPath:      "/a/path",
+				HttpMethod:     "GET",
+				CredentialType: "magic",
+				CredentialStore: VaultCredentialStore{
+					PublicId:      "vcs123",
+					ProjectId:     "proj123",
+					VaultAddress:  "an/address",
+					Namespace:     "name",
+					TlsServerName: "imaserver",
+					TlsSkipVerify: false,
 				},
 			},
 		},
