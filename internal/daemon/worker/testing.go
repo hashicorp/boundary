@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -212,6 +213,9 @@ type TestWorkerOpts struct {
 
 	// If set, override the normal auth rotation period
 	AuthRotationPeriod time.Duration
+
+	// Toggle worker auth debugging
+	WorkerAuthDebuggingEnabled *atomic.Bool
 }
 
 func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
@@ -225,6 +229,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		shutdownDoneCh: make(chan struct{}),
 		shutdownOnce:   new(sync.Once),
 	}
+	t.Cleanup(tw.Shutdown)
 
 	if opts == nil {
 		opts = new(TestWorkerOpts)

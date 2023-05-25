@@ -135,6 +135,10 @@ type Worker struct {
 	successfulStatusGracePeriod *atomic.Int64
 	statusCallTimeoutDuration   *atomic.Int64
 
+	// AuthRotationNextRotation is useful in tests to understand how long to
+	// sleep
+	AuthRotationNextRotation atomic.Pointer[time.Time]
+
 	// Test-specific options (and possibly hidden dev-mode flags)
 	TestOverrideX509VerifyDnsName  string
 	TestOverrideX509VerifyCertPool *x509.CertPool
