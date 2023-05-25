@@ -162,6 +162,7 @@ type VaultSshCertLibrary struct {
 // SessionMeta contains metadata about a session in a BSR.
 type SessionMeta struct {
 	PublicId string
+	Endpoint string
 	User     *User
 	Target   *Target
 	Worker   *Worker

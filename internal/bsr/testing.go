@@ -13,6 +13,7 @@ func TestSessionRecordingMeta(s string, p Protocol) *SessionRecordingMeta {
 func TestSessionMeta(s string) *SessionMeta {
 	return &SessionMeta{
 		PublicId: s,
+		Endpoint: "myhost:12345",
 		User: &User{
 			PublicId: "user123",
 			Scope: Scope{

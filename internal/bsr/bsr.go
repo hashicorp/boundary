@@ -54,8 +54,6 @@ func NewSession(ctx context.Context, meta *SessionRecordingMeta, sessionMeta *Se
 		return nil, fmt.Errorf("%s: missing session meta: %w", op, ErrInvalidParameter)
 	case meta.Id == "":
 		return nil, fmt.Errorf("%s: missing session id: %w", op, ErrInvalidParameter)
-	case is.Nil(sessionMeta.StaticHost) && is.Nil(sessionMeta.DynamicHost):
-		return nil, fmt.Errorf("%s: missing session host information: %w", op, ErrInvalidParameter)
 	case !is.Nil(sessionMeta.StaticHost) && !is.Nil(sessionMeta.DynamicHost):
 		return nil, fmt.Errorf("%s: sessionMeta cannot contain both static and dynamic host information: %w", op, ErrInvalidParameter)
 	case len(sessionMeta.StaticCredentialStore) == 0 && len(sessionMeta.VaultCredentialStore) == 0:
