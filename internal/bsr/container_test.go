@@ -20,7 +20,7 @@ func TestSyncBsrKeys(t *testing.T) {
 	require.NoError(t, err)
 	f := &fstest.MemFS{}
 
-	fc, err := f.New(ctx, fmt.Sprintf(bsrFile, "session-id"))
+	fc, err := f.New(ctx, fmt.Sprintf(bsrFileNameTemplate, "session-id"))
 	require.NoError(t, err)
 
 	c, err := newContainer(ctx, sessionContainer, fc, keys)

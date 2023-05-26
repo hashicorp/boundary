@@ -23,11 +23,11 @@ import (
 )
 
 const (
-	metaFile     = "%s-recording.meta"
-	summaryFile  = "%s-recording-summary.json"
-	checksumFile = "SHA256SUM"
-	sigFile      = "SHA256SUM.sig"
-	journalFile  = ".journal"
+	metaFileNameTemplate    = "%s-recording.meta"
+	summaryFileNameTemplate = "%s-recording-summary.json"
+	checksumFileName        = "SHA256SUM"
+	sigFileName             = "SHA256SUM.sig"
+	journalFileName         = ".journal"
 )
 
 // ContainerType defines the type of container.
@@ -65,7 +65,7 @@ type container struct {
 
 // newContainer creates a container for the given type backed by the provide storage.Container.
 func newContainer(ctx context.Context, t containerType, c storage.Container, keys *kms.Keys) (*container, error) {
-	j, err := c.OpenFile(ctx, journalFile,
+	j, err := c.OpenFile(ctx, journalFileName,
 		storage.WithCreateFile(),
 		storage.WithFileAccessMode(storage.WriteOnly),
 		storage.WithCloseSyncMode(storage.NoSync))
@@ -82,12 +82,12 @@ func newContainer(ctx context.Context, t containerType, c storage.Container, key
 		keys:      keys,
 	}
 
-	cc.sigs, err = cc.create(ctx, sigFile)
+	cc.sigs, err = cc.create(ctx, sigFileName)
 	if err != nil {
 		return nil, err
 	}
 
-	cs, err := cc.create(ctx, checksumFile)
+	cs, err := cc.create(ctx, checksumFileName)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func newContainer(ctx context.Context, t containerType, c storage.Container, key
 		return nil, err
 	}
 
-	cc.metaName = fmt.Sprintf(metaFile, t)
+	cc.metaName = fmt.Sprintf(metaFileNameTemplate, t)
 	meta, err := cc.create(ctx, cc.metaName)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func newContainer(ctx context.Context, t containerType, c storage.Container, key
 		return nil, err
 	}
 
-	cc.sumName = fmt.Sprintf(summaryFile, t)
+	cc.sumName = fmt.Sprintf(summaryFileNameTemplate, t)
 	sum, err := cc.create(ctx, cc.sumName)
 	if err != nil {
 		return nil, err
@@ -151,7 +151,7 @@ func openContainer(ctx context.Context, t containerType, c storage.Container, ke
 	}
 
 	// Load the meta file
-	cc.metaName = fmt.Sprintf(metaFile, t)
+	cc.metaName = fmt.Sprintf(metaFileNameTemplate, t)
 	mFile, err := cc.container.OpenFile(ctx, cc.metaName)
 	if err != nil {
 		return nil, err
@@ -165,7 +165,7 @@ func (c *container) loadChecksums(ctx context.Context) error {
 	const op = "bsr.(container).loadChecksums"
 
 	// Open and extract checksum signature
-	checksumsSigFile, err := c.container.OpenFile(ctx, sigFile)
+	checksumsSigFile, err := c.container.OpenFile(ctx, sigFileName)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (c *container) loadChecksums(ctx context.Context) error {
 	}
 
 	// Open and extract checksum file bytes
-	checksumsFile, err := c.container.OpenFile(ctx, checksumFile)
+	checksumsFile, err := c.container.OpenFile(ctx, checksumFileName)
 	if err != nil {
 		return err
 	}
@@ -266,27 +266,27 @@ func (c *container) loadKeys(ctx context.Context, keyUnwrapFn kms.KeyUnwrapCallb
 		return nil, fmt.Errorf("%s: missing key unwrap function: %w", op, ErrInvalidParameter)
 	}
 
-	bsrPubKey, err := c.loadKey(ctx, bsrPubKeyFile)
+	bsrPubKey, err := c.loadKey(ctx, bsrPubKeyFileName)
 	if err != nil {
 		return nil, err
 	}
 
-	wrappedBsrKey, err := c.loadKey(ctx, wrappedBsrKeyFile)
+	wrappedBsrKey, err := c.loadKey(ctx, wrappedBsrKeyFileName)
 	if err != nil {
 		return nil, err
 	}
 
-	wrappedPrivKey, err := c.loadKey(ctx, wrappedPrivKeyFile)
+	wrappedPrivKey, err := c.loadKey(ctx, wrappedPrivKeyFileName)
 	if err != nil {
 		return nil, err
 	}
 
-	pubKeyBsrSignature, err := c.loadSignature(ctx, pubKeyBsrSignatureFile)
+	pubKeyBsrSignature, err := c.loadSignature(ctx, pubKeyBsrSignatureFileName)
 	if err != nil {
 		return nil, err
 	}
 
-	pubKeySelfSignature, err := c.loadSignature(ctx, pubKeySelfSignatureFile)
+	pubKeySelfSignature, err := c.loadSignature(ctx, pubKeySelfSignatureFileName)
 	if err != nil {
 		return nil, err
 	}

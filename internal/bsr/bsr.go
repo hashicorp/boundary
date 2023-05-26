@@ -19,18 +19,18 @@ import (
 )
 
 const (
-	bsrFile         = "%s.bsr"
-	connectionFile  = "%s.connection"
-	channelFile     = "%s.channel"
-	messagesFile    = "messages-%s.data"
-	requestsFile    = "requests-%s.data"
-	sessionMetaFile = "session-meta.json"
+	bsrFileNameTemplate        = "%s.bsr"
+	connectionFileNameTemplate = "%s.connection"
+	channelFileNameTemplate    = "%s.channel"
+	messagesFileNameTemplate   = "messages-%s.data"
+	requestsFileNameTemplate   = "requests-%s.data"
+	sessionMetaFileName        = "session-meta.json"
 
-	bsrPubKeyFile           = "bsrKey.pub"
-	wrappedBsrKeyFile       = "wrappedBsrKey"
-	wrappedPrivKeyFile      = "wrappedPrivKey"
-	pubKeyBsrSignatureFile  = "pubKeyBsrSignature.sign"
-	pubKeySelfSignatureFile = "pubKeySelfSignature.sign"
+	bsrPubKeyFileName           = "bsrKey.pub"
+	wrappedBsrKeyFileName       = "wrappedBsrKey"
+	wrappedPrivKeyFileName      = "wrappedPrivKey"
+	pubKeyBsrSignatureFileName  = "pubKeyBsrSignature.sign"
+	pubKeySelfSignatureFileName = "pubKeySelfSignature.sign"
 )
 
 // Session is the top level container in a bsr that contains the files for
@@ -74,7 +74,7 @@ func NewSession(ctx context.Context, meta *SessionRecordingMeta, sessionMeta *Se
 
 	opts := getOpts(options...)
 
-	c, err := f.New(ctx, fmt.Sprintf(bsrFile, meta.Id))
+	c, err := f.New(ctx, fmt.Sprintf(bsrFileNameTemplate, meta.Id))
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func NewSession(ctx context.Context, meta *SessionRecordingMeta, sessionMeta *Se
 		return nil, errors.Join(err, fmt.Errorf("%s: %w", op, ErrBsrKeyPersistenceFailure))
 	}
 
-	sm, err := nc.create(ctx, sessionMetaFile)
+	sm, err := nc.create(ctx, sessionMetaFileName)
 	if err != nil {
 		return nil, err
 	}
@@ -145,11 +145,11 @@ func persistBsrSessionKeys(ctx context.Context, keys *kms.Keys, c *container) er
 	}
 
 	keyFiles := map[string]proto.Message{
-		bsrPubKeyFile:           keys.PubKey,
-		wrappedBsrKeyFile:       keys.WrappedBsrKey,
-		wrappedPrivKeyFile:      keys.WrappedPrivKey,
-		pubKeyBsrSignatureFile:  keys.PubKeyBsrSignature,
-		pubKeySelfSignatureFile: keys.PubKeySelfSignature,
+		bsrPubKeyFileName:           keys.PubKey,
+		wrappedBsrKeyFileName:       keys.WrappedBsrKey,
+		wrappedPrivKeyFileName:      keys.WrappedPrivKey,
+		pubKeyBsrSignatureFileName:  keys.PubKeyBsrSignature,
+		pubKeySelfSignatureFileName: keys.PubKeySelfSignature,
 	}
 	for f, k := range keyFiles {
 		b, err := proto.Marshal(k)
@@ -181,7 +181,7 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 		return nil, fmt.Errorf("%s: missing key unwrap function: %w", op, ErrInvalidParameter)
 	}
 
-	c, err := f.Open(ctx, fmt.Sprintf(bsrFile, sessionRecordingId))
+	c, err := f.Open(ctx, fmt.Sprintf(bsrFileNameTemplate, sessionRecordingId))
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 	}
 
 	sessionMeta := &SessionMeta{}
-	if err := cc.decodeJsonFile(ctx, sessionMetaFile, sessionMeta); err != nil {
+	if err := cc.decodeJsonFile(ctx, sessionMetaFileName, sessionMeta); err != nil {
 		return nil, err
 	}
 
@@ -247,7 +247,7 @@ func (s *Session) NewConnection(ctx context.Context, meta *ConnectionRecordingMe
 		return nil, fmt.Errorf("%s: missing connection id: %w", op, ErrInvalidParameter)
 	}
 
-	name := fmt.Sprintf(connectionFile, meta.Id)
+	name := fmt.Sprintf(connectionFileNameTemplate, meta.Id)
 	sc, err := s.container.container.SubContainer(ctx, name, storage.WithCreateFile(), storage.WithFileAccessMode(storage.WriteOnly))
 	if err != nil {
 		return nil, err
@@ -278,7 +278,7 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connectio
 		return nil, fmt.Errorf("%s: missing connection id: %w", op, ErrInvalidParameter)
 	}
 
-	name := fmt.Sprintf(connectionFile, connId)
+	name := fmt.Sprintf(connectionFileNameTemplate, connId)
 
 	switch {
 	case !s.Meta.connections[name]:
@@ -335,7 +335,7 @@ func (c *Connection) NewChannel(ctx context.Context, meta *ChannelRecordingMeta)
 		return nil, fmt.Errorf("%s: missing channel id: %w", op, ErrInvalidParameter)
 	}
 
-	name := fmt.Sprintf(channelFile, meta.Id)
+	name := fmt.Sprintf(channelFileNameTemplate, meta.Id)
 	sc, err := c.container.container.SubContainer(ctx, name, storage.WithCreateFile(), storage.WithFileAccessMode(storage.WriteOnly))
 	if err != nil {
 		return nil, err
@@ -367,7 +367,7 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 		return nil, fmt.Errorf("%s: missing channel id: %w", op, ErrInvalidParameter)
 	}
 
-	name := fmt.Sprintf(channelFile, chanId)
+	name := fmt.Sprintf(channelFileNameTemplate, chanId)
 	switch {
 	case !c.Meta.channels[name]:
 		return nil, fmt.Errorf("%s: channel id does not exist within this connection: %w", op, ErrInvalidParameter)
@@ -417,7 +417,7 @@ func (c *Connection) NewMessagesWriter(ctx context.Context, dir Direction) (io.W
 		return nil, fmt.Errorf("%s: invalid direction: %w", op, ErrInvalidParameter)
 	}
 
-	messagesName := fmt.Sprintf(messagesFile, dir.String())
+	messagesName := fmt.Sprintf(messagesFileNameTemplate, dir.String())
 	_, err := c.container.WriteMeta(ctx, "messages", dir.String())
 	if err != nil {
 		return nil, err
@@ -439,7 +439,7 @@ func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (io.W
 		return nil, fmt.Errorf("%s: invalid direction: %w", op, ErrInvalidParameter)
 	}
 
-	requestName := fmt.Sprintf(requestsFile, dir.String())
+	requestName := fmt.Sprintf(requestsFileNameTemplate, dir.String())
 	_, err := c.container.WriteMeta(ctx, "requests", dir.String())
 	if err != nil {
 		return nil, err
@@ -479,7 +479,7 @@ func (c *Channel) NewMessagesWriter(ctx context.Context, dir Direction) (io.Writ
 		return nil, fmt.Errorf("%s: invalid direction: %w", op, ErrInvalidParameter)
 	}
 
-	messagesName := fmt.Sprintf(messagesFile, dir.String())
+	messagesName := fmt.Sprintf(messagesFileNameTemplate, dir.String())
 	_, err := c.container.WriteMeta(ctx, "messages", dir.String())
 	if err != nil {
 		return nil, err
@@ -501,7 +501,7 @@ func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (io.Writ
 		return nil, fmt.Errorf("%s: invalid direction: %w", op, ErrInvalidParameter)
 	}
 
-	requestName := fmt.Sprintf(requestsFile, dir.String())
+	requestName := fmt.Sprintf(requestsFileNameTemplate, dir.String())
 	_, err := c.container.WriteMeta(ctx, "requests", dir.String())
 	if err != nil {
 		return nil, err
@@ -518,7 +518,7 @@ func (c *Channel) NewRequestsWriter(ctx context.Context, dir Direction) (io.Writ
 func (c *Channel) OpenMessageScanner(ctx context.Context, dir Direction) (*ChunkScanner, error) {
 	const op = "bsr.(Channel).OpenMessageScanner"
 
-	messagesName := fmt.Sprintf(messagesFile, dir.String())
+	messagesName := fmt.Sprintf(messagesFileNameTemplate, dir.String())
 	m, err := c.container.container.OpenFile(ctx, messagesName, storage.WithFileAccessMode(storage.ReadOnly))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -534,7 +534,7 @@ func (c *Channel) OpenMessageScanner(ctx context.Context, dir Direction) (*Chunk
 func (c *Channel) OpenRequestScanner(ctx context.Context, dir Direction) (*ChunkScanner, error) {
 	const op = "bsr.(Channel).OpenRequestScanner"
 
-	requestName := fmt.Sprintf(requestsFile, dir.String())
+	requestName := fmt.Sprintf(requestsFileNameTemplate, dir.String())
 	m, err := c.container.container.OpenFile(ctx, requestName, storage.WithFileAccessMode(storage.ReadOnly))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

@@ -42,7 +42,7 @@ func TestPopulateMeta(t *testing.T) {
 	require.Equal(t, s.Meta.Protocol, srm.Protocol)
 
 	gotSessionMeta := &SessionMeta{}
-	r, err := s.container.container.OpenFile(ctx, sessionMetaFile)
+	r, err := s.container.container.OpenFile(ctx, sessionMetaFileName)
 	require.NoError(t, err)
 	dec := json.NewDecoder(r)
 	err = dec.Decode(gotSessionMeta)
