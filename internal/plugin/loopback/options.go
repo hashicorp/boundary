@@ -39,7 +39,7 @@ const (
 )
 
 const (
-	defaultStreamChunckSize = 8
+	defaultStreamChunkSize = 8
 )
 
 // PluginMockError is used to mock an error when interacting with an external object store.

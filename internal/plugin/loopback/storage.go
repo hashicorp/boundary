@@ -286,7 +286,7 @@ func (l *LoopbackStorage) getObject(req *plgpb.GetObjectRequest, stream plgpb.St
 	go func() {
 		chunkSize := req.GetChunkSize()
 		if chunkSize == 0 {
-			chunkSize = defaultStreamChunckSize
+			chunkSize = defaultStreamChunkSize
 		}
 		data := []byte{}
 		for _, chunk := range object.DataChunks {
