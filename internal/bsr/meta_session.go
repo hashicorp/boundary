@@ -89,7 +89,6 @@ type StaticCredentialStore struct {
 // StaticJsonCredential represents a static json credential used for this session
 type StaticJsonCredential struct {
 	PublicId        string
-	ProjectId       string
 	Name            string // optional field
 	Description     string // optional field
 	ObjectHmac      []byte
@@ -100,9 +99,9 @@ type StaticJsonCredential struct {
 // StaticUsernamePasswordCredential represents a Static username password credential used for this session
 type StaticUsernamePasswordCredential struct {
 	PublicId        string
-	ProjectId       string
 	Name            string // optional field
 	Description     string // optional field
+	Username        string
 	PasswordHmac    []byte
 	Purposes        []string
 	CredentialStore StaticCredentialStore
@@ -111,9 +110,9 @@ type StaticUsernamePasswordCredential struct {
 // StaticSshPrivateKeyCredential represents a Static Ssh private key credential used for this session
 type StaticSshPrivateKeyCredential struct {
 	PublicId                 string
-	ProjectId                string
 	Name                     string // optional field
 	Description              string // optional field
+	Username                 string
 	PrivateKeyHmac           []byte
 	PrivateKeyPassphraseHmac []byte // optional field
 	Purposes                 []string
@@ -133,10 +132,9 @@ type VaultCredentialStore struct {
 	WorkerFilter  string // optional field
 }
 
-// VaultLibrary contains information about the Vault library used for this session
-type VaultLibrary struct {
+// VaultGenericLibrary contains information about the Vault library used for this session
+type VaultGenericLibrary struct {
 	PublicId        string
-	ProjectId       string
 	Name            string // optional field
 	Description     string // optional field
 	VaultPath       string
@@ -147,10 +145,9 @@ type VaultLibrary struct {
 	CredentialStore VaultCredentialStore
 }
 
-// VaultSshCertLibrary contains information about a Vault Ssh Cert library for this session
-type VaultSshCertLibrary struct {
+// VaultSshCertificateLibrary contains information about a Vault Ssh Cert library for this session
+type VaultSshCertificateLibrary struct {
 	PublicId        string
-	ProjectId       string
 	Name            string // optional field
 	Description     string // optional field
 	VaultPath       string
@@ -179,6 +176,6 @@ type SessionMeta struct {
 	StaticJSONCredentials             []StaticJsonCredential
 	StaticUsernamePasswordCredentials []StaticUsernamePasswordCredential
 	StaticSshPrivateKeyCredentials    []StaticSshPrivateKeyCredential
-	VaultLibraries                    []VaultLibrary
-	VaultSshCertLibraries             []VaultSshCertLibrary
+	VaultGenericLibraries             []VaultGenericLibrary
+	VaultSshCertificateLibraries      []VaultSshCertificateLibrary
 }

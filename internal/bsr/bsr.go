@@ -59,8 +59,8 @@ func NewSession(ctx context.Context, meta *SessionRecordingMeta, sessionMeta *Se
 	case len(sessionMeta.StaticJSONCredentials) == 0 &&
 		len(sessionMeta.StaticUsernamePasswordCredentials) == 0 &&
 		len(sessionMeta.StaticSshPrivateKeyCredentials) == 0 &&
-		len(sessionMeta.VaultLibraries) == 0 &&
-		len(sessionMeta.VaultSshCertLibraries) == 0:
+		len(sessionMeta.VaultGenericLibraries) == 0 &&
+		len(sessionMeta.VaultSshCertificateLibraries) == 0:
 		return nil, fmt.Errorf("%s: missing credential information: %w", op, ErrInvalidParameter)
 	case is.Nil(sessionMeta.User):
 		return nil, fmt.Errorf("%s: missing session user: %w", op, ErrInvalidParameter)

@@ -48,7 +48,6 @@ func TestSessionMeta(s string) *SessionMeta {
 		StaticJSONCredentials: []StaticJsonCredential{
 			{
 				PublicId:   "scjson123",
-				ProjectId:  "proj123",
 				ObjectHmac: []byte("hmac"),
 				CredentialStore: StaticCredentialStore{
 					PublicId:  "scs123",
@@ -56,10 +55,9 @@ func TestSessionMeta(s string) *SessionMeta {
 				},
 			},
 		},
-		VaultLibraries: []VaultLibrary{
+		VaultGenericLibraries: []VaultGenericLibrary{
 			{
 				PublicId:       "vl123",
-				ProjectId:      "proj123",
 				VaultPath:      "/a/path",
 				HttpMethod:     "GET",
 				CredentialType: "magic",
