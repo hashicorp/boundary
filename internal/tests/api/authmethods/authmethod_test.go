@@ -41,7 +41,6 @@ func TestCrud(t *testing.T) {
 	tcConfig.Eventing = &eventConfig.EventerConfig
 
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{Config: tcConfig})
-	t.Cleanup(tc.Shutdown)
 
 	client := tc.Client()
 	token := tc.Token()
@@ -192,7 +191,6 @@ func TestList(t *testing.T) {
 	require.NoError(err)
 
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{Config: tcConfig})
-	t.Cleanup(tc.Shutdown)
 
 	client := tc.Client()
 	token := tc.Token()

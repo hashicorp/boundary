@@ -415,7 +415,6 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{SchedulerRunJobInterval: 100 * time.Millisecond})
 	ctx := tc.Context()
-	t.Cleanup(tc.Shutdown)
 	client := tc.Client()
 	token := tc.Token()
 	client.SetToken(token.Token)
@@ -448,13 +447,13 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 	_, err = tgClient.AddHostSources(ctx, targ.Item.Id, 1, []string{hs.Item.Id})
 	require.NoError(err)
 	_, err = tgClient.AddCredentialSources(ctx, targ.Item.Id, 2, targets.WithBrokeredCredentialSourceIds([]string{cred.Item.Id}))
+	require.NoError(err)
 	w := worker.NewTestWorker(t, &worker.TestWorkerOpts{
 		InitialUpstreams: tc.ClusterAddrs(),
 		Logger:           logger.Named("worker"),
 		WorkerAuthKms:    tc.Config().WorkerAuthKms,
 		Name:             "worker",
 	})
-	t.Cleanup(w.Shutdown)
 	require.NoError(w.Worker().WaitForNextSuccessfulStatusUpdate())
 
 	// Authorize session, requires decrypting json credential

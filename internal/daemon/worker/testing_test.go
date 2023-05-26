@@ -140,7 +140,6 @@ func TestNewAuthorizedPkiTestWorker(t *testing.T) {
 		Config: conf,
 		Logger: logger.Named("controller"),
 	})
-	t.Cleanup(c.Shutdown)
 	tw, id := NewAuthorizedPkiTestWorker(t, c.ServersRepo(), "test", c.ClusterAddrs())
 	assert.NotNil(t, tw)
 	assert.NotEmpty(t, id)
@@ -163,7 +162,6 @@ func TestNewTestMultihopWorkers(t *testing.T) {
 		Config: conf,
 		Logger: logger.Named("controller"),
 	})
-	t.Cleanup(c.Shutdown)
 	pkiTags := map[string][]string{"connected": {"directly"}}
 	childPkiTags := map[string][]string{"connected": {"multihop"}}
 	childKmsTags := map[string][]string{"connected": {"multihop"}}

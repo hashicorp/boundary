@@ -48,7 +48,6 @@ func TestCustomX509Verification_Client(t *testing.T) {
 		InitialResourcesSuffix: "1234567890",
 		Logger:                 logger.Named("c1"),
 	})
-	t.Cleanup(c1.Shutdown)
 
 	conf, err = config.DevWorker()
 	conf.Eventing = &ec.EventerConfig
@@ -58,7 +57,6 @@ func TestCustomX509Verification_Client(t *testing.T) {
 		InitialUpstreams: c1.ClusterAddrs(),
 		Logger:           logger.Named("w1"),
 	})
-	t.Cleanup(w1.Shutdown)
 
 	// Give time for it to connect
 	time.Sleep(10 * time.Second)
@@ -188,7 +186,6 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 			Config:                 conf,
 			InitialResourcesSuffix: "1234567890",
 		})
-		t.Cleanup(c1.Shutdown)
 
 		conf, err = config.DevWorker()
 		conf.Eventing = &ec.EventerConfig
@@ -199,7 +196,6 @@ func testCustomX509Verification_Server(ec event.TestConfig, certPool *x509.CertP
 		})
 		w1.Worker().TestOverrideX509VerifyCertPool = certPool
 		w1.Worker().TestOverrideX509VerifyDnsName = dnsName
-		t.Cleanup(w1.Shutdown)
 
 		// Give time for it to connect
 		time.Sleep(10 * time.Second)

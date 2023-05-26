@@ -43,7 +43,6 @@ func TestWorkerBytesUpDown(t *testing.T) {
 		PublicClusterAddr:               pl.Addr().String(),
 		WorkerStatusGracePeriodDuration: helper.DefaultWorkerStatusGracePeriod,
 	})
-	t.Cleanup(c1.Shutdown)
 
 	expectWorkers(t, c1)
 
@@ -64,7 +63,6 @@ func TestWorkerBytesUpDown(t *testing.T) {
 		Logger:                              logger.Named("w1"),
 		SuccessfulStatusGracePeriodDuration: helper.DefaultSuccessfulStatusGracePeriod,
 	})
-	t.Cleanup(w1.Shutdown)
 
 	require.NoError(w1.Worker().WaitForNextSuccessfulStatusUpdate())
 	require.NoError(c1.WaitForNextWorkerStatusUpdate(w1.Name()))

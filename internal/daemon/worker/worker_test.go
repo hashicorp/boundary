@@ -158,7 +158,6 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 		WorkerAuthStoragePath: tmpDir,
 		DisableAutoStart:      true,
 	})
-	t.Cleanup(tw.Shutdown)
 	err = tw.Worker().Start()
 	require.NoError(t, err)
 
@@ -248,7 +247,6 @@ func TestSetupWorkerAuthStorage(t *testing.T) {
 				WorkerAuthStoragePath: tmpDir,
 				DisableAutoStart:      true,
 			})
-			t.Cleanup(tw.Shutdown)
 
 			// Always clear out storage that was there before, ignore errors
 			storage, err := nodeefile.New(tw.Context(), nodeefile.WithBaseDirectory(tmpDir))

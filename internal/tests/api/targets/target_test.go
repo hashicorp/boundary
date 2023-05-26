@@ -386,7 +386,6 @@ func TestList(t *testing.T) {
 
 func TestTarget_AddressMutualExclusiveRelationship(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
-	t.Cleanup(tc.Shutdown)
 
 	client := tc.Client()
 	at := tc.Token()
@@ -440,7 +439,6 @@ func TestTarget_AddressMutualExclusiveRelationship(t *testing.T) {
 
 func TestTarget_HostSourceMutualExclusiveRelationship(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
-	t.Cleanup(tc.Shutdown)
 
 	client := tc.Client()
 	at := tc.Token()
@@ -500,7 +498,6 @@ func TestTarget_HostSourceMutualExclusiveRelationship(t *testing.T) {
 
 func TestCreateTarget_DirectlyAttachedAddress(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
-	t.Cleanup(tc.Shutdown)
 
 	client := tc.Client()
 	at := tc.Token()
@@ -552,7 +549,6 @@ func TestCreateTarget_DirectlyAttachedAddress(t *testing.T) {
 
 func TestUpdateTarget_DeleteAddress(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
-	t.Cleanup(tc.Shutdown)
 
 	client := tc.Client()
 	at := tc.Token()
