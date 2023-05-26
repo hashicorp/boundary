@@ -115,14 +115,24 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 		case nil:
 			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
 		case map[string]any:
-			// TODO: check if this is the only possible case for an 'unspecified' type credential
-			// and get rid of the other cases if this is so.
 			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
-			certs := make(map[string]any, len(iface))
+			certs := make(map[string]any)
 			for kk, vv := range iface {
-				if p, _ := pem.Decode([]byte(fmt.Sprintf("%v", vv))); p != nil {
-					// If the value is PEM formatted, add it to a map to be formatted without indents.
-					certs[kk] = vv
+				// If the value is PEM formatted, add it to a map to be formatted without indents.
+				switch vv := vv.(type) {
+				case []byte:
+					fmt.Sprintf("________________iface: []byte]\n%v", vv)
+					if p, _ := pem.Decode(vv); p != nil {
+						certs[kk] = vv
+					}
+				case string:
+					fmt.Sprintf("________________iface: string\n%s", vv)
+					if p, _ := pem.Decode([]byte(fmt.Sprintf("%s", vv))); p != nil {
+						// If the value is PEM formatted, add it to a map to be formatted without indents.
+						certs[kk] = vv
+					}
+				default:
+					// Print out when base.WrapMap() is called on iface below.
 				}
 			}
 			for c := range certs {
@@ -131,7 +141,7 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 				out = append(out, fmt.Sprintf("%v\n", certs[c]))
 			}
 			if len(iface) > 0 {
-				out = append(out, base.WrapMap(indent+6, 0, iface))
+				out = append(out, base.WrapMap(indent+6, 12, iface))
 			}
 		default:
 			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
