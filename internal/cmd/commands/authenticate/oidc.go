@@ -34,6 +34,10 @@ type OidcCommand struct {
 	parsedOpts *common.Options
 }
 
+const (
+	outputAuthUrlFlagName = "output-auth-url"
+)
+
 func (c *OidcCommand) Synopsis() string {
 	return wordwrap.WrapString("Invoke the OIDC auth method to authenticate with Boundary", base.TermWidth)
 }
@@ -69,7 +73,6 @@ func (c *OidcCommand) Flags() *base.FlagSets {
 			Usage:  "The scope ID to use for the operation.",
 		})
 	}
-
 	return set
 }
 
@@ -145,6 +148,7 @@ func (c *OidcCommand) Run(args []string) int {
 
 	if base.Format(c.UI) == "table" {
 		c.UI.Output("Opening returned authentication URL in your browser...")
+		c.UI.Output(startResp.AuthUrl)
 	}
 	if err := util.OpenURL(startResp.AuthUrl); err != nil {
 		c.UI.Error(fmt.Errorf("Unable to open authentication URL in browser: %w", err).Error())
