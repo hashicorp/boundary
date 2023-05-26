@@ -18,7 +18,7 @@ which bats     || die "missing bats"
 which nc       || die "missing nc"
 
 echo "starting boundary dev in background"
-boundary dev &>/dev/null &
+boundary dev --create-loopback-plugin &>/dev/null &
 boundary_pid=$!
 
 function cleanup {
