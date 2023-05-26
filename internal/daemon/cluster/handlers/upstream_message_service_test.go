@@ -361,7 +361,7 @@ func Test_SendUpstreamMessage(t *testing.T) {
 			name:                "invalid-msg-type",
 			clientProducer:      workerClientProducer,
 			originatingWorkerId: originatingWorkerId,
-			req:                 &pbs.CommandRequest{},
+			req:                 &pbs.Connection{},
 			setupHandlers:       TestRegisterHandlerFn(t, pbs.MsgType_MSG_TYPE_ECHO, testHandler),
 			wantErr:             true,
 			wantErrContains:     "\"\" is an unknown msg type",
