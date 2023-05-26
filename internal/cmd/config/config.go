@@ -148,6 +148,9 @@ type Config struct {
 	// sensitive. This should only be enabled for debugging purposes, and can be
 	// toggled with SIGHUP.
 	EnableWorkerAuthDebugging bool `hcl:"enable_worker_auth_debugging"`
+
+	// For opting out of license utilization reporting
+	Reporting *Reporting `hcl:"reporting"`
 }
 
 type Controller struct {
@@ -306,6 +309,14 @@ type Scheduler struct {
 
 type Plugins struct {
 	ExecutionDir string `hcl:"execution_dir"`
+}
+
+type Reporting struct {
+	License *License `hcl:"license"`
+}
+
+type License struct {
+	Enabled bool `hcl:"enabled"`
 }
 
 // DevWorker is a Config that is used for dev mode of Boundary
