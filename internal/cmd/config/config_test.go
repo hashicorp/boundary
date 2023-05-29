@@ -37,7 +37,7 @@ func TestDevController(t *testing.T) {
 	}
 	uiHeaders := map[int]http.Header{
 		0: {
-			"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+			"Content-Security-Policy":   {defaultCsp},
 			"X-Content-Type-Options":    {"nosniff"},
 			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
 			"Cache-Control":             {"no-store"},
@@ -226,7 +226,7 @@ func TestDevWorker(t *testing.T) {
 					},
 					CustomUiResponseHeaders: map[int]http.Header{
 						0: {
-							"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+							"Content-Security-Policy":   {defaultCsp},
 							"X-Content-Type-Options":    {"nosniff"},
 							"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
 							"Cache-Control":             {"no-store"},
@@ -396,7 +396,7 @@ func TestDevCombined(t *testing.T) {
 	}
 	uiHeaders := map[int]http.Header{
 		0: {
-			"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+			"Content-Security-Policy":   {defaultCsp},
 			"X-Content-Type-Options":    {"nosniff"},
 			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
 			"Cache-Control":             {"no-store"},

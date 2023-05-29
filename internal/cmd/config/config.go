@@ -123,6 +123,11 @@ kms "aead" {
 	key_id = "worker-auth-storage"
 }
 `
+
+	// We use a custom Content-Security-Policy because we need to add wasm-unsafe-eval
+	// as a script-src to support asciinema playback on the Admin UI. Users can still
+	// override this value via the configuration.
+	defaultCsp = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"
 )
 
 // Config is the configuration for the boundary controller
@@ -856,7 +861,11 @@ func Parse(d string) (*Config, error) {
 
 	// Now that we can have multiple KMSes for downstream workers, allow an
 	// unlimited number of KMS blocks as we don't know how many might be defined
-	sharedConfig, err := configutil.ParseConfig(d, configutil.WithMaxKmsBlocks(-1))
+	sharedConfig, err := configutil.ParseConfig(
+		d,
+		configutil.WithMaxKmsBlocks(-1),
+		configutil.WithListenerOptions(listenerutil.WithDefaultUiContentSecurityPolicyHeader(defaultCsp)),
+	)
 	if err != nil {
 		return nil, err
 	}
