@@ -63,3 +63,9 @@ kms "aead" {
   key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
   key_id    = "global_recovery"
 }
+
+reporting {
+	license {
+		enabled = false
+  }
+}

@@ -451,6 +451,11 @@ func TestLoad(t *testing.T) {
 					ExecutionDir: "",
 				},
 				HcpbClusterId: "",
+				Reporting: &config.Reporting{
+					License: &config.License{
+						Enabled: false,
+					},
+				},
 			},
 			nil,
 		},

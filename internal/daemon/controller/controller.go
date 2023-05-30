@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/census"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
@@ -534,6 +535,9 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := cleaner.RegisterJob(c.baseContext, c.scheduler, rw); err != nil {
+		return err
+	}
+	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw); err != nil {
 		return err
 	}
 
