@@ -7,10 +7,11 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"github.com/hashicorp/boundary/internal/census"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/hashicorp/boundary/internal/census"
 
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
