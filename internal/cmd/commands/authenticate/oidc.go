@@ -69,7 +69,6 @@ func (c *OidcCommand) Flags() *base.FlagSets {
 			Usage:  "The scope ID to use for the operation.",
 		})
 	}
-
 	return set
 }
 
@@ -145,10 +144,11 @@ func (c *OidcCommand) Run(args []string) int {
 
 	if base.Format(c.UI) == "table" {
 		c.UI.Output("Opening returned authentication URL in your browser...")
+		c.UI.Output(startResp.AuthUrl)
 	}
 	if err := util.OpenURL(startResp.AuthUrl); err != nil {
 		c.UI.Error(fmt.Errorf("Unable to open authentication URL in browser: %w", err).Error())
-		c.UI.Warn("Please open the following URL manually in your web browser:")
+		c.UI.Warn("Please copy and paste this link into a browser manually:")
 		c.UI.Output(startResp.AuthUrl)
 	}
 
