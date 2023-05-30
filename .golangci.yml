@@ -12,3 +12,6 @@ issues:
     - linters:
         - stylecheck
       text: "ST1003:"
+    - linters:
+        - staticcheck
+      text: "SA1019: pbs.AuthorizedWorkerList is deprecated:"
