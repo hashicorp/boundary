@@ -90,6 +90,21 @@ load _target_host_sources
   [ "$status" -eq 0 ]
 }
 
+@test "boundary/target/client_port: admin user set can set a client port" {
+  local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
+  run update_tcp_target -id $id -default-client-port 1234
+  echo "$output"
+  [ "$status" -eq 0 ]
+
+  run read_target $id
+  [ "$status" -eq 0 ]
+  got=$(echo "$output")
+
+  echo "$got"
+  run field_eq "$got" ".item.attributes.default_client_port" "1234"
+  [ "$status" -eq 0 ]
+}
+
 @test "boundary/target: default user can delete target" {
   local id=$(target_id_from_name $DEFAULT_P_ID $TGT_NAME)
   run delete_target $id
