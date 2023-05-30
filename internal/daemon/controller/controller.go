@@ -79,6 +79,8 @@ var (
 	downstreamersFactory           func(context.Context, string, string) (common.Downstreamers, error)
 	downstreamWorkersTickerFactory func(context.Context, string, string, common.Downstreamers, downstreamReceiver) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
+
+	registerSupplementaryJobs func(context.Context, *Controller, db.Reader, db.Writer) error
 )
 
 type Controller struct {
@@ -537,6 +539,11 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 
+	if registerSupplementaryJobs != nil {
+		if err := registerSupplementaryJobs(c.baseContext, c, rw, rw); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
