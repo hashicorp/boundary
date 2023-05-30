@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/credentiallibraries"
@@ -21,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -732,4 +734,32 @@ func TestUpdateTarget_WhitespaceInAddress(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(updateResult)
 	require.Equal("10.0.0.1", updateResult.Item.Address)
+}
+
+// TestCreateTarget_SlashesInName verifies that we can prop'ly route when using
+// a target name for authorizing a session and the name contains slashes
+func TestCreateTarget_SlashesInName(t *testing.T) {
+	require := require.New(t)
+	tc := controller.NewTestController(t, nil)
+
+	tw, _ := worker.NewAuthorizedPkiTestWorker(t, tc.ServersRepo(), "test", tc.ClusterAddrs())
+	require.NotNil(t, tw)
+
+	// Wait for worker to become ready
+	time.Sleep(10 * time.Second)
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	tarClient := targets.NewClient(client)
+
+	tar, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("foo/bar"), targets.WithTcpTargetDefaultPort(2), targets.WithAddress("127.0.0.1"))
+	require.NoError(err)
+	require.NotNil(tar)
+
+	authzResult, err := tarClient.AuthorizeSession(tc.Context(), "", targets.WithName("foo/bar"), targets.WithScopeId(proj.PublicId))
+	require.NoError(err)
+	require.NotNil(authzResult)
 }

@@ -97,7 +97,6 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			PublicClusterAddr:               pl.Addr().String(),
 			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
-		defer c1.Shutdown()
 
 		expectWorkers(t, c1)
 
@@ -118,7 +117,6 @@ func testWorkerSessionCleanupSingle(burdenCase timeoutBurdenType) func(t *testin
 			Logger:                              logger.Named("w1"),
 			SuccessfulStatusGracePeriodDuration: workerGracePeriod(burdenCase),
 		})
-		defer w1.Shutdown()
 
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
 		require.NoError(err)
@@ -228,7 +226,6 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			PublicClusterAddr:               pl1.Addr().String(),
 			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
-		defer c1.Shutdown()
 
 		// ******************
 		// ** Controller 2 **
@@ -240,7 +237,6 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			PublicClusterAddr:               pl2.Addr().String(),
 			WorkerStatusGracePeriodDuration: controllerGracePeriod(burdenCase),
 		})
-		defer c2.Shutdown()
 		expectWorkers(t, c1)
 		expectWorkers(t, c2)
 
@@ -279,7 +275,10 @@ func testWorkerSessionCleanupMulti(burdenCase timeoutBurdenType) func(t *testing
 			Logger:                              logger.Named("w1"),
 			SuccessfulStatusGracePeriodDuration: workerGracePeriod(burdenCase),
 		})
-		defer w1.Shutdown()
+		// Worker needs some extra time to become ready, otherwise for a
+		// currently-unknown reason the next successful status update fails
+		// because it's not sent before the context times out.
+		time.Sleep(5 * time.Second)
 
 		err = w1.Worker().WaitForNextSuccessfulStatusUpdate()
 		require.NoError(err)
