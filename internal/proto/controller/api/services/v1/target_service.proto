@@ -75,6 +75,10 @@ service TargetService {
   }
 
   // AuthorizeSession creates authorization information from a given Target.
+  // Note that unlike most APIs, since we support using a target name along with
+  // scope ID or name to identify a target, this uses a pattern that allows the
+  // "id" field to have any number of segments, which works so long as the last
+  // part of the path is the verb, which is our normal pattern.
   rpc AuthorizeSession(AuthorizeSessionRequest) returns (AuthorizeSessionResponse) {
     option (google.api.http) = {
       post: "/v1/targets/{id=**}:authorize-session"
