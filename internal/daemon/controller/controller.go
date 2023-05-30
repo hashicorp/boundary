@@ -11,12 +11,11 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/hashicorp/boundary/internal/census"
-
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/census"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
