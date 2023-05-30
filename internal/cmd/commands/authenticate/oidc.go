@@ -148,7 +148,7 @@ func (c *OidcCommand) Run(args []string) int {
 	}
 	if err := util.OpenURL(startResp.AuthUrl); err != nil {
 		c.UI.Error(fmt.Errorf("Unable to open authentication URL in browser: %w", err).Error())
-		c.UI.Warn("Please open the following URL manually in your web browser or, copy and paste this link into a browser manually:")
+		c.UI.Warn("Please copy and paste this link into a browser manually:")
 		c.UI.Output(startResp.AuthUrl)
 	}
 
