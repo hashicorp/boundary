@@ -47,6 +47,10 @@ type TargetServiceClient interface {
 	// is malformed or not provided an error is returned.
 	DeleteTarget(ctx context.Context, in *DeleteTargetRequest, opts ...grpc.CallOption) (*DeleteTargetResponse, error)
 	// AuthorizeSession creates authorization information from a given Target.
+	// Note that unlike most APIs, since we support using a target name along with
+	// scope ID or name to identify a target, this uses a pattern that allows the
+	// "id" field to have any number of segments, which works so long as the last
+	// part of the path is the verb, which is our normal pattern.
 	AuthorizeSession(ctx context.Context, in *AuthorizeSessionRequest, opts ...grpc.CallOption) (*AuthorizeSessionResponse, error)
 	// AddTargetHostSources adds Host Sources to this Target. The provided request
 	// must include the Target ID to which the Host Sources will be added. All
@@ -248,6 +252,10 @@ type TargetServiceServer interface {
 	// is malformed or not provided an error is returned.
 	DeleteTarget(context.Context, *DeleteTargetRequest) (*DeleteTargetResponse, error)
 	// AuthorizeSession creates authorization information from a given Target.
+	// Note that unlike most APIs, since we support using a target name along with
+	// scope ID or name to identify a target, this uses a pattern that allows the
+	// "id" field to have any number of segments, which works so long as the last
+	// part of the path is the verb, which is our normal pattern.
 	AuthorizeSession(context.Context, *AuthorizeSessionRequest) (*AuthorizeSessionResponse, error)
 	// AddTargetHostSources adds Host Sources to this Target. The provided request
 	// must include the Target ID to which the Host Sources will be added. All

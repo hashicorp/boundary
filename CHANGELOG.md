@@ -45,6 +45,23 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   by the client via `-listen-port`
   ([PR](https://github.com/hashicorp/boundary/pull/2767))
 
+### Bug Fixes
+
+* targets: `authorize-session` now works properly when using a target's name as
+  the identifier and the target name contains one or more slashes
+  ([PR](https://github.com/hashicorp/boundary/pull/3249))
+
+## 0.12.3 (2023/05/26)
+
+### Bug Fixes
+
+* workers: A bug in PKI worker auth rotation could mean that after a rotation
+  the controller (or upstream worker) and downstream worker side could pick
+  different certificate chains for authentication, with the only remedy being to
+  re-authorize the workers. This has been fixed. If this bug was previously hit,
+  in some specific cases updating only the worker to 0.12.3 will fix it;
+  otherwise reauthorization will be necessary.
+
 ## 0.12.2 (2023/04/04)
 
 ### Security
