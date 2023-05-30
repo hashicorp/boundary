@@ -3124,7 +3124,8 @@
             "description": "The ID of the target. Required unless some combination of scope_id/scope_name and name are set.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": ".+"
           },
           {
             "name": "body",
