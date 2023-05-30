@@ -150,7 +150,7 @@ type Config struct {
 	EnableWorkerAuthDebugging bool `hcl:"enable_worker_auth_debugging"`
 
 	// For opting out of license utilization reporting
-	Reporting *Reporting `hcl:"reporting"`
+	Reporting Reporting `hcl:"reporting"`
 }
 
 type Controller struct {
@@ -312,7 +312,7 @@ type Plugins struct {
 }
 
 type Reporting struct {
-	License *License `hcl:"license"`
+	License License `hcl:"license"`
 }
 
 type License struct {

@@ -25,6 +25,9 @@ func RegisterJob(ctx context.Context, s *scheduler.Scheduler, optOut bool, r db.
 	if util.IsNil(w) {
 		return errors.New(ctx, errors.Internal, "nil DB writer", op, errors.WithoutEvent())
 	}
+	if util.IsNil(optOut) {
+		return errors.New(ctx, errors.Internal, "nil opt out value", op, errors.WithoutEvent())
+	}
 
 	censusJob, err := NewCensusJobFn(ctx, optOut, r, w)
 	if err != nil {
