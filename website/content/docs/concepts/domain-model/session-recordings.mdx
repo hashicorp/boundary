@@ -1,0 +1,66 @@
+---
+layout: docs
+page_title: Domain Model - Session Recordings
+description: |-
+  The anatomy of a Boundary session recording
+---
+
+# Session recordings
+
+A session recording represents a directory structure of
+files in an external object store that together are the
+recording of a single [session][] between a [user][] and a [target][].
+
+The lifecycle of a session recording does not affect the
+lifecycle of any files stored in the external object store.
+
+A session recording belongs to one and only one [storage bucket][].
+It is deleted when the [storage bucket][] it belongs to is deleted.
+
+A session recording is associated with the
+[target][] that the recorded session was against.
+However, the lifecycle of a session recording is not tied to
+the lifecycle of the [target][] it is associated with.
+If the [target][] a session recording is associated with is deleted,
+the association to the [target][] is deleted, not the session recording itself.
+
+The deletion of a session recording does not delete or modify
+any files in the external object store that the session recording represents.
+
+The session recording records all interactions taking place over
+the session, including metadata about the [user][], [target][] and any
+[hosts][], [host sets][], [host catalogs][] and [credentials][] used.
+
+A session recording represents [connections][] as separate
+entities within the recording. Within each recorded connection, there
+may also be a recorded channel. This represents a single channel
+within which the [user][] interacted with the [target][] in protocols that
+multiplex user interactions over single connections. For example,
+the SSH protocol multiplexes user interactions within a single
+connection, so a user's interactions over SSH will be recorded
+within a channel.
+
+A session recording belongs to the scope of the [storage bucket][]
+it is stored in. This can be either the global scope or an [organization][]
+scope.
+
+## Referenced By
+
+- [Storage Bucket][]
+
+## Service API Docs
+
+The following services are relevant to this resource:
+
+- [Session Recording Service](/boundary/api-docs/session-recording-service)
+
+[connections]: /boundary/docs/concepts/domain-model/session-connections
+[credentials]: /boundary/docs/concepts/domain-model/credentials
+[host catalogs]: /boundary/docs/concepts/domain-model/host-catalogs
+[host sets]: /boundary/docs/concepts/domain-model/host-sets
+[hosts]: /boundary/docs/concepts/domain-model/hosts
+[target]: /boundary/docs/concepts/domain-model/targets
+[user]: /boundary/docs/concepts/domain-model/users
+[organization]: /boundary/docs/concepts/domain-model/scopes#organizations
+[session]: /boundary/docs/concepts/domain-model/sessions
+[storage bucket]: /boundary/docs/concepts/domain-model/storage-buckets
