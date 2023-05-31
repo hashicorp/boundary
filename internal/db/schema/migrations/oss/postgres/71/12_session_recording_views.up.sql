@@ -33,6 +33,7 @@ select
   rs.end_time,
   rs.state,
   rs.error_details,
+  rs.endpoint,
   sb.scope_id as storage_bucket_scope_id,
   -- fields that cover the user fields at creation time
   uh.public_id as user_history_public_id,
