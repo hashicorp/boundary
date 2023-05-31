@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -110,10 +111,18 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 	if err != nil {
 		return origSecret
 	}
-	for k, iface := range baseCredMap {
-		switch iface := iface.(type) {
+	sortedKeys := make([]string, len(baseCredMap))
+	for k := range baseCredMap {
+		sortedKeys = append(sortedKeys, k)
+	}
+	sort.Strings(sortedKeys)
+
+	for _, k := range sortedKeys {
+		switch iface := baseCredMap[k].(type) {
 		case nil:
-			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+			if len(k) > 0 {
+				out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
+			}
 		case map[string]any:
 			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
 			certs := make(map[string]any)
@@ -121,13 +130,11 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 				// If the value is PEM formatted, add it to a map to be formatted without indents.
 				switch vv := vv.(type) {
 				case []byte:
-					fmt.Sprintf("________________iface: []byte]\n%v", vv)
 					if p, _ := pem.Decode(vv); p != nil {
 						certs[kk] = vv
 					}
 				case string:
-					fmt.Sprintf("________________iface: string\n%s", vv)
-					if p, _ := pem.Decode([]byte(fmt.Sprintf("%s", vv))); p != nil {
+					if p, _ := pem.Decode([]byte(vv)); p != nil {
 						// If the value is PEM formatted, add it to a map to be formatted without indents.
 						certs[kk] = vv
 					}
@@ -141,7 +148,7 @@ func fmtSecretForTable(indent int, sc *targets.SessionCredential) []string {
 				out = append(out, fmt.Sprintf("%v\n", certs[c]))
 			}
 			if len(iface) > 0 {
-				out = append(out, base.WrapMap(indent+6, 12, iface))
+				out = append(out, base.WrapMap(indent+6, 16, iface))
 			}
 		default:
 			out = append(out, fmt.Sprintf("%s    %s:", prefixStr, k))
