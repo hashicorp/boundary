@@ -8,11 +8,11 @@ import (
 	"os"
 
 	awshp "github.com/hashicorp/boundary-plugin-host-aws/plugin"
-	hp "github.com/hashicorp/boundary/sdk/plugins/host"
+	hp "github.com/hashicorp/boundary/sdk/plugins"
 )
 
 func main() {
-	if err := hp.ServeHostPlugin(new(awshp.AwsPlugin)); err != nil {
+	if err := hp.ServePlugin(awshp.NewAwsPlugin()); err != nil {
 		fmt.Println("Error serving plugin", err)
 		os.Exit(1)
 	}

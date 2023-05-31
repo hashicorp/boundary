@@ -8,11 +8,11 @@ import (
 	"os"
 
 	azhp "github.com/hashicorp/boundary-plugin-host-azure/plugin"
-	hp "github.com/hashicorp/boundary/sdk/plugins/host"
+	hp "github.com/hashicorp/boundary/sdk/plugins"
 )
 
 func main() {
-	if err := hp.ServeHostPlugin(new(azhp.AzurePlugin)); err != nil {
+	if err := hp.ServePlugin(new(azhp.AzurePlugin)); err != nil {
 		fmt.Println("Error serving plugin", err)
 		os.Exit(1)
 	}
