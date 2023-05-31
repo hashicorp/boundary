@@ -970,7 +970,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		}
 	}()
 
-	subtype := target.SubtypeFromId(req.GetId())
+	subtype := target.SubtypeFromId(t.GetPublicId())
 	subtypeEntry, err := subtypeRegistry.get(subtype)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
