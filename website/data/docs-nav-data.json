@@ -53,18 +53,18 @@
         "path": "getting-started"
       },
       {
-        "title": "Self-managed Boundary quick start",
+        "title": "Self-Managed Boundary Quick Start",
         "href": "https://developer.hashicorp.com/boundary/tutorials/oss-getting-started/"
       },
       {
-        "title": "HCP Boundary quick start",
+        "title": "HCP Boundary Quick Start",
         "href": "https://developer.hashicorp.com/boundary/tutorials/hcp-getting-started/"
       },
       {
-        "title": "Dev Mode quick start",
+        "title": "Dev Mode Quick Start",
         "routes": [
           {
-            "title": "What is Dev Mode",
+            "title": "Overview",
             "path": "getting-started/dev-mode/dev-mode"
           },
           {
@@ -87,24 +87,41 @@
         "path": "install-boundary"
       },
       {
+        "title": "Recommended Architecture",
+        "path": "install-boundary/recommended-architecture"
+      },
+      {
+        "title": "System Requirements",
+        "path": "install-boundary/system-requirements"
+      },
+      {
+        "title": "Fault Tolerance Recommendations",
+        "path": "install-boundary/fault-tolerance"
+      },
+      {
+        "title": "Install Boundary",
+        "path": "install-boundary/install"
+      },
+      {
+        "title": "Configure Controllers",
+        "path": "install-boundary/configure-controllers"
+      },
+      {
+        "title": "Configure Workers",
+        "path": "install-boundary/configure-workers"
+      },
+      {
         "title": "Non-Dev Environments",
         "path": "install-boundary/no-gen-resources"
       },
       {
         "title": "Systemd Install",
+        "hidden": true,
         "path": "install-boundary/systemd"
       },
       {
-        "title": "Postgres Install",
-        "path": "install-boundary/postgres"
-      },
-      {
-        "title": "High Availability Install",
+        "title": "Configure High Availability",
         "path": "install-boundary/high-availability"
-      },
-      {
-        "title": "Reference Architectures",
-        "path": "install-boundary/reference-architectures"
       }
     ]
   },
@@ -531,6 +548,19 @@
       {
         "title": "Documentation",
         "href": "https://cloud.hashicorp.com/docs/boundary/"
+      }
+    ]
+  },
+  {
+    "title": "Boundary Enterprise",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "ent"
+      },
+      {
+        "title": "Licensing",
+        "path": "ent/licensing"
       }
     ]
   },

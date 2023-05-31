@@ -115,12 +115,17 @@ module.exports = [
   },
   {
     source: '/boundary/docs/oss/installing/postgres',
-    destination: '/boundary/docs/install-boundary/postgres',
+    destination: '/boundary/docs/install-boundary/system-requirements',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/postgres',
+    destination: '/boundary/docs/install-boundary/system-requirements',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing/reference-architectures',
-    destination: '/boundary/docs/install-boundary/reference-architectures',
+    destination: '/boundary/docs/install-boundary/recommended-architecture',
     permanent: true,
   },
   {
