@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -410,25 +411,33 @@ func TestDelete(t *testing.T) {
 	s, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(t, err, "Error when getting new worker service.")
 
-	w := server.TestKmsWorker(t, conn, wrap)
+	wUnmanaged := server.TestKmsWorker(t, conn, wrap, server.WithWorkerTags(&server.Tag{
+		Key:   "foo",
+		Value: "bar",
+	}))
+	wManaged := server.TestKmsWorker(t, conn, wrap, server.WithWorkerTags(&server.Tag{
+		Key:   wl.ManagedWorkerTag,
+		Value: "bar",
+	}))
 
 	cases := []struct {
-		name    string
-		scopeId string
-		req     *pbs.DeleteWorkerRequest
-		res     *pbs.DeleteWorkerResponse
-		err     error
+		name        string
+		scopeId     string
+		req         *pbs.DeleteWorkerRequest
+		res         *pbs.DeleteWorkerResponse
+		err         error
+		errContains string
 	}{
 		{
 			name:    "Delete an Existing Worker",
-			scopeId: w.GetScopeId(),
+			scopeId: wUnmanaged.GetScopeId(),
 			req: &pbs.DeleteWorkerRequest{
-				Id: w.GetPublicId(),
+				Id: wUnmanaged.GetPublicId(),
 			},
 		},
 		{
 			name:    "Delete bad worker id",
-			scopeId: w.GetScopeId(),
+			scopeId: wUnmanaged.GetScopeId(),
 			req: &pbs.DeleteWorkerRequest{
 				Id: globals.WorkerPrefix + "_doesntexis",
 			},
@@ -436,11 +445,20 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name:    "Bad Worker Id formatting",
-			scopeId: w.GetScopeId(),
+			scopeId: wUnmanaged.GetScopeId(),
 			req: &pbs.DeleteWorkerRequest{
 				Id: "bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Cannot delete managed worker",
+			scopeId: wManaged.GetScopeId(),
+			req: &pbs.DeleteWorkerRequest{
+				Id: wManaged.GetPublicId(),
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "Managed workers cannot be deleted",
 		},
 	}
 	for _, tc := range cases {
@@ -450,6 +468,10 @@ func TestDelete(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteWorker(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+			if tc.errContains != "" {
+				require.Error(gErr)
+				assert.Contains(gErr.Error(), tc.errContains)
 			}
 			assert.EqualValuesf(tc.res, got, "DeleteWorker(%+v) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -1928,6 +1950,18 @@ func TestService_AddWorkerTags(t *testing.T) {
 			wantErrContains: "Tag values must be strings.",
 		},
 		{
+			name: "invalid-managed-tag-value",
+			req: func() *pbs.AddWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{wl.ManagedWorkerTag: {Values: []*structpb.Value{structpb.NewStringValue("value2")}}},
+				}
+			}(),
+			wantErrContains: "Tag keys cannot be the managed worker tag.",
+		},
+		{
 			name: "mixed-invalid-tags",
 			req: func() *pbs.AddWorkerTagsRequest {
 				worker := server.TestKmsWorker(t, conn, wrapper)
@@ -2077,6 +2111,18 @@ func TestService_SetWorkerTags(t *testing.T) {
 				}
 			}(),
 			wantErrContains: "Tag values must be strings.",
+		},
+		{
+			name: "invalid-managed-tag-value",
+			req: func() *pbs.SetWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.SetWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{wl.ManagedWorkerTag: {Values: []*structpb.Value{structpb.NewStringValue("value2")}}},
+				}
+			}(),
+			wantErrContains: "Tag keys cannot be the managed worker tag.",
 		},
 		{
 			name: "mixed-invalid-tags",
