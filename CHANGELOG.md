@@ -40,6 +40,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR2](https://github.com/hashicorp/boundary-plugin-aws/pull/24),
   [PR3](https://github.com/hashicorp/boundary-plugin-azure/pull/12),
   [PR4](https://github.com/hashicorp/boundary/pull/3266)).
+* PostgreSQL 12 or greater is now required. PostgreSQL 11 is no longer
+  supported.
 
 ### New and Improved
 

@@ -41,4 +41,52 @@ begin;
     'The current month is a sum from the beginning of the current month '
     'until the start of the current hour (exclusive).';
 
+  create function hcp_billing_monthly_sessions_current_month()
+    returns table(start_time timestamp with time zone, end_time timestamp with time zone, sessions_pending_count bigint)
+  as $$
+    select * from hcp_billing_monthly_sessions_current_month;
+  $$ language sql
+     immutable
+     parallel safe -- all of the functions called are parallel safe
+     strict        -- means the function returns null on null input
+     set timezone to 'utc';
+  comment on function hcp_billing_monthly_sessions_current_month is
+    'hcp_billing_monthly_sessions_current_month is a function that contains '
+    'the sum of pending sessions '
+    'from the beginning of the current month '
+    'until the start of the current hour (exclusive). '
+    'All timestamps returned are in UTC.';
+
+  create function hcp_billing_monthly_sessions_last_2_months()
+    returns table(start_time timestamp with time zone, end_time timestamp with time zone, sessions_pending_count bigint)
+  as $$
+    select * from hcp_billing_monthly_sessions_last_2_months;
+  $$ language sql
+     immutable
+     parallel safe -- all of the functions called are parallel safe
+     strict        -- means the function returns null on null input
+     set timezone to 'utc';
+  comment on function hcp_billing_monthly_sessions_last_2_months is
+    'hcp_billing_monthly_sessions_last_2_months is a function that contains '
+    'the sum of pending sessions for the current month and the previous month. '
+    'The current month is a sum from the beginning of the current month '
+    'until the start of the current hour (exclusive). '
+    'All timestamps returned are in UTC.';
+
+  create function hcp_billing_monthly_sessions_all()
+    returns table(start_time timestamp with time zone, end_time timestamp with time zone, sessions_pending_count bigint)
+  as $$
+    select * from hcp_billing_monthly_sessions_all;
+  $$ language sql
+     immutable
+     parallel safe -- all of the functions called are parallel safe
+     strict        -- means the function returns null on null input
+     set timezone to 'utc';
+  comment on function hcp_billing_monthly_sessions_all is
+    'hcp_billing_monthly_sessions_all is a function that contains '
+    'the sum of pending sessions for the current month and all previous months. '
+    'The current month is a sum from the beginning of the current month '
+    'until the start of the current hour (exclusive). '
+    'All timestamps returned are in UTC.';
+
 commit;

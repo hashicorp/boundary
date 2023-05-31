@@ -143,13 +143,13 @@ func testListConstraints(t testing.TB, db *dbw.DB, tableName string) []constrain
 	ccu.table_schema as table_schema,
 	ccu.table_name,
 	ccu.column_name,
-	pgc.consrc as definition
+	pg_get_constraintdef(pgc.oid) as definition
 from pg_constraint pgc
 join pg_namespace nsp on nsp.oid = pgc.connamespace
 join pg_class  cls on pgc.conrelid = cls.oid
 left join information_schema.constraint_column_usage ccu
 	   on pgc.conname = ccu.constraint_name
-	   and nsp.nspname = ccu.constraint_schema 
+	   and nsp.nspname = ccu.constraint_schema
 -- where contype ='c'
 where ccu.table_name = ?
 order by ccu.table_name,pgc.conname `
