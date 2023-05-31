@@ -53,6 +53,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.12.3 (2023/05/26)
 
+Note: As this issue currently only affected HCP Boundary customers, there is no
+open-source release of 0.12.3; the same fixes will be in 0.13.0 OSS.
+
 ### Bug Fixes
 
 * workers: A bug in PKI worker auth rotation could mean that after a rotation
