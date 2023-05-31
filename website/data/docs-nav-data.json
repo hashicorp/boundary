@@ -561,6 +561,10 @@
       {
         "title": "Licensing",
         "path": "ent/licensing"
+      },
+      {
+        "title": "Automated License Reporting",
+        "path": "ent/automated-license-reporting"
       }
     ]
   },
