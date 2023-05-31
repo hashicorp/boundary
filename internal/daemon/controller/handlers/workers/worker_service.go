@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
+	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
@@ -317,7 +318,18 @@ func (s Service) DeleteWorker(ctx context.Context, req *pbs.DeleteWorkerRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	_, err := s.deleteFromRepo(ctx, req.GetId())
+
+	w, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	managed, _ := wl.SeparateManagedWorkers(wl.WorkerList{w})
+	if len(managed) == 1 {
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.", map[string]string{"id": "Managed workers cannot be deleted."})
+	}
+
+	_, err = s.deleteFromRepo(ctx, w.GetPublicId())
 	if err != nil {
 		return nil, err
 	}
@@ -1012,6 +1024,8 @@ func validateStringForDb(str string) string {
 		return "must be non-empty."
 	case len(str) > 512:
 		return "must be within 512 characters."
+	case str == wl.ManagedWorkerTag:
+		return "cannot be the managed worker tag."
 	default:
 		return ""
 	}
