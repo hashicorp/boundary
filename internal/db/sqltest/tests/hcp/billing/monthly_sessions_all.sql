@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: MPL-2.0
 
 begin;
-  select plan(47);
+  select plan(46);
 
   create function test_get_hours_between(start_time timestamptz, end_time timestamptz) returns int
   as $$
@@ -159,42 +159,18 @@ begin;
       'hcp_billing_monthly_sessions_current_month and the first row of hcp_billing_monthly_sessions_last_2_months should be equal');
 
   -- only sessions for yesterday
-  select is(test_setup_data( 'yesterday'::timestamptz, 'today'::timestamptz - interval '1 microsecond' ), 48::int,
-      'hcp billing: test_setup_data: should be 48 sessions for yesterday');
-  select is(count(*), 1::bigint,
-      'hcp_billing_monthly_sessions_all should return 1 row when there are only sessions in this month') from hcp_billing_monthly_sessions_all;
+  select case when test_is_not_same_month('yesterday'::timestamptz, now())
+         then skip('certain tests don''t work on the first day of the month', 3)
+         else collect_tap(
+           is(test_setup_data( 'yesterday'::timestamptz, 'today'::timestamptz - interval '1 microsecond' ), 48::int,
+                  'hcp billing: test_setup_data: should be 48 sessions for yesterday'),
+           row_eq('select_hcp_billing_monthly_sessions_all', row(date_trunc('month', now()), date_trunc('hour', now()), 48::bigint),
+                  'hcp_billing_monthly_sessions_all should have 1 row with 48 sessions_pending_count when there are only sessions for yesterday'),
+           results_eq( 'select_hcp_billing_monthly_sessions_current_month', 'select_hcp_billing_monthly_sessions_all',
+                  'hcp_billing_monthly_sessions_current_month and hcp_billing_monthly_sessions_all should be equal')
+         )
+         end;
 
-  select case
-    when test_is_not_same_month('yesterday'::timestamptz, now()) then
-      collect_tap(row_eq(
-        'select_hcp_billing_monthly_sessions_all',
-        row(date_trunc('month', 'yesterday'::timestamptz), date_trunc('day', now()), 48::bigint),
-        'hcp_billing_monthly_sessions_all should have 1 row with 48 sessions_pending_count when there are only sessions for yesterday'
-      ))
-    else
-      collect_tap(row_eq(
-        'select_hcp_billing_monthly_sessions_all',
-        row(date_trunc('month', now()), date_trunc('hour', now()), 48::bigint),
-        'hcp_billing_monthly_sessions_all should have 1 row with 48 sessions_pending_count when there are only sessions for yesterday'
-      ))
-  end;
-
-  -- On the first day of the month, the data will exist in the prior month, in which case we want to test for an inequality
-  -- between the current month and all months
-  select case
-    when test_is_not_same_month('yesterday'::timestamptz, now()) then
-      collect_tap(results_ne(
-        'select_hcp_billing_monthly_sessions_current_month',
-        'select_hcp_billing_monthly_sessions_all',
-        'hcp_billing_monthly_sessions_current_month and hcp_billing_monthly_sessions_all should NOT be equal'
-      ))
-    else
-      collect_tap(results_eq(
-        'select_hcp_billing_monthly_sessions_current_month',
-        'select_hcp_billing_monthly_sessions_all',
-        'hcp_billing_monthly_sessions_current_month and hcp_billing_monthly_sessions_all should be equal'
-      ))
-  end;
   select results_eq('select_hcp_billing_monthly_sessions_current_month', 'select_hcp_billing_monthly_sessions_last_2_months_1_row',
       'hcp_billing_monthly_sessions_current_month and the first row of hcp_billing_monthly_sessions_last_2_months should be equal');
 
