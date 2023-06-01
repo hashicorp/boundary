@@ -694,8 +694,8 @@ github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c8930
 github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c893099f13/go.mod h1:qbLdiZhFd182vRSOlhBV/OarUcJVTOF2WklPwHs8mYQ=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.4 h1:8z+Zi0uLYXONkxwWb/D7O5t1IUucB6Ft3uvSOa950bM=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.4/go.mod h1:14nTD5iNDQ8xceINamYjAA2xIgImLGXQSIMaa5tFYQI=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.9 h1:JpCvi97NMA+saNqO8ovQcGoRbBq6P5ZZlJqvOsW5ick=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.9/go.mod h1:NtMaPhqSlfQ72XWDD2g80o8HI8RKkowIB8/WZHMyPY4=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.10-0.20230601143830-08d524b564ba h1:+bH/GWsIJdPmSuTo3t5kdY0vDxJmUGNFsI9MqkvAx+8=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.10-0.20230601143830-08d524b564ba/go.mod h1:NtMaPhqSlfQ72XWDD2g80o8HI8RKkowIB8/WZHMyPY4=
 github.com/hashicorp/go-multierror v0.0.0-20161216184304-ed905158d874/go.mod h1:JMRHfdO9jKNzS/+BTlxCjKNQHg/jZAft8U7LloJvN7I=
 github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
 github.com/hashicorp/go-multierror v1.1.0/go.mod h1:spPvp8C1qA32ftKqdAHm4hHTbPw+vmowP0z+KUhOZdA=
