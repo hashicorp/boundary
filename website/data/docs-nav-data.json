@@ -221,6 +221,10 @@
             "path": "concepts/domain-model/session-connections"
           },
           {
+            "title": "Session Recordings",
+            "path": "concepts/domain-model/session-recordings"
+          },
+          {
             "title": "Targets",
             "path": "concepts/domain-model/targets"
           },
