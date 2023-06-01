@@ -41,7 +41,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema/migrations"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-multierror"
-	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // schemaAccessLockId is a Lock key used to ensure a single boundary binary is operating
