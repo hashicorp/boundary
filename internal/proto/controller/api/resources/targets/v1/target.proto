@@ -372,7 +372,7 @@ message SessionAuthorization {
   string type = 80; // @gotags: `class:"public"`
 
   // Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
-  string authorization_token = 90 [json_name = "authorization_token"]; // @gotags: `class:"private"`
+  string authorization_token = 90 [json_name = "authorization_token"]; // @gotags: `class:"secret"`
 
   // Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
   string endpoint = 100; // @gotags: `class:"public"`
