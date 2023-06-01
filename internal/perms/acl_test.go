@@ -44,8 +44,8 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			scope: "o_a",
 			grants: []string{
-				"id=ampw_bar;actions=read,update",
-				"id=ampw_baz;actions=read:self,update",
+				"ids=ampw_bar,ampw_baz;actions=read,update",
+				"id=ampw_bop;actions=read:self,update",
 				"type=host-catalog;actions=create",
 				"type=target;actions=list",
 				"id=*;type=host-set;actions=list,create",
@@ -55,7 +55,7 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_b",
 			grants: []string{
 				"id=*;type=host-set;actions=list,create",
-				"id=hcst_mypin;type=host;actions=*;output_fields=name,description",
+				"ids=hcst_mypin;type=host;actions=*;output_fields=name,description",
 				"id=*;type=*;actions=authenticate",
 				"id=*;type=*;output_fields=id",
 			},
@@ -118,8 +118,18 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			name:        "matching scope and id and matching action",
+			name:        "matching scope and id and matching action first id",
 			resource:    Resource{ScopeId: "o_a", Id: "ampw_bar"},
+			scopeGrants: commonGrants,
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true},
+				{action: action.Update, authorized: true},
+				{action: action.Delete},
+			},
+		},
+		{
+			name:        "matching scope and id and matching action second id",
+			resource:    Resource{ScopeId: "o_a", Id: "ampw_baz"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true},
@@ -187,8 +197,18 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			name:        "matching scope, type, action, random id and bad pin",
+			name:        "matching scope, type, action, random id and bad pin first id",
 			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "ampw_bar"},
+			scopeGrants: commonGrants,
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Update},
+				{action: action.Delete},
+				{action: action.Read},
+			},
+		},
+		{
+			name:        "matching scope, type, action, random id and bad pin second id",
+			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "ampw_baz"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Update},
@@ -306,7 +326,7 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			name:        "read self with top level read",
+			name:        "read self with top level read first id",
 			resource:    Resource{ScopeId: "o_a", Id: "ampw_bar"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
@@ -315,8 +335,17 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			name:        "read self only",
+			name:        "read self with top level read second id",
 			resource:    Resource{ScopeId: "o_a", Id: "ampw_baz"},
+			scopeGrants: commonGrants,
+			actionsAuthorized: []actionAuthorized{
+				{action: action.Read, authorized: true},
+				{action: action.ReadSelf, authorized: true},
+			},
+		},
+		{
+			name:        "read self only",
+			resource:    Resource{ScopeId: "o_a", Id: "ampw_bop"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read},
@@ -498,8 +527,7 @@ func TestACL_ListPermissions(t *testing.T) {
 					scope: "o_1",
 					grants: []string{
 						"id=s_1;type=session;actions=list,read",
-						"id=s_2;type=session;actions=list,read",
-						"id=s_3;type=session;actions=list,read",
+						"ids=s_2,s_3;type=session;actions=list,read",
 					},
 				},
 			},
@@ -581,8 +609,7 @@ func TestACL_ListPermissions(t *testing.T) {
 					scope: "o_1",
 					grants: []string{
 						"id=s_1;type=session;actions=list,no-op",
-						"id=s_2;type=session;actions=list,no-op",
-						"id=s_3;type=session;actions=list,no-op",
+						"ids=s_2,s_3;type=session;actions=list,no-op",
 					},
 				},
 			},
@@ -698,8 +725,7 @@ func TestACL_ListPermissions(t *testing.T) {
 					scope: "o_1",
 					grants: []string{
 						"id=s_1;type=session;actions=list,read",
-						"id=s_2;type=session;actions=list,read",
-						"id=s_3;type=session;actions=list,read",
+						"ids=s_2,s_3;type=session;actions=list,read",
 					},
 				},
 				{
@@ -859,14 +885,28 @@ func Test_AnonRestrictions(t *testing.T) {
 			grant: "id=foobar;actions=%s",
 		},
 		{
+			name:  "ids-specific",
+			grant: "ids=foobar;actions=%s",
+		},
+		{
 			name:              "wildcard-id",
 			grant:             "id=*;type=%s;actions=%s",
 			templatedType:     true,
 			shouldHaveSuccess: true,
 		},
 		{
+			name:              "wildcard-ids",
+			grant:             "ids=*;type=%s;actions=%s",
+			templatedType:     true,
+			shouldHaveSuccess: true,
+		},
+		{
 			name:  "wildcard-id-and-type",
 			grant: "id=*;type=*;actions=%s",
+		},
+		{
+			name:  "wildcard-ids-and-type",
+			grant: "ids=*;type=*;actions=%s",
 		},
 		{
 			name:              "no-id",
@@ -883,10 +923,19 @@ func Test_AnonRestrictions(t *testing.T) {
 				if i == resource.Controller || i == resource.Worker {
 					continue
 				}
-				for j := action.Type(1); j <= action.ReadCertificateAuthority; j++ {
+				for j := action.Type(1); j <= action.Download; j++ {
+					id := "foobar"
+					prefixes := globals.ResourcePrefixesFromType(resource.Type(i))
+					if len(prefixes) > 0 {
+						id = fmt.Sprintf("%s_%s", prefixes[0], id)
+						// If it's global scope, correct it
+						if id == "global_foobar" {
+							id = "global"
+						}
+					}
 					res := Resource{
 						ScopeId: scope.Global.String(),
-						Id:      "foobar",
+						Id:      id,
 						Type:    resource.Type(i),
 					}
 					grant := test.grant
