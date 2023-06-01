@@ -3,8 +3,8 @@ module github.com/hashicorp/boundary/plugins/host/mains/aws
 go 1.20
 
 require (
-	github.com/hashicorp/boundary-plugin-host-aws v0.1.5-0.20230531122716-fbc51dd7d748
-	github.com/hashicorp/boundary/sdk v0.0.33-0.20230531121824-29b9a508a340
+	github.com/hashicorp/boundary-plugin-host-aws v0.1.5
+	github.com/hashicorp/boundary/sdk v0.0.33
 )
 
 require (
