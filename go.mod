@@ -50,7 +50,7 @@ require (
 	github.com/hashicorp/vault/api v1.9.1
 	github.com/iancoleman/strcase v0.2.0
 	github.com/jackc/pgconn v1.14.0
-	github.com/jackc/pgx/v4 v4.18.1
+	github.com/jackc/pgx/v4 v4.18.1 // indirect
 	github.com/jefferai/keyring v1.1.7-0.20220316160357-58a74bb55891
 	github.com/kr/pretty v0.3.1
 	github.com/kr/text v0.2.0

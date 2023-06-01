@@ -1351,7 +1351,6 @@ func TestCreate(t *testing.T) {
 			s, err := authmethods.NewService(testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 			require.NoError(err, "Error when getting new auth_method service.")
 
-			conn.Debug(true)
 			got, gErr := s.CreateAuthMethod(requestauth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
 			if tc.err != nil {
 				require.Error(gErr)
