@@ -31,7 +31,7 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/storage"
-	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
+	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/go-hclog"
@@ -238,7 +238,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 					pluginType,
 					external_plugins.WithPluginOptions(
 						pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
-						pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+						pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
 					),
 					external_plugins.WithLogger(pluginLogger.Named(pluginType)),
 				)

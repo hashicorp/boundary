@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
+	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
 	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -184,7 +184,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		"aws",
 		external_plugins.WithPluginOptions(
 			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
-			pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+			pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
 		),
 		external_plugins.WithLogger(pluginLogger.Named("aws")),
 	)

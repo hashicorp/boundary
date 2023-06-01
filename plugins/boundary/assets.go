@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package host_plugin_assets
+package boundary_plugin_assets
 
 import (
 	"embed"
