@@ -25,9 +25,7 @@ Make sure that your network allows HTTPS egress on port 443 from https://reporti
 
 ### 2. Upgrade
 
-Upgrade to a release that supports license utilization reporting. These releases include:
-[release#](LINK) and later.
-[release#](LINK) and later.
+Upgrade to a release that supports license utilization reporting. These releases include:[Release 0.13.0](LINK) and later.
 
 ### 3. Check logs
 
@@ -53,7 +51,7 @@ If your installation is air-gapped or you want to manually collect and report on
 
 Manually reporting these metrics can be time consuming. Opting out of automated reporting does not mean that you also opt out from sending license utilization metrics. Customers who opt out of automated reporting will still be required to manually collect and send license utilization metrics to HashiCorp.
 
-If you are considering opting out because you’re worried about the data, we strongly recommend that you review the [example payloads](/docs/ent/licensing/#example-payloads) before opting out. If you have concerns with any of the automatically-reported data please bring them to your account manager.
+If you are considering opting out because you’re worried about the data, we strongly recommend that you review the [example payloads](#example-payloads) before opting out. If you have concerns with any of the automatically-reported data please bring them to your account manager.
 
 You have two options to opt out of automated reporting:
 HCL configuration (recommended)
@@ -65,7 +63,7 @@ Opting out in your product’s configuration file doesn’t require a system res
 reporting {
 	license {
 		enabled = false
-}
+  }
 }
 ```
 
