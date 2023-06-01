@@ -154,7 +154,7 @@ func local_request_ManagedGroupService_CreateManagedGroup_0(ctx context.Context,
 }
 
 var (
-	filter_ManagedGroupService_UpdateManagedGroup_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
+	filter_ManagedGroupService_UpdateManagedGroup_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 2, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 2, 2, 3, 3}}
 )
 
 func request_ManagedGroupService_UpdateManagedGroup_0(ctx context.Context, marshaler runtime.Marshaler, client ManagedGroupServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -442,7 +442,7 @@ func RegisterManagedGroupServiceHandlerServer(ctx context.Context, mux *runtime.
 // RegisterManagedGroupServiceHandlerFromEndpoint is same as RegisterManagedGroupServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterManagedGroupServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.Dial(endpoint, opts...)
+	conn, err := grpc.DialContext(ctx, endpoint, opts...)
 	if err != nil {
 		return err
 	}

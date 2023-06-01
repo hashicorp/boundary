@@ -89,12 +89,14 @@
         "parameters": [
           {
             "name": "auth_method_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -145,6 +147,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -168,6 +171,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -191,6 +195,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -202,12 +207,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -230,6 +229,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -247,10 +247,12 @@
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
                 "current_password": {
-                  "type": "string"
+                  "type": "string",
+                  "title": ""
                 },
                 "new_password": {
-                  "type": "string"
+                  "type": "string",
+                  "title": ""
                 }
               }
             }
@@ -276,6 +278,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -293,7 +296,8 @@
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
                 "password": {
-                  "type": "string"
+                  "type": "string",
+                  "title": ""
                 }
               }
             }
@@ -319,18 +323,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -433,6 +440,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -456,6 +464,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -479,6 +488,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -490,12 +500,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -518,6 +522,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -562,18 +567,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -599,6 +607,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -622,6 +631,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -647,12 +657,14 @@
         "parameters": [
           {
             "name": "credential_store_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -703,6 +715,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -726,6 +739,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -749,6 +763,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -760,12 +775,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -788,18 +797,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -850,6 +862,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -873,6 +886,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -896,6 +910,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -907,12 +922,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -935,12 +944,14 @@
         "parameters": [
           {
             "name": "credential_store_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -991,6 +1002,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1014,6 +1026,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1037,6 +1050,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1048,12 +1062,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1076,18 +1084,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1138,6 +1149,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1161,6 +1173,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1184,6 +1197,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1195,12 +1209,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1223,6 +1231,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1243,7 +1252,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -1269,6 +1279,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1289,7 +1300,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -1315,6 +1327,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1335,7 +1348,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -1361,18 +1375,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1430,6 +1447,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1453,6 +1471,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1476,6 +1495,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1487,12 +1507,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1515,12 +1529,14 @@
         "parameters": [
           {
             "name": "host_catalog_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1571,6 +1587,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1594,6 +1611,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1617,6 +1635,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1628,12 +1647,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1656,6 +1669,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1703,6 +1717,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1750,6 +1765,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1797,12 +1813,14 @@
         "parameters": [
           {
             "name": "host_catalog_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1853,6 +1871,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1876,6 +1895,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1899,6 +1919,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1910,12 +1931,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1938,12 +1953,14 @@
         "parameters": [
           {
             "name": "auth_method_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1994,6 +2011,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2017,6 +2035,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2040,6 +2059,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2051,12 +2071,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -2079,18 +2093,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -2141,6 +2158,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2164,6 +2182,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2187,6 +2206,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2198,12 +2218,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -2226,6 +2240,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2246,7 +2261,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2272,6 +2288,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2292,7 +2309,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2318,6 +2336,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2338,7 +2357,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2364,6 +2384,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2384,7 +2405,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2410,6 +2432,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2430,7 +2453,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2456,6 +2480,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2476,7 +2501,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2502,18 +2528,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -2545,12 +2574,14 @@
           },
           {
             "name": "skip_admin_role_creation",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "skip_default_role_creation",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
@@ -2576,6 +2607,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2599,6 +2631,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2622,6 +2655,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2633,12 +2667,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -2661,6 +2689,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2686,6 +2715,7 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2817,16 +2847,10 @@
           "200": {
             "description": "A successful response.(streaming responses)",
             "schema": {
-              "type": "object",
-              "properties": {
-                "result": {
-                  "$ref": "#/definitions/google.api.HttpBody"
-                },
-                "error": {
-                  "$ref": "#/definitions/google.rpc.Status"
-                }
-              },
-              "title": "Stream result of google.api.HttpBody"
+              "type": "string",
+              "format": "binary",
+              "properties": {},
+              "title": "Free form byte stream"
             }
           }
         },
@@ -2866,18 +2890,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -2910,6 +2937,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2935,6 +2963,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2948,7 +2977,8 @@
               "properties": {
                 "version": {
                   "type": "integer",
-                  "format": "int64"
+                  "format": "int64",
+                  "title": ""
                 }
               }
             }
@@ -2974,18 +3004,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -3043,6 +3076,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3066,6 +3100,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3089,6 +3124,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3100,12 +3136,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -3128,18 +3158,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -3190,6 +3223,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3213,6 +3247,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3236,6 +3271,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3247,12 +3283,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -3275,6 +3305,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3296,6 +3327,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "description": "",
                   "title": "Deprecated use brokered_credential_source_ids instead"
                 },
                 "brokered_credential_source_ids": {
@@ -3336,6 +3368,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3356,7 +3389,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3435,6 +3469,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3456,6 +3491,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "description": "",
                   "title": "Deprecated use brokered_credential_source_ids instead"
                 },
                 "brokered_credential_source_ids": {
@@ -3496,6 +3532,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3516,7 +3553,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3542,6 +3580,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3563,6 +3602,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "description": "",
                   "title": "Deprecated use brokered_credential_source_ids instead"
                 },
                 "brokered_credential_source_ids": {
@@ -3604,6 +3644,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3624,7 +3665,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3650,18 +3692,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -3712,6 +3757,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3735,6 +3781,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3758,6 +3805,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3769,12 +3817,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -3797,6 +3839,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3817,7 +3860,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3843,6 +3887,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3863,7 +3908,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3889,6 +3935,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3909,7 +3956,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3935,18 +3983,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -3972,6 +4023,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3995,6 +4047,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -4018,6 +4071,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -4029,12 +4083,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -4057,6 +4105,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -4080,7 +4129,8 @@
                     "items": {
                       "type": "object"
                     }
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -4106,6 +4156,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -4129,7 +4180,8 @@
                     "items": {
                       "type": "object"
                     }
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -4155,6 +4207,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -4178,7 +4231,8 @@
                     "items": {
                       "type": "object"
                     }
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -4258,6 +4312,7 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -4283,6 +4338,7 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -4350,6 +4406,7 @@
           "items": {
             "type": "string"
           },
+          "description": "",
           "title": "Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account",
           "readOnly": true
         },
@@ -4573,6 +4630,7 @@
         },
         "credential_type": {
           "type": "string",
+          "description": "",
           "title": "The type of credential this library will issue, defaults to Unspecified"
         },
         "credential_mapping_overrides": {
@@ -4768,6 +4826,7 @@
         "members": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.groups.v1.Member"
           },
           "description": "Output only. The members of this Group.",
@@ -5284,6 +5343,7 @@
         "principals": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.roles.v1.Principal"
           },
           "description": "Output only. The principals that are assigned to this role.",
@@ -5300,6 +5360,7 @@
         "grants": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.roles.v1.Grant"
           },
           "description": "Output only. The parsed grant information.",
@@ -5343,6 +5404,7 @@
         "versions": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.scopes.v1.KeyVersion"
           },
           "description": "The versions of the key."
@@ -5451,6 +5513,7 @@
         },
         "primary_auth_method_id": {
           "type": "string",
+          "description": "",
           "title": "The ID of the primary auth method for this scope.  A primary auth method\nis allowed to vivify users when new accounts are created and is the source for the users account info"
         },
         "authorized_actions": {
@@ -5611,6 +5674,7 @@
         "channel_recordings": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.ChannelRecording"
           },
           "description": "Optionally, the channels used in this Connection,\nif it is using a multiplexed protocol, such as SSH."
@@ -5623,10 +5687,12 @@
       "properties": {
         "id": {
           "type": "string",
+          "description": "",
           "title": "The ID of the Host"
         },
         "host_catalog": {
           "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.HostCatalog",
+          "description": "",
           "title": "The Host Catalog this Host is in"
         },
         "name": {
@@ -5639,6 +5705,7 @@
         },
         "type": {
           "type": "string",
+          "description": "",
           "title": "The type of the host. This will be either \"static\" or \"plugin\""
         },
         "attributes": {
@@ -5657,10 +5724,12 @@
       "properties": {
         "id": {
           "type": "string",
+          "description": "",
           "title": "The ID of the Host Catalog"
         },
         "scope": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "",
           "title": "The scope that the Host Catalog is in"
         },
         "plugin_id": {
@@ -5669,6 +5738,7 @@
         },
         "name": {
           "type": "string",
+          "description": "",
           "title": "The name of the Host Catalog, if set"
         },
         "description": {
@@ -5677,6 +5747,7 @@
         },
         "type": {
           "type": "string",
+          "description": "",
           "title": "The type of the Host Catalog.  This will be either \"static\" or \"plugin\""
         },
         "attributes": {
@@ -5765,6 +5836,7 @@
         "connection_recordings": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.ConnectionRecording"
           },
           "description": "The recordings of the connections that were created in the Session.\nThis field may be unset when listing Session recordings."
@@ -5880,34 +5952,41 @@
       "properties": {
         "client_tcp_address": {
           "type": "string",
+          "description": "",
           "title": "client_tcp_address of the connection"
         },
         "client_tcp_port": {
           "type": "integer",
           "format": "int64",
+          "description": "",
           "title": "client_tcp_port of the connection"
         },
         "endpoint_tcp_address": {
           "type": "string",
+          "description": "",
           "title": "endpoint_tcp_address of the connection"
         },
         "endpoint_tcp_port": {
           "type": "integer",
           "format": "int64",
+          "description": "",
           "title": "endpoint_tcp_port of the connection"
         },
         "bytes_up": {
           "type": "string",
           "format": "int64",
+          "description": "",
           "title": "bytes_up of the connection"
         },
         "bytes_down": {
           "type": "string",
           "format": "int64",
+          "description": "",
           "title": "bytes_down of the connection"
         },
         "closed_reason": {
           "type": "string",
+          "description": "",
           "title": "closed_reason of the connection"
         }
       },
@@ -5992,6 +6071,7 @@
         "states": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessions.v1.SessionState"
           },
           "description": "Output only. The states of this Session in descending order from the current state to the first.",
@@ -6024,6 +6104,7 @@
         "connections": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessions.v1.Connection"
           },
           "description": "Output only. The associated connections with this session.",
@@ -6131,6 +6212,7 @@
         },
         "worker_filter": {
           "type": "string",
+          "description": "",
           "title": "Filters to the worker(s) that can handle requests for this storage bucket"
         },
         "authorized_actions": {
@@ -6250,6 +6332,7 @@
         "credentials": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.SessionCredential"
           },
           "description": "Output only. The credentials for this session.",
@@ -6352,6 +6435,7 @@
         "host_sources": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.HostSource"
           },
           "description": "Output only. The Host Sources associated with this Target.",
@@ -6390,6 +6474,7 @@
         "application_credential_sources": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
           },
           "description": "Output only. The application credential sources associated with this Target.\nDeprecated use \"brokered_credential_sources\" instead.",
@@ -6406,6 +6491,7 @@
         "brokered_credential_sources": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
           },
           "description": "Output only. The brokered credential sources associated with this Target.",
@@ -6422,6 +6508,7 @@
         "injected_application_credential_sources": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
           },
           "description": "Output only. The injected application credential sources associated with this Target.",
@@ -6514,6 +6601,7 @@
         "accounts": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.users.v1.Account"
           },
           "description": "Output only. The Accounts linked to this User.",
@@ -6529,21 +6617,25 @@
         },
         "login_name": {
           "type": "string",
+          "description": "",
           "title": "Output only. login_name is a string that maps to the user's account \"login\nname\" from the scope's primary auth method",
           "readOnly": true
         },
         "full_name": {
           "type": "string",
+          "description": "",
           "title": "Output only. full_name is a string that maps to the user's account name\nfrom the scope's primary auth method",
           "readOnly": true
         },
         "email": {
           "type": "string",
+          "description": "",
           "title": "Output only. email is a string that maps to the user's account email from\nthe scope's primary auth method",
           "readOnly": true
         },
         "primary_account_id": {
           "type": "string",
+          "description": "",
           "title": "Output only. primary_account_id is a string that maps to the user's account\npublic_id from the scope's primary auth method",
           "readOnly": true
         }
@@ -6555,23 +6647,27 @@
       "properties": {
         "id": {
           "type": "string",
+          "description": "",
           "title": "Output only. The ID of the certificate",
           "readOnly": true
         },
         "public_key_sha256": {
           "type": "string",
+          "description": "",
           "title": "Output only. The public key of the cert authority",
           "readOnly": true
         },
         "not_before_time": {
           "type": "string",
           "format": "date-time",
+          "description": "",
           "title": "Output only. The time before which this CA is invalid",
           "readOnly": true
         },
         "not_after_time": {
           "type": "string",
           "format": "date-time",
+          "description": "",
           "title": "Output only. The time after which this CA is invalid",
           "readOnly": true
         }
@@ -6583,8 +6679,10 @@
         "certs": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.workers.v1.Certificate"
-          }
+          },
+          "title": ""
         }
       }
     },
@@ -6665,6 +6763,7 @@
         },
         "worker_generated_auth_token": {
           "type": "string",
+          "description": "",
           "title": "worker_generated_auth_token is input only. Supports the worker led node\nenrollment flow where this credentials token is produced by a worker. This\ntoken is a base58 encoded types.FetchNodeCredentialsRequest from\nhttps://github.com/hashicorp/nodeenrollment"
         },
         "controller_generated_activation_token": {
@@ -6835,7 +6934,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
@@ -6846,7 +6946,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
@@ -6857,7 +6958,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
@@ -6868,7 +6970,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
@@ -6879,7 +6982,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
@@ -6890,7 +6994,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
@@ -6901,7 +7006,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
@@ -6912,7 +7018,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
@@ -6923,7 +7030,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
@@ -6934,7 +7042,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
@@ -6945,7 +7054,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
@@ -6967,7 +7077,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
@@ -6978,7 +7089,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
@@ -6989,7 +7101,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
@@ -7000,7 +7113,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
@@ -7011,7 +7125,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
@@ -7073,10 +7188,12 @@
       "type": "object",
       "properties": {
         "scope_id": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "key_version_id": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         }
       }
     },
@@ -7248,6 +7365,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
           }
         }
@@ -7259,6 +7377,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
           }
         }
@@ -7270,6 +7389,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
           }
         }
@@ -7281,6 +7401,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
           }
         }
@@ -7292,6 +7413,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
           }
         }
@@ -7303,6 +7425,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
           }
         }
@@ -7314,6 +7437,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
           }
         }
@@ -7325,6 +7449,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
           }
         }
@@ -7336,6 +7461,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
           }
         }
@@ -7347,6 +7473,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
           }
         }
@@ -7358,6 +7485,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.scopes.v1.KeyVersionDestructionJob"
           }
         }
@@ -7369,6 +7497,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Key"
           }
         }
@@ -7380,6 +7509,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
           }
         }
@@ -7391,6 +7521,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
           }
         }
@@ -7402,6 +7533,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
           }
         }
@@ -7413,6 +7545,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
           },
           "description": "All Session recordings, ordered by start_time descending (most recently started first)."
@@ -7425,6 +7558,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
           }
         }
@@ -7436,6 +7570,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
           }
         }
@@ -7447,6 +7582,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
           }
         }
@@ -7458,6 +7594,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.users.v1.User"
           }
         }
@@ -7469,6 +7606,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
           }
         }
@@ -7558,10 +7696,12 @@
       "type": "object",
       "properties": {
         "scope_id": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "rewrap": {
-          "type": "boolean"
+          "type": "boolean",
+          "title": ""
         }
       }
     },
@@ -7783,6 +7923,7 @@
         "extensions": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/google.protobuf.Any"
           },
           "description": "Application specific response metadata. Must be set in the first response\nfor streaming APIs."

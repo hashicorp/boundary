@@ -120,7 +120,7 @@ func local_request_SessionRecordingService_ListSessionRecordings_0(ctx context.C
 }
 
 var (
-	filter_SessionRecordingService_Download_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	filter_SessionRecordingService_Download_0 = &utilities.DoubleArray{Encoding: map[string]int{"id": 0}, Base: []int{1, 2, 0, 0}, Check: []int{0, 1, 2, 2}}
 )
 
 func request_SessionRecordingService_Download_0(ctx context.Context, marshaler runtime.Marshaler, client SessionRecordingServiceClient, req *http.Request, pathParams map[string]string) (SessionRecordingService_DownloadClient, runtime.ServerMetadata, error) {
@@ -233,7 +233,7 @@ func RegisterSessionRecordingServiceHandlerServer(ctx context.Context, mux *runt
 // RegisterSessionRecordingServiceHandlerFromEndpoint is same as RegisterSessionRecordingServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterSessionRecordingServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.Dial(endpoint, opts...)
+	conn, err := grpc.DialContext(ctx, endpoint, opts...)
 	if err != nil {
 		return err
 	}

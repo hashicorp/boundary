@@ -988,7 +988,7 @@ type SessionAuthorization struct {
 	// Output only. Type of the Session (e.g. tcp, ssh, etc.).
 	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
-	AuthorizationToken string `protobuf:"bytes,90,opt,name=authorization_token,proto3" json:"authorization_token,omitempty" class:"private"` // @gotags: `class:"private"`
+	AuthorizationToken string `protobuf:"bytes,90,opt,name=authorization_token,proto3" json:"authorization_token,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
 	Endpoint string `protobuf:"bytes,100,opt,name=endpoint,proto3" json:"endpoint,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The credentials for this session.
