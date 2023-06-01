@@ -242,6 +242,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
 	@buf generate --template buf.testing.gen.yaml --path internal/proto/testing/event/v1/
 
+	@go run ./scripts/remove-gotags-comments/ -path ./internal/gen/controller.swagger.json
+
 	@rm -R ${TMP_DIR}
 
 .PHONY: protolint
