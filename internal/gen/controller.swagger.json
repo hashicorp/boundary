@@ -5248,7 +5248,15 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID, if set.",
+          "description": "Output only. The ID, if set.\nDeprecated: use \"ids\" instead.",
+          "readOnly": true
+        },
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The IDs, if set.",
           "readOnly": true
         },
         "type": {

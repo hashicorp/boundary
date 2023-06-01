@@ -869,6 +869,7 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 					Canonical: g.GetCanonicalGrant(),
 					Json: &pb.GrantJson{
 						Id:      parsed.Id(),
+						Ids:     parsed.Ids(),
 						Type:    parsed.Type().String(),
 						Actions: actions,
 					},

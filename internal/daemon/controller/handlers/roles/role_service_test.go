@@ -579,6 +579,7 @@ func TestUpdate(t *testing.T) {
 		Canonical: g.CanonicalString(),
 		Json: &pb.GrantJson{
 			Id:      g.Id(),
+			Ids:     g.Ids(),
 			Type:    g.Type().String(),
 			Actions: actions,
 		},
@@ -1640,6 +1641,7 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 		j := got.Grants[i].GetJson()
 		require.NotNil(j)
 		assert.Equal(parsed.Id(), j.GetId())
+		assert.Equal(parsed.Ids(), j.GetIds())
 		assert.Equal(parsed.Type().String(), j.GetType())
 		_, acts := parsed.Actions()
 		assert.Equal(acts, j.GetActions())
