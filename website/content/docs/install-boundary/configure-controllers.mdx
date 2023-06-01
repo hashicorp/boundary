@@ -36,7 +36,7 @@ The scope's root KEK and the various DEKs (Data Encryption Keys) are created whe
 The DEKs are encrypted with the scope's root KEK, and this is in turn encrypted with the KMS key marked for the root purpose.
 - **Recovery key**: The recovery KMS key is used for rescue or recovery operations that can be used by a client to authenticate almost any Boundary operation.
 A nonce and creation time are included as an encrypted payload, formatted as a token, and sent to the controller.
-The time and nonce are used to ensure that a value cannot be replayed by an adversary, and also to ensure that each operation must be individually authenticated by a client, sot hat revoking access to the KMS has an immediate result.
+The time and nonce are used to ensure that a value cannot be replayed by an adversary, and also to ensure that each operation must be individually authenticated by a client, so that revoking access to the KMS has an immediate result.
 
 The following key is optional:
 
