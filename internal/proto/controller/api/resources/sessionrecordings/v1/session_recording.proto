@@ -158,6 +158,9 @@ message Host {
 
   // The external id of the Host, if any.
   string external_id = 7 [json_name = "external_id"]; // @gotags: class:"public"
+
+  // The external name of the Host, if any.
+  string external_name = 8 [json_name = "external_name"]; // @gotags: class:"public"
 }
 
 message StaticHostAttributes {
@@ -213,6 +216,9 @@ message Target {
 message SshTargetAttributes {
   // The default SSH port that is used when connecting to the endpoint.
   uint32 default_port = 1 [json_name = "default_port"]; // @gotags: class:"public"
+
+  // The default TCP port that will be listened on by the client's local proxy.
+  uint32 default_client_port = 2 [json_name = "default_client_port"]; // @gotags: class:"public"
 }
 
 // ValuesAtTime contain information about other Boundary resources as they

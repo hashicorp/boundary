@@ -5715,6 +5715,10 @@
         "external_id": {
           "type": "string",
           "description": "The external id of the Host, if any."
+        },
+        "external_name": {
+          "type": "string",
+          "description": "The external name of the Host, if any."
         }
       },
       "description": "Host describes the Host that was chosen for the recorded session."

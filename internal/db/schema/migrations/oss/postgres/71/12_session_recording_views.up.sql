@@ -57,6 +57,9 @@ select
   th.worker_filter as target_history_worker_filter,
   th.ingress_worker_filter as target_history_ingress_worker_filter,
   th.egress_worker_filter as target_history_egress_worker_filter,
+  th.default_client_port as target_history_default_client_port,
+  th.enable_session_recording as target_history_enable_session_recording,
+  th.storage_bucket_id as target_history_storage_bucket_id,
   -- fields that cover the target's scope information at creation time
   tsh.public_id as target_scope_history_public_id,
   tsh.name as target_scope_history_name,
@@ -74,6 +77,7 @@ select
   shh.public_id as static_host_history_public_id,
   shh.name as static_host_history_name,
   shh.description as static_host_history_description,
+  -- catalog_id is unnecessary as its inferred from the host catalog row
   shh.address as static_host_history_address,
 
   -- plugin
@@ -88,7 +92,9 @@ select
   hph.public_id as plugin_host_history_public_id,
   hph.name as plugin_host_history_name,
   hph.description as plugin_host_history_description,
-  hph.external_id as plugin_host_history_external_id
+  -- catalog_id is unnecessary as its inferred from the host catalog row
+  hph.external_id as plugin_host_history_external_id,
+  hph.external_name as plugin_host_history_external_name
 
 from recording_session rs
  join storage_plugin_storage_bucket sb on
