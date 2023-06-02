@@ -242,6 +242,14 @@
             "path": "concepts/domain-model/session-connections"
           },
           {
+            "title": "Session Recordings",
+            "path": "concepts/domain-model/session-recordings"
+          },
+          {
+            "title": "Storage Buckets",
+            "path": "concepts/domain-model/storage-bucket"
+          },
+          {
             "title": "Targets",
             "path": "concepts/domain-model/targets"
           },
