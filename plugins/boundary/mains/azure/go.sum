@@ -143,8 +143,8 @@ github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm4
 github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
 github.com/googleapis/gax-go/v2 v2.0.5/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5mhpdKc/us6bOk=
-github.com/hashicorp/boundary-plugin-host-azure v0.1.2 h1:nmGcOVIMvngQr5RrCM3pRFA/6rmXHG/NUS7r06SDm40=
-github.com/hashicorp/boundary-plugin-host-azure v0.1.2/go.mod h1:hPr+xE6Xktytn9fd+WEZYg1B1D06jivmJZCkac19ejo=
+github.com/hashicorp/boundary-plugin-azure v0.1.3 h1:tD861pyIOMts6YCIir/luV3qjukxAfw1wSgu5gFgxMg=
+github.com/hashicorp/boundary-plugin-azure v0.1.3/go.mod h1:7ZXsodjPSjWN32dpgzvavgqBiGMWfrlg2DDExpOpn34=
 github.com/hashicorp/boundary/sdk v0.0.33 h1:kHaVZ3b9j1QvYlG+vhAgrbXh8/+Rq2qlUIs8fKMQH7k=
 github.com/hashicorp/boundary/sdk v0.0.33/go.mod h1:jn9j5mM8v2pOk8aLeJNIszdm7WBf4gRSP68iy8Iu5Q0=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
