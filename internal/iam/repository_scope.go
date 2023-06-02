@@ -223,7 +223,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 				msgs = append(msgs, &roleOplogMsg)
 
-				roleGrant, err := NewRoleGrant(adminRolePublicId, "id=*;type=*;actions=*")
+				roleGrant, err := NewRoleGrant(ctx, adminRolePublicId, "id=*;type=*;actions=*")
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 				}
@@ -291,38 +291,38 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 
 					switch s.Type {
 					case scope.Project.String():
-						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=session;actions=list,read:self,cancel:self")
+						roleGrant, err := NewRoleGrant(ctx, defaultRolePublicId, "id=*;type=session;actions=list,read:self,cancel:self")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
-						roleGrant, err = NewRoleGrant(defaultRolePublicId, "type=target;actions=list")
+						roleGrant, err = NewRoleGrant(ctx, defaultRolePublicId, "type=target;actions=list")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
 					default:
-						roleGrant, err := NewRoleGrant(defaultRolePublicId, "id=*;type=scope;actions=list,no-op")
+						roleGrant, err := NewRoleGrant(ctx, defaultRolePublicId, "id=*;type=scope;actions=list,no-op")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
-						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id=*;type=auth-method;actions=authenticate,list")
+						roleGrant, err = NewRoleGrant(ctx, defaultRolePublicId, "id=*;type=auth-method;actions=authenticate,list")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
-						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id={{.Account.Id}};actions=read,change-password")
+						roleGrant, err = NewRoleGrant(ctx, defaultRolePublicId, "id={{.Account.Id}};actions=read,change-password")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}
 						grants = append(grants, roleGrant)
 
-						roleGrant, err = NewRoleGrant(defaultRolePublicId, "id=*;type=auth-token;actions=list,read:self,delete:self")
+						roleGrant, err = NewRoleGrant(ctx, defaultRolePublicId, "id=*;type=auth-token;actions=list,read:self,delete:self")
 						if err != nil {
 							return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 						}

@@ -28,21 +28,21 @@ var (
 )
 
 // NewRoleGrant creates a new in memory role grant
-func NewRoleGrant(roleId string, grant string, _ ...Option) (*RoleGrant, error) {
+func NewRoleGrant(ctx context.Context, roleId string, grant string, _ ...Option) (*RoleGrant, error) {
 	const op = "iam.NewRoleGrant"
 	if roleId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
 	if grant == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing grant")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grant")
 	}
 
 	// Validate that the grant parses successfully. Note that we fake the scope
 	// here to avoid a lookup as the scope is only relevant at actual ACL
 	// checking time and we just care that it parses correctly.
-	perm, err := perms.Parse("o_abcd1234", grant)
+	perm, err := perms.Parse(ctx, "o_abcd1234", grant)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("parsing grant string"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
 	}
 	rg := &RoleGrant{
 		RoleGrant: &store.RoleGrant{
@@ -80,7 +80,7 @@ func (g *RoleGrant) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _
 	// checking time and we just care that it parses correctly. We may have
 	// already done this in NewRoleGrant, but we re-check and set it here
 	// anyways because it should still be part of the vetting process.
-	perm, err := perms.Parse("o_abcd1234", g.RawGrant)
+	perm, err := perms.Parse(ctx, "o_abcd1234", g.RawGrant)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
 	}

@@ -4,6 +4,7 @@
 package perms
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -17,6 +18,8 @@ import (
 
 func Test_ActionParsingValidation(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	type input struct {
 		name      string
@@ -100,7 +103,7 @@ func Test_ActionParsingValidation(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := test.input.parseAndValidateActions()
+			err := test.input.parseAndValidateActions(ctx)
 			if test.errResult == "" {
 				require.NoError(t, err)
 				assert.Equal(t, test.result, test.input)
@@ -114,13 +117,14 @@ func Test_ActionParsingValidation(t *testing.T) {
 
 func Test_ValidateType(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	var g Grant
 	for i := resource.Unknown; i <= resource.StorageBucket; i++ {
 		g.typ = i
 		if i == resource.Controller {
-			assert.Error(t, g.validateType())
+			assert.Error(t, g.validateType(ctx))
 		} else {
-			assert.NoError(t, g.validateType())
+			assert.NoError(t, g.validateType(ctx))
 		}
 	}
 }
@@ -468,6 +472,8 @@ func Test_Unmarshaling(t *testing.T) {
 
 func Test_Parse(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	type input struct {
 		name          string
@@ -1034,11 +1040,11 @@ func Test_Parse(t *testing.T) {
 		},
 	}
 
-	_, err := Parse("", "")
+	_, err := Parse(ctx, "", "")
 	require.Error(t, err)
 	assert.Equal(t, "perms.Parse: missing grant string: parameter violation: error #100", err.Error())
 
-	_, err = Parse("", "{}")
+	_, err = Parse(ctx, "", "{}")
 	require.Error(t, err)
 	assert.Equal(t, "perms.Parse: missing scope id: parameter violation: error #100", err.Error())
 
@@ -1050,7 +1056,7 @@ func Test_Parse(t *testing.T) {
 			if test.scopeOverride != "" {
 				scope = test.scopeOverride
 			}
-			grant, err := Parse(scope, test.input, WithUserId(test.userId), WithAccountId(test.accountId))
+			grant, err := Parse(ctx, scope, test.input, WithUserId(test.userId), WithAccountId(test.accountId))
 			if test.err != "" {
 				require.Error(err)
 				assert.Equal(test.err, err.Error())
@@ -1112,6 +1118,8 @@ func TestHasActionOrSubaction(t *testing.T) {
 }
 
 func FuzzParse(f *testing.F) {
+	ctx := context.Background()
+
 	f.Add("type=host-catalog;actions=create")
 	f.Add("type=*;actions=*")
 	f.Add("id=*;type=*;actions=*")
@@ -1126,11 +1134,11 @@ func FuzzParse(f *testing.F) {
 	f.Add(`{"ids":["foobar"],"type":"host-catalog","actions":["create"]}`)
 
 	f.Fuzz(func(t *testing.T, grant string) {
-		g, err := Parse("global", grant, WithSkipFinalValidation(true))
+		g, err := Parse(ctx, "global", grant, WithSkipFinalValidation(true))
 		if err != nil {
 			return
 		}
-		g2, err := Parse("global", g.CanonicalString(), WithSkipFinalValidation(true))
+		g2, err := Parse(ctx, "global", g.CanonicalString(), WithSkipFinalValidation(true))
 		if err != nil {
 			t.Fatal("Failed to parse canonical string:", err)
 		}
@@ -1141,7 +1149,7 @@ func FuzzParse(f *testing.F) {
 		if err != nil {
 			t.Error("Failed to marshal JSON:", err)
 		}
-		g3, err := Parse("global", string(jsonBytes), WithSkipFinalValidation(true))
+		g3, err := Parse(ctx, "global", string(jsonBytes), WithSkipFinalValidation(true))
 		if err != nil {
 			t.Fatal("Failed to parse json string:", err)
 		}
