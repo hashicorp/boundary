@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -1067,6 +1068,14 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 				badFields["grant_strings"] = fmt.Sprintf("Action %q has been deprecated and is not allowed to be set in grants. Use %q instead.", actStr, depAct.String())
 			}
 		}
+		switch {
+		case grant.Id() == "":
+			// Nothing
+		case version.SupportsFeature(version.Binary, version.SupportIdInGrants):
+			// This will warn on the CLI
+		default:
+			badFields["grant_strings"] = fmt.Sprintf("Grant %q uses the %q field which is no longer supported. Please use %q instead.", v, "id", "ids")
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -1097,6 +1106,14 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 			if depAct := action.DeprecatedMap[actStr]; depAct != action.Unknown {
 				badFields["grant_strings"] = fmt.Sprintf("Action %q has been deprecated and is not allowed to be set in grants. Use %q instead.", actStr, depAct.String())
 			}
+		}
+		switch {
+		case grant.Id() == "":
+			// Nothing
+		case version.SupportsFeature(version.Binary, version.SupportIdInGrants):
+			// This will warn on the CLI
+		default:
+			badFields["grant_strings"] = fmt.Sprintf("Grant %q uses the %q field which is no longer supported. Please use %q instead.", v, "id", "ids")
 		}
 	}
 	if len(badFields) > 0 {
