@@ -43,7 +43,7 @@ You view session recordings with a session player that runs in a web browser.
 The session player is an aggregation of web components that work together to present the different parts of a session recording as a logical whole.
 The player retrieves data from a controller.
 The controller retrieves the contents of a recording from a worker with access to the external object store.
-The controller then decodes the contents of a recording into a format that is usable by the player.
+The worker then decodes the contents of a recording into a format that is usable by the player.
 
 ## Storage buckets
 
@@ -58,7 +58,7 @@ Once the session is complete, the files are automatically synced with the extern
 
 Note that a storage bucket can only belong to one scope, either the Global scope or an Org scope.
 A storage bucket that is associated with the Global scope can be associated with any target.
-However, a storage bucket in an Org scope can only be associated with targets from the same Org scope.
+However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
 Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
 
 Deleting a storage bucket in Boundary does not delete the bucket in the external object store, nor does it delete the recorded sessions in the bucket.
@@ -69,7 +69,7 @@ To enable storage recording, you must first create a storage bucket.
 
 ## BSR directory structure
 
-The BSR (Boundary Session Recording) is a specification that defines a hierarchical directory structure of files and a binary file format.
+The BSR (Boundary Session Recording) defines a hierarchical directory structure of files and a binary file format.
 It contains all the data transmitted between a user and a target during a single session.
 The top-level directory is named with a `.bsr` suffix.
 
