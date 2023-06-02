@@ -43,7 +43,7 @@ Additionally, there are two types of assigned permissions:
 
 The format of a full grant string is:
 
-- &#32 `id=<id>;type=<type>;actions=<action-list>;output_fields=<fields-list>`
+- &#32; `id=<id>;type=<type>;actions=<action-list>;output_fields=<fields-list>`
 
 Grant [examples](#common-grant-examples) can be found at the bottom of this page.
  
@@ -54,31 +54,31 @@ _only_ `output_fields`.
 ## ID
 
 The **ID** is the specific resource that you select for the grant.
-You can use a [wildcard](/docs/concepts/security/permissions/advanced#wildcard) (*) to include all resources of the type and scope.
+You can use a [wildcard](/boundary/docs/concepts/security/permissions/advanced#wildcard) (*) to include all resources of the type and scope.
 Each grant string supports only 1 ID or a wildcard. By specifying a single ID, the top-level resource 
 is "pinned", meaning the permissions will only apply to that resource and subordinate resources.
 
 The examples of valid IDs are:
 
-- &#32 `id=*` (all)
-- &#32 `id=ttcp_123456789`
-- &#32 `id=w_abcdefghi`
+- &#32; `id=*` (all)
+- &#32; `id=ttcp_123456789`
+- &#32; `id=w_abcdefghi`
 
 
 ## Type
 
 The **Type** is the type of resource that you select for the grant.
-You can use a [wildcard](/docs/concepts/security/permissions/advanced#wildcard) (*) to 
+You can use a [wildcard](/boundary/docs/concepts/security/permissions/advanced#wildcard) (*) to 
 include all resource types in the scope.
 Each grant string supports only 1 type or a wildcard.
 
 Some commonly used types are:
 
-- &#32 `*` (all)
-- &#32 `session`
-- &#32 `target`
-- &#32 `user`
-- &#32 `worker`
+- &#32; `*` (all)
+- &#32; `session`
+- &#32; `target`
+- &#32; `user`
+- &#32; `worker`
 
 For a full list of types, see the [Resource Table](/boundary/docs/concepts/security/permissions/resource-table).
 
@@ -90,15 +90,15 @@ You can also use a [wildcard](/boundary/docs/concepts/security/permissions/permi
 Each grant string can include one or more comma separated actions.
 Some commonly used actions include:
 
-- &#32 `*` (all)
-- &#32 `list`
-- &#32 `create`
-- &#32 `read`
-- &#32 `update`
-- &#32 `delete`
+- &#32; `*` (all)
+- &#32; `list`
+- &#32; `create`
+- &#32; `read`
+- &#32; `update`
+- &#32; `delete`
 
-To learn more about actions, see [advanced actions](/docs/concepts/security/permissions/advanced#advanced-actions).
-For a full list of actions, see the [Resource Table](/docs/concepts/security/permissions/resource-table).
+To learn more about actions, see [advanced actions](/boundary/docs/concepts/security/permissions/advanced#advanced-actions).
+For a full list of actions, see the [Resource Table](/boundary/docs/concepts/security/permissions/resource-table).
 
 ## Output Fields
 
@@ -107,12 +107,12 @@ are **optional** and not commonly used.
 
 Examples of valid output fields include:
 
-- &#32 `none`
-- &#32 `id`
-- &#32 `name`
-- &#32 `description`
+- &#32; `none`
+- &#32; `id`
+- &#32; `name`
+- &#32; `description`
 
-To learn more about output fields, see [output fields](/docs/concepts/security/permissions/advanced#output-fields)
+To learn more about output fields, see [output fields](/boundary/docs/concepts/security/permissions/advanced#output-fields)
 
 ## Common Grant Examples
 
@@ -122,20 +122,20 @@ The following are examples of commonly used grant strings for specific roles and
 
 This grant string allows users to perform any actions on any resources in the scope:
 
-- &#32 `id=*;type=*;actions=*`
+- &#32; `id=*;type=*;actions=*`
 
 **View All** 
 
 This grant string allows users to list and read any resources in the scope:
 
-- &#32 `id=*;type=*;actions=read,list`
+- &#32; `id=*;type=*;actions=read,list`
 
 **View Targets Only** 
 
 This **project scope** grant string allows users to list and read any targets in the specific project.
 This example is only applicable to project scopes because targets can only exist inside a project:
 
-- &#32 `id=*;type=target;actions=read,list`
+- &#32; `id=*;type=target;actions=read,list`
 
 **Connect To Any Target**
 
@@ -143,8 +143,8 @@ This **project scope** grant string allows users to list, read, and connect to a
 In addition, these grants allow the user to list, read, and cancel any sessions initiated by the same user.
 This example is only applicable to project scopes, since targets can only exist in a project:
 
-- &#32 `id=*;type=target;actions=list,read,authorize-session`
-- &#32 `id=*;type=session;actions=read:self,cancel:self,list`
+- &#32; `id=*;type=target;actions=list,read,authorize-session`
+- &#32; `id=*;type=session;actions=read:self,cancel:self,list`
 
 **Connect To A Specific Target** 
 
@@ -153,9 +153,9 @@ In addition, these grants let users list, read, and cancel any sessions initiate
 If you want to include several specific targets, you can duplicate the first grant string using the respective IDs of those targets.
 This example is only applicable to project scopes, since targets can only exist in a project:
 
-- &#32 `id=<target-id>;actions=read,authorize-session`
-- &#32 `type=target;actions=list`
-- &#32 `id=*;type=session;actions=read:self,cancel:self,list`
+- &#32; `id=<target-id>;actions=read,authorize-session`
+- &#32; `type=target;actions=list`
+- &#32; `id=*;type=session;actions=read:self,cancel:self,list`
 
 <Note>
 There is a known issue that affects the [Project] Connect To A Specific Target grant strings.
@@ -169,18 +169,18 @@ The following are examples of general grant strings for any scope:
 
 **Manage All Of 1 Resource Type**
 
-- &#32 `id=*;type=<resource-type>;actions=*`
+- &#32; `id=*;type=<resource-type>;actions=*`
 
 **View All Of 1 Resource Type**
 
-- &#32 `id=*;type=<resource-type>;actions=list,read`
+- &#32; `id=*;type=<resource-type>;actions=list,read`
 
 **Manage A Specific Resource IItem**
 
-- &#32 `type=<resource-type>;actions=list`
-- &#32 `id=<resource-id>;actions=*`
+- &#32; `type=<resource-type>;actions=list`
+- &#32; `id=<resource-id>;actions=*`
 
 **View A Specific Resource Item**
 
-- &#32 `type=<resource-type>;actions=list`
-- &#32 `id=<resource-id>;actions=read`
+- &#32; `type=<resource-type>;actions=list`
+- &#32; `id=<resource-id>;actions=read`
