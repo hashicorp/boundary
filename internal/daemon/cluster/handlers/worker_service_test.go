@@ -555,7 +555,7 @@ func TestCancelSession(t *testing.T) {
 }
 
 // This test creates workers of both kms and pki type and verifies that the only
-// returned workers are those of kms type with the expected tag key/value
+// returned workers are those that are alive with the expected tag key/value
 func TestHcpbWorkers(t *testing.T) {
 	t.Parallel()
 	require, assert := require.New(t), assert.New(t)
@@ -596,13 +596,26 @@ func TestHcpbWorkers(t *testing.T) {
 		server.WithAddress("kms.1"))
 	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
 		server.WithAddress("kms.2"))
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "unrelated_tag", Value: "true"}),
+		server.WithAddress("unrelated_tag.kms.1"))
 
 	// Shutdown workers will be removed from routes and sessions, but still returned
 	// to downstream workers
 	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
 		server.WithAddress("shutdown.kms.3"), server.WithOperationalState(server.ShutdownOperationalState.String()))
-	// PKI workers aren't expected
-	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}))
+
+	// PKI workers are also expected, if they have the managed worker tag
+	serverRepo, err := serversRepoFn()
+	require.NoError(err)
+	var keyId string
+	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+		server.WithTestPkiWorkerAuthorizedKeyId(&keyId))
+	_, err = serverRepo.UpsertWorkerStatus(ctx, server.NewWorker(scope.Global.String(), server.WithAddress("pki.1")), server.WithKeyId(keyId))
+	require.NoError(err)
+	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "unrelated_tag", Value: "true"}),
+		server.WithTestPkiWorkerAuthorizedKeyId(&keyId))
+	_, err = serverRepo.UpsertWorkerStatus(ctx, server.NewWorker(scope.Global.String(), server.WithAddress("unrelated_tag.pki.1")), server.WithKeyId(keyId))
+	require.NoError(err)
 
 	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, &liveDur, fce)
 	require.NotNil(t, s)
@@ -610,7 +623,7 @@ func TestHcpbWorkers(t *testing.T) {
 	res, err := s.ListHcpbWorkers(ctx, &pbs.ListHcpbWorkersRequest{})
 	require.NoError(err)
 	require.NotNil(res)
-	expValues := []string{"kms.1", "kms.2", "shutdown.kms.3"}
+	expValues := []string{"kms.1", "kms.2", "shutdown.kms.3", "pki.1"}
 	var gotValues []string
 	for _, worker := range res.Workers {
 		gotValues = append(gotValues, worker.Address)

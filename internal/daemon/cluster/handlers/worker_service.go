@@ -343,7 +343,6 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 		return nil, status.Errorf(codes.Internal, "Error getting servers repo: %v", err)
 	}
 	workers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()},
-		server.WithWorkerType(server.KmsWorkerType),
 		// We use the livenessTimeToStale here instead of WorkerStatusGracePeriod
 		// since WorkerStatusGracePeriod is more for deciding which workers
 		// should be used for session proxying, but here we care about providing
@@ -354,20 +353,18 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 		return nil, status.Errorf(codes.Internal, "Error looking up workers: %v", err)
 	}
 
+	managed, _ := dcommon.SeparateManagedWorkers(workers)
 	resp := &pbs.ListHcpbWorkersResponse{}
-	if len(workers) == 0 {
+	if len(managed) == 0 {
 		return resp, nil
 	}
 
-	resp.Workers = make([]*pbs.WorkerInfo, 0, len(workers))
-	for _, worker := range workers {
-		vals := worker.CanonicalTags()[dcommon.ManagedWorkerTag]
-		if len(vals) == 1 && vals[0] == "true" {
-			resp.Workers = append(resp.Workers, &pbs.WorkerInfo{
-				Id:      worker.GetPublicId(),
-				Address: worker.GetAddress(),
-			})
-		}
+	resp.Workers = make([]*pbs.WorkerInfo, 0, len(managed))
+	for _, worker := range managed {
+		resp.Workers = append(resp.Workers, &pbs.WorkerInfo{
+			Id:      worker.GetPublicId(),
+			Address: worker.GetAddress(),
+		})
 	}
 
 	return resp, nil
