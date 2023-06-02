@@ -29,6 +29,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   incorrectly being generated for auth token resources, which do not support
   versioning. This is technically a breaking change, but it was a no-op option
   anyways that there was no reason to be using. It has now been removed.
+* Plugins: With the introduction of new plugin services, the Azure and AWS Host plugin 
+  repositories have been renamed to drop the `host` element of the repository name: 
+
+   - https://github.com/hashicorp/boundary-plugin-host-aws -> https://github.com/hashicorp/boundary-plugin-aws
+   - https://github.com/hashicorp/boundary-plugin-host-azure -> https://github.com/hashicorp/boundary-plugin-azure
+  
+  similarly the `plugins/host` package has been renamed to `plugins/boundary`
+  ([PR1](https://github.com/hashicorp/boundary/pull/3262),
+  [PR2](https://github.com/hashicorp/boundary/pull/3266)).
 
 ### New and Improved
 
