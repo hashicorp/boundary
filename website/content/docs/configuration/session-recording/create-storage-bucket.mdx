@@ -1,0 +1,71 @@
+---
+layout: docs
+page_title: Create a storage bucket
+description: |-
+  How to create a storage bucket for session recording in Boundary
+---
+
+# Create a storage bucket
+
+As of Boundary 0.13.0, you can record and audit user sessions.
+A resource known as a [storage bucket](/docs/concepts/domain-model/storage-bucket) is used to store the recorded sessions.
+The storage bucket represents a bucket in an external store.
+Before you can enable session recording, you must create one or more storage buckets.
+
+For more information about using session recording to audit user sessions, refer to [Auditing](/docs/concepts/auditing).
+
+**Requirements**:
+- An AWS S3 storage bucket
+
+   At this time, the only supported storage for storage buckets is AWS S3.
+   In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the access and secret key.
+
+Complete the following steps to create a storage bucket for session recording:
+
+<Tabs>
+<Tab heading="CLI">
+
+1. Log in to Boundary.
+1. Use the following command to create a storage bucket:
+
+    ```hcl
+    boundary storage-buckets create -bucket-name mybucket1 -plugin-name aws -secrets ‘{“access_key_id”: “123456789” , “secret_access_key” : “123/456789/12345678”}’ -worker-filter ‘“dev” in “/tags/type”’ -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true}’ -scope-id o_1234567890
+    ```
+
+    Replace the values above with the following required AWS secrets and any optional attributes you want to associate with the storage bucket:
+
+    - &#32 `region`: (Required) The AWS region to use.
+    - &#32 `access_key_id`: (Optional) The AWS access key to use.
+    - &#32 `shared_credentials_file`: (Optional) The shared credentials file to use.
+    - &#32 `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
+    - &#32 `assume_role_arn`: (Optional) The ARN for a role to assume after authenticating.
+    - &#32 `assume_role_session_name`: (Optional) A session name to use when assuming the role.
+    - &#32 `assume_role_external_id`: (Optional) A unique identifier that might be required when you assume a role in another account.
+    - &#32 `assume_role_duration_seconds`: (Optional) The number of seconds to restrict the assumed role session to.
+    The maximum duration for the role in IAM is a range of 900 seconds (15 minutes).
+    - &#32 `assume_role_tags`: (Optional) A set of key/value pairs to tag the assume role session with.
+
+</Tab>
+
+<Tab heading="UI">
+
+1. Log in to Boundary.
+1. Click **Storage Buckets** in the navigation bar.
+1. Click **Add**.
+1. Complete the following fields:
+   - **Name**: (Optional) The name field is optional, but if you enter a name it must be unique.
+   - **Scope**: (Required) A storage bucket can belong to the Global scope or an Org scope.
+   It can only associated with targets from the scope it belongs to.
+   - **Bucket name**: (Required) Name of the bucket in AWS.
+   - **Bucket prefix**: (Optional) A base path where session recordings are stored.
+   - **Region**: (Required) The AWS region to use.
+   - **Access key ID**: (Required) The access key ID that AWS generates for the IAM user to use with the storage bucket.
+   - **Worker filter** (Required) A filter that indicated which Boundary workers have access to the storage.
+   - **Disable credential rotation** (Optional) Select this field to disable the automatic rotation of credentials.
+1. Click **Save**.
+
+</Tab>
+</Tabs>
+
+Boundary creates the storage bucket and provides you with the bucket's ID.
+Once the storage bucket is created, you can use the bucket's ID to [enable session recording on targets](/docs/configuration/session-recording/enable-session-recording).

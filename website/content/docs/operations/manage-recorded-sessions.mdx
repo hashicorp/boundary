@@ -1,0 +1,58 @@
+---
+layout: docs
+page_title: Manage recorded sessions
+description: |-
+  How to download, view and validate Boundary's recorded sessions
+---
+
+# Manage recorded sessions
+
+Boundary provides [auditing](/docs/concepts/auditing) capabilities via [session recording](/docs/configuration/session-recording).
+In Boundary, a session represents a set of connections between a user and a host from a target.
+The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
+When you enable session recording on a target, any user session that connects to the target is automatically recorded.
+An administrator can later view the recordings to investigate security issues, review system activity, or perform regular assessments of security policies and procedures.
+
+## Find recorded sessions
+
+Recorded sessions are stored in an external storage bucket that you create.
+Storing session recordings in a system external to Boundary means those recordings can be accessed, modified, deleted, and even restored independently of Boundary.
+You can view any sessions that Boundary recorded in your storage provider or via the CLI.
+
+Complete the following steps to find recorded sessions using the CLI.
+
+1. Authenticate to Boundary in the CLI.
+1. Type the following command to view a list of all recorded sessions:
+
+   ```hcl
+   boundary session-recordings list -recursive
+   ```
+
+   Boundary displays a list of all recorded sessions by scope.
+
+If you have the ID of a recorded session, you can use the following command to list the connections and channels associated with a session recording.
+
+```hcl
+boundary session-recordings read -id <id>
+```
+
+## Download recorded session channels
+
+You can download a recording of SSH shell or exec sessions for a channel from a recorded session.
+The channel ID is required for the download.
+
+If you have the ID of a recorded session, you can use the following command to list the connections and channels associated with a session recording.
+
+```hcl
+boundary session-recordings read -id <id>
+```
+
+Complete the following steps to download a recorded session channel:
+
+1. Authenticate to Boundary in the CLI.
+1. Type the following command to download a recorded session channel.
+Substitute the ID of the channel for **chr_12345**:
+
+   ```hcl
+   boundary session-recordings download -id chr_12345
+   ```

@@ -145,6 +145,10 @@
         "path": "concepts/credential-management"
       },
       {
+        "title": "Auditing",
+        "path": "concepts/auditing"
+      },
+      {
         "title": "Security",
         "routes": [
           {
@@ -369,6 +373,23 @@
         ]
       },
       {
+        "title": "Session Recordings",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/session-recording"
+          },
+          {
+            "title": "Create Storage Buckets",
+            "path": "configuration/session-recording/create-storage-bucket"
+          },
+          {
+            "title": "Enable Session Recording",
+            "path": "configuration/session-recording/enable-session-recording"
+          }
+        ]
+      },
+      {
         "title": "events",
         "routes": [
           {
@@ -423,6 +444,10 @@
       {
         "title": "Health Endpoint",
         "path": "operations/health"
+      },
+      {
+        "title": "Recorded Sessions",
+        "path": "operations/manage-recorded-sessions"
       }
     ]
   },
