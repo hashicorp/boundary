@@ -37,7 +37,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   
   similarly the `plugins/host` package has been renamed to `plugins/boundary`
   ([PR1](https://github.com/hashicorp/boundary/pull/3262),
-  [PR2](https://github.com/hashicorp/boundary/pull/3266)).
+  [PR2](https://github.com/hashicorp/boundary-plugin-aws/pull/24),
+  [PR3](https://github.com/hashicorp/boundary-plugin-azure/pull/12),
+  [PR4](https://github.com/hashicorp/boundary/pull/3266)).
 
 ### New and Improved
 
