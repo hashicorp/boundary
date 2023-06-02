@@ -461,6 +461,10 @@
       {
         "title": "FAQ",
         "path": "troubleshoot/faq"
+      },
+      {
+        "title": "Recorded Sessions",
+        "path": "troubleshoot/troubleshoot-recorded-sessions"
       }
     ]
   },
