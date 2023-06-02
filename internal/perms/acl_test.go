@@ -4,6 +4,7 @@
 package perms
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -24,6 +25,8 @@ type scopeGrant struct {
 
 func Test_ACLAllowed(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	type actionAuthorized struct {
 		action       action.Type
@@ -389,7 +392,7 @@ func Test_ACLAllowed(t *testing.T) {
 			var grants []Grant
 			for _, sg := range test.scopeGrants {
 				for _, g := range sg.grants {
-					grant, err := Parse(sg.scope, g, WithAccountId(test.accountId), WithUserId(test.userId))
+					grant, err := Parse(ctx, sg.scope, g, WithAccountId(test.accountId), WithUserId(test.userId))
 					require.NoError(t, err)
 					grants = append(grants, grant)
 				}
@@ -410,6 +413,10 @@ func Test_ACLAllowed(t *testing.T) {
 }
 
 func TestACL_ListPermissions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
 	tests := []struct {
 		name                        string
 		userId                      string
@@ -841,7 +848,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			var grants []Grant
 			for _, sg := range tt.aclGrants {
 				for _, g := range sg.grants {
-					grant, err := Parse(sg.scope, g, WithSkipFinalValidation(tt.skipGrantValidationChecking))
+					grant, err := Parse(ctx, sg.scope, g, WithSkipFinalValidation(tt.skipGrantValidationChecking))
 					require.NoError(t, err)
 					grants = append(grants, grant)
 				}
@@ -872,6 +879,8 @@ func TestJsonMarshal(t *testing.T) {
 // except for the specific things allowed.
 func Test_AnonRestrictions(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	type input struct {
 		name              string
@@ -945,7 +954,7 @@ func Test_AnonRestrictions(t *testing.T) {
 						grant = fmt.Sprintf(grant, action.Type(j).String())
 					}
 
-					parsedGrant, err := Parse(scope.Global.String(), grant, WithSkipFinalValidation(true))
+					parsedGrant, err := Parse(ctx, scope.Global.String(), grant, WithSkipFinalValidation(true))
 					require.NoError(err)
 
 					acl := NewACL(parsedGrant)
