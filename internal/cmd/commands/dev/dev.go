@@ -39,10 +39,11 @@ import (
 )
 
 const (
-	PkiControllerLedWorkerAuthMechanism = "pki-controller-led"
-	PkiWorkerLedWorkerAuthMechanism     = "pki-worker-led"
-	PkiKmsWorkerAuthMechanism           = "pki-kms"
-	PkiRandomWorkerAuthMechanism        = "pki"
+	ControllerGeneratedAuthTokenWorkerAuthMechanism = "controller-generated-auth-token"
+	WorkerGeneratedAuthTokenWorkerAuthMechanism     = "worker-generated-auth-token"
+	KmsWorkerAuthMechanism                          = "kms"
+	RandomWorkerAuthMechanism                       = "random"
+	DeprecatedKmsWorkerAuthMechanism                = "deprecated-kms"
 )
 
 var (
@@ -367,10 +368,11 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "worker-auth-method",
-		Target:  &c.flagWorkerAuthMethod,
-		Default: PkiRandomWorkerAuthMechanism,
-		Usage:   `Allows specifying how the generated worker will authenticate to the controller. Valid values are "kms" for the deprecated KMS-based mechanism; "pki-kms" for the new-style KMS mechanism; "pki-controller-led" for the PKI mechanism via the server-led authorization flow; "pki-worker-led" for the PKI mechanism via the worker-led authorization flow; and "pki" to randomly choose one of the PKI methods.`,
+		Name:       "worker-auth-method",
+		Target:     &c.flagWorkerAuthMethod,
+		Default:    RandomWorkerAuthMechanism,
+		Completion: complete.PredictSet(ControllerGeneratedAuthTokenWorkerAuthMechanism, WorkerGeneratedAuthTokenWorkerAuthMechanism, KmsWorkerAuthMechanism, RandomWorkerAuthMechanism),
+		Usage:      `Allows specifying how the generated worker will authenticate to the controller.`,
 	})
 	f.StringVar(&base.StringVar{
 		Name:   "worker-auth-storage-dir",
@@ -678,7 +680,8 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if c.flagWorkerAuthMethod != "kms" {
+	if c.flagWorkerAuthMethod != DeprecatedKmsWorkerAuthMechanism &&
+		c.flagWorkerAuthMethod != KmsWorkerAuthMechanism {
 		// Flip a coin to decide between file storage and inmem. It's
 		// transparent to users, but keeps both exercised.
 		randStorage := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2)
@@ -795,21 +798,21 @@ func (c *Command) Run(args []string) int {
 		}
 		c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthWorkerRotationInterval
 
-		if c.flagWorkerAuthMethod == PkiRandomWorkerAuthMechanism {
+		if c.flagWorkerAuthMethod == RandomWorkerAuthMechanism {
 			// Flip a coin. Use one method or the other; it's transparent to
 			// users, but keeps both exercised.
 			randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(3)
 			switch randPki {
 			case 0:
-				c.flagWorkerAuthMethod = PkiControllerLedWorkerAuthMechanism
+				c.flagWorkerAuthMethod = ControllerGeneratedAuthTokenWorkerAuthMechanism
 			case 1:
-				c.flagWorkerAuthMethod = PkiWorkerLedWorkerAuthMechanism
+				c.flagWorkerAuthMethod = WorkerGeneratedAuthTokenWorkerAuthMechanism
 			default:
-				c.flagWorkerAuthMethod = PkiKmsWorkerAuthMechanism
+				c.flagWorkerAuthMethod = KmsWorkerAuthMechanism
 			}
 		}
 		switch c.flagWorkerAuthMethod {
-		case PkiControllerLedWorkerAuthMechanism:
+		case ControllerGeneratedAuthTokenWorkerAuthMechanism:
 			// Controller-led
 			serversRepo, err := c.controller.ServersRepoFn()
 			if err != nil {
@@ -839,11 +842,11 @@ func (c *Command) Run(args []string) int {
 			c.WorkerAuthKms = nil
 			conf.RawConfig.Worker.ControllerGeneratedActivationToken = worker.ControllerGeneratedActivationToken
 
-		case PkiWorkerLedWorkerAuthMechanism:
+		case WorkerGeneratedAuthTokenWorkerAuthMechanism:
 			// Clear this out as presence of it causes PKI-KMS behavior
 			c.WorkerAuthKms = nil
 
-		case PkiKmsWorkerAuthMechanism, "kms":
+		case KmsWorkerAuthMechanism, DeprecatedKmsWorkerAuthMechanism:
 			if c.WorkerAuthKms == nil {
 				c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 				return base.CommandUserError
@@ -863,7 +866,7 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 
-		if c.flagWorkerAuthMethod != "kms" {
+		if c.flagWorkerAuthMethod != DeprecatedKmsWorkerAuthMechanism {
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
 			c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
@@ -873,7 +876,7 @@ func (c *Command) Run(args []string) int {
 				c.Info["worker auth storage path"] = "(in-memory)"
 			}
 
-			if c.flagWorkerAuthMethod == PkiWorkerLedWorkerAuthMechanism {
+			if c.flagWorkerAuthMethod == WorkerGeneratedAuthTokenWorkerAuthMechanism {
 				req := c.worker.WorkerAuthRegistrationRequest
 				if req == "" {
 					c.UI.Error("No worker auth registration request found at worker start time")
