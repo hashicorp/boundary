@@ -2,63 +2,80 @@
 -- SPDX-License-Identifier: MPL-2.0
 
 begin;
+
   create table sessions_pending_daily_snapshot (
     snapshot_date date primary key,
     sessions_pending_count bigint not null
+      constraint sessions_pending_count_must_be_zero_or_positive
+        check(sessions_pending_count >= 0)
   );
+  comment on table sessions_pending_daily_snapshot is
+    'sessions_pending_count is a table where each row contains the count of '
+    'sessions pending for snapshot_date for that date.';
 
-  create view hcp_billing_daily_sessions_yesterday as
-  with
-  daily_counts (day, sessions_pending_count) as (
-      select date_trunc('day', session_pending_time), count(*)
-        from wh_session_accumulating_fact
-       where session_pending_time >= date_trunc('day', timestamp 'yesterday')
-         and session_pending_time < date_trunc('day', timestamp 'today')
-    group by date_trunc('day', session_pending_time)
-  ),
-  daily_range (day) as (
-      select date_trunc('day', timestamp 'yesterday')
-  ),
-  final (day, sessions_pending_count) as (
-      select daily_range.day, coalesce(daily_counts.sessions_pending_count, 0)
-        from daily_range
-   left join daily_counts on daily_range.day = daily_counts.day
-  )
-    select day, sessions_pending_count
-      from final
-  order by day desc;
-  comment on view hcp_billing_daily_sessions_yesterday is
-    'hcp_billing_daily_sessions_yesterday is a view that contains '
-      'the sum of pending sessions '
-      'from the beginning of the previous day '
-      'until the start of the current day (exclusive).';
+  create function update_sessions_pending_daily_snapshot()
+    returns setof sessions_pending_daily_snapshot
+  as $$
+  begin
 
-  create view hcp_billing_daily_sessions_all as
-  with
-  daily_counts (day, sessions_pending_count) as (
-      select date_trunc('day', session_pending_time), count(*)
-        from wh_session_accumulating_fact
-       where session_pending_time < date_trunc('day', timestamp 'today')
-    group by date_trunc('day', session_pending_time)
-  ),
-  daily_range (day) as (
-      select bucket
-        from generate_series(
-                   date_trunc('day', (select min(session_pending_time) from wh_session_accumulating_fact)),
-                   timestamp 'yesterday',
-                   '1 day'::interval
+    -- already ran for today
+      if (date_trunc('day', now()) - '1 day'::interval) = (select max(snapshot_date) from sessions_pending_daily_snapshot)
+    then return;
+    end if;
+
+    -- never run before and there are only sessions starting from today
+      if (select count(*) from sessions_pending_daily_snapshot) = 0
+     and date_trunc('day', now()) = (select min(session_pending_time) from wh_session_accumulating_fact)
+    then return query
+           insert into sessions_pending_daily_snapshot
+             (snapshot_date, sessions_pending_count)
+           values
+             (date_trunc('day', now()) - '1 day'::interval, 0)
+           returning *;
+         return;
+    end if;
+
+    return query
+    with
+    daily_counts (day, sessions_pending_count) as (
+        select date_trunc('day', session_pending_time), count(*)
+          from wh_session_accumulating_fact
+         where session_pending_time < date_trunc('day', now()) -- before midnight today
+           and session_pending_time >= coalesce((select max(snapshot_date) from sessions_pending_daily_snapshot), '-infinity')
+      group by date_trunc('day', session_pending_time)
+    ),
+    daily_range (day) as (
+        select bucket
+          from generate_series(
+                  coalesce(date_trunc('day', (select min(session_pending_time) from wh_session_accumulating_fact)),
+                           date_trunc('day', now()) - '1 day'::interval),
+                  now() - '1 day'::interval,
+                  '1 day'::interval
                ) as bucket
-  ),
-  final (day, sessions_pending_count) as (
-         select daily_range.day::timestamp,
-                coalesce(daily_counts.sessions_pending_count, 0)
-           from daily_range
-      left join daily_counts on daily_range.day = daily_counts.day
-  )
-    select day, sessions_pending_count
-      from final
-  order by day desc;
-  comment on view hcp_billing_daily_sessions_all is
-    'hcp_billing_daily_sessions_all is a view that contains '
-      'the sum of pending sessions for yesterday and all previous days.';
+    ),
+    missing (day, sessions_pending_count) as (
+           select daily_range.day::timestamp with time zone,
+                  coalesce(daily_counts.sessions_pending_count, 0)
+             from daily_range
+        left join daily_counts on daily_range.day = daily_counts.day
+    ),
+    final (day, sessions_pending_count) as (
+      insert into sessions_pending_daily_snapshot
+        (snapshot_date, sessions_pending_count)
+      select day::date, sessions_pending_count
+        from missing
+      returning *
+    )
+      select day, sessions_pending_count
+        from final
+      order by day desc;
+  end;
+  $$ language plpgsql
+     set timezone to 'utc';
+  comment on function update_sessions_pending_daily_snapshot is
+    'update_sessions_pending_daily_snapshot is a function that updates the sessions_pending_daily_snapshot table by '
+    'querying the data warehouse and inserting the session pending counts for any days since the max snapshot_date '
+    'and yesterday. '
+    'update_sessions_pending_daily_snapshot returns the rows inserted or null if no rows are inserted.';
+
 commit;
