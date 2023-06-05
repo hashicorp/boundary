@@ -28,11 +28,14 @@ type Target struct {
 	Name                   string // optional field
 	Description            string // optional field
 	DefaultPort            uint32
+	DefaultClientPort      uint32 // optional field
 	SessionMaxSeconds      uint32
 	SessionConnectionLimit int32
 	WorkerFilter           string // optional field
 	EgressWorkerFilter     string // optional field
 	IngressWorkerFilter    string // optional field
+	EnableSessionRecording bool
+	StorageBucketId        string
 }
 
 // Worker contains information about the worker used to record this session
@@ -71,11 +74,12 @@ type DynamicHostCatalog struct {
 
 // DynamicHost contains information about the dynamic host for this session
 type DynamicHost struct {
-	PublicId    string
-	Catalog     DynamicHostCatalog
-	Name        string // optional field
-	Description string // optional field
-	ExternalId  string
+	PublicId     string
+	Catalog      DynamicHostCatalog
+	Name         string // optional field
+	Description  string // optional field
+	ExternalId   string
+	ExternalName string // optional field
 }
 
 // StaticCredentialStore represents a static credential store used for this session
