@@ -12,6 +12,11 @@ A resource known as a [storage bucket](/boundary/docs/concepts/domain-model/stor
 The storage bucket represents a bucket in an external store.
 Before you can enable session recording, you must create one or more storage buckets.
 
+Note that a storage bucket can only belong to one scope, either the Global scope or an Org scope.
+A storage bucket that is associated with the Global scope can be associated with any target.
+However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
+Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
+
 For more information about using session recording to audit user sessions, refer to [Auditing](/boundary/docs/concepts/auditing).
 
 **Requirements**:
@@ -19,6 +24,33 @@ For more information about using session recording to audit user sessions, refer
 
    At this time, the only supported storage for storage buckets is AWS S3.
    In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the access and secret key.
+
+- An AWS IAM role policy with the following statement:
+   ```javascript
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+         {
+            "Action": [
+               "s3:PutObject",
+               "s3:GetObject",
+               "s3:GetObjectAttributes"
+            ],
+            "Effect": "Allow",
+            "Resource": "arn:aws:s3:::session_recording_storage/foo/bar/zoo/*"
+         },
+         {
+            "Action": [
+               "iam:DeleteAccessKey",
+               "iam:GetUser",
+               "iam:CreateAccessKey"
+            ],
+            "Effect": "Allow",
+            "Resource": "arn:aws:iam::123456789012:user/JohnDoe"
+         }
+      ]
+   }
+
 
 Complete the following steps to create a storage bucket for session recording:
 
@@ -35,15 +67,11 @@ Complete the following steps to create a storage bucket for session recording:
     Replace the values above with the following required AWS secrets and any optional attributes you want to associate with the storage bucket:
 
     - &#32; `region`: (Required) The AWS region to use.
-    - &#32; `access_key_id`: (Optional) The AWS access key to use.
+    - &#32; `access_key_id`: (Required) The AWS access key to use.
+    - &#32; `secret_access_key_id`: (Required) The AWS secret access key to use.
+    This attribute contains the secret access key for static credentials.
     - &#32; `shared_credentials_file`: (Optional) The shared credentials file to use.
     - &#32; `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
-    - &#32; `assume_role_arn`: (Optional) The ARN for a role to assume after authenticating.
-    - &#32; `assume_role_session_name`: (Optional) A session name to use when assuming the role.
-    - &#32; `assume_role_external_id`: (Optional) A unique identifier that might be required when you assume a role in another account.
-    - &#32; `assume_role_duration_seconds`: (Optional) The number of seconds to restrict the assumed role session to.
-    The maximum duration for the role in IAM is a range of 900 seconds (15 minutes).
-    - &#32; `assume_role_tags`: (Optional) A set of key/value pairs to tag the assume role session with.
 
 </Tab>
 

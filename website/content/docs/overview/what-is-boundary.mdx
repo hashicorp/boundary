@@ -57,7 +57,7 @@ role-based access for dynamic infrastructure.
 
 The key features and concepts of Boundary include:
 
-### Identity & Permission Management
+### Identity & permission management
 
 Identity is a core concept in Boundary. Identity is represented by two types of
 resources, mapping to common security principals:
@@ -71,7 +71,7 @@ resources, mapping to common security principals:
 [grants](/boundary/docs/concepts/security/permissions), which provides the ability to
 perform actions within the system.
 
-### Resource Management
+### Resource management
 
 Boundary enables flexible management of the hosts and services to
 broker access. Boundary administrators define [host
@@ -82,6 +82,15 @@ equivalent hosts. Finally, [targets](/boundary/docs/concepts/domain-model/target
 together host sets with connection information. Access to a resource is
 granted via [roles](/boundary/docs/concepts/domain-model/roles) that provide
 authorization to create sessions against these targets.
+
+### Auditing
+
+A fundamental challenge of securing access to sensitive computing resources is creating a system of record around users' access and actions over remote sessions.
+Boundary provides [auditing](/boundary/docs/concepts/auditing) features via session recording to help organizations address compliance and threat management needs.
+
+When you enable [session recording](/boundary/docs/configuration/session-recording) for a target, any sessions in which a user requests access to that target are recorded.
+Recorded sessions are stored in an external data store so that you can access and manage them outside of Boundary for long-lasting data retention.
+Administrators can access recorded sessions at a later time using a session player that runs in a browser.
 
 ### Filtering
 

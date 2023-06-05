@@ -25,7 +25,7 @@ Further, security teams seek to prevent incidents and proactively identify poten
 
 ## Session recording
 
-Boundary provides auditing capabilities via session recording.
+Boundary provides auditing capabilities via [session recording](/boundary/docs/concepts/domain-model/session-recordings).
 In Boundary, a session represents a set of connections between a user and a host from a target.
 The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
 Al sessions have a fixed time limit, and all connections are proxied through a worker.
@@ -47,7 +47,7 @@ The worker then decodes the contents of a recording into a format that is usable
 
 ## Storage buckets
 
-A resource known as a storage bucket is used to store the recorded sessions.
+A resource known as a [storage bucket](/boundary/docs/concepts/domain-model/storage-bucket) is used to store the recorded sessions.
 The storage bucket represents a bucket in an external object store.
 At this time, the only supported storage for storage buckets is AWS S3.
 In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the secret key.
@@ -65,8 +65,6 @@ Deleting a storage bucket in Boundary does not delete the bucket in the external
 The storage bucket's lifecycle does not affect the lifecycle of the bucket in the external object store.
 Any session recording metadata that is attached to the storage bucket is deleted, when the storage bucket is deleted.
 
-To enable storage recording, you must first create a storage bucket.
-
 ## BSR directory structure
 
 The BSR (Boundary Session Recording) defines a hierarchical directory structure of files and a binary file format.
@@ -83,3 +81,5 @@ The top-level directory also contains BSR keys for use in decrypting and verifyi
 
 The connections directory contains a summary of connections, as well as inbound and outbound requests.
 If you use a multiplexed protocol, there are subdirectories for the channels.
+
+For more information, refer to the [overview of configuring session recording](/boundary/docs/configuration/session-recording).

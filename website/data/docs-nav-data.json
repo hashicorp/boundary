@@ -446,7 +446,7 @@
         "path": "operations/health"
       },
       {
-        "title": "Recorded Sessions",
+        "title": "Session Recordings",
         "path": "operations/manage-recorded-sessions"
       }
     ]
