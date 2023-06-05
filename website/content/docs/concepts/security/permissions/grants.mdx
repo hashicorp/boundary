@@ -120,7 +120,7 @@ To learn more about output fields, see [output fields](/boundary/docs/concepts/s
 
 The following are examples of commonly used grant strings for specific roles and scopes.
 
-**All Actions** 
+**All actions** 
 
 This grant string allows users to perform any actions on any resources in the scope:
 
@@ -158,12 +158,6 @@ This example is only applicable to project scopes, since targets can only exist 
 - &#32; `id=<target-id>;actions=read,authorize-session`
 - &#32; `type=target;actions=list`
 - &#32; `id=*;type=session;actions=read:self,cancel:self,list`
-
-<Note>
-There is a known issue that affects the [Project] Connect To A Specific Target grant strings.
-Currently, the grants do not list any defined targets in the CLI or UI.
-However, you are still able to use this set of grants to connect to a target using the CLI.
-</Note>
 
 ## General grant examples
 
