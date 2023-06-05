@@ -71,15 +71,15 @@ var (
 
 // NewState creates a new in memory session state.  No options
 // are currently supported.
-func NewState(session_id string, state Status, _ ...Option) (*State, error) {
+func NewState(ctx context.Context, session_id string, state Status, _ ...Option) (*State, error) {
 	const op = "session.NewState"
 	s := State{
 		SessionId: session_id,
 		Status:    state,
 	}
 
-	if err := s.validate(); err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+	if err := s.validate(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &s, nil
 }
@@ -127,7 +127,7 @@ func (s *State) Clone() any {
 // before it's written.
 func (s *State) VetForWrite(ctx context.Context, _ db.Reader, _ db.OpType, _ ...db.Option) error {
 	const op = "session.(State).VetForWrite"
-	if err := s.validate(); err != nil {
+	if err := s.validate(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
@@ -149,22 +149,22 @@ func (s *State) SetTableName(n string) {
 }
 
 // validate checks the session state
-func (s *State) validate() error {
+func (s *State) validate(ctx context.Context) error {
 	const op = "session.(State).validate"
 	if s.Status == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing status")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing status")
 	}
 	if s.SessionId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
 	if s.StartTime != nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "start time is not settable")
+		return errors.New(ctx, errors.InvalidParameter, op, "start time is not settable")
 	}
 	if s.EndTime != nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "end time is not settable")
+		return errors.New(ctx, errors.InvalidParameter, op, "end time is not settable")
 	}
 	if s.PreviousEndTime != nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "previous end time is not settable")
+		return errors.New(ctx, errors.InvalidParameter, op, "previous end time is not settable")
 	}
 	return nil
 }

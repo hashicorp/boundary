@@ -305,11 +305,11 @@ func VetCredentialSources(_ context.Context, _ []*target.CredentialLibrary, _ []
 }
 
 // New creates a targettest.Target.
-func New(projectId string, opt ...target.Option) (target.Target, error) {
+func New(ctx context.Context, projectId string, opt ...target.Option) (target.Target, error) {
 	const op = "target_test.New"
 	opts := target.GetOpts(opt...)
 	if projectId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing project id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
 	}
 	t := &Target{
 		Target: &store.Target{
@@ -335,9 +335,9 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 	opts := target.GetOpts(opt...)
 	require := require.New(t)
 	rw := db.New(conn)
-	tar, err := New(projectId, opt...)
+	tar, err := New(ctx, projectId, opt...)
 	require.NoError(err)
-	id, err := db.NewPublicId(globals.TcpTargetPrefix)
+	id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
 	require.NoError(err)
 	tar.SetPublicId(ctx, id)
 	err = rw.Create(context.Background(), tar)
@@ -346,7 +346,7 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 	if len(opts.WithHostSources) > 0 {
 		newHostSets := make([]any, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {
-			hostSet, err := target.NewTargetHostSet(tar.GetPublicId(), s)
+			hostSet, err := target.NewTargetHostSet(ctx, tar.GetPublicId(), s)
 			require.NoError(err)
 			newHostSets = append(newHostSets, hostSet)
 		}

@@ -218,7 +218,7 @@ type Controller struct {
 	License string `hcl:"license"`
 }
 
-func (c *Controller) InitNameIfEmpty() error {
+func (c *Controller) InitNameIfEmpty(ctx context.Context) error {
 	if c == nil {
 		return fmt.Errorf("controller config is empty")
 	}
@@ -227,7 +227,7 @@ func (c *Controller) InitNameIfEmpty() error {
 	}
 
 	var err error
-	c.Name, err = db.NewPublicId("c")
+	c.Name, err = db.NewPublicId(ctx, "c")
 	if err != nil {
 		return fmt.Errorf("error auto-generating controller name: %w", err)
 	}

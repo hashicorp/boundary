@@ -4,6 +4,7 @@
 package iam
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -15,18 +16,19 @@ import (
 )
 
 func Test_PublicIds(t *testing.T) {
+	ctx := context.Background()
 	t.Run("role", func(t *testing.T) {
-		id, err := newRoleId()
+		id, err := newRoleId(ctx)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.RolePrefix+"_"))
 	})
 	t.Run("user", func(t *testing.T) {
-		id, err := newUserId()
+		id, err := newUserId(ctx)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.UserPrefix+"_"))
 	})
 	t.Run("group", func(t *testing.T) {
-		id, err := newGroupId()
+		id, err := newGroupId(ctx)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.GroupPrefix+"_"))
 	})
@@ -34,15 +36,15 @@ func Test_PublicIds(t *testing.T) {
 		assert.True(t, strings.HasPrefix("mgoidc_1234567890", globals.OidcManagedGroupPrefix+"_"))
 	})
 	t.Run("scopes", func(t *testing.T) {
-		id, err := newScopeId(scope.Org)
+		id, err := newScopeId(ctx, scope.Org)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, scope.Org.Prefix()))
 
-		id, err = newScopeId(scope.Project)
+		id, err = newScopeId(ctx, scope.Project)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, scope.Project.Prefix()))
 
-		id, err = newScopeId(scope.Unknown)
+		id, err = newScopeId(ctx, scope.Unknown)
 		require.Error(t, err)
 		assert.Empty(t, id)
 		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))

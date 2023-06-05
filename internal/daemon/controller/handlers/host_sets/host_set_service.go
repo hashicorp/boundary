@@ -69,10 +69,18 @@ const domain = "host"
 
 func init() {
 	var err error
-	if maskManager[static.Subtype], err = handlers.NewMaskManager(handlers.MaskDestination{&staticstore.HostSet{}, &staticstore.UnimplementedSetFields{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
+	if maskManager[static.Subtype], err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&staticstore.HostSet{}, &staticstore.UnimplementedSetFields{}},
+		handlers.MaskSource{&pb.HostSet{}},
+	); err != nil {
 		panic(err)
 	}
-	if maskManager[hostplugin.Subtype], err = handlers.NewMaskManager(handlers.MaskDestination{&plugstore.HostSet{}}, handlers.MaskSource{&pb.HostSet{}}); err != nil {
+	if maskManager[hostplugin.Subtype], err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&plugstore.HostSet{}},
+		handlers.MaskSource{&pb.HostSet{}},
+	); err != nil {
 		panic(err)
 	}
 }
@@ -88,13 +96,13 @@ var _ pbs.HostSetServiceServer = (*Service)(nil)
 
 // NewService returns a host set Service which handles host set related requests to boundary and uses the provided
 // repositories for storage and retrieval.
-func NewService(staticRepoFn common.StaticRepoFactory, pluginRepoFn common.PluginHostRepoFactory) (Service, error) {
+func NewService(ctx context.Context, staticRepoFn common.StaticRepoFactory, pluginRepoFn common.PluginHostRepoFactory) (Service, error) {
 	const op = "host_sets.NewService"
 	if staticRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static repository")
 	}
 	if pluginRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing hostplugin repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing hostplugin repository")
 	}
 	return Service{staticRepoFn: staticRepoFn, pluginRepoFn: pluginRepoFn}, nil
 }
@@ -104,7 +112,7 @@ func (s Service) ListHostSets(ctx context.Context, req *pbs.ListHostSetsRequest)
 }
 
 func (s Service) ListHostSetsWithOptions(ctx context.Context, req *pbs.ListHostSetsRequest, opt ...host.Option) (*pbs.ListHostSetsResponse, error) {
-	if err := validateListRequest(req); err != nil {
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
@@ -119,7 +127,7 @@ func (s Service) ListHostSetsWithOptions(ctx context.Context, req *pbs.ListHostS
 		return &pbs.ListHostSetsResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(req.GetFilter())
+	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -907,7 +915,7 @@ func toStorageStaticSet(ctx context.Context, catalogId string, item *pb.HostSet)
 	if item.GetDescription() != nil {
 		opts = append(opts, static.WithDescription(item.GetDescription().GetValue()))
 	}
-	hs, err := static.NewHostSet(catalogId, opts...)
+	hs, err := static.NewHostSet(ctx, catalogId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host set for creation"))
 	}
@@ -1013,12 +1021,12 @@ func validateDeleteRequest(req *pbs.DeleteHostSetRequest) error {
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.StaticHostSetPrefix, globals.PluginHostSetPrefix, globals.PluginHostSetPreviousPrefix)
 }
 
-func validateListRequest(req *pbs.ListHostSetsRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListHostSetsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), globals.StaticHostCatalogPrefix, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix) {
 		badFields[globals.HostCatalogIdField] = "The field is incorrectly formatted."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields[globals.FilterField] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

@@ -38,12 +38,13 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
+	iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 	if err != nil {
 		return nil, fmt.Errorf("unable to create repo for initial login role: %w", err)
 	}
 
-	pr, err := iam.NewRole(scope.Global.String(),
+	pr, err := iam.NewRole(ctx,
+		scope.Global.String(),
 		iam.WithName("Login and Default Grants"),
 		iam.WithDescription(`Role created for login capability, account self-management, and other default grants for users of the global scope at its creation time`),
 	)
@@ -84,11 +85,11 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 	}
 
 	// Create the dev auth method
-	pwRepo, err := password.NewRepository(rw, rw, kmsCache)
+	pwRepo, err := password.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating password repo: %w", err)
 	}
-	authMethod, err := password.NewAuthMethod(scope.Global.String(),
+	authMethod, err := password.NewAuthMethod(ctx, scope.Global.String(),
 		password.WithName("Generated global scope initial password auth method"),
 		password.WithDescription("Provides initial administrative and unprivileged authentication into Boundary"),
 	)
@@ -96,7 +97,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		return nil, nil, fmt.Errorf("error creating new in memory auth method: %w", err)
 	}
 	if b.DevPasswordAuthMethodId == "" {
-		b.DevPasswordAuthMethodId, err = db.NewPublicId(globals.PasswordAuthMethodPrefix)
+		b.DevPasswordAuthMethodId, err = db.NewPublicId(ctx, globals.PasswordAuthMethodPrefix)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating initial auth method id: %w", err)
 		}
@@ -115,7 +116,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 	// users on first login.  Otherwise, the operator would have to create both
 	// a password account and a user associated with the new account, before
 	// users could successfully login.
-	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
+	iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to create iam repo: %w", err)
 	}
@@ -146,7 +147,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		b.InfoKeys = append(b.InfoKeys, fmt.Sprintf("generated %s password", typeStr))
 		b.Info[fmt.Sprintf("generated %s password", typeStr)] = loginPassword
 
-		acct, err := password.NewAccount(am.PublicId, password.WithLoginName(loginName))
+		acct, err := password.NewAccount(ctx, am.PublicId, password.WithLoginName(loginName))
 		if err != nil {
 			return nil, fmt.Errorf("error creating new in memory password auth account: %w", err)
 		}
@@ -163,7 +164,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		b.InfoKeys = append(b.InfoKeys, fmt.Sprintf("generated %s login name", typeStr))
 		b.Info[fmt.Sprintf("generated %s login name", typeStr)] = acct.GetLoginName()
 
-		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
+		iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 		if err != nil {
 			return nil, fmt.Errorf("unable to create iam repo: %w", err)
 		}
@@ -183,7 +184,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 				iam.WithDescription("Initial unprivileged user"),
 			)
 		}
-		u, err := iam.NewUser(scope.Global.String(), opts...)
+		u, err := iam.NewUser(ctx, scope.Global.String(), opts...)
 		if err != nil {
 			return nil, fmt.Errorf("error creating in memory user: %w", err)
 		}
@@ -197,7 +198,8 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 			return u, nil
 		}
 		// Create a role tying them together
-		pr, err := iam.NewRole(scope.Global.String(),
+		pr, err := iam.NewRole(ctx,
+			scope.Global.String(),
 			iam.WithName("Administration"),
 			iam.WithDescription(fmt.Sprintf(`Provides admin grants within the "%s" scope to the initial user`, scope.Global.String())),
 		)
@@ -241,7 +243,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		}
 	}
 	if b.DevUserId == "" {
-		b.DevUserId, err = db.NewPublicId(globals.UserPrefix)
+		b.DevUserId, err = db.NewPublicId(ctx, globals.UserPrefix)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating initial user id: %w", err)
 		}
@@ -268,14 +270,14 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 		return nil, nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
+	iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating scopes repository: %w", err)
 	}
 
 	// Create the scopes
 	if b.DevOrgId == "" {
-		b.DevOrgId, err = db.NewPublicId(scope.Org.Prefix())
+		b.DevOrgId, err = db.NewPublicId(ctx, scope.Org.Prefix())
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating initial org id: %w", err)
 		}
@@ -286,7 +288,7 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 		iam.WithRandomReader(b.SecureRandomReader),
 		iam.WithPublicId(b.DevOrgId),
 	}
-	orgScope, err := iam.NewOrg(opts...)
+	orgScope, err := iam.NewOrg(ctx, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating new in memory org scope: %w", err)
 	}
@@ -298,7 +300,7 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 	b.Info["generated org scope id"] = b.DevOrgId
 
 	if b.DevProjectId == "" {
-		b.DevProjectId, err = db.NewPublicId(scope.Project.Prefix())
+		b.DevProjectId, err = db.NewPublicId(ctx, scope.Project.Prefix())
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating initial project id: %w", err)
 		}
@@ -309,7 +311,7 @@ func (b *Server) CreateInitialScopes(ctx context.Context) (*iam.Scope, *iam.Scop
 		iam.WithRandomReader(b.SecureRandomReader),
 		iam.WithPublicId(b.DevProjectId),
 	}
-	projScope, err := iam.NewProject(b.DevOrgId, opts...)
+	projScope, err := iam.NewProject(ctx, b.DevOrgId, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating new in memory project scope: %w", err)
 	}
@@ -337,14 +339,14 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 		return nil, nil, nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
 
-	staticRepo, err := static.NewRepository(rw, rw, kmsCache)
+	staticRepo, err := static.NewRepository(ctx, rw, rw, kmsCache)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating static repository: %w", err)
 	}
 
 	// Host Catalog
 	if b.DevHostCatalogId == "" {
-		b.DevHostCatalogId, err = db.NewPublicId(globals.StaticHostCatalogPrefix)
+		b.DevHostCatalogId, err = db.NewPublicId(ctx, globals.StaticHostCatalogPrefix)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("error generating initial host catalog id: %w", err)
 		}
@@ -354,7 +356,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 		static.WithDescription("Provides an initial host catalog in Boundary"),
 		static.WithPublicId(b.DevHostCatalogId),
 	}
-	hc, err := static.NewHostCatalog(b.DevProjectId, opts...)
+	hc, err := static.NewHostCatalog(ctx, b.DevProjectId, opts...)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating in memory host catalog: %w", err)
 	}
@@ -366,7 +368,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 
 	// Host
 	if b.DevHostId == "" {
-		b.DevHostId, err = db.NewPublicId(globals.StaticHostPrefix)
+		b.DevHostId, err = db.NewPublicId(ctx, globals.StaticHostPrefix)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("error generating initial host id: %w", err)
 		}
@@ -380,7 +382,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 		static.WithAddress(b.DevHostAddress),
 		static.WithPublicId(b.DevHostId),
 	}
-	h, err := static.NewHost(hc.PublicId, opts...)
+	h, err := static.NewHost(ctx, hc.PublicId, opts...)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating in memory host: %w", err)
 	}
@@ -392,7 +394,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 
 	// Host Set
 	if b.DevHostSetId == "" {
-		b.DevHostSetId, err = db.NewPublicId(globals.StaticHostSetPrefix)
+		b.DevHostSetId, err = db.NewPublicId(ctx, globals.StaticHostSetPrefix)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("error generating initial host set id: %w", err)
 		}
@@ -402,7 +404,7 @@ func (b *Server) CreateInitialHostResources(ctx context.Context) (*static.HostCa
 		static.WithDescription("Provides an initial host set in Boundary"),
 		static.WithPublicId(b.DevHostSetId),
 	}
-	hs, err := static.NewHostSet(hc.PublicId, opts...)
+	hs, err := static.NewHostSet(ctx, hc.PublicId, opts...)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error creating in memory host set: %w", err)
 	}
@@ -439,7 +441,7 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 	// When this function is not called as part of boundary dev (eg: as part of
 	// boundary database init or tests), generate random target ids.
 	if len(b.DevTargetId) == 0 {
-		b.DevTargetId, err = db.NewPublicId(globals.TcpTargetPrefix)
+		b.DevTargetId, err = db.NewPublicId(ctx, globals.TcpTargetPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate initial target id: %w", err)
 		}
@@ -471,7 +473,7 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 	b.Info["generated target with address id"] = b.DevTargetId
 
 	if b.DevUnprivilegedUserId != "" {
-		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
+		iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create iam repository: %w", err)
 		}
@@ -506,7 +508,7 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	// When this function is not called as part of boundary dev (eg: as part of
 	// boundary database init or tests), generate random target ids.
 	if len(b.DevSecondaryTargetId) == 0 {
-		b.DevSecondaryTargetId, err = db.NewPublicId(globals.TcpTargetPrefix)
+		b.DevSecondaryTargetId, err = db.NewPublicId(ctx, globals.TcpTargetPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate initial secondary target id: %w", err)
 		}
@@ -539,7 +541,7 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	b.Info["generated target with host source id"] = b.DevSecondaryTargetId
 
 	if b.DevUnprivilegedUserId != "" {
-		iamRepo, err := iam.NewRepository(rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
+		iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create iam repository: %w", err)
 		}
@@ -676,7 +678,8 @@ func unprivilegedDevUserRoleSetup(ctx context.Context, repo *iam.Repository, use
 
 	// Create a new role for the "authorize-session" grant and add the
 	// unprivileged user as a principal.
-	asRole, err := iam.NewRole(projectId,
+	asRole, err := iam.NewRole(ctx,
+		projectId,
 		iam.WithName(fmt.Sprintf("Session authorization for %s", targetId)),
 		iam.WithDescription(fmt.Sprintf("Provides grants within the dev project scope to allow the initial unprivileged user to authorize sessions against %s", targetId)),
 	)

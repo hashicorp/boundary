@@ -25,10 +25,10 @@ type ClientCertificate struct {
 }
 
 // NewClientCertificate creates a new in memory ClientCertificate.
-func NewClientCertificate(certificate []byte, key KeySecret) (*ClientCertificate, error) {
+func NewClientCertificate(ctx context.Context, certificate []byte, key KeySecret) (*ClientCertificate, error) {
 	const op = "vault.NewClientCertificate"
 	if len(certificate) == 0 {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no certificate")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no certificate")
 	}
 
 	certificateCopy := make([]byte, len(certificate))

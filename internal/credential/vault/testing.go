@@ -49,7 +49,7 @@ func TestCredentialStore(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, pr
 	cs, err := NewCredentialStore(projectId, vaultAddr, []byte(vaultToken), opts...)
 	assert.NoError(t, err)
 	require.NotNil(t, cs)
-	id, err := newCredentialStoreId()
+	id, err := newCredentialStoreId(ctx)
 	assert.NoError(t, err)
 	require.NotEmpty(t, id)
 	cs.PublicId = id
@@ -92,7 +92,7 @@ func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, p
 		cs := TestCredentialStore(t, conn, wrapper, projectId, fmt.Sprintf("http://vault%d", i), fmt.Sprintf("vault-token-%s-%d", projectId, i), fmt.Sprintf("accessor-%s-%d", projectId, i))
 
 		inCert := testClientCert(t, testCaCert(t))
-		clientCert, err := NewClientCertificate(inCert.Cert.Cert, inCert.Cert.Key)
+		clientCert, err := NewClientCertificate(ctx, inCert.Cert.Cert, inCert.Cert.Key)
 		require.NoError(t, err)
 		require.NotEmpty(t, clientCert)
 		clientCert.StoreId = cs.GetPublicId()
@@ -117,6 +117,7 @@ func TestCredentialStores(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, p
 // test will fail.
 func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*CredentialLibrary {
 	t.Helper()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
 	var libs []*CredentialLibrary
@@ -125,12 +126,11 @@ func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, stor
 		lib, err := NewCredentialLibrary(storeId, fmt.Sprintf("vault/path%d", i), WithMethod(MethodGet))
 		assert.NoError(err)
 		require.NotNil(lib)
-		id, err := newCredentialLibraryId()
+		id, err := newCredentialLibraryId(ctx)
 		assert.NoError(err)
 		require.NotEmpty(id)
 		lib.PublicId = id
 
-		ctx := context.Background()
 		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, iw db.Writer) error {
 				return iw.Create(ctx, lib)
@@ -149,6 +149,7 @@ func TestCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, stor
 // libraries, the test will fail.
 func TestSSHCertificateCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping.Wrapper, storeId string, count int) []*SSHCertificateCredentialLibrary {
 	t.Helper()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
 	var libs []*SSHCertificateCredentialLibrary
@@ -157,12 +158,11 @@ func TestSSHCertificateCredentialLibraries(t testing.TB, conn *db.DB, _ wrapping
 		lib, err := NewSSHCertificateCredentialLibrary(storeId, fmt.Sprintf("ssh/sign/role-%d", i), "username", WithKeyType(KeyTypeEd25519))
 		assert.NoError(err)
 		require.NotNil(lib)
-		id, err := newSSHCertificateCredentialLibraryId()
+		id, err := newSSHCertificateCredentialLibraryId(ctx)
 		assert.NoError(err)
 		require.NotEmpty(id)
 		lib.PublicId = id
 
-		ctx := context.Background()
 		_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 			func(_ db.Reader, iw db.Writer) error {
 				return iw.Create(ctx, lib)
@@ -186,7 +186,7 @@ func TestCredentials(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, librar
 	ctx := context.Background()
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(rw, rw, kms, sche)
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
 	assert.NoError(err)
 	require.NotNil(repo)
 
@@ -203,11 +203,11 @@ func TestCredentials(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, librar
 
 	var credentials []*Credential
 	for i := 0; i < count; i++ {
-		credential, err := newCredential(lib.GetPublicId(), fmt.Sprintf("vault/credential/%d", i), token.GetTokenHmac(), 5*time.Minute)
+		credential, err := newCredential(ctx, lib.GetPublicId(), fmt.Sprintf("vault/credential/%d", i), token.GetTokenHmac(), 5*time.Minute)
 		assert.NoError(err)
 		require.NotNil(credential)
 
-		id, err := newCredentialId()
+		id, err := newCredentialId(ctx)
 		assert.NoError(err)
 		require.NotNil(id)
 		credential.PublicId = id
@@ -230,7 +230,7 @@ func createTestToken(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, projec
 	databaseWrapper, err := kkms.GetWrapper(ctx, projectId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
-	inToken, err := newToken(storeId, []byte(token), []byte(accessor), 5*time.Minute)
+	inToken, err := newToken(ctx, storeId, []byte(token), []byte(accessor), 5*time.Minute)
 	assert.NoError(t, err)
 	require.NotNil(t, inToken)
 
@@ -304,7 +304,7 @@ type testCert struct {
 
 func (tc *testCert) ClientCertificate(t testing.TB) *ClientCertificate {
 	t.Helper()
-	c, err := NewClientCertificate(tc.Cert, tc.Key)
+	c, err := NewClientCertificate(context.Background(), tc.Cert, tc.Key)
 	require.NoError(t, err)
 	return c
 }

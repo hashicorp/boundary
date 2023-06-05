@@ -26,7 +26,13 @@ var ldapMaskManager handlers.MaskManager
 
 func init() {
 	var err error
-	if ldapMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&ldapstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.LdapAuthMethodAttributes{}}); err != nil {
+	if ldapMaskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{
+			&ldapstore.AuthMethod{},
+		},
+		handlers.MaskSource{&pb.AuthMethod{}, &pb.LdapAuthMethodAttributes{}},
+	); err != nil {
 		panic(err)
 	}
 

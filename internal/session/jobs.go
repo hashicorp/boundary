@@ -25,7 +25,7 @@ func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, w db.Writ
 		return errors.New(ctx, errors.InvalidParameter, op, "nil grace period")
 	}
 
-	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(w, gracePeriod)
+	sessionConnectionCleanupJob, err := newSessionConnectionCleanupJob(ctx, w, gracePeriod)
 	if err != nil {
 		return fmt.Errorf("error creating session cleanup job: %w", err)
 	}

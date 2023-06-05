@@ -29,19 +29,20 @@ import (
 // TestConnection creates a test connection for the sessionId in the repository.
 func TestConnection(t testing.TB, conn *db.DB, sessionId, clientTcpAddr string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, userClientIp string) *Connection {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 	rw := db.New(conn)
-	c, err := NewConnection(sessionId, clientTcpAddr, clientTcpPort, endpointTcpAddr, endpointTcpPort, userClientIp)
+	c, err := NewConnection(ctx, sessionId, clientTcpAddr, clientTcpPort, endpointTcpAddr, endpointTcpPort, userClientIp)
 	require.NoError(err)
-	id, err := newConnectionId()
+	id, err := newConnectionId(ctx)
 	require.NoError(err)
 	c.PublicId = id
-	err = rw.Create(context.Background(), c)
+	err = rw.Create(ctx, c)
 	require.NoError(err)
 
-	connectedState, err := NewConnectionState(c.PublicId, StatusConnected)
+	connectedState, err := NewConnectionState(ctx, c.PublicId, StatusConnected)
 	require.NoError(err)
-	err = rw.Create(context.Background(), connectedState)
+	err = rw.Create(ctx, connectedState)
 	require.NoError(err)
 	return c
 }
@@ -49,9 +50,10 @@ func TestConnection(t testing.TB, conn *db.DB, sessionId, clientTcpAddr string, 
 // TestConnectionState creates a test connection state for the connectionId in the repository.
 func TestConnectionState(t testing.TB, conn *db.DB, connectionId string, state ConnectionStatus) *ConnectionState {
 	t.Helper()
+	ctx := context.Background()
 	require := require.New(t)
 	rw := db.New(conn)
-	s, err := NewConnectionState(connectionId, state)
+	s, err := NewConnectionState(ctx, connectionId, state)
 	require.NoError(err)
 	err = rw.Create(context.Background(), s)
 	require.NoError(err)
@@ -63,7 +65,7 @@ func TestState(t testing.TB, conn *db.DB, sessionId string, state Status) *State
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	s, err := NewState(sessionId, state)
+	s, err := NewState(context.Background(), sessionId, state)
 	require.NoError(err)
 	err = rw.Create(context.Background(), s)
 	require.NoError(err)
@@ -75,7 +77,7 @@ func TestSessionHostSetHost(t testing.TB, conn *db.DB, sessionId, hostSetId, hos
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	hs, err := NewSessionHostSetHost(sessionId, hostSetId, hostId)
+	hs, err := NewSessionHostSetHost(context.Background(), sessionId, hostSetId, hostId)
 	require.NoError(err)
 	err = rw.Create(context.Background(), hs)
 	require.NoError(err)
@@ -86,7 +88,7 @@ func TestSessionTargetAddress(t testing.TB, conn *db.DB, sessionId, targetId str
 	t.Helper()
 	require := require.New(t)
 	rw := db.New(conn)
-	ta, err := NewSessionTargetAddress(sessionId, targetId)
+	ta, err := NewSessionTargetAddress(context.Background(), sessionId, targetId)
 	require.NoError(err)
 	err = rw.Create(context.Background(), ta)
 	require.NoError(err)
@@ -104,9 +106,9 @@ func TestSession(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, c Comp
 		c.ExpirationTime = &timestamp.Timestamp{Timestamp: future}
 	}
 	rw := db.New(conn)
-	s, err := New(c, opt...)
+	s, err := New(ctx, c, opt...)
 	require.NoError(err)
-	id, err := newId()
+	id, err := newId(ctx)
 	require.NoError(err)
 	s.PublicId = id
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
@@ -182,7 +184,7 @@ func TestSessionTargetAddressParams(t testing.TB, conn *db.DB, wrapper wrapping.
 	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 	user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(acct.PublicId))
 
-	authTokenRepo, err := authtoken.NewRepository(rw, rw, kms)
+	authTokenRepo, err := authtoken.NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 	require.NoError(err)
@@ -236,7 +238,7 @@ func TestSessionParams(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, iamR
 	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 	user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(acct.PublicId))
 
-	authTokenRepo, err := authtoken.NewRepository(rw, rw, kms)
+	authTokenRepo, err := authtoken.NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 	require.NoError(err)

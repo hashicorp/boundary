@@ -4,6 +4,7 @@
 package managed_groups
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -127,7 +128,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			req := &pbs.CreateManagedGroupRequest{Item: tc.item}
-			err := validateCreateRequest(req)
+			err := validateCreateRequest(context.Background(), req)
 			if tc.errContains == "" {
 				require.NoError(t, err)
 				return
@@ -200,7 +201,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			err := validateUpdateRequest(tc.req)
+			err := validateUpdateRequest(context.Background(), tc.req)
 			if tc.errContains == "" {
 				require.NoError(t, err)
 				return

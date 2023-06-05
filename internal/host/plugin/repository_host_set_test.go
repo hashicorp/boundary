@@ -37,6 +37,7 @@ import (
 )
 
 func TestRepository_CreateSet(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -309,10 +310,10 @@ func TestRepository_CreateSet(t *testing.T) {
 					return plgpb.UnimplementedHostPluginServiceServer{}.OnCreateSet(ctx, req)
 				}}),
 			}
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, plgInfo, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
+			got, plgInfo, err := repo.CreateSet(ctx, prj.GetPublicId(), tt.in, tt.opts...)
 			assert.Equal(tt.wantPluginCalled, pluginCalled)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
@@ -362,7 +363,7 @@ func TestRepository_CreateSet(t *testing.T) {
 				return &plgpb.OnCreateSetResponse{}, nil
 			}}),
 		}
-		repo, err := NewRepository(rw, rw, kms, sched, plgm)
+		repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -405,7 +406,7 @@ func TestRepository_CreateSet(t *testing.T) {
 				return &plgpb.OnCreateSetResponse{}, nil
 			}}),
 		}
-		repo, err := NewRepository(rw, rw, kms, sched, plgm)
+		repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -1236,7 +1237,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			if tt.withEmptyPluginMap {
 				pluginMap = make(map[string]plgpb.HostPluginServiceClient)
 			}
-			repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, pluginMap)
+			repo, err := NewRepository(ctx, dbRW, dbRW, dbKmsCache, sched, pluginMap)
 			require.NoError(err)
 			require.NotNil(repo)
 
@@ -1321,7 +1322,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		origSet, _ := setupBareHostSet(t, ctx)
 
 		pluginMap := testPluginMap
-		repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, pluginMap)
+		repo, err := NewRepository(ctx, dbRW, dbRW, dbKmsCache, sched, pluginMap)
 		require.NoError(t, err)
 		require.NotNil(t, repo)
 
@@ -1393,7 +1394,7 @@ func TestRepository_LookupSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, _, err := repo.LookupSet(ctx, tt.in)
@@ -1510,7 +1511,7 @@ func TestRepository_Endpoints(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.Endpoints(ctx, tt.setIds)
@@ -1548,6 +1549,7 @@ func TestRepository_Endpoints(t *testing.T) {
 }
 
 func TestRepository_ListSets(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1597,10 +1599,10 @@ func TestRepository_ListSets(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, gotPlg, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
+			got, gotPlg, err := repo.ListSets(ctx, tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -1620,6 +1622,7 @@ func TestRepository_ListSets(t *testing.T) {
 }
 
 func TestRepository_ListSets_Limits(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1686,10 +1689,10 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, sched, plgm, tt.repoOpts...)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, gotPlg, err := repo.ListSets(context.Background(), hostSets[0].CatalogId, tt.listOpts...)
+			got, gotPlg, err := repo.ListSets(ctx, hostSets[0].CatalogId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 			assert.Empty(cmp.Diff(plg, gotPlg, protocmp.Transform()))
@@ -1769,7 +1772,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.DeleteSet(ctx, prj.PublicId, tt.in)

@@ -216,7 +216,8 @@ func TestSelfReadingDifferentOutputFields(t *testing.T) {
 
 	conn := tc.DbConn()
 
-	s, err := authmethodsservice.NewService(tc.Kms(),
+	s, err := authmethodsservice.NewService(tc.Context(),
+		tc.Kms(),
 		tc.Controller().PasswordAuthRepoFn,
 		tc.Controller().OidcRepoFn,
 		tc.Controller().IamRepoFn,

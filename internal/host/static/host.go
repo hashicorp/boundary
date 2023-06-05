@@ -4,6 +4,7 @@
 package static
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -29,9 +30,9 @@ type Host struct {
 // NewHost creates a new in memory Host for address assigned to catalogId.
 // Name and description are the only valid options. All other options are
 // ignored.
-func NewHost(catalogId string, opt ...Option) (*Host, error) {
+func NewHost(ctx context.Context, catalogId string, opt ...Option) (*Host, error) {
 	if catalogId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, "static.NewHost", "no catalog id")
+		return nil, errors.New(ctx, errors.InvalidParameter, "static.NewHost", "no catalog id")
 	}
 
 	opts := getOpts(opt...)

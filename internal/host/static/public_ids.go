@@ -4,6 +4,8 @@
 package static
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -22,26 +24,26 @@ const (
 	Subtype = subtypes.Subtype("static")
 )
 
-func newHostCatalogId() (string, error) {
-	id, err := db.NewPublicId(globals.StaticHostCatalogPrefix)
+func newHostCatalogId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(ctx, globals.StaticHostCatalogPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, "static.newHostCatalogId")
+		return "", errors.Wrap(ctx, err, "static.newHostCatalogId")
 	}
 	return id, nil
 }
 
-func newHostId() (string, error) {
-	id, err := db.NewPublicId(globals.StaticHostPrefix)
+func newHostId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(ctx, globals.StaticHostPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, "static.newHostId")
+		return "", errors.Wrap(ctx, err, "static.newHostId")
 	}
 	return id, nil
 }
 
-func newHostSetId() (string, error) {
-	id, err := db.NewPublicId(globals.StaticHostSetPrefix)
+func newHostSetId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(ctx, globals.StaticHostSetPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, "static.newHostSetId")
+		return "", errors.Wrap(ctx, err, "static.newHostSetId")
 	}
 	return id, nil
 }

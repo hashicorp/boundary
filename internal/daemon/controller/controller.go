@@ -185,7 +185,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		conf.RawConfig.Controller = new(config.Controller)
 	}
 
-	if err := conf.RawConfig.Controller.InitNameIfEmpty(); err != nil {
+	if err := conf.RawConfig.Controller.InitNameIfEmpty(ctx); err != nil {
 		return nil, fmt.Errorf("error auto-generating controller name: %w", err)
 	}
 
@@ -326,7 +326,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 
 	// we need to get all the scopes so we can reconcile the DEKs for each scope.
-	iamRepo, err := iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
+	iamRepo, err := iam.NewRepository(ctx, dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize iam repository: %w", err)
 	}
@@ -353,7 +353,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("error rotating eventer audit wrapper: %w", err)
 	}
 	jobRepoFn := func() (*job.Repository, error) {
-		return job.NewRepository(dbase, dbase, c.kms)
+		return job.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	// TODO: Allow setting run jobs limit from config
 	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
@@ -364,18 +364,18 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		schedulerOpts = append(schedulerOpts, scheduler.WithMonitorInterval(c.conf.RawConfig.Controller.Scheduler.MonitorIntervalDuration))
 	}
 
-	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
+	c.scheduler, err = scheduler.New(ctx, c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)
 	}
 	c.IamRepoFn = func() (*iam.Repository, error) {
-		return iam.NewRepository(dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
+		return iam.NewRepository(ctx, dbase, dbase, c.kms, iam.WithRandomReader(c.conf.SecureRandomReader))
 	}
 	c.StaticHostRepoFn = func() (*static.Repository, error) {
-		return static.NewRepository(dbase, dbase, c.kms)
+		return static.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
-		return pluginhost.NewRepository(dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
+		return pluginhost.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
 	}
 	c.PluginRepoFn = func() (*plugin.Repository, error) {
 		return plugin.NewRepository(ctx, dbase, dbase, c.kms)
@@ -384,18 +384,18 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return pluginstorage.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(dbase, dbase, c.kms,
+		return authtoken.NewRepository(ctx, dbase, dbase, c.kms,
 			authtoken.WithTokenTimeToLiveDuration(c.conf.RawConfig.Controller.AuthTokenTimeToLiveDuration),
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
 	}
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
-		return vault.NewRepository(dbase, dbase, c.kms, c.scheduler)
+		return vault.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler)
 	}
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
-		return server.NewRepository(dbase, dbase, c.kms)
+		return server.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.OidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, dbase, dbase, c.kms)
@@ -404,7 +404,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return ldap.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
-		return password.NewRepository(dbase, dbase, c.kms)
+		return password.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)

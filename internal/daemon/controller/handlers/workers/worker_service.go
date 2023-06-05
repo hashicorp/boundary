@@ -73,7 +73,11 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Worker{}}, handlers.MaskSource{&pb.Worker{}}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&store.Worker{}},
+		handlers.MaskSource{&pb.Worker{}},
+	); err != nil {
 		panic(err)
 	}
 }
@@ -113,7 +117,7 @@ func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn c
 
 // ListWorkers implements the interface pbs.WorkerServiceServer.
 func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (*pbs.ListWorkersResponse, error) {
-	if err := validateListRequest(req); err != nil {
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -148,7 +152,7 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 		return &pbs.ListWorkersResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(req.GetFilter())
+	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -913,12 +917,12 @@ func validateGetRequest(req *pbs.GetWorkerRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.WorkerPrefix)
 }
 
-func validateListRequest(req *pbs.ListWorkersRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListWorkersRequest) error {
 	badFields := map[string]string{}
 	if req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Must be 'global' when listing."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

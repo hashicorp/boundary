@@ -165,6 +165,7 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 	}
 	serverName = fmt.Sprintf("%s/boundary-database-migrate", serverName)
 	if err := c.srv.SetupEventing(
+		c.Context,
 		c.srv.Logger,
 		c.srv.StderrLock,
 		serverName,

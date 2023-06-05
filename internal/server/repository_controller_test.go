@@ -21,7 +21,7 @@ func TestRepository_UpsertController(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
-	testRepo, err := NewRepository(rw, rw, testKms)
+	testRepo, err := NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)

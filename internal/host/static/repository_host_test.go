@@ -26,6 +26,7 @@ import (
 )
 
 func TestRepository_CreateHost(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -163,10 +164,10 @@ func TestRepository_CreateHost(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
+			got, err := repo.CreateHost(ctx, prj.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -186,7 +187,7 @@ func TestRepository_CreateHost(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -201,7 +202,7 @@ func TestRepository_CreateHost(t *testing.T) {
 			},
 		}
 
-		got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got, err := repo.CreateHost(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, globals.StaticHostPrefix, got.PublicId)
@@ -210,14 +211,14 @@ func TestRepository_CreateHost(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got2, err := repo.CreateHost(ctx, prj.GetPublicId(), in)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
 
 	t.Run("valid-duplicate-names-diff-catalogs", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -235,7 +236,7 @@ func TestRepository_CreateHost(t *testing.T) {
 		in2 := in.clone()
 
 		in.CatalogId = catalogA.PublicId
-		got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got, err := repo.CreateHost(ctx, prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, globals.StaticHostPrefix, got.PublicId)
@@ -245,7 +246,7 @@ func TestRepository_CreateHost(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.CatalogId = catalogB.PublicId
-		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in2)
+		got2, err := repo.CreateHost(ctx, prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
 		assertPublicId(t, globals.StaticHostPrefix, got2.PublicId)
@@ -598,7 +599,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -606,7 +607,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 
 			tt.orig.CatalogId = catalog.PublicId
-			orig, err := repo.CreateHost(context.Background(), prj.GetPublicId(), tt.orig)
+			orig, err := repo.CreateHost(ctx, prj.GetPublicId(), tt.orig)
 			assert.NoError(err)
 			require.NotNil(orig)
 
@@ -617,7 +618,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, gotCount, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
+			got, gotCount, err := repo.UpdateHost(ctx, prj.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
@@ -653,7 +654,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -665,7 +666,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		hA, hB := hs[0], hs[1]
 
 		hA.Name = name
-		got1, gotCount1, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), hA, 1, []string{"name"})
+		got1, gotCount1, err := repo.UpdateHost(ctx, prj.GetPublicId(), hA, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(name, got1.Name)
@@ -673,7 +674,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, hA.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 
 		hB.Name = name
-		got2, gotCount2, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), hB, 1, []string{"name"})
+		got2, gotCount2, err := repo.UpdateHost(ctx, prj.GetPublicId(), hB, 1, []string{"name"})
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -684,7 +685,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-Catalogs", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -702,7 +703,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 		in2 := in.clone()
 
 		in.CatalogId = catalogA.PublicId
-		got, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in)
+		got, err := repo.CreateHost(ctx, prj.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, globals.StaticHostPrefix, got.PublicId)
@@ -712,11 +713,11 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 		in2.CatalogId = catalogB.PublicId
 		in2.Name = "first-name"
-		got2, err := repo.CreateHost(context.Background(), prj.GetPublicId(), in2)
+		got2, err := repo.CreateHost(ctx, prj.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.Name = got.Name
-		got3, gotCount3, err := repo.UpdateHost(context.Background(), prj.GetPublicId(), got2, 1, []string{"name"})
+		got3, gotCount3, err := repo.UpdateHost(ctx, prj.GetPublicId(), got2, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -728,7 +729,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 
 	t.Run("change-project-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -757,6 +758,7 @@ func TestRepository_UpdateHost(t *testing.T) {
 }
 
 func TestRepository_LookupHost(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -767,7 +769,7 @@ func TestRepository_LookupHost(t *testing.T) {
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	host := TestHosts(t, conn, catalog.PublicId, 1)[0]
 
-	hostId, err := newHostId()
+	hostId, err := newHostId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name      string
@@ -794,10 +796,10 @@ func TestRepository_LookupHost(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupHost(context.Background(), tt.in)
+			got, err := repo.LookupHost(ctx, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -810,6 +812,7 @@ func TestRepository_LookupHost(t *testing.T) {
 }
 
 func TestRepository_LookupHost_HostSets(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -859,10 +862,11 @@ func TestRepository_LookupHost_HostSets(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupHost(context.Background(), tt.in)
+			got, err := repo.LookupHost(ctx, tt.in)
+			require.NoError(err)
 			assert.Empty(
 				cmp.Diff(
 					tt.want,
@@ -876,6 +880,7 @@ func TestRepository_LookupHost_HostSets(t *testing.T) {
 }
 
 func TestRepository_ListHosts(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -915,10 +920,10 @@ func TestRepository_ListHosts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(context.Background(), tt.in, tt.opts...)
+			got, err := repo.ListHosts(ctx, tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -935,6 +940,7 @@ func TestRepository_ListHosts(t *testing.T) {
 }
 
 func TestRepository_ListHosts_HostSets(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -988,10 +994,10 @@ func TestRepository_ListHosts_HostSets(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(context.Background(), tt.in)
+			got, err := repo.ListHosts(ctx, tt.in)
 			require.NoError(err)
 			assert.Empty(
 				cmp.Diff(
@@ -1009,6 +1015,7 @@ func TestRepository_ListHosts_HostSets(t *testing.T) {
 }
 
 func TestRepository_ListHosts_Limits(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1068,10 +1075,10 @@ func TestRepository_ListHosts_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			repo, err := NewRepository(ctx, rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(context.Background(), hosts[0].CatalogId, tt.listOpts...)
+			got, err := repo.ListHosts(ctx, hosts[0].CatalogId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 		})
@@ -1079,6 +1086,7 @@ func TestRepository_ListHosts_Limits(t *testing.T) {
 }
 
 func TestRepository_DeleteHost(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1089,7 +1097,7 @@ func TestRepository_DeleteHost(t *testing.T) {
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	host := TestHosts(t, conn, catalog.PublicId, 1)[0]
 
-	newHostId, err := newHostId()
+	newHostId, err := newHostId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name      string
@@ -1117,10 +1125,10 @@ func TestRepository_DeleteHost(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteHost(context.Background(), catalog.ProjectId, tt.in)
+			got, err := repo.DeleteHost(ctx, catalog.ProjectId, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)

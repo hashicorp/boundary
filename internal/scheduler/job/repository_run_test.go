@@ -21,6 +21,7 @@ import (
 
 func TestRepository_RunJobs(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -95,11 +96,11 @@ func TestRepository_RunJobs(t *testing.T) {
 				testJob(t, conn, tt.job.Name, tt.job.Description, wrapper)
 			}
 
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
-			got, err := repo.RunJobs(context.Background(), tt.ControllerId)
+			got, err := repo.RunJobs(ctx, tt.ControllerId)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -121,6 +122,7 @@ func TestRepository_RunJobs(t *testing.T) {
 
 func TestRepository_RunJobs_Limits(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -165,7 +167,7 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -173,12 +175,12 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 				testJob(t, conn, fmt.Sprintf("%v-%d", tt.name, i), "description", wrapper)
 			}
 
-			got, err := repo.RunJobs(context.Background(), server.PrivateId, tt.opts...)
+			got, err := repo.RunJobs(ctx, server.PrivateId, tt.opts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 
 			// Clean up jobs for next run
-			rows, err := rw.Query(context.Background(), "delete from job", nil)
+			rows, err := rw.Query(ctx, "delete from job", nil)
 			require.NoError(err)
 			_ = rows.Close()
 		})
@@ -187,6 +189,7 @@ func TestRepository_RunJobs_Limits(t *testing.T) {
 
 func TestRepository_RunJobsOrder(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -196,7 +199,7 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 	server := testController(t, conn, wrapper)
 	assert, require := assert.New(t), require.New(t)
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
@@ -205,7 +208,7 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 	firstJob := testJob(t, conn, "past", "description", wrapper, WithNextRunIn(-24*time.Hour))
 	middleJob := testJob(t, conn, "current", "description", wrapper, WithNextRunIn(-12*time.Hour))
 
-	runs, err := repo.RunJobs(context.Background(), server.PrivateId)
+	runs, err := repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	require.Len(runs, 1)
 	run := runs[0]
@@ -213,10 +216,10 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 	assert.Equal(run.JobPluginId, firstJob.PluginId)
 
 	// End first job with time between last and middle
-	_, err = repo.CompleteRun(context.Background(), run.PrivateId, -6*time.Hour, 0, 0)
+	_, err = repo.CompleteRun(ctx, run.PrivateId, -6*time.Hour, 0, 0)
 	require.NoError(err)
 
-	runs, err = repo.RunJobs(context.Background(), server.PrivateId)
+	runs, err = repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	require.Len(runs, 1)
 	run = runs[0]
@@ -224,14 +227,14 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 	assert.Equal(run.JobPluginId, middleJob.PluginId)
 
 	// firstJob should be up again, as it is scheduled before lastJob
-	runs, err = repo.RunJobs(context.Background(), server.PrivateId)
+	runs, err = repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	require.Len(runs, 1)
 	run = runs[0]
 	assert.Equal(run.JobName, firstJob.Name)
 	assert.Equal(run.JobPluginId, firstJob.PluginId)
 
-	runs, err = repo.RunJobs(context.Background(), server.PrivateId)
+	runs, err = repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	require.Len(runs, 1)
 	run = runs[0]
@@ -239,13 +242,14 @@ func TestRepository_RunJobsOrder(t *testing.T) {
 	assert.Equal(run.JobPluginId, lastJob.PluginId)
 
 	// All jobs are running no work should be returned
-	runs, err = repo.RunJobs(context.Background(), server.PrivateId)
+	runs, err = repo.RunJobs(ctx, server.PrivateId)
 	require.NoError(err)
 	require.Len(runs, 0)
 }
 
 func TestRepository_UpdateProgress(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -406,19 +410,19 @@ func TestRepository_UpdateProgress(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 
 			var privateId string
 			if tt.orig != nil {
-				err = rw.Create(context.Background(), tt.orig)
+				err = rw.Create(ctx, tt.orig)
 				assert.NoError(err)
 				assert.Empty(tt.orig.EndTime)
 				privateId = tt.orig.PrivateId
 			}
 
-			got, err := repo.UpdateProgress(context.Background(), privateId, tt.args.completed, tt.args.total)
+			got, err := repo.UpdateProgress(ctx, privateId, tt.args.completed, tt.args.total)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -426,7 +430,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 
 				if tt.orig != nil {
 					// Delete job run so it does not clash with future runs
-					_, err = repo.deleteRun(context.Background(), privateId)
+					_, err = repo.deleteRun(ctx, privateId)
 					assert.NoError(err)
 				}
 
@@ -447,11 +451,11 @@ func TestRepository_UpdateProgress(t *testing.T) {
 
 	t.Run("job-run-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.UpdateProgress(context.Background(), "fake-run-id", 0, 0)
+		got, err := repo.UpdateProgress(ctx, "fake-run-id", 0, 0)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
@@ -461,6 +465,7 @@ func TestRepository_UpdateProgress(t *testing.T) {
 
 func TestRepository_CompleteRun(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -560,19 +565,19 @@ func TestRepository_CompleteRun(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 
 			var privateId string
 			if tt.orig != nil {
-				err = rw.Create(context.Background(), tt.orig)
+				err = rw.Create(ctx, tt.orig)
 				require.NoError(err)
 				assert.Empty(tt.orig.EndTime)
 				privateId = tt.orig.PrivateId
 			}
 
-			got, err := repo.CompleteRun(context.Background(), privateId, tt.nextRunIn, tt.args.completed, tt.args.total)
+			got, err := repo.CompleteRun(ctx, privateId, tt.nextRunIn, tt.args.completed, tt.args.total)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -580,7 +585,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 
 				if tt.orig != nil {
 					// Delete job run so it does not clash with future runs
-					_, err = repo.deleteRun(context.Background(), privateId)
+					_, err = repo.deleteRun(ctx, privateId)
 					assert.NoError(err)
 				}
 
@@ -593,7 +598,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 			assert.Equal(tt.args.completed, int(got.CompletedCount))
 			assert.Equal(tt.args.total, int(got.TotalCount))
 
-			updatedJob, err := repo.LookupJob(context.Background(), tt.orig.JobName)
+			updatedJob, err := repo.LookupJob(ctx, tt.orig.JobName)
 			assert.NoError(err)
 			require.NotNil(updatedJob)
 
@@ -605,18 +610,18 @@ func TestRepository_CompleteRun(t *testing.T) {
 			assert.Equal(nextRunAt.Round(time.Minute), previousRunEnd.Add(tt.nextRunIn).Round(time.Minute))
 
 			// Delete job run so it does not clash with future runs
-			_, err = repo.deleteRun(context.Background(), privateId)
+			_, err = repo.deleteRun(ctx, privateId)
 			assert.NoError(err)
 		})
 	}
 
 	t.Run("job-run-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.CompleteRun(context.Background(), "fake-run-id", time.Hour, 0, 0)
+		got, err := repo.CompleteRun(ctx, "fake-run-id", time.Hour, 0, 0)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
@@ -626,6 +631,7 @@ func TestRepository_CompleteRun(t *testing.T) {
 
 func TestRepository_FailRun(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -723,19 +729,19 @@ func TestRepository_FailRun(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 
 			var privateId string
 			if tt.orig != nil {
-				err = rw.Create(context.Background(), tt.orig)
+				err = rw.Create(ctx, tt.orig)
 				assert.NoError(err)
 				assert.Empty(tt.orig.EndTime)
 				privateId = tt.orig.PrivateId
 			}
 
-			got, err := repo.FailRun(context.Background(), privateId, tt.args.completed, tt.args.total)
+			got, err := repo.FailRun(ctx, privateId, tt.args.completed, tt.args.total)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -743,7 +749,7 @@ func TestRepository_FailRun(t *testing.T) {
 
 				if tt.orig != nil {
 					// Delete job run so it does not clash with future runs
-					_, err = repo.deleteRun(context.Background(), privateId)
+					_, err = repo.deleteRun(ctx, privateId)
 					assert.NoError(err)
 				}
 
@@ -764,11 +770,11 @@ func TestRepository_FailRun(t *testing.T) {
 
 	t.Run("job-run-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kmsCache)
+		repo, err := NewRepository(ctx, rw, rw, kmsCache)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.FailRun(context.Background(), "fake-run-id", 0, 0)
+		got, err := repo.FailRun(ctx, "fake-run-id", 0, 0)
 		require.Error(err)
 		require.Nil(got)
 		assert.Truef(errors.Match(errors.T(errors.RecordNotFound), err), "Unexpected error %s", err)
@@ -778,6 +784,7 @@ func TestRepository_FailRun(t *testing.T) {
 
 func TestRepository_InterruptRuns(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -832,7 +839,7 @@ func TestRepository_InterruptRuns(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -846,7 +853,7 @@ func TestRepository_InterruptRuns(t *testing.T) {
 			_, err = testRunWithUpdateTime(conn, job4.PluginId, job4.Name, server.PrivateId, time.Now().Add(-7*time.Hour))
 			require.NoError(err)
 
-			runs, err := repo.InterruptRuns(context.Background(), tt.threshold)
+			runs, err := repo.InterruptRuns(ctx, tt.threshold)
 			require.NoError(err)
 			assert.Equal(len(runs), len(tt.expectedInterrupts))
 			for _, eJob := range tt.expectedInterrupts {
@@ -861,7 +868,7 @@ func TestRepository_InterruptRuns(t *testing.T) {
 			}
 
 			// Interrupt all runs for next test
-			_, err = repo.InterruptRuns(context.Background(), 0)
+			_, err = repo.InterruptRuns(ctx, 0)
 			assert.NoError(err)
 		})
 	}
@@ -869,6 +876,7 @@ func TestRepository_InterruptRuns(t *testing.T) {
 
 func TestRepository_InterruptServerRuns(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -1081,11 +1089,11 @@ func TestRepository_InterruptServerRuns(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			repo, err := NewRepository(rw, rw, kmsCache)
+			repo, err := NewRepository(ctx, rw, rw, kmsCache)
 			require.NoError(err)
 
 			for _, r := range tt.runs {
-				runs, err := repo.RunJobs(context.Background(), r.ControllerId, r.opts...)
+				runs, err := repo.RunJobs(ctx, r.ControllerId, r.opts...)
 				require.NoError(err)
 				assert.Len(runs, len(r.expectedJobs))
 				sort.Slice(runs, func(i, j int) bool { return runs[i].JobName < runs[j].JobName })
@@ -1149,6 +1157,7 @@ func TestRepository_DuplicateJobRun(t *testing.T) {
 
 func TestRepository_LookupJobRun(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1190,10 +1199,10 @@ func TestRepository_LookupJobRun(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupRun(context.Background(), tt.in)
+			got, err := repo.LookupRun(ctx, tt.in)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -1209,6 +1218,7 @@ func TestRepository_LookupJobRun(t *testing.T) {
 
 func TestRepository_deleteJobRun(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1252,10 +1262,10 @@ func TestRepository_deleteJobRun(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.deleteRun(context.Background(), tt.in)
+			got, err := repo.deleteRun(ctx, tt.in)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)

@@ -75,7 +75,7 @@ func TestMigrations_Credential_Purpose_Refactor(t *testing.T) {
 
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	authRepo, err := authtoken.NewRepository(rw, rw, kmsCache)
+	authRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	uId := "u_1234567890"
@@ -246,13 +246,13 @@ values
 	cred1 := credsStatic[0]
 	cred2 := credsStatic[1]
 
-	appCredLib, err := target.NewCredentialLibrary(targetId, lib1.GetPublicId(), "application")
+	appCredLib, err := target.NewCredentialLibrary(ctx, targetId, lib1.GetPublicId(), "application")
 	require.NoError(t, err)
-	egressCredLib, err := target.NewCredentialLibrary(targetId, lib2.GetPublicId(), "egress")
+	egressCredLib, err := target.NewCredentialLibrary(ctx, targetId, lib2.GetPublicId(), "egress")
 	require.NoError(t, err)
-	appCred, err := target.NewStaticCredential(targetId, cred1.PublicId, "application")
+	appCred, err := target.NewStaticCredential(ctx, targetId, cred1.PublicId, "application")
 	require.NoError(t, err)
-	egressCred, err := target.NewStaticCredential(targetId, cred2.PublicId, "egress")
+	egressCred, err := target.NewStaticCredential(ctx, targetId, cred2.PublicId, "egress")
 	require.NoError(t, err)
 
 	err = rw.CreateItems(ctx, []any{appCredLib, egressCredLib})

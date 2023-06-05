@@ -25,7 +25,7 @@ const (
 )
 
 func newCredentialStoreId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(globals.StaticCredentialStorePrefix)
+	id, err := db.NewPublicId(ctx, globals.StaticCredentialStorePrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "static.newCredentialStoreId")
 	}

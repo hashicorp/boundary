@@ -4,6 +4,8 @@
 package password
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -27,10 +29,10 @@ func allocAuthMethod() AuthMethod {
 // Name and description are the only valid options. All other options are
 // ignored.  MinLoginNameLength and MinPasswordLength are pre-set to the
 // default values of 5 and 8 respectively.
-func NewAuthMethod(scopeId string, opt ...Option) (*AuthMethod, error) {
+func NewAuthMethod(ctx context.Context, scopeId string, opt ...Option) (*AuthMethod, error) {
 	const op = "password.NewAuthMethod"
 	if scopeId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 
 	opts := GetOpts(opt...)

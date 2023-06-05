@@ -73,7 +73,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	now := time.Now()
 	createTime := timestamppb.New(now.Truncate(time.Second))
 	exp := timestamppb.New(now.Add(AttemptExpiration).Truncate(time.Second))
-	tokenRequestId, err := authtoken.NewAuthTokenId()
+	tokenRequestId, err := authtoken.NewAuthTokenId(ctx)
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op)
 	}

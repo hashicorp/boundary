@@ -53,7 +53,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 		got := NewArgon2Configuration()
 		require.NotNil(got)
 		var err error
-		got.PrivateId, err = newArgon2ConfigurationId()
+		got.PrivateId, err = newArgon2ConfigurationId(context.Background())
 		require.NoError(err)
 		got.PasswordMethodId = authMethodId
 		err = rw.Create(ctx, got)
@@ -69,7 +69,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 
 		c1 := NewArgon2Configuration()
 		require.NotNil(c1)
-		c1.PrivateId, err = newArgon2ConfigurationId()
+		c1.PrivateId, err = newArgon2ConfigurationId(context.Background())
 		require.NoError(err)
 		c1.PasswordMethodId = authMethodId
 		c1.Iterations = c1.Iterations + 1
@@ -79,7 +79,7 @@ func TestArgon2Configuration_New(t *testing.T) {
 
 		c2 := NewArgon2Configuration()
 		require.NotNil(c2)
-		c2.PrivateId, err = newArgon2ConfigurationId()
+		c2.PrivateId, err = newArgon2ConfigurationId(context.Background())
 		require.NoError(err)
 		c2.PasswordMethodId = authMethodId
 		c2.Memory = 32 * 1024
@@ -280,7 +280,7 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got := tt.in.validate()
+			got := tt.in.validate(context.Background())
 			if tt.wantErr {
 				require.Error(got)
 				assert.Truef(errors.Match(errors.T(tt.wantErrIs), got), "want err code: %q got err: %q", tt.wantErrIs, got)
@@ -294,6 +294,7 @@ func TestArgon2Configuration_Validate(t *testing.T) {
 
 func testArgon2Confs(t *testing.T, conn *db.DB, authMethodId string, count int) []*Argon2Configuration {
 	t.Helper()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	rw := db.New(conn)
 	var confs []*Argon2Configuration
@@ -305,12 +306,12 @@ func testArgon2Confs(t *testing.T, conn *db.DB, authMethodId string, count int) 
 		conf := NewArgon2Configuration()
 		require.NotNil(conf)
 		conf.PasswordMethodId = authMethodId
-		conf.PrivateId, err = newArgon2ConfigurationId()
+		conf.PrivateId, err = newArgon2ConfigurationId(ctx)
 		require.NoError(err)
 
 		conf.Iterations = base.Iterations + uint32(i+1)
 		conf.Threads = base.Threads + uint32(i+1)
-		err = rw.Create(context.Background(), conf)
+		err = rw.Create(ctx, conf)
 		require.NoError(err)
 		confs = append(confs, conf)
 	}
@@ -425,7 +426,7 @@ func TestArgon2Credential_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := newArgon2Credential(tt.args.accountId, tt.args.password, tt.args.conf)
+			got, err := newArgon2Credential(context.Background(), tt.args.accountId, tt.args.password, tt.args.conf)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())

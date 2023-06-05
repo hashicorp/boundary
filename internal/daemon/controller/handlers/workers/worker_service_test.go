@@ -87,7 +87,7 @@ func TestGet(t *testing.T) {
 	}
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrap)
-	repo, err := server.NewRepository(rw, rw, kms)
+	repo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	repoFn := func() (*server.Repository, error) {
 		return repo, nil
@@ -248,7 +248,7 @@ func TestList(t *testing.T) {
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kms)
+		return server.NewRepository(ctx, rw, rw, kms)
 	}
 	oldDownstramFn := downstreamWorkers
 	t.Cleanup(func() {
@@ -389,6 +389,7 @@ func TestList(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -398,9 +399,8 @@ func TestDelete(t *testing.T) {
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrap)
 	repoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kms)
+		return server.NewRepository(ctx, rw, rw, kms)
 	}
-	ctx := context.Background()
 
 	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kms)
 	require.NoError(t, err)
@@ -489,7 +489,7 @@ func TestUpdate(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repo, err := server.NewRepository(rw, rw, kms)
+	repo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	repoFn := func() (*server.Repository, error) {
 		return repo, nil
@@ -1001,7 +1001,7 @@ func TestUpdate_KMS(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	repo, err := server.NewRepository(rw, rw, kms)
+	repo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	repoFn := func() (*server.Repository, error) {
 		return repo, nil
@@ -1094,7 +1094,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 
 	_, proj := iam.TestScopes(t, iamRepo)
 
-	repo, err := server.NewRepository(rw, rw, kms)
+	repo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err, "Couldn't create new worker repo.")
 	repoFn := func() (*server.Repository, error) {
 		return repo, nil
@@ -1119,6 +1119,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 }
 
 func TestCreateWorkerLed(t *testing.T) {
+	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	testRootWrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, testRootWrapper)
@@ -1128,10 +1129,9 @@ func TestCreateWorkerLed(t *testing.T) {
 	rw := db.New(conn)
 	testKms := kms.TestKms(t, conn, testRootWrapper)
 	repoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, testKms)
+		return server.NewRepository(testCtx, rw, rw, testKms)
 	}
 
-	testCtx := context.Background()
 	workerAuthRepo, err := server.NewRepositoryStorage(testCtx, rw, rw, testKms)
 	require.NoError(t, err)
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
@@ -1388,7 +1388,7 @@ func TestCreateWorkerLed(t *testing.T) {
 			name: "create-error",
 			service: func() Service {
 				repoFn := func() (*server.Repository, error) {
-					return server.NewRepository(rw, &db.Db{}, testKms)
+					return server.NewRepository(testCtx, rw, &db.Db{}, testKms)
 				}
 				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 				require.NoError(t, err, "Error when getting new worker service.")
@@ -1420,7 +1420,7 @@ func TestCreateWorkerLed(t *testing.T) {
 					case cnt > 1:
 						return nil, errors.New(testCtx, errors.Internal, "bad-repo-function", "error creating repo")
 					default:
-						return server.NewRepository(rw, rw, testKms)
+						return server.NewRepository(testCtx, rw, rw, testKms)
 					}
 				}
 				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
@@ -1504,6 +1504,7 @@ func TestCreateWorkerLed(t *testing.T) {
 }
 
 func TestCreateControllerLed(t *testing.T) {
+	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	testRootWrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, testRootWrapper)
@@ -1513,9 +1514,8 @@ func TestCreateControllerLed(t *testing.T) {
 	rw := db.New(conn)
 	testKms := kms.TestKms(t, conn, testRootWrapper)
 	repoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, testKms)
+		return server.NewRepository(testCtx, rw, rw, testKms)
 	}
-	testCtx := context.Background()
 
 	rootStorage, err := server.NewRepositoryStorage(testCtx, rw, rw, testKms)
 	require.NoError(t, err)
@@ -1735,7 +1735,7 @@ func TestCreateControllerLed(t *testing.T) {
 			name: "create-error",
 			service: func() Service {
 				repoFn := func() (*server.Repository, error) {
-					return server.NewRepository(rw, &db.Db{}, testKms)
+					return server.NewRepository(testCtx, rw, &db.Db{}, testKms)
 				}
 				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil)
 				require.NoError(t, err, "Error when getting new worker service.")
@@ -1766,7 +1766,7 @@ func TestCreateControllerLed(t *testing.T) {
 					case cnt > 1:
 						return nil, errors.New(testCtx, errors.Internal, "bad-repo-function", "error creating repo")
 					default:
-						return server.NewRepository(rw, rw, testKms)
+						return server.NewRepository(testCtx, rw, rw, testKms)
 					}
 				}
 				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil)
@@ -1864,7 +1864,7 @@ func TestService_AddWorkerTags(t *testing.T) {
 	rw := db.New(conn)
 	testKms := kms.TestKms(t, conn, wrapper)
 	repoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, testKms)
+		return server.NewRepository(ctx, rw, rw, testKms)
 	}
 	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, testKms)
 	require.NoError(err)
@@ -2024,7 +2024,7 @@ func TestService_SetWorkerTags(t *testing.T) {
 	rw := db.New(conn)
 	testKms := kms.TestKms(t, conn, wrapper)
 	repoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, testKms)
+		return server.NewRepository(ctx, rw, rw, testKms)
 	}
 	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, testKms)
 	require.NoError(err)
@@ -2187,7 +2187,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 	rw := db.New(conn)
 	testKms := kms.TestKms(t, conn, wrapper)
 	repoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, testKms)
+		return server.NewRepository(ctx, rw, rw, testKms)
 	}
 	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, testKms)
 	require.NoError(err)
@@ -2380,7 +2380,7 @@ func TestReadCertificateAuthority(t *testing.T) {
 	}
 
 	repoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kmsCache)
+		return server.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
@@ -2456,7 +2456,7 @@ func TestReinitializeCertificateAuthority(t *testing.T) {
 	}
 
 	repoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kmsCache)
+		return server.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	workerAuthRepo, err := server.NewRepositoryStorage(ctx, rw, rw, kmsCache)

@@ -21,6 +21,7 @@ import (
 )
 
 func TestRepository_AddSetMembers_Parameters(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -115,10 +116,10 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.AddSetMembers(context.Background(), tt.args.projectId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			got, err := repo.AddSetMembers(ctx, tt.args.projectId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -144,6 +145,7 @@ func TestRepository_AddSetMembers_Parameters(t *testing.T) {
 }
 
 func TestRepository_AddSetMembers_Combinations(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -156,7 +158,7 @@ func TestRepository_AddSetMembers_Combinations(t *testing.T) {
 	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	set := TestSets(t, conn, c.PublicId, 1)[0]
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
@@ -186,7 +188,7 @@ func TestRepository_AddSetMembers_Combinations(t *testing.T) {
 	for _, h := range Hosts {
 		hostIds2 = append(hostIds2, h.PublicId)
 	}
-	got2, err2 := repo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds2)
+	got2, err2 := repo.AddSetMembers(ctx, prj.PublicId, set.PublicId, set.Version, hostIds2)
 	require.NoError(err2)
 	require.NotNil(got2)
 
@@ -203,12 +205,13 @@ func TestRepository_AddSetMembers_Combinations(t *testing.T) {
 		hostIds3 = append(hostIds2, h.PublicId)
 	}
 	hostIds3 = append(hostIds3, hostIds2...)
-	got3, err3 := repo.AddSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds3)
+	got3, err3 := repo.AddSetMembers(ctx, prj.PublicId, set.PublicId, set.Version, hostIds3)
 	require.Error(err3)
 	require.Nil(got3)
 }
 
 func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -307,10 +310,10 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteSetMembers(context.Background(), tt.args.projectId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			got, err := repo.DeleteSetMembers(ctx, tt.args.projectId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)
@@ -331,6 +334,7 @@ func TestRepository_DeleteSetMembers_Parameters(t *testing.T) {
 }
 
 func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -343,7 +347,7 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	set := TestSets(t, conn, c.PublicId, 1)[0]
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
@@ -360,13 +364,13 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 	hostsB, idsB := hosts[split:], hostIds[split:]
 
 	// first call - delete first half of hosts - should succeed
-	got, err := repo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsA)
+	got, err := repo.DeleteSetMembers(ctx, prj.PublicId, set.PublicId, set.Version, idsA)
 	assert.NoError(err)
 	require.Equal(len(idsA), got)
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 
 	// verify hostsB are still members
-	members, err := getHosts(context.Background(), repo.reader, set.PublicId, unlimited)
+	members, err := getHosts(ctx, repo.reader, set.PublicId, unlimited)
 	require.NoError(err)
 
 	opts := []cmp.Option{
@@ -378,28 +382,29 @@ func TestRepository_DeleteSetMembers_Combinations(t *testing.T) {
 
 	// second call - delete first half of hosts again - should fail
 	set.Version = set.Version + 1
-	got2, err2 := repo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsA)
+	got2, err2 := repo.DeleteSetMembers(ctx, prj.PublicId, set.PublicId, set.Version, idsA)
 	require.Error(err2)
 	assert.Zero(got2)
 
 	// third call - delete first half and second half - should fail
-	got3, err3 := repo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIds)
+	got3, err3 := repo.DeleteSetMembers(ctx, prj.PublicId, set.PublicId, set.Version, hostIds)
 	require.Error(err3)
 	assert.Zero(got3)
 
 	// fourth call - delete second half of hosts - should succeed
-	got4, err4 := repo.DeleteSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, idsB)
+	got4, err4 := repo.DeleteSetMembers(ctx, prj.PublicId, set.PublicId, set.Version, idsB)
 	assert.NoError(err4)
 	require.Equal(len(idsB), got4)
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second)))
 
 	// verify no members remain
-	Members, err := getHosts(context.Background(), repo.reader, set.PublicId, unlimited)
+	Members, err := getHosts(ctx, repo.reader, set.PublicId, unlimited)
 	require.NoError(err)
 	require.Empty(Members)
 }
 
 func TestRepository_SetSetMembers_Parameters(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -496,10 +501,10 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, gotCount, err := repo.SetSetMembers(context.Background(), tt.args.projectId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
+			got, gotCount, err := repo.SetSetMembers(ctx, tt.args.projectId, tt.args.setId, tt.args.version, tt.args.hostIds, tt.args.opt...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -528,6 +533,7 @@ func TestRepository_SetSetMembers_Parameters(t *testing.T) {
 }
 
 func TestRepository_SetSetMembers_Combinations(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -540,7 +546,7 @@ func TestRepository_SetSetMembers_Combinations(t *testing.T) {
 	c := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	set := TestSets(t, conn, c.PublicId, 1)[0]
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
@@ -563,7 +569,7 @@ func TestRepository_SetSetMembers_Combinations(t *testing.T) {
 	}
 
 	// first call - empty set, empty host Ids - no additions no deletions
-	got1, gotCount1, err1 := repo.SetSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, nil)
+	got1, gotCount1, err1 := repo.SetSetMembers(ctx, prj.PublicId, set.PublicId, set.Version, nil)
 	assert.NoError(err1)
 	assert.Empty(got1)
 	assert.Zero(gotCount1)
@@ -579,7 +585,7 @@ func TestRepository_SetSetMembers_Combinations(t *testing.T) {
 
 	// third call - mix of additions and deletions
 	set.Version = set.Version + 1
-	got3, gotCount3, err3 := repo.SetSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, hostIdsB)
+	got3, gotCount3, err3 := repo.SetSetMembers(ctx, prj.PublicId, set.PublicId, set.Version, hostIdsB)
 	assert.NoError(err3)
 	assert.Equal(4, gotCount3)
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
@@ -588,7 +594,7 @@ func TestRepository_SetSetMembers_Combinations(t *testing.T) {
 
 	// fourth call - all deletions
 	set.Version = set.Version + 1
-	got4, gotCount4, err4 := repo.SetSetMembers(context.Background(), prj.PublicId, set.PublicId, set.Version, nil)
+	got4, gotCount4, err4 := repo.SetSetMembers(ctx, prj.PublicId, set.PublicId, set.Version, nil)
 	assert.NoError(err4)
 	assert.Equal(len(hostsB), gotCount4)
 	assert.NoError(db.TestVerifyOplog(t, rw, set.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
@@ -596,6 +602,7 @@ func TestRepository_SetSetMembers_Combinations(t *testing.T) {
 }
 
 func TestRepository_changes(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -625,11 +632,11 @@ func TestRepository_changes(t *testing.T) {
 		}
 
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.changes(context.Background(), set.PublicId, hostIds)
+		got, err := repo.changes(ctx, set.PublicId, hostIds)
 		assert.NoError(err)
 		require.NotNil(got)
 		opts := []cmp.Option{
@@ -655,11 +662,11 @@ func TestRepository_changes(t *testing.T) {
 		}
 
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.changes(context.Background(), set.PublicId, nil)
+		got, err := repo.changes(ctx, set.PublicId, nil)
 		assert.NoError(err)
 		require.NotNil(got)
 		opts := []cmp.Option{
@@ -702,11 +709,11 @@ func TestRepository_changes(t *testing.T) {
 		}
 
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.changes(context.Background(), set.PublicId, targetHostIds)
+		got, err := repo.changes(ctx, set.PublicId, targetHostIds)
 		assert.NoError(err)
 		require.NotNil(got)
 		opts := []cmp.Option{

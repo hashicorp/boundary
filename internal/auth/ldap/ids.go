@@ -25,7 +25,7 @@ const (
 
 func newAuthMethodId(ctx context.Context) (string, error) {
 	const op = "ldap.newAuthMethodId"
-	id, err := db.NewPublicId(globals.LdapAuthMethodPrefix)
+	id, err := db.NewPublicId(ctx, globals.LdapAuthMethodPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
@@ -35,7 +35,7 @@ func newAuthMethodId(ctx context.Context) (string, error) {
 func newAccountId(ctx context.Context, authMethodId, loginName string) (string, error) {
 	const op = "ldap.newAccountId"
 	// there's a unique index on: auth method id + login name
-	id, err := db.NewPublicId(globals.LdapAccountPrefix, db.WithPrngValues([]string{authMethodId, loginName}))
+	id, err := db.NewPublicId(ctx, globals.LdapAccountPrefix, db.WithPrngValues([]string{authMethodId, loginName}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
@@ -44,7 +44,7 @@ func newAccountId(ctx context.Context, authMethodId, loginName string) (string, 
 
 func newManagedGroupId(ctx context.Context) (string, error) {
 	const op = "ldap.newManagedGroupId"
-	id, err := db.NewPublicId(globals.LdapManagedGroupPrefix)
+	id, err := db.NewPublicId(ctx, globals.LdapManagedGroupPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

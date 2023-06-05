@@ -57,7 +57,7 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, projectId stri
 		return nil, err // intentionally not wrapped.
 	}
 
-	id, err := newCredentialLibraryId()
+	id, err := newCredentialLibraryId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

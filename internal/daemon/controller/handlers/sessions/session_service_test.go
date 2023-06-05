@@ -56,10 +56,10 @@ func TestGetSession(t *testing.T) {
 		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kms)
+		return server.NewRepository(ctx, rw, rw, kms)
 	}
 
 	o, p := iam.TestScopes(t, iamRepo)
@@ -138,7 +138,7 @@ func TestGetSession(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
+			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new session service.")
 
 			requestInfo := authpb.RequestInfo{
@@ -179,10 +179,10 @@ func TestList_Self(t *testing.T) {
 		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kms)
+		return server.NewRepository(ctx, rw, rw, kms)
 	}
 
 	o, pWithSessions := iam.TestScopes(t, iamRepo)
@@ -225,7 +225,7 @@ func TestList_Self(t *testing.T) {
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
-	s, err := sessions.NewService(sessRepoFn, iamRepoFn)
+	s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn)
 	require.NoError(t, err, "Couldn't create new session service.")
 
 	cases := []struct {
@@ -288,10 +288,10 @@ func TestList(t *testing.T) {
 		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kms)
+		return server.NewRepository(ctx, rw, rw, kms)
 	}
 
 	_, pNoSessions := iam.TestScopes(t, iamRepo)
@@ -518,7 +518,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
-			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
+			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new session service.")
 
 			// Test without anon user
@@ -624,10 +624,10 @@ func TestCancel(t *testing.T) {
 		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kms)
+		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kms)
+		return server.NewRepository(ctx, rw, rw, kms)
 	}
 
 	o, p := iam.TestScopes(t, iamRepo)
@@ -712,7 +712,7 @@ func TestCancel(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := sessions.NewService(sessRepoFn, iamRepoFn)
+			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn)
 			require.NoError(err, "Couldn't create new session service.")
 
 			tc.req.Version = version

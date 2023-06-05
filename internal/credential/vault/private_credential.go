@@ -100,7 +100,7 @@ func (pc *privateCredential) client(ctx context.Context) (vaultClient, error) {
 
 	client, err := vaultClientFactoryFn(ctx, clientConfig, WithWorkerFilter(pc.WorkerFilter))
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create vault client"))
 	}
 	return client, nil
 }

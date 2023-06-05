@@ -234,7 +234,7 @@ func TestRepository_CreateAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(context.Background(), rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateAccount(context.Background(), org.GetPublicId(), tt.in, tt.opts...)
@@ -274,7 +274,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(context.Background(), rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -306,7 +306,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-parents", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(context.Background(), rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -344,6 +344,7 @@ func TestRepository_CreateAccount_DuplicateNames(t *testing.T) {
 }
 
 func TestRepository_LookupAccount(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -355,7 +356,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	account := TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 
-	newAcctId, err := newAccountId()
+	newAcctId, err := newAccountId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -384,10 +385,10 @@ func TestRepository_LookupAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupAccount(context.Background(), tt.in)
+			got, err := repo.LookupAccount(ctx, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -400,6 +401,7 @@ func TestRepository_LookupAccount(t *testing.T) {
 }
 
 func TestRepository_DeleteAccount(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -411,7 +413,7 @@ func TestRepository_DeleteAccount(t *testing.T) {
 	authMethod := TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	account := TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 
-	newAcctId, err := newAccountId()
+	newAcctId, err := newAccountId(ctx)
 	require.NoError(t, err)
 	tests := []struct {
 		name       string
@@ -441,10 +443,10 @@ func TestRepository_DeleteAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteAccount(context.Background(), org.GetPublicId(), tt.in)
+			got, err := repo.DeleteAccount(ctx, org.GetPublicId(), tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -499,7 +501,7 @@ func TestRepository_ListAccounts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(context.Background(), rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), tt.in, tt.opts...)
@@ -576,7 +578,7 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
+			repo, err := NewRepository(context.Background(), rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListAccounts(context.Background(), am.GetPublicId(), tt.listOpts...)
@@ -915,7 +917,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(rw, rw, kms)
+			repo, err := NewRepository(context.Background(), rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -974,6 +976,7 @@ func TestRepository_UpdateAccount(t *testing.T) {
 }
 
 func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -982,7 +985,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1014,7 +1017,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-AuthMethods", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1060,7 +1063,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("invalid-duplicate-loginnames", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1092,7 +1095,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("valid-duplicate-loginnames-diff-AuthMethods", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1134,7 +1137,7 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 
 	t.Run("change-authmethod-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(rw, rw, kms)
+		repo, err := NewRepository(ctx, rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 

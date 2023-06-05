@@ -139,7 +139,7 @@ func (r *ConnectionRepository) AuthorizeConnection(ctx context.Context, sessionI
 	if sessionId == "" {
 		return nil, nil, errors.Wrap(ctx, status.Error(codes.FailedPrecondition, "missing session id"), op, errors.WithCode(errors.InvalidParameter))
 	}
-	connectionId, err := newConnectionId()
+	connectionId, err := newConnectionId(ctx)
 	if err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
@@ -234,7 +234,7 @@ func (r *ConnectionRepository) ListConnectionsBySessionId(ctx context.Context, s
 func (r *ConnectionRepository) ConnectConnection(ctx context.Context, c ConnectWith) (*Connection, []*ConnectionState, error) {
 	const op = "session.(ConnectionRepository).ConnectConnection"
 	// ConnectWith.validate will check all the fields...
-	if err := c.validate(); err != nil {
+	if err := c.validate(ctx); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	var connection Connection
@@ -266,7 +266,7 @@ func (r *ConnectionRepository) ConnectConnection(ctx context.Context, c ConnectW
 				// return err, which will result in a rollback of the update
 				return errors.New(ctx, errors.MultipleRecords, op, "more than 1 resource would have been updated")
 			}
-			newState, err := NewConnectionState(connection.PublicId, StatusConnected)
+			newState, err := NewConnectionState(ctx, connection.PublicId, StatusConnected)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -302,7 +302,7 @@ func (r *ConnectionRepository) closeConnections(ctx context.Context, closeWith [
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing connections")
 	}
 	for _, cw := range closeWith {
-		if err := cw.validate(); err != nil {
+		if err := cw.validate(ctx); err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("%s was invalid", cw.ConnectionId)))
 		}
 	}

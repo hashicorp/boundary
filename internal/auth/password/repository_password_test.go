@@ -35,7 +35,7 @@ func TestRepository_Authenticate(t *testing.T) {
 	}
 	passwd := "12345678"
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 	outAcct, err := repo.CreateAccount(context.Background(), o.GetPublicId(), inAcct, WithPassword(passwd))
@@ -145,7 +145,7 @@ func TestRepository_AuthenticateRehash(t *testing.T) {
 	passwd := "12345678"
 	ctx := context.Background()
 
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(context.Background(), rw, rw, kmsCache)
 	assert.NoError(err)
 	require.NotNil(repo)
 
@@ -261,7 +261,7 @@ func TestRepository_ChangePassword(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
@@ -424,7 +424,7 @@ func TestRepository_SetPassword(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 

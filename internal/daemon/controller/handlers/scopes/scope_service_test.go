@@ -335,6 +335,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -429,9 +430,9 @@ func TestList(t *testing.T) {
 
 	var wantOrgs []*pb.Scope
 	for i := 0; i < 10; i++ {
-		newO, err := iam.NewOrg()
+		newO, err := iam.NewOrg(ctx)
 		require.NoError(t, err)
-		o, err := repo.CreateScope(context.Background(), newO, "")
+		o, err := repo.CreateScope(ctx, newO, "")
 		require.NoError(t, err)
 		wantOrgs = append(wantOrgs, &pb.Scope{
 			Id:                          o.GetPublicId(),
@@ -450,9 +451,9 @@ func TestList(t *testing.T) {
 
 	var wantProjects []*pb.Scope
 	for i := 0; i < 10; i++ {
-		newP, err := iam.NewProject(oWithProjects.GetPublicId())
+		newP, err := iam.NewProject(ctx, oWithProjects.GetPublicId())
 		require.NoError(t, err)
-		p, err := repo.CreateScope(context.Background(), newP, "")
+		p, err := repo.CreateScope(ctx, newP, "")
 		require.NoError(t, err)
 		wantProjects = append(wantProjects, &pb.Scope{
 			Id:                          p.GetPublicId(),
@@ -651,11 +652,11 @@ func TestCreate(t *testing.T) {
 
 	repo, err := repoFn()
 	require.NoError(t, err)
-	globalUser, err := iam.NewUser(scope.Global.String())
+	globalUser, err := iam.NewUser(ctx, scope.Global.String())
 	require.NoError(t, err)
 	globalUser, err = repo.CreateUser(ctx, globalUser)
 	require.NoError(t, err)
-	orgUser, err := iam.NewUser(defaultOrg.GetPublicId())
+	orgUser, err := iam.NewUser(ctx, defaultOrg.GetPublicId())
 	require.NoError(t, err)
 	orgUser, err = repo.CreateUser(ctx, orgUser)
 	require.NoError(t, err)

@@ -31,7 +31,7 @@ func (r *Repository) AddTargetHostSources(ctx context.Context, targetId string, 
 	}
 	newHostSources := make([]any, 0, len(hostSourceIds))
 	for _, id := range hostSourceIds {
-		ths, err := NewTargetHostSet(targetId, id)
+		ths, err := NewTargetHostSet(ctx, targetId, id)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
@@ -139,7 +139,7 @@ func (r *Repository) DeleteTargetHostSources(ctx context.Context, targetId strin
 	}
 	deleteTargetHostSources := make([]any, 0, len(hostSourceIds))
 	for _, id := range hostSourceIds {
-		ths, err := NewTargetHostSet(targetId, id)
+		ths, err := NewTargetHostSet(ctx, targetId, id)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
@@ -255,7 +255,7 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 			delete(found, id)
 			continue
 		}
-		hs, err := NewTargetHostSet(targetId, id)
+		hs, err := NewTargetHostSet(ctx, targetId, id)
 		if err != nil {
 			return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory target host set"))
 		}
@@ -264,7 +264,7 @@ func (r *Repository) SetTargetHostSources(ctx context.Context, targetId string, 
 	deleteHostSources := make([]any, 0, len(hostSourceIds))
 	if len(found) > 0 {
 		for _, s := range found {
-			hs, err := NewTargetHostSet(targetId, s.Id())
+			hs, err := NewTargetHostSet(ctx, targetId, s.Id())
 			if err != nil {
 				return nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(" unable to create in memory target host set"))
 			}
