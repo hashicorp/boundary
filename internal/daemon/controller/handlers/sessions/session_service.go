@@ -161,7 +161,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	sesList, err := repo.ListSessions(ctx, session.WithTerminated(req.GetIncludeTerminated()))
+	sesList, err := repo.ListSessions(ctx, session.WithTerminated(req.GetIncludeTerminated()), session.WithLimit(-1))
 	if err != nil {
 		return nil, err
 	}

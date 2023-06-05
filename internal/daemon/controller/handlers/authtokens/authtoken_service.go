@@ -267,7 +267,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*authto
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListAuthTokens(ctx, scopeIds)
+	ul, err := repo.ListAuthTokens(ctx, scopeIds, authtoken.WithLimit(-1))
 	if err != nil {
 		return nil, err
 	}

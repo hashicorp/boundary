@@ -552,7 +552,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*server
 	if err != nil {
 		return nil, err
 	}
-	wl, err := repo.ListWorkers(ctx, scopeIds, server.WithLiveness(-1))
+	wl, err := repo.ListWorkers(ctx, scopeIds, server.WithLiveness(-1), server.WithLimit(-1))
 	if err != nil {
 		return nil, err
 	}

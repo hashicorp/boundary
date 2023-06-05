@@ -827,7 +827,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		pwl, err := pwRepo.ListAccounts(ctx, authMethodId)
+		pwl, err := pwRepo.ListAccounts(ctx, authMethodId, password.WithLimit(-1))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -839,7 +839,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		oidcl, err := oidcRepo.ListAccounts(ctx, authMethodId)
+		oidcl, err := oidcRepo.ListAccounts(ctx, authMethodId, oidc.WithLimit(-1))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -851,7 +851,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		ldapList, err := ldapRepo.ListAccounts(ctx, authMethodId)
+		ldapList, err := ldapRepo.ListAccounts(ctx, authMethodId, ldap.WithLimit(ctx, -1))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

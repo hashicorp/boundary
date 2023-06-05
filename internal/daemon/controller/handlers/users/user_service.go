@@ -492,7 +492,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Us
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListUsers(ctx, scopeIds)
+	ul, err := repo.ListUsers(ctx, scopeIds, iam.WithLimit(-1))
 	if err != nil {
 		return nil, err
 	}

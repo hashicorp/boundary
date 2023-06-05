@@ -307,7 +307,7 @@ func (s Service) listFromRepo(ctx context.Context, storeId string) ([]credential
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	up, err := repo.ListCredentials(ctx, storeId)
+	up, err := repo.ListCredentials(ctx, storeId, static.WithLimit(-1))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

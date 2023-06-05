@@ -666,7 +666,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Sc
 	if err != nil {
 		return nil, err
 	}
-	scps, err := repo.ListScopes(ctx, scopeIds)
+	scps, err := repo.ListScopes(ctx, scopeIds, iam.WithLimit(-1))
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to list scopes: %v", err)
 	}

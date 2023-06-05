@@ -444,7 +444,7 @@ func (s Service) listFromRepo(ctx context.Context, projectIds []string) ([]host.
 	if err != nil {
 		return nil, nil, err
 	}
-	ul, err := repo.ListCatalogs(ctx, projectIds)
+	ul, err := repo.ListCatalogs(ctx, projectIds, static.WithLimit(-1))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -456,7 +456,7 @@ func (s Service) listFromRepo(ctx context.Context, projectIds []string) ([]host.
 	if err != nil {
 		return nil, nil, err
 	}
-	pl, plgs, err := pluginRepo.ListCatalogs(ctx, projectIds)
+	pl, plgs, err := pluginRepo.ListCatalogs(ctx, projectIds, host.WithLimit(-1))
 	if err != nil {
 		return nil, nil, err
 	}
