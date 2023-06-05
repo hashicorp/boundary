@@ -33,6 +33,8 @@ func gatewayDialOptions(lis grpcServerListener) []grpc.DialOption {
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 			return lis.Dial()
 		}),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
 	}
 }
 
