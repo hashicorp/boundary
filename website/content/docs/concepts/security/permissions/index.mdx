@@ -10,7 +10,7 @@ description: |-
 Boundary's permissions model is a composable, RBAC, allow-only model that
 attempts to marry flexibility with usability. This section discusses the permission
 model's fundamental concepts, provides examples grant strings, and contains a table 
-that acts as an cheat sheet to help those new to its grant syntax with crafting roles.
+that acts as a cheat sheet to help those new to its grant syntax with crafting roles.
 
 Boundary's [domain model](/boundary/docs/concepts/domain-model) is based on resource
 types. These can be implemented directly, such as with targets, or they can be
@@ -30,7 +30,7 @@ granted on them. Grant strings can be composed of up to 4 parts:
 - ID
 - Type
 - Actions 
-- Output Fields
+- Output fields
 
 To learn about writing grant strings with examples, see [Grant Strings](/boundary/docs/concepts/security/permissions/grants).
 
@@ -39,7 +39,7 @@ To learn about writing grant strings with examples, see [Grant Strings](/boundar
 A [role](/boundary/docs/concepts/domain-model/roles) maps grant strings to principals (users and groups). 
 Every role assigns grants within a **specific scope**: either the scope in which the role
 exists, or a scope that is a child of the scope in which the role exists,
-controlled by the role's "grant scope ID" value.
+as determined by the role's "grant scope ID" value.
 
 When a request is made, the scope in which to discover grants is either provided by the client 
 (if against a resource collection itself) or is looked up using the resource's ID. This scope ID, 
