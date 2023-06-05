@@ -1299,7 +1299,7 @@ func (s Service) listFromRepo(ctx context.Context, perms []perms.Permission) ([]
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListTargets(ctx)
+	ul, err := repo.ListTargets(ctx, target.WithLimit(-1))
 	if err != nil {
 		return nil, err
 	}
