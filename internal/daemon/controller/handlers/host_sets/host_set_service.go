@@ -633,7 +633,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, opt ...host
 		if err != nil {
 			return nil, nil, err
 		}
-		sl, err := repo.ListSets(ctx, catalogId)
+		sl, err := repo.ListSets(ctx, catalogId, static.WithLimit(-1))
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
@@ -645,6 +645,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string, opt ...host
 		if err != nil {
 			return nil, nil, err
 		}
+		opt = append(opt, host.WithLimit(-1))
 		sl, hsplg, err := repo.ListSets(ctx, catalogId, opt...)
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)

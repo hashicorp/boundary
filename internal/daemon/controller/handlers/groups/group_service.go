@@ -492,7 +492,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Gr
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	gl, err := repo.ListGroups(ctx, scopeIds)
+	gl, err := repo.ListGroups(ctx, scopeIds, iam.WithLimit(-1))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

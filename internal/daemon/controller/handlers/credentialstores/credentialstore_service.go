@@ -363,7 +363,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]credent
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	vaultCsl, err := vaultRepo.ListCredentialStores(ctx, scopeIds)
+	vaultCsl, err := vaultRepo.ListCredentialStores(ctx, scopeIds, vault.WithLimit(-1))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -372,7 +372,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]credent
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	staticCsl, err := staticRepo.ListCredentialStores(ctx, scopeIds)
+	staticCsl, err := staticRepo.ListCredentialStores(ctx, scopeIds, static.WithLimit(-1))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

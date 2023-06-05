@@ -418,7 +418,7 @@ func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Hos
 		if err != nil {
 			return nil, nil, err
 		}
-		hl, err := repo.ListHosts(ctx, catalogId)
+		hl, err := repo.ListHosts(ctx, catalogId, static.WithLimit(-1))
 		if err != nil {
 			return nil, nil, err
 		}
