@@ -18,6 +18,7 @@ begin;
 
   drop view session_list;
   -- Replaces view from 60/02_sessions.up.sql to add swp.worker_id
+  -- Replaced in 72/03_session_list_perf_fix.up.sql
   create view session_list as
   select
     s.public_id,
