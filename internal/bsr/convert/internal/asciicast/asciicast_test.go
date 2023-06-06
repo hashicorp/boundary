@@ -59,7 +59,7 @@ func TestHeaderMarshal(t *testing.T) {
 		{
 			"default",
 			asciicast.NewHeader(),
-			[]byte(`{"version":2,"width":80,"height":120,"timestamp":-62135596800,"env":{"SHELL":"/bin/bash","TERM":"xterm"}}`),
+			[]byte(`{"version":2,"width":80,"height":24,"timestamp":-62135596800,"env":{"SHELL":"/bin/bash","TERM":"xterm"}}`),
 			nil,
 		},
 		{

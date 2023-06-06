@@ -23,7 +23,7 @@ import (
 // This also expects a io.ReadWriteSeeker that will be used to write the
 // asciicast.  This is then reset and returned as a io.ReadCloser. The caller
 // should call Close on the returned io.ReadCloser after reading the asciicast.
-func sshChannelToAsciicast(ctx context.Context, requestScanner *bsr.ChunkScanner, messagesScanner *bsr.ChunkScanner, w io.ReadWriteSeeker) (io.ReadCloser, error) {
+func sshChannelToAsciicast(ctx context.Context, requestScanner *bsr.ChunkScanner, messagesScanner *bsr.ChunkScanner, w io.ReadWriteSeeker, options ...Option) (io.ReadCloser, error) {
 	const op = "convert.sshChannelToAsciicast"
 
 	switch {
@@ -35,7 +35,16 @@ func sshChannelToAsciicast(ctx context.Context, requestScanner *bsr.ChunkScanner
 		return nil, fmt.Errorf("%s: missing read write seeker: %w", op, bsr.ErrInvalidParameter)
 	}
 
+	opts := getOpts(options...)
+
 	header := asciicast.NewHeader()
+
+	if opts.withMinWidth > 0 {
+		header.Width = opts.withMinWidth
+	}
+	if opts.withMinHeight > 0 {
+		header.Height = opts.withMinHeight
+	}
 
 	// Walk the requests to extract any information for asciicast header.  This
 	// will come from either a Pty and/or Env request. There could also be
@@ -54,10 +63,10 @@ func sshChannelToAsciicast(ctx context.Context, requestScanner *bsr.ChunkScanner
 			case ssh.PtyReqChunkType:
 				cc := c.(*ssh.PtyRequest)
 
-				if cc.GetTerminalWidthCharacters() > asciicast.MinWidth {
+				if cc.GetTerminalWidthCharacters() > opts.withMinWidth {
 					header.Width = cc.GetTerminalWidthCharacters()
 				}
-				if cc.GetTerminalHeightRows() > asciicast.MinHeight {
+				if cc.GetTerminalHeightRows() > opts.withMinHeight {
 					header.Height = cc.GetTerminalHeightRows()
 				}
 				if cc.GetTermEnvVar() != "" {
