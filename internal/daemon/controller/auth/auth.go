@@ -656,6 +656,7 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 			permsOpts = append(permsOpts, perms.WithAccountId(*userData.Account.Id))
 		}
 		parsed, err := perms.Parse(
+			ctx,
 			pair.ScopeId,
 			pair.Grant,
 			permsOpts...)

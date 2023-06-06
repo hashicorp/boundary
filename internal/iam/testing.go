@@ -200,7 +200,7 @@ func TestRoleGrant(t testing.TB, conn *db.DB, roleId, grant string, opt ...Optio
 	require := require.New(t)
 	rw := db.New(conn)
 
-	g, err := NewRoleGrant(roleId, grant, opt...)
+	g, err := NewRoleGrant(context.Background(), roleId, grant, opt...)
 	require.NoError(err)
 	err = rw.Create(context.Background(), g)
 	require.NoError(err)

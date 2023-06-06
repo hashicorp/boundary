@@ -346,7 +346,10 @@ func DevWorker(opt ...Option) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
-	opts := getOpts(opt...)
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing options: %w", err)
+	}
 	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
 	parsed.Eventing.ObservationsEnabled = opts.withObservationsEnabled
 	parsed.Eventing.SysEventsEnabled = opts.withSysEventsEnabled
@@ -389,7 +392,10 @@ func DevController(opt ...Option) (*Config, error) {
 	parsed.DevWorkerAuthKey = workerAuthKey
 	parsed.DevBsrKey = bsrKey
 	parsed.DevRecoveryKey = recoveryKey
-	opts := getOpts(opt...)
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing options: %w", err)
+	}
 	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
 	parsed.Eventing.ObservationsEnabled = opts.withObservationsEnabled
 	parsed.Eventing.SysEventsEnabled = opts.withSysEventsEnabled

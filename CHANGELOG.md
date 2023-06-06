@@ -4,6 +4,19 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* roles: In grants, the `id` field has been changed to `ids` (but `id` will
+  still be accepted for now, up until 0.15.0). In the `ids` field, multiple IDs
+  can now be specified in a grant, either via commas (text format) or array
+  (JSON format). ([PR](https://github.com/hashicorp/boundary/pull/3263)).
+
+### Deprecations/Changes
+
+* Grants can now accept more than one ID per grant string (or entry in JSON) via
+  the `ids` parameter. In 0.15.0 the ability to add new grants via the `id`
+  parameter will be removed.
+
 ## 0.13 (2023/06/13)
 
 ### New and Improved

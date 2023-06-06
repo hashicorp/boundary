@@ -6,6 +6,7 @@ package roles
 
 type GrantJson struct {
 	Id      string   `json:"id,omitempty"`
+	Ids     []string `json:"ids,omitempty"`
 	Type    string   `json:"type,omitempty"`
 	Actions []string `json:"actions,omitempty"`
 }
