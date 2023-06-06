@@ -176,7 +176,7 @@ begin;
     for each row execute procedure insert_session();
 
   -- Replaces view from 59/01_target_ingress_egress_worker_filters.up.sql
-  -- Replaced in 69/02_session_worker_protocol.up.sql
+  -- Replaced in 64/04_session_list.up.sql
   create view session_list as
   select
     s.public_id,
