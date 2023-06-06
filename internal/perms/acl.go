@@ -12,10 +12,35 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 )
 
+// AclGrant is used to decouple API-based grants from those we utilize for ACLs.
+// Notably it uses a single ID per grant instead of multiple IDs.
+type AclGrant struct {
+	// The scope ID, which will be a project ID or an org ID
+	scope Scope
+
+	// The ID to use
+	id string
+
+	// The type, if provided
+	typ resource.Type
+
+	// The set of actions being granted
+	actions actionSet
+
+	// The set of output fields granted
+	OutputFields *OutputFields
+}
+
+// Actions returns the actions as a slice from the internal map, along with the
+// string representations of those actions.
+func (a AclGrant) Actions() ([]action.Type, []string) {
+	return a.actions.Actions()
+}
+
 // ACL provides an entry point into the permissions engine for determining if an
 // action is allowed on a resource based on a principal's (user or group) grants.
 type ACL struct {
-	scopeMap map[string][]Grant
+	scopeMap map[string][]AclGrant
 }
 
 // ACLResults provides a type for the permission's engine results so that we can
@@ -27,7 +52,7 @@ type ACLResults struct {
 	OutputFields           *OutputFields
 
 	// This is included but unexported for testing/debugging
-	scopeMap map[string][]Grant
+	scopeMap map[string][]AclGrant
 }
 
 // Permission provides information about the specific
@@ -65,17 +90,36 @@ type Resource struct {
 	Pin string `json:"pin,omitempty"`
 }
 
-// NewACL creates an ACL from the grants provided.
+// NewACL creates an ACL from the grants provided. Note that this converts the
+// API-based Grants to AclGrants.
 func NewACL(grants ...Grant) ACL {
 	ret := ACL{
-		scopeMap: make(map[string][]Grant, len(grants)),
+		scopeMap: make(map[string][]AclGrant, len(grants)),
 	}
 
 	for _, grant := range grants {
-		ret.scopeMap[grant.scope.Id] = append(ret.scopeMap[grant.scope.Id], grant)
+		switch {
+		case len(grant.ids) > 0:
+			for _, id := range grant.ids {
+				ret.scopeMap[grant.scope.Id] = append(ret.scopeMap[grant.scope.Id], aclGrantFromGrant(grant, id))
+			}
+		default:
+			// This handles the no-ID case as well as the deprecated single-ID case
+			ret.scopeMap[grant.scope.Id] = append(ret.scopeMap[grant.scope.Id], aclGrantFromGrant(grant, grant.id))
+		}
 	}
 
 	return ret
+}
+
+func aclGrantFromGrant(grant Grant, id string) AclGrant {
+	return AclGrant{
+		scope:        grant.scope,
+		id:           id,
+		typ:          grant.typ,
+		actions:      grant.actions,
+		OutputFields: grant.OutputFields,
+	}
 }
 
 // Allowed determines if the grants for an ACL allow an action for a resource.
