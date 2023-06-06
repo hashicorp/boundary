@@ -78,22 +78,24 @@ Complete the following steps to create a storage bucket for session recording:
 <Tab heading="UI">
 
 1. Log in to Boundary.
-1. Click **Storage Buckets** in the navigation bar.
-1. Click **Add**.
+1. Select **Storage Buckets** in the navigation bar.
+1. Select **New Storage Bucket**.
 1. Complete the following fields:
    - **Name**: (Optional) The name field is optional, but if you enter a name it must be unique.
+   - **Description**: (Optional) An optional description of the bucket for identification purposes.
    - **Scope**: (Required) A storage bucket can belong to the Global scope or an Org scope.
    It can only associated with targets from the scope it belongs to.
    - **Bucket name**: (Required) Name of the bucket in AWS.
    - **Bucket prefix**: (Optional) A base path where session recordings are stored.
    - **Region**: (Required) The AWS region to use.
    - **Access key ID**: (Required) The access key ID that AWS generates for the IAM user to use with the storage bucket.
+   - **Secret access key**: (Required) The secret access key that AWS generates for the IAM user to use with this storage bucket.
    - **Worker filter** (Required) A filter that indicated which Boundary workers have access to the storage.
    - **Disable credential rotation** (Optional) Although credentials are stored encrypted within Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
 
       Select this option to disable this behavior and prevent the automatic rotation of credentials.
 
-1. Click **Save**.
+1. Select **Save**.
 
 </Tab>
 </Tabs>
