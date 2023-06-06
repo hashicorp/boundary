@@ -18,10 +18,11 @@ var (
 )
 
 type censusJob struct {
-	r      db.Reader
-	w      db.Writer
-	optOut bool
-	agent  any
+	r        db.Reader
+	w        db.Writer
+	optOut   bool
+	agent    any
+	eventCtx context.Context
 }
 
 func newCensusJob(ctx context.Context, optOut bool, r db.Reader, w db.Writer) (*censusJob, error) {
@@ -34,10 +35,11 @@ func newCensusJob(ctx context.Context, optOut bool, r db.Reader, w db.Writer) (*
 	}
 
 	return &censusJob{
-		r:      r,
-		w:      w,
-		optOut: optOut,
-		agent:  nil,
+		r:        r,
+		w:        w,
+		optOut:   optOut,
+		agent:    nil,
+		eventCtx: ctx,
 	}, nil
 }
 
