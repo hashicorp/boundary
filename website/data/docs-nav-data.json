@@ -568,6 +568,10 @@
       {
         "title": "Automated License Reporting",
         "path": "ent/automated-license-reporting"
+      },
+      {
+        "title": "Supported Versions Policy",
+        "path": "ent/supported-versions"
       }
     ]
   },

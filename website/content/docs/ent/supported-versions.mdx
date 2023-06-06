@@ -1,0 +1,35 @@
+---
+layout: docs
+page_title: Boundary Enterprise supported versions
+description: >-
+  The supported versions policy for Boundary Enterprise. Includes information about support periods, control plane and worker compatibility, and Postgres database version support.
+---
+
+# Boundary Enterprise supported versions policy
+
+Self-managed Boundary Enterprise environments function optimally when workers and controllers are running the same version.
+The following sections outline support periods, control plane & worker compatibility and Postgres DB version support.
+
+## Support periods
+
+Generally Available (GA) releases of Boundary Enterprise are consistent with [HashiCorp’s Support Period and End-of-Life (EOL) Policy](https://support.hashicorp.com/hc/en-us/articles/360021185113-Support-Period-and-End-of-Life-EOL-Policy).
+Boundary Enterprise releases will be supported for up to two (2) years since release.
+Eligible code-fixes and hot-fixes are provided via a new minor release (Z) on top of the latest “major release” branch, for up to two (2) releases from the most current major release.
+A major release is identified by a change in the first (X) or second (Y) digit in the following versioning nomenclature: Version X.Y.Z.
+
+As a best practice, HashiCorp expects customers to stay current within two (2) releases from the latest major release in order to receive optimal support.
+Release updates for Boundary Enterprise can be found at https://releases.hashicorp.com.
+
+## Control plane and worker availability
+
+Although major releases are supported as outlined within the support periods section above, within a Boundary Enterprise deployment API backwards compatibility is only supported between the control plane and workers from the prior “major release”.
+All workers within an environment must be on the same version.
+
+For example, Boundary workers version 0.13.0 are compatible with Boundary control plane running Boundary 0.14.0.
+However, they will not have compatibility once the control plane is updated to version 0.15.0 or above.
+Customers are recommended to run the latest versions of Boundary in order to leverage the newest features and bug fixes.
+
+## PostgreSQL support policy
+
+Boundary Enterprise will only support PostgreSQL version 13 and above at launch.
+On an ongoing basis, Boundary will end support for a PostgreSQL version one (1) year prior to its EOL as documented on PostgreSQL’s versioning policy website.
