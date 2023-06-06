@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -401,7 +402,7 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsRequest) (*pbs.AddRoleGrantsResponse, error) {
 	const op = "roles.(Service).AddRoleGrants"
 
-	if err := validateAddRoleGrantsRequest(req); err != nil {
+	if err := validateAddRoleGrantsRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.AddGrants)
@@ -439,7 +440,7 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsRequest) (*pbs.SetRoleGrantsResponse, error) {
 	const op = "roles.(Service).SetRoleGrants"
 
-	if err := validateSetRoleGrantsRequest(req); err != nil {
+	if err := validateSetRoleGrantsRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.SetGrants)
@@ -477,7 +478,7 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrantsRequest) (*pbs.RemoveRoleGrantsResponse, error) {
 	const op = "roles.(Service).RemoveRoleGrants"
 
-	if err := validateRemoveRoleGrantsRequest(req); err != nil {
+	if err := validateRemoveRoleGrantsRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.RemoveGrants)
@@ -853,7 +854,7 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 	}
 	if outputFields.Has(globals.GrantsField) {
 		for _, g := range grants {
-			parsed, err := perms.Parse(in.GetGrantScopeId(), g.GetRawGrant())
+			parsed, err := perms.Parse(ctx, in.GetGrantScopeId(), g.GetRawGrant())
 			if err != nil {
 				// This should never happen as we validate on the way in, but let's
 				// return what we can since we are still returning the raw grant
@@ -869,6 +870,7 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 					Canonical: g.GetCanonicalGrant(),
 					Json: &pb.GrantJson{
 						Id:      parsed.Id(),
+						Ids:     parsed.Ids(),
 						Type:    parsed.Type().String(),
 						Actions: actions,
 					},
@@ -1039,7 +1041,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 	return nil
 }
 
-func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
+func validateAddRoleGrantsRequest(ctx context.Context, req *pbs.AddRoleGrantsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -1055,7 +1057,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		grant, err := perms.Parse("p_anything", v)
+		grant, err := perms.Parse(ctx, "p_anything", v)
 		if err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
@@ -1066,6 +1068,14 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 				badFields["grant_strings"] = fmt.Sprintf("Action %q has been deprecated and is not allowed to be set in grants. Use %q instead.", actStr, depAct.String())
 			}
 		}
+		switch {
+		case grant.Id() == "":
+			// Nothing
+		case version.SupportsFeature(version.Binary, version.SupportIdInGrants):
+			// This will warn on the CLI
+		default:
+			badFields["grant_strings"] = fmt.Sprintf("Grant %q uses the %q field which is no longer supported. Please use %q instead.", v, "id", "ids")
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -1073,7 +1083,7 @@ func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 	return nil
 }
 
-func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
+func validateSetRoleGrantsRequest(ctx context.Context, req *pbs.SetRoleGrantsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -1086,7 +1096,7 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		grant, err := perms.Parse("p_anything", v)
+		grant, err := perms.Parse(ctx, "p_anything", v)
 		if err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
@@ -1097,6 +1107,14 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 				badFields["grant_strings"] = fmt.Sprintf("Action %q has been deprecated and is not allowed to be set in grants. Use %q instead.", actStr, depAct.String())
 			}
 		}
+		switch {
+		case grant.Id() == "":
+			// Nothing
+		case version.SupportsFeature(version.Binary, version.SupportIdInGrants):
+			// This will warn on the CLI
+		default:
+			badFields["grant_strings"] = fmt.Sprintf("Grant %q uses the %q field which is no longer supported. Please use %q instead.", v, "id", "ids")
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -1104,7 +1122,7 @@ func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 	return nil
 }
 
-func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
+func validateRemoveRoleGrantsRequest(ctx context.Context, req *pbs.RemoveRoleGrantsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -1120,7 +1138,7 @@ func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		if _, err := perms.Parse("p_anything", v); err != nil {
+		if _, err := perms.Parse(ctx, "p_anything", v); err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
 		}
