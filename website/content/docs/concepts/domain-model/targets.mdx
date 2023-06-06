@@ -104,6 +104,7 @@ SSH targets have the following additional attributes:
 
 - `enable_session_recording` - (optional)
   Set to `true` to enable [session recordings][]for a target.
+  If you enable session recording, the `storage_bucket_id` is required.
 
 - `ingress_worker_filter` - (optional) <sup>HCP Only</sup>
   A boolean expression to [filter][] which ingress workers can handle sessions
@@ -126,7 +127,7 @@ SSH targets have the following additional attributes:
   The default is 8 hours (28800 seconds).
   This value must be greater than 0.
 
-- `storage_bucket_ID` - (optional)
+- `storage_bucket_id` - (optional)
   Designates the storage bucket to be used for session recording.
   This attribute is required if you set `enable_session_recording` to `true`.
 
