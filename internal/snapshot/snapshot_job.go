@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 )
 
-var RunFn = runInternal
+var runFn = runInternal
 
 type snapshotJob struct {
 	r db.Reader
@@ -43,7 +43,7 @@ func (c *snapshotJob) Status() scheduler.JobStatus {
 // The context is used to notify the job that it should exit early.
 func (c *snapshotJob) Run(ctx context.Context) error {
 	const op = "snapshot.(snapshotJob).Run"
-	err := RunFn(ctx, c)
+	err := runFn(ctx, c)
 	return err
 }
 
