@@ -281,12 +281,7 @@
           },
           {
             "title": "KMS Workers",
-            "path": "configuration/worker/kms-worker",
-            "badge": {
-              "text": "OSS Only",
-              "type": "outlined",
-              "color": "neutral"
-            }
+            "path": "configuration/worker/kms-worker"
           }
         ]
       },

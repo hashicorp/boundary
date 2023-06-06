@@ -21,7 +21,7 @@ worker {
 ```
 
 ## Authorization methods
-There are two mechanisms that can be used to register a worker to the cluster.
+There are two mechanisms that can be used to register a PKI worker to the cluster.
 
 ### Controller-led authorization flow
 In this flow, the operator fetches an activation token from the controller's
@@ -74,6 +74,6 @@ kms "aead" {
 ```
 
 ~> **Note:** `name` and `description` fields are not valid config fields for PKI
-workers. These fields are only valid for [KMS Workers][]. `name` and
+workers. These fields are only valid for [KMS Workers](/boundary/docs/configuration/worker/kms-worker). `name` and
 `description` can only be set for PKI workers through the API.
 
