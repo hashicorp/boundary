@@ -49,6 +49,7 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 		requestScanner *bsr.ChunkScanner
 		messageScanner *bsr.ChunkScanner
 		w              io.ReadWriteSeeker
+		opts           []Option
 		want           []byte
 		wantErr        error
 	}{
@@ -97,7 +98,8 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 				},
 			),
 			newW(),
-			[]byte(`{"version":2,"width":80,"height":120,"timestamp":1678963623,"env":{"SHELL":"/bin/bash","TERM":"xterm"}}
+			nil,
+			[]byte(`{"version":2,"width":80,"height":24,"timestamp":1678963623,"env":{"SHELL":"/bin/bash","TERM":"xterm"}}
 `),
 			nil,
 		},
@@ -164,7 +166,144 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 				},
 			),
 			newW(),
+			nil,
 			[]byte(`{"version":2,"width":160,"height":200,"timestamp":1678963623,"env":{"SHELL":"/bin/bash","TERM":"kitty"}}
+`),
+			nil,
+		},
+		{
+			"tiny-pty-no-env-no-messages",
+			newScanner(
+				&bsr.HeaderChunk{
+					BaseChunk: &bsr.BaseChunk{
+						Protocol:  ssh.Protocol,
+						Direction: bsr.Inbound,
+						Timestamp: bsr.NewTimestamp(ts),
+						Type:      bsr.ChunkHeader,
+					},
+					Compression: bsr.NoCompression,
+					Encryption:  bsr.NoEncryption,
+					SessionId:   "sess_123456789",
+				},
+				&ssh.PtyRequest{
+					BaseChunk: &bsr.BaseChunk{
+						Protocol:  ssh.Protocol,
+						Direction: bsr.Inbound,
+						Timestamp: bsr.NewTimestamp(ts.Add(time.Microsecond)),
+						Type:      ssh.PtyReqChunkType,
+					},
+					PtyRequest: &sshv1.PtyRequest{
+						RequestType:             ssh.PtyRequestType,
+						WantReply:               false,
+						TermEnvVar:              "kitty",
+						TerminalWidthCharacters: 2,
+						TerminalHeightRows:      2,
+						TerminalWidthPixels:     0,
+						TerminalHeightPixels:    0,
+						EncodedTerminalMode:     []byte{},
+					},
+				},
+				&bsr.EndChunk{
+					BaseChunk: &bsr.BaseChunk{
+						Protocol:  ssh.Protocol,
+						Direction: bsr.Inbound,
+						Timestamp: bsr.NewTimestamp(ts.Add(time.Second)),
+						Type:      bsr.ChunkEnd,
+					},
+				},
+			),
+			newScanner(
+				&bsr.HeaderChunk{
+					BaseChunk: &bsr.BaseChunk{
+						Protocol:  ssh.Protocol,
+						Direction: bsr.Inbound,
+						Timestamp: bsr.NewTimestamp(ts),
+						Type:      bsr.ChunkHeader,
+					},
+					Compression: bsr.NoCompression,
+					Encryption:  bsr.NoEncryption,
+					SessionId:   "sess_123456789",
+				},
+				&bsr.EndChunk{
+					BaseChunk: &bsr.BaseChunk{
+						Protocol:  ssh.Protocol,
+						Direction: bsr.Inbound,
+						Timestamp: bsr.NewTimestamp(ts.Add(time.Second)),
+						Type:      bsr.ChunkEnd,
+					},
+				},
+			),
+			newW(),
+			nil,
+			[]byte(`{"version":2,"width":2,"height":2,"timestamp":1678963623,"env":{"SHELL":"/bin/bash","TERM":"kitty"}}
+`),
+			nil,
+		},
+		{
+			"tiny-pty-no-env-no-messages-min-width-min-height",
+			newScanner(
+				&bsr.HeaderChunk{
+					BaseChunk: &bsr.BaseChunk{
+						Protocol:  ssh.Protocol,
+						Direction: bsr.Inbound,
+						Timestamp: bsr.NewTimestamp(ts),
+						Type:      bsr.ChunkHeader,
+					},
+					Compression: bsr.NoCompression,
+					Encryption:  bsr.NoEncryption,
+					SessionId:   "sess_123456789",
+				},
+				&ssh.PtyRequest{
+					BaseChunk: &bsr.BaseChunk{
+						Protocol:  ssh.Protocol,
+						Direction: bsr.Inbound,
+						Timestamp: bsr.NewTimestamp(ts.Add(time.Microsecond)),
+						Type:      ssh.PtyReqChunkType,
+					},
+					PtyRequest: &sshv1.PtyRequest{
+						RequestType:             ssh.PtyRequestType,
+						WantReply:               false,
+						TermEnvVar:              "kitty",
+						TerminalWidthCharacters: 2,
+						TerminalHeightRows:      2,
+						TerminalWidthPixels:     0,
+						TerminalHeightPixels:    0,
+						EncodedTerminalMode:     []byte{},
+					},
+				},
+				&bsr.EndChunk{
+					BaseChunk: &bsr.BaseChunk{
+						Protocol:  ssh.Protocol,
+						Direction: bsr.Inbound,
+						Timestamp: bsr.NewTimestamp(ts.Add(time.Second)),
+						Type:      bsr.ChunkEnd,
+					},
+				},
+			),
+			newScanner(
+				&bsr.HeaderChunk{
+					BaseChunk: &bsr.BaseChunk{
+						Protocol:  ssh.Protocol,
+						Direction: bsr.Inbound,
+						Timestamp: bsr.NewTimestamp(ts),
+						Type:      bsr.ChunkHeader,
+					},
+					Compression: bsr.NoCompression,
+					Encryption:  bsr.NoEncryption,
+					SessionId:   "sess_123456789",
+				},
+				&bsr.EndChunk{
+					BaseChunk: &bsr.BaseChunk{
+						Protocol:  ssh.Protocol,
+						Direction: bsr.Inbound,
+						Timestamp: bsr.NewTimestamp(ts.Add(time.Second)),
+						Type:      bsr.ChunkEnd,
+					},
+				},
+			),
+			newW(),
+			[]Option{WithMinWidth(60), WithMinHeight(26)},
+			[]byte(`{"version":2,"width":60,"height":26,"timestamp":1678963623,"env":{"SHELL":"/bin/bash","TERM":"kitty"}}
 `),
 			nil,
 		},
@@ -259,6 +398,7 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 				},
 			),
 			newW(),
+			nil,
 			[]byte(`{"version":2,"width":220,"height":500,"timestamp":1678963623,"env":{"SHELL":"/bin/bash","TERM":"kitty"}}
 `),
 			nil,
@@ -340,6 +480,7 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 				},
 			),
 			newW(),
+			nil,
 			[]byte(`{"version":2,"width":160,"height":200,"timestamp":1678963623,"env":{"SHELL":"/bin/fish","TERM":"kitty"}}
 `),
 			nil,
@@ -398,7 +539,8 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 				},
 			),
 			newW(),
-			[]byte(`{"version":2,"width":80,"height":120,"timestamp":1678963623,"env":{"SHELL":"/bin/bash","TERM":"xterm"}}
+			nil,
+			[]byte(`{"version":2,"width":80,"height":24,"timestamp":1678963623,"env":{"SHELL":"/bin/bash","TERM":"xterm"}}
 [0.000001,"o","ls -lash"]
 `),
 			nil,
@@ -466,7 +608,8 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 				},
 			),
 			newW(),
-			[]byte(`{"version":2,"width":80,"height":120,"timestamp":1678963623,"env":{"SHELL":"/bin/bash","TERM":"xterm"}}
+			nil,
+			[]byte(`{"version":2,"width":80,"height":24,"timestamp":1678963623,"env":{"SHELL":"/bin/bash","TERM":"xterm"}}
 [0.000001,"o","ls -lash"]
 [0.000002,"o","foo\r\n"]
 `),
@@ -498,6 +641,7 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 			),
 			newW(),
 			nil,
+			nil,
 			errors.New("convert.sshChannelToAsciicast: missing request scanner: invalid parameter"),
 		},
 		{
@@ -525,6 +669,7 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 			),
 			nil,
 			newW(),
+			nil,
 			nil,
 			errors.New("convert.sshChannelToAsciicast: missing message scanner: invalid parameter"),
 		},
@@ -574,6 +719,7 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 			),
 			nil,
 			nil,
+			nil,
 			errors.New("convert.sshChannelToAsciicast: missing read write seeker: invalid parameter"),
 		},
 		{
@@ -619,6 +765,7 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 				},
 			),
 			newW(),
+			nil,
 			nil,
 			errors.New("convert.sshChannelToAsciicast: bsr.ChunkWalk: data chunk before header: malformed bsr data file"),
 		},
@@ -679,6 +826,7 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 			),
 			newW(),
 			nil,
+			nil,
 			errors.New("convert.sshChannelToAsciicast: bsr.ChunkWalk: multiple header chunks: malformed bsr data file"),
 		},
 	}
@@ -690,6 +838,7 @@ func Test_sshChannelToAsciicast(t *testing.T) {
 				tc.requestScanner,
 				tc.messageScanner,
 				tc.w,
+				tc.opts...,
 			)
 			if tc.wantErr != nil {
 				require.EqualError(t, err, tc.wantErr.Error())

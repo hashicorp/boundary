@@ -18,6 +18,8 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withChannelId string
+	withMinWidth  uint32
+	withMinHeight uint32
 }
 
 func getDefaultOptions() options {
@@ -28,5 +30,19 @@ func getDefaultOptions() options {
 func WithChannelId(id string) Option {
 	return func(o *options) {
 		o.withChannelId = id
+	}
+}
+
+// WithMinWidth can be used to set a minimum width for playback.
+func WithMinWidth(w uint32) Option {
+	return func(o *options) {
+		o.withMinWidth = w
+	}
+}
+
+// WithMinHeight can be used to set a minimum height for playback.
+func WithMinHeight(h uint32) Option {
+	return func(o *options) {
+		o.withMinHeight = h
 	}
 }

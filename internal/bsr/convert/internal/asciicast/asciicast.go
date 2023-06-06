@@ -23,8 +23,8 @@ const (
 // This is only the initial terminal size, so it does not seem to have any
 // real impact on playback.
 const (
-	MinWidth  uint32 = 80
-	MinHeight uint32 = 120
+	DefaultWidth  uint32 = 80
+	DefaultHeight uint32 = 24
 )
 
 // Sane defaults for the Env section of the Header.
@@ -71,8 +71,8 @@ type Header struct {
 func NewHeader() *Header {
 	return &Header{
 		Version: Version,
-		Width:   MinWidth,
-		Height:  MinHeight,
+		Width:   DefaultWidth,
+		Height:  DefaultHeight,
 		Env: HeaderEnv{
 			Shell: DefaultShell,
 			Term:  DefaultTerm,

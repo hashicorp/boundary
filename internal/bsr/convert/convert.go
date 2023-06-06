@@ -16,8 +16,11 @@ import (
 
 // ToAsciicast accepts a bsr.Session and will convert the underlying BSR connection or channel file to an asciinema file.
 // The tempFs will be used to write the asciinema file to disk
-// It returns an io.Reader to the converted asciinema file
-// Supports WithChannelId() to indicate this conversion should occur on a channel on a multiplexed session
+// It returns an io.Reader to the converted asciinema file.
+// This supports the following options:
+//   - WithChannelId to indicate this conversion should occur on a channel on a multiplexed session
+//   - WithMinWidth to set a minimum width for the asciicast
+//   - WithMinHeigh to set a minimum height for the asciicast
 func ToAsciicast(ctx context.Context, session *bsr.Session, tmp storage.TempFile, connectionId string, options ...Option) (io.ReadCloser, error) {
 	const op = "convert.ToAsciicast"
 
@@ -65,7 +68,7 @@ func ToAsciicast(ctx context.Context, session *bsr.Session, tmp storage.TempFile
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 
-		return sshChannelToAsciicast(ctx, reqScanner, msgScanner, tmp)
+		return sshChannelToAsciicast(ctx, reqScanner, msgScanner, tmp, options...)
 	default:
 		return nil, fmt.Errorf("%s: %w", op, ErrUnsupportedProtocol)
 	}
