@@ -63,6 +63,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * targets: `authorize-session` now works properly when using a target's name as
   the identifier and the target name contains one or more slashes
   ([PR](https://github.com/hashicorp/boundary/pull/3249))
+* resource listing: API requests to list a resource (targets, sessions, users,
+  etc) now properly return all resources the callers has appropriate permission
+  to list ([PR](https://github.com/hashicorp/boundary/pull/3278))
 
 ## 0.12.3 (2023/05/26)
 
