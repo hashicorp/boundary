@@ -41,6 +41,7 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	serversjob "github.com/hashicorp/boundary/internal/server/job"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/snapshot"
 	pluginstorage "github.com/hashicorp/boundary/internal/storage/plugin"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -578,6 +579,9 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := cleaner.RegisterJob(c.baseContext, c.scheduler, rw); err != nil {
+		return err
+	}
+	if err := snapshot.RegisterJob(c.baseContext, c.scheduler, rw, rw); err != nil {
 		return err
 	}
 	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw); err != nil {
