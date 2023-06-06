@@ -200,7 +200,7 @@ func (b *Server) CreateDevLdapAuthMethod(ctx context.Context) error {
 	)
 
 	if b.DevLdapAuthMethodId == "" {
-		b.DevLdapAuthMethodId, err = db.NewPublicId(globals.LdapAuthMethodPrefix)
+		b.DevLdapAuthMethodId, err = db.NewPublicId(ctx, globals.LdapAuthMethodPrefix)
 		if err != nil {
 			return fmt.Errorf("error generating initial ldap auth method id: %w", err)
 		}
@@ -335,7 +335,7 @@ func (b *Server) createInitialLdapAuthMethod(ctx context.Context, host string, p
 		return nil, fmt.Errorf("error creating new in memory ldap auth method: %w", err)
 	}
 	if b.DevLdapAuthMethodId == "" {
-		b.DevLdapAuthMethodId, err = db.NewPublicId(globals.LdapAuthMethodPrefix)
+		b.DevLdapAuthMethodId, err = db.NewPublicId(ctx, globals.LdapAuthMethodPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("error generating initial ldap auth method id: %w", err)
 		}
@@ -365,7 +365,7 @@ func (b *Server) createInitialLdapAuthMethod(ctx context.Context, host string, p
 			}
 
 			// Link accounts to existing user
-			iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
+			iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache)
 			if err != nil {
 				return fmt.Errorf("unable to create iam repo: %w", err)
 			}
@@ -412,7 +412,7 @@ func (b *Server) CreateDevOidcAuthMethod(ctx context.Context) error {
 	var err error
 
 	if b.DevOidcAuthMethodId == "" {
-		b.DevOidcAuthMethodId, err = db.NewPublicId(globals.OidcAuthMethodPrefix)
+		b.DevOidcAuthMethodId, err = db.NewPublicId(ctx, globals.OidcAuthMethodPrefix)
 		if err != nil {
 			return fmt.Errorf("error generating initial oidc auth method id: %w", err)
 		}
@@ -589,7 +589,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 		return nil, fmt.Errorf("error creating new in memory oidc auth method: %w", err)
 	}
 	if b.DevOidcAuthMethodId == "" {
-		b.DevOidcAuthMethodId, err = db.NewPublicId(globals.OidcAuthMethodPrefix)
+		b.DevOidcAuthMethodId, err = db.NewPublicId(ctx, globals.OidcAuthMethodPrefix)
 		if err != nil {
 			return nil, fmt.Errorf("error generating initial oidc auth method id: %w", err)
 		}
@@ -626,7 +626,7 @@ func (b *Server) createInitialOidcAuthMethod(ctx context.Context) (*oidc.AuthMet
 			}
 
 			// Link accounts to existing user
-			iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
+			iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache)
 			if err != nil {
 				return fmt.Errorf("unable to create iam repo: %w", err)
 			}

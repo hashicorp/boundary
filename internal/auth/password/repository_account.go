@@ -69,7 +69,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		}
 		a.PublicId = opts.withPublicId
 	} else {
-		id, err := newAccountId()
+		id, err := newAccountId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -81,7 +81,7 @@ func (r *Repository) CreateAccount(ctx context.Context, scopeId string, a *Accou
 		if cc.MinPasswordLength > len(opts.password) {
 			return nil, errors.New(ctx, errors.PasswordTooShort, op, fmt.Sprintf("must be longer than %v", cc.MinPasswordLength))
 		}
-		if cred, err = newArgon2Credential(a.PublicId, opts.password, cc.argon2()); err != nil {
+		if cred, err = newArgon2Credential(ctx, a.PublicId, opts.password, cc.argon2()); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	}

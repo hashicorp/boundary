@@ -44,7 +44,7 @@ func TestRepository_lookupPrivateStore(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche)
+			repo, err := NewRepository(ctx, rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			err = RegisterJobs(ctx, sche, rw, rw, kms)
@@ -60,7 +60,7 @@ func TestRepository_lookupPrivateStore(t *testing.T) {
 			}
 			if tt.tls == TestClientTLS {
 				opts = append(opts, WithCACert(v.CaCert))
-				clientCert, err := NewClientCertificate(v.ClientCert, v.ClientKey)
+				clientCert, err := NewClientCertificate(ctx, v.ClientCert, v.ClientKey)
 				require.NoError(err)
 				opts = append(opts, WithClientCert(clientCert))
 			}

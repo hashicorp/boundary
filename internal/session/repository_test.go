@@ -125,7 +125,7 @@ func TestRepository_convertToSessions(t *testing.T) {
 	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 	composedOf := TestSessionParams(t, conn, rootWrapper, iamRepo)
-	sess, err := New(composedOf)
+	sess, err := New(ctx, composedOf)
 	require.NoError(t, err)
 	sessionWrapper, err := kmsCache.GetWrapper(ctx, sess.ProjectId, kms.KeyPurposeSessions)
 	require.NoError(t, err)

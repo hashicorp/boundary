@@ -4,6 +4,7 @@
 package session
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -14,23 +15,24 @@ import (
 
 func Test_Ids(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	t.Run("s", func(t *testing.T) {
-		id, err := newId()
+		id, err := newId(ctx)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.SessionPrefix+"_"))
 	})
 	t.Run("ss", func(t *testing.T) {
-		id, err := newStateId()
+		id, err := newStateId(ctx)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, StatePrefix+"_"))
 	})
 	t.Run("sc", func(t *testing.T) {
-		id, err := newConnectionId()
+		id, err := newConnectionId(ctx)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, ConnectionPrefix+"_"))
 	})
 	t.Run("scs", func(t *testing.T) {
-		id, err := newConnectionStateId()
+		id, err := newConnectionStateId(ctx)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, ConnectionStatePrefix+"_"))
 	})

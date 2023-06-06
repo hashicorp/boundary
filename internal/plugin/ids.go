@@ -4,6 +4,8 @@
 package plugin
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 )
@@ -13,10 +15,10 @@ const (
 	PluginPrefix = "pl"
 )
 
-func newPluginId() (string, error) {
-	id, err := db.NewPublicId(PluginPrefix)
+func newPluginId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(ctx, PluginPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, "plugin.newPluginId")
+		return "", errors.Wrap(ctx, err, "plugin.newPluginId")
 	}
 	return id, nil
 }

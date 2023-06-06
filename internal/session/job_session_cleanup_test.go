@@ -40,7 +40,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := server.NewRepository(rw, rw, kms)
+	serversRepo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 	sessionRepo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
@@ -106,7 +106,7 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 	}
 
 	// Create the job.
-	job, err := newSessionConnectionCleanupJob(rw, gracePeriod)
+	job, err := newSessionConnectionCleanupJob(ctx, rw, gracePeriod)
 	job.gracePeriod = gracePeriod // by-pass factory assert so we dont have to wait so long
 	require.NoError(err)
 
@@ -151,14 +151,14 @@ func TestSessionConnectionCleanupJob(t *testing.T) {
 
 func TestSessionConnectionCleanupJobNewJobErr(t *testing.T) {
 	t.Parallel()
-	ctx := context.TODO()
+	ctx := context.Background()
 	const op = "session.newNewSessionConnectionCleanupJob"
 	require := require.New(t)
 
 	grace := new(atomic.Int64)
 	grace.Store(1000000)
 
-	job, err := newSessionConnectionCleanupJob(nil, grace)
+	job, err := newSessionConnectionCleanupJob(ctx, nil, grace)
 	require.Equal(err, errors.E(
 		ctx,
 		errors.WithCode(errors.InvalidParameter),
@@ -170,7 +170,7 @@ func TestSessionConnectionCleanupJobNewJobErr(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 
-	job, err = newSessionConnectionCleanupJob(rw, nil)
+	job, err = newSessionConnectionCleanupJob(ctx, rw, nil)
 	require.Equal(err, errors.E(
 		ctx,
 		errors.WithCode(errors.InvalidParameter),
@@ -179,7 +179,7 @@ func TestSessionConnectionCleanupJobNewJobErr(t *testing.T) {
 	))
 	require.Nil(job)
 
-	job, err = newSessionConnectionCleanupJob(rw, new(atomic.Int64))
+	job, err = newSessionConnectionCleanupJob(ctx, rw, new(atomic.Int64))
 	require.Equal(err, errors.E(
 		ctx,
 		errors.WithCode(errors.InvalidParameter),
@@ -203,13 +203,13 @@ func TestCloseConnectionsForDeadWorkers(t *testing.T) {
 	gracePeriod := 1 * time.Second
 	connRepo, err := NewConnectionRepository(ctx, rw, rw, kms)
 	require.NoError(err)
-	serversRepo, err := server.NewRepository(rw, rw, kms)
+	serversRepo, err := server.NewRepository(ctx, rw, rw, kms)
 	require.NoError(err)
 
 	defaultLiveness := new(atomic.Int64)
 	defaultLiveness.Store(int64(server.DefaultLiveness))
 
-	job, err := newSessionConnectionCleanupJob(rw, defaultLiveness)
+	job, err := newSessionConnectionCleanupJob(ctx, rw, defaultLiveness)
 	require.NoError(err)
 
 	// connection count = 6 * states(authorized, connected, closed = 3) * servers_with_open_connections(3)
@@ -472,7 +472,7 @@ func TestCloseWorkerlessConnections(t *testing.T) {
 	hourDuration := new(atomic.Int64)
 	hourDuration.Store(int64(time.Hour))
 
-	job, err := newSessionConnectionCleanupJob(rw, hourDuration)
+	job, err := newSessionConnectionCleanupJob(ctx, rw, hourDuration)
 	require.NoError(err)
 
 	createConnection := func(workerId string) *Connection {

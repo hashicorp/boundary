@@ -45,17 +45,18 @@ type sessionConnectionCleanupJob struct {
 
 // newSessionConnectionCleanupJob instantiates the session cleanup job.
 func newSessionConnectionCleanupJob(
+	ctx context.Context,
 	writer db.Writer,
 	gracePeriod *atomic.Int64,
 ) (*sessionConnectionCleanupJob, error) {
 	const op = "session.newNewSessionConnectionCleanupJob"
 	switch {
 	case writer == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db writer")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db writer")
 	case gracePeriod == nil:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing grace period")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grace period")
 	case gracePeriod.Load() == 0:
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "grace period is zero")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "grace period is zero")
 	}
 
 	return &sessionConnectionCleanupJob{

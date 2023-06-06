@@ -16,6 +16,7 @@ import (
 
 func TestConnectionState_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -67,7 +68,7 @@ func TestConnectionState_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewConnectionState(tt.args.connectionId, tt.args.status)
+			got, err := NewConnectionState(ctx, tt.args.connectionId, tt.args.status)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -76,7 +77,7 @@ func TestConnectionState_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				err = db.New(conn).Create(context.Background(), got)
+				err = db.New(conn).Create(ctx, got)
 				if tt.wantCreateErr {
 					assert.Error(err)
 					return
@@ -90,6 +91,7 @@ func TestConnectionState_Create(t *testing.T) {
 
 func TestConnectionState_Delete(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -116,7 +118,7 @@ func TestConnectionState_Delete(t *testing.T) {
 			name:  "bad-id",
 			state: TestConnectionState(t, conn, c2.PublicId, StatusClosed),
 			deleteConnectionStateId: func() string {
-				id, err := db.NewPublicId(ConnectionStatePrefix)
+				id, err := db.NewPublicId(ctx, ConnectionStatePrefix)
 				require.NoError(t, err)
 				return id
 			}(),
@@ -139,7 +141,7 @@ func TestConnectionState_Delete(t *testing.T) {
 				deleteState.ConnectionId = tt.state.ConnectionId
 			}
 			deleteState.StartTime = initialState.StartTime
-			deletedRows, err := rw.Delete(context.Background(), &deleteState)
+			deletedRows, err := rw.Delete(ctx, &deleteState)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -151,7 +153,7 @@ func TestConnectionState_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundState := allocConnectionState()
-			err = rw.LookupWhere(context.Background(), &foundState, "connection_id = ? and start_time = ?", []any{tt.state.ConnectionId, initialState.StartTime})
+			err = rw.LookupWhere(ctx, &foundState, "connection_id = ? and start_time = ?", []any{tt.state.ConnectionId, initialState.StartTime})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})

@@ -24,12 +24,12 @@ func DeriveED25519Key(ctx context.Context, wrapper wrapping.Wrapper, userId, job
 		jId = []byte(jobId)
 	}
 	if wrapper == nil {
-		return nil, nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing wrapper")
+		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing wrapper")
 	}
 
 	reader, err := crypto.NewDerivedReader(ctx, wrapper, 32, uId, jId)
 	if err != nil {
-		return nil, nil, errors.WrapDeprecated(err, op)
+		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	return ed25519.GenerateKey(reader)
 }

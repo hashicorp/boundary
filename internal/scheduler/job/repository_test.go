@@ -4,6 +4,7 @@
 package job
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -119,7 +120,7 @@ func TestRepository_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.opts...)
+			got, err := NewRepository(context.Background(), tt.args.r, tt.args.w, tt.args.kms, tt.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)

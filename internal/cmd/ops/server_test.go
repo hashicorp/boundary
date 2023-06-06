@@ -107,7 +107,7 @@ func TestNewServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := NewServer(tt.logger, tt.c, tt.w, tt.listeners...)
+			s, err := NewServer(context.Background(), tt.logger, tt.c, tt.w, tt.listeners...)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, s)
@@ -279,7 +279,7 @@ func TestNewServerIntegration(t *testing.T) {
 			err := bs.SetupListeners(nil, &configutil.SharedConfig{Listeners: tt.listeners}, []string{"ops"})
 			require.NoError(t, err)
 
-			s, err := NewServer(hclog.Default(), nil, nil, bs.Listeners...)
+			s, err := NewServer(context.Background(), hclog.Default(), nil, nil, bs.Listeners...)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, s)
@@ -575,7 +575,7 @@ func TestHealthEndpointLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// Controller has started and is set onto our Command object, start ops.
-	opsServer, err := NewServer(hclog.Default(), tc.Controller(), nil, tc.Config().Listeners...)
+	opsServer, err := NewServer(tc.Context(), hclog.Default(), tc.Controller(), nil, tc.Config().Listeners...)
 	require.NoError(t, err)
 	opsServer.Start()
 
@@ -665,6 +665,7 @@ func TestWaitIfHealthExists(t *testing.T) {
 }
 
 func TestCreateOpsHandler(t *testing.T) {
+	ctx := context.Background()
 	tests := []struct {
 		name            string
 		setupController bool
@@ -775,7 +776,7 @@ func TestCreateOpsHandler(t *testing.T) {
 				w = tc.Worker()
 			}
 
-			h, err := createOpsHandler(tt.lncfg, c, w)
+			h, err := createOpsHandler(ctx, tt.lncfg, c, w)
 			if tt.expErr {
 				require.EqualError(t, err, tt.expErrMsg)
 				require.Nil(t, h)
@@ -790,7 +791,7 @@ func TestCreateOpsHandler(t *testing.T) {
 			go s.Serve(l)
 
 			t.Cleanup(func() {
-				require.NoError(t, s.Shutdown(context.Background()))
+				require.NoError(t, s.Shutdown(ctx))
 			})
 
 			tt.assertions(t, l.Addr().String())

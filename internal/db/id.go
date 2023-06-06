@@ -5,6 +5,7 @@ package db
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strings"
 
@@ -13,19 +14,19 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-func NewPrivateId(prefix string, opt ...Option) (string, error) {
-	return newId(prefix, opt...)
+func NewPrivateId(ctx context.Context, prefix string, opt ...Option) (string, error) {
+	return newId(ctx, prefix, opt...)
 }
 
 // NewPublicId creates a new public id with the prefix
-func NewPublicId(prefix string, opt ...Option) (string, error) {
-	return newId(prefix, opt...)
+func NewPublicId(ctx context.Context, prefix string, opt ...Option) (string, error) {
+	return newId(ctx, prefix, opt...)
 }
 
-func newId(prefix string, opt ...Option) (string, error) {
+func newId(ctx context.Context, prefix string, opt ...Option) (string, error) {
 	const op = "db.newId"
 	if prefix == "" {
-		return "", errors.NewDeprecated(errors.InvalidParameter, op, "missing prefix")
+		return "", errors.New(ctx, errors.InvalidParameter, op, "missing prefix")
 	}
 	var publicId string
 	var err error
@@ -38,7 +39,7 @@ func newId(prefix string, opt ...Option) (string, error) {
 		publicId, err = base62.Random(10)
 	}
 	if err != nil {
-		return "", errors.WrapDeprecated(err, op, errors.WithMsg("unable to generate id"), errors.WithCode(errors.Io))
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate id"), errors.WithCode(errors.Io))
 	}
 	return fmt.Sprintf("%s_%s", prefix, publicId), nil
 }

@@ -1033,7 +1033,7 @@ func TestRepository_CancelSession(t *testing.T) {
 				acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 				user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(acct.PublicId))
 
-				authTokenRepo, err := authtoken.NewRepository(rw, rw, testKms)
+				authTokenRepo, err := authtoken.NewRepository(ctx, rw, rw, testKms)
 				require.NoError(t, err)
 				at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 				require.NoError(t, err)
@@ -1074,7 +1074,7 @@ func TestRepository_CancelSession(t *testing.T) {
 			name:    "bad-session-id",
 			session: setupFn(),
 			overrideSessionId: func() *string {
-				id, err := newId()
+				id, err := newId(ctx)
 				require.NoError(t, err)
 				return &id
 			}(),
@@ -1375,7 +1375,7 @@ func TestRepository_ActivateSession(t *testing.T) {
 			name:    "bad-session-id",
 			session: TestDefaultSession(t, conn, wrapper, iamRepo),
 			overrideSessionId: func() *string {
-				id, err := newId()
+				id, err := newId(ctx)
 				require.NoError(t, err)
 				return &id
 			}(),
@@ -1507,7 +1507,7 @@ func TestRepository_DeleteSession(t *testing.T) {
 			args: args{
 				session: func() *Session {
 					s := TestDefaultSession(t, conn, wrapper, iamRepo)
-					id, err := newId()
+					id, err := newId(ctx)
 					require.NoError(t, err)
 					s.PublicId = id
 					return s

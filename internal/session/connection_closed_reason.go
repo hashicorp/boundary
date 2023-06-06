@@ -4,6 +4,7 @@
 package session
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -26,7 +27,7 @@ func (r ClosedReason) String() string {
 	return string(r)
 }
 
-func convertToClosedReason(s string) (ClosedReason, error) {
+func convertToClosedReason(ctx context.Context, s string) (ClosedReason, error) {
 	const op = "session.convertToClosedReason"
 	switch s {
 	case UnknownReason.String():
@@ -42,6 +43,6 @@ func convertToClosedReason(s string) (ClosedReason, error) {
 	case ConnectionSystemError.String():
 		return ConnectionSystemError, nil
 	default:
-		return "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
+		return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
 	}
 }

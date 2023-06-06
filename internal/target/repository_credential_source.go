@@ -494,7 +494,7 @@ func (r *Repository) changes(ctx context.Context, targetId string, ids []string,
 		}
 		switch CredentialSourceType(chg.Type) {
 		case LibraryCredentialSourceType:
-			lib, err := NewCredentialLibrary(targetId, chg.SourceId, purpose)
+			lib, err := NewCredentialLibrary(ctx, targetId, chg.SourceId, purpose)
 			if err != nil {
 				return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 			}
@@ -505,7 +505,7 @@ func (r *Repository) changes(ctx context.Context, targetId string, ids []string,
 				addCredLib = append(addCredLib, lib)
 			}
 		case StaticCredentialSourceType:
-			cred, err := NewStaticCredential(targetId, chg.SourceId, purpose)
+			cred, err := NewStaticCredential(ctx, targetId, chg.SourceId, purpose)
 			if err != nil {
 				return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 			}
@@ -574,13 +574,13 @@ func (r *Repository) createSources(ctx context.Context, tId string, tSubtype sub
 		for _, id := range ids {
 			switch credTypeById[id] {
 			case LibraryCredentialSourceType:
-				lib, err := NewCredentialLibrary(tId, id, purpose)
+				lib, err := NewCredentialLibrary(ctx, tId, id, purpose)
 				if err != nil {
 					return nil, nil, errors.Wrap(ctx, err, op)
 				}
 				credLibs = append(credLibs, lib)
 			case StaticCredentialSourceType:
-				cred, err := NewStaticCredential(tId, id, purpose)
+				cred, err := NewStaticCredential(ctx, tId, id, purpose)
 				if err != nil {
 					return nil, nil, errors.Wrap(ctx, err, op)
 				}

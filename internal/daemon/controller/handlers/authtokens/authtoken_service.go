@@ -53,20 +53,20 @@ type Service struct {
 var _ pbs.AuthTokenServiceServer = (*Service)(nil)
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "authtoken.NewService"
 	if repo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing auth token repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
 }
 
 // ListAuthTokens implements the interface pbs.AuthTokenServiceServer.
 func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequest) (*pbs.ListAuthTokensResponse, error) {
-	if err := validateListRequest(req); err != nil {
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -101,7 +101,7 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		return &pbs.ListAuthTokensResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(req.GetFilter())
+	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -376,13 +376,13 @@ func validateDeleteRequest(req *pbs.DeleteAuthTokenRequest) error {
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.AuthTokenPrefix)
 }
 
-func validateListRequest(req *pbs.ListAuthTokensRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListAuthTokensRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "This field must be 'global' or a valid org scope id."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

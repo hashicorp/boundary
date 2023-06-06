@@ -154,6 +154,7 @@ func TestSchedulerCancelCtx(t *testing.T) {
 func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	// do not use t.Parallel() since it relies on the sys eventer
 	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
@@ -171,12 +172,12 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 
 	fn, job1Ready, job1Done := testJobFn()
 	tj1 := testJob{name: "name1", description: "desc", fn: fn, nextRunIn: time.Hour}
-	err = sched.RegisterJob(context.Background(), tj1)
+	err = sched.RegisterJob(ctx, tj1)
 	require.NoError(err)
 
 	fn, job2Ready, job2Done := testJobFn()
 	tj2 := testJob{name: "name2", description: "desc", fn: fn, nextRunIn: time.Hour}
-	err = sched.RegisterJob(context.Background(), tj2)
+	err = sched.RegisterJob(ctx, tj2)
 	require.NoError(err)
 
 	baseCtx, baseCnl := context.WithCancel(context.Background())
@@ -216,12 +217,12 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	}
 
 	// Interrupt job 1 run to cause monitor loop to trigger cancel
-	repo, err := job.NewRepository(rw, rw, kmsCache)
+	repo, err := job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
-	run, err := repo.LookupRun(context.Background(), run1Id)
+	run, err := repo.LookupRun(ctx, run1Id)
 	require.NoError(err)
 	run.Status = string(job.Interrupted)
-	rowsUpdated, err := rw.Update(context.Background(), run, []string{"Status"}, nil)
+	rowsUpdated, err := rw.Update(ctx, run, []string{"Status"}, nil)
 	require.NoError(err)
 	assert.Equal(1, rowsUpdated)
 
@@ -239,12 +240,12 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 	}
 
 	// Interrupt job 2 run to cause monitor loop to trigger cancel
-	repo, err = job.NewRepository(rw, rw, kmsCache)
+	repo, err = job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
-	run, err = repo.LookupRun(context.Background(), run2Id)
+	run, err = repo.LookupRun(ctx, run2Id)
 	require.NoError(err)
 	run.Status = string(job.Interrupted)
-	rowsUpdated, err = rw.Update(context.Background(), run, []string{"Status"}, nil)
+	rowsUpdated, err = rw.Update(ctx, run, []string{"Status"}, nil)
 	require.NoError(err)
 	assert.Equal(1, rowsUpdated)
 
@@ -254,6 +255,7 @@ func TestSchedulerInterruptedCancelCtx(t *testing.T) {
 
 func TestSchedulerJobProgress(t *testing.T) {
 	// do not use t.Parallel() since it relies on the sys eventer
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -320,9 +322,9 @@ func TestSchedulerJobProgress(t *testing.T) {
 	// Wait for scheduler to query for job status before verifying previous results
 	<-statusRequest
 
-	repo, err := job.NewRepository(rw, rw, kmsCache)
+	repo, err := job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
-	run, err := repo.LookupRun(context.Background(), runId)
+	run, err := repo.LookupRun(ctx, runId)
 	require.NoError(err)
 	assert.Equal(string(job.Running), run.Status)
 	assert.Equal(uint32(10), run.TotalCount)
@@ -362,6 +364,7 @@ func TestSchedulerJobProgress(t *testing.T) {
 
 func TestSchedulerMonitorLoop(t *testing.T) {
 	// do not use t.Parallel() since it relies on the sys eventer
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -413,9 +416,9 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 	// Wait for scheduler to interrupt job
 	<-jobDone
 
-	repo, err := job.NewRepository(rw, rw, kmsCache)
+	repo, err := job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
-	run, err := repo.LookupRun(context.Background(), runId)
+	run, err := repo.LookupRun(ctx, runId)
 	require.NoError(err)
 	assert.Equal(string(job.Interrupted), run.Status)
 	baseCnl()
@@ -427,6 +430,7 @@ func TestSchedulerMonitorLoop(t *testing.T) {
 
 func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -481,7 +485,7 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	// Report status
 	jobStatus <- JobStatus{Total: 10, Completed: 10}
 
-	repo, err := job.NewRepository(rw, rw, kmsCache)
+	repo, err := job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 
 	run := waitForRunStatus(t, repo, runId, string(job.Failed))
@@ -502,7 +506,7 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 	// Report status
 	jobStatus <- JobStatus{Total: 20, Completed: 20}
 
-	repo, err = job.NewRepository(rw, rw, kmsCache)
+	repo, err = job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 
 	run = waitForRunStatus(t, repo, runId, string(job.Completed))
@@ -517,6 +521,7 @@ func TestSchedulerFinalStatusUpdate(t *testing.T) {
 
 func TestSchedulerRunNow(t *testing.T) {
 	// do not use t.Parallel() since it relies on the sys eventer
+	ctx := context.Background()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -550,7 +555,7 @@ func TestSchedulerRunNow(t *testing.T) {
 	err = sched.RegisterJob(context.Background(), tj)
 	require.NoError(err)
 
-	baseCtx, baseCnl := context.WithCancel(context.Background())
+	baseCtx, baseCnl := context.WithCancel(ctx)
 	defer baseCnl()
 	var wg sync.WaitGroup
 	err = sched.Start(baseCtx, &wg)
@@ -567,7 +572,7 @@ func TestSchedulerRunNow(t *testing.T) {
 	// Complete job
 	jobCh <- struct{}{}
 
-	repo, err := job.NewRepository(rw, rw, kmsCache)
+	repo, err := job.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 	waitForRunStatus(t, repo, runId, string(job.Completed))
 

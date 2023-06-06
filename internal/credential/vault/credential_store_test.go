@@ -18,6 +18,7 @@ import (
 
 func TestCredentialStore_New(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
@@ -25,7 +26,7 @@ func TestCredentialStore_New(t *testing.T) {
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	inCert := testClientCert(t, testCaCert(t))
-	clientCert, err := NewClientCertificate(inCert.Cert.Cert, inCert.Cert.Key)
+	clientCert, err := NewClientCertificate(ctx, inCert.Cert.Cert, inCert.Cert.Key)
 	require.NoError(t, err)
 	require.NotNil(t, clientCert)
 
@@ -253,13 +254,13 @@ func TestCredentialStore_New(t *testing.T) {
 			assert.Equal(tt.want, got)
 			assert.Empty(cmp.Diff(tt.want, got.clone(), protocmp.Transform()))
 
-			id, err := newCredentialStoreId()
+			id, err := newCredentialStoreId(ctx)
 			assert.NoError(err)
 
 			tt.want.PublicId = id
 			got.PublicId = id
 
-			err2 := rw.Create(context.Background(), got)
+			err2 := rw.Create(ctx, got)
 			if tt.wantCreateErr {
 				assert.Error(err2)
 			} else {

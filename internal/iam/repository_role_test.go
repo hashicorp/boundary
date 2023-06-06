@@ -22,6 +22,7 @@ import (
 
 func TestRepository_CreateRole(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -46,7 +47,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "valid-org",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(org.PublicId, WithName("valid-org"+id), WithDescription(id))
+					r, err := NewRole(ctx, org.PublicId, WithName("valid-org"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -57,7 +58,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "valid-proj",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
+					r, err := NewRole(ctx, proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -68,7 +69,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "bad-public-id",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
+					r, err := NewRole(ctx, proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
 					assert.NoError(t, err)
 					r.PublicId = id
 					return r
@@ -104,7 +105,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "bad-scope-id",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(id)
+					r, err := NewRole(ctx, id)
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -117,7 +118,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "dup-name",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(org.PublicId, WithName("dup-name"+id), WithDescription(id))
+					r, err := NewRole(ctx, org.PublicId, WithName("dup-name"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -132,7 +133,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			name: "dup-name-but-diff-scope",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(proj.PublicId, WithName("dup-name-but-diff-scope"+id), WithDescription(id))
+					r, err := NewRole(ctx, proj.PublicId, WithName("dup-name-but-diff-scope"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return r
 				}(),
@@ -147,7 +148,7 @@ func TestRepository_CreateRole(t *testing.T) {
 			assert := assert.New(t)
 
 			if tt.wantDup {
-				dup, err := NewRole(org.PublicId, tt.args.opt...)
+				dup, err := NewRole(ctx, org.PublicId, tt.args.opt...)
 				assert.NoError(err)
 				dup, err = repo.CreateRole(context.Background(), dup, tt.args.opt...)
 				assert.NoError(err)
@@ -470,13 +471,14 @@ func TestRepository_UpdateRole(t *testing.T) {
 
 func TestRepository_DeleteRole(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 
-	roleId, err := newRoleId()
+	roleId, err := newRoleId(ctx)
 	require.NoError(t, err)
 
 	type args struct {
@@ -515,7 +517,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			name: "not-found",
 			args: args{
 				role: func() *Role {
-					r, err := NewRole(org.PublicId)
+					r, err := NewRole(ctx, org.PublicId)
 					r.PublicId = roleId
 					require.NoError(t, err)
 					return r
@@ -529,7 +531,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			deletedRows, err := repo.DeleteRole(context.Background(), tt.args.role.PublicId, tt.args.opt...)
+			deletedRows, err := repo.DeleteRole(ctx, tt.args.role.PublicId, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
@@ -541,7 +543,7 @@ func TestRepository_DeleteRole(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundRole, _, _, err := repo.LookupRole(context.Background(), tt.args.role.PublicId)
+			foundRole, _, _, err := repo.LookupRole(ctx, tt.args.role.PublicId)
 			assert.NoError(err)
 			assert.Nil(foundRole)
 

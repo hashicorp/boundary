@@ -70,7 +70,7 @@ func TestNewService(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
@@ -124,13 +124,13 @@ func TestGet(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -310,13 +310,13 @@ func TestListPassword(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(ctx, rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iam.NewRepository(ctx, rw, rw, kms)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
@@ -451,13 +451,13 @@ func TestListOidc(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -611,13 +611,13 @@ func TestListLdap(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -766,13 +766,13 @@ func TestDelete(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -889,13 +889,13 @@ func TestDelete_twice(t *testing.T) {
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(ctx, rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iam.NewRepository(ctx, rw, rw, kms)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
@@ -924,13 +924,13 @@ func TestCreatePassword(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(ctx, rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iam.NewRepository(ctx, rw, rw, kms)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
@@ -1171,13 +1171,13 @@ func TestCreateOidc(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -1408,13 +1408,13 @@ func TestCreateLdap(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -1687,13 +1687,13 @@ func TestUpdatePassword(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(ctx, rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iam.NewRepository(ctx, rw, rw, kms)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
@@ -2077,13 +2077,13 @@ func TestUpdateOidc(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -2467,13 +2467,13 @@ func TestUpdateLdap(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kmsCache)
+		return password.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -2841,13 +2841,13 @@ func TestSetPassword(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(ctx, rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iam.NewRepository(ctx, rw, rw, kms)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
@@ -2983,13 +2983,13 @@ func TestChangePassword(t *testing.T) {
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(rw, rw, kms)
+		return password.NewRepository(ctx, rw, rw, kms)
 	}
 	oidcRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kms)
+		return iam.NewRepository(ctx, rw, rw, kms)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kms)

@@ -114,7 +114,7 @@ func TestGet(t *testing.T) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -267,7 +267,7 @@ func TestListOidc(t *testing.T) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -422,7 +422,7 @@ func TestListLdap(t *testing.T) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -580,7 +580,7 @@ func TestDelete(t *testing.T) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -677,7 +677,7 @@ func TestDelete_twice(t *testing.T) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -719,7 +719,7 @@ func TestCreateOidc(t *testing.T) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -924,7 +924,7 @@ func TestCreateLdap(t *testing.T) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -1130,7 +1130,7 @@ func TestUpdateOidc(t *testing.T) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
@@ -1518,7 +1518,7 @@ func TestUpdateLdap(t *testing.T) {
 		return oidc.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(rw, rw, kmsCache)
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)

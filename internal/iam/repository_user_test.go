@@ -31,6 +31,7 @@ import (
 
 func TestRepository_CreateUser(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -53,7 +54,7 @@ func TestRepository_CreateUser(t *testing.T) {
 			name: "valid",
 			args: args{
 				user: func() *iam.User {
-					u, err := iam.NewUser(org.PublicId, iam.WithName("valid"+id), iam.WithDescription(id))
+					u, err := iam.NewUser(ctx, org.PublicId, iam.WithName("valid"+id), iam.WithDescription(id))
 					assert.NoError(t, err)
 					return u
 				}(),
@@ -64,7 +65,7 @@ func TestRepository_CreateUser(t *testing.T) {
 			name: "bad-scope-id",
 			args: args{
 				user: func() *iam.User {
-					u, err := iam.NewUser(id)
+					u, err := iam.NewUser(ctx, id)
 					assert.NoError(t, err)
 					return u
 				}(),
@@ -76,7 +77,7 @@ func TestRepository_CreateUser(t *testing.T) {
 			name: "dup-name",
 			args: args{
 				user: func() *iam.User {
-					u, err := iam.NewUser(org.PublicId, iam.WithName("dup-name"+id))
+					u, err := iam.NewUser(ctx, org.PublicId, iam.WithName("dup-name"+id))
 					assert.NoError(t, err)
 					return u
 				}(),
@@ -90,11 +91,11 @@ func TestRepository_CreateUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			if tt.wantDup {
-				dup, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
+				dup, err := repo.CreateUser(ctx, tt.args.user, tt.args.opt...)
 				require.NoError(err)
 				require.NotNil(dup)
 			}
-			u, err := repo.CreateUser(context.Background(), tt.args.user, tt.args.opt...)
+			u, err := repo.CreateUser(ctx, tt.args.user, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(u)
@@ -110,7 +111,7 @@ func TestRepository_CreateUser(t *testing.T) {
 			assert.NotNil(u.CreateTime)
 			assert.NotNil(u.UpdateTime)
 
-			foundUser, _, err := repo.LookupUser(context.Background(), u.PublicId)
+			foundUser, _, err := repo.LookupUser(ctx, u.PublicId)
 			require.NoError(err)
 			assert.True(proto.Equal(foundUser, u))
 
@@ -131,7 +132,7 @@ func TestRepository_LookupUser_WithDifferentPrimaryAuthMethods(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	repo := iam.TestRepo(t, conn, wrapper)
 	org, _ := iam.TestScopes(t, repo)
-	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
+	databaseWrapper, err := kmsCache.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
 	var accountIds []string
@@ -148,7 +149,7 @@ func TestRepository_LookupUser_WithDifferentPrimaryAuthMethods(t *testing.T) {
 	accountIds = append(accountIds, pwAcct.PublicId)
 
 	u := iam.TestUser(t, repo, org.PublicId)
-	newAccts, err := repo.AddUserAccounts(context.Background(), u.PublicId, u.Version, accountIds)
+	newAccts, err := repo.AddUserAccounts(ctx, u.PublicId, u.Version, accountIds)
 	require.NoError(t, err)
 	sort.Strings(newAccts)
 	require.Equal(t, accountIds, newAccts)
@@ -498,6 +499,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 
 func TestRepository_DeleteUser(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -539,9 +541,9 @@ func TestRepository_DeleteUser(t *testing.T) {
 			name: "not-found",
 			args: args{
 				user: func() *iam.User {
-					u, err := iam.NewUser(org.PublicId)
+					u, err := iam.NewUser(ctx, org.PublicId)
 					require.NoError(t, err)
-					id, err := db.NewPublicId(globals.UserPrefix)
+					id, err := db.NewPublicId(ctx, globals.UserPrefix)
 					require.NoError(t, err)
 					u.PublicId = id
 					return u
@@ -555,7 +557,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			deletedRows, err := repo.DeleteUser(context.Background(), tt.args.user.PublicId, tt.args.opt...)
+			deletedRows, err := repo.DeleteUser(ctx, tt.args.user.PublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(0, deletedRows)
@@ -567,7 +569,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundUser, _, err := repo.LookupUser(context.Background(), tt.args.user.PublicId)
+			foundUser, _, err := repo.LookupUser(ctx, tt.args.user.PublicId)
 			require.NoError(err)
 			assert.Nil(foundUser)
 

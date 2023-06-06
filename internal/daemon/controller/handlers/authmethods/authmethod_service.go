@@ -94,13 +94,13 @@ type Service struct {
 var _ pbs.AuthMethodServiceServer = (*Service)(nil)
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
-func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, ldapRepoFn common.LdapAuthRepoFactory, opt ...handlers.Option) (Service, error) {
+func NewService(ctx context.Context, kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, ldapRepoFn common.LdapAuthRepoFactory, opt ...handlers.Option) (Service, error) {
 	const op = "authmethods.NewService"
 	if kms == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
 	}
 	if pwRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing password repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing password repository")
 	}
 	if oidcRepoFn == nil {
 		return Service{}, fmt.Errorf("nil oidc repository provided")
@@ -109,7 +109,7 @@ func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoF
 		return Service{}, fmt.Errorf("nil ldap repository provided")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
 	if atRepoFn == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
@@ -121,7 +121,7 @@ func NewService(kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoF
 
 // ListAuthMethods implements the interface pbs.AuthMethodServiceServer.
 func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRequest) (*pbs.ListAuthMethodsResponse, error) {
-	if err := validateListRequest(req); err != nil {
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -156,7 +156,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		return &pbs.ListAuthMethodsResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(req.GetFilter())
+	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 func (s Service) GetAuthMethod(ctx context.Context, req *pbs.GetAuthMethodRequest) (*pbs.GetAuthMethodResponse, error) {
 	const op = "authmethods.(Service).GetAuthMethod"
 
-	if err := validateGetRequest(req); err != nil {
+	if err := validateGetRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.Read)
@@ -355,7 +355,7 @@ func (s Service) UpdateAuthMethod(ctx context.Context, req *pbs.UpdateAuthMethod
 func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (*pbs.ChangeStateResponse, error) {
 	const op = "authmethods.(Service).ChangeState"
 
-	if err := validateChangeStateRequest(req); err != nil {
+	if err := validateChangeStateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.ChangeState)
@@ -403,7 +403,7 @@ func (s Service) ChangeState(ctx context.Context, req *pbs.ChangeStateRequest) (
 
 // DeleteAuthMethod implements the interface pbs.AuthMethodServiceServer.
 func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethodRequest) (*pbs.DeleteAuthMethodResponse, error) {
-	if err := validateDeleteRequest(req); err != nil {
+	if err := validateDeleteRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.Delete)
@@ -420,7 +420,7 @@ func (s Service) DeleteAuthMethod(ctx context.Context, req *pbs.DeleteAuthMethod
 // Authenticate implements the interface pbs.AuthenticationServiceServer.
 func (s Service) Authenticate(ctx context.Context, req *pbs.AuthenticateRequest) (*pbs.AuthenticateResponse, error) {
 	const op = "authmethod_service.(Service).Authenticate"
-	if err := validateAuthenticateRequest(req); err != nil {
+	if err := validateAuthenticateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -961,10 +961,10 @@ func toAuthTokenProto(t *authtoken.AuthToken) *pba.AuthToken {
 //   - The path passed in is correctly formatted
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
-func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
+func validateGetRequest(ctx context.Context, req *pbs.GetAuthMethodRequest) error {
 	const op = "authmethod.validateGetRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
+		return errors.New(ctx, errors.InvalidParameter, op, "Missing request")
 	}
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.PasswordAuthMethodPrefix, globals.OidcAuthMethodPrefix, globals.LdapAuthMethodPrefix)
 }
@@ -972,7 +972,7 @@ func validateGetRequest(req *pbs.GetAuthMethodRequest) error {
 func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest) error {
 	const op = "authmethod.validateCreateRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
+		return errors.New(ctx, errors.InvalidParameter, op, "Missing request")
 	}
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -1077,7 +1077,7 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateAuthMethodRequest
 func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest) error {
 	const op = "authmethod.validateUpdateRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing request")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing request")
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -1205,25 +1205,25 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAuthMethodRequest
 	}, globals.PasswordAuthMethodPrefix, globals.OidcAuthMethodPrefix, globals.LdapAuthMethodPrefix)
 }
 
-func validateDeleteRequest(req *pbs.DeleteAuthMethodRequest) error {
+func validateDeleteRequest(ctx context.Context, req *pbs.DeleteAuthMethodRequest) error {
 	const op = "authmethod.validateDeleteRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
+		return errors.New(ctx, errors.InvalidParameter, op, "Missing request")
 	}
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.PasswordAuthMethodPrefix, globals.OidcAuthMethodPrefix, globals.LdapAuthMethodPrefix)
 }
 
-func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListAuthMethodsRequest) error {
 	const op = "authmethod.validateListRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
+		return errors.New(ctx, errors.InvalidParameter, op, "Missing request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields[scopeIdField] = "This field must be 'global' or a valid org scope id."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
@@ -1232,10 +1232,10 @@ func validateListRequest(req *pbs.ListAuthMethodsRequest) error {
 	return nil
 }
 
-func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
+func validateChangeStateRequest(ctx context.Context, req *pbs.ChangeStateRequest) error {
 	const op = "authmethod.validateChangeStateRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
+		return errors.New(ctx, errors.InvalidParameter, op, "Missing request")
 	}
 	if st := subtypes.SubtypeFromId(domain, req.GetId()); st != oidc.Subtype {
 		return handlers.NotFoundErrorf("This endpoint is only available for the %q Auth Method type.", oidc.Subtype.String())
@@ -1261,10 +1261,10 @@ func validateChangeStateRequest(req *pbs.ChangeStateRequest) error {
 	return nil
 }
 
-func validateAuthenticateRequest(req *pbs.AuthenticateRequest) error {
+func validateAuthenticateRequest(ctx context.Context, req *pbs.AuthenticateRequest) error {
 	const op = "authmethod.validateAuthenticateRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "Missing request")
+		return errors.New(ctx, errors.InvalidParameter, op, "Missing request")
 	}
 
 	badFields := make(map[string]string)

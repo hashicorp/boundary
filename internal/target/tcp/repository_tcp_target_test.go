@@ -132,7 +132,7 @@ func TestRepository_CreateTarget(t *testing.T) {
 						target.WithDefaultPort(uint32(22)),
 					)
 					require.NoError(t, err)
-					id, err := db.NewPublicId(globals.TcpTargetPrefix)
+					id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
 					require.NoError(t, err)
 					tar.SetPublicId(ctx, id)
 					return tar
@@ -571,6 +571,7 @@ func TestRepository_UpdateTcpTarget(t *testing.T) {
 			}
 			tar := tcp.TestTarget(ctx, t, conn, tt.newProjectId, name, tt.newTargetOpts...)
 			updateTarget := tcp.NewTestTarget(
+				ctx,
 				tt.args.ProjectId,
 				target.WithName(tt.args.name),
 				target.WithDescription(tt.args.description),

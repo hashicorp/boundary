@@ -33,10 +33,10 @@ func TestAuthenticate(t *testing.T) {
 		return NewRepository(testCtx, testRw, testRw, testKms)
 	}
 	lookupUserWithFn := func() (LookupUser, error) {
-		return iam.NewRepository(testRw, testRw, testKms)
+		return iam.NewRepository(testCtx, testRw, testRw, testKms)
 	}
 	tokenCreatorFn := func() (AuthTokenCreator, error) {
-		return authtoken.NewRepository(testRw, testRw, testKms)
+		return authtoken.NewRepository(testCtx, testRw, testRw, testKms)
 	}
 	iamRepo := iam.TestRepo(t, testConn, rootWrapper)
 	org, _ := iam.TestScopes(t, iamRepo)

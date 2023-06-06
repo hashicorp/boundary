@@ -59,7 +59,7 @@ func TestDb_Update(t *testing.T) {
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
 	now := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
-	publicId, err := NewPublicId("testuser")
+	publicId, err := NewPublicId(testCtx, "testuser")
 	require.NoError(t, err)
 	id := testId(t)
 	wrapper := TestDBWrapper(t, conn, "oplog")

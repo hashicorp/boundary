@@ -224,7 +224,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 				),
 			)
 
-			repo, err := NewRepository(rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
 			require.NoError(err)
 			require.NotNil(repo)
 

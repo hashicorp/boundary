@@ -587,7 +587,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
 			sche := scheduler.TestScheduler(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche)
+			repo, err := NewRepository(ctx, rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), tt.in, tt.opts...)
@@ -621,7 +621,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -655,7 +655,7 @@ func TestRepository_CreateSSHCertificateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -760,7 +760,7 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 				ctx := context.Background()
 				kms := kms.TestKms(t, conn, wrapper)
 				sche := scheduler.TestScheduler(t, conn, wrapper)
-				repo, err := NewRepository(rw, rw, kms, sche)
+				repo, err := NewRepository(ctx, rw, rw, kms, sche)
 				assert.NoError(err)
 				require.NotNil(repo)
 				orig, err := repo.CreateSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), tt.in)
@@ -783,7 +783,7 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		// test
@@ -799,10 +799,10 @@ func TestRepository_LookupSSHCertificateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
-		badId, err := newSSHCertificateCredentialLibraryId()
+		badId, err := newSSHCertificateCredentialLibraryId(ctx)
 		assert.NoError(err)
 		require.NotNil(badId)
 		// test
@@ -874,7 +874,7 @@ func TestRepository_ListSSHCertificateCredentialLibraries_Limits(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche, tt.repoOpts...)
+			repo, err := NewRepository(ctx, rw, rw, kms, sche, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListSSHCertificateCredentialLibraries(ctx, libs[0].StoreId, tt.listOpts...)
@@ -1567,7 +1567,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
 			sche := scheduler.TestScheduler(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche)
+			repo, err := NewRepository(ctx, rw, rw, kms, sche)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -1674,7 +1674,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1708,7 +1708,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1756,7 +1756,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1797,7 +1797,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1829,7 +1829,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1889,6 +1889,7 @@ func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 
 func TestRepository_DeleteSSHCertificateCredentialLibrary(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1898,7 +1899,7 @@ func TestRepository_DeleteSSHCertificateCredentialLibrary(t *testing.T) {
 		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 		l := TestSSHCertificateCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
 
-		badId, err := newSSHCertificateCredentialLibraryId()
+		badId, err := newSSHCertificateCredentialLibraryId(ctx)
 		require.NoError(t, err)
 		require.NotNil(t, badId)
 
@@ -1928,10 +1929,9 @@ func TestRepository_DeleteSSHCertificateCredentialLibrary(t *testing.T) {
 			tt := tt
 			t.Run(tt.name, func(t *testing.T) {
 				assert, require := assert.New(t), require.New(t)
-				ctx := context.Background()
 				kms := kms.TestKms(t, conn, wrapper)
 				sche := scheduler.TestScheduler(t, conn, wrapper)
-				repo, err := NewRepository(rw, rw, kms, sche)
+				repo, err := NewRepository(ctx, rw, rw, kms, sche)
 				assert.NoError(err)
 				require.NotNil(repo)
 

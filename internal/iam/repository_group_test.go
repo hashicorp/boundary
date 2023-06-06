@@ -22,6 +22,7 @@ import (
 
 func TestRepository_CreateGroup(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -46,7 +47,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			name: "valid-org",
 			args: args{
 				group: func() *Group {
-					g, err := NewGroup(org.PublicId, WithName("valid-org"+id), WithDescription(id))
+					g, err := NewGroup(ctx, org.PublicId, WithName("valid-org"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return g
 				}(),
@@ -57,7 +58,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			name: "valid-proj",
 			args: args{
 				group: func() *Group {
-					g, err := NewGroup(proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
+					g, err := NewGroup(ctx, proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return g
 				}(),
@@ -68,7 +69,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			name: "bad-public-id",
 			args: args{
 				group: func() *Group {
-					g, err := NewGroup(proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
+					g, err := NewGroup(ctx, proj.PublicId, WithName("valid-proj"+id), WithDescription(id))
 					assert.NoError(t, err)
 					g.PublicId = id
 					return g
@@ -104,7 +105,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			name: "bad-scope-id",
 			args: args{
 				group: func() *Group {
-					g, err := NewGroup(id)
+					g, err := NewGroup(ctx, id)
 					assert.NoError(t, err)
 					return g
 				}(),
@@ -117,7 +118,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			name: "dup-name",
 			args: args{
 				group: func() *Group {
-					g, err := NewGroup(org.PublicId, WithName("dup-name"+id), WithDescription(id))
+					g, err := NewGroup(ctx, org.PublicId, WithName("dup-name"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return g
 				}(),
@@ -132,7 +133,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			name: "dup-name-but-diff-scope",
 			args: args{
 				group: func() *Group {
-					g, err := NewGroup(proj.PublicId, WithName("dup-name-but-diff-scope"+id), WithDescription(id))
+					g, err := NewGroup(ctx, proj.PublicId, WithName("dup-name-but-diff-scope"+id), WithDescription(id))
 					assert.NoError(t, err)
 					return g
 				}(),
@@ -147,7 +148,7 @@ func TestRepository_CreateGroup(t *testing.T) {
 			assert := assert.New(t)
 
 			if tt.wantDup {
-				dup, err := NewGroup(org.PublicId, tt.args.opt...)
+				dup, err := NewGroup(ctx, org.PublicId, tt.args.opt...)
 				assert.NoError(err)
 				dup, err = repo.CreateGroup(context.Background(), dup, tt.args.opt...)
 				assert.NoError(err)
@@ -473,6 +474,7 @@ func TestRepository_UpdateGroup(t *testing.T) {
 
 func TestRepository_DeleteGroup(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	a := assert.New(t)
 	rw := db.New(conn)
@@ -480,7 +482,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 	repo := TestRepo(t, conn, wrapper)
 	org, _ := TestScopes(t, repo)
 
-	grpId, err := newGroupId()
+	grpId, err := newGroupId(ctx)
 	a.NoError(err)
 
 	type args struct {
@@ -518,7 +520,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			name: "not-found",
 			args: args{
 				group: func() *Group {
-					g, err := NewGroup(org.PublicId)
+					g, err := NewGroup(ctx, org.PublicId)
 					g.PublicId = grpId
 					a.NoError(err)
 					return g
@@ -532,7 +534,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			deletedRows, err := repo.DeleteGroup(context.Background(), tt.args.group.PublicId, tt.args.opt...)
+			deletedRows, err := repo.DeleteGroup(ctx, tt.args.group.PublicId, tt.args.opt...)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Equal(0, deletedRows)
@@ -544,7 +546,7 @@ func TestRepository_DeleteGroup(t *testing.T) {
 			}
 			assert.NoError(err)
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
-			foundGroup, _, err := repo.LookupGroup(context.Background(), tt.args.group.PublicId)
+			foundGroup, _, err := repo.LookupGroup(ctx, tt.args.group.PublicId)
 			assert.NoError(err)
 			assert.Nil(foundGroup)
 

@@ -3,7 +3,11 @@
 
 package session
 
-import "github.com/hashicorp/boundary/internal/errors"
+import (
+	"context"
+
+	"github.com/hashicorp/boundary/internal/errors"
+)
 
 const (
 	defaultSessionTargetAddressTableName = "session_target_address"
@@ -20,13 +24,13 @@ type SessionTargetAddress struct {
 }
 
 // NewSessionTargetAddress creates a new in memory session target address.
-func NewSessionTargetAddress(sessionId, targetId string) (*SessionTargetAddress, error) {
+func NewSessionTargetAddress(ctx context.Context, sessionId, targetId string) (*SessionTargetAddress, error) {
 	const op = "sesssion.NewSessionTargetAddress"
 	if sessionId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
 	if targetId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	sta := &SessionTargetAddress{
 		SessionId: sessionId,

@@ -182,7 +182,7 @@ func TestTargetHostSet_ImmutableFields(t *testing.T) {
 	gotHostSources := gotTarget.GetHostSources()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(gotHostSources))
-	new, err := target.NewTargetHostSet(projTarget.GetPublicId(), gotHostSources[0].Id())
+	new, err := target.NewTargetHostSet(ctx, projTarget.GetPublicId(), gotHostSources[0].Id())
 	require.NoError(t, err)
 
 	tests := []struct {

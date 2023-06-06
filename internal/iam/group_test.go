@@ -24,6 +24,7 @@ import (
 
 func TestNewGroup(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -83,7 +84,7 @@ func TestNewGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewGroup(tt.args.scopePublicId, tt.args.opt...)
+			got, err := NewGroup(ctx, tt.args.scopePublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -100,6 +101,7 @@ func TestNewGroup(t *testing.T) {
 
 func Test_GroupCreate(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -120,9 +122,9 @@ func Test_GroupCreate(t *testing.T) {
 			args: args{
 				group: func() *Group {
 					id := testId(t)
-					grp, err := NewGroup(org.PublicId, WithName(id), WithDescription("description-"+id))
+					grp, err := NewGroup(ctx, org.PublicId, WithName(id), WithDescription("description-"+id))
 					require.NoError(t, err)
-					grpId, err := newGroupId()
+					grpId, err := newGroupId(ctx)
 					require.NoError(t, err)
 					grp.PublicId = grpId
 					return grp
@@ -135,9 +137,9 @@ func Test_GroupCreate(t *testing.T) {
 			args: args{
 				group: func() *Group {
 					id := testId(t)
-					grp, err := NewGroup(proj.PublicId, WithName(id), WithDescription("description-"+id))
+					grp, err := NewGroup(ctx, proj.PublicId, WithName(id), WithDescription("description-"+id))
 					require.NoError(t, err)
-					grpId, err := newGroupId()
+					grpId, err := newGroupId(ctx)
 					require.NoError(t, err)
 					grp.PublicId = grpId
 					return grp
@@ -149,9 +151,9 @@ func Test_GroupCreate(t *testing.T) {
 			name: "valid-with-dup-null-names-and-descriptions",
 			args: args{
 				group: func() *Group {
-					grp, err := NewGroup(org.PublicId)
+					grp, err := NewGroup(ctx, org.PublicId)
 					require.NoError(t, err)
-					grpId, err := newGroupId()
+					grpId, err := newGroupId(ctx)
 					require.NoError(t, err)
 					grp.PublicId = grpId
 					return grp
@@ -165,9 +167,9 @@ func Test_GroupCreate(t *testing.T) {
 			args: args{
 				group: func() *Group {
 					id := testId(t)
-					grp, err := NewGroup(id)
+					grp, err := NewGroup(ctx, id)
 					require.NoError(t, err)
-					grpId, err := newGroupId()
+					grpId, err := newGroupId(ctx)
 					require.NoError(t, err)
 					grp.PublicId = grpId
 					return grp
@@ -184,14 +186,14 @@ func Test_GroupCreate(t *testing.T) {
 			w := db.New(conn)
 			if tt.wantDup {
 				g := tt.args.group.Clone().(*Group)
-				grpId, err := newGroupId()
+				grpId, err := newGroupId(ctx)
 				require.NoError(err)
 				g.PublicId = grpId
-				err = w.Create(context.Background(), g)
+				err = w.Create(ctx, g)
 				require.NoError(err)
 			}
 			g := tt.args.group.Clone().(*Group)
-			err := w.Create(context.Background(), g)
+			err := w.Create(ctx, g)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -202,7 +204,7 @@ func Test_GroupCreate(t *testing.T) {
 
 			foundGrp := allocGroup()
 			foundGrp.PublicId = tt.args.group.PublicId
-			err = w.LookupByPublicId(context.Background(), &foundGrp)
+			err = w.LookupByPublicId(ctx, &foundGrp)
 			require.NoError(err)
 			assert.Empty(cmp.Diff(g, &foundGrp, protocmp.Transform()))
 		})

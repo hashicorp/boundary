@@ -66,7 +66,7 @@ func TestList(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
-	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	err := vault.RegisterJobs(ctx, sche, rw, rw, kms)
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -74,10 +74,10 @@ func TestList(t *testing.T) {
 		return iamRepo, nil
 	}
 	vaultRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms, sche)
+		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(context.Background(), rw, rw, kms)
+		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
 
 	_, prjNoStores := iam.TestScopes(t, iamRepo)
@@ -208,7 +208,7 @@ func TestCreateVault(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
-	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	err := vault.RegisterJobs(ctx, sche, rw, rw, kms)
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -216,10 +216,10 @@ func TestCreateVault(t *testing.T) {
 		return iamRepo, nil
 	}
 	vaultRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms, sche)
+		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(context.Background(), rw, rw, kms)
+		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -597,10 +597,10 @@ func TestCreateStatic(t *testing.T) {
 		return iamRepo, nil
 	}
 	vaultRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms, sche)
+		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(context.Background(), rw, rw, kms)
+		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -763,10 +763,10 @@ func TestGet(t *testing.T) {
 		return iamRepo, nil
 	}
 	vaultRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms, sche)
+		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(context.Background(), rw, rw, kms)
+		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -897,10 +897,10 @@ func TestDelete(t *testing.T) {
 		return iamRepo, nil
 	}
 	vaultRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms, sche)
+		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(context.Background(), rw, rw, kms)
+		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -958,12 +958,13 @@ func TestDelete(t *testing.T) {
 }
 
 func TestUpdateVault(t *testing.T) {
+	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	rw := db.New(conn)
-	err := vault.RegisterJobs(context.Background(), sche, rw, rw, kms)
+	err := vault.RegisterJobs(testCtx, sche, rw, rw, kms)
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -971,10 +972,10 @@ func TestUpdateVault(t *testing.T) {
 		return iamRepo, nil
 	}
 	vaultRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms, sche)
+		return vault.NewRepository(testCtx, rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(context.Background(), rw, rw, kms)
+		return credstatic.NewRepository(testCtx, rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -992,12 +993,12 @@ func TestUpdateVault(t *testing.T) {
 
 	v := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS), vault.WithClientKey(key))
 	_, token1b := v.CreateToken(t)
-	clientCert, err := vault.NewClientCertificate(v.ClientCert, v.ClientKey)
+	clientCert, err := vault.NewClientCertificate(ctx, v.ClientCert, v.ClientKey)
 	require.NoError(t, err)
 
 	v2 := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestClientTLS), vault.WithClientKey(key))
 	_, token2 := v2.CreateToken(t)
-	clientCert2, err := vault.NewClientCertificate(v2.ClientCert, v2.ClientKey)
+	clientCert2, err := vault.NewClientCertificate(ctx, v2.ClientCert, v2.ClientKey)
 	require.NoError(t, err)
 
 	freshStore := func() (*vault.CredentialStore, func()) {
@@ -1293,6 +1294,7 @@ func TestUpdateVault(t *testing.T) {
 }
 
 func TestUpdateStatic(t *testing.T) {
+	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1304,10 +1306,10 @@ func TestUpdateStatic(t *testing.T) {
 		return iamRepo, nil
 	}
 	vaultRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(rw, rw, kms, sche)
+		return vault.NewRepository(testCtx, rw, rw, kms, sche)
 	}
 	staticRepoFn := func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(context.Background(), rw, rw, kms)
+		return credstatic.NewRepository(testCtx, rw, rw, kms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)

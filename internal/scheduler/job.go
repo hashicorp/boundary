@@ -42,16 +42,16 @@ type JobStatus struct {
 	Completed, Total int
 }
 
-func validateJob(j Job) error {
+func validateJob(ctx context.Context, j Job) error {
 	const op = "scheduler.validateJob"
 	if j == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing job")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing job")
 	}
 	if j.Name() == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing name")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing name")
 	}
 	if j.Description() == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing description")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing description")
 	}
 	return nil
 }

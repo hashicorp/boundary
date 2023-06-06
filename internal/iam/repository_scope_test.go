@@ -22,6 +22,7 @@ import (
 
 func Test_Repository_Scope_Create(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -31,15 +32,15 @@ func Test_Repository_Scope_Create(t *testing.T) {
 	t.Run("valid-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		id := testId(t)
-		s, err := NewOrg(WithName(id))
+		s, err := NewOrg(ctx, WithName(id))
 		require.NoError(err)
-		s, err = repo.CreateScope(context.Background(), s, "")
+		s, err = repo.CreateScope(ctx, s, "")
 		require.NoError(err)
 		require.NotNil(s)
 		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), id)
 
-		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
+		foundScope, err := repo.LookupScope(ctx, s.PublicId)
 		require.NoError(err)
 		assert.True(proto.Equal(foundScope, s))
 
@@ -48,16 +49,16 @@ func Test_Repository_Scope_Create(t *testing.T) {
 	})
 	t.Run("valid-scope-withPublicId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		publicId, err := newScopeId(scope.Org)
+		publicId, err := newScopeId(ctx, scope.Org)
 		require.NoError(err)
-		s, err := NewOrg()
+		s, err := NewOrg(ctx)
 		require.NoError(err)
 
-		s, err = repo.CreateScope(context.Background(), s, "", WithPublicId(publicId))
+		s, err = repo.CreateScope(ctx, s, "", WithPublicId(publicId))
 		require.NoError(err)
 		require.NotNil(s)
 		assert.Equal(publicId, s.GetPublicId())
-		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
+		foundScope, err := repo.LookupScope(ctx, s.PublicId)
 		require.NoError(err)
 		assert.True(proto.Equal(foundScope, s))
 
@@ -68,7 +69,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		id := testId(t)
 
-		s, err := NewOrg(WithName(id))
+		s, err := NewOrg(ctx, WithName(id))
 		require.NoError(err)
 
 		s, err = repo.CreateScope(context.Background(), s, "")
@@ -77,7 +78,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), id)
 
-		s2, err := NewOrg(WithName(id))
+		s2, err := NewOrg(ctx, WithName(id))
 		require.NoError(err)
 		s2, err = repo.CreateScope(context.Background(), s2, "")
 		require.Error(err)
@@ -87,7 +88,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		id := testId(t)
 
-		s, err := NewOrg(WithName(id))
+		s, err := NewOrg(ctx, WithName(id))
 		require.NoError(err)
 		s, err = repo.CreateScope(context.Background(), s, "")
 		require.NoError(err)
@@ -95,13 +96,13 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		assert.NotEmpty(s.GetPublicId())
 		assert.Equal(s.GetName(), id)
 
-		p, err := NewProject(s.PublicId, WithName(id))
+		p, err := NewProject(ctx, s.PublicId, WithName(id))
 		require.NoError(err)
 		p, err = repo.CreateScope(context.Background(), p, "")
 		require.NoError(err)
 		require.NotEmpty(p.PublicId)
 
-		p2, err := NewProject(s.PublicId, WithName(id))
+		p2, err := NewProject(ctx, s.PublicId, WithName(id))
 		require.NoError(err)
 		p2, err = repo.CreateScope(context.Background(), p2, "")
 		assert.Error(err)
@@ -111,7 +112,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 		t.Run(fmt.Sprintf("skipping-role-creation-%t", skipCreate), func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			id := testId(t)
-			s, err := NewOrg(WithName(id))
+			s, err := NewOrg(ctx, WithName(id))
 			require.NoError(err)
 			s, err = repo.CreateScope(context.Background(), s, user.GetPublicId(), WithSkipAdminRoleCreation(skipCreate), WithSkipDefaultRoleCreation(skipCreate))
 			require.NoError(err)
@@ -136,6 +137,7 @@ func Test_Repository_Scope_Create(t *testing.T) {
 
 func Test_Repository_Scope_Update(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -147,7 +149,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		s := testOrg(t, repo, id, "")
 		assert.Equal(id, s.Name)
 
-		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
+		foundScope, err := repo.LookupScope(ctx, s.PublicId)
 		require.NoError(err)
 		assert.Empty(foundScope.GetDescription()) // should  be "" after update in db
 		assert.True(proto.Equal(foundScope, s))
@@ -157,7 +159,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 
 		s.Name = "foo" + id
 		s.Description = "desc-id" // not in the field mask paths
-		s, updatedRows, err := repo.UpdateScope(context.Background(), s, 1, []string{"Name"})
+		s, updatedRows, err := repo.UpdateScope(ctx, s, 1, []string{"Name"})
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 		require.NotNil(s)
@@ -165,7 +167,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		// TODO: This isn't empty because of ICU-490 -- when that is resolved, fix this
 		// assert.Empty(s.GetDescription())
 
-		foundScope, err = repo.LookupScope(context.Background(), s.PublicId)
+		foundScope, err = repo.LookupScope(ctx, s.PublicId)
 		require.NoError(err)
 		assert.Equal(foundScope.GetPublicId(), s.GetPublicId())
 		assert.Empty(foundScope.GetDescription())
@@ -175,7 +177,7 @@ func Test_Repository_Scope_Update(t *testing.T) {
 
 		s.Name = "test2"
 		s.Description = "desc-id-2"
-		s, updatedRows, err = repo.UpdateScope(context.Background(), s, 2, []string{"Name", "Description"})
+		s, updatedRows, err = repo.UpdateScope(ctx, s, 2, []string{"Name", "Description"})
 		require.NoError(err)
 		assert.Equal(1, updatedRows)
 		require.NotNil(s)
@@ -189,14 +191,14 @@ func Test_Repository_Scope_Update(t *testing.T) {
 		s := testOrg(t, repo, id, "")
 		assert.Equal(id, s.Name)
 
-		project, err := NewProject(s.PublicId)
+		project, err := NewProject(ctx, s.PublicId)
 		require.NoError(err)
-		project, err = repo.CreateScope(context.Background(), project, "")
+		project, err = repo.CreateScope(ctx, project, "")
 		require.NoError(err)
 		require.NotNil(project)
 
 		project.ParentId = project.PublicId
-		project, updatedRows, err := repo.UpdateScope(context.Background(), project, 1, []string{"ParentId"})
+		project, updatedRows, err := repo.UpdateScope(ctx, project, 1, []string{"ParentId"})
 		require.Error(err)
 		assert.Nil(project)
 		assert.Equal(0, updatedRows)

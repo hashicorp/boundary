@@ -4,13 +4,15 @@
 package session
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestConnectWith_validate(t *testing.T) {
-	id, err := newId()
+	ctx := context.Background()
+	id, err := newId(ctx)
 	require.NoError(t, err)
 
 	type fields struct {
@@ -109,7 +111,7 @@ func TestConnectWith_validate(t *testing.T) {
 				EndpointTcpPort:    tt.fields.EndpointTcpPort,
 				UserClientIp:       tt.fields.UserClientIp,
 			}
-			if err := c.validate(); (err != nil) != tt.wantErr {
+			if err := c.validate(ctx); (err != nil) != tt.wantErr {
 				t.Errorf("ConnectWith.validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

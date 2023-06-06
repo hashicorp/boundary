@@ -4,6 +4,7 @@
 package handlers
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestNewFilter_everythingMatchesEmpty(t *testing.T) {
-	f, err := NewFilter("")
+	f, err := NewFilter(context.Background(), "")
 	require.NoError(t, err)
 	for _, v := range []any{
 		nil,
@@ -32,6 +33,7 @@ func TestNewFilter_everythingMatchesEmpty(t *testing.T) {
 }
 
 func TestNewFilter(t *testing.T) {
+	ctx := context.Background()
 	type embedded struct {
 		Name string `json:"name"`
 	}
@@ -110,7 +112,7 @@ func TestNewFilter(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f, err := NewFilter(tc.filter)
+			f, err := NewFilter(ctx, tc.filter)
 			if tc.fErr {
 				require.Error(t, err)
 				return
