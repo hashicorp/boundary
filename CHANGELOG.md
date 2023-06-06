@@ -66,6 +66,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * resource listing: API requests to list a resource (targets, sessions, users,
   etc) now properly return all resources the callers has appropriate permission
   to list ([PR](https://github.com/hashicorp/boundary/pull/3278))
+* sessions: Fix a bug that contributed to slow response times when listing
+  sessions that had a large number of connections
+  ([PR](https://github.com/hashicorp/boundary/pull/3280))
 
 ## 0.12.3 (2023/05/26)
 
