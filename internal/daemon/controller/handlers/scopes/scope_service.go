@@ -105,7 +105,11 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Scope{}}, handlers.MaskSource{&pb.Scope{}}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&store.Scope{}},
+		handlers.MaskSource{&pb.Scope{}},
+	); err != nil {
 		panic(err)
 	}
 }
@@ -137,7 +141,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 	if req.GetScopeId() == "" {
 		req.ScopeId = scope.Global.String()
 	}
-	if err := validateListRequest(req); err != nil {
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -172,7 +176,7 @@ func (s Service) ListScopes(ctx context.Context, req *pbs.ListScopesRequest) (*p
 		return &pbs.ListScopesResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(req.GetFilter())
+	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -544,9 +548,9 @@ func (s Service) createInRepo(ctx context.Context, authResults auth.VerifyResult
 	var err error
 	switch parentScope.GetType() {
 	case scope.Global.String():
-		iamScope, err = iam.NewOrg(opts...)
+		iamScope, err = iam.NewOrg(ctx, opts...)
 	case scope.Org.String():
-		iamScope, err = iam.NewProject(parentScope.GetId(), opts...)
+		iamScope, err = iam.NewProject(ctx, parentScope.GetId(), opts...)
 	}
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build new scope for creation: %v.", err)
@@ -599,9 +603,9 @@ func (s Service) updateInRepo(ctx context.Context, parentScope *pb.ScopeInfo, sc
 		iamScope.Name = scopeName
 		iamScope.PrimaryAuthMethodId = scopePrimaryAuthMethodId
 	case parentScope.GetType() == scope.Global.String():
-		iamScope, err = iam.NewOrg(opts...)
+		iamScope, err = iam.NewOrg(ctx, opts...)
 	case parentScope.GetType() == scope.Org.String():
-		iamScope, err = iam.NewProject(parentScope.GetId(), opts...)
+		iamScope, err = iam.NewProject(ctx, parentScope.GetId(), opts...)
 	}
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build scope for update: %v.", err)
@@ -977,12 +981,12 @@ func validateDeleteRequest(req *pbs.DeleteScopeRequest) error {
 	return nil
 }
 
-func validateListRequest(req *pbs.ListScopesRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListScopesRequest) error {
 	badFields := map[string]string{}
 	if req.GetScopeId() != scope.Global.String() && !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) {
 		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

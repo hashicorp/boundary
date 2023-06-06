@@ -68,7 +68,7 @@ func (r *Repository) Authenticate(ctx context.Context, scopeId, authMethodId, lo
 		if err != nil {
 			return acct.Account, errors.Wrap(ctx, err, op, errors.WithMsg("retrieve current password configuration"))
 		}
-		cred, err := newArgon2Credential(acct.PublicId, password, cc.argon2())
+		cred, err := newArgon2Credential(ctx, acct.PublicId, password, cc.argon2())
 		if err != nil {
 			return acct.Account, errors.Wrap(ctx, err, op, errors.WithCode(errors.PasswordInvalidConfiguration))
 		}
@@ -166,7 +166,7 @@ func (r *Repository) ChangePassword(ctx context.Context, scopeId, accountId, old
 	if cc.MinPasswordLength > len(new) {
 		return nil, errors.New(ctx, errors.PasswordTooShort, op, fmt.Sprintf("must be at least %d", cc.MinPasswordLength))
 	}
-	newCred, err := newArgon2Credential(accountId, new, cc.argon2())
+	newCred, err := newArgon2Credential(ctx, accountId, new, cc.argon2())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -294,7 +294,7 @@ func (r *Repository) SetPassword(ctx context.Context, scopeId, accountId, passwo
 		if cc.MinPasswordLength > len(password) {
 			return nil, errors.New(ctx, errors.PasswordTooShort, op, fmt.Sprintf("password must be at least %v", cc.MinPasswordLength))
 		}
-		newCred, err = newArgon2Credential(accountId, password, cc.argon2())
+		newCred, err = newArgon2Credential(ctx, accountId, password, cc.argon2())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

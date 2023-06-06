@@ -34,12 +34,12 @@ func TestAuthToken(t testing.TB, conn *db.DB, kms *kms.Kms, scopeId string, opt 
 
 	ctx := context.Background()
 	rw := db.New(conn)
-	iamRepo, err := iam.NewRepository(rw, rw, kms)
+	iamRepo, err := iam.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	u := iam.TestUser(t, iamRepo, scopeId, append(opts.withIamOptions, iam.WithAccountIds(acct.PublicId))...)
 
-	repo, err := NewRepository(rw, rw, kms)
+	repo, err := NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 
 	at, err := repo.CreateAuthToken(ctx, u, acct.GetPublicId(), opt...)

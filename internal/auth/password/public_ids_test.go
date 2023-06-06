@@ -4,6 +4,7 @@
 package password
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -13,13 +14,14 @@ import (
 )
 
 func Test_PublicIds(t *testing.T) {
+	ctx := context.Background()
 	t.Run("authMethod", func(t *testing.T) {
-		id, err := newAuthMethodId()
+		id, err := newAuthMethodId(ctx)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.PasswordAuthMethodPrefix+"_"))
 	})
 	t.Run("account", func(t *testing.T) {
-		id, err := newAccountId()
+		id, err := newAccountId(ctx)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.PasswordAccountPrefix+"_"))
 	})

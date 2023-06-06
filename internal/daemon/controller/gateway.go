@@ -79,7 +79,7 @@ func newGrpcServer(
 	eventer *event.Eventer,
 ) (*grpc.Server, string, error) {
 	const op = "controller.newGrpcServer"
-	ticket, err := db.NewPrivateId("gwticket")
+	ticket, err := db.NewPrivateId(ctx, "gwticket")
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate gateway ticket"))
 	}

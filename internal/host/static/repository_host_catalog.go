@@ -52,7 +52,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 		}
 		c.PublicId = opts.withPublicId
 	} else {
-		id, err := newHostCatalogId()
+		id, err := newHostCatalogId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

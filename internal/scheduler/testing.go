@@ -29,9 +29,10 @@ import (
 func TestScheduler(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Scheduler {
 	t.Helper()
 
+	ctx := context.Background()
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := server.NewRepository(rw, rw, kmsCache)
+	serversRepo, err := server.NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 	iam.TestRepo(t, conn, wrapper)
 
@@ -41,14 +42,14 @@ func TestScheduler(t testing.TB, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 		PrivateId: "test-job-server-" + id,
 		Address:   "127.0.0.1",
 	}
-	_, err = serversRepo.UpsertController(context.Background(), controller)
+	_, err = serversRepo.UpsertController(ctx, controller)
 	require.NoError(t, err)
 
 	jobRepoFn := func() (*job.Repository, error) {
-		return job.NewRepository(rw, rw, kmsCache)
+		return job.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
-	s, err := New(controller.PrivateId, jobRepoFn, opt...)
+	s, err := New(ctx, controller.PrivateId, jobRepoFn, opt...)
 	require.NoError(t, err)
 
 	return s

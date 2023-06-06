@@ -413,7 +413,7 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 		if !ok {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unsupported target type %s", target.GetType()))
 		}
-		id, err := db.NewPublicId(prefix)
+		id, err := db.NewPublicId(ctx, prefix)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -424,7 +424,7 @@ func (r *Repository) CreateTarget(ctx context.Context, target Target, opt ...Opt
 	var err error
 	if t.GetAddress() != "" {
 		t.SetAddress(strings.TrimSpace(t.GetAddress()))
-		address, err = NewAddress(t.GetPublicId(), t.GetAddress())
+		address, err = NewAddress(ctx, t.GetPublicId(), t.GetAddress())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -617,7 +617,7 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 				if len(hostSources) > 0 {
 					return errors.New(ctx, errors.Conflict, op, "unable to set address because one or more host sources is assigned to the given target")
 				}
-				address, err = NewAddress(t.GetPublicId(), addressEndpoint)
+				address, err = NewAddress(ctx, t.GetPublicId(), addressEndpoint)
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}

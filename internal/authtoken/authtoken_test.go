@@ -25,6 +25,7 @@ import (
 // placed in repository_test.go
 
 func TestAuthToken_DbUpdate(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -34,7 +35,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 	am := password.TestAuthMethods(t, conn, org.GetPublicId(), 1)[0]
 	acct := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 
-	newAuthTokId, err := NewAuthTokenId()
+	newAuthTokId, err := NewAuthTokenId(ctx)
 	require.NoError(t, err)
 
 	type args struct {
@@ -112,9 +113,9 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 			authTok := TestAuthToken(t, conn, kms, org.GetPublicId())
 			proto.Merge(authTok.AuthToken, tt.args.authTok)
 
-			err := authTok.encrypt(context.Background(), wrapper)
+			err := authTok.encrypt(ctx, wrapper)
 			require.NoError(t, err)
-			cnt, err := w.Update(context.Background(), authTok, tt.args.fieldMask, tt.args.nullMask)
+			cnt, err := w.Update(ctx, authTok, tt.args.fieldMask, tt.args.nullMask)
 			if tt.wantErr {
 				t.Logf("Got error :%v", err)
 				assert.Error(err)
@@ -127,6 +128,7 @@ func TestAuthToken_DbUpdate(t *testing.T) {
 }
 
 func TestAuthToken_DbCreate(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rootWrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, rootWrapper)
@@ -138,7 +140,7 @@ func TestAuthToken_DbCreate(t *testing.T) {
 	createdAuthToken := TestAuthToken(t, conn, kms, org.GetPublicId())
 
 	testAuthTokenId := func() string {
-		id, err := NewAuthTokenId()
+		id, err := NewAuthTokenId(ctx)
 		require.NoError(t, err)
 		return id
 	}
@@ -185,9 +187,10 @@ func TestAuthToken_DbCreate(t *testing.T) {
 }
 
 func TestAuthToken_DbDelete(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	testAuthTokenId := func() string {
-		id, err := NewAuthTokenId()
+		id, err := NewAuthTokenId(ctx)
 		require.NoError(t, err)
 		return id
 	}
@@ -231,7 +234,7 @@ func TestAuthToken_DbDelete(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			cnt, err := db.New(conn).Delete(context.Background(), tt.at)
+			cnt, err := db.New(conn).Delete(ctx, tt.at)
 			assert.Equal(tt.wantCnt, cnt)
 			if tt.wantError {
 				assert.Error(err)

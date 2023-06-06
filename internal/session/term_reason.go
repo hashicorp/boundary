@@ -4,6 +4,7 @@
 package session
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -28,7 +29,7 @@ func (r TerminationReason) String() string {
 	return string(r)
 }
 
-func convertToReason(s string) (TerminationReason, error) {
+func convertToReason(ctx context.Context, s string) (TerminationReason, error) {
 	const op = "session.convertToReason"
 	switch s {
 	case UnknownTermination.String():
@@ -46,6 +47,6 @@ func convertToReason(s string) (TerminationReason, error) {
 	case ConnectionLimit.String():
 		return ConnectionLimit, nil
 	default:
-		return "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
+		return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
 	}
 }

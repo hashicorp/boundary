@@ -59,7 +59,7 @@ var (
 
 // NewConnection creates a new in memory connection.  No options
 // are currently supported.
-func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, userClientIp string, _ ...Option) (*Connection, error) {
+func NewConnection(ctx context.Context, sessionID, clientTcpAddress string, clientTcpPort uint32, endpointTcpAddr string, endpointTcpPort uint32, userClientIp string, _ ...Option) (*Connection, error) {
 	const op = "session.NewConnection"
 	c := Connection{
 		SessionId:          sessionID,
@@ -69,8 +69,8 @@ func NewConnection(sessionID, clientTcpAddress string, clientTcpPort uint32, end
 		EndpointTcpPort:    endpointTcpPort,
 		UserClientIp:       userClientIp,
 	}
-	if err := c.validateNewConnection(); err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+	if err := c.validateNewConnection(ctx); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &c, nil
 }
@@ -124,7 +124,7 @@ func (c *Connection) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpT
 	}
 	switch opType {
 	case db.CreateOp:
-		if err := c.validateNewConnection(); err != nil {
+		if err := c.validateNewConnection(ctx); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	case db.UpdateOp:
@@ -138,7 +138,7 @@ func (c *Connection) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpT
 		case contains(opts.WithFieldMaskPaths, "UpdateTime"):
 			return errors.New(ctx, errors.InvalidParameter, op, "update time is immutable")
 		case contains(opts.WithFieldMaskPaths, "ClosedReason"):
-			if _, err := convertToClosedReason(c.ClosedReason); err != nil {
+			if _, err := convertToClosedReason(ctx, c.ClosedReason); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		}
@@ -162,25 +162,25 @@ func (c *Connection) SetTableName(n string) {
 }
 
 // validateNewConnection checks everything but the connection's PublicId
-func (c *Connection) validateNewConnection() error {
+func (c *Connection) validateNewConnection(ctx context.Context) error {
 	const op = "session.(Connection).validateNewConnection"
 	if c.SessionId == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing session id")
 	}
 	if c.ClientTcpAddress == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client address")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing client address")
 	}
 	if c.ClientTcpPort == 0 {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing client port")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing client port")
 	}
 	if c.EndpointTcpAddress == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint address")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing endpoint address")
 	}
 	if c.EndpointTcpPort == 0 {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint port")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing endpoint port")
 	}
 	if c.UserClientIp == "" {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "missing user client ip")
+		return errors.New(ctx, errors.InvalidParameter, op, "missing user client ip")
 	}
 	return nil
 }

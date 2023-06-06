@@ -83,7 +83,7 @@ func Test_TestWorker(t *testing.T) {
 
 func Test_TestCert(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	sessionId, err := newId()
+	sessionId, err := newId(context.Background())
 	require.NoError(err)
 	key, cert, err := TestCert(sessionId)
 	require.NoError(err)

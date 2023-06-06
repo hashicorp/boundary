@@ -106,7 +106,7 @@ func TestClientCertificate_New(t *testing.T) {
 			require.NoError(err)
 			require.NotNil(databaseWrapper)
 
-			got, err := NewClientCertificate(tt.args.certificate, tt.args.key)
+			got, err := NewClientCertificate(ctx, tt.args.certificate, tt.args.key)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)

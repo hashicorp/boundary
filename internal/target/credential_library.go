@@ -4,6 +4,7 @@
 package target
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/credential"
@@ -22,13 +23,13 @@ type CredentialLibrary struct {
 
 // NewCredentialLibrary creates a new in memory CredentialLibrary
 // representing the relationship between targetId and credentialLibraryId.
-func NewCredentialLibrary(targetId, credentialLibraryId string, purpose credential.Purpose) (*CredentialLibrary, error) {
+func NewCredentialLibrary(ctx context.Context, targetId, credentialLibraryId string, purpose credential.Purpose) (*CredentialLibrary, error) {
 	const op = "target.NewCredentialLibrary"
 	if targetId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no target id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no target id")
 	}
 	if credentialLibraryId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no credential library id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "no credential library id")
 	}
 
 	t := &CredentialLibrary{

@@ -80,13 +80,13 @@ var (
 
 // NewUserRole creates a new user role in memory. No options are supported
 // currently.
-func NewUserRole(roleId, userId string, _ ...Option) (*UserRole, error) {
+func NewUserRole(ctx context.Context, roleId, userId string, _ ...Option) (*UserRole, error) {
 	const op = "iam.NewUserRole"
 	if roleId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
 	if userId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
 	}
 	return &UserRole{
 		UserRole: &store.UserRole{
@@ -157,13 +157,13 @@ var (
 
 // NewGroupRole creates a new group role in memory. No options are supported
 // currently.
-func NewGroupRole(roleId, groupId string, opt ...Option) (*GroupRole, error) {
+func NewGroupRole(ctx context.Context, roleId, groupId string, opt ...Option) (*GroupRole, error) {
 	const op = "iam.NewGroupRole"
 	if roleId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
 	if groupId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing group id")
 	}
 	return &GroupRole{
 		GroupRole: &store.GroupRole{
@@ -234,13 +234,13 @@ var (
 
 // NewGroupRole creates a new group role in memory. No options are supported
 // currently.
-func NewManagedGroupRole(roleId, managedGroupId string, opt ...Option) (*ManagedGroupRole, error) {
+func NewManagedGroupRole(ctx context.Context, roleId, managedGroupId string, opt ...Option) (*ManagedGroupRole, error) {
 	const op = "iam.NewManagedGroupRole"
 	if roleId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing role id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
 	if managedGroupId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing managed group id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing managed group id")
 	}
 	return &ManagedGroupRole{
 		ManagedGroupRole: &store.ManagedGroupRole{

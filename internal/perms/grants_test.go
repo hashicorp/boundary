@@ -132,6 +132,8 @@ func Test_ValidateType(t *testing.T) {
 func Test_MarshalingAndCloning(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	type input struct {
 		name            string
 		input           Grant
@@ -276,7 +278,7 @@ func Test_MarshalingAndCloning(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			output, err := test.input.MarshalJSON()
+			output, err := test.input.MarshalJSON(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, test.jsonOutput, string(output))
 			assert.Equal(t, test.canonicalString, test.input.CanonicalString())
@@ -287,6 +289,8 @@ func Test_MarshalingAndCloning(t *testing.T) {
 
 func Test_Unmarshaling(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	type input struct {
 		name      string
@@ -446,7 +450,7 @@ func Test_Unmarshaling(t *testing.T) {
 			require := require.New(t)
 			var g Grant
 			if test.jsonInput != "" {
-				err := g.unmarshalJSON([]byte(test.jsonInput))
+				err := g.unmarshalJSON(ctx, []byte(test.jsonInput))
 				if test.jsonErr != "" {
 					require.Error(err)
 					assert.Equal(test.jsonErr, err.Error())
@@ -457,7 +461,7 @@ func Test_Unmarshaling(t *testing.T) {
 			}
 			g = Grant{}
 			if test.textInput != "" {
-				err := g.unmarshalText(test.textInput)
+				err := g.unmarshalText(ctx, test.textInput)
 				if test.textErr != "" {
 					require.Error(err)
 					assert.Equal(test.textErr, err.Error())
@@ -1145,7 +1149,7 @@ func FuzzParse(f *testing.F) {
 		if g.CanonicalString() != g2.CanonicalString() {
 			t.Errorf("grant roundtrip failed, input %q, output %q", g.CanonicalString(), g2.CanonicalString())
 		}
-		jsonBytes, err := g.MarshalJSON()
+		jsonBytes, err := g.MarshalJSON(ctx)
 		if err != nil {
 			t.Error("Failed to marshal JSON:", err)
 		}

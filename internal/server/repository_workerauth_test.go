@@ -251,7 +251,7 @@ func TestStoreServerLedActivationToken(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, rootStorage)
 	require.NoError(err)
 
-	repo, err := NewRepository(rw, rw, kmsCache)
+	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(err)
 	worker, err := repo.CreateWorker(ctx, &Worker{Worker: &store.Worker{ScopeId: scope.Global.String()}}, WithCreateControllerLedActivationToken(true))
 	require.NoError(err)
@@ -581,7 +581,7 @@ func TestFilterToAuthorizedWorkerKeyIds(t *testing.T) {
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{keyId1, keyId2}, got)
 
-	workerRepo, err := NewRepository(rw, rw, kmsCache)
+	workerRepo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 	_, err = workerRepo.DeleteWorker(ctx, w1.GetPublicId())
 	require.NoError(t, err)

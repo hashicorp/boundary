@@ -97,7 +97,7 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
-	eventsHandler, err := common.WrapWithEventsHandler(printablePathCheckHandler, c.conf.Eventer, c.kms, props.ListenerConfig)
+	eventsHandler, err := common.WrapWithEventsHandler(c.baseContext, printablePathCheckHandler, c.conf.Eventer, c.kms, props.ListenerConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (c *Controller) GetHealthHandler(lcfg *listenerutil.ListenerConfig) (http.H
 	}
 
 	wrapped := wrapHandlerWithCommonFuncs(healthGrpcGwMux, c, HandlerProperties{lcfg, c.baseContext})
-	return common.WrapWithEventsHandler(wrapped, c.conf.Eventer, c.kms, lcfg)
+	return common.WrapWithEventsHandler(c.baseContext, wrapped, c.conf.Eventer, c.kms, lcfg)
 }
 
 func registerHealthGrpcGatewayEndpoint(ctx context.Context, gwMux *runtime.ServeMux, dialOptions ...grpc.DialOption) error {
@@ -135,21 +135,21 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 	currentServices := s.GetServiceInfo()
 
 	if _, ok := currentServices[services.HostCatalogService_ServiceDesc.ServiceName]; !ok {
-		hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn, c.PluginRepoFn, c.IamRepoFn)
+		hcs, err := host_catalogs.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn, c.PluginRepoFn, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create host catalog handler service: %w", err)
 		}
 		services.RegisterHostCatalogServiceServer(s, hcs)
 	}
 	if _, ok := currentServices[services.HostSetService_ServiceDesc.ServiceName]; !ok {
-		hss, err := host_sets.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn)
+		hss, err := host_sets.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create host set handler service: %w", err)
 		}
 		services.RegisterHostSetServiceServer(s, hss)
 	}
 	if _, ok := currentServices[services.HostService_ServiceDesc.ServiceName]; !ok {
-		hs, err := hosts.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn)
+		hs, err := hosts.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create host handler service: %w", err)
 		}
@@ -163,14 +163,14 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterAccountServiceServer(s, accts)
 	}
 	if _, ok := currentServices[services.AuthMethodService_ServiceDesc.ServiceName]; !ok {
-		authMethods, err := authmethods.NewService(c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn, c.LdapRepoFn)
+		authMethods, err := authmethods.NewService(c.baseContext, c.kms, c.PasswordAuthRepoFn, c.OidcRepoFn, c.IamRepoFn, c.AuthTokenRepoFn, c.LdapRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create auth method handler service: %w", err)
 		}
 		services.RegisterAuthMethodServiceServer(s, authMethods)
 	}
 	if _, ok := currentServices[services.AuthTokenService_ServiceDesc.ServiceName]; !ok {
-		authtoks, err := authtokens.NewService(c.AuthTokenRepoFn, c.IamRepoFn)
+		authtoks, err := authtokens.NewService(c.baseContext, c.AuthTokenRepoFn, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create auth token handler service: %w", err)
 		}
@@ -184,7 +184,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterScopeServiceServer(s, os)
 	}
 	if _, ok := currentServices[services.UserService_ServiceDesc.ServiceName]; !ok {
-		us, err := users.NewService(c.IamRepoFn)
+		us, err := users.NewService(c.baseContext, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create user handler service: %w", err)
 		}
@@ -236,21 +236,21 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterTargetServiceServer(s, ts)
 	}
 	if _, ok := currentServices[services.GroupService_ServiceDesc.ServiceName]; !ok {
-		gs, err := groups.NewService(c.IamRepoFn)
+		gs, err := groups.NewService(c.baseContext, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create group handler service: %w", err)
 		}
 		services.RegisterGroupServiceServer(s, gs)
 	}
 	if _, ok := currentServices[services.RoleService_ServiceDesc.ServiceName]; !ok {
-		rs, err := roles.NewService(c.IamRepoFn)
+		rs, err := roles.NewService(c.baseContext, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create role handler service: %w", err)
 		}
 		services.RegisterRoleServiceServer(s, rs)
 	}
 	if _, ok := currentServices[services.SessionService_ServiceDesc.ServiceName]; !ok {
-		ss, err := sessions.NewService(c.SessionRepoFn, c.IamRepoFn)
+		ss, err := sessions.NewService(c.baseContext, c.SessionRepoFn, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create session handler service: %w", err)
 		}
@@ -271,7 +271,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterCredentialStoreServiceServer(s, cs)
 	}
 	if _, ok := currentServices[services.CredentialLibraryService_ServiceDesc.ServiceName]; !ok {
-		cl, err := credentiallibraries.NewService(c.VaultCredentialRepoFn, c.IamRepoFn)
+		cl, err := credentiallibraries.NewService(c.baseContext, c.VaultCredentialRepoFn, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create credential library handler service: %w", err)
 		}
@@ -286,7 +286,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterWorkerServiceServer(s, ws)
 	}
 	if _, ok := currentServices[services.CredentialService_ServiceDesc.ServiceName]; !ok {
-		c, err := credentials.NewService(c.StaticCredentialRepoFn, c.IamRepoFn)
+		c, err := credentials.NewService(c.baseContext, c.StaticCredentialRepoFn, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create credential handler service: %w", err)
 		}

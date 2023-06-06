@@ -29,11 +29,12 @@ import (
 )
 
 func TestAuthTokenAuthenticator(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	tokenRepo, err := authtoken.NewRepository(rw, rw, kms)
+	tokenRepo, err := authtoken.NewRepository(ctx, rw, rw, kms)
 	require.NoError(t, err)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	tokenRepoFn := func() (*authtoken.Repository, error) {
@@ -43,7 +44,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 		return iamRepo, nil
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kms)
+		return server.NewRepository(ctx, rw, rw, kms)
 	}
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -144,6 +145,7 @@ func TestAuthTokenAuthenticator(t *testing.T) {
 }
 
 func TestVerify_AuditEvent(t *testing.T) {
+	ctx := context.Background()
 	eventConfig := event.TestEventerConfig(t, "Test_Verify", event.TestWithAuditSink(t))
 	testLock := &sync.Mutex{}
 	testLogger := hclog.New(&hclog.LoggerOptions{
@@ -156,7 +158,7 @@ func TestVerify_AuditEvent(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
-	tokenRepo, err := authtoken.NewRepository(rw, rw, testKms)
+	tokenRepo, err := authtoken.NewRepository(ctx, rw, rw, testKms)
 	require.NoError(t, err)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	tokenRepoFn := func() (*authtoken.Repository, error) {
@@ -166,7 +168,7 @@ func TestVerify_AuditEvent(t *testing.T) {
 		return iamRepo, nil
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, testKms)
+		return server.NewRepository(ctx, rw, rw, testKms)
 	}
 
 	o, _ := iam.TestScopes(t, iamRepo)
@@ -237,7 +239,7 @@ func TestVerify_AuditEvent(t *testing.T) {
 			}
 			requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = GetTokenFromRequest(context.TODO(), testKms, req)
 
-			ctx := NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, testKms, &requestInfo)
+			ctx := NewVerifierContext(ctx, iamRepoFn, tokenRepoFn, serversRepoFn, testKms, &requestInfo)
 
 			_ = os.WriteFile(eventConfig.AuditEvents.Name(), nil, 0o666) // clean out audit events from previous calls
 			_ = Verify(ctx, tt.opt...)

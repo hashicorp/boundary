@@ -4,6 +4,8 @@
 package vault
 
 import (
+	"context"
+
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
@@ -33,34 +35,34 @@ const (
 	SSHCertificateLibrarySubtype = subtypes.Subtype("vault-ssh-certificate")
 )
 
-func newCredentialStoreId() (string, error) {
-	id, err := db.NewPublicId(globals.VaultCredentialStorePrefix)
+func newCredentialStoreId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(ctx, globals.VaultCredentialStorePrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, "vault.newCredentialStoreId")
+		return "", errors.Wrap(ctx, err, "vault.newCredentialStoreId")
 	}
 	return id, nil
 }
 
-func newCredentialId() (string, error) {
-	id, err := db.NewPublicId(DynamicCredentialPrefix)
+func newCredentialId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(ctx, DynamicCredentialPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, "vault.newCredentialId")
+		return "", errors.Wrap(ctx, err, "vault.newCredentialId")
 	}
 	return id, nil
 }
 
-func newCredentialLibraryId() (string, error) {
-	id, err := db.NewPublicId(globals.VaultCredentialLibraryPrefix)
+func newCredentialLibraryId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(ctx, globals.VaultCredentialLibraryPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, "vault.newCredentialLibraryId")
+		return "", errors.Wrap(ctx, err, "vault.newCredentialLibraryId")
 	}
 	return id, nil
 }
 
-func newSSHCertificateCredentialLibraryId() (string, error) {
-	id, err := db.NewPublicId(globals.VaultSshCertificateCredentialLibraryPrefix)
+func newSSHCertificateCredentialLibraryId(ctx context.Context) (string, error) {
+	id, err := db.NewPublicId(ctx, globals.VaultSshCertificateCredentialLibraryPrefix)
 	if err != nil {
-		return "", errors.WrapDeprecated(err, "vault.newSSHCertificateCredentialLibraryPrefix")
+		return "", errors.Wrap(ctx, err, "vault.newSSHCertificateCredentialLibraryPrefix")
 	}
 	return id, nil
 }

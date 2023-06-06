@@ -63,7 +63,7 @@ func TestServiceCloseConnections(t *testing.T) {
 		acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "name1")
 		user := iam.TestUser(t, iamRepo, org.PublicId, iam.WithAccountIds(acct.PublicId))
 
-		authTokenRepo, err := authtoken.NewRepository(rw, rw, testKms)
+		authTokenRepo, err := authtoken.NewRepository(ctx, rw, rw, testKms)
 		require.NoError(t, err)
 		at, err := authTokenRepo.CreateAuthToken(ctx, user, acct.GetPublicId())
 		require.NoError(t, err)

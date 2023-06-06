@@ -68,7 +68,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 			}
 			scopePublicId = opts.withPublicId
 		} else {
-			scopePublicId, err = newScopeId(scopeType)
+			scopePublicId, err = newScopeId(ctx, scopeType)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op)
 			}
@@ -103,11 +103,11 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 		_ = adminRole
 
 	default:
-		adminRole, err = NewRole(scopePublicId)
+		adminRole, err = NewRole(ctx, scopePublicId)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new admin role"))
 		}
-		adminRolePublicId, err = newRoleId()
+		adminRolePublicId, err = newRoleId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new admin role"))
 		}
@@ -129,11 +129,11 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 	var defaultRole *Role
 	var defaultRoleRaw any
 	if !opts.withSkipDefaultRoleCreation {
-		defaultRole, err = NewRole(scopePublicId)
+		defaultRole, err = NewRole(ctx, scopePublicId)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error instantiating new default role"))
 		}
-		defaultRolePublicId, err = newRoleId()
+		defaultRolePublicId, err = newRoleId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error generating public id for new default role"))
 		}
@@ -233,7 +233,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 				}
 				msgs = append(msgs, roleGrantOplogMsgs...)
 
-				rolePrincipal, err := NewUserRole(adminRolePublicId, userId)
+				rolePrincipal, err := NewUserRole(ctx, adminRolePublicId, userId)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role user"))
 				}
@@ -343,7 +343,7 @@ func (r *Repository) CreateScope(ctx context.Context, s *Scope, userId string, o
 					if s.Type == scope.Project.String() {
 						userId = globals.AnyAuthenticatedUserId
 					}
-					rolePrincipal, err := NewUserRole(defaultRolePublicId, userId)
+					rolePrincipal, err := NewUserRole(ctx, defaultRolePublicId, userId)
 					if err != nil {
 						return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role user"))
 					}

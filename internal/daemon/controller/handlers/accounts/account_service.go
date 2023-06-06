@@ -102,10 +102,10 @@ var (
 
 func init() {
 	var err error
-	if pwMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&pwstore.Account{}}, handlers.MaskSource{&pb.Account{}, &pb.PasswordAccountAttributes{}}); err != nil {
+	if pwMaskManager, err = handlers.NewMaskManager(context.Background(), handlers.MaskDestination{&pwstore.Account{}}, handlers.MaskSource{&pb.Account{}, &pb.PasswordAccountAttributes{}}); err != nil {
 		panic(err)
 	}
-	if oidcMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&oidcstore.Account{}}, handlers.MaskSource{&pb.Account{}, &pb.OidcAccountAttributes{}}); err != nil {
+	if oidcMaskManager, err = handlers.NewMaskManager(context.Background(), handlers.MaskDestination{&oidcstore.Account{}}, handlers.MaskSource{&pb.Account{}, &pb.OidcAccountAttributes{}}); err != nil {
 		panic(err)
 	}
 }
@@ -137,7 +137,7 @@ func NewService(ctx context.Context, pwRepo common.PasswordAuthRepoFactory, oidc
 
 // ListAccounts implements the interface pbs.AccountServiceServer.
 func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest) (*pbs.ListAccountsResponse, error) {
-	if err := validateListRequest(req); err != nil {
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
@@ -152,7 +152,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 		return &pbs.ListAccountsResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(req.GetFilter())
+	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*pbs.GetAccountResponse, error) {
 	const op = "accounts.(Service).GetAccount"
 
-	if err := validateGetRequest(req); err != nil {
+	if err := validateGetRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -244,7 +244,7 @@ func (s Service) GetAccount(ctx context.Context, req *pbs.GetAccountRequest) (*p
 func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountRequest) (*pbs.CreateAccountResponse, error) {
 	const op = "accounts.(Service).CreateAccount"
 
-	if err := validateCreateRequest(req); err != nil {
+	if err := validateCreateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -283,7 +283,7 @@ func (s Service) CreateAccount(ctx context.Context, req *pbs.CreateAccountReques
 func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountRequest) (*pbs.UpdateAccountResponse, error) {
 	const op = "accounts.(Service).UpdateAccount"
 
-	if err := validateUpdateRequest(req); err != nil {
+	if err := validateUpdateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -320,7 +320,7 @@ func (s Service) UpdateAccount(ctx context.Context, req *pbs.UpdateAccountReques
 
 // DeleteAccount implements the interface pbs.AccountServiceServer.
 func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountRequest) (*pbs.DeleteAccountResponse, error) {
-	if err := validateDeleteRequest(req); err != nil {
+	if err := validateDeleteRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
@@ -338,7 +338,7 @@ func (s Service) DeleteAccount(ctx context.Context, req *pbs.DeleteAccountReques
 func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequest) (*pbs.ChangePasswordResponse, error) {
 	const op = "accounts.(Service).ChangePassword"
 
-	if err := validateChangePasswordRequest(req); err != nil {
+	if err := validateChangePasswordRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -377,7 +377,7 @@ func (s Service) ChangePassword(ctx context.Context, req *pbs.ChangePasswordRequ
 func (s Service) SetPassword(ctx context.Context, req *pbs.SetPasswordRequest) (*pbs.SetPasswordResponse, error) {
 	const op = "accounts.(Service).SetPassword"
 
-	if err := validateSetPasswordRequest(req); err != nil {
+	if err := validateSetPasswordRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -493,7 +493,7 @@ func (s Service) createPwInRepo(ctx context.Context, am auth.AuthMethod, item *p
 	if item.GetDescription() != nil {
 		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
 	}
-	a, err := password.NewAccount(am.GetPublicId(), opts...)
+	a, err := password.NewAccount(ctx, am.GetPublicId(), opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
 	}
@@ -627,7 +627,7 @@ func (s Service) createInRepo(ctx context.Context, am auth.AuthMethod, item *pb.
 
 func (s Service) updatePwInRepo(ctx context.Context, scopeId, authMethId, id string, mask []string, item *pb.Account) (*password.Account, error) {
 	const op = "accounts.(Service).updatePwInRepo"
-	u, err := toStoragePwAccount(authMethId, item)
+	u, err := toStoragePwAccount(ctx, authMethId, item)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for update: %v.", err)
 	}
@@ -1127,10 +1127,10 @@ func toProto(ctx context.Context, in auth.Account, opt ...handlers.Option) (*pb.
 	return &out, nil
 }
 
-func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error) {
+func toStoragePwAccount(ctx context.Context, amId string, item *pb.Account) (*password.Account, error) {
 	const op = "accounts.toStoragePwAccount"
 	if item == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil account.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil account.")
 	}
 	var opts []password.Option
 	if item.GetName() != nil {
@@ -1139,7 +1139,7 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 	if item.GetDescription() != nil {
 		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := password.NewAccount(amId, opts...)
+	u, err := password.NewAccount(ctx, amId, opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build account for creation: %v.", err)
 	}
@@ -1156,18 +1156,18 @@ func toStoragePwAccount(amId string, item *pb.Account) (*password.Account, error
 //   - The path passed in is correctly formatted
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
-func validateGetRequest(req *pbs.GetAccountRequest) error {
+func validateGetRequest(ctx context.Context, req *pbs.GetAccountRequest) error {
 	const op = "accounts.validateGetRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix, globals.OidcAccountPrefix, globals.LdapAccountPrefix)
 }
 
-func validateCreateRequest(req *pbs.CreateAccountRequest) error {
+func validateCreateRequest(ctx context.Context, req *pbs.CreateAccountRequest) error {
 	const op = "accounts.validateCreateRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -1248,10 +1248,10 @@ func validateCreateRequest(req *pbs.CreateAccountRequest) error {
 	})
 }
 
-func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
+func validateUpdateRequest(ctx context.Context, req *pbs.UpdateAccountRequest) error {
 	const op = "accounts.validateUpdateRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -1300,24 +1300,24 @@ func validateUpdateRequest(req *pbs.UpdateAccountRequest) error {
 	}, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix, globals.OidcAccountPrefix, globals.LdapAccountPrefix)
 }
 
-func validateDeleteRequest(req *pbs.DeleteAccountRequest) error {
+func validateDeleteRequest(ctx context.Context, req *pbs.DeleteAccountRequest) error {
 	const op = "accounts.validateDeleteRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix, globals.OidcAccountPrefix, globals.LdapAccountPrefix)
 }
 
-func validateListRequest(req *pbs.ListAccountsRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListAccountsRequest) error {
 	const op = "accounts.validateListRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), globals.PasswordAuthMethodPrefix, globals.OidcAuthMethodPrefix, globals.LdapAuthMethodPrefix) {
 		badFields[authMethodIdField] = "Invalid formatted identifier."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields[filterField] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
@@ -1326,10 +1326,10 @@ func validateListRequest(req *pbs.ListAccountsRequest) error {
 	return nil
 }
 
-func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
+func validateChangePasswordRequest(ctx context.Context, req *pbs.ChangePasswordRequest) error {
 	const op = "accounts.validateChangePasswordRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix) {
@@ -1350,10 +1350,10 @@ func validateChangePasswordRequest(req *pbs.ChangePasswordRequest) error {
 	return nil
 }
 
-func validateSetPasswordRequest(req *pbs.SetPasswordRequest) error {
+func validateSetPasswordRequest(ctx context.Context, req *pbs.SetPasswordRequest) error {
 	const op = "accounts.validateSetPasswordRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), globals.PasswordAccountPreviousPrefix, globals.PasswordAccountPrefix) {

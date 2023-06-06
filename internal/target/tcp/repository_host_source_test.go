@@ -108,10 +108,10 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			db.TestDeleteWhere(t, conn, func() any { i := allocTargetHostSet(); return &i }(), "1 = 1")
-			db.TestDeleteWhere(t, conn, tcp.NewTestTarget(""), "1 = 1")
-
 			ctx := context.Background()
+			db.TestDeleteWhere(t, conn, func() any { i := allocTargetHostSet(); return &i }(), "1 = 1")
+			db.TestDeleteWhere(t, conn, tcp.NewTestTarget(ctx, ""), "1 = 1")
+
 			projTarget := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, "static-proj")
 
 			var address *target.Address

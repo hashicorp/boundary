@@ -15,6 +15,7 @@ import (
 )
 
 func TestAuthMethod_New(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 
@@ -77,7 +78,7 @@ func TestAuthMethod_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-			got, err := NewAuthMethod(org.GetPublicId(), tt.args.opts...)
+			got, err := NewAuthMethod(ctx, org.GetPublicId(), tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)
@@ -91,7 +92,7 @@ func TestAuthMethod_New(t *testing.T) {
 			assert.Emptyf(got.PublicId, "PublicId set")
 			assert.Equal(tt.want, got)
 
-			id, err := newAuthMethodId()
+			id, err := newAuthMethodId(ctx)
 			assert.NoError(err)
 
 			tt.want.PublicId = id
@@ -99,12 +100,11 @@ func TestAuthMethod_New(t *testing.T) {
 
 			conf := NewArgon2Configuration()
 			require.NotNil(conf)
-			conf.PrivateId, err = newArgon2ConfigurationId()
+			conf.PrivateId, err = newArgon2ConfigurationId(context.Background())
 			require.NoError(err)
 			conf.PasswordMethodId = got.PublicId
 			got.PasswordConfId = conf.PrivateId
 
-			ctx := context.Background()
 			_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 				func(_ db.Reader, iw db.Writer) error {
 					require.NoError(iw.Create(ctx, conf))
@@ -117,7 +117,7 @@ func TestAuthMethod_New(t *testing.T) {
 
 	t.Run("blank-scopeId", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		got, err := NewAuthMethod("")
+		got, err := NewAuthMethod(context.Background(), "")
 		assert.Error(err)
 		require.Nil(got)
 	})

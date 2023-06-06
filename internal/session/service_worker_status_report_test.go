@@ -29,7 +29,7 @@ func TestWorkerStatusReport(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := server.NewRepository(rw, rw, kms)
+	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
 	_, err := serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",

@@ -68,7 +68,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 
 	cs = cs.clone()
 
-	id, err := newCredentialStoreId()
+	id, err := newCredentialStoreId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -85,7 +85,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup vault token"))
 	}
-	if err := validateTokenLookup(op, tokenLookup); err != nil {
+	if err := validateTokenLookup(ctx, op, tokenLookup); err != nil {
 		return nil, err
 	}
 
@@ -114,7 +114,7 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get vault token accessor"))
 	}
 
-	token, err := newToken(id, cs.inputToken, []byte(accessor), tokenExpires)
+	token, err := newToken(ctx, id, cs.inputToken, []byte(accessor), tokenExpires)
 	if err != nil {
 		return nil, err
 	}
@@ -216,35 +216,35 @@ func (r *Repository) CreateCredentialStore(ctx context.Context, cs *CredentialSt
 	return newCredentialStore, nil
 }
 
-func validateTokenLookup(op errors.Op, s *vault.Secret) error {
+func validateTokenLookup(ctx context.Context, op errors.Op, s *vault.Secret) error {
 	if s.Data == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "vault secret is not a token lookup")
+		return errors.New(ctx, errors.InvalidParameter, op, "vault secret is not a token lookup")
 	}
 
 	if s.Data["renewable"] == nil {
-		return errors.EDeprecated(errors.WithCode(errors.VaultTokenNotRenewable), errors.WithOp(op))
+		return errors.E(ctx, errors.WithCode(errors.VaultTokenNotRenewable), errors.WithOp(op))
 	}
 	renewable, err := parseutil.ParseBool(s.Data["renewable"])
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if !renewable {
-		return errors.EDeprecated(errors.WithCode(errors.VaultTokenNotRenewable), errors.WithOp(op))
+		return errors.E(ctx, errors.WithCode(errors.VaultTokenNotRenewable), errors.WithOp(op))
 	}
 
 	if s.Data["orphan"] == nil {
-		return errors.EDeprecated(errors.WithCode(errors.VaultTokenNotOrphan), errors.WithOp(op))
+		return errors.E(ctx, errors.WithCode(errors.VaultTokenNotOrphan), errors.WithOp(op))
 	}
 	orphan, err := parseutil.ParseBool(s.Data["orphan"])
 	if err != nil {
-		return errors.WrapDeprecated(err, op)
+		return errors.Wrap(ctx, err, op)
 	}
 	if !orphan {
-		return errors.EDeprecated(errors.WithCode(errors.VaultTokenNotOrphan), errors.WithOp(op))
+		return errors.E(ctx, errors.WithCode(errors.VaultTokenNotOrphan), errors.WithOp(op))
 	}
 
 	if s.Data["period"] == nil {
-		return errors.EDeprecated(errors.WithCode(errors.VaultTokenNotPeriodic), errors.WithOp(op))
+		return errors.E(ctx, errors.WithCode(errors.VaultTokenNotPeriodic), errors.WithOp(op))
 	}
 
 	return nil
@@ -459,7 +459,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 	origStore := ps.toCredentialStore()
 	origStore.inputToken = ps.Token
 	if len(ps.ClientCert) > 0 {
-		origStore.clientCert, err = NewClientCertificate(ps.ClientCert, ps.ClientKey)
+		origStore.clientCert, err = NewClientCertificate(ctx, ps.ClientCert, ps.ClientKey)
 	}
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("can't recreate client certificate for vault client creation"))
@@ -482,7 +482,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("cannot lookup token for updated store"))
 		}
-		if err := validateTokenLookup(op, tokenLookup); err != nil {
+		if err := validateTokenLookup(ctx, op, tokenLookup); err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 
@@ -510,7 +510,7 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get vault token accessor"))
 		}
-		if token, err = newToken(cs.GetPublicId(), cs.inputToken, []byte(accessor), tokenExpires); err != nil {
+		if token, err = newToken(ctx, cs.GetPublicId(), cs.inputToken, []byte(accessor), tokenExpires); err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}
 		runJobsInterval := r.scheduler.GetRunJobsInterval()

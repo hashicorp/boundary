@@ -178,7 +178,7 @@ func (g Grant) CanonicalString() string {
 }
 
 // MarshalJSON provides a custom marshaller for grants
-func (g Grant) MarshalJSON() ([]byte, error) {
+func (g Grant) MarshalJSON(ctx context.Context) ([]byte, error) {
 	const op = "perms.(Grant).MarshalJSON"
 	res := make(map[string]any, 4)
 	if g.id != "" {
@@ -203,7 +203,7 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 	}
 	b, err := json.Marshal(res)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encode))
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encode))
 	}
 	return b, nil
 }
@@ -211,29 +211,29 @@ func (g Grant) MarshalJSON() ([]byte, error) {
 // This is purposefully unexported since the values being set here are not being
 // checked for validity. This should only be called by the main parsing function
 // when JSON is detected.
-func (g *Grant) unmarshalJSON(data []byte) error {
+func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 	const op = "perms.(Grant).unmarshalJSON"
 	raw := make(map[string]any, 4)
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decode))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decode))
 	}
 	if rawId, ok := raw["id"]; ok {
 		id, ok := rawId.(string)
 		if !ok {
-			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "id"))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "id"))
 		}
 		g.id = id
 	}
 	if rawIds, ok := raw["ids"]; ok {
 		ids, ok := rawIds.([]any)
 		if !ok {
-			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "ids"))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "ids"))
 		}
 		g.ids = make([]string, len(ids))
 		for i, id := range ids {
 			idStr, ok := id.(string)
 			if !ok {
-				return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q element %q as string", "ids", id))
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q element %q as string", "ids", id))
 			}
 			g.ids[i] = idStr
 		}
@@ -241,17 +241,17 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 	if rawType, ok := raw["type"]; ok {
 		typ, ok := rawType.(string)
 		if !ok {
-			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "type"))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "type"))
 		}
 		g.typ = resource.Map[typ]
 		if g.typ == resource.Unknown {
-			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", typ))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", typ))
 		}
 	}
 	if rawActions, ok := raw["actions"]; ok {
 		interfaceActions, ok := rawActions.([]any)
 		if !ok {
-			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "actions"))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "actions"))
 		}
 		if len(interfaceActions) > 0 {
 			g.actionsBeingParsed = make([]string, 0, len(interfaceActions))
@@ -259,9 +259,9 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 				actionStr, ok := v.(string)
 				switch {
 				case !ok:
-					return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in actions array as string", v))
+					return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in actions array as string", v))
 				case actionStr == "":
-					return errors.NewDeprecated(errors.InvalidParameter, op, "empty action found")
+					return errors.New(ctx, errors.InvalidParameter, op, "empty action found")
 				default:
 					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(actionStr))
 				}
@@ -271,7 +271,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 	if rawOutputFields, ok := raw["output_fields"]; ok {
 		interfaceOutputFields, ok := rawOutputFields.([]any)
 		if !ok {
-			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "output_fields"))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as array", "output_fields"))
 		}
 		// We do the make here because we detect later if the field was set but
 		// no values given
@@ -285,7 +285,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 				field, ok := v.(string)
 				switch {
 				case !ok:
-					return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
+					return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
 				default:
 					fields = append(fields, field)
 				}
@@ -296,7 +296,7 @@ func (g *Grant) unmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (g *Grant) unmarshalText(grantString string) error {
+func (g *Grant) unmarshalText(ctx context.Context, grantString string) error {
 	const op = "perms.(Grant).unmarshalText"
 	segments := strings.Split(grantString, ";")
 	for _, segment := range segments {
@@ -305,11 +305,11 @@ func (g *Grant) unmarshalText(grantString string) error {
 		// Ensure we don't accept "foo=bar=baz", "=foo", or "foo="
 		switch {
 		case len(kv) != 2:
-			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, wrong number of equal signs", segment))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, wrong number of equal signs", segment))
 		case len(kv[0]) == 0:
-			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing key", segment))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing key", segment))
 		case len(kv[1]) == 0 && kv[0] != "output_fields":
-			return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing value", segment))
+			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("segment %q not formatted correctly, missing value", segment))
 		}
 
 		switch kv[0] {
@@ -323,7 +323,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 			typeString := strings.ToLower(kv[1])
 			g.typ = resource.Map[typeString]
 			if g.typ == resource.Unknown {
-				return errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", typeString))
+				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown type specifier %q", typeString))
 			}
 
 		case "actions":
@@ -332,7 +332,7 @@ func (g *Grant) unmarshalText(grantString string) error {
 				g.actionsBeingParsed = make([]string, 0, len(actions))
 				for _, action := range actions {
 					if action == "" {
-						return errors.NewDeprecated(errors.InvalidParameter, op, "empty action found")
+						return errors.New(ctx, errors.InvalidParameter, op, "empty action found")
 					}
 					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(action))
 				}
@@ -384,12 +384,12 @@ func Parse(ctx context.Context, scopeId, grantString string, opt ...Option) (Gra
 
 	switch {
 	case grantString[0] == '{':
-		if err := grant.unmarshalJSON([]byte(grantString)); err != nil {
+		if err := grant.unmarshalJSON(ctx, []byte(grantString)); err != nil {
 			return Grant{}, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse JSON grant string"))
 		}
 
 	default:
-		if err := grant.unmarshalText(grantString); err != nil {
+		if err := grant.unmarshalText(ctx, grantString); err != nil {
 			return Grant{}, errors.Wrap(ctx, err, op, errors.WithMsg("unable to parse grant string"))
 		}
 	}

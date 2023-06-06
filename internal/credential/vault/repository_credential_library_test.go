@@ -447,7 +447,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
 			sche := scheduler.TestScheduler(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche)
+			repo, err := NewRepository(ctx, rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), tt.in, tt.opts...)
@@ -505,7 +505,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -538,7 +538,7 @@ func TestRepository_CreateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -1472,7 +1472,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
 			sche := scheduler.TestScheduler(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche)
+			repo, err := NewRepository(ctx, rw, rw, kms, sche)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -1548,7 +1548,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1582,7 +1582,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1630,7 +1630,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1671,7 +1671,7 @@ func TestRepository_UpdateCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -1875,7 +1875,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 				ctx := context.Background()
 				kms := kms.TestKms(t, conn, wrapper)
 				sche := scheduler.TestScheduler(t, conn, wrapper)
-				repo, err := NewRepository(rw, rw, kms, sche)
+				repo, err := NewRepository(ctx, rw, rw, kms, sche)
 				assert.NoError(err)
 				require.NotNil(repo)
 				orig, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), tt.in)
@@ -1917,7 +1917,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		// test
@@ -1933,10 +1933,10 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
-		badId, err := newCredentialLibraryId()
+		badId, err := newCredentialLibraryId(ctx)
 		assert.NoError(err)
 		require.NotNil(badId)
 		// test
@@ -1948,6 +1948,7 @@ func TestRepository_LookupCredentialLibrary(t *testing.T) {
 
 func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1957,7 +1958,7 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 		l := TestCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 1)[0]
 
-		badId, err := newCredentialLibraryId()
+		badId, err := newCredentialLibraryId(ctx)
 		require.NoError(t, err)
 		require.NotNil(t, badId)
 
@@ -1987,10 +1988,9 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 			tt := tt
 			t.Run(tt.name, func(t *testing.T) {
 				assert, require := assert.New(t), require.New(t)
-				ctx := context.Background()
 				kms := kms.TestKms(t, conn, wrapper)
 				sche := scheduler.TestScheduler(t, conn, wrapper)
-				repo, err := NewRepository(rw, rw, kms, sche)
+				repo, err := NewRepository(ctx, rw, rw, kms, sche)
 				assert.NoError(err)
 				require.NotNil(repo)
 
@@ -2009,10 +2009,9 @@ func TestRepository_DeleteCredentialLibrary(t *testing.T) {
 		// setup
 		assert, require := assert.New(t), require.New(t)
 
-		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -2056,7 +2055,7 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -2100,7 +2099,7 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		// test
@@ -2116,7 +2115,7 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
-		repo, err := NewRepository(rw, rw, kms, sche)
+		repo, err := NewRepository(ctx, rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -2190,7 +2189,7 @@ func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(rw, rw, kms, sche, tt.repoOpts...)
+			repo, err := NewRepository(ctx, rw, rw, kms, sche, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, err := repo.ListCredentialLibraries(ctx, libs[0].StoreId, tt.listOpts...)

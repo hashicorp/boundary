@@ -176,7 +176,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := roles.NewService(repoFn)
+			s, err := roles.NewService(context.Background(), repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
 			got, gErr := s.GetRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -299,7 +299,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := roles.NewService(repoFn)
+			s, err := roles.NewService(context.Background(), repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test the non-anon case
@@ -332,7 +332,7 @@ func TestList(t *testing.T) {
 func TestDelete(t *testing.T) {
 	or, pr, repoFn := createDefaultRolesAndRepo(t)
 
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	cases := []struct {
@@ -398,7 +398,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	or, pr, repoFn := createDefaultRolesAndRepo(t)
 
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn)
 	require.NoError(err, "Error when getting new role service")
 	req := &pbs.DeleteRoleRequest{
 		Id: or.GetPublicId(),
@@ -543,7 +543,7 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := roles.NewService(repoFn)
+			s, err := roles.NewService(context.Background(), repoFn)
 			require.NoError(err, "Error when getting new role service.")
 
 			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), req)
@@ -571,6 +571,7 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	ctx := context.Background()
 	grantString := "id=*;type=*;actions=*"
 	g, err := perms.Parse(context.Background(), "global", grantString)
 	require.NoError(t, err)
@@ -612,7 +613,7 @@ func TestUpdate(t *testing.T) {
 	var orVersion uint32 = 1
 	var prVersion uint32 = 1
 
-	tested, err := roles.NewService(repoFn)
+	tested, err := roles.NewService(ctx, repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	resetRoles := func(proj bool) {
@@ -1013,6 +1014,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestAddPrincipal(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -1020,10 +1022,9 @@ func TestAddPrincipal(t *testing.T) {
 		return iamRepo, nil
 	}
 	o, p := iam.TestScopes(t, iamRepo)
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(ctx, repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
-	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrap)
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -1215,7 +1216,7 @@ func TestSetPrincipal(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
@@ -1399,18 +1400,18 @@ func TestSetPrincipal(t *testing.T) {
 }
 
 func TestRemovePrincipal(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(ctx, repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
 
-	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrap)
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -1656,7 +1657,7 @@ func TestAddGrants(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	addCases := []struct {
@@ -1804,7 +1805,7 @@ func TestSetGrants(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	setCases := []struct {
@@ -1949,7 +1950,7 @@ func TestRemoveGrants(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(repoFn)
+	s, err := roles.NewService(context.Background(), repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	removeCases := []struct {

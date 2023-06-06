@@ -45,28 +45,28 @@ func NewArgon2Configuration() *Argon2Configuration {
 	}
 }
 
-func (c *Argon2Configuration) validate() error {
+func (c *Argon2Configuration) validate(ctx context.Context) error {
 	const op = "password.(Argon2Configuration).validate"
 	if c == nil {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing config")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing config")
 	}
 	if c.Argon2Configuration == nil {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing embedded config")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing embedded config")
 	}
 	if c.Iterations == 0 {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing iterations")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing iterations")
 	}
 	if c.Memory == 0 {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing memory")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing memory")
 	}
 	if c.Threads == 0 {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing threads")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing threads")
 	}
 	if c.SaltLength == 0 {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing salt length")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing salt length")
 	}
 	if c.KeyLength == 0 {
-		return errors.NewDeprecated(errors.PasswordInvalidConfiguration, op, "missing key length")
+		return errors.New(ctx, errors.PasswordInvalidConfiguration, op, "missing key length")
 	}
 	return nil
 }
@@ -132,21 +132,21 @@ type Argon2Credential struct {
 	tableName string
 }
 
-func newArgon2Credential(accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
+func newArgon2Credential(ctx context.Context, accountId string, password string, conf *Argon2Configuration) (*Argon2Credential, error) {
 	const op = "password.newArgon2Credential"
 	if accountId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing accountId")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing accountId")
 	}
 	if password == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing password")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing password")
 	}
 	if conf == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing argon2 configuration")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing argon2 configuration")
 	}
 
-	id, err := newArgon2CredentialId()
+	id, err := newArgon2CredentialId(ctx)
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op)
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	c := &Argon2Credential{
@@ -160,7 +160,7 @@ func newArgon2Credential(accountId string, password string, conf *Argon2Configur
 
 	salt := make([]byte, conf.SaltLength)
 	if _, err := rand.Read(salt); err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Io))
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Io))
 	}
 	c.Salt = salt
 	c.DerivedKey = argon2.IDKey([]byte(password), c.Salt, conf.Iterations, conf.Memory, uint8(conf.Threads), conf.KeyLength)
@@ -190,7 +190,7 @@ func (c *Argon2Credential) SetTableName(n string) {
 func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "password.(Argon2Credential).encrypt"
 	if err := structwrapping.WrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
 	}
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
@@ -203,7 +203,7 @@ func (c *Argon2Credential) encrypt(ctx context.Context, cipher wrapping.Wrapper)
 func (c *Argon2Credential) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "password.(Argon2Credential).decrypt"
 	if err := structwrapping.UnwrapStruct(ctx, cipher, c.Argon2Credential, nil); err != nil {
-		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
+		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }

@@ -33,13 +33,13 @@ var (
 
 // NewAddress creates a new in memory address. No options are
 // currently supported.
-func NewAddress(targetId, address string, _ ...Option) (*Address, error) {
+func NewAddress(ctx context.Context, targetId, address string, _ ...Option) (*Address, error) {
 	const op = "target.NewAddress"
 	if targetId == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
 	}
 	if address == "" {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing address")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing address")
 	}
 	address = strings.TrimSpace(address)
 	t := &Address{

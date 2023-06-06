@@ -37,6 +37,7 @@ import (
 )
 
 func Test_unaryCtxInterceptor(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -47,10 +48,10 @@ func Test_unaryCtxInterceptor(t *testing.T) {
 		return iamRepo, nil
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kmsCache)
+		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kmsCache)
+		return server.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	validGatewayTicket := "valid-ticket"
@@ -354,6 +355,7 @@ func Test_unaryCtxInterceptor(t *testing.T) {
 
 func Test_streamCtxInterceptor(t *testing.T) {
 	t.Parallel()
+	factoryCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -364,17 +366,17 @@ func Test_streamCtxInterceptor(t *testing.T) {
 		return iamRepo, nil
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(rw, rw, kmsCache)
+		return authtoken.NewRepository(context.Background(), rw, rw, kmsCache)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(rw, rw, kmsCache)
+		return server.NewRepository(factoryCtx, rw, rw, kmsCache)
 	}
 
 	validGatewayTicket := "valid-ticket"
 
 	o, _ := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
-	encToken, err := authtoken.EncryptToken(context.Background(), kmsCache, o.GetPublicId(), at.GetPublicId(), at.GetToken())
+	encToken, err := authtoken.EncryptToken(factoryCtx, kmsCache, o.GetPublicId(), at.GetPublicId(), at.GetToken())
 	require.NoError(t, err)
 	tokValue := at.GetPublicId() + "_" + encToken
 
@@ -393,7 +395,7 @@ func Test_streamCtxInterceptor(t *testing.T) {
 		marshalledRequestInfo, err := proto.Marshal(&requestInfo)
 		require.NoError(t, err)
 		md := metadata.Pairs(requestInfoMdKey, base58.FastBase58Encoding(marshalledRequestInfo))
-		mdCtx := metadata.NewIncomingContext(context.Background(), md)
+		mdCtx := metadata.NewIncomingContext(factoryCtx, md)
 
 		md, ok := metadata.FromIncomingContext(mdCtx)
 		require.True(t, ok)
@@ -401,8 +403,6 @@ func Test_streamCtxInterceptor(t *testing.T) {
 
 		return mdCtx
 	}
-
-	factoryCtx := context.Background()
 
 	c := event.TestEventerConfig(t, "Test_streamCtxInterceptor", event.TestWithAuditSink(t), event.TestWithObservationSink(t))
 	testLock := &sync.Mutex{}

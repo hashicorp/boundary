@@ -90,8 +90,9 @@ func WithStorageFlag(flag bool) TestOption {
 func TestPlugin(t testing.TB, conn *db.DB, name string, opt ...TestOption) *Plugin {
 	opts := getTestOpts(opt...)
 	t.Helper()
+	ctx := context.Background()
 	p := NewPlugin(WithName(name))
-	id, err := newPluginId()
+	id, err := newPluginId(ctx)
 	require.NoError(t, err)
 	p.PublicId = id
 
@@ -99,7 +100,6 @@ func TestPlugin(t testing.TB, conn *db.DB, name string, opt ...TestOption) *Plug
 	require.NoError(t, w.Create(context.Background(), p))
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	ctx := context.Background()
 	repo, err := NewRepository(ctx, w, w, kmsCache)
 	require.NoError(t, err)
 

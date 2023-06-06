@@ -69,10 +69,18 @@ var (
 
 func init() {
 	var err error
-	if oidcMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&oidcstore.ManagedGroup{}}, handlers.MaskSource{&pb.ManagedGroup{}, &pb.OidcManagedGroupAttributes{}}); err != nil {
+	if oidcMaskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&oidcstore.ManagedGroup{}},
+		handlers.MaskSource{&pb.ManagedGroup{}, &pb.OidcManagedGroupAttributes{}},
+	); err != nil {
 		panic(err)
 	}
-	if ldapMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&ldapstore.ManagedGroup{}}, handlers.MaskSource{&pb.ManagedGroup{}, &pb.LdapManagedGroupAttributes{}}); err != nil {
+	if ldapMaskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&ldapstore.ManagedGroup{}},
+		handlers.MaskSource{&pb.ManagedGroup{}, &pb.LdapManagedGroupAttributes{}},
+	); err != nil {
 		panic(err)
 	}
 }
@@ -101,7 +109,7 @@ func NewService(ctx context.Context, oidcRepo common.OidcAuthRepoFactory, ldapRe
 
 // ListManagedGroups implements the interface pbs.ManagedGroupsServiceServer.
 func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGroupsRequest) (*pbs.ListManagedGroupsResponse, error) {
-	if err := validateListRequest(req); err != nil {
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
@@ -116,7 +124,7 @@ func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGrou
 		return &pbs.ListManagedGroupsResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(req.GetFilter())
+	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +174,7 @@ func (s Service) ListManagedGroups(ctx context.Context, req *pbs.ListManagedGrou
 func (s Service) GetManagedGroup(ctx context.Context, req *pbs.GetManagedGroupRequest) (*pbs.GetManagedGroupResponse, error) {
 	const op = "managed_groups.(Service).GetManagedGroup"
 
-	if err := validateGetRequest(req); err != nil {
+	if err := validateGetRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -208,7 +216,7 @@ func (s Service) GetManagedGroup(ctx context.Context, req *pbs.GetManagedGroupRe
 func (s Service) CreateManagedGroup(ctx context.Context, req *pbs.CreateManagedGroupRequest) (*pbs.CreateManagedGroupResponse, error) {
 	const op = "managed_groups.(Service).CreateManagedGroup"
 
-	if err := validateCreateRequest(req); err != nil {
+	if err := validateCreateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -247,7 +255,7 @@ func (s Service) CreateManagedGroup(ctx context.Context, req *pbs.CreateManagedG
 func (s Service) UpdateManagedGroup(ctx context.Context, req *pbs.UpdateManagedGroupRequest) (*pbs.UpdateManagedGroupResponse, error) {
 	const op = "managed_groups.(Service).UpdateManagedGroup"
 
-	if err := validateUpdateRequest(req); err != nil {
+	if err := validateUpdateRequest(ctx, req); err != nil {
 		return nil, err
 	}
 
@@ -284,7 +292,7 @@ func (s Service) UpdateManagedGroup(ctx context.Context, req *pbs.UpdateManagedG
 
 // DeleteManagedGroup implements the interface pbs.ManagedGroupServiceServer.
 func (s Service) DeleteManagedGroup(ctx context.Context, req *pbs.DeleteManagedGroupRequest) (*pbs.DeleteManagedGroupResponse, error) {
-	if err := validateDeleteRequest(req); err != nil {
+	if err := validateDeleteRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	_, authResults := s.parentAndAuthResult(ctx, req.GetId(), action.Delete)
@@ -773,18 +781,18 @@ func toProto(ctx context.Context, in auth.ManagedGroup, opt ...handlers.Option) 
 //   - The path passed in is correctly formatted
 //   - All required parameters are set
 //   - There are no conflicting parameters provided
-func validateGetRequest(req *pbs.GetManagedGroupRequest) error {
+func validateGetRequest(ctx context.Context, req *pbs.GetManagedGroupRequest) error {
 	const op = "managed_groups.validateGetRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.OidcManagedGroupPrefix, globals.LdapManagedGroupPrefix)
 }
 
-func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
+func validateCreateRequest(ctx context.Context, req *pbs.CreateManagedGroupRequest) error {
 	const op = "managed_groups.validateCreateRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -827,10 +835,10 @@ func validateCreateRequest(req *pbs.CreateManagedGroupRequest) error {
 	})
 }
 
-func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
+func validateUpdateRequest(ctx context.Context, req *pbs.UpdateManagedGroupRequest) error {
 	const op = "managed_groups.validateUpdateRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
@@ -871,24 +879,24 @@ func validateUpdateRequest(req *pbs.UpdateManagedGroupRequest) error {
 	}, globals.OidcManagedGroupPrefix, globals.LdapManagedGroupPrefix)
 }
 
-func validateDeleteRequest(req *pbs.DeleteManagedGroupRequest) error {
+func validateDeleteRequest(ctx context.Context, req *pbs.DeleteManagedGroupRequest) error {
 	const op = "managed_groups.validateDeleteRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.OidcManagedGroupPrefix, globals.LdapManagedGroupPrefix)
 }
 
-func validateListRequest(req *pbs.ListManagedGroupsRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListManagedGroupsRequest) error {
 	const op = "managed_groups.validateListRequest"
 	if req == nil {
-		return errors.NewDeprecated(errors.InvalidParameter, op, "nil request")
+		return errors.New(ctx, errors.InvalidParameter, op, "nil request")
 	}
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetAuthMethodId()), globals.OidcAuthMethodPrefix, globals.LdapAuthMethodPrefix) {
 		badFields[globals.AuthMethodIdField] = "Invalid formatted identifier."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields[globals.FilterField] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

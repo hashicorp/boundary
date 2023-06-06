@@ -50,7 +50,7 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 		}
 		m.PublicId = opts.withPublicId
 	} else {
-		id, err := newAuthMethodId()
+		id, err := newAuthMethodId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -61,12 +61,12 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, m *AuthMethod, opt ..
 	if !ok {
 		return nil, errors.New(ctx, errors.PasswordUnsupportedConfiguration, op, "unknown configuration")
 	}
-	if err := c.validate(); err != nil {
+	if err := c.validate(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var err error
-	c.PrivateId, err = newArgon2ConfigurationId()
+	c.PrivateId, err = newArgon2ConfigurationId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

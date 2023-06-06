@@ -36,7 +36,7 @@ func (r *Repository) CreateUser(ctx context.Context, user *User, opt ...Option) 
 		}
 		u.PublicId = opts.withPublicId
 	} else {
-		id, err := newUserId()
+		id, err := newUserId(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -282,11 +282,11 @@ func (r *Repository) LookupUserWithLogin(ctx context.Context, accountId string, 
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			obtainedUser, err = NewUser(acct.ScopeId, opt...)
+			obtainedUser, err = NewUser(ctx, acct.ScopeId, opt...)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			id, err := newUserId()
+			id, err := newUserId(ctx)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

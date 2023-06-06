@@ -5,6 +5,7 @@
 package subtypes
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -88,20 +89,20 @@ func (r *Registry) Prefixes() []string {
 // Register registers all the prefixes for a provided Subtype. Register returns
 // an error if the subtype has already been registered or if any of the
 // prefixes are associated with another subtype.
-func (r *Registry) Register(subtype Subtype, prefixes ...string) error {
+func (r *Registry) Register(ctx context.Context, subtype Subtype, prefixes ...string) error {
 	r.Lock()
 	defer r.Unlock()
 
 	const op = "subtypes.(Registry).Register"
 	if _, present := r.knownSubtypes[subtype]; present {
-		return errors.NewDeprecated(errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("subtype %q already registered", subtype))
+		return errors.New(ctx, errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("subtype %q already registered", subtype))
 	}
 	r.knownSubtypes[subtype] = nil
 
 	for _, prefix := range prefixes {
 		prefix = strings.TrimSpace(prefix)
 		if st, ok := r.subtypesPrefixes[prefix]; ok {
-			return errors.NewDeprecated(errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("prefix %q is already registered to subtype %q", prefix, st))
+			return errors.New(ctx, errors.SubtypeAlreadyRegistered, op, fmt.Sprintf("prefix %q is already registered to subtype %q", prefix, st))
 		}
 		r.subtypesPrefixes[prefix] = subtype
 	}

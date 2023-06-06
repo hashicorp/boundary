@@ -20,6 +20,7 @@ import (
 
 func TestScheduler_New(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -27,7 +28,7 @@ func TestScheduler_New(t *testing.T) {
 	iam.TestRepo(t, conn, wrapper)
 
 	jobRepoFn := func() (*job.Repository, error) {
-		return job.NewRepository(rw, rw, kmsCache)
+		return job.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
 	type args struct {
@@ -162,7 +163,7 @@ func TestScheduler_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := New(tt.args.serverId, tt.args.jobRepo, tt.opts...)
+			got, err := New(ctx, tt.args.serverId, tt.args.jobRepo, tt.opts...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)

@@ -56,7 +56,11 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Role{}}, handlers.MaskSource{&pb.Role{}}); err != nil {
+	if maskManager, err = handlers.NewMaskManager(
+		context.Background(),
+		handlers.MaskDestination{&store.Role{}},
+		handlers.MaskSource{&pb.Role{}},
+	); err != nil {
 		panic(err)
 	}
 }
@@ -71,17 +75,17 @@ type Service struct {
 var _ pbs.RoleServiceServer = (*Service)(nil)
 
 // NewService returns a role service which handles role related requests to boundary.
-func NewService(repo common.IamRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repo common.IamRepoFactory) (Service, error) {
 	const op = "roles.NewService"
 	if repo == nil {
-		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
 
 // ListRoles implements the interface pbs.RoleServiceServer.
 func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs.ListRolesResponse, error) {
-	if err := validateListRequest(req); err != nil {
+	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -116,7 +120,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		return &pbs.ListRolesResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(req.GetFilter())
+	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -542,7 +546,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	if item.GetGrantScopeId() != nil {
 		opts = append(opts, iam.WithGrantScopeId(item.GetGrantScopeId().GetValue()))
 	}
-	u, err := iam.NewRole(scopeId, opts...)
+	u, err := iam.NewRole(ctx, scopeId, opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build role for creation: %v.", err)
 	}
@@ -574,7 +578,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	version := item.GetVersion()
 
-	u, err := iam.NewRole(scopeId, opts...)
+	u, err := iam.NewRole(ctx, scopeId, opts...)
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build role for update: %v.", err)
 	}
@@ -945,14 +949,14 @@ func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
 	}, req, globals.RolePrefix)
 }
 
-func validateListRequest(req *pbs.ListRolesRequest) error {
+func validateListRequest(ctx context.Context, req *pbs.ListRolesRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		!handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Improperly formatted field."
 	}
-	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

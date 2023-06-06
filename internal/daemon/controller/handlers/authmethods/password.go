@@ -31,7 +31,7 @@ var pwMaskManager handlers.MaskManager
 
 func init() {
 	var err error
-	if pwMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&pwstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}}); err != nil {
+	if pwMaskManager, err = handlers.NewMaskManager(context.Background(), handlers.MaskDestination{&pwstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.PasswordAuthMethodAttributes{}}); err != nil {
 		panic(err)
 	}
 
@@ -47,7 +47,7 @@ func init() {
 // createPwInRepo creates a password auth method in a repo and returns the result.
 // This method should never return a nil AuthMethod without returning an error.
 func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
-	u, err := toStoragePwAuthMethod(scopeId, item)
+	u, err := toStoragePwAuthMethod(ctx, scopeId, item)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (s Service) createPwInRepo(ctx context.Context, scopeId string, item *pb.Au
 }
 
 func (s Service) updatePwInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.AuthMethod) (*password.AuthMethod, error) {
-	u, err := toStoragePwAuthMethod(scopeId, item)
+	u, err := toStoragePwAuthMethod(ctx, scopeId, item)
 	if err != nil {
 		return nil, err
 	}
@@ -174,10 +174,10 @@ func validateAuthenticatePasswordRequest(req *pbs.AuthenticateRequest) error {
 	return nil
 }
 
-func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
+func toStoragePwAuthMethod(ctx context.Context, scopeId string, item *pb.AuthMethod) (*password.AuthMethod, error) {
 	const op = "authmethod_service.toStoragePwAuthMethod"
 	if item == nil {
-		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil auth method.")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil auth method.")
 	}
 	var opts []password.Option
 	if item.GetName() != nil {
@@ -186,7 +186,7 @@ func toStoragePwAuthMethod(scopeId string, item *pb.AuthMethod) (*password.AuthM
 	if item.GetDescription() != nil {
 		opts = append(opts, password.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := password.NewAuthMethod(scopeId, opts...)
+	u, err := password.NewAuthMethod(ctx, scopeId, opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build auth method for creation: %v.", err)
 	}

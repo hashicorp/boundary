@@ -285,7 +285,7 @@ func (pl *genericIssuingCredentialLibrary) client(ctx context.Context) (vaultCli
 
 	client, err := vaultClientFactoryFn(ctx, clientConfig, WithWorkerFilter(pl.WorkerFilter))
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create vault client"))
 	}
 	return client, nil
 }
@@ -309,7 +309,7 @@ func (pl *genericIssuingCredentialLibrary) retrieveCredential(ctx context.Contex
 
 	// Get the credential ID early. No need to get a secret from Vault
 	// if there is no way to save it in the database.
-	credId, err := newCredentialId()
+	credId, err := newCredentialId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -367,7 +367,7 @@ func (pl *genericIssuingCredentialLibrary) retrieveCredential(ctx context.Contex
 	}
 
 	leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
-	cred, err := newCredential(pl.GetPublicId(), secret.LeaseID, pl.TokenHmac, leaseDuration)
+	cred, err := newCredential(ctx, pl.GetPublicId(), secret.LeaseID, pl.TokenHmac, leaseDuration)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -390,7 +390,7 @@ func (pl *genericIssuingCredentialLibrary) TableName() string {
 func (r *Repository) getIssueCredLibraries(ctx context.Context, requests []credential.Request) ([]issuingCredentialLibrary, error) {
 	const op = "vault.(Repository).getIssueCredLibraries"
 
-	mapper, err := newMapper(requests)
+	mapper, err := newMapper(ctx, requests)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -660,13 +660,13 @@ type requestMap struct {
 	ids map[string][]credential.Purpose
 }
 
-func newMapper(requests []credential.Request) (*requestMap, error) {
+func newMapper(ctx context.Context, requests []credential.Request) (*requestMap, error) {
 	ids := make(map[string][]credential.Purpose, len(requests))
 	for _, req := range requests {
 		if purps, ok := ids[req.SourceId]; ok {
 			for _, purp := range purps {
 				if purp == req.Purpose {
-					return nil, errors.EDeprecated(errors.WithCode(errors.InvalidParameter), errors.WithMsg("duplicate library and purpose"))
+					return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("duplicate library and purpose"))
 				}
 			}
 		}
@@ -765,7 +765,7 @@ func (lib *sshCertIssuingCredentialLibrary) client(ctx context.Context) (vaultCl
 
 	client, err := vaultClientFactoryFn(ctx, clientConfig, WithWorkerFilter(lib.WorkerFilter))
 	if err != nil {
-		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create vault client"))
 	}
 	return client, nil
 }
@@ -870,7 +870,7 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 
 	// Get the credential ID early. No need to get a secret from Vault
 	// if there is no way to save it in the database.
-	credId, err := newCredentialId()
+	credId, err := newCredentialId(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -979,7 +979,7 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 	}
 
 	leaseDuration := time.Duration(secret.LeaseDuration) * time.Second
-	cred, err := newCredential(lib.GetPublicId(), secret.LeaseID, lib.TokenHmac, leaseDuration)
+	cred, err := newCredential(ctx, lib.GetPublicId(), secret.LeaseID, lib.TokenHmac, leaseDuration)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
