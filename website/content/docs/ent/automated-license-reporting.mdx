@@ -13,7 +13,7 @@ Automated reporting shares the minimum data required to validate license utiliza
 
 ## Enable automated reporting
 
-To enable automated reporting, you need to make sure that outbound network traffic is configured correctly and upgrade your enterprise product to a version that supports it. If your installation is air-gapped or network settings are not in place, automated reporting will not work.
+To enable automated reporting, you need to make sure that outbound network traffic is configured correctly and [upgrade](#2-upgrade) your enterprise product to a version that supports it. If your installation is air-gapped or network settings are not in place, automated reporting will not work.
 
 ### 1. Allow outbound HTTPS traffic on port 443
 
@@ -25,13 +25,12 @@ Make sure that your network allows HTTPS egress on port 443 from https://reporti
 
 ### 2. Upgrade
 
-Upgrade to a release that supports license utilization reporting. These releases include:[Release 0.13.0](LINK) and later.
+Upgrade to a release that supports license utilization reporting. These releases include: Release 0.13.0 and later.
 
 ### 3. Check logs
 
 Automatic license utilization reporting will start sending data within 24 hours. Check the product logs for records that the data sent successfully.
-
-Instructions on how to check logs.
+Server logs are printed to stderr, and startup information is printed to stdout.
 
 ```
 Example log output
