@@ -27,7 +27,7 @@ Complete the following steps to enable session recording on a target.
 
    - To enable an existing SSH target for session recording, run the following commmand:
 
-      ```hcl
+      ```bash
       boundary targets update ssh -scope-id p_1234567890 -enable-session-recording true -storage-bucket-id 123
       ```
 
@@ -36,7 +36,7 @@ Complete the following steps to enable session recording on a target.
 
    - To create a new target and enable it for session recording, run the following command:
 
-      ```hcl
+      ```bash
       boundary targets create ssh -scope-id p_1234567890 -default -port 22 -name test1 -address 99.12.345.67 -enable-session-recording true -storage-bucket-id 1234
       ```
 

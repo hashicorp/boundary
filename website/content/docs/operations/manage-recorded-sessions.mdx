@@ -38,7 +38,7 @@ Complete the following steps to find all recorded sessions using the CLI.
 
 If you have the ID of a recorded session, you can use the following command to list the connections and channels associated with a session recording.
 
-```hcl
+```bash
 boundary session-recordings read -id <id>
 ```
 
@@ -65,7 +65,7 @@ The channel ID is required for the download.
 
 If you have the ID of a recorded session, you can use the following command to list the connections and channels associated with a session recording.
 
-```hcl
+```bash
 boundary session-recordings read -id <id>
 ```
 
@@ -75,6 +75,6 @@ Complete the following steps to download a recorded session channel:
 1. Type the following command to download a recorded session channel.
 Substitute the ID of the channel for **chr_12345**:
 
-   ```hcl
+   ```bash
    boundary session-recordings download -id chr_12345
    ```
