@@ -954,7 +954,7 @@ func TestUpdate(t *testing.T) {
 				// error here.
 				if wkr.PublicId == pkiKmsWkr.PublicId && basicInfoChange && tc.err == nil {
 					require.Error(t, gErr)
-					assert.Contains(t, gErr.Error(), "KMS-registered workers cannot have their")
+					assert.Contains(t, gErr.Error(), "KMS workers cannot be updated through the API")
 					assert.True(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)))
 					return
 				}
@@ -990,7 +990,7 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-func TestUpdate_KMS(t *testing.T) {
+func TestUpdate_DeprecatedKMS(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1024,10 +1024,10 @@ func TestUpdate_KMS(t *testing.T) {
 	require.NoError(t, err)
 
 	cases := []struct {
-		name string
-		req  *pbs.UpdateWorkerRequest
-		res  *pbs.UpdateWorkerResponse
-		err  error
+		name        string
+		req         *pbs.UpdateWorkerRequest
+		res         *pbs.UpdateWorkerResponse
+		errContains string
 	}{
 		{
 			name: "Cant set name",
@@ -1039,6 +1039,7 @@ func TestUpdate_KMS(t *testing.T) {
 					Name: wrapperspb.String("name"),
 				},
 			},
+			errContains: "KMS workers cannot be updated through the API",
 		},
 		{
 			name: "Cant set description",
@@ -1050,6 +1051,7 @@ func TestUpdate_KMS(t *testing.T) {
 					Description: wrapperspb.String("description"),
 				},
 			},
+			errContains: "KMS workers cannot be updated through the API",
 		},
 		{
 			name: "Cant set address",
@@ -1061,6 +1063,7 @@ func TestUpdate_KMS(t *testing.T) {
 					Address: "address",
 				},
 			},
+			errContains: "This is a read only field.",
 		},
 	}
 	for _, tc := range cases {
@@ -1071,6 +1074,8 @@ func TestUpdate_KMS(t *testing.T) {
 			got, gErr := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, scope.Global.String()), req)
 			assert.Error(t, gErr)
 			assert.Nil(t, got)
+			assert.Contains(t, gErr.Error(), tc.errContains)
+			assert.True(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)))
 		})
 	}
 }
