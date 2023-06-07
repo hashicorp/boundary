@@ -32,14 +32,47 @@ Upgrade to a release that supports license utilization reporting. These releases
 Automatic license utilization reporting will start sending data within 24 hours. Check the product logs for records that the data sent successfully.
 Server logs are printed to stderr, and startup information is printed to stdout.
 
-```
-Example log output
+```json
+{
+    "id": "ZWqRK7XlnN",
+    "source": "https://hashicorp.com/boundary/Test_InitSysEventer",
+    "specversion": "1.0",
+    "type": "system",
+    "data": {
+        "version": "v0.1",
+        "op": "census.(censusJob).Run",
+        "data": {
+            "msg": "the following snapshot has been generated {\"snapshot_version\":1,\"id\":{\"ULID\":\"0001J50MM0QGR5KN21FVGYJVP9\",\"Timestamp\":\"2023-05-02T00:00:00Z\"},\"schema_version\":\"1.0.0\",\"service\":\"boundary\",\"process_id\":\"01H2B2KY823KYPVAVC02V65TZV\",\"metrics\":{\"boundary.sessions\":{\"key\":\"boundary.sessions\",\"value\":2,\"kind\":\"counter\",\"mode\":\"write\",\"description\":\"Number of pending sessions from previous day\"}}}"
+        }
+    },
+    "datacontentype": "application/cloudevents",
+    "time": "2023-06-07T10:01:53.158933-04:00"
+}
 ```
 
 If your installation is air-gapped or your network doesn’t allow the correct egress, logs will show an error.
 
-```
-Example error log
+```json
+{
+    "id": "VQyF5VzbTT",
+    "source": "https://hashicorp.com/boundary/Test_InitSysEventer",
+    "specversion": "1.0",
+    "type": "error",
+    "data": {
+        "error": "census.(censusJob).Run: unable to export snapshot through agent: unknown: error #0",
+        "error_fields": {
+            "Code": 0,
+            "Msg": "unable to export snapshot through agent",
+            "Op": "census.(censusJob).Run",
+            "Wrapped": null
+        },
+        "id": "e_BgPs9hUMxw",
+        "version": "v0.1",
+        "op": "census.(censusJob).Run"
+    },
+    "datacontentype": "application/cloudevents",
+    "time": "2023-06-07T10:21:48.221494-04:00"
+}
 ```
 
 In this case, reconfigure your network to allow egress and check back in 24 hours.
@@ -74,7 +107,7 @@ Set the following environment variable.
 $ export OPTOUT_LICENSE_REPORTING=true
 ```
 
-Now restart your system by following [these instructions](LINK).
+Now restart your system.
 
 Check your product logs 24 hours after opting out to make sure that the system isn’t trying to send reports.
 
