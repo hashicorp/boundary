@@ -30,7 +30,8 @@ Upgrade to a release that supports license utilization reporting. These releases
 ### 3. Check logs
 
 Automatic license utilization reporting will start sending data within 24 hours. Check the product logs for records that the data sent successfully.
-Server logs are printed to stderr, and startup information is printed to stdout.
+The records are sent as system events.
+You can use [`file sync`](/boundary/docs/configuration/events/file) to configure a file where Boundary logs events.
 
 ```json
 {
