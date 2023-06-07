@@ -302,7 +302,7 @@
         "path": "configuration"
       },
       {
-        "title": "worker",
+        "title": "Worker",
         "routes": [
           {
             "title": "Overview",
@@ -319,7 +319,7 @@
         ]
       },
       {
-        "title": "listener",
+        "title": "Listener",
         "routes": [
           {
             "title": "Overview",
@@ -390,7 +390,7 @@
         ]
       },
       {
-        "title": "events",
+        "title": "Events",
         "routes": [
           {
             "title": "Overview",
@@ -411,7 +411,7 @@
         ]
       },
       {
-        "title": "controller",
+        "title": "Controller",
         "path": "configuration/controller",
         "badge": {
           "text": "OSS Only",
@@ -420,7 +420,7 @@
         }
       },
       {
-        "title": "plugins",
+        "title": "Plugins",
         "path": "configuration/plugins",
         "badge": {
           "text": "OSS Only",

@@ -88,19 +88,19 @@ significant number of resources exist.
   that binds an identity to a set of permissions or capabilities
   on a [host][] for a [session][].
 
-- **[Credential Library][]** :
+- **[Credential library][]** :
   A resource
   that provides [credentials][]
   of the same type and same access level
   from a single [credential store][].
 
-- **[Credential Store][]** :
+- **[Credential store][]** :
   A resource
   that can retrieve, store, and potentially generate [credentials][]
   of differing types and differing access levels.
   It may also contain [credential libraries][].
 
-- **[Authentication Method][]** :
+- **[Authentication method][]** :
   A resource
   that provides a mechanism
   for [users][] to authenticate to Boundary.
@@ -116,17 +116,17 @@ significant number of resources exist.
   that represents a computing element with a network address
   reachable from Boundary.
 
-- **[Host Catalog][]** :
+- **[Host catalog][]** :
   A resource
   that contains [hosts][] and [host sets][].
 
-- **[Host Set][]** :
+- **[Host set][]** :
   A resource
   that represents a collection of [hosts][]
   which are considered equivalent
   for the purposes of access control.
 
-- **[Managed Group][]** :
+- **[Managed group][]** :
   A resource that groups [accounts][] based on criteria
   established by a third-party service backing the [authentication method][]. It
   can be used as a principal in [roles][].
@@ -142,8 +142,15 @@ significant number of resources exist.
   which define the permissions granted to the [user][] on the [host][] for the duration
   of the session.
 
+- **[Session recordings][]** :
+   A session recording represents a directory structure of files in an external object store that together are the recording of a single [session][] between a [user][] and a [target][].
+
 - **[Scope][]** :
   A [permission][] boundary modeled as a container.
+
+- **[Storage bucket][]** :
+   A storage bucket is  used to store [session recordings][].
+   The storage bucket represents a bucket in an external object store.
 
 - **[Target][]** :
   A resource
@@ -194,7 +201,9 @@ Refer to the [Scopes] section to help you understand the structure of resources 
 [scopes]: /boundary/docs/concepts/domain-model/scopes
 [project]: /boundary/docs/concepts/domain-model/scopes#projects
 [session]: /boundary/docs/concepts/domain-model/sessions
+[session recordings]: /boundary/docs/concepts/domain-model/session-recordings
 [sessions]: /boundary/docs/concepts/domain-model/sessions
+[storage bucket]: /boundary/docs/concepts/domain-model/storage-bucket
 [target]: /boundary/docs/concepts/domain-model/targets
 [targets]: /boundary/docs/concepts/domain-model/targets
 [user]: /boundary/docs/concepts/domain-model/users
