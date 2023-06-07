@@ -33,7 +33,7 @@ All sessions have a fixed time limit, and all connections are proxied through a 
 Sessions are recorded by workers.
 Workers are the proxy between an end user and a target.
 No session data is routed through a controller during the recording stage.
-The worker stores the session recording on local disk during the recording phase, and then moves the recording to the external object store when the session is terminated. Session recordings are stored in the BSR (Boundary Session Recording) format.
+The worker stores the session recording on local disk during the recording phase, and then moves the recording to the external object store when the session is terminated. Session recordings are stored in the [BSR](#bsr-directory-structure) (Boundary Session Recording) format.
 Any credentials needed to access the external object store are passed from the controller to the recording worker when the session is established.
 
 In a multi-hop session, the worker that is configured to access the external object store is the worker that records the session.
@@ -76,7 +76,7 @@ A BSR connections directory contains a summary of connections, as well as inboun
 If you use a multiplexed protocol, there are subdirectories for the channels.
 
 
-BSR directories are validated based on the contents in the directory. 
+BSR directories are validated based on the contents in the directory.
 Each BSR directory contains a SHA256SUMS and SHA256SUMS.sign file that can be used to cryptographically verify the BSR directory's contents.
 The SHA256SUMS file contains rows of file names paired with a checksum for the file contents.
 The SHA256SUMS.sign is a copy of the SHA256SUMS file, signed with the BSR's private key.
