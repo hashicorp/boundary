@@ -33,7 +33,7 @@ All sessions have a fixed time limit, and all connections are proxied through a 
 Sessions are recorded by workers.
 Workers are the proxy between an end user and a target.
 No session data is routed through a controller during the recording stage.
-The worker stores the session recording on local disk during the recording phase, and then moves the recording to the external object store when the session is terminated.
+The worker stores the session recording on local disk during the recording phase, and then moves the recording to the external object store when the session is terminated. Session recordings are stored in the BSR (Boundary Session Recording) format.
 Any credentials needed to access the external object store are passed from the controller to the recording worker when the session is established.
 
 In a multi-hop session, the worker that is configured to access the external object store is the worker that records the session.
