@@ -69,17 +69,18 @@ Any session recording metadata that is attached to the storage bucket is deleted
 
 The BSR (Boundary Session Recording) defines a hierarchical directory structure of files and a binary file format.
 It contains all the data transmitted between a user and a target during a single session.
-The top-level directory is named with a `.bsr` suffix.
 
-Each BSR contains a SHA256SUMS and SHA256SUMS.sign file that can be used to cryptographically verify the BSR's contents.
+Boundary creates the top-level directory of the BSR as `<sessionID>.bsr`. This top level directory contains session summary information and subdirectories for connections. This top-level directory also contains BSR keys for use in decrypting and verifying the BSR contents.
+
+A BSR connections directory contains a summary of connections, as well as inbound and outbound requests.
+If you use a multiplexed protocol, there are subdirectories for the channels.
+
+
+BSR directories are validated based on the contents in the directory. 
+Each BSR directory contains a SHA256SUMS and SHA256SUMS.sign file that can be used to cryptographically verify the BSR directory's contents.
 The SHA256SUMS file contains rows of file names paired with a checksum for the file contents.
 The SHA256SUMS.sign is a copy of the SHA256SUMS file, signed with the BSR's private key.
 
-Boundary creates the top-level directory of the BSR as `<sessionID>.bsr`.
-The BSR is validated based on the contents in the directory.
-The top-level directory also contains BSR keys for use in decrypting and verifying the BSR contents.
 
-The connections directory contains a summary of connections, as well as inbound and outbound requests.
-If you use a multiplexed protocol, there are subdirectories for the channels.
 
 For more information, refer to the [overview of configuring session recording](/boundary/docs/configuration/session-recording).
