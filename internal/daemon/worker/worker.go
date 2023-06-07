@@ -188,7 +188,10 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 	metric.InitializeClusterClientCollectors(conf.PrometheusRegisterer)
 	initializeReverseGrpcClientCollectors(conf.PrometheusRegisterer)
 
+	baseContext, baseCancel := context.WithCancel(context.Background())
 	w := &Worker{
+		baseContext:            baseContext,
+		baseCancel:             baseCancel,
 		conf:                   conf,
 		logger:                 conf.Logger.Named("worker"),
 		started:                ua.NewBool(false),
@@ -358,9 +361,6 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 
 func (w *Worker) Start() error {
 	const op = "worker.(Worker).Start"
-
-	w.baseContext, w.baseCancel = context.WithCancel(context.Background())
-
 	if w.started.Load() {
 		event.WriteSysEvent(w.baseContext, op, "already started, skipping")
 		return nil
