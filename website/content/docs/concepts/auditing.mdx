@@ -28,7 +28,7 @@ Further, security teams seek to prevent incidents and proactively identify poten
 Boundary provides auditing capabilities via [session recording](/boundary/docs/concepts/domain-model/session-recordings).
 In Boundary, a session represents a set of connections between a user and a host from a target.
 The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
-Al sessions have a fixed time limit, and all connections are proxied through a worker.
+All sessions have a fixed time limit, and all connections are proxied through a worker.
 
 Sessions are recorded by workers.
 Workers are the proxy between an end user and a target.
@@ -63,7 +63,7 @@ Any storage buckets associated with an Org scope are deleted when the Org itself
 
 Deleting a storage bucket in Boundary does not delete the bucket in the external object store, nor does it delete the recorded sessions in the bucket.
 The storage bucket's lifecycle does not affect the lifecycle of the bucket in the external object store.
-Any session recording metadata that is attached to the storage bucket is deleted, when the storage bucket is deleted.
+Any session recording metadata that is attached to the storage bucket is deleted when the storage bucket is deleted.
 
 ## BSR directory structure
 
