@@ -7,14 +7,14 @@ description: |-
 
 # Storage bucket
 
-A resource known as a storage bucket is  used to store the [session recordings][].
+A resource known as a storage bucket is used to store the [session recordings][].
 The storage bucket represents a bucket in an external object store.
 A storage bucket's name is optional, but it must be unique if you define one.
 Storage buckets can be associated with zero to many [targets][].
 
-A storage bucket can only belong to one [scope][], either the Global scope or an Org scope.
+A storage bucket can only belong to the Global scope or an Org scope.
 A storage bucket that is associated with the Global scope can be associated with any target.
-Howver, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
+However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
 Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
 
 Deleting a storage bucket in Boundary does not delete the bucket in the external object store, nor does it delete the recorded sessions in the bucket.
@@ -32,7 +32,7 @@ The name is optional, but if you set it, it must be unique within the scope ID.
 You must provide a name for the bucket in the external object store.
 - `bucket_prefix` - (Optional) The prefix used to organize the data that is stored in the external object store.
 - `plugin_name` - (Required) The plugin name must reference an installed plugin.
-- `worker_filter` - (Required) A filter to the worker or workers that can process requests for the storage bucket.
+- `worker_filter` - (Required) A filter to identify the worker or workers that can process requests for the storage bucket.
 - `attributes` - (Optional) A collection of fields the plugin uses to interface with the backing service.
 - `secrets` - (Optional) A collection of sensitive fields, like [credentials][], which the plugin uses to interface with the backing service.
 These fields are write only.

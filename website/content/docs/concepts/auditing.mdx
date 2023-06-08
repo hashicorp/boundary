@@ -52,11 +52,11 @@ The storage bucket represents a bucket in an external object store.
 At this time, the only supported storage for storage buckets is AWS S3.
 In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the secret key.
 
-Before you can write a file to a storage bucket, you must configure a worker with local storage to act as a cache.
+Before you can use a storage bucket to record sessions, you must configure a worker with local storage to act as a cache.
 The entire recording is written to the local storage cache before it is uploaded.
-Once the session is complete, the files are automatically synced with the external storage bucket.
+Once the session is complete, the files are automatically synced with the external storage bucket and deleted from the worker's local storage.
 
-Note that a storage bucket can only belong to one scope, either the Global scope or an Org scope.
+A storage bucket can either be in the Global scope or an Org scope.
 A storage bucket that is associated with the Global scope can be associated with any target.
 However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
 Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.

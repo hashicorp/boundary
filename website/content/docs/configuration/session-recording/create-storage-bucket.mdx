@@ -12,7 +12,7 @@ A resource known as a [storage bucket](/boundary/docs/concepts/domain-model/stor
 The storage bucket represents a bucket in an external store.
 Before you can enable session recording, you must create one or more storage buckets.
 
-Note that a storage bucket can only belong to one scope, either the Global scope or an Org scope.
+A storage bucket can only belong to the Global scope or an Org scope.
 A storage bucket that is associated with the Global scope can be associated with any target.
 However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
 Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
@@ -27,7 +27,7 @@ For more information about using session recording to audit user sessions, refer
    In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the access and secret key.
 
 - An AWS IAM role policy with the following statement:
-   ```javascript
+   ```json
     {
       "Version": "2012-10-17",
       "Statement": [
