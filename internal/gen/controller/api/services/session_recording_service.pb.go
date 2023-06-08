@@ -33,7 +33,7 @@ type GetSessionRecordingRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The ID of the Session recording, or the ID of the Session that was recorded.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: class:"public"
 }
 
 func (x *GetSessionRecordingRequest) Reset() {
@@ -130,11 +130,11 @@ type ListSessionRecordingsRequest struct {
 
 	// The scope in which to list session recordings.
 	// Must be set unless recursive is set.
-	ScopeId string `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"` // @gotags: class:"public"
+	ScopeId string `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: class:"public"
 	// Whether to recurse into child scopes when listing.
 	// If set and scope_id is empty, shows session recordings in
 	// all scopes the caller has access to.
-	Recursive bool `protobuf:"varint,2,opt,name=recursive,proto3" json:"recursive,omitempty"` // @gotags: class:"public"
+	Recursive bool `protobuf:"varint,2,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public"` // @gotags: class:"public"
 }
 
 func (x *ListSessionRecordingsRequest) Reset() {
@@ -240,10 +240,10 @@ type DownloadRequest struct {
 	//   - Session ID and Session recording ID for Session recordings
 	//   - Connection ID and Connection recording ID for Connection recordings
 	//   - Channel recording ID for Channel recordings
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // @gotags: class:"public"
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: class:"public"
 	// The format of the response. The only supported mime type is "application/x-asciicast".
 	// Defaults to "application/x-asciicast" if not set.
-	MimeType string `protobuf:"bytes,2,opt,name=mime_type,proto3" json:"mime_type,omitempty"` // @gotags: class:"public"
+	MimeType string `protobuf:"bytes,2,opt,name=mime_type,proto3" json:"mime_type,omitempty" class:"public"` // @gotags: class:"public"
 }
 
 func (x *DownloadRequest) Reset() {
