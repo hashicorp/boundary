@@ -89,12 +89,16 @@ func SeparateManagedWorkers(workers WorkerList) (managedWorkers, nonManagedWorke
 	managedWorkers = make([]*server.Worker, 0, len(workers))
 	nonManagedWorkers = make([]*server.Worker, 0, len(workers))
 	for _, worker := range workers {
-		tags := worker.CanonicalTags()
-		if len(tags[ManagedWorkerTag]) != 0 {
+		if IsManagedWorker(worker) {
 			managedWorkers = append(managedWorkers, worker)
 		} else {
 			nonManagedWorkers = append(nonManagedWorkers, worker)
 		}
 	}
 	return managedWorkers, nonManagedWorkers
+}
+
+// IsManagedWorker indicates whether the given worker is managed
+func IsManagedWorker(worker *server.Worker) bool {
+	return len(worker.CanonicalTags()[ManagedWorkerTag]) != 0
 }
