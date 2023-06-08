@@ -15,6 +15,8 @@ You use the storage bucket's ID to associate a target with the storage bucket.
 
 - One or more storage buckets to store the recordings
 - Session recording is only supported for SSH targets at this time.
+- The targets must be configured with an ingress or egress worker filter that includes a worker with access to the storage bucket you created.
+Refer to [SSH target attributes](/boundary/docs/concepts/docmain-model/targets#ssh-target-attributes-hcp-ent) for more information.
 - You must enable injected application credentials on any target that you want to use for session recording.
 
 Complete the following steps to enable session recording on a target.
