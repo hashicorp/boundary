@@ -37,16 +37,16 @@ method's identity provider to provide up-to-date information.
 #### Roles
 [Roles](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles) are resources that contain a collection of 
 [permissions](https://developer.hashicorp.com/boundary/docs/concepts/security/permissions) which are granted to any principal (user or group) from any scope. Roles 
-can be contained by any scope, and can specify which scope the permissions will apply to.
+can be contained by any scope, and the permissions can be applied to the same scope or any child scope.
 
 ## Access Management
 #### Configuring Users
 There are 3 steps to adding new users to Boundary using the password auth method. Note that for OIDC auth methods, the resources generated in the following steps are auto-generated using 
 information provided by the identity provider.
-1. **Auth Method** - Choose the scope and the auth method that the user will use to authenticate to Boundary. If the desired auth method does not exist, a new one needs 
+1. Choose the **scope** and the **auth method** that the user will use to authenticate to Boundary. If the desired auth method does not exist, a new one needs 
 to be created.
-2. **Account** - After the auth method is selected, an account can be created under the auth method.
-3. **User** - In the same scope, create a new user, and then attach the new account to the new user. The user is now able to authenticate to Boundary.
+2. After the auth method is selected, an **account** can be created under the auth method.
+3. In the same scope, create a new **user**, and then attach the new account to the new user. The user is now able to authenticate to Boundary.
 
 #### Granting Permissions
 When you set up access controls for a user, it is important to first consider which scopes the user needs access to. **Each scope needs its own role** which the user must 
