@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
-	dcommon "github.com/hashicorp/boundary/internal/daemon/common"
 	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -202,7 +201,7 @@ func TestGet(t *testing.T) {
 		server.NewWorker(managedPkiWorker.GetScopeId(),
 			server.WithAddress("test managed pki worker address"),
 			server.WithWorkerTags(&server.Tag{
-				Key:   dcommon.ManagedWorkerTag,
+				Key:   wl.ManagedWorkerTag,
 				Value: "true",
 			})),
 		server.WithUpdateTags(true),
@@ -230,10 +229,10 @@ func TestGet(t *testing.T) {
 		LastStatusTime:        managedPkiWorker.GetLastStatusTime().GetTimestamp(),
 		ReleaseVersion:        managedPkiWorker.ReleaseVersion,
 		CanonicalTags: map[string]*structpb.ListValue{
-			dcommon.ManagedWorkerTag: structListValue(t, "true"),
+			wl.ManagedWorkerTag: structListValue(t, "true"),
 		},
 		ConfigTags: map[string]*structpb.ListValue{
-			dcommon.ManagedWorkerTag: structListValue(t, "true"),
+			wl.ManagedWorkerTag: structListValue(t, "true"),
 		},
 		Type:                               PkiWorkerType,
 		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
