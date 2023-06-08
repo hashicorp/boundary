@@ -322,8 +322,7 @@ func printItemTable(item *sessionrecordings.SessionRecording, resp *api.Response
 		)
 		for _, cr := range item.ConnectionRecordings {
 			cm := map[string]any{
-				"ID":            cr.Id,
-				"Connection ID": cr.ConnectionId,
+				"ID": cr.Id,
 			}
 			if cr.BytesUp != 0 {
 				cm["Bytes Up"] = cr.BytesUp
