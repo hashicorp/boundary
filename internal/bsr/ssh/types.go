@@ -5,6 +5,7 @@ package ssh
 
 import (
 	"github.com/hashicorp/boundary/internal/bsr"
+	"golang.org/x/crypto/ssh"
 )
 
 // SessionProgram identifies the program running on this channel
@@ -69,16 +70,25 @@ const (
 	FileTransferDownload      FileTransferDirection = "download"
 )
 
+// OpenChannelError provides details if a channel was rejected.
+// This will contain details from the SSH_MSG_CHANNEL_OPEN_FAILURE request
+// that rejected the channel.
+// See: https://www.rfc-editor.org/rfc/rfc4254#section-5.1
+type OpenChannelError ssh.OpenChannelError
+
 // ChannelSummary encapsulates data for a channel
 // SessionProgram can only be one of the following: exec, shell, or subsystem
 // SubsystemName is only populated if SessionProgram is subsystem
 // ExecApplicationProgram is only populated if Channel Program is subsystem, and can be one of the following:
 //
 //	scp, rsync, or unknown
+//
+// OpenFailure will be nil if the Channel was successfully opened.
 type ChannelSummary struct {
 	ChannelSummary        *bsr.ChannelSummary
 	SessionProgram        SessionProgram
 	SubsystemName         string
 	ExecProgram           ExecApplicationProgram
 	FileTransferDirection FileTransferDirection
+	OpenFailure           *OpenChannelError `json:",omitempty"`
 }
