@@ -63,7 +63,7 @@ func TestServer_SetupKMSes_Purposes(t *testing.T) {
 		{
 			name: "multi purpose",
 			purposes: []string{
-				globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth,
+				globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth, globals.KmsPurposeDownstreamWorkerAuth,
 				globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeConfig, globals.KmsPurposeBsr,
 			},
 		},

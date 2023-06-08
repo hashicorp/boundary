@@ -569,6 +569,7 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 				globals.KmsPurposePreviousRoot,
 				globals.KmsPurposeConfig,
 				globals.KmsPurposeWorkerAuth,
+				globals.KmsPurposeDownstreamWorkerAuth,
 				globals.KmsPurposeWorkerAuthStorage,
 				globals.KmsPurposeBsr:
 			case globals.KmsPurposeRecovery:
