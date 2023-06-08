@@ -10,33 +10,34 @@ description: |-
 There are 5 key components to Boundary's identity and access management system: **Scopes**, **Auth Methods**, **Accounts**, **Users**, **Groups**, and **Roles**.
 
 #### Scopes
-[Scopes](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/scopes) can be considered as containers for its own resources and permissions. Each scope also has a permissions boundary that is isolated from other scopes on the same level. There are three types of scopes:
+[Scopes](/boundary/docs/concepts/domain-model/scopes) can be considered as containers for its own resources and permissions. Each scope also has a permissions boundary that is isolated from other scopes on the same level. There are three types of scopes:
 - **Global** - The highest-level scope of Boundary where administrators configure and manage Boundary for the entire company.
 - **Org (Organization)** - Org scopes are contained in the global scope and are typically used to represent business units, organizations, or departments. 
 Org scopes can also be used to contain multiple production-level auth methods in separate scopes.
 - **Project** - Project scopes are contained in Org scopes and be used to separate different business workflows. For example, Projects can be used to represent different teams, products, or environments (test, dev, prod).
 
 #### Auth Methods
-[Auth Methods](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/auth-methods) are resources that authenticate users to 
+[Auth Methods](/boundary/docs/concepts/domain-model/auth-methods) are resources that authenticate users to 
 Boundary. Auth methods can only be contained by the global or Org scope. The available auth methods are:
 - Username/Password
-- [OIDC](https://developer.hashicorp.com/boundary/tutorials/access-management/oidc-auth)
+- [OIDC](/boundary/tutorials/access-management/oidc-auth)
+- LDAP
 
 #### Accounts
-[Accounts](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/accounts) are resources that represent an authenticated user from a trusted identity provider through a Boundary auth method. Accounts must belong to an auth method, and can be associated with a single Boundary User. Boundary accounts can belong to the global or Org Scopes.
+[Accounts](/boundary/docs/concepts/domain-model/accounts) are resources that represent an authenticated user from a trusted identity provider through a Boundary auth method. Accounts must belong to an auth method, and can be associated with a single Boundary User. Boundary accounts can belong to the global or Org Scopes.
 
 #### Users
-[Users](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/users) are resources that represent an individual person or entity for the purposes of 
+[Users](/boundary/docs/concepts/domain-model/users) are resources that represent an individual person or entity for the purposes of 
 access control. A user can contain multiple accounts from multiple auth methods, and can belong to the global or Org Scopes.
 
 #### Groups
-[Groups](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/groups) are resources that represent a collection of users, and can be contained by any 
-scope. [Managed groups](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/managed-groups) are a special kind of group that syncs with the auth 
+[Groups](/boundary/docs/concepts/domain-model/groups) are resources that represent a collection of users, and can be contained by any 
+scope. [Managed groups](/boundary/docs/concepts/domain-model/managed-groups) are a special kind of group that syncs with the auth 
 method's identity provider to provide up-to-date information.
 
 #### Roles
-[Roles](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/roles) are resources that contain a collection of 
-[permissions](https://developer.hashicorp.com/boundary/docs/concepts/security/permissions) which are granted to any principal (user or group) from any scope. Roles 
+[Roles](/boundary/docs/concepts/domain-model/roles) are resources that contain a collection of 
+[permissions](/boundary/docs/concepts/security/permissions) which are granted to any principal (user or group) from any scope. Roles 
 can be contained by any scope, and the permissions can be applied to the same scope or any child scope.
 
 ## Access Management
@@ -60,42 +61,42 @@ Projects. To learn more about writing grants, see here.
 
 #### Boundary Admin
 1. All 7 scopes **each** require a role (ex. “admin”)
-2. Each role needs to have the user added to it
+2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-    `id=*;type=*;actions=*`
+- &#32; `id=*;type=*;actions=*`
 
 #### Boundary Viewer
 1. All 7 scopes **each** require a role (ex. “viewer”)
-2. Each role needs to have the user added to it
+2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-    `id=*;type=*;actions=read,list`
+- &#32; `id=*;type=*;actions=read,list`
 
 #### Org_A Admin
 1. The following scopes **each** require a role (ex. “admin”)
     - Org_A
     - Project_1
     - Project_2
-2. Each role needs to have the user added to it
+2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-    `id=*;type=*;actions=*`
+- &#32; `id=*;type=*;actions=*`
 
 #### Project_1 Admin
 1. Project_1 requires a role (ex. “admin”)
-2. The role needs to have the user added to it
+2. The role needs to have the user/group added as a principal
 3. The role needs to have the grants of
 
-    `id=*;type=*;actions=*`
+- &#32; `id=*;type=*;actions=*`
 
 #### Project_1 Target Access
 1. Project_1 requires a role (ex. “target_access”)
-2. The role needs to have the user added to it
+2. The role needs to have the user/group added as a principal
 3. The role needs to have the grants of
 
-    `id=*;type=target;actions=list,read,authorize-session`
-    `id=*;type=session;actions=read:self,cancel:self,list`
+- &#32; `id=*;type=target;actions=list,read,authorize-session`
+- &#32; `id=*;type=session;actions=read:self,cancel:self,list`
 
 -> **Tip:** You can use the same roles across “Boundary Admin”, “Org_A Admin”, and “Project_1 Admin” since the scopes and grants are the same. The only difference is 
-the users that are added to each role. 
+the users/groups that are added to each role. 
