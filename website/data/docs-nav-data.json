@@ -559,19 +559,19 @@
     "routes": [
       {
         "title": "Overview",
-        "path": "ent"
+        "path": "enterprise"
       },
       {
         "title": "Licensing",
-        "path": "ent/licensing"
+        "path": "enterprise/licensing"
       },
       {
         "title": "Automated License Reporting",
-        "path": "ent/automated-license-reporting"
+        "path": "enterprise/automated-license-reporting"
       },
       {
         "title": "Supported Versions Policy",
-        "path": "ent/supported-versions"
+        "path": "enterprise/supported-versions"
       }
     ]
   },
