@@ -12,7 +12,6 @@ import (
 
 type ConnectionRecording struct {
 	Id                string              `json:"id,omitempty"`
-	ConnectionId      string              `json:"connection_id,omitempty"`
 	BytesUp           uint64              `json:"bytes_up,string,omitempty"`
 	BytesDown         uint64              `json:"bytes_down,string,omitempty"`
 	CreatedTime       time.Time           `json:"created_time,omitempty"`
