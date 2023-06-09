@@ -28,7 +28,7 @@ Highlights include:
 - Boundary Enterprise version
 - SSH session recording
 - LDAP authentication method (beta)
-- HCP Boundary maintenance window (HCP only)
+- HCP Boundary maintenance window
 - OIDC authentication improvements
 
 ## New features
@@ -83,7 +83,7 @@ For more information, refer to the [worker configuration](/boundary/docs/configu
 **Static ports for targets**: Administrators can now configure a default, static port for clients when connecting to targets using the optional `default_client_port` attribute.
 Any workers that connect to a target will use the default port, if one is specified, unless overidden by the client attribute `-listen-port`.
 
-**Dynamic host catalog external name**: You can now view the name of the external host on the **Host Catalogs** page.
+**Dynamic host catalog external name**: You can now view the AWS or Azure host name when listing hosts in CLI, admin console, and desktop client.
 
 ## Deprecations and changes
 
