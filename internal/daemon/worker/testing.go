@@ -546,8 +546,15 @@ func NewTestMultihopWorkers(t testing.TB,
 		Config:                     childKmsWorkerConf,
 		WorkerAuthKms:              childDownstreamWrapper2,
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
+		DisableAutoStart:           true,
 	})
+	childKmsWorker.w.conf.WorkerAuthStorageKms = nil
+
+	err = childKmsWorker.w.Start()
 	t.Cleanup(childKmsWorker.Shutdown)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Sleep so that workers can startup and connect.
 	time.Sleep(12 * time.Second)

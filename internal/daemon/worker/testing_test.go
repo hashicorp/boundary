@@ -202,6 +202,11 @@ func TestNewTestMultihopWorkers(t *testing.T) {
 	assert.Equal(t, pkiTags, pkiW.GetConfigTags())
 	assert.Equal(t, childPkiTags, childPkiW.GetConfigTags())
 	assert.Equal(t, childKmsTags, childKmsW.GetConfigTags())
+
+	require.NoError(t, c.WaitForNextWorkerStatusUpdate(kmsWorker.Name()))
+	require.NoError(t, c.WaitForNextWorkerStatusUpdate(pkiWorker.Name()))
+	require.NoError(t, c.WaitForNextWorkerStatusUpdate(childPkiWorker.Name()))
+	require.NoError(t, c.WaitForNextWorkerStatusUpdate(childKmsWorker.Name()))
 }
 
 func createTestCert(t *testing.T) ([]byte, ed25519.PublicKey, ed25519.PrivateKey) {
