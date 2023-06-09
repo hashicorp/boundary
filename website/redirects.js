@@ -27,4 +27,9 @@ module.exports = [
     destination: 'boundary/docs/overview/what-is-boundary',
     permanent: true,
   },
+  {
+    source:
+      '/boundary/docs/concepts/security/permissions/permission-grant-formats',
+    destination: '/boundary/docs/concepts/security/permissions/',
+  },
 ]
