@@ -7,24 +7,24 @@ description: |-
 
 # Identity and access management (IAM)
 ## IAM components
-There are 5 key components to Boundary's identity and access management system: **Scopes**, **Auth Methods**, **Accounts**, **Users**, **Groups**, and **Roles**.
+There are 6 key components to Boundary's identity and access management system: **Scopes**, **Auth Methods**, **Accounts**, **Users**, **Groups**, and **Roles**.
 
 ### Scopes
-[Scopes](/boundary/docs/concepts/domain-model/scopes) can be considered as containers for its own resources and permissions. Each scope also has a permissions boundary that is isolated from other scopes on the same level. There are three types of scopes:
+[Scopes](/boundary/docs/concepts/domain-model/scopes) can be considered as containers for resources and permissions. Each scope also has a permissions boundary that is isolated from other scopes on the same level. There are three types of scopes:
 - **Global** - The highest-level scope of Boundary where administrators configure and manage Boundary for the entire company.
 - **Org (Organization)** - Org scopes are contained in the global scope and are typically used to represent business units, organizations, or departments.
 Org scopes can also be used to contain multiple production-level auth methods in separate scopes.
-- **Project** - Project scopes are contained in Org scopes and be used to separate different business workflows. For example, Projects can be used to represent different teams, products, or environments (test, dev, prod).
+- **Project** - Project scopes are contained in Org scopes and be used to separate different business workflows. For example, projects can be used to represent different teams, products, or environments (test, dev, prod).
 
 ### Auth methods
 [Auth Methods](/boundary/docs/concepts/domain-model/auth-methods) are resources that authenticate users to
-Boundary. Auth methods can only be contained by the global or Org scope. The available auth methods are:
+Boundary. Auth methods can only be contained by the global or Org scopes. The available auth methods are:
 - Username/Password
 - [OIDC](/boundary/tutorials/identity-management/oidc-auth)
 - LDAP
 
 ### Accounts
-[Accounts](/boundary/docs/concepts/domain-model/accounts) are resources that represent an authenticated user from a trusted identity provider through a Boundary auth method. Accounts must belong to an auth method, and can be associated with a single Boundary User. Boundary accounts can belong to the global or Org Scopes.
+[Accounts](/boundary/docs/concepts/domain-model/accounts) are resources that represent an authenticated user from a trusted identity provider through a Boundary auth method. Accounts must belong to an auth method, and can be associated with a single Boundary user. Boundary accounts can belong to the global or Org Scopes.
 
 ### Users
 [Users](/boundary/docs/concepts/domain-model/users) are resources that represent an individual person or entity for the purposes of
@@ -42,39 +42,37 @@ can be contained by any scope, and the permissions can be applied to the same sc
 
 ## Access management
 ### Configuring users - username/password
-There are 3 steps to adding new users to Boundary using the password auth method.
-1. Choose the **scope** and the **auth method** that the user will use to authenticate to Boundary. If the desired auth method does not exist, a new one needs
-to be created.
-2. After the auth method is selected, an **account** can be created under the auth method.
+There are 3 steps to adding new users to Boundary using the password auth method:
+1. Choose the **scope** and the **auth method** that the user will use to authenticate to Boundary. If the desired auth method does not exist, you must create a new one.
+2. After the auth method is selected, you can create an **account** under the auth method.
 3. In the same scope, create a new **user**, and then attach the new account to the new user. The user is now able to authenticate to Boundary.
 
 ### Configuring users - OIDC/LDAP
 [OIDC](/boundary/tutorials/identity-management/oidc-auth) and LDAP accounts and users are auto-vivified (automatically generated) in Boundary in the same scope
-as the auth method. The accounts and users are only created once the user authenticates for the first time to Boundary. The same applies to OIDC/LDAP
+as the auth method. The accounts and users are only created once the user authenticates to Boundary for the first time. The same applies to OIDC/LDAP
 [managed groups](/boundary/tutorials/identity-management/oidc-idp-groups).
 
 ### Granting permissions
 When setting up access controls for a user, it is important to first consider which scope(s) the user needs access to. **Each scope requires its own set of roles**,
 giving users permission to perform actions through [grants strings](/boundary/docs/concepts/security/permissions/grants).
-It is recommended to add the user to a group, and then add the group to the role(s), instead of adding the user directly to the role(s). This way, multiple users can
-be managed at the same time, and it is easier to
-change the permissions of the user by adding/removing them from groups. The same can be done with OIDC/LDAP users and managed groups, directly in the provider.
+It is recommended to add the user to a group, and then add the group to the role(s), instead of adding the user directly to the role(s). This way, you can manage multiple users at the same time, and it is easier to
+change the permissions of the user by adding/removing them from groups. You can manage OIDC/LDAP users and managed groups the same way, directly in the provider.
 
 ## Examples
 Here are a few examples of access management for personas, using this sample scope structure. In this structure, there are 7 scopes overall: 1 global, 2 Orgs, and 4
-Projects. To learn more about writing grants, see [grants strings](/boundary/docs/concepts/security/permissions/grants).
+Projects. To learn more about writing grants, refer to [grants strings](/boundary/docs/concepts/security/permissions/grants).
 
 ![IAM Example Structure](/img/iam-example-structure.png)
 
 ### Boundary admin
-1. All 7 scopes **each** require a role (ex. “admin”)
+1. **Each** of the 7 scopes requires a role (ex. “admin”)
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
    - &#32; `id=*;type=*;actions=*`
 
 ### Boundary Viewer
-1. All 7 scopes **each** require a role (ex. “viewer”)
+1. **Each** of the 7 scopes requires a role (ex. “viewer”)
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
