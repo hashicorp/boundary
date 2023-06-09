@@ -8,6 +8,7 @@ description: |-
 # Advanced Concepts
 
 ## Assignable Permissions
+Resources identified by the ID/Type selectors have permissions granted to the user in the form of actions and visibility (via `output_fields`).
 ### Advanced Actions
 From a permissions standpoint, all actions take place against directly implemented 
 or abstract types. There may be actions that are only implemented by some concrete 
@@ -129,19 +130,18 @@ anonymous user. In the future this may change, but trying to limit this
 introduces other restrictions on reasonable administrative workflows, so an
 acceptable set of tradeoffs would need to be figured out.
 
-## Grant Formats
-### Wildcard
+## Wildcard
 
 Various wildcard possibilities are allowed:
 
-#### Wildcard ID
+### Wildcard ID
 
 When you use only a wildcard for the ID, `*`, it matches all IDs of the given type. You can use this format
 with both top-level resource types or none. For example:
 
 `id=*;type=host-set;actions=create,read,update,set-hosts`
 
-#### Wildcard type
+### Wildcard type
 
 You can use a wildcard for the `type` for any non-top-level resources with pinned IDs:
 
@@ -151,7 +151,7 @@ This grant format would allow `create`, `read`, and `update` actions for all typ
 subordinate resources (in this case host sets and hosts) underneath the host
 catalog with ID `hcst_1234567890`.
 
-#### Wildcard ID and type
+### Wildcard ID and type
 
 If ID and type are both wildcards, the grant is essentially a catch-all that
 matches any resource of any type within the scope and allows the given
@@ -159,7 +159,7 @@ actions.
 
 `id=*;type=*;actions=read,list`
 
-#### Wildcard ID, type, and actions
+### Wildcard ID, type, and actions
 
 Finally, ID, type, and actions can all be wildcards:
 
@@ -167,7 +167,7 @@ Finally, ID, type, and actions can all be wildcards:
 
 Such a grant is essentially a full administrator grant for a scope.
 
-### Templates
+## Templates
 
 A few template possibilities exist, which will 
 substitute the given value into the ID field of the grant string at grant evaluation time:
