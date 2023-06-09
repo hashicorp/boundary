@@ -14,7 +14,7 @@ import (
 )
 
 // RegisterJob registers the census job with the provided scheduler.
-func RegisterJob(ctx context.Context, s *scheduler.Scheduler, optOut bool, r db.Reader, w db.Writer) error {
+func RegisterJob(ctx context.Context, s *scheduler.Scheduler, lurEnabled bool, r db.Reader, w db.Writer) error {
 	const op = "census.RegisterJob"
 	if s == nil {
 		return errors.New(ctx, errors.InvalidParameter, "nil scheduler", op, errors.WithoutEvent())
@@ -25,11 +25,8 @@ func RegisterJob(ctx context.Context, s *scheduler.Scheduler, optOut bool, r db.
 	if util.IsNil(w) {
 		return errors.New(ctx, errors.Internal, "nil DB writer", op, errors.WithoutEvent())
 	}
-	if util.IsNil(optOut) {
-		return errors.New(ctx, errors.Internal, "nil opt out value", op, errors.WithoutEvent())
-	}
 
-	censusJob, err := NewCensusJobFn(ctx, optOut, r, w)
+	censusJob, err := NewCensusJobFn(ctx, lurEnabled, r, w)
 	if err != nil {
 		return fmt.Errorf("error creating census job: %w", err)
 	}
