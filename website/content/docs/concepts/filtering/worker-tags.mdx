@@ -128,11 +128,12 @@ Following are some examples of using these values in filters:
 - Name regex: `"/name" matches "web-prod-us-east-[12]"`, which would
   match workers whose names are `web-prod-us-east-1` or `web-prod-us-east-2`
 
-- Region: `"us-east-1" in "/tags/region"`. Note that each tag can have multiple
-  values, so it must use the `in` operator to search in the collection. If you
-  know that you have only one value, an equivalent would be `"/tags/region/0" == "us-east-1"`.
+- Region: `"us-east-1" in "/tags/region"`.
 
 - Grouping: `("us-east-1" in "/tags/region" and "/name" == "web-prod-us-east-1") or "webservers" in "/tags/type"`
+
+~> **Note:** Each tag can have multiple values, so the `in` operator must be used to match values.
+If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
 
 # Target worker filtering
 
