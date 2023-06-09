@@ -12,16 +12,17 @@ Boundary has two main user workflows to consider when you deploy it to productio
 ## Administrative workflow
 
 The first is the Boundary administration workflow, where an administrator uses either the Boundary CI or GUI to configure Boundary.
-In this scenario, the administrator interfaces solely with the Boundary controllers, ideally through a layer 4 or layer 7 load balancer.
+In this scenario, the administrator interfaces solely with the Boundary controllers, and a load balancer can be used to balance requests across multiple controllers.
 The Boundary controllers do not directly communicate with one another, all configuration and state is managed through an RDBMS, in this case PostgreSQL.
 
 The following diagram shows the recommended architecture for deploying Boundary controller nodes within a single region:
 
 ![Single region deployment](/img/single-region.png)
 
-Boundary controllers are stateless and do not operate on protocols such as raft, unlike other HashiCorp products like Vault, and therefore can withstand failure scenarios where only one node is accessible.
+Boundary controllers are stateless and do not operate using consensus protocols such as Raft.
+They are therefore able to withstand failure scenarios where only one node is accessible.
 
-If deploying Boundary to three availability zones is not possible, you can use the same architecture across one or two availability zones, at the expense of significant reliability risk in case of an availability zone outage.
+If deploying Boundary to three availability zones is not possible, you can use the same architecture across one or two availability zones, at the expense of reliability risk in case of an availability zone outage.
 
 ## Connect to a target workflow
 

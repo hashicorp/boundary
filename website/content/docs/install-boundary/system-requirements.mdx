@@ -79,21 +79,32 @@ Refer to the following pages for provider-specific virtual machine networking li
 
 ## Network connectivity
 
-The following table outlines the network connectivity requirements for Boundary cluster nodes.
-If general network egress is restricted, particular attention must be paid to granting outgoing access from the Boundary controllers to any external integration providers, for example OIDC authentication providers, external log handlers, metrics collection, and security and configuration management providers.
+The following table outlines the default ingress network connectivity requirements for Boundary cluster nodes.
+If general network egress is restricted, you must pay particular attention to granting outgoing access from:
 
-| Source | Destination | Destination Port | Protocol | Direction | Purpose |
-|---|---|---|---|---|---|
-| Client machines | Controller load balancer | 443 | TCP | Incoming | Request distribution |
-| Load balancer | Controller servers | 9200 | TCP | Incoming | Boundary API |
-| Load Balancer | Controller servers | 9200 | TCP | Incoming | Health checks |
-| Worker servers | Controller load balancer | 9201 | TCP | Incoming | Session authorization, credentials, etc. |
-| Client machines | Worker servers* | 9202 | TCP | Bidirectional | Session proxying |
-| Worker servers | Boundary targets* | various | TCP | Bidirectional | Session proxying |
-| Client machines | Ingress worker servers** | 9202 | TCP | Bidirectional | Multi-hop session proxying |
-| Ingress worker servers | Egress worker servers** | 9202 | TCP | Incoming | Multi-hop session proxying |
-| Egress worker servers | Ingress worker servers** | 9202 | TCP | Outgoing | Multi-hop session proxying |
-| Egress worker servers | Boundary targets** | various | TCP | Outgoing | Multi-hop session proxying |
+- The Boundary controllers to any external integration providers (for example, OIDC authentication providers) as well as external log handlers, metrics collection, and security and configuration management providers.
+- The Boundary workers to controllers and any upstream workers.
+
+<Note>
+
+If any of the default port mappings below do not meet your organization's requirements, you can update the default listening ports using the resource's [listener](/boundary/docs/configuration/listener) stanza.
+
+</Note>
+
+ ![Boundary network](/img/boundary-network.png)
+
+| Source          | Destination                 | Default destination port | protocol  | Purpose                                 |
+| --------------- | --------------------------- | ------------------------ | --------- | --------------------------------------  |
+| Client machines | Controller load balancer    | 443                      | tcp       | Request distribution                    |
+| Load balancer   | Controller servers          | 9200                     | tcp       | Boundary API                            |
+| Load balancer   | Controller servers          | 9203                     | tcp       | Health checks                           |
+| Worker servers  | Controller load balancer    | 9201                     | tcp       | Session authorization, credentials, etc |
+| Controllers     | Postgres                    | 5432                     | tcp       | Storing system state                    |
+| Client machines | Worker servers \*           | 9202                     | tcp       | Session proxing                         |
+| Worker servers  | Boundary targets\*          | various                  | tcp       | Session proxing                         |
+| Client machines | Ingress worker servers \*\* | 9202                     | tcp       | Multi-hop session proxing               |
+| Egress workers  | Ingress worker servers \*\* | 9202                     | tcp       | Multi-hop session proxing               |
+| Egress workers  | Boundary targets \*\*       | various                  | tcp       | Multi-hop session proxing               |
 
 \* In this scenario, the client connects directly to one worker, which then proxies the connection to the Boundary target.
 
