@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
 	"github.com/hashicorp/boundary/internal/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -144,6 +145,10 @@ func TestFSOpen(t *testing.T) {
 				return fstest.NewLocalFS(ctx, d)
 			},
 		},
+		{
+			"LimitedSpaceFS",
+			func(t *testing.T) storage.FS { return fstest.NewLimitedSpaceFS() },
+		},
 	}
 	cases := []struct {
 		name    string
@@ -209,6 +214,10 @@ func TestContainerOpenFile(t *testing.T) {
 				})
 				return fstest.NewLocalFS(ctx, d)
 			},
+		},
+		{
+			"LimitedSpaceFS",
+			func(t *testing.T) storage.FS { return fstest.NewLimitedSpaceFS() },
 		},
 	}
 
@@ -320,6 +329,10 @@ func TestContainerCreate(t *testing.T) {
 				return fstest.NewLocalFS(ctx, d)
 			},
 		},
+		{
+			"LimitedSpaceFS",
+			func(t *testing.T) storage.FS { return fstest.NewLimitedSpaceFS() },
+		},
 	}
 
 	cases := []struct {
@@ -391,6 +404,10 @@ func TestMemContainerSubContainer(t *testing.T) {
 				})
 				return fstest.NewLocalFS(ctx, d)
 			},
+		},
+		{
+			"LimitedSpaceFS",
+			func(t *testing.T) storage.FS { return fstest.NewLimitedSpaceFS() },
 		},
 	}
 	cases := []struct {
@@ -477,4 +494,66 @@ func TestMemContainerSubContainer(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutOfSpace(t *testing.T) {
+	ctx := context.Background()
+
+	line := []byte("foo")
+
+	fs := fstest.NewLimitedSpaceFS()
+
+	// Create some containers, subcontains and files.
+	r, err := fs.New(ctx, "root")
+	require.NoError(t, err)
+
+	sub, err := r.SubContainer(ctx, "sub", storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadWrite))
+	require.NoError(t, err)
+
+	f1, err := r.Create(ctx, "f1")
+	require.NoError(t, err)
+	c, err := f1.Write(line)
+	require.NoError(t, err)
+	assert.Equal(t, c, len(line))
+
+	f2, err := sub.Create(ctx, "f2")
+	require.NoError(t, err)
+	c, err = f2.Write(line)
+	require.NoError(t, err)
+	assert.Equal(t, c, len(line))
+
+	// Now mark out of space
+	fs.SetOutOfSpace(true)
+
+	// eixsing files can no longer write
+	c, err = f1.Write(line)
+	require.ErrorIs(t, err, fstest.ErrOutOfSpace)
+	assert.Equal(t, 0, c)
+
+	c, err = f2.Write(line)
+	require.ErrorIs(t, err, fstest.ErrOutOfSpace)
+	assert.Equal(t, 0, c)
+
+	// existing containers cannot create new files
+	f3, err := r.Create(ctx, "f3")
+	require.ErrorIs(t, err, fstest.ErrOutOfSpace)
+	assert.Nil(t, f3)
+
+	f4, err := sub.Create(ctx, "f4")
+	require.ErrorIs(t, err, fstest.ErrOutOfSpace)
+	assert.Nil(t, f4)
+
+	// existing containers cannot create sub containers
+	sub2, err := r.SubContainer(ctx, "sub2", storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadWrite))
+	require.ErrorIs(t, err, fstest.ErrOutOfSpace)
+	assert.Nil(t, sub2)
+
+	sub3, err := sub.SubContainer(ctx, "sub3", storage.WithCreateFile(), storage.WithFileAccessMode(storage.ReadWrite))
+	require.ErrorIs(t, err, fstest.ErrOutOfSpace)
+	assert.Nil(t, sub3)
+
+	// fs cannot make a new container
+	r2, err := fs.New(ctx, "root2")
+	require.ErrorIs(t, err, fstest.ErrOutOfSpace)
+	assert.Nil(t, r2)
 }
