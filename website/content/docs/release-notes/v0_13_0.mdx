@@ -1,0 +1,115 @@
+---
+layout: docs
+page_title: v0.13.0
+description: |-
+  Boundary release notes for v0.13.0
+---
+
+# Boundary v0.13.0
+
+The release notes below contain information about new functionality available in the Boundary v0.13.0 release.
+To see a granular record of when each item was merged into the Boundary project, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md).
+To learn about what Boundary consists of, we highly recommend you review the [Getting Started Page](/boundary/docs/getting-started).
+
+For instructions on how to upgrade an existing Boundary deployment to v0.13.0, refer to Boundary's [general upgrade guide](/boundary/tutorials/oss-configuration/upgrade-version).
+
+<Note>
+
+  Self-managed versions of Boundary v0.13.0 will be available to customers before HCP Boundary is.
+  HCP Boundary v0.13.0 specific features will be available shortly.
+
+</Note>
+
+## Boundary v0.13.0 highlights
+
+The 0.13.0 release adds major new functionality to Boundary.
+Highlights include:
+
+- Boundary Enterprise version
+- SSH session recording
+- LDAP authentication method (beta)
+- HCP Boundary maintenance window (HCP only)
+- OIDC authentication improvements
+
+## New features
+
+**Boundary Enterprise**: Boundary OSS allows users to deploy and test out Boundary in their own environments, but it does not include enterprise capabilities.
+HCP Boundary does include enterprise features and is offered as a cloud-managed solution, making it simple to deploy and maintain.
+But many highly regulated organizations are prohibited from adopting managed solutions.
+
+In this release, we introduce Boundary Enterprise.
+Boundary Enterprise has the same features as HCP Boundary, but you can deploy it in your own public or private cloud.
+Further, Boundary Enterprise comes with seamless migration support from OSS.
+
+For more information, refer to (TODO UPDATE LINK).
+
+**SSH session recording <sup>HCP/ENT</sup>**: A fundamental challenge of securing access to sensitive computing resources is creating a system of record around users' access and actions over remote sessions.
+This release introduces session recording to help you address your compliance and threat management needs.
+
+When you enable session recording for a target, any sessions in which a user requests access to that target are recorded.
+Recorded sessions are stored in an external data store so that you can access and manage them outside of Boundary for long-lasting data retention.
+You can view recorded sessions using a session player that runs in a browser.
+
+For more information, refer to (TODO UPDATE LINK).
+
+**LDAP authentication method <sup>Preview</sup>**: This release introduces a new Lightweight Directory Access Protocol (LDAP) authentication method as a preview feature.
+LDAP is an open, vendor-neutral application protocol for accessing and maintaining directory information.
+
+You can now configure Boundary to delegate authentication to an LDAP directory.
+The first time a user successfully authenticates using an LDAP auth method, a new LDAP account is created.
+LDAP-managed groups let you assign roles in Boundary based on the LDAP account's group memberships.
+
+Create, read, update, and delete (CRUD) support for the new LDAP features is available through the CLI, API, and SDK, as well as HashiCorp Terraform.
+You can use LDAP to log in through any of the Boundary clients, including the CLI, Boundary Desktop, and the Boundary admin UI.
+Support for LDAP CRUD operations via the Boundary admin UI is planned for an upcoming release.
+
+For more information, refer to (TODO UPDATE LINK).
+
+**HCP Boundary maintenance window <sup>HCP only</sup>**: HCP Boundary automatically updates your environment when a new version of Boundary is released.
+You can now schedule when that maintenance occurs to ensure that it does not interrupt peak work hours.
+When you schedule a maintenance window, HCP Boundary waits util the day and time window you selected to apply any patch or major version updates.
+
+For more information, refer to [Maintenance windows](/hcp/docs/boundary/maintenance-window).
+
+**Shared KMS workers**: KMS workers now have feature parity with PKI workers.
+You can use more than one KMS for authenticating downstreams across different networks.
+
+For more information, refer to the [worker configuration](/boundary/docs/configuration/worker) documentation.
+
+**OIDC authentication improvements**: A new flag was added to the OIDC authentication command, `output-auth-url`.
+If you provide the flag, you can copy and paste the authentication URL that is printed out into any browser to complete the authentication flow.
+The resulting token is then passed to the CLI.
+
+**Static ports for targets**: Administrators can now configure a default, static port for clients when connecting to targets using the optional `default_client_port` attribute.
+Any workers that connect to a target will use the default port, if one is specified, unless overidden by the client attribute `-listen-port`.
+
+**Dynamic host catalog external name**: You can now view the name of the external host on the **Host Catalogs** page.
+
+## Deprecations and changes
+
+Boundary version 0.13.0 has the following deprecations and changes:
+
+- Due to the update to KMS workers, the previous KMS auth method is deprecated.
+You must opt in to use it.
+You should only use the deprecated behavior if compatibility with workers running a version less than 0.13.0 is required.
+To opt in, add `use_deprecated_kms_auth_method = true` to the `worker` configuration block.
+
+   Note that when a worker using KMS and running version 0.13.0 or later connects to a controller using KMS and running version 0.13.0 or later, they transition to the new method automatically.
+   To revert to the previous method after that, you must delete the worker and recreate it with the `use_deprecated_kms_auth_method` field specified.
+
+- Boundary now performs additional validity checking when you add grants to roles.
+The checks are designed to reject grants that are not properly configured.
+Previously, these would have been accepted without error, but the permissions would not be granted.
+An error message is provided now, with hints for resolution.
+
+- &#32; `WithAutomaticVersioning` for auth tokens from the Go SDK was incorrectly being generated for auth token resources, which do not support versioning.
+It has now been removed.
+
+- With the introduction of new plugin services, the Azure and AWS Host plugin repositories have been renamed to drop the word `host`:
+
+   - The https://github.com/hashicorp/boundary-plugin-host-aws repository was renamed to https://github.com/hashicorp/boundary-plugin-aws.
+
+   - The https://github.com/hashicorp/boundary-plugin-host-azure repository was renamed to https://github.com/hashicorp/boundary-plugin-azure.
+
+- PostgreSQL 12 or greater is now required.
+PostgreSQL 11 is no longer supported.
