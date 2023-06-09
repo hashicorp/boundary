@@ -4,9 +4,6 @@
 package cluster
 
 import (
-	"context"
-	"os"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -53,17 +50,14 @@ func TestWorkerUpgradeKmsAuthMethod(t *testing.T) {
 	// Give time for it to connect
 	time.Sleep(10 * time.Second)
 
+	require.NoError(t, c1.WaitForNextWorkerStatusUpdate(w1.Name()))
+
 	// Verify it's KMS type
 	workers, err := serversRepo.ListWorkers(c1.Context(), []string{scope.Global.String()})
 	require.NoError(t, err)
 	require.Len(t, workers, 1)
 	assert.Equal(t, "kms", workers[0].Type)
 	oldId := workers[0].PublicId
-
-	// Assert that the worker has connected
-	logBuf, err := os.ReadFile(ec.AllEvents.Name())
-	require.NoError(t, err)
-	require.Equal(t, 1, strings.Count(string(logBuf), "worker successfully authed"))
 
 	require.NoError(t, w1.Worker().Shutdown())
 
@@ -75,29 +69,7 @@ func TestWorkerUpgradeKmsAuthMethod(t *testing.T) {
 	})
 	defer w1.Shutdown()
 
-	timeout := time.Minute
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	for {
-		logBuf, err = os.ReadFile(ec.AllEvents.Name())
-		require.NoError(t, err)
-		if strings.Count(string(logBuf), "worker has successfully authenticated") == 2 {
-			break
-		}
-		select {
-		case <-ctx.Done():
-			t.Fatal("worker had not successfully connected after ", timeout.String())
-		case <-time.After(time.Second):
-			// Try again
-		}
-	}
-
-	// We should find only one nonce, and one successful worker authentication,
-	// both in the output and in the database
-	ec.AllEvents.Close()
-	logBuf, err = os.ReadFile(ec.AllEvents.Name())
-	require.NoError(t, err)
-	require.Equal(t, 2, strings.Count(string(logBuf), "worker has successfully authenticated"))
+	require.NoError(t, c1.WaitForNextWorkerStatusUpdate(w1.Name()))
 
 	// Verify it's PKI type
 	workers, err = serversRepo.ListWorkers(c1.Context(), []string{scope.Global.String()})
