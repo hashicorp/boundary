@@ -16,6 +16,9 @@ Refer to the following for information about how to troubleshoot recorded sessio
 When you rotate a storage bucket's secrets, any new sessions will use the new credentials.
 However, previously established sessions continue to use the old credentials.
 
+As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+Otherwise, you may end up with recordings that aren't stored in the remote storage bucket and are unable to be played back.
+
 ## Tips
 
 When you create or update a storage bucket, the actions `GetBucketAcl` and `GetEncryptionConfiguration` can be helpful in debugging access issues.

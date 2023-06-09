@@ -37,7 +37,7 @@ The worker stores the session recording on local disk during the recording phase
 Any credentials needed to access the external object store are passed from the controller to the recording worker when the session is established.
 
 In a multi-hop session, the worker that is configured to access the external object store is the worker that records the session.
-If no worker can access the external object store, the session is canceled and an error is returned.
+If no worker can access the storage backend, the session is canceled and an error is returned.
 
 You view session recordings with a session player that runs in a web browser.
 The session player is an aggregation of web components that work together to present the different parts of a session recording as a logical whole.
@@ -56,7 +56,7 @@ Before you can use a storage bucket to record sessions, you must configure a wor
 The entire recording is written to the local storage cache before it is uploaded.
 Once the session is complete, the files are automatically synced with the external storage bucket and deleted from the worker's local storage.
 
-A storage bucket can either be in the Global scope or an Org scope.
+A storage bucket exists in either the Global scope or an Org scope.
 A storage bucket that is associated with the Global scope can be associated with any target.
 However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
 Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
@@ -70,7 +70,7 @@ Any session recording metadata that is attached to the storage bucket is deleted
 The BSR (Boundary Session Recording) defines a hierarchical directory structure of files and a binary file format.
 It contains all the data transmitted between a user and a target during a single session.
 
-Boundary creates the top-level directory of the BSR as `<sessionID>.bsr`. This top level directory contains session summary information and subdirectories for connections. This top-level directory also contains BSR keys for use in decrypting and verifying the BSR contents.
+Boundary creates the top-level directory of the BSR as `<sessionID>.bsr`. This top level directory contains session summary information and subdirectories for connections.
 
 A BSR connections directory contains a summary of connections, as well as inbound and outbound requests.
 If you use a multiplexed protocol, there are subdirectories for the channels.

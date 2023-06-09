@@ -88,8 +88,8 @@ authorization to create sessions against these targets.
 A fundamental challenge of securing access to sensitive computing resources is creating a system of record around users' access and actions over remote sessions.
 Boundary provides [auditing](/boundary/docs/concepts/auditing) features via [session recording](/boundary/docs/configuration/session-recording) to help organizations address compliance and threat management needs.
 
-When you enable [session recording](/boundary/docs/configuration/session-recording) for a target, any sessions in which a user requests access to that target are recorded.
-Recorded sessions are stored in an external data store so that you can access and manage them outside of Boundary for long-lasting data retention.
+When [session recording](/boundary/docs/configuration/session-recording) is enabled on a target, any sessions established to that target are recorded.
+Recorded sessions are stored in an admin-specified storage backend.
 Administrators can access recorded sessions at a later time using a session player that runs in a browser.
 
 ### Filtering
