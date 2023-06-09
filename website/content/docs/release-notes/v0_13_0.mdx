@@ -71,14 +71,14 @@ When you schedule a maintenance window, HCP Boundary waits util the day and time
 
 For more information, refer to [Maintenance windows](/hcp/docs/boundary/maintenance-window).
 
+**OIDC authentication improvements**: A new flag was added to the OIDC authentication command, `output-auth-url`.
+If you provide the flag, you can copy and paste the authentication URL that is printed out into any browser to complete the authentication flow.
+The resulting token is then passed to the CLI.
+
 **Shared KMS workers**: KMS workers now have feature parity with PKI workers.
 You can use more than one KMS for authenticating downstreams across different networks.
 
 For more information, refer to the [worker configuration](/boundary/docs/configuration/worker) documentation.
-
-**OIDC authentication improvements**: A new flag was added to the OIDC authentication command, `output-auth-url`.
-If you provide the flag, you can copy and paste the authentication URL that is printed out into any browser to complete the authentication flow.
-The resulting token is then passed to the CLI.
 
 **Static ports for targets**: Administrators can now configure a default, static port for clients when connecting to targets using the optional `default_client_port` attribute.
 Any workers that connect to a target will use the default port, if one is specified, unless overidden by the client attribute `-listen-port`.
