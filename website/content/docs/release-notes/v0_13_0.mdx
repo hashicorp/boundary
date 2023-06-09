@@ -30,16 +30,15 @@ Highlights include:
 - LDAP authentication method (beta)
 - HCP Boundary maintenance window
 - OIDC authentication improvements
+- Shared KMS workers
+- Static ports for targets
+- Dynamic host catalog external name
 
 ## New features
 
-**Boundary Enterprise**: Boundary OSS allows users to deploy and test out Boundary in their own environments, but it does not include enterprise capabilities.
-HCP Boundary does include enterprise features and is offered as a cloud-managed solution, making it simple to deploy and maintain.
-But many highly regulated organizations are prohibited from adopting managed solutions.
-
-In this release, we introduce Boundary Enterprise.
-Boundary Enterprise has the same features as HCP Boundary, but you can deploy it in your own public or private cloud.
-Further, Boundary Enterprise comes with seamless migration support from OSS.
+**Boundary Enterprise**: Organizations are now able to deploy Boundary Enterprise within their self-managed infrastructure to let their teams securely access hosts and services consistently across any environment.
+The introduction of Boundary Enterprise allows organizations in highly regulated industries who are prohibited from adopting cloud based solutions to leverage Boundary's secure remote access functionalities.
+Boundary Enterprise has the same feature set as HCP Boundary and seamless migrations from OSS deployments are supported as well.
 
 For more information, refer to (TODO UPDATE LINK).
 
@@ -71,9 +70,8 @@ When you schedule a maintenance window, HCP Boundary waits util the day and time
 
 For more information, refer to [Maintenance windows](/hcp/docs/boundary/maintenance-window).
 
-**OIDC authentication improvements**: A new flag was added to the OIDC authentication command, `output-auth-url`.
-If you provide the flag, you can copy and paste the authentication URL that is printed out into any browser to complete the authentication flow.
-The resulting token is then passed to the CLI.
+**OIDC authentication improvements**: The Boundary CLI now supports user authentication against an OIDC source in locked down environments where a browser may not be available to complete the auth flow.
+During authentication, the CLI will output the auth URL which can be used to complete the flow on another device and the resulting token is automatically passed to the CLI.
 
 **Shared KMS workers**: KMS workers now have feature parity with PKI workers.
 You can use more than one KMS for authenticating downstreams across different networks.
