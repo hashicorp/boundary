@@ -4,6 +4,23 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* KMS workers: KMS workers now have feature parity with PKI workers (they
+  support multi-hop and Vault private access) and support separate KMSes for
+  authenticating downstreams across different networks. See the [worker
+  configuration
+  documentation](https://developer.hashicorp.com/boundary/docs/configuration/worker)
+  for more information. ([PR](https://github.com/hashicorp/boundary/pull/3101))
+* roles: Perform additional validity checking on grants at submission time
+  ([PR](https://github.com/hashicorp/boundary/pull/3081))
+* targets: The new `default_client_port` field allows specifying the default
+  port to use on the client side when connecting to a target, unless overridden
+  by the client via `-listen-port`
+  ([PR](https://github.com/hashicorp/boundary/pull/2767))
+* ui: Display external names when listing dynamic hosts ([PR](https://github.com/hashicorp/boundary-ui/pull/1664))
+* ui: Add support for LDAP authentication ([PR](https://github.com/hashicorp/boundary-ui/pull/1645))
+
 ### Deprecations/Changes
 
 * With the introduction of the new KMS variant for worker registration (as
@@ -42,23 +59,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   [PR4](https://github.com/hashicorp/boundary/pull/3266)).
 * PostgreSQL 12 or greater is now required. PostgreSQL 11 is no longer
   supported.
-
-### New and Improved
-
-* KMS workers: KMS workers now have feature parity with PKI workers (they
-  support multi-hop and Vault private access) and support separate KMSes for
-  authenticating downstreams across different networks. See the [worker
-  configuration
-  documentation](https://developer.hashicorp.com/boundary/docs/configuration/worker)
-  for more information. ([PR](https://github.com/hashicorp/boundary/pull/3101))
-* roles: Perform additional validity checking on grants at submission time
-  ([PR](https://github.com/hashicorp/boundary/pull/3081))
-* targets: The new `default_client_port` field allows specifying the default
-  port to use on the client side when connecting to a target, unless overridden
-  by the client via `-listen-port`
-  ([PR](https://github.com/hashicorp/boundary/pull/2767))
-* ui: Display external names when listing dynamic hosts ([PR](https://github.com/hashicorp/boundary-ui/pull/1664))
-* ui: Add support for LDAP authentication ([PR](https://github.com/hashicorp/boundary-ui/pull/1645))
 
 ### Bug Fixes
 
