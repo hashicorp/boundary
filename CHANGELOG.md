@@ -25,9 +25,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   never result in permissions being granted, causing confusion. As a result,
   attempting to write such grants into roles may now result in an error; the
   error message gives hints for resolution.
-* Grants can now accept more than one ID per grant string (or entry in JSON) via
-  the `ids` parameter. In 0.15.0 the ability to add new grants via the `id`
-  parameter will be removed.
 * `WithAutomaticVersioning` for auth tokens in Go SDK: this option was
   incorrectly being generated for auth token resources, which do not support
   versioning. This is technically a breaking change, but it was a no-op option
@@ -56,10 +53,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   for more information. ([PR](https://github.com/hashicorp/boundary/pull/3101))
 * roles: Perform additional validity checking on grants at submission time
   ([PR](https://github.com/hashicorp/boundary/pull/3081))
-* roles: In grants, the `id` field has been changed to `ids` (but `id` will
-  still be accepted for now, up until 0.15.0). In the `ids` field, multiple IDs
-  can now be specified in a grant, either via commas (text format) or array
-  (JSON format). ([PR](https://github.com/hashicorp/boundary/pull/3263)).
 * targets: The new `default_client_port` field allows specifying the default
   port to use on the client side when connecting to a target, unless overridden
   by the client via `-listen-port`
