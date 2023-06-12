@@ -4,8 +4,31 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+## 0.13 (2023/06/13)
+
 ### New and Improved
 
+* SSH Session Recordings (Enterprise and HCP Boundary only): SSH targets can now
+  be configured to record sessions. Recordings are signed and stored in a
+  Storage Bucket. Recordings can be played back in the admin UI.
+  * Storage Buckets: This release introduces Storage Buckets, a Boundary
+    resource that represents a bucket in an external object store. Storage
+    Buckets can be defined at the global or org scope. When associated with an
+    SSH target, the storage bucket is used to store session recordings. This
+    release includes support for AWS S3 only.
+  * BSR (Boundary Session Recording) file format: BSR is a new specification
+    that defines a hierarchical directory structure of files and a binary file
+    format. The contents of a BSR include all data transmitted between a user
+    and a target during a single session, relevant session metadata and summary
+    information. The BSR also includes checksum and signature files for
+    cryptographically verifying BSR contents, and a set of KMS wrapped keys for
+    use in BSR verification. The BSR format is intended to be extensible to
+    support various protocols. With this release BSR supports the SSH protocol.
+    It also supports converting an SSH channel recording into an
+    [asciicast](https://github.com/asciinema/asciinema/blob/develop/doc/asciicast-v2.md)
+    format that is playable by asciinema.
+  * To learn more about this new feature, refer to the
+    [documentation](http://developer.hashicorp.com/boundary/docs/configuration/session-recording).
 * KMS workers: KMS workers now have feature parity with PKI workers (they
   support multi-hop and Vault private access) and support separate KMSes for
   authenticating downstreams across different networks. See the [worker
@@ -25,7 +48,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2912))
 * ui: Display external names when listing dynamic hosts ([PR](https://github.com/hashicorp/boundary-ui/pull/1664))
 * ui: Add support for LDAP authentication ([PR](https://github.com/hashicorp/boundary-ui/pull/1645))
-* Dynamic Host Catalog: You can now view the AWS or Azure host name when listing hosts in CLI, admin console, and desktop client. ([PR](https://github.com/hashicorp/boundary/pull/3074))
+* Dynamic Host Catalog: You can now view the AWS or Azure host name when listing hosts in CLI,
+  admin console, and desktop client. ([PR](https://github.com/hashicorp/boundary/pull/3074))
+* Add configuration for license reporting (Enterprise only)
 
 ### Deprecations/Changes
 
@@ -52,13 +77,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   incorrectly being generated for auth token resources, which do not support
   versioning. This is technically a breaking change, but it was a no-op option
   anyways that there was no reason to be using. It has now been removed.
-* Plugins: With the introduction of new plugin services, the Azure and AWS Host plugin 
+* Plugins: With the introduction of the storage plugin service, the Azure and AWS Host plugin 
   repositories have been renamed to drop the `host` element of the repository name: 
 
    - https://github.com/hashicorp/boundary-plugin-host-aws -> https://github.com/hashicorp/boundary-plugin-aws
    - https://github.com/hashicorp/boundary-plugin-host-azure -> https://github.com/hashicorp/boundary-plugin-azure
   
-  similarly the `plugins/host` package has been renamed to `plugins/boundary`
+  Similarly the `plugins/host` package has been renamed to `plugins/boundary`
   ([PR1](https://github.com/hashicorp/boundary/pull/3262),
   [PR2](https://github.com/hashicorp/boundary-plugin-aws/pull/24),
   [PR3](https://github.com/hashicorp/boundary-plugin-azure/pull/12),
