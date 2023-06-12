@@ -102,7 +102,7 @@ type Command struct {
 	FlagTokenName        string
 	FlagKeyringType      string
 	FlagRecoveryConfig   string
-	flagOutputCurlString bool
+	FlagOutputCurlString bool
 
 	FlagScopeId           string
 	FlagScopeName         string
@@ -204,8 +204,8 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		return nil, err
 	}
 
-	if c.flagOutputCurlString {
-		config.OutputCurlString = c.flagOutputCurlString
+	if c.FlagOutputCurlString {
+		config.OutputCurlString = c.FlagOutputCurlString
 	}
 
 	c.client, err = api.NewClient(config)
@@ -452,7 +452,7 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 
 			f.BoolVar(&BoolVar{
 				Name:   "output-curl-string",
-				Target: &c.flagOutputCurlString,
+				Target: &c.FlagOutputCurlString,
 				Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
 			})
 		}
