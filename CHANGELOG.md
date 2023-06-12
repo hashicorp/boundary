@@ -57,6 +57,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   port to use on the client side when connecting to a target, unless overridden
   by the client via `-listen-port`
   ([PR](https://github.com/hashicorp/boundary/pull/2767))
+* ui: Display external names when listing dynamic hosts ([PR](https://github.com/hashicorp/boundary-ui/pull/1664))
+* ui: Add support for LDAP authentication ([PR](https://github.com/hashicorp/boundary-ui/pull/1645))
 
 ### Bug Fixes
 
@@ -69,6 +71,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * sessions: Fix a bug that contributed to slow response times when listing
   sessions that had a large number of connections
   ([PR](https://github.com/hashicorp/boundary/pull/3280))
+* ui: Fix `client secret` bug for OIDC authentication methods([PR](https://github.com/hashicorp/boundary-ui/pull/1698))
+* ui: Fix linking to a Host from the Host Set screen of a Dynamic Host Catalog ([PR](https://github.com/hashicorp/boundary-ui/pull/1659))
 
 ## 0.12.3 (2023/05/26)
 
