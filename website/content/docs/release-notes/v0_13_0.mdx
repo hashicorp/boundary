@@ -44,7 +44,7 @@ You can view recorded sessions using a session player that runs in a browser.
 
 For more information, refer to (TODO UPDATE LINK).
 
-**LDAP authentication method <sup>Preview</sup>**: This release introduces a new Lightweight Directory Access Protocol (LDAP) authentication method as a preview feature.
+**LDAP authentication method <sup>Beta</sup>**: This release introduces a new Lightweight Directory Access Protocol (LDAP) authentication method as a preview feature.
 LDAP is an open, vendor-neutral application protocol for accessing and maintaining directory information.
 
 You can now configure Boundary to delegate authentication to an LDAP directory.
@@ -67,7 +67,7 @@ For more information, refer to [Maintenance windows](/hcp/docs/boundary/maintena
 During authentication, the CLI will output the auth URL which can be used to complete the flow on another device and the resulting token is automatically passed to the CLI.
 
 **Shared KMS workers**: KMS workers now have feature parity with PKI workers.
-You can use more than one KMS for authenticating downstreams across different networks.
+You can use more than one KMS for registering downstreams across different networks.
 
 For more information, refer to the [worker configuration](/boundary/docs/configuration/worker) documentation.
 
@@ -80,7 +80,7 @@ Any workers that connect to a target will use the default port, if one is specif
 
 Boundary version 0.13.0 has the following deprecations and changes:
 
-- Due to the update to KMS workers, the previous KMS auth method is deprecated.
+- Due to the update to KMS workers, the previous KMS worker registration method is deprecated.
 You must opt in to use it.
 You should only use the deprecated behavior if compatibility with workers running a version less than 0.13.0 is required.
 To opt in, add `use_deprecated_kms_auth_method = true` to the `worker` configuration block.
