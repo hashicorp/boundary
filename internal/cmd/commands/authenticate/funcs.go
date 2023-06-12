@@ -89,7 +89,7 @@ func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult
 			}
 
 			if !gotErr {
-				c.UI.Output("\nThe token was successfully stored in the chosen keyring and is not displayed here.")
+				c.UI.Output(fmt.Sprintf("\nThe token name %q was successfully stored in the chosen keyring and is not displayed here.", tokenName))
 			}
 		}
 	}
