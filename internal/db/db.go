@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/glebarez/sqlite"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-dbw"
@@ -27,12 +28,14 @@ type DbType int
 const (
 	UnknownDB DbType = 0
 	Postgres  DbType = 1
+	Sqlite    DbType = 2
 )
 
 func (db DbType) String() string {
 	return [...]string{
 		"unknown",
 		"postgres",
+		"sqlite",
 	}[db]
 }
 
@@ -40,6 +43,8 @@ func StringToDbType(dialect string) (DbType, error) {
 	switch dialect {
 	case "postgres":
 		return Postgres, nil
+	case "sqlite":
+		return Sqlite, nil
 	default:
 		return UnknownDB, fmt.Errorf("%s is an unknown dialect", dialect)
 	}
@@ -148,6 +153,8 @@ func Open(ctx context.Context, dbType DbType, connectionUrl string, opt ...Optio
 			DSN: connectionUrl,
 		},
 		)
+	case Sqlite:
+		dialect = sqlite.Open(connectionUrl)
 	default:
 		return nil, fmt.Errorf("unable to open %s database type", dbType)
 	}
