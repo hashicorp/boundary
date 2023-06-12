@@ -413,20 +413,10 @@
       {
         "title": "Controller",
         "path": "configuration/controller",
-        "badge": {
-          "text": "OSS Only",
-          "type": "outlined",
-          "color": "neutral"
-        }
       },
       {
         "title": "Plugins",
         "path": "configuration/plugins",
-        "badge": {
-          "text": "OSS Only",
-          "type": "outlined",
-          "color": "neutral"
-        }
       }
     ]
   },
