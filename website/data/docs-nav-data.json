@@ -251,7 +251,7 @@
           },
           {
             "title": "Storage Buckets",
-            "path": "concepts/domain-model/storage-bucket"
+            "path": "concepts/domain-model/storage-buckets"
           },
           {
             "title": "Targets",

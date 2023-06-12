@@ -8,7 +8,7 @@ description: |-
 # Create a storage bucket
 
 As of Boundary 0.13.0, you can record and audit user sessions.
-A resource known as a [storage bucket](/boundary/docs/concepts/domain-model/storage-bucket) is used to store the recorded sessions.
+A resource known as a [storage bucket](/boundary/docs/concepts/domain-model/storage-buckets) is used to store the recorded sessions.
 The storage bucket represents a bucket in an external store.
 Before you can enable session recording, you must create one or more storage buckets.
 
@@ -65,7 +65,7 @@ Complete the following steps to create a storage bucket for session recording:
     boundary storage-buckets create -bucket-name mybucket1 -plugin-name aws -secrets ‘{“access_key_id”: “123456789” , “secret_access_key” : “123/456789/12345678”}’ -worker-filter ‘“dev” in “/tags/type”’ -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true}’ -scope-id o_1234567890
     ```
 
-    Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-bucket) you want to associate with the storage bucket:
+    Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the storage bucket:
 
     - &#32; `region`: (Required) The AWS region to use.
     - &#32; `access_key_id`: (Required) The AWS access key to use.
