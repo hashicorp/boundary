@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
+	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common/scopeids"
@@ -317,7 +318,17 @@ func (s Service) DeleteWorker(ctx context.Context, req *pbs.DeleteWorkerRequest)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	_, err := s.deleteFromRepo(ctx, req.GetId())
+
+	w, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	if wl.IsManagedWorker(w) {
+		return nil, handlers.InvalidArgumentErrorf("Error in provided request.", map[string]string{"id": "Managed workers cannot be deleted."})
+	}
+
+	_, err = s.deleteFromRepo(ctx, w.GetPublicId())
 	if err != nil {
 		return nil, err
 	}
@@ -336,23 +347,42 @@ func (s Service) UpdateWorker(ctx context.Context, req *pbs.UpdateWorkerRequest)
 		return nil, authResults.Error
 	}
 
-	w, err := s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
+	w, err := s.getFromRepo(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	possibleKmsWorkerId, err := server.NewWorkerIdFromScopeAndName(ctx, w.GetScopeId(), w.GetName())
+	if err != nil {
+		return nil, err
+	}
+
+	// NOTE on the second case: because KMS-authed workers have predictable IDs
+	// generated from the scope and name, it's functionally equivalent to
+	// checking the type, but works for both KMS-PKI and old-style KMS workers.
+	switch {
+	case wl.IsManagedWorker(w):
+		return nil, handlers.InvalidArgumentErrorf(
+			"Error in provided request.",
+			map[string]string{"id": "Managed workers cannot be updated."},
+		)
+	case possibleKmsWorkerId == w.GetPublicId():
+		return nil, handlers.InvalidArgumentErrorf(
+			"Error in provided request.",
+			map[string]string{"id": "KMS workers cannot be updated through the API and must be updated via their configuration file."},
+		)
+	}
+
+	w, err = s.updateInRepo(ctx, authResults.Scope.GetId(), req.GetId(), req.GetUpdateMask().GetPaths(), req.GetItem())
 	switch {
 	case err == nil:
 	case stderrors.Is(err, server.ErrCannotUpdateKmsWorkerViaApi):
-		// Treat this like a "bad field" error on name even though we couldn't
-		// return it in validation without having to make an additional call and
-		// a lot of additional logic
-		return nil, handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
-			badFields := make(map[string]string)
-			if req.GetItem().GetName().GetValue() != "" {
-				badFields[globals.NameField] = "KMS-registered workers cannot have their name updated via the API."
-			}
-			if req.GetItem().GetDescription().GetValue() != "" {
-				badFields[globals.DescriptionField] = "KMS-registered workers cannot have their description updated via the API."
-			}
-			return badFields
-		}, globals.WorkerPrefix)
+		// This is an extra check on the repo side, although it should be caught
+		// by the logic above.
+		return nil, handlers.InvalidArgumentErrorf(
+			"Error in provided request.",
+			map[string]string{"id": "KMS workers cannot be updated through the API and must be updated via their configuration file."},
+		)
 	default:
 		return nil, err
 	}
@@ -407,6 +437,7 @@ func (s Service) AddWorkerTags(ctx context.Context, req *pbs.AddWorkerTagsReques
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
+
 	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
@@ -443,6 +474,7 @@ func (s Service) SetWorkerTags(ctx context.Context, req *pbs.SetWorkerTagsReques
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
+
 	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
@@ -479,6 +511,7 @@ func (s Service) RemoveWorkerTags(ctx context.Context, req *pbs.RemoveWorkerTags
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, w.GetPublicId(), IdActions).Strings()))
 	}
+
 	item, err := s.toProto(ctx, w, outputOpts...)
 	if err != nil {
 		return nil, err
@@ -540,7 +573,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*server
 	if err != nil {
 		return nil, err
 	}
-	wl, err := repo.ListWorkers(ctx, scopeIds, server.WithLiveness(-1))
+	wl, err := repo.ListWorkers(ctx, scopeIds, server.WithLiveness(-1), server.WithLimit(-1))
 	if err != nil {
 		return nil, err
 	}
@@ -819,14 +852,28 @@ func (s Service) toProto(ctx context.Context, in *server.Worker, opt ...handlers
 	if outputFields.Has(globals.ScopeField) {
 		out.Scope = opts.WithScope
 	}
-	if outputFields.Has(globals.AuthorizedActionsField) {
+	if outputFields.Has(globals.AuthorizedActionsField) && opts.WithAuthorizedActions != nil {
 		out.AuthorizedActions = opts.WithAuthorizedActions
-		if in.Type == KmsWorkerType && out.AuthorizedActions != nil {
-			// KMS workers cannot be updated through the API
+		possibleKmsWorkerId, err := server.NewWorkerIdFromScopeAndName(ctx, in.GetScopeId(), in.GetName())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		// KMS workers cannot be updated through the API
+		if possibleKmsWorkerId == in.GetPublicId() {
 			allActions := out.AuthorizedActions
 			out.AuthorizedActions = make([]string, 0, len(allActions))
 			for _, act := range allActions {
 				if act != action.Update.String() {
+					out.AuthorizedActions = append(out.AuthorizedActions, act)
+				}
+			}
+		}
+		// Managed workers cannot be deleted
+		if wl.IsManagedWorker(in) {
+			allActions := out.AuthorizedActions
+			out.AuthorizedActions = make([]string, 0, len(allActions))
+			for _, act := range allActions {
+				if act != action.Delete.String() {
 					out.AuthorizedActions = append(out.AuthorizedActions, act)
 				}
 			}
@@ -1012,6 +1059,8 @@ func validateStringForDb(str string) string {
 		return "must be non-empty."
 	case len(str) > 512:
 		return "must be within 512 characters."
+	case str == wl.ManagedWorkerTag:
+		return "cannot be the managed worker tag."
 	default:
 		return ""
 	}

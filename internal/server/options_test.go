@@ -162,6 +162,13 @@ func Test_GetOpts(t *testing.T) {
 		opts.withNewIdFunc = nil
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithTestUseInputTagsAsApiTags", func(t *testing.T) {
+		assert := assert.New(t)
+		testOpts := getDefaultOptions()
+		assert.False(testOpts.withTestUseInputTagsAsApiTags)
+		opts := GetOpts(WithTestUseInputTagsAsApiTags(true))
+		assert.True(opts.withTestUseInputTagsAsApiTags)
+	})
 	t.Run("WithWorkerType", func(t *testing.T) {
 		opts := getDefaultOptions()
 		assert.Empty(t, opts.withWorkerType)

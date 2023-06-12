@@ -120,7 +120,7 @@ main
 /bin/
 update-ui-assets*
 /plugins/kms/assets/boundary-plugin*
-/plugins/host/assets/boundary-plugin*
+/plugins/boundary/assets/boundary-plugin*
 
 # Test config file
 test*.hcl

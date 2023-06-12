@@ -6,13 +6,16 @@ package event_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_TestWithoutEventing(t *testing.T) {
@@ -55,4 +58,29 @@ func Test_TestWithoutEventing(t *testing.T) {
 		event.TestWithoutEventing(t)
 		event.WriteSysEvent(testCtx, op, "test-event")
 	}))
+}
+
+func Test_CloudEventsFromFile_CloudEventFromBuf(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	tmpFile, err := os.CreateTemp("./", "tmp-event")
+	require.NoError(err)
+	t.Cleanup(func() {
+		_ = os.Remove(tmpFile.Name())
+	})
+
+	e := &cloudevents.Event{
+		ID:     "id",
+		Source: "test",
+		Data: map[string]any{
+			"test": "data",
+		},
+	}
+	j, err := json.Marshal(e)
+	require.NoError(err)
+	require.NoError(os.WriteFile(tmpFile.Name(), j, 0o666))
+	got := event.CloudEventFromFile(t, tmpFile.Name())
+	assert.Equal(e, got)
+
+	got = event.CloudEventFromBuf(t, j)
+	assert.Equal(e, got)
 }

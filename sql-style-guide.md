@@ -66,6 +66,9 @@ For `create table` statements:
 - The naming pattern for unique constraints is `tablename_col1_colx_uq` where
   `tablename` is the name of the table and `col1_colx` is the name of each
   column in the unique constraint.
+- The naming pattern for unique constraint names which would be over 63 characters
+  in length is to prioritize keeping the full `tablename_uq` pattern intact and
+  abbreviate the names of the columns.
 
 ### Functions
 

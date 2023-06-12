@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/cmd/base/internal/docker"
 	"github.com/hashicorp/boundary/internal/db"
@@ -24,6 +25,8 @@ import (
 	"github.com/hashicorp/boundary/testing/dbtest"
 	capoidc "github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-multierror"
+	"github.com/jimlambrt/gldap"
+	"github.com/jimlambrt/gldap/testdirectory"
 )
 
 func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
@@ -135,6 +138,12 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 		}
 	}
 
+	if !opts.withSkipLdapAuthMethodCreation {
+		if err := b.CreateDevLdapAuthMethod(ctx); err != nil {
+			return err
+		}
+	}
+
 	if opts.withSkipScopesCreation {
 		// now that we have passed all the error cases, reset c to be a noop so the
 		// defer doesn't do anything.
@@ -175,6 +184,214 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 	// defer doesn't do anything.
 	c = func() error { return nil }
 	return nil
+}
+
+type ldapSetup struct {
+	testDirectory *testdirectory.Directory
+	authMethod    *ldap.AuthMethod
+}
+
+func (b *Server) CreateDevLdapAuthMethod(ctx context.Context) error {
+	var (
+		err          error
+		port         int
+		host         string
+		createUnpriv bool
+	)
+
+	if b.DevLdapAuthMethodId == "" {
+		b.DevLdapAuthMethodId, err = db.NewPublicId(globals.LdapAuthMethodPrefix)
+		if err != nil {
+			return fmt.Errorf("error generating initial ldap auth method id: %w", err)
+		}
+	}
+	b.InfoKeys = append(b.InfoKeys, "generated ldap auth method id")
+	b.Info["generated ldap auth method id"] = b.DevLdapAuthMethodId
+
+	switch {
+	case b.DevUnprivilegedLoginName == "",
+		b.DevUnprivilegedPassword == "",
+		b.DevUnprivilegedUserId == "",
+		b.DevUnprivilegedOidcAccountId == "":
+
+	default:
+		createUnpriv = true
+	}
+
+	// Trawl through the listeners and find the api listener so we can use the
+	// same host name/IP
+	{
+		for _, ln := range b.Listeners {
+			purpose := strings.ToLower(ln.Config.Purpose[0])
+			if purpose != "api" {
+				continue
+			}
+			host, _, err = net.SplitHostPort(ln.Config.Address)
+			if err != nil {
+				if strings.Contains(err.Error(), "missing port") {
+					host = ln.Config.Address
+				} else {
+					return fmt.Errorf("error splitting host/port: %w", err)
+				}
+			}
+		}
+		if host == "" {
+			return fmt.Errorf("could not determine address to use for built-in oidc dev listener")
+		}
+	}
+
+	tb := &oidcLogger{}
+
+	port = testdirectory.FreePort(tb)
+	b.DevLdapSetup.testDirectory = testdirectory.Start(tb,
+		testdirectory.WithNoTLS(tb),
+		testdirectory.WithHost(tb, host),
+		testdirectory.WithPort(tb, port),
+		testdirectory.WithDefaults(tb, &testdirectory.Defaults{AllowAnonymousBind: true}),
+	)
+	b.ShutdownFuncs = append(b.ShutdownFuncs, func() error {
+		b.DevLdapSetup.testDirectory.Stop()
+		return nil
+	})
+	b.InfoKeys = append(b.InfoKeys, "generated ldap auth method host:port")
+	b.Info["generated ldap auth method host:port"] = fmt.Sprintf("%s:%d (does not have a root DSE; use simple bind)", host, port)
+
+	// users="ou=people,dc=example,dc=org" groups="ou=groups,dc=example,dc=org"
+	b.InfoKeys = append(b.InfoKeys, "generated ldap auth method base search DNs")
+	b.Info["generated ldap auth method base search DNs"] = `users="ou=people,dc=example,dc=org" groups="ou=groups,dc=example,dc=org"`
+
+	groups := []*gldap.Entry{
+		testdirectory.NewGroup(tb, "admin", []string{"admin"}),
+	}
+
+	createUserFn := func(userName, passwd string, withMembersOf []string) *gldap.Entry {
+		entryAttrs := map[string][]string{
+			"name":     {userName},
+			"email":    {fmt.Sprintf("%s@localhost", userName)},
+			"password": {passwd},
+		}
+		if len(withMembersOf) > 0 {
+			entryAttrs["memberOf"] = withMembersOf
+		}
+		DN := fmt.Sprintf("%s=%s,%s", testdirectory.DefaultUserAttr, userName, testdirectory.DefaultUserDN)
+		return gldap.NewEntry(
+			DN,
+			entryAttrs,
+		)
+	}
+	users := []*gldap.Entry{
+		createUserFn(b.DevLoginName, b.DevPassword, []string{"admin"}),
+	}
+
+	if createUnpriv {
+		users = append(users, createUserFn(b.DevUnprivilegedLoginName, b.DevUnprivilegedPassword, nil))
+	}
+	b.DevLdapSetup.testDirectory.SetUsers(users...)
+	b.DevLdapSetup.testDirectory.SetGroups(groups...)
+
+	// Create auth method and link accounts
+	{
+		b.DevLdapSetup.authMethod, err = b.createInitialLdapAuthMethod(ctx, host, port, createUnpriv)
+		if err != nil {
+			return fmt.Errorf("error creating initial ldap auth method: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (b *Server) createInitialLdapAuthMethod(ctx context.Context, host string, port int, createUnprivAccount bool) (*ldap.AuthMethod, error) {
+	rw := db.New(b.Database)
+	kmsCache, err := kms.New(ctx, rw, rw)
+	if err != nil {
+		return nil, fmt.Errorf("error creating kms cache: %w", err)
+	}
+	if err := kmsCache.AddExternalWrappers(
+		b.Context,
+		kms.WithRootWrapper(b.RootKms),
+	); err != nil {
+		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
+	}
+	ldapRepo, err := ldap.NewRepository(ctx, rw, rw, kmsCache)
+	if err != nil {
+		return nil, fmt.Errorf("error creating ldap repo: %w", err)
+	}
+
+	u, err := url.Parse(fmt.Sprintf("ldap://%s:%d", host, port))
+	if err != nil {
+		return nil, fmt.Errorf("error creating ldap url: %w", err)
+	}
+	authMethod, err := ldap.NewAuthMethod(
+		ctx,
+		scope.Global.String(),
+		ldap.WithUrls(ctx, u),
+		ldap.WithName(ctx, "Generated global scope initial ldap auth method"),
+		ldap.WithDescription(ctx, "Provides initial administrative and unprivileged authentication into Boundary"),
+		ldap.WithDiscoverDn(ctx),
+		ldap.WithUserDn(ctx, testdirectory.DefaultUserDN),
+		ldap.WithGroupDn(ctx, testdirectory.DefaultGroupDN),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating new in memory ldap auth method: %w", err)
+	}
+	if b.DevLdapAuthMethodId == "" {
+		b.DevLdapAuthMethodId, err = db.NewPublicId(globals.LdapAuthMethodPrefix)
+		if err != nil {
+			return nil, fmt.Errorf("error generating initial ldap auth method id: %w", err)
+		}
+	}
+
+	createdAuthMethod, err := ldapRepo.CreateAuthMethod(ctx, authMethod, ldap.WithPublicId(ctx, b.DevLdapAuthMethodId))
+	if err != nil {
+		return nil, fmt.Errorf("error saving ldap auth method: %w", err)
+	}
+
+	// create dev ldap accounts
+	{
+		createAndLinkAccount := func(loginName, userId, typ string) error {
+			acct, err := ldap.NewAccount(
+				ctx,
+				createdAuthMethod.GetScopeId(),
+				createdAuthMethod.GetPublicId(),
+				loginName,
+				ldap.WithDescription(ctx, fmt.Sprintf("Initial %s ldap account", typ)),
+			)
+			if err != nil {
+				return fmt.Errorf("error generating %s ldap account: %w", typ, err)
+			}
+			acct, err = ldapRepo.CreateAccount(ctx, acct)
+			if err != nil {
+				return fmt.Errorf("error creating %s ldap account: %w", typ, err)
+			}
+
+			// Link accounts to existing user
+			iamRepo, err := iam.NewRepository(rw, rw, kmsCache)
+			if err != nil {
+				return fmt.Errorf("unable to create iam repo: %w", err)
+			}
+
+			u, _, err := iamRepo.LookupUser(ctx, userId)
+			if err != nil {
+				return fmt.Errorf("error looking up %s user: %w", typ, err)
+			}
+			if _, err = iamRepo.AddUserAccounts(ctx, u.GetPublicId(), u.GetVersion(), []string{acct.GetPublicId()}); err != nil {
+				return fmt.Errorf("error associating initial %s user with account: %w", typ, err)
+			}
+
+			return nil
+		}
+
+		if err := createAndLinkAccount(b.DevLoginName, b.DevUserId, "admin"); err != nil {
+			return nil, err
+		}
+		if createUnprivAccount {
+			if err := createAndLinkAccount(b.DevUnprivilegedLoginName, b.DevUnprivilegedUserId, "unprivileged"); err != nil {
+				return nil, err
+			}
+		}
+
+	}
+	return createdAuthMethod, nil
 }
 
 type oidcSetup struct {
@@ -468,4 +685,8 @@ func (_ *oidcLogger) caller() event.Op {
 		caller = "unknown operation"
 	}
 	return caller
+}
+
+func (l *oidcLogger) Log(args ...interface{}) {
+	event.WriteSysEvent(l.Ctx, l.caller(), fmt.Sprintf("%v", args...))
 }

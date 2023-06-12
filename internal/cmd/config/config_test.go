@@ -37,7 +37,7 @@ func TestDevController(t *testing.T) {
 	}
 	uiHeaders := map[int]http.Header{
 		0: {
-			"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+			"Content-Security-Policy":   {defaultCsp},
 			"X-Content-Type-Options":    {"nosniff"},
 			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
 			"Cache-Control":             {"no-store"},
@@ -91,6 +91,14 @@ func TestDevController(t *testing.T) {
 				},
 				{
 					Type:    "aead",
+					Purpose: []string{"bsr"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_bsr",
+					},
+				},
+				{
+					Type:    "aead",
 					Purpose: []string{"recovery"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
@@ -115,9 +123,11 @@ func TestDevController(t *testing.T) {
 	exp.Seals[0].Config["key"] = actual.Seals[0].Config["key"]
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
+	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
+	exp.DevBsrKey = actual.Seals[2].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
 
 	assert.Equal(t, exp, actual)
 
@@ -216,7 +226,7 @@ func TestDevWorker(t *testing.T) {
 					},
 					CustomUiResponseHeaders: map[int]http.Header{
 						0: {
-							"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+							"Content-Security-Policy":   {defaultCsp},
 							"X-Content-Type-Options":    {"nosniff"},
 							"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
 							"Cache-Control":             {"no-store"},
@@ -386,7 +396,7 @@ func TestDevCombined(t *testing.T) {
 	}
 	uiHeaders := map[int]http.Header{
 		0: {
-			"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+			"Content-Security-Policy":   {defaultCsp},
 			"X-Content-Type-Options":    {"nosniff"},
 			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
 			"Cache-Control":             {"no-store"},
@@ -446,6 +456,14 @@ func TestDevCombined(t *testing.T) {
 				},
 				{
 					Type:    "aead",
+					Purpose: []string{"bsr"},
+					Config: map[string]string{
+						"aead_type": "aes-gcm",
+						"key_id":    "global_bsr",
+					},
+				},
+				{
+					Type:    "aead",
 					Purpose: []string{"recovery"},
 					Config: map[string]string{
 						"aead_type": "aes-gcm",
@@ -486,15 +504,17 @@ func TestDevCombined(t *testing.T) {
 	exp.Seals[1].Config["key"] = actual.Seals[1].Config["key"]
 	exp.Seals[2].Config["key"] = actual.Seals[2].Config["key"]
 	exp.Seals[3].Config["key"] = actual.Seals[3].Config["key"]
+	exp.Seals[4].Config["key"] = actual.Seals[4].Config["key"]
 	exp.DevControllerKey = actual.Seals[0].Config["key"]
 	exp.DevWorkerAuthKey = actual.Seals[1].Config["key"]
-	exp.DevRecoveryKey = actual.Seals[2].Config["key"]
-	exp.DevWorkerAuthStorageKey = actual.Seals[3].Config["key"]
+	exp.DevBsrKey = actual.Seals[2].Config["key"]
+	exp.DevRecoveryKey = actual.Seals[3].Config["key"]
+	exp.DevWorkerAuthStorageKey = actual.Seals[4].Config["key"]
 	exp.Worker.TagsRaw = actual.Worker.TagsRaw
 	assert.Equal(t, exp, actual)
 }
 
-func TestDevWorkerCredentialStorageDir(t *testing.T) {
+func TestDevWorkerCredentialStoragePath(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name                           string
@@ -545,6 +565,62 @@ func TestDevWorkerCredentialStorageDir(t *testing.T) {
 			parsed, err := Parse(devConfig + tt.devWorkerProvidedConfiguration)
 			require.NoError(t, err)
 			require.Equal(t, tt.storagePath, parsed.Worker.AuthStoragePath)
+		})
+	}
+}
+
+func TestDevWorkerRecordingStoragePath(t *testing.T) {
+	t.Parallel()
+	td := t.TempDir()
+	tests := []struct {
+		name                           string
+		devWorkerProvidedConfiguration string
+		storagePath                    string
+	}{
+		{
+			name: "Relative Storage Directory",
+			devWorkerProvidedConfiguration: `
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = ".."
+			}
+			`,
+			storagePath: "..",
+		},
+		{
+			name: "temp dir",
+			devWorkerProvidedConfiguration: fmt.Sprintf(`
+			listener "tcp" {
+				purpose = "proxy"
+			}
+
+			worker {
+				name = "w_1234567890"
+				description = "A default worker created in dev mode"
+				initial_upstreams = ["127.0.0.1"]
+				tags {
+					type = ["dev", "local"]
+				}
+				recording_storage_path = "%v"
+			}
+			`, td),
+			storagePath: td,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parsed, err := Parse(devConfig + tt.devWorkerProvidedConfiguration)
+			require.NoError(t, err)
+			require.Equal(t, tt.storagePath, parsed.Worker.RecordingStoragePath)
 		})
 	}
 }

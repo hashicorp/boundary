@@ -19,11 +19,12 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/hosts"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
-	"github.com/hashicorp/boundary/internal/host/plugin"
+	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
@@ -42,8 +43,8 @@ import (
 )
 
 var testAuthorizedActions = map[subtypes.Subtype][]string{
-	static.Subtype: {"no-op", "read", "update", "delete"},
-	plugin.Subtype: {"no-op", "read"},
+	static.Subtype:     {"no-op", "read", "update", "delete"},
+	hostplugin.Subtype: {"no-op", "read"},
 }
 
 func TestGet_Static(t *testing.T) {
@@ -61,8 +62,8 @@ func TestGet_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -151,27 +152,27 @@ func TestGet_Plugin(t *testing.T) {
 
 	org, proj := iam.TestScopes(t, iamRepo)
 
-	plg := hostplugin.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	h := plugin.TestHost(t, conn, hc.GetPublicId(), "test", plugin.WithExternalName("test-ext-name"))
-	hPrev := plugin.TestHost(t, conn, hc.GetPublicId(), "test-prev",
-		plugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostPreviousPrefix)),
-		plugin.WithExternalName("test-prev-name"),
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	h := hostplugin.TestHost(t, conn, hc.GetPublicId(), "test", hostplugin.WithExternalName("test-ext-name"))
+	hPrev := hostplugin.TestHost(t, conn, hc.GetPublicId(), "test-prev",
+		hostplugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostPreviousPrefix)),
+		hostplugin.WithExternalName("test-prev-name"),
 	)
-	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm)
-	plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h, hPrev})
+	hs := hostplugin.TestSet(t, conn, kms, sche, hc, plgm)
+	hostplugin.TestSetMembers(t, conn, hs.GetPublicId(), []*hostplugin.Host{h, hPrev})
 
 	pHost := &pb.Host{
 		HostCatalogId: hc.GetPublicId(),
@@ -179,7 +180,7 @@ func TestGet_Plugin(t *testing.T) {
 		CreatedTime:   h.CreateTime.GetTimestamp(),
 		UpdatedTime:   h.UpdateTime.GetTimestamp(),
 		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
-		Type:          plugin.Subtype.String(),
+		Type:          hostplugin.Subtype.String(),
 		Plugin: &plugins.PluginInfo{
 			Id:          plg.GetPublicId(),
 			Name:        plg.GetName(),
@@ -188,7 +189,7 @@ func TestGet_Plugin(t *testing.T) {
 		HostSetIds:        []string{hs.GetPublicId()},
 		ExternalId:        "test",
 		ExternalName:      "test-ext-name",
-		AuthorizedActions: testAuthorizedActions[plugin.Subtype],
+		AuthorizedActions: testAuthorizedActions[hostplugin.Subtype],
 	}
 
 	cases := []struct {
@@ -270,8 +271,8 @@ func TestList_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -382,28 +383,28 @@ func TestList_Plugin(t *testing.T) {
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
-	plg := hostplugin.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	hcs := plugin.TestCatalogs(t, conn, proj.GetPublicId(), plg.GetPublicId(), 2)
+	hcs := hostplugin.TestCatalogs(t, conn, proj.GetPublicId(), plg.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
-	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm)
+	hs := hostplugin.TestSet(t, conn, kms, sche, hc, plgm)
 
 	var wantHs []*pb.Host
 	for i := 0; i < 10; i++ {
 		extId := fmt.Sprintf("host %d", i)
-		h := plugin.TestHost(t, conn, hc.GetPublicId(), extId, plugin.WithExternalName(fmt.Sprintf("ext-name-%d", i)))
-		plugin.TestSetMembers(t, conn, hs.GetPublicId(), []*plugin.Host{h})
+		h := hostplugin.TestHost(t, conn, hc.GetPublicId(), extId, hostplugin.WithExternalName(fmt.Sprintf("ext-name-%d", i)))
+		hostplugin.TestSetMembers(t, conn, hs.GetPublicId(), []*hostplugin.Host{h})
 		wantHs = append(wantHs, &pb.Host{
 			Id:            h.GetPublicId(),
 			HostCatalogId: h.GetCatalogId(),
@@ -419,8 +420,8 @@ func TestList_Plugin(t *testing.T) {
 			Version:           1,
 			ExternalId:        extId,
 			ExternalName:      fmt.Sprintf("ext-name-%d", i),
-			Type:              plugin.Subtype.String(),
-			AuthorizedActions: testAuthorizedActions[plugin.Subtype],
+			Type:              hostplugin.Subtype.String(),
+			AuthorizedActions: testAuthorizedActions[hostplugin.Subtype],
 		})
 	}
 	sort.Slice(wantHs, func(i, j int) bool {
@@ -512,8 +513,8 @@ func TestDelete(t *testing.T) {
 
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -521,9 +522,9 @@ func TestDelete(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 
-	plg := hostplugin.TestPlugin(t, conn, "test")
-	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	pluginH := plugin.TestHost(t, conn, pluginHc.GetPublicId(), "test")
+	plg := plugin.TestPlugin(t, conn, "test")
+	pluginHc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	pluginH := hostplugin.TestHost(t, conn, pluginHc.GetPublicId(), "test")
 
 	s, err := hosts.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
@@ -596,8 +597,8 @@ func TestDelete_twice(t *testing.T) {
 
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -633,16 +634,16 @@ func TestCreate(t *testing.T) {
 
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
-	plg := hostplugin.TestPlugin(t, conn, "test")
-	pluginHc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	plg := plugin.TestPlugin(t, conn, "test")
+	pluginHc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
 	defaultHcCreated := hc.GetCreateTime().GetTimestamp().AsTime()
 
@@ -869,8 +870,8 @@ func TestUpdate_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
@@ -1336,16 +1337,16 @@ func TestUpdate_Plugin(t *testing.T) {
 
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
 
-	plg := hostplugin.TestPlugin(t, conn, "test")
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	h := plugin.TestHost(t, conn, hc.GetPublicId(), "test")
+	plg := plugin.TestPlugin(t, conn, "test")
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	h := hostplugin.TestHost(t, conn, hc.GetPublicId(), "test")
 
 	tested, err := hosts.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err)

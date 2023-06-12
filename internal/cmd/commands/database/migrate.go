@@ -14,8 +14,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
-	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
+	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
+	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
@@ -179,14 +179,14 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 
-	_, awsCleanup, err := external_host_plugins.CreateHostPlugin(
+	_, awsCleanup, err := external_plugins.CreateHostPlugin(
 		c.Context,
 		"aws",
-		external_host_plugins.WithPluginOptions(
+		external_plugins.WithPluginOptions(
 			pluginutil.WithPluginExecutionDirectory(c.Config.Plugins.ExecutionDir),
-			pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+			pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
 		),
-		external_host_plugins.WithLogger(pluginLogger.Named("aws")),
+		external_plugins.WithLogger(pluginLogger.Named("aws")),
 	)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Error creating dynamic host plugin: %w", err).Error())

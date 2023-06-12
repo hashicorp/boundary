@@ -13,6 +13,7 @@ type ExternalWrappers struct {
 	root       wrapping.Wrapper
 	workerAuth wrapping.Wrapper
 	recovery   wrapping.Wrapper
+	bsr        wrapping.Wrapper
 }
 
 // Root returns the wrapper for root keys
@@ -28,4 +29,9 @@ func (e *ExternalWrappers) WorkerAuth() wrapping.Wrapper {
 // Recovery returns the wrapper for recovery operations
 func (e *ExternalWrappers) Recovery() wrapping.Wrapper {
 	return e.recovery
+}
+
+// Bsr returns the wrapper for BSR operations
+func (e *ExternalWrappers) Bsr() wrapping.Wrapper {
+	return e.bsr
 }

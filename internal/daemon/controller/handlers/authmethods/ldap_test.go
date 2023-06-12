@@ -790,7 +790,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	require.NoError(t, err)
 
 	testAm := ldap.TestAuthMethod(t, testConn, orgDbWrapper, o.PublicId,
-		[]string{fmt.Sprintf("ldaps://127.0.0.1:%d", td.Port())},
+		[]string{fmt.Sprintf("ldaps://%s:%d", td.Host(), td.Port())},
 		ldap.WithCertificates(testCtx, tdCerts...),
 		ldap.WithDiscoverDn(testCtx),
 		ldap.WithEnableGroups(testCtx),

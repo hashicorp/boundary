@@ -26,7 +26,7 @@ import (
 // user's session.
 func TestCliSessionCancelUser(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)
@@ -150,7 +150,7 @@ func TestCliSessionCancelUser(t *testing.T) {
 // TestApiCreateUser uses the Go api to create a new user and add some grants to the user
 func TestApiCreateUser(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	client, err := boundary.NewApiClient()

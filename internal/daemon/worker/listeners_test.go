@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -77,9 +78,16 @@ func TestStartListeners(t *testing.T) {
 			err := conf.SetupListeners(nil, conf.RawConfig.SharedConfig, []string{"proxy"})
 			require.NoError(t, err)
 
-			w, err := New(conf)
+			ctx := context.Background()
+			w, err := New(ctx, conf)
 			require.NoError(t, err)
-			w.baseContext = context.Background()
+			w.baseContext = ctx
+
+			var dummyClientProducer handlers.UpstreamMessageServiceClientProducer
+			dummyClientProducer = func(ctx context.Context) (pbs.UpstreamMessageServiceClient, error) {
+				panic("stubbed producer: not used in this test")
+			}
+			w.controllerUpstreamMsgConn.Store(&dummyClientProducer)
 
 			manager, err := session.NewManager(pbs.NewSessionServiceClient(w.GrpcClientConn))
 			require.NoError(t, err)

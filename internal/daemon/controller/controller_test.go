@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
+	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -255,7 +255,7 @@ func TestController_NewPluginsConfig(t *testing.T) {
 	initialConfig.Plugins.ExecutionDir = tmpDir
 	conf := TestControllerConfig(t, ctx, tc, &TestControllerOpts{Config: initialConfig})
 	conf.EnabledPlugins = []base.EnabledPlugin{
-		base.EnabledPluginHostAws,
+		base.EnabledPluginAws,
 		base.EnabledPluginHostAzure,
 	}
 
@@ -271,8 +271,8 @@ func TestController_NewPluginsConfig(t *testing.T) {
 		// Remove random chars and hyphen
 		name = name[0 : len(name)-6]
 		switch name {
-		case host_plugin_assets.HostPluginPrefix + "aws",
-			host_plugin_assets.HostPluginPrefix + "azure":
+		case boundary_plugin_assets.PluginPrefix + "aws",
+			boundary_plugin_assets.PluginPrefix + "azure":
 		default:
 			require.Fail("unexpected name", name)
 		}

@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	tcpStore "github.com/hashicorp/boundary/internal/target/tcp/store"
@@ -282,6 +283,7 @@ func TestRepository_CreateSession(t *testing.T) {
 	ctx := context.Background()
 	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
+	worker := server.TestKmsWorker(t, conn, wrapper)
 
 	workerAddresses := []string{"1.2.3.4"}
 	type args struct {
@@ -317,6 +319,30 @@ func TestRepository_CreateSession(t *testing.T) {
 				workerAddresses: workerAddresses,
 			},
 			wantErr: false,
+		},
+		{
+			name: "valid-with-protocol-worker",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.ProtocolWorkerId = worker.PublicId
+					return c
+				}(),
+				workerAddresses: workerAddresses,
+			},
+		},
+		{
+			name: "invalid-protocol-worker",
+			args: args{
+				composedOf: func() ComposedOf {
+					c := TestSessionParams(t, conn, wrapper, iamRepo)
+					c.ProtocolWorkerId = "something"
+					return c
+				}(),
+				workerAddresses: workerAddresses,
+			},
+			wantErr:     true,
+			wantIsError: errors.CheckConstraint,
 		},
 		{
 			name: "empty-host-source-endpoint",
@@ -445,6 +471,7 @@ func TestRepository_CreateSession(t *testing.T) {
 				ConnectionLimit:    tt.args.composedOf.ConnectionLimit,
 				DynamicCredentials: tt.args.composedOf.DynamicCredentials,
 				StaticCredentials:  tt.args.composedOf.StaticCredentials,
+				ProtocolWorkerId:   tt.args.composedOf.ProtocolWorkerId,
 			}
 			ses, err := repo.CreateSession(context.Background(), wrapper, s, tt.args.workerAddresses)
 
@@ -1788,4 +1815,42 @@ func Test_decryptAndMaybeUpdateSession(t *testing.T) {
 		err = decryptAndMaybeUpdateSession(ctx, kmsRepo, s, rw)
 		require.ErrorContains(t, err, "You may need to recreate your session")
 	})
+}
+
+func TestRepository_CheckIfNoLongerActive(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	testKms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	terminatedSession := TestDefaultSession(t, conn, wrapper, iamRepo)
+	terminatedSession, err = repo.CancelSession(ctx, terminatedSession.PublicId, terminatedSession.Version)
+	require.NoError(t, err)
+	n, err := repo.terminateSessionIfPossible(ctx, terminatedSession.PublicId)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+
+	cancelingSess := TestDefaultSession(t, conn, wrapper, iamRepo)
+	cancelingSess, err = repo.CancelSession(ctx, cancelingSess.PublicId, cancelingSess.Version)
+	require.NoError(t, err)
+
+	pendingSess := TestDefaultSession(t, conn, wrapper, iamRepo)
+
+	activeSess := TestDefaultSession(t, conn, wrapper, iamRepo)
+	_, _, err = repo.ActivateSession(ctx, activeSess.PublicId, activeSess.Version, []byte("tofu"))
+	require.NoError(t, err)
+
+	unrecognizedSessionId := "unrecognized_session_id"
+	got, err := repo.CheckIfNotActive(ctx, []string{unrecognizedSessionId, terminatedSession.PublicId, cancelingSess.PublicId, activeSess.PublicId, pendingSess.PublicId})
+	assert.NoError(t, err)
+	var gotIds []string
+	for _, g := range got {
+		gotIds = append(gotIds, g.SessionId)
+	}
+	assert.ElementsMatch(t, gotIds, []string{unrecognizedSessionId, terminatedSession.PublicId, cancelingSess.PublicId})
 }

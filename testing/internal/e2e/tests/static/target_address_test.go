@@ -19,7 +19,7 @@ import (
 // using a valid address is successful.
 func TestCliCreateUpdateTargetAddress(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -134,7 +134,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 // commutative operation (they use different codepaths).
 func TestCliTargetAddressToHostSource(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -251,7 +251,7 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 // commutative operation (they use different codepaths).
 func TestCliTargetHostSourceToAddress(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()

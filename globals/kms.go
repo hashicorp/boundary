@@ -11,4 +11,5 @@ const (
 	KmsPurposeRecovery             = "recovery"
 	KmsPurposeConfig               = "config"
 	KmsPurposeDownstreamWorkerAuth = "downstream-worker-auth"
+	KmsPurposeBsr                  = "bsr"
 )

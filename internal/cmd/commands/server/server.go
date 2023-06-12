@@ -62,9 +62,11 @@ type Command struct {
 	flagLogFormat   string
 	flagCombineLogs bool
 
-	reloadedCh   chan struct{}  // for tests
-	startedCh    chan struct{}  // for tests
-	presetConfig *atomic.String // for tests
+	reloadedCh                           chan struct{}  // for tests
+	startedCh                            chan struct{}  // for tests
+	presetConfig                         *atomic.String // for tests
+	flagWorkerAuthWorkerRotationInterval time.Duration  // for tests
+	flagWorkerAuthCaCertificateLifetime  time.Duration  // for tests
 }
 
 func (c *Command) Synopsis() string {
@@ -124,6 +126,17 @@ func (c *Command) Flags() *base.FlagSets {
 		Target:     &c.flagLogFormat,
 		Completion: complete.PredictSet("standard", "json"),
 		Usage:      `Log format, mostly as a fallback for events. Supported values are "standard" and "json".`,
+	})
+
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-worker-rotation-interval",
+		Target: &c.flagWorkerAuthWorkerRotationInterval,
+		Hidden: true,
+	})
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-ca-certificate-lifetime",
+		Target: &c.flagWorkerAuthCaCertificateLifetime,
+		Hidden: true,
 	})
 
 	return set
@@ -457,8 +470,9 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
+	c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws)
 	if c.Config.Controller != nil {
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAzure)
 		if err := c.StartController(c.Context); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandCliError
@@ -583,6 +597,7 @@ func (c *Command) StartController(ctx context.Context) error {
 	conf := &controller.Config{
 		RawConfig: c.Config,
 		Server:    c.Server,
+		TestOverrideWorkerAuthCaCertificateLifetime: c.flagWorkerAuthCaCertificateLifetime,
 	}
 
 	var err error
@@ -610,10 +625,11 @@ func (c *Command) StartWorker() error {
 	}
 
 	var err error
-	c.worker, err = worker.New(conf)
+	c.worker, err = worker.New(c.Context, conf)
 	if err != nil {
 		return fmt.Errorf("Error initializing worker: %w", err)
 	}
+	c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthWorkerRotationInterval
 
 	if err := c.worker.Start(); err != nil {
 		retErr := fmt.Errorf("Error starting worker: %w", err)

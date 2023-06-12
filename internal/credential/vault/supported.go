@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/common"
 	"github.com/hashicorp/go-rootcerts"
 	vault "github.com/hashicorp/vault/api"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/require"
 )

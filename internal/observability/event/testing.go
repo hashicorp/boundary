@@ -5,6 +5,7 @@ package event
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -14,10 +15,33 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	"github.com/hashicorp/eventlogger"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+// CloudEventFromFile will marshal a single cloud event from the provided file
+// name
+func CloudEventFromFile(t testing.TB, fileName string) *cloudevents.Event {
+	t.Helper()
+	b, err := os.ReadFile(fileName)
+	assert.NoError(t, err)
+	got := &cloudevents.Event{}
+	err = json.Unmarshal(b, got)
+	require.NoErrorf(t, err, "json: %s", string(b))
+	return got
+}
+
+// CloudEventFromBuf will marshal a single cloud event from the provided buffer
+func CloudEventFromBuf(t testing.TB, b []byte) *cloudevents.Event {
+	t.Helper()
+	got := &cloudevents.Event{}
+	err := json.Unmarshal(b, got)
+	require.NoErrorf(t, err, "json: %s", string(b))
+	return got
+}
 
 // TestWithoutEventing allows the caller to "disable" all eventing for a test.
 // You must not run the test in parallel (no calls to t.Parallel) since the

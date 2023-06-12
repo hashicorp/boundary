@@ -9,10 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
-	"github.com/stretchr/testify/require"
 )
 
 // TestCliConnectTargetBasic uses the boundary cli to create a number of
@@ -20,7 +21,7 @@ import (
 // that target and verifies that the connection was successful.
 func TestCliConnectTargetBasic(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -66,7 +67,7 @@ func TestCliConnectTargetBasic(t *testing.T) {
 
 func TestCliConnectTargetWithTargetClientPort(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -94,7 +95,7 @@ func TestCliConnectTargetWithTargetClientPort(t *testing.T) {
 		e2e.WithArgs(
 			"connect",
 			"-target-id", newTargetId,
-			"-exec", "/usr/bin/echo", "--",
+			"-exec", "/bin/echo", "--",
 			"{{boundary.port}}",
 		),
 	)

@@ -1,0 +1,27 @@
+---
+layout: docs
+page_title: Operating Boundary
+description: |-
+  Operational tasks in Boundary.
+---
+
+# Maintaining and operating Boundary
+
+Visibility into various components of Boundary plays an important role in
+ensuring the health of its controllers and workers. While additional monitoring
+components are planned for subsequent Boundary releases, metrics for controllers
+and workers can now be exported and then collected by Prometheus. Metrics
+provide insight into the current state of a Boundary deployment by enabling the
+diagnosis of deployed controllers and workers. Enabling metrics assists in the
+detection and mitigation of anomalies in a deployment.
+
+These docs describe the available metrics and the naming and labeling standards
+used. Additionally, the health of controllers can be monitored using the
+`/health` endpoint. The health endpoint is enabled by defining a listener in
+Boundary's configuration file, and a health response may be configured to add a
+shutdown grace period process.
+
+* Refer to the [Metrics](/boundary/docs/oss/operations/metrics) documentation to learn
+  more about Boundary metrics.
+* Refer to the [Health Endpoint](/boundary/docs/oss/operations/health) documentation to
+  learn more about Boundary health endpoints.

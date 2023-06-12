@@ -4,11 +4,13 @@
 package tcp
 
 import (
+	"context"
 	"math"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
+	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/target/tcp"
@@ -113,6 +115,8 @@ func setAttributes(t target.Target, out *pb.Target) error {
 	return nil
 }
 
+func noopSessionValidation(context.Context, *session.Session) error { return nil }
+
 func init() {
 	var maskManager handlers.MaskManager
 	var err error
@@ -124,5 +128,5 @@ func init() {
 		panic(err)
 	}
 
-	targets.Register(tcp.Subtype, maskManager, newAttribute, setAttributes)
+	targets.Register(tcp.Subtype, maskManager, newAttribute, setAttributes, noopSessionValidation)
 }

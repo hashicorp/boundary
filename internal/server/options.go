@@ -42,6 +42,7 @@ type options struct {
 	WithFetchNodeCredentialsRequest        *types.FetchNodeCredentialsRequest
 	withTestPkiWorkerAuthorized            bool
 	withTestPkiWorkerKeyId                 *string
+	withTestUseInputTagsAsApiTags          bool
 	withWorkerType                         WorkerType
 	withRoot                               RootInfo
 	withStopAfter                          uint
@@ -119,7 +120,15 @@ func WithUpdateTags(updateTags bool) Option {
 // WithWorkerTags provides worker tags.
 func WithWorkerTags(tags ...*Tag) Option {
 	return func(o *options) {
-		o.withWorkerTags = tags
+		newTags := []*Tag{}
+		for _, tag := range tags {
+			if tag != nil {
+				newTags = append(newTags, tag)
+			}
+		}
+		if len(newTags) > 0 {
+			o.withWorkerTags = tags
+		}
 	}
 }
 
@@ -176,6 +185,15 @@ func WithTestPkiWorkerAuthorizedKeyId(id *string) Option {
 	return func(o *options) {
 		o.withTestPkiWorkerAuthorized = true
 		o.withTestPkiWorkerKeyId = id
+	}
+}
+
+// WithTestUseInputTagsAsApiTags tells NewWorker to set the set of input tags as
+// the api tags as well. This is useful for allowing a worker to have canonical
+// tags without having to store worker information in the database.
+func WithTestUseInputTagsAsApiTags(with bool) Option {
+	return func(o *options) {
+		o.withTestUseInputTagsAsApiTags = with
 	}
 }
 

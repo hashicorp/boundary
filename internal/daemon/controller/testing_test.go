@@ -5,11 +5,16 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_TestController(t *testing.T) {
@@ -64,5 +69,33 @@ func Test_TestController(t *testing.T) {
 			tc := NewTestController(t, &TestControllerOpts{EnableEventing: true})
 			defer tc.Shutdown()
 		}))
+	})
+	t.Run("set-default-ldap-auth-method-id", func(t *testing.T) {
+		t.Parallel()
+		assert, require := assert.New(t), require.New(t)
+		testCtx := context.Background()
+		testLdapAuthMethodId := globals.LdapAuthMethodPrefix + "_0123456789"
+		tc := NewTestController(t, &TestControllerOpts{DefaultLdapAuthMethodId: testLdapAuthMethodId})
+		defer tc.Shutdown()
+
+		testRw := db.New(tc.DbConn())
+		testLdapRepo, err := ldap.NewRepository(testCtx, testRw, testRw, tc.c.kms)
+		require.NoError(err)
+		got, err := testLdapRepo.LookupAuthMethod(testCtx, testLdapAuthMethodId)
+		require.NoError(err)
+		assert.Equal(testLdapAuthMethodId, got.GetPublicId())
+	})
+	t.Run("controller-external-wrappers", func(t *testing.T) {
+		testCtx := context.Background()
+		assert := assert.New(t)
+		tc := NewTestController(t, nil)
+		defer tc.Shutdown()
+
+		ws := tc.Kms().GetExternalWrappers(testCtx)
+
+		assert.NotNil(ws.Root())
+		assert.NotNil(ws.WorkerAuth())
+		assert.NotNil(ws.Recovery())
+		assert.NotNil(ws.Bsr())
 	})
 }

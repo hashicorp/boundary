@@ -25,6 +25,23 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   never result in permissions being granted, causing confusion. As a result,
   attempting to write such grants into roles may now result in an error; the
   error message gives hints for resolution.
+* `WithAutomaticVersioning` for auth tokens in Go SDK: this option was
+  incorrectly being generated for auth token resources, which do not support
+  versioning. This is technically a breaking change, but it was a no-op option
+  anyways that there was no reason to be using. It has now been removed.
+* Plugins: With the introduction of new plugin services, the Azure and AWS Host plugin 
+  repositories have been renamed to drop the `host` element of the repository name: 
+
+   - https://github.com/hashicorp/boundary-plugin-host-aws -> https://github.com/hashicorp/boundary-plugin-aws
+   - https://github.com/hashicorp/boundary-plugin-host-azure -> https://github.com/hashicorp/boundary-plugin-azure
+  
+  similarly the `plugins/host` package has been renamed to `plugins/boundary`
+  ([PR1](https://github.com/hashicorp/boundary/pull/3262),
+  [PR2](https://github.com/hashicorp/boundary-plugin-aws/pull/24),
+  [PR3](https://github.com/hashicorp/boundary-plugin-azure/pull/12),
+  [PR4](https://github.com/hashicorp/boundary/pull/3266)).
+* PostgreSQL 12 or greater is now required. PostgreSQL 11 is no longer
+  supported.
 
 ### New and Improved
 
@@ -40,6 +57,40 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   port to use on the client side when connecting to a target, unless overridden
   by the client via `-listen-port`
   ([PR](https://github.com/hashicorp/boundary/pull/2767))
+
+### Bug Fixes
+
+* targets: `authorize-session` now works properly when using a target's name as
+  the identifier and the target name contains one or more slashes
+  ([PR](https://github.com/hashicorp/boundary/pull/3249))
+* resource listing: API requests to list a resource (targets, sessions, users,
+  etc) now properly return all resources the callers has appropriate permission
+  to list ([PR](https://github.com/hashicorp/boundary/pull/3278))
+* sessions: Fix a bug that contributed to slow response times when listing
+  sessions that had a large number of connections
+  ([PR](https://github.com/hashicorp/boundary/pull/3280))
+
+## 0.12.3 (2023/05/26)
+
+Note: As this issue currently only affected HCP Boundary customers, there is no
+open-source release of 0.12.3; the same fixes will be in 0.13.0 OSS.
+
+### Bug Fixes
+
+* workers: A bug in PKI worker auth rotation could mean that after a rotation
+  the controller (or upstream worker) and downstream worker side could pick
+  different certificate chains for authentication, with the only remedy being to
+  re-authorize the workers. This has been fixed. If this bug was previously hit,
+  in some specific cases updating only the worker to 0.12.3 will fix it;
+  otherwise reauthorization will be necessary.
+
+## 0.12.2 (2023/04/04)
+
+### Security
+
+* Boundary now uses Go 1.19.8 to address CVE-2023-24536. See the
+  [Go announcement](https://groups.google.com/g/golang-announce/c/Xdv6JL9ENs8) for
+  more details.
 
 ## 0.12.1 (2023/03/13)
 

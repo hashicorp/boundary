@@ -28,7 +28,7 @@ func TestLoad(t *testing.T) {
 	}
 	uiHeaders := map[int]http.Header{
 		0: {
-			"Content-Security-Policy":   {"default-src 'none'; script-src 'self'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
+			"Content-Security-Policy":   {"default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"},
 			"X-Content-Type-Options":    {"nosniff"},
 			"Strict-Transport-Security": {"max-age=31536000; includeSubDomains"},
 			"Cache-Control":             {"no-store"},
@@ -403,8 +403,11 @@ func TestLoad(t *testing.T) {
 						ConnMaxIdleTimeDuration:   nil,
 						SkipSharedLockAcquisition: false,
 					},
-					PublicClusterAddr:               "",
-					Scheduler:                       nil,
+					PublicClusterAddr: "",
+					Scheduler: config.Scheduler{
+						JobRunInterval:  nil,
+						MonitorInterval: nil,
+					},
 					AuthTokenTimeToLive:             nil,
 					AuthTokenTimeToLiveDuration:     0,
 					AuthTokenTimeToStale:            nil,
@@ -419,6 +422,7 @@ func TestLoad(t *testing.T) {
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
 				DevWorkerAuthStorageKey: "",
+				DevBsrKey:               "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
 					AuditEnabled:        false,
@@ -451,6 +455,11 @@ func TestLoad(t *testing.T) {
 					ExecutionDir: "",
 				},
 				HcpbClusterId: "",
+				Reporting: config.Reporting{
+					License: config.License{
+						Enabled: false,
+					},
+				},
 			},
 			nil,
 		},
@@ -817,8 +826,11 @@ func TestLoad(t *testing.T) {
 						ConnMaxIdleTimeDuration:   nil,
 						SkipSharedLockAcquisition: false,
 					},
-					PublicClusterAddr:               "",
-					Scheduler:                       nil,
+					PublicClusterAddr: "",
+					Scheduler: config.Scheduler{
+						JobRunInterval:  nil,
+						MonitorInterval: nil,
+					},
 					AuthTokenTimeToLive:             nil,
 					AuthTokenTimeToLiveDuration:     0,
 					AuthTokenTimeToStale:            nil,
@@ -832,6 +844,7 @@ func TestLoad(t *testing.T) {
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
@@ -1231,8 +1244,11 @@ func TestLoad(t *testing.T) {
 						ConnMaxIdleTimeDuration:   nil,
 						SkipSharedLockAcquisition: false,
 					},
-					PublicClusterAddr:               "",
-					Scheduler:                       nil,
+					PublicClusterAddr: "",
+					Scheduler: config.Scheduler{
+						JobRunInterval:  nil,
+						MonitorInterval: nil,
+					},
 					AuthTokenTimeToLive:             nil,
 					AuthTokenTimeToLiveDuration:     0,
 					AuthTokenTimeToStale:            nil,
@@ -1246,6 +1262,7 @@ func TestLoad(t *testing.T) {
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
@@ -1645,8 +1662,11 @@ func TestLoad(t *testing.T) {
 						ConnMaxIdleTimeDuration:   nil,
 						SkipSharedLockAcquisition: false,
 					},
-					PublicClusterAddr:               "",
-					Scheduler:                       nil,
+					PublicClusterAddr: "",
+					Scheduler: config.Scheduler{
+						JobRunInterval:  nil,
+						MonitorInterval: nil,
+					},
 					AuthTokenTimeToLive:             nil,
 					AuthTokenTimeToLiveDuration:     0,
 					AuthTokenTimeToStale:            nil,
@@ -1660,6 +1680,7 @@ func TestLoad(t *testing.T) {
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{
@@ -1730,8 +1751,11 @@ func TestLoad(t *testing.T) {
 						ConnMaxIdleTimeDuration:   nil,
 						SkipSharedLockAcquisition: false,
 					},
-					PublicClusterAddr:               "",
-					Scheduler:                       nil,
+					PublicClusterAddr: "",
+					Scheduler: config.Scheduler{
+						JobRunInterval:  nil,
+						MonitorInterval: nil,
+					},
 					AuthTokenTimeToLive:             nil,
 					AuthTokenTimeToLiveDuration:     0,
 					AuthTokenTimeToStale:            nil,
@@ -1745,6 +1769,7 @@ func TestLoad(t *testing.T) {
 				DevUiPassthroughDir:     "",
 				DevControllerKey:        "",
 				DevWorkerAuthKey:        "",
+				DevBsrKey:               "",
 				DevWorkerAuthStorageKey: "",
 				DevRecoveryKey:          "",
 				Eventing: &event.EventerConfig{

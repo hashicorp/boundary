@@ -1,0 +1,5 @@
+id: conn_1
+messages: inbound
+messages: outbound
+requests: inbound
+requests: outbound

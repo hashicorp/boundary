@@ -162,7 +162,6 @@ func TestErrors(t *testing.T) {
 func TestKeyDestruction(t *testing.T) {
 	ctx := context.Background()
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{SchedulerRunJobInterval: time.Second})
-	t.Cleanup(tc.Shutdown)
 	c := tc.Client()
 	c.SetToken(tc.Token().Token)
 	sc := scopes.NewClient(c)

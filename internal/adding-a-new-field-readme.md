@@ -74,3 +74,17 @@ All that's left is to incorporate it into Boundary's CLI for the appropriate com
 * Run `make cli` and `make install`, before attempting to test cli changes
 
 [test example]: tests/api/authmethods/classification_test.go
+
+## Additional steps for new API/CLI commands:
+
+* After building out the gRPC service, add the new API service definition to the
+  `inputStructs` for API generation: `internal/api/genapi` then run `make api`
+  or `make gen` 
+* Add the new CLI command definition to the `inputStructs` for CLI generation:
+  `internal/cmd/gencli` then run `make cli` or `make gen`
+* Add the new `cli.CommandFactory` to the `cmd.initCommands(...)`:
+  `internal/cmd` then run `make cli` or `make gen`
+* Fill out the required funcs in the command's `func.go` following the same
+  suggestion to define consts for field names and reuse them everywhere they are
+  required. 
+* Run `make cli` and `make install`, before attempting to test cli changes

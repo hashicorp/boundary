@@ -142,12 +142,13 @@ proto: protolint protobuild
 
 .PHONY: protobuild
 protobuild:
-	@buf generate -o "${TMP_DIR}"
+	@buf generate -o "${TMP_DIR}" internal/proto
 
 	# Move the generated files from the tmp file subdirectories into the current repo.
 	cp -R ${TMP_DIR}/${REPO_PATH}/* ${THIS_DIR}
 
 	@buf generate --template buf.openapiv2.gen.yaml --path internal/proto/controller/api/services/v1/
+	 cd internal/bsr/ && buf generate proto/
 
 	@protoc-go-inject-tag -input=./internal/oplog/store/oplog.pb.go
 	@protoc-go-inject-tag -input=./internal/oplog/oplog_test/oplog_test.pb.go
@@ -162,7 +163,6 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/host/store/host.pb.go
 	@protoc-go-inject-tag -input=./internal/host/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/host/plugin/store/host.pb.go
-	@protoc-go-inject-tag -input=./internal/plugin/host/store/plugin.pb.go
 	@protoc-go-inject-tag -input=./internal/plugin/store/plugin.pb.go
 	@protoc-go-inject-tag -input=./internal/authtoken/store/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/store/account.pb.go
@@ -192,6 +192,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/credential/static/store/static.pb.go
 	@protoc-go-inject-tag -input=./internal/kms/store/audit_key.pb.go
 	@protoc-go-inject-tag -input=./internal/auth/ldap/store/ldap.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/upstream_message_service.pb.go
+	@protoc-go-inject-tag -input=./internal/storage/plugin/store/storage.pb.go
 
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/auth_method_service.pb.go
@@ -210,6 +212,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/host_catalog_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/hostsets/host_set.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/host_set_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/storagebuckets/storage_bucket.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/storage_bucket_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/authtokens/authtoken.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/authtokens_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/managedgroups/managed_group.pb.go
@@ -229,6 +233,8 @@ protobuild:
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/users/user.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/user_service.pb.go
 	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/workers/worker.pb.go
+	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/session_recording_service.pb.go
+	@protoc-go-inject-tag -input=./sdk/pbs/controller/api/resources/session_recordings/session_recording.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/api/services/worker_service.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/services/server_coordination_service.pb.go
 	@protoc-go-inject-tag -input=./internal/gen/controller/servers/servers.pb.go
@@ -237,6 +243,8 @@ protobuild:
 	# these protos, services and openapi artifacts are purely for testing purposes
 	@protoc-go-inject-tag -input=./internal/gen/testing/event/event.pb.go
 	@buf generate --template buf.testing.gen.yaml --path internal/proto/testing/event/v1/
+
+	@go run ./scripts/remove-gotags-comments/ -path ./internal/gen/controller.swagger.json
 
 	@rm -R ${TMP_DIR}
 

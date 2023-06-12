@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -802,10 +803,17 @@ func clusterTestDialer(t *testing.T, c *Controller, network string) func(context
 		nonce, err := base62.Random(20)
 		require.NoError(t, err)
 
+		// after 0.13.0 we need to include the version that matches between the
+		// controller and the worker otherwise worker tls auth with fail
+		v := version.Get().Version
+		if version.Get().VersionMetadata != "" {
+			v += "+" + version.Get().VersionMetadata
+		}
 		info := base.WorkerAuthInfo{
 			CertPEM:         pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes}),
 			KeyPEM:          pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: marshaledKey}),
 			ConnectionNonce: nonce,
+			BoundaryVersion: v,
 		}
 		infoBytes, err := json.Marshal(info)
 		require.NoError(t, err)

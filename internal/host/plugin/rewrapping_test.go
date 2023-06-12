@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,7 +42,7 @@ func TestRewrap_hostCatalogSecretRewrapFn(t *testing.T) {
 		rw := db.New(conn)
 
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-		plg := host.TestPlugin(t, conn, "test")
+		plg := plugin.TestPlugin(t, conn, "test")
 		cat := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 		secret, err := newHostCatalogSecret(ctx, cat.GetPublicId(), mustStruct(map[string]any{
 			"foo": "bar",

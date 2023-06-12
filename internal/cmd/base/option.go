@@ -30,6 +30,7 @@ type Options struct {
 	withSkipDatabaseDestruction    bool
 	withSkipAuthMethodCreation     bool
 	withSkipOidcAuthMethodCreation bool
+	withSkipLdapAuthMethodCreation bool
 	withSkipScopesCreation         bool
 	withSkipHostResourcesCreation  bool
 	withSkipTargetCreation         bool
@@ -90,6 +91,14 @@ func WithSkipAuthMethodCreation() Option {
 func WithSkipOidcAuthMethodCreation() Option {
 	return func(o *Options) {
 		o.withSkipOidcAuthMethodCreation = true
+	}
+}
+
+// WithSkipLdapAuthMethodCreation tells the command not to instantiate an LDAP auth
+// method on first run, useful in some tests.
+func WithSkipLdapAuthMethodCreation() Option {
+	return func(o *Options) {
+		o.withSkipLdapAuthMethodCreation = true
 	}
 }
 

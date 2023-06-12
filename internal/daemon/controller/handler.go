@@ -35,7 +35,9 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/managed_groups"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/scopes"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/session_recordings"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/sessions"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/storage_buckets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
@@ -133,7 +135,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 	currentServices := s.GetServiceInfo()
 
 	if _, ok := currentServices[services.HostCatalogService_ServiceDesc.ServiceName]; !ok {
-		hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn, c.HostPluginRepoFn, c.IamRepoFn)
+		hcs, err := host_catalogs.NewService(c.StaticHostRepoFn, c.PluginHostRepoFn, c.PluginRepoFn, c.IamRepoFn)
 		if err != nil {
 			return fmt.Errorf("failed to create host catalog handler service: %w", err)
 		}
@@ -188,6 +190,30 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		}
 		services.RegisterUserServiceServer(s, us)
 	}
+	if _, ok := currentServices[services.StorageBucketService_ServiceDesc.ServiceName]; !ok {
+		sbs, err := storage_buckets.NewServiceFn(
+			c.baseContext,
+			c.PluginStorageBucketRepoFn,
+			c.IamRepoFn,
+			c.PluginRepoFn,
+			c.ControllerExtension)
+		if err != nil {
+			return fmt.Errorf("failed to create storage bucket handler service: %w", err)
+		}
+		services.RegisterStorageBucketServiceServer(s, sbs)
+	}
+	if _, ok := currentServices[services.SessionRecordingService_ServiceDesc.ServiceName]; !ok {
+		srs, err := session_recordings.NewServiceFn(
+			c.baseContext,
+			c.IamRepoFn,
+			c.workerStatusGracePeriod,
+			c.kms,
+			c.ControllerExtension)
+		if err != nil {
+			return fmt.Errorf("failed to create session recording handler service: %w", err)
+		}
+		services.RegisterSessionRecordingServiceServer(s, srs)
+	}
 	if _, ok := currentServices[services.TargetService_ServiceDesc.ServiceName]; !ok {
 		ts, err := targets.NewService(
 			c.baseContext,
@@ -201,7 +227,9 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.VaultCredentialRepoFn,
 			c.StaticCredentialRepoFn,
 			c.downstreamWorkers,
-			c.workerStatusGracePeriod)
+			c.workerStatusGracePeriod,
+			c.ControllerExtension,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create target handler service: %w", err)
 		}
@@ -264,7 +292,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		}
 		services.RegisterCredentialServiceServer(s, c)
 	}
-	if _, ok := s.GetServiceInfo()[opsservices.HealthService_ServiceDesc.ServiceName]; !ok {
+	if _, ok := currentServices[opsservices.HealthService_ServiceDesc.ServiceName]; !ok {
 		hs := health.NewService()
 		opsservices.RegisterHealthServiceServer(s, hs)
 		c.HealthService = hs
@@ -326,6 +354,15 @@ func registerGrpcGatewayEndpoints(ctx context.Context, gwMux *runtime.ServeMux, 
 	}
 	if err := services.RegisterCredentialServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
 		return fmt.Errorf("failed to register credential service handler: %w", err)
+	}
+	if err := services.RegisterSessionRecordingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register session recording service handler: %w", err)
+	}
+	if err := services.RegisterStorageBucketServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register storage bucket handler: %w", err)
+	}
+	if err := services.RegisterSessionRecordingServiceHandlerFromEndpoint(ctx, gwMux, gatewayTarget, dialOptions); err != nil {
+		return fmt.Errorf("failed to register session recording handler: %w", err)
 	}
 
 	return nil

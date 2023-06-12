@@ -617,7 +617,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Ro
 	if err != nil {
 		return nil, err
 	}
-	rl, err := repo.ListRoles(ctx, scopeIds)
+	rl, err := repo.ListRoles(ctx, scopeIds, iam.WithLimit(-1))
 	if err != nil {
 		return nil, err
 	}

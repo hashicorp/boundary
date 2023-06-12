@@ -123,6 +123,7 @@ func TestRecursiveListingDifferentOutputFields(t *testing.T) {
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{
 		// Disable this to avoid having to deal with sorting them in the test
 		DisableOidcAuthMethodCreation: true,
+		DisableLdapAuthMethodCreation: true,
 	})
 	defer tc.Shutdown()
 

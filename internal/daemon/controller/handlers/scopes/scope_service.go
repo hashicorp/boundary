@@ -20,7 +20,9 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/groups"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/roles"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/session_recordings"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/sessions"
+	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/storage_buckets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/users"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/workers"
@@ -67,22 +69,26 @@ var (
 
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
 		scope.Global.String(): {
-			resource.AuthMethod: authmethods.CollectionActions,
-			resource.AuthToken:  authtokens.CollectionActions,
-			resource.Group:      groups.CollectionActions,
-			resource.Role:       roles.CollectionActions,
-			resource.Scope:      CollectionActions,
-			resource.User:       users.CollectionActions,
-			resource.Worker:     workers.CollectionActions,
+			resource.AuthMethod:       authmethods.CollectionActions,
+			resource.StorageBucket:    storage_buckets.CollectionActions,
+			resource.AuthToken:        authtokens.CollectionActions,
+			resource.Group:            groups.CollectionActions,
+			resource.Role:             roles.CollectionActions,
+			resource.Scope:            CollectionActions,
+			resource.User:             users.CollectionActions,
+			resource.Worker:           workers.CollectionActions,
+			resource.SessionRecording: session_recordings.CollectionActions,
 		},
 
 		scope.Org.String(): {
-			resource.AuthMethod: authmethods.CollectionActions,
-			resource.AuthToken:  authtokens.CollectionActions,
-			resource.Group:      groups.CollectionActions,
-			resource.Role:       roles.CollectionActions,
-			resource.Scope:      CollectionActions,
-			resource.User:       users.CollectionActions,
+			resource.AuthMethod:       authmethods.CollectionActions,
+			resource.StorageBucket:    storage_buckets.CollectionActions,
+			resource.AuthToken:        authtokens.CollectionActions,
+			resource.Group:            groups.CollectionActions,
+			resource.Role:             roles.CollectionActions,
+			resource.Scope:            CollectionActions,
+			resource.User:             users.CollectionActions,
+			resource.SessionRecording: session_recordings.CollectionActions,
 		},
 
 		scope.Project.String(): {
@@ -660,7 +666,7 @@ func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*iam.Sc
 	if err != nil {
 		return nil, err
 	}
-	scps, err := repo.ListScopes(ctx, scopeIds)
+	scps, err := repo.ListScopes(ctx, scopeIds, iam.WithLimit(-1))
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to list scopes: %v", err)
 	}
@@ -847,39 +853,26 @@ func validateGetRequest(req *pbs.GetScopeRequest) error {
 }
 
 func validateCreateRequest(req *pbs.CreateScopeRequest) error {
-	badFields := map[string]string{}
-	item := req.GetItem()
-	if item.GetScopeId() == "" {
-		badFields["scope_id"] = "Missing value for scope_id."
-	}
-	switch item.GetType() {
-	case scope.Global.String():
-		badFields["type"] = "Cannot create a global scope."
-	case scope.Org.String():
-		if !strings.EqualFold(scope.Global.String(), item.GetScopeId()) {
-			badFields["type"] = "Org scopes can only be created under the global scope."
+	return handlers.ValidateCreateRequest(req.GetItem(), func() map[string]string {
+		badFields := map[string]string{}
+		item := req.GetItem()
+		if item.GetScopeId() == "" {
+			badFields["scope_id"] = "Missing value for scope_id."
 		}
-	case scope.Project.String():
-		if !handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Org.Prefix()) {
-			badFields["type"] = "Project scopes can only be created under an org scope."
+		switch item.GetType() {
+		case scope.Global.String():
+			badFields["type"] = "Cannot create a global scope."
+		case scope.Org.String():
+			if !strings.EqualFold(scope.Global.String(), item.GetScopeId()) {
+				badFields["type"] = "Org scopes can only be created under the global scope."
+			}
+		case scope.Project.String():
+			if !handlers.ValidId(handlers.Id(item.GetScopeId()), scope.Org.Prefix()) {
+				badFields["type"] = "Project scopes can only be created under an org scope."
+			}
 		}
-	}
-	if item.GetId() != "" {
-		badFields["id"] = "This is a read only field."
-	}
-	if item.GetCreatedTime() != nil {
-		badFields["created_time"] = "This is a read only field."
-	}
-	if item.GetUpdatedTime() != nil {
-		badFields["updated_time"] = "This is a read only field."
-	}
-	if item.GetVersion() != 0 {
-		badFields["version"] = "This cannot be specified at create time."
-	}
-	if len(badFields) > 0 {
-		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
-	}
-	return nil
+		return badFields
+	})
 }
 
 func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
@@ -931,6 +924,28 @@ func validateUpdateRequest(req *pbs.UpdateScopeRequest) error {
 	}
 	if item.GetPrimaryAuthMethodId().GetValue() != "" && !handlers.ValidId(handlers.Id(item.GetPrimaryAuthMethodId().GetValue()), globals.PasswordAuthMethodPrefix, globals.OidcAuthMethodPrefix, globals.LdapAuthMethodPrefix) {
 		badFields["primary_auth_method_id"] = "Improperly formatted identifier."
+	}
+	if item.GetName() != nil {
+		trimmed := strings.TrimSpace(item.GetName().GetValue())
+		switch {
+		case trimmed == "":
+			badFields["name"] = "Cannot set empty string as name"
+		case !handlers.ValidNameDescription(trimmed):
+			badFields["name"] = "Name contains unprintable characters"
+		default:
+			item.GetName().Value = trimmed
+		}
+	}
+	if item.GetDescription() != nil {
+		trimmed := strings.TrimSpace(item.GetDescription().GetValue())
+		switch {
+		case trimmed == "":
+			badFields["description"] = "Cannot set empty string as description"
+		case !handlers.ValidNameDescription(trimmed):
+			badFields["description"] = "Description contains unprintable characters"
+		default:
+			item.GetDescription().Value = trimmed
+		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)

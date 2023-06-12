@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/common"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 var testDBPort = "5432"

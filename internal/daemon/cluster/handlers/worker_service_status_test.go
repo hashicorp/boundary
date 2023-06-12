@@ -43,7 +43,8 @@ func TestStatus(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, prj := iam.TestScopes(t, iamRepo)
 
 	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	serverRepo.UpsertController(ctx, &store.Controller{
@@ -61,6 +62,10 @@ func TestStatus(t *testing.T) {
 	}
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
 	}
 
 	repo, err := sessionRepoFn()
@@ -83,6 +88,16 @@ func TestStatus(t *testing.T) {
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 
+	canceledSess := session.TestDefaultSession(t, conn, wrapper, iamRepo)
+	tofu := session.TestTofu(t)
+	canceledSess, _, err = repo.ActivateSession(ctx, canceledSess.PublicId, canceledSess.Version, tofu)
+	require.NoError(t, err)
+	canceledConn, _, err := connRepo.AuthorizeConnection(ctx, canceledSess.PublicId, worker1.PublicId)
+	require.NoError(t, err)
+
+	canceledSess, err = repo.CancelSession(ctx, canceledSess.PublicId, canceledSess.Version)
+	require.NoError(t, err)
+
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:          uId,
 		HostId:          h.GetPublicId(),
@@ -93,12 +108,12 @@ func TestStatus(t *testing.T) {
 		Endpoint:        "tcp://127.0.0.1:22",
 		ConnectionLimit: 10,
 	})
-	tofu := session.TestTofu(t)
+	tofu = session.TestTofu(t)
 	sess, _, err = repo.ActivateSession(ctx, sess.PublicId, sess.Version, tofu)
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -134,6 +149,220 @@ func TestStatus(t *testing.T) {
 			},
 		},
 		{
+			name:    "One unrecognized session",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId: worker1.GetPublicId(),
+					Name:     worker1.GetName(),
+					Address:  worker1.GetAddress(),
+				},
+				Jobs: []*pbs.JobStatus{
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
+							JobInfo: &pbs.Job_SessionInfo{
+								SessionInfo: &pbs.SessionJobInfo{
+									SessionId: "unrecognized",
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+									Connections: []*pbs.Connection{
+										{
+											ConnectionId: canceledConn.PublicId,
+											Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
+							JobInfo: &pbs.Job_SessionInfo{
+								SessionInfo: &pbs.SessionJobInfo{
+									SessionId: sess.PublicId,
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+									Connections: []*pbs.Connection{
+										{
+											ConnectionId: connection.PublicId,
+											Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
+							JobInfo: &pbs.Job_MonitorSessionInfo{
+								MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
+									SessionId: "unrecognized",
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+								},
+							},
+						},
+					},
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
+							JobInfo: &pbs.Job_MonitorSessionInfo{
+								MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
+									SessionId: sess.PublicId,
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &pbs.StatusResponse{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
+					{
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
+					},
+				},
+				WorkerId:                    worker1.PublicId,
+				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
+				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
+				JobsRequests: []*pbs.JobChangeRequest{
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
+							JobInfo: &pbs.Job_SessionInfo{
+								SessionInfo: &pbs.SessionJobInfo{
+									SessionId:       "unrecognized",
+									Status:          pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED,
+									ProcessingError: pbs.SessionProcessingError_SESSION_PROCESSING_ERROR_UNRECOGNIZED,
+								},
+							},
+						},
+						RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
+					},
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
+							JobInfo: &pbs.Job_MonitorSessionInfo{
+								MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
+									SessionId:       "unrecognized",
+									Status:          pbs.SESSIONSTATUS_SESSIONSTATUS_UNSPECIFIED,
+									ProcessingError: pbs.SessionProcessingError_SESSION_PROCESSING_ERROR_UNRECOGNIZED,
+								},
+							},
+						},
+						RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
+					},
+				},
+			},
+		},
+		{
+			name:    "One Cancelled Session",
+			wantErr: false,
+			req: &pbs.StatusRequest{
+				WorkerStatus: &pb.ServerWorkerStatus{
+					PublicId: worker1.GetPublicId(),
+					Name:     worker1.GetName(),
+					Address:  worker1.GetAddress(),
+				},
+				Jobs: []*pbs.JobStatus{
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
+							JobInfo: &pbs.Job_SessionInfo{
+								SessionInfo: &pbs.SessionJobInfo{
+									SessionId: canceledSess.PublicId,
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+									Connections: []*pbs.Connection{
+										{
+											ConnectionId: canceledConn.PublicId,
+											Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
+							JobInfo: &pbs.Job_SessionInfo{
+								SessionInfo: &pbs.SessionJobInfo{
+									SessionId: sess.PublicId,
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+									Connections: []*pbs.Connection{
+										{
+											ConnectionId: connection.PublicId,
+											Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
+							JobInfo: &pbs.Job_MonitorSessionInfo{
+								MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
+									SessionId: canceledSess.PublicId,
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+								},
+							},
+						},
+					},
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
+							JobInfo: &pbs.Job_MonitorSessionInfo{
+								MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
+									SessionId: sess.PublicId,
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &pbs.StatusResponse{
+				CalculatedUpstreams: []*pbs.UpstreamServer{
+					{
+						Type:    pbs.UpstreamServer_TYPE_CONTROLLER,
+						Address: "127.0.0.1",
+					},
+				},
+				WorkerId:                    worker1.PublicId,
+				AuthorizedWorkers:           &pbs.AuthorizedWorkerList{},
+				AuthorizedDownstreamWorkers: &pbs.AuthorizedDownstreamWorkerList{},
+				JobsRequests: []*pbs.JobChangeRequest{
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_SESSION,
+							JobInfo: &pbs.Job_SessionInfo{
+								SessionInfo: &pbs.SessionJobInfo{
+									SessionId: canceledSess.PublicId,
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+								},
+							},
+						},
+						RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
+					},
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
+							JobInfo: &pbs.Job_MonitorSessionInfo{
+								MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
+									SessionId: canceledSess.PublicId,
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+								},
+							},
+						},
+						RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
+					},
+				},
+			},
+		},
+		{
 			name:    "Still Active",
 			wantErr: false,
 			req: &pbs.StatusRequest{
@@ -156,6 +385,17 @@ func TestStatus(t *testing.T) {
 											Status:       pbs.CONNECTIONSTATUS_CONNECTIONSTATUS_CONNECTED,
 										},
 									},
+								},
+							},
+						},
+					},
+					{
+						Job: &pbs.Job{
+							Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
+							JobInfo: &pbs.Job_MonitorSessionInfo{
+								MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
+									SessionId: sess.PublicId,
+									Status:    pbs.SESSIONSTATUS_SESSIONSTATUS_ACTIVE,
 								},
 							},
 						},
@@ -220,7 +460,9 @@ func TestStatus(t *testing.T) {
 						pbs.JobChangeRequest{},
 						pbs.Job{},
 						pbs.Job_SessionInfo{},
+						pbs.Job_MonitorSessionInfo{},
 						pbs.SessionJobInfo{},
+						pbs.MonitorSessionJobInfo{},
 						pbs.Connection{},
 						pbs.AuthorizedWorkerList{},
 						pbs.AuthorizedDownstreamWorkerList{},
@@ -256,6 +498,10 @@ func TestStatusSessionClosed(t *testing.T) {
 	}
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
 	}
 
 	repo, err := sessionRepoFn()
@@ -305,7 +551,7 @@ func TestStatusSessionClosed(t *testing.T) {
 	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 	require.NoError(t, err)
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -445,6 +691,10 @@ func TestStatusDeadConnection(t *testing.T) {
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms, session.WithWorkerStateDelay(0))
 	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
 
 	repo, err := sessionRepoFn()
 	require.NoError(t, err)
@@ -491,7 +741,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	sess2, _, err = repo.ActivateSession(ctx, sess2.PublicId, sess2.Version, tofu2)
 	require.NoError(t, err)
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -592,6 +842,10 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)
 	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
 
 	repo, err := sessionRepoFn()
 	require.NoError(t, err)
@@ -651,7 +905,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
 	connection, _, err := connRepo.AuthorizeConnection(ctx, sess.PublicId, worker1.PublicId)
@@ -789,13 +1043,17 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kmsCache)
 	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 	var w1KeyId, w2KeyId string
 	w1 := server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w1KeyId))
 	w2 := server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&w2KeyId))
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kmsCache, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kmsCache, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
 	cases := []struct {
@@ -1000,10 +1258,14 @@ func TestWorkerOperationalStatus(t *testing.T) {
 	connRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)
 	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
 	cases := []struct {

@@ -12,7 +12,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     if: ${{ github.actor != 'dependabot[bot]' || github.actor != 'hc-github-team-secure-boundary' }}
     steps:
-    - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+    - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
 
     - name: Determine Go version
       id: get-go-version
@@ -23,22 +23,22 @@ jobs:
         echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
 
     - name: Set up Go
-      uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
+      uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
       with:
         go-version: "${{ steps.get-go-version.outputs.go-version }}"
 
     - name: Set up Python
-      uses: actions/setup-python@d27e3f3d7c64b4bbf8e4abfb9b63b83e846e0435 # v4.5.0
+      uses: actions/setup-python@57ded4d7d5e986d7296eab16560982c6dd7c923b # v4.6.0
       with:
         python-version: 3.x
 
     - name: Clone Security Scanner repo
-      uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
       with:
         repository: hashicorp/security-scanner
         token: ${{ secrets.HASHIBOT_PRODSEC_GITHUB_TOKEN }}
         path: security-scanner
-        ref: 2526c196a28bb367b1ac6c997ff48e9ebf06834f
+        ref: 5a491479f4131d343afe0a4f18f6fcd36639f3fa
 
     - name: Install dependencies
       shell: bash
@@ -73,7 +73,7 @@ jobs:
         repository: "$PWD"
 
     - name: Upload SARIF file
-      uses: github/codeql-action/upload-sarif@168b99b3c22180941ae7dbdd5f5c9678ede476ba # v2
+      uses: github/codeql-action/upload-sarif@9a866ed4524fc3422c3af1e446dab8efa3503411 # codeql-bundle-20230418
       with:
         sarif_file: results.sarif
 

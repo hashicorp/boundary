@@ -86,6 +86,8 @@ type cmdInfo struct {
 	// SkipClientCallActions allows skipping creation of an actual client
 	// call for an action in favor of custom logic in extra actions
 	SkipClientCallActions []string
+
+	SkipFiltering bool
 }
 
 var inputStructs = map[string][]*cmdInfo{
@@ -564,6 +566,35 @@ var inputStructs = map[string][]*cmdInfo{
 			HasExtraHelpFunc:    true,
 			HasId:               true,
 			VersionedActions:    []string{"cancel"},
+		},
+	},
+	"sessionrecordings": {
+		{
+			ResourceType:        resource.SessionRecording.String(),
+			Pkg:                 "sessionrecordings",
+			StdActions:          []string{"read", "list"},
+			Container:           "Scope",
+			HasExtraCommandVars: true,
+			HasExtraHelpFunc:    true,
+			HasId:               true,
+			SkipFiltering:       true,
+		},
+	},
+	"storagebuckets": {
+		{
+			ResourceType:         resource.StorageBucket.String(),
+			Pkg:                  "storagebuckets",
+			StdActions:           []string{"create", "update", "read", "delete", "list"},
+			HasExtraHelpFunc:     true,
+			HasExtraCommandVars:  true,
+			HasId:                true,
+			HasName:              true,
+			HasDescription:       true,
+			Container:            "Scope",
+			IsPluginType:         true,
+			VersionedActions:     []string{"update"},
+			HasGenericAttributes: true,
+			HasGenericSecrets:    true,
 		},
 	},
 	"targets": {

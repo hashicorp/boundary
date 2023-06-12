@@ -112,6 +112,17 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				}
 			}
 
+			if newSession.ProtocolWorkerId != "" {
+				swp, err := NewSessionWorkerProtocol(ctx, newSession.PublicId, newSession.ProtocolWorkerId)
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				if err = w.Create(ctx, swp); err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+				returnedSession.ProtocolWorkerId = swp.WorkerId
+			}
+
 			for _, cred := range newSession.DynamicCredentials {
 				cred.SessionId = newSession.PublicId
 			}
@@ -224,6 +235,12 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 			}
 			session.HostSetId = sessionHostSetHost.HostSetId
 			session.HostId = sessionHostSetHost.HostId
+
+			sessionWorkerProtocol := AllocSessionWorkerProtocol()
+			if err := read.LookupWhere(ctx, sessionWorkerProtocol, "session_id = ?", []any{sessionId}); err != nil && !errors.IsNotFoundError(err) {
+				return errors.Wrap(ctx, err, op)
+			}
+			session.ProtocolWorkerId = sessionWorkerProtocol.WorkerId
 
 			connections, err := fetchConnections(ctx, read, sessionId, db.WithOrder("create_time desc"))
 			if err != nil {
@@ -691,48 +708,46 @@ func (r *Repository) updateState(ctx context.Context, sessionId string, sessionV
 	return &updatedSession, returnedStates, nil
 }
 
-// checkIfNoLongerActive checks the given sessions to see if they are in a
+// CheckIfNotActive checks the given sessions to see if they are in a
 // non-active state, i.e. "canceling" or "terminated" It returns a *StateReport
 // object for each session that is not active, with its current status.
-func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions []string) ([]*StateReport, error) {
-	const op = "session.(Repository).checkIfNotActive"
+func (r *Repository) CheckIfNotActive(ctx context.Context, reportedSessions []string) ([]*StateReport, error) {
+	const op = "session.(Repository).listSessionIdAndState"
 
 	notActive := make([]*StateReport, 0, len(reportedSessions))
-	args := make([]any, 0, len(reportedSessions))
-	var inClause string
-
 	if len(reportedSessions) <= 0 {
 		return notActive, nil
 	}
 
-	inClause = `and session_id in (%s)`
-	params := make([]string, len(reportedSessions))
-	for i, sessId := range reportedSessions {
-		params[i] = fmt.Sprintf("@%d", i)
-		args = append(args, sql.Named(fmt.Sprintf("%d", i), sessId))
+	unrecognizedSessions := make(map[string]struct{})
+	for _, sessId := range reportedSessions {
+		unrecognizedSessions[sessId] = struct{}{}
 	}
-	inClause = fmt.Sprintf(inClause, strings.Join(params, ","))
 
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
 		func(reader db.Reader, w db.Writer) error {
-			rows, err := r.reader.Query(ctx, fmt.Sprintf(checkIfNotActive, inClause), args)
+			var states []*State
+			err := r.reader.SearchWhere(ctx, &states, "end_time is null and session_id in (?)", []any{reportedSessions})
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			defer rows.Close()
 
-			for rows.Next() {
-				var sessionId string
-				var status Status
-				if err := rows.Scan(&sessionId, &status); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("scan row failed"))
+			for _, s := range states {
+				delete(unrecognizedSessions, s.SessionId)
+				switch s.Status {
+				case StatusPending, StatusActive:
+					continue
+				case StatusCanceling, StatusTerminated:
+				default:
+					return errors.New(ctx, errors.Internal, op, fmt.Sprintf("unknown session state %q", s.Status))
 				}
+
 				notActive = append(notActive, &StateReport{
-					SessionId: sessionId,
-					Status:    status,
+					SessionId: s.SessionId,
+					Status:    s.Status,
 				})
 			}
 			return nil
@@ -741,6 +756,14 @@ func (r *Repository) checkIfNoLongerActive(ctx context.Context, reportedSessions
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error checking if sessions are no longer active"))
 	}
+
+	for s := range unrecognizedSessions {
+		notActive = append(notActive, &StateReport{
+			SessionId:    s,
+			Unrecognized: true,
+		})
+	}
+
 	return notActive, nil
 }
 

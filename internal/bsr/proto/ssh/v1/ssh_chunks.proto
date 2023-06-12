@@ -1,0 +1,368 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package ssh.v1;
+
+// An UnknownRequest is an unrecognized SSH request. We'll record the type, want_reply, and payload
+message UnknownRequest {
+  // The request type field
+  string request_type = 1;
+
+  // The want_reply field on the SSH request
+  bool want_reply = 2;
+
+  // The Payload field on the SSH request
+  bytes data = 3;
+}
+
+// Fields for the following SSH request protos were taken from
+// https://www.iana.org/assignments/ssh-parameters/ssh-parameters.xhtml#ssh-parameters-11
+
+// A session is started by sending the following message.
+message SessionRequest {
+  // The request type field. This should always be "session"
+  string request_type = 1;
+
+  // The sender channel
+  uint32 sender_channel = 2;
+
+  // The initial window size
+  uint32 initial_window_size = 3;
+
+  // The maximum packet size
+  uint32 maximum_packet_size = 4;
+}
+
+// X11 channels are opened with a channel open request.  The resulting
+// channels are independent of the session, and closing the session
+// channel does not close the forwarded X11 channels.
+message X11Request {
+  // The request type field. This should always be "x11"
+  string request_type = 1;
+
+  // The sender channel
+  uint32 sender_channel = 2;
+
+  // The initial window size
+  uint32 initial_window_size = 3;
+
+  // The maximum packet size
+  uint32 maximum_packet_size = 4;
+
+  // The originator address (e.g., "192.168.7.38")
+  string originator_address = 5;
+
+  // The originator port
+  uint32 originator_port = 6;
+}
+
+// When a connection comes to a port for which remote forwarding has
+// been requested, a channel is opened to forward the port to the other
+// side.
+message ForwardedTCPIPRequest {
+  // The request type field. This should always be "forwarded-tcpip"
+  string request_type = 1;
+
+  // The sender channel
+  uint32 sender_channel = 2;
+
+  // The initial window size
+  uint32 initial_window_size = 3;
+
+  // The maximum packet size
+  uint32 maximum_packet_size = 4;
+
+  // The address that was connected
+  string address = 5;
+
+  // The port that was connected
+  uint32 port = 6;
+
+  // The originator ip address (e.g., "192.168.7.38")
+  string originator_ip_address = 7;
+
+  // The originator port
+  uint32 originator_port = 8;
+}
+
+// When a connection comes to a locally forwarded TCP/IP port, the
+// following packet is sent to the other side.
+message DirectTCPIPRequest {
+  // The request type field. This should always be "direct-tcpip"
+  string request_type = 1;
+
+  // The sender channel
+  uint32 sender_channel = 2;
+
+  // The initial window size
+  uint32 initial_window_size = 3;
+
+  // The maximum packet size
+  uint32 maximum_packet_size = 4;
+
+  // The host to connect
+  string host = 5;
+
+  // The port to connect
+  uint32 port = 6;
+
+  // The 'originator IP address' is the numeric IP address of the machine
+  // from where the connection request originates
+  string originator_ip_address = 7;
+
+  // The port on the host from where the connection originated.
+  uint32 originator_port = 8;
+}
+
+// Fields for the following SSH request protos were taken from
+// https://www.iana.org/assignments/ssh-parameters/ssh-parameters.xhtml#ssh-parameters-13
+
+// A pseudo-terminal can be allocated for the session by sending the
+// following message.
+message PtyRequest {
+  // The request type field. This should always be "pty-req"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request
+  bool want_reply = 2;
+
+  // TERM environment variable value (e.g., vt100)
+  string term_env_var = 3;
+
+  // Terminal width, characters (e.g., 80)
+  uint32 terminal_width_characters = 4;
+
+  // Terminal height, rows (e.g., 24)
+  uint32 terminal_height_rows = 5;
+
+  // Terminal width, pixels (e.g., 640)
+  uint32 terminal_width_pixels = 6;
+
+  // Terminal height, pixels (e.g., 480)
+  uint32 terminal_height_pixels = 7;
+
+  // Encoded terminal modes
+  bytes encoded_terminal_mode = 8;
+}
+
+// X11 forwarding may be requested for a session using the following message
+message X11ForwardingRequest {
+  // The request type field. This should always be "x11-req"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request
+  bool want_reply = 2;
+
+  // Single connection
+  bool single_connection = 3;
+
+  // X11 authentication protocol
+  string x11_authentication_protocol = 4;
+
+  // X11 authentication cookie
+  string x11_authentication_cookie = 5;
+
+  // X11 screen number
+  uint32 x11_screen_number = 6;
+}
+
+// Environment variables may be passed to the shell/command to be
+// started later.
+message EnvRequest {
+  // The request type field. This should always be "env"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request
+  bool want_reply = 2;
+
+  // Variable name
+  string variable_name = 3;
+
+  // Variable value
+  string variable_value = 4;
+}
+
+// This message will request that the user's default shell (typically
+// defined in /etc/passwd in UNIX systems) be started at the other end.
+message ShellRequest {
+  // The request type field. This should always be "shell"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request
+  bool want_reply = 2;
+}
+
+// This message will request that the server start the execution of the
+// given command.  The 'command' string may contain a path.
+message ExecRequest {
+  // The request type field. This should always be "exec"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request
+  bool want_reply = 2;
+
+  // The command to be executed
+  string command = 3;
+}
+
+// Execute a predefined subsystem. It is expected that
+// these will include a general file transfer mechanism, and possibly
+// other features.
+message SubsystemRequest {
+  // The request type field. This should always be "subsystem"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request
+  bool want_reply = 2;
+
+  // The predefined subsystem to execute
+  string subsystem_name = 3;
+}
+
+// When the window (terminal) size changes on the client side, it MAY
+// send a message to the other side to inform it of the new dimensions.
+message WindowChangeRequest {
+  // The request type field. This should always be "window-change"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request. This should always be false.
+  bool want_reply = 2;
+
+  // Terminal width, columns
+  uint32 terminal_width_columns = 3;
+
+  // Terminal height, rows
+  uint32 terminal_height_rows = 4;
+
+  // Terminal width, pixels
+  uint32 terminal_width_pixels = 5;
+
+  // Terminal height, pixels
+  uint32 terminal_height_pixels = 6;
+}
+
+// The message below is used by the server to inform the client when it
+// can or cannot perform flow control (control-S/control-Q processing).
+// If 'client can do' is TRUE, the client is allowed to do flow control
+// using control-S and control-Q
+message XonXoffRequest {
+  // The request type field. This should always be "xon-xoff"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request. This should always be false.
+  bool want_reply = 2;
+
+  // Client can do flow control
+  bool client_can_do = 3;
+}
+
+// A signal can be delivered to the remote process/service using the
+// following message.
+message SignalRequest {
+  // The request type field. This should always be "signal"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request. This should always be false
+  bool want_reply = 2;
+
+  // Signal name, without the SIG prefix. The 'signal name' is one of the following (these are from [POSIX]).
+  //            ABRT   ALRM   FPE   HUP   ILL   INT   KILL
+  //            PIPE   QUIT   SEGV  TERM  USR1  USR2
+  string signal_name = 3;
+}
+
+//  When the command running at the other end terminates, the following
+//   message can be sent to return the exit status of the command.
+message ExitStatusRequest {
+  // The request type field. This should always be "exit-status"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request. This should always be false.
+  bool want_reply = 2;
+
+  // Exit status of the command
+  uint32 exit_status = 3;
+}
+
+// The remote command may terminate violently due to a signal.
+// Such a condition can be indicated by the following message.  A zero
+// 'exit_status' usually means that the command terminated successfully.
+message ExitSignalRequest {
+  // The request type field. This should always be "exit-signal"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request. This should always be false.
+  bool want_reply = 2;
+
+  // Signal name, without the SIG prefix. The 'signal name' is one of the following (these are from [POSIX]).
+  //            ABRT   ALRM   FPE   HUP   ILL   INT   KILL
+  //            PIPE   QUIT   SEGV  TERM  USR1  USR2
+  string signal_name = 3;
+
+  // Core dumped
+  bool core_dumped = 4;
+
+  // Error message in ISO-10646 UTF-8 encoding
+  string error_message = 5;
+
+  // Language tag from https://www.rfc-editor.org/rfc/rfc3066
+  string language_tag = 6;
+}
+
+// The following channel-specific request can be sent over a session
+// channel to request that the remote host perform
+// a BREAK operation.
+message BreakRequest {
+  // The request type field. This should always be "break"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request. This should always be false.
+  bool want_reply = 2;
+
+  // Break-length in milliseconds
+  uint32 break_length_ms = 3;
+}
+
+// Fields for the following SSH request protos were taken from
+// https://www.iana.org/assignments/ssh-parameters/ssh-parameters.xhtml#ssh-parameters-12
+
+// A party need not explicitly request forwardings from its own end to
+// the other direction.  However, if it wishes that connections to a
+// port on the other side be forwarded to the local side, it must
+// explicitly request this.
+message TCPIPForwardRequest {
+  // The request type field. This should always be "tcpip-forward"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request. This should always be false.
+  bool want_reply = 2;
+
+  // Address to bind (e.g., "0.0.0.0") on which connections for forwarding
+  // are to be accepted
+  string address_to_bind = 3;
+
+  // Port number to bind on which connections for forwarding
+  // are to be accepted
+  uint32 port_to_bind = 4;
+}
+
+// A port forwarding can be canceled with the following message.  Note
+// that channel open requests may be received until a reply to this
+// message is received.
+message CancelTCPIPForwardRequest {
+  // The request type field. This should always be "cancel-tcpip-forward"
+  string request_type = 1;
+
+  // The want_reply field on the SSH request. This should always be false.
+  bool want_reply = 2;
+
+  // Address to bind (e.g., "0.0.0.0") on which connections for forwarding
+  // are to be accepted
+  string address_to_bind = 3;
+
+  // Port number to bind on which connections for forwarding
+  // are to be accepted
+  uint32 port_to_bind = 4;
+}

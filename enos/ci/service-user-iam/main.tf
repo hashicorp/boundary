@@ -16,30 +16,24 @@ terraform {
 }
 
 locals {
-  enterprise_repositories = ["boundary-enterprise", "boundary-hcp"]
-  is_ent                  = contains(local.enterprise_repositories, var.repository)
-  service_user            = data.aws_iam_user.service_user.user_name
-  oss_aws_account_id      = "271311691044"
+  service_user = data.aws_iam_user.service_user.user_name
 }
 
+data "aws_caller_identity" "current" {}
 
 data "aws_iam_user" "service_user" {
   # This is the user created in the hashicorp/hc-service-users repo
-  user_name = "github_actions-boundary_ci"
+  user_name = var.repository == "boundary" ? "github_actions-boundary_ci" : "github_actions-boundary_enterprise_ci"
 }
 
 resource "aws_iam_role" "role" {
-  count = local.is_ent ? 0 : 1 // only create a role for the OSS repositories
-
   provider = aws.us_east_1
 
   name               = local.service_user
-  assume_role_policy = data.aws_iam_policy_document.assume_role_policy_document[0].json
+  assume_role_policy = data.aws_iam_policy_document.assume_role_policy_document.json
 }
 
 data "aws_iam_policy_document" "assume_role_policy_document" {
-  count = local.is_ent ? 0 : 1 // only create a policy for the OSS repositories
-
   provider = aws.us_east_1
 
   statement {
@@ -48,17 +42,15 @@ data "aws_iam_policy_document" "assume_role_policy_document" {
 
     principals {
       type        = "AWS"
-      identifiers = ["arn:aws:iam::${local.oss_aws_account_id}:user/${local.service_user}"]
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/${local.service_user}"]
     }
   }
 }
 
 resource "aws_iam_role_policy" "role_policy" {
-  count = local.is_ent ? 0 : 1 // only create a policy for the OSS repositories
-
   provider = aws.us_east_1
 
-  role   = aws_iam_role.role[0].name
+  role   = aws_iam_role.role.name
   name   = "${local.service_user}_policy"
   policy = data.aws_iam_policy_document.combined_policy_document.json
 }
@@ -224,7 +216,10 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "rds:ListTagsForResource",
       "rds:ModifyDBInstance",
       "rds:ModifyDBSubnetGroup",
-      "rds:RemoveTagsFromResource"
+      "rds:RemoveTagsFromResource",
+      "s3:ListAllMyBuckets",
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
     ]
     resources = ["*"]
   }
@@ -251,14 +246,15 @@ data "aws_iam_policy_document" "aws_nuke_policy_document" {
       "iam:ListUserTags",
       "iam:ListUsers",
       "iam:UntagUser",
-      "servicequotas:ListServiceQuotas"
+      "servicequotas:ListServiceQuotas",
+      "s3:ListAllMyBuckets",
+      "s3:DeleteBucket",
     ]
     resources = ["*"]
   }
 }
 
 resource "aws_iam_policy" "demo_user" {
-  count       = local.is_ent ? 0 : 1 // only create a policy for the OSS repositories
   name        = "BoundaryDemoPermissionsBoundary"
   path        = "/"
   description = "Used to allow temporary IAM user creation for end-to-end tests"

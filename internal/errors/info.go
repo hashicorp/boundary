@@ -143,6 +143,14 @@ var errorCodeInfo = map[Code]Info{
 		Message: "error occurred during certification generation",
 		Kind:    Encryption,
 	},
+	Sign: {
+		Message: "error occurred during signing",
+		Kind:    Encryption,
+	},
+	Verify: {
+		Message: "error occurred during verification",
+		Kind:    Encryption,
+	},
 	Internal: {
 		Message: "internal error",
 		Kind:    Other,
@@ -279,6 +287,10 @@ var errorCodeInfo = map[Code]Info{
 		Message: "unsupported operation for a kms worker",
 		Kind:    State,
 	},
+	WorkerNotFoundForRequest: {
+		Message: "worker not found with all conditions required for request",
+		Kind:    State,
+	},
 	QueueIsFull: {
 		Message: "queue is full",
 		Kind:    State,
@@ -286,5 +298,49 @@ var errorCodeInfo = map[Code]Info{
 	RetryLimitExceeded: {
 		Message: "retry limit exceeded",
 		Kind:    State,
+	},
+	NotFound: {
+		Message: "not found",
+		Kind:    State,
+	},
+	StorageFileClosed: {
+		Message: "file is closed",
+		Kind:    State,
+	},
+	StorageContainerClosed: {
+		Message: "container is closed",
+		Kind:    State,
+	},
+	StorageFileReadOnly: {
+		Message: "file is read only",
+		Kind:    State,
+	},
+	StorageFileWriteOnly: {
+		Message: "file is write only",
+		Kind:    State,
+	},
+	StorageFileAlreadyExists: {
+		Message: "file already exists",
+		Kind:    State,
+	},
+	StorageContainerReadOnly: {
+		Message: "container is read only",
+		Kind:    State,
+	},
+	StorageContainerWriteOnly: {
+		Message: "container is write only",
+		Kind:    State,
+	},
+	Closed: {
+		Message: "closed",
+		Kind:    State,
+	},
+	ExternalPlugin: {
+		Message: "plugin error",
+		Kind:    External,
+	},
+	ChecksumMismatch: {
+		Message: "checksum mismatch",
+		Kind:    Integrity,
 	},
 }

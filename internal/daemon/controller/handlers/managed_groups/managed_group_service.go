@@ -586,7 +586,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		oidcl, err := oidcRepo.ListManagedGroups(ctx, authMethodId)
+		oidcl, err := oidcRepo.ListManagedGroups(ctx, authMethodId, oidc.WithLimit(-1))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -598,7 +598,7 @@ func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		oidcl, err := ldapRepo.ListManagedGroups(ctx, authMethodId)
+		oidcl, err := ldapRepo.ListManagedGroups(ctx, authMethodId, ldap.WithLimit(ctx, -1))
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

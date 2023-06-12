@@ -270,10 +270,15 @@ begin;
      where h.catalog_id = s.catalog_id
        and h.address like '%.widget';
 
-    insert into plugin_host
+    insert into plugin
       (scope_id, public_id, name)
     values
       ('global', 'plg___wb-hplg', 'Short Host Plugin');
+
+    insert into plugin_host_supported
+      (public_id)
+    values
+      ('plg___wb-hplg');
 
     insert into host_plugin_catalog
       (project_id, public_id, plugin_id, name, attributes)
@@ -329,7 +334,8 @@ begin;
     select h.public_id, s.public_id, s.catalog_id
       from host_plugin_host as h,
            host_plugin_set as s
-     where h.catalog_id = s.catalog_id;
+     where h.catalog_id = s.catalog_id
+       and h.external_id like '%widget';
   end;
   $$ language plpgsql;
 

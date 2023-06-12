@@ -20,7 +20,7 @@ import (
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/hashicorp/boundary/testing/internal/e2e/infra"
 	"github.com/hashicorp/boundary/testing/internal/e2e/vault"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/require"
@@ -41,7 +41,7 @@ type TestEnvironment struct {
 // and uses the Boundary version under test to migrate the database.
 func TestDatabaseMigration(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()

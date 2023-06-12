@@ -9,12 +9,12 @@ begin;
   select wtt_load('widgets', 'iam', 'kms', 'auth', 'hosts', 'targets', 'credentials');
 
   -- validate the setup data
-  select is(count(*), 1::bigint) from credential_vault_store where public_id = 'vs_______cvs1';
+  select is(count(*), 1::bigint) from credential_vault_store where public_id = 'cvs__bcolors';
 
   prepare soft_delete_credential_vault_store as
     update credential_vault_store
       set delete_time = clock_timestamp() -- Can't use now() or current_timestamp since constant within transaction
-    where public_id = 'vs_______cvs1';
+    where public_id = 'cvs__bcolors';
 
   -- First delete succeeds
   select lives_ok('soft_delete_credential_vault_store');

@@ -72,6 +72,13 @@ kms "aead" {
 }
 
 kms "aead" {
+	purpose = "bsr"
+	aead_type = "aes-gcm"
+	key = "%s"
+	key_id = "global_bsr"
+}
+
+kms "aead" {
 	purpose = "recovery"
 	aead_type = "aes-gcm"
 	key = "%s"
@@ -116,6 +123,11 @@ kms "aead" {
 	key_id = "worker-auth-storage"
 }
 `
+
+	// We use a custom Content-Security-Policy because we need to add wasm-unsafe-eval
+	// as a script-src to support asciinema playback on the Admin UI. Users can still
+	// override this value via the configuration.
+	defaultCsp = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; media-src 'self'; manifest-src 'self'; style-src-attr 'self'; frame-ancestors 'self'"
 )
 
 // Config is the configuration for the boundary controller
@@ -131,6 +143,7 @@ type Config struct {
 	DevControllerKey        string `hcl:"-"`
 	DevWorkerAuthKey        string `hcl:"-"`
 	DevWorkerAuthStorageKey string `hcl:"-"`
+	DevBsrKey               string `hcl:"-"`
 	DevRecoveryKey          string `hcl:"-"`
 
 	// Eventing configuration for the controller
@@ -148,14 +161,17 @@ type Config struct {
 	// sensitive. This should only be enabled for debugging purposes, and can be
 	// toggled with SIGHUP.
 	EnableWorkerAuthDebugging bool `hcl:"enable_worker_auth_debugging"`
+
+	// For opting out of license utilization reporting
+	Reporting Reporting `hcl:"reporting"`
 }
 
 type Controller struct {
-	Name              string     `hcl:"name"`
-	Description       string     `hcl:"description"`
-	Database          *Database  `hcl:"database"`
-	PublicClusterAddr string     `hcl:"public_cluster_addr"`
-	Scheduler         *Scheduler `hcl:"scheduler"`
+	Name              string    `hcl:"name"`
+	Description       string    `hcl:"description"`
+	Database          *Database `hcl:"database"`
+	PublicClusterAddr string    `hcl:"public_cluster_addr"`
+	Scheduler         Scheduler `hcl:"scheduler"`
 
 	// AuthTokenTimeToLive is the total valid lifetime of a token denoted by time.Duration
 	AuthTokenTimeToLive         any           `hcl:"auth_token_time_to_live"`
@@ -261,6 +277,10 @@ type Worker struct {
 	// AuthStoragePath represents the location a worker stores its node credentials, if set
 	AuthStoragePath string `hcl:"auth_storage_path"`
 
+	// RecordingStoragePath represents the location a worker caches session recordings before
+	// they are sync'ed to the corresponding storage bucket. The path must already exist.
+	RecordingStoragePath string `hcl:"recording_storage_path"`
+
 	// ControllerGeneratedActivationToken is a controller-generated activation
 	// token used to register this worker to the cluster. It can be a path, env
 	// var, or direct value.
@@ -308,6 +328,14 @@ type Plugins struct {
 	ExecutionDir string `hcl:"execution_dir"`
 }
 
+type Reporting struct {
+	License License `hcl:"license"`
+}
+
+type License struct {
+	Enabled bool `hcl:"enabled"`
+}
+
 // DevWorker is a Config that is used for dev mode of Boundary
 // workers. Supported options: WithObservationsEnabled, WithSysEventsEnabled,
 // WithAuditEventsEnabled, TestWithErrorEventsEnabled
@@ -348,9 +376,10 @@ func DevKeyGeneration() string {
 func DevController(opt ...Option) (*Config, error) {
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
+	bsrKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
 
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, recoveryKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -358,6 +387,7 @@ func DevController(opt ...Option) (*Config, error) {
 	parsed.DevController = true
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
+	parsed.DevBsrKey = bsrKey
 	parsed.DevRecoveryKey = recoveryKey
 	opts := getOpts(opt...)
 	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
@@ -371,8 +401,9 @@ func DevCombined() (*Config, error) {
 	controllerKey := DevKeyGeneration()
 	workerAuthKey := DevKeyGeneration()
 	workerAuthStorageKey := DevKeyGeneration()
+	bsrKey := DevKeyGeneration()
 	recoveryKey := DevKeyGeneration()
-	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, recoveryKey, workerAuthStorageKey)
+	hclStr := fmt.Sprintf(devConfig+devControllerExtraConfig+devWorkerExtraConfig, controllerKey, workerAuthKey, bsrKey, recoveryKey, workerAuthStorageKey)
 	parsed, err := Parse(hclStr)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
@@ -381,6 +412,7 @@ func DevCombined() (*Config, error) {
 	parsed.DevControllerKey = controllerKey
 	parsed.DevWorkerAuthKey = workerAuthKey
 	parsed.DevWorkerAuthStorageKey = workerAuthStorageKey
+	parsed.DevBsrKey = bsrKey
 	parsed.DevRecoveryKey = recoveryKey
 	return parsed, nil
 }
@@ -541,22 +573,20 @@ func Parse(d string) (*Config, error) {
 			result.Controller.GracefulShutdownWaitDuration = t
 		}
 
-		if result.Controller.Scheduler != nil {
-			if result.Controller.Scheduler.JobRunInterval != "" {
-				t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.JobRunInterval)
-				if err != nil {
-					return result, err
-				}
-				result.Controller.Scheduler.JobRunIntervalDuration = t
+		if result.Controller.Scheduler.JobRunInterval != "" {
+			t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.JobRunInterval)
+			if err != nil {
+				return result, err
 			}
+			result.Controller.Scheduler.JobRunIntervalDuration = t
+		}
 
-			if result.Controller.Scheduler.MonitorInterval != "" {
-				t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.MonitorInterval)
-				if err != nil {
-					return result, err
-				}
-				result.Controller.Scheduler.MonitorIntervalDuration = t
+		if result.Controller.Scheduler.MonitorInterval != "" {
+			t, err := parseutil.ParseDurationSecond(result.Controller.Scheduler.MonitorInterval)
+			if err != nil {
+				return result, err
 			}
+			result.Controller.Scheduler.MonitorIntervalDuration = t
 		}
 
 		workerStatusGracePeriod := result.Controller.WorkerStatusGracePeriod
@@ -831,7 +861,11 @@ func Parse(d string) (*Config, error) {
 
 	// Now that we can have multiple KMSes for downstream workers, allow an
 	// unlimited number of KMS blocks as we don't know how many might be defined
-	sharedConfig, err := configutil.ParseConfig(d, configutil.WithMaxKmsBlocks(-1))
+	sharedConfig, err := configutil.ParseConfig(
+		d,
+		configutil.WithMaxKmsBlocks(-1),
+		configutil.WithListenerOptions(listenerutil.WithDefaultUiContentSecurityPolicyHeader(defaultCsp)),
+	)
 	if err != nil {
 		return nil, err
 	}

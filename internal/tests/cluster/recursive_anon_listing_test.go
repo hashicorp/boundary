@@ -36,7 +36,7 @@ func TestListAnonymousRecursing(t *testing.T) {
 	l, err := amClient.List(tc.Context(), scope.Global.String(), amapi.WithRecursive(true))
 	require.NoError(err)
 	require.NotNil(l)
-	require.Len(l.GetItems(), 3)
+	require.Len(l.GetItems(), 4)
 
 	// Originally we also expect to see all three as anon user
 	amClient.ApiClient().SetToken("")

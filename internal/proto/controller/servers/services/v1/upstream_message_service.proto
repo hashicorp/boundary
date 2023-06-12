@@ -1,0 +1,66 @@
+// Copyright (c) HashiCorp, Inc.
+
+syntax = "proto3";
+
+package controller.servers.services.v1;
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/servers/services;services";
+
+service UpstreamMessageService {
+  // sends an upstream message to the controller.
+  rpc UpstreamMessage(UpstreamMessageRequest) returns (UpstreamMessageResponse) {}
+}
+
+message UpstreamMessageRequest {
+  // the node credentials key id for the worker originated the request
+  string originating_worker_key_id = 10; // @gotags: `class:"public"
+
+  // the type of the encrypted_message which must have a
+  // RegisterUpstreamMessageHandler or codesUnimplemented will be returned
+  MsgType msg_type = 20;
+
+  // message will either be encrypted (ct) or plaintext (pt) based on its
+  // msg_type
+  oneof message {
+    // the encrypted upstream message. This message is encrypted with the
+    // originating worker's types.NodeCredentials.
+    bytes ct = 30; // @gotags: `class:"secret"
+
+    // the plaintext upstream message.
+    bytes pt = 40; // @gotags: `class:"public"
+  }
+}
+
+message UpstreamMessageResponse {
+  // the encryped response message. This message is encrypted with the
+  // originating worker's types.NodeCredentials.
+  // message will either be encrypted (ct) or plaintext (pt) based on its
+  // msg_type
+  oneof message {
+    // the encrypted upstream message. This message is encrypted with the
+    // originating worker's types.NodeCredentials.
+    bytes ct = 10; // @gotags: `class:"secret"
+
+    // the plaintext upstream message.
+    bytes pt = 20; // @gotags: `class:"public"
+  }
+}
+
+// defines the set of unknown message types
+enum MsgType {
+  MSG_TYPE_UNSPECIFIED = 0;
+  MSG_TYPE_ECHO = 1; // currently this only used for testing.
+  MSG_TYPE_UNWRAP_KEYS = 2;
+  MSG_TYPE_VERIFY_SIGNATURE = 3;
+  MSG_TYPE_CLOSE_SESSION_RECORDING = 4;
+  MSG_TYPE_CLOSE_CONNECTION_RECORDING = 5;
+  MSG_TYPE_CREATE_CHANNEL_RECORDING = 6;
+}
+
+message EchoUpstreamMessageRequest {
+  string msg = 10; // @gotags: `class:"secret"
+}
+
+message EchoUpstreamMessageResponse {
+  string msg = 10; // @gotags: `class:"secret"
+}

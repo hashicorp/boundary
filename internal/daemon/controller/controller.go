@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/census"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
@@ -25,28 +26,33 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/internal/metric"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	intglobals "github.com/hashicorp/boundary/internal/globals"
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/cleaner"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
 	"github.com/hashicorp/boundary/internal/server"
 	serversjob "github.com/hashicorp/boundary/internal/server/job"
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/snapshot"
+	pluginstorage "github.com/hashicorp/boundary/internal/storage/plugin"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/types/scope"
-	host_plugin_assets "github.com/hashicorp/boundary/plugins/host"
-	"github.com/hashicorp/boundary/sdk/pbs/plugin"
-	external_host_plugins "github.com/hashicorp/boundary/sdk/plugins/host"
+	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
+	"github.com/hashicorp/nodeenrollment"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
 )
@@ -78,6 +84,7 @@ var (
 	downstreamersFactory           func(context.Context, string, string) (common.Downstreamers, error)
 	downstreamWorkersTickerFactory func(context.Context, string, string, common.Downstreamers, downstreamReceiver) (downstreamWorkersTicker, error)
 	commandClientFactory           func(context.Context, *Controller) error
+	extControllerFactory           func(ctx context.Context, c *Controller, r db.Reader, w db.Writer, kms *kms.Kms) (intglobals.ControllerExtension, error)
 )
 
 type Controller struct {
@@ -113,21 +120,22 @@ type Controller struct {
 	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
-	AuthTokenRepoFn         common.AuthTokenRepoFactory
-	VaultCredentialRepoFn   common.VaultCredentialRepoFactory
-	StaticCredentialRepoFn  common.StaticCredentialRepoFactory
-	IamRepoFn               common.IamRepoFactory
-	OidcRepoFn              common.OidcAuthRepoFactory
-	LdapRepoFn              common.LdapAuthRepoFactory
-	PasswordAuthRepoFn      common.PasswordAuthRepoFactory
-	ServersRepoFn           common.ServersRepoFactory
-	SessionRepoFn           session.RepositoryFactory
-	ConnectionRepoFn        common.ConnectionRepoFactory
-	StaticHostRepoFn        common.StaticRepoFactory
-	PluginHostRepoFn        common.PluginHostRepoFactory
-	HostPluginRepoFn        common.HostPluginRepoFactory
-	TargetRepoFn            target.RepositoryFactory
-	WorkerAuthRepoStorageFn common.WorkerAuthRepoStorageFactory
+	AuthTokenRepoFn           common.AuthTokenRepoFactory
+	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
+	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
+	IamRepoFn                 common.IamRepoFactory
+	OidcRepoFn                common.OidcAuthRepoFactory
+	LdapRepoFn                common.LdapAuthRepoFactory
+	PasswordAuthRepoFn        common.PasswordAuthRepoFactory
+	ServersRepoFn             common.ServersRepoFactory
+	SessionRepoFn             session.RepositoryFactory
+	ConnectionRepoFn          common.ConnectionRepoFactory
+	StaticHostRepoFn          common.StaticRepoFactory
+	PluginHostRepoFn          common.PluginHostRepoFactory
+	PluginStorageBucketRepoFn common.PluginStorageBucketRepoFactory
+	PluginRepoFn              common.PluginRepoFactory
+	TargetRepoFn              target.RepositoryFactory
+	WorkerAuthRepoStorageFn   common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -140,9 +148,13 @@ type Controller struct {
 	HealthService *health.Service
 
 	pkiConnManager *cluster.DownstreamManager
+
+	// ControllerExtension defines a std way to extend the controller
+	ControllerExtension intglobals.ControllerExtension
 }
 
 func New(ctx context.Context, conf *Config) (*Controller, error) {
+	const op = "controller.New"
 	metric.InitializeApiCollectors(conf.PrometheusRegisterer)
 	c := &Controller{
 		conf:                    conf,
@@ -242,38 +254,60 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			}
 		}
 		switch enabledPlugin {
-		case base.EnabledPluginHostLoopback:
-			plg := pluginhost.NewWrappingPluginClient(pluginhost.NewLoopbackPlugin())
-			opts := []host.Option{
-				host.WithDescription("Provides an initial loopback host plugin in Boundary"),
-				host.WithPublicId(conf.DevLoopbackHostPluginId),
+		case base.EnabledPluginLoopback:
+			lp, err := loopback.NewLoopbackPlugin()
+			if err != nil {
+				return nil, fmt.Errorf("error creating loopback plugin: %w", err)
 			}
-			if _, err = conf.RegisterHostPlugin(ctx, "loopback", plg, opts...); err != nil {
+			plg := loopback.NewWrappingPluginHostClient(lp)
+			opts := []plugin.Option{
+				plugin.WithDescription("Provides an initial loopback storage and host plugin in Boundary"),
+				plugin.WithPublicId(conf.DevLoopbackPluginId),
+			}
+			if _, err = conf.RegisterPlugin(ctx, "loopback", plg, []plugin.PluginType{plugin.PluginTypeHost, plugin.PluginTypeStorage}, opts...); err != nil {
 				return nil, err
 			}
-		case base.EnabledPluginHostAzure, base.EnabledPluginHostAws:
+		case base.EnabledPluginHostAzure:
 			pluginType := strings.ToLower(enabledPlugin.String())
-			client, cleanup, err := external_host_plugins.CreateHostPlugin(
+			client, cleanup, err := external_plugins.CreateHostPlugin(
 				ctx,
 				pluginType,
-				external_host_plugins.WithPluginOptions(
+				external_plugins.WithPluginOptions(
 					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
-					pluginutil.WithPluginsFilesystem(host_plugin_assets.HostPluginPrefix, host_plugin_assets.FileSystem()),
+					pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
 				),
-				external_host_plugins.WithLogger(pluginLogger.Named(pluginType)),
+				external_plugins.WithLogger(pluginLogger.Named(pluginType)),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
 			}
 			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
-			if _, err := conf.RegisterHostPlugin(ctx, pluginType, client, host.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
+				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
+			}
+		case base.EnabledPluginAws:
+			pluginType := strings.ToLower(enabledPlugin.String())
+			client, cleanup, err := external_plugins.CreateHostPlugin(
+				ctx,
+				pluginType,
+				external_plugins.WithPluginOptions(
+					pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+					pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
+				),
+				external_plugins.WithLogger(pluginLogger.Named(pluginType)),
+			)
+			if err != nil {
+				return nil, fmt.Errorf("error creating %s host plugin: %w", pluginType, err)
+			}
+			conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+			if _, err := conf.RegisterPlugin(ctx, pluginType, client, []plugin.PluginType{plugin.PluginTypeHost, plugin.PluginTypeStorage}, plugin.WithDescription(fmt.Sprintf("Built-in %s host plugin", enabledPlugin.String()))); err != nil {
 				return nil, fmt.Errorf("error registering %s host plugin: %w", pluginType, err)
 			}
 		}
 	}
 
 	if conf.HostPlugins == nil {
-		conf.HostPlugins = make(map[string]plugin.HostPluginServiceClient)
+		conf.HostPlugins = make(map[string]plgpb.HostPluginServiceClient)
 	}
 
 	// Set up repo stuff
@@ -287,6 +321,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		kms.WithRootWrapper(c.conf.RootKms),
 		kms.WithWorkerAuthWrapper(c.conf.WorkerAuthKms),
 		kms.WithRecoveryWrapper(c.conf.RecoveryKms),
+		kms.WithBsrWrapper(c.conf.BsrKms),
 	); err != nil {
 		return nil, fmt.Errorf("error adding config keys to kms: %w", err)
 	}
@@ -323,14 +358,13 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	// TODO: Allow setting run jobs limit from config
 	schedulerOpts := []scheduler.Option{scheduler.WithRunJobsLimit(-1)}
-	if sche := c.conf.RawConfig.Controller.Scheduler; sche != nil {
-		if sche.JobRunIntervalDuration > 0 {
-			schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(sche.JobRunIntervalDuration))
-		}
-		if sche.MonitorIntervalDuration > 0 {
-			schedulerOpts = append(schedulerOpts, scheduler.WithMonitorInterval(sche.MonitorIntervalDuration))
-		}
+	if c.conf.RawConfig.Controller.Scheduler.JobRunIntervalDuration > 0 {
+		schedulerOpts = append(schedulerOpts, scheduler.WithRunJobsInterval(c.conf.RawConfig.Controller.Scheduler.JobRunIntervalDuration))
 	}
+	if c.conf.RawConfig.Controller.Scheduler.MonitorIntervalDuration > 0 {
+		schedulerOpts = append(schedulerOpts, scheduler.WithMonitorInterval(c.conf.RawConfig.Controller.Scheduler.MonitorIntervalDuration))
+	}
+
 	c.scheduler, err = scheduler.New(c.conf.RawConfig.Controller.Name, jobRepoFn, schedulerOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new scheduler: %w", err)
@@ -344,8 +378,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.PluginHostRepoFn = func() (*pluginhost.Repository, error) {
 		return pluginhost.NewRepository(dbase, dbase, c.kms, c.scheduler, c.conf.HostPlugins)
 	}
-	c.HostPluginRepoFn = func() (*host.Repository, error) {
-		return host.NewRepository(dbase, dbase, c.kms)
+	c.PluginRepoFn = func() (*plugin.Repository, error) {
+		return plugin.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.PluginStorageBucketRepoFn = func() (*pluginstorage.Repository, error) {
+		return pluginstorage.NewRepository(ctx, dbase, dbase, c.kms)
 	}
 	c.AuthTokenRepoFn = func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(dbase, dbase, c.kms,
@@ -392,9 +429,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to instantiate worker auth repository: %w", err)
 	}
-	_, err = server.RotateRoots(ctx, serversRepo)
+	_, err = server.RotateRoots(ctx, serversRepo, nodeenrollment.WithCertificateLifetime(conf.TestOverrideWorkerAuthCaCertificateLifetime))
 	if err != nil {
-		return nil, fmt.Errorf("unable to ensure worker auth roots exist: %w", err)
+		event.WriteSysEvent(ctx, op, "unable to ensure worker auth roots exist, may be due to multiple controllers starting at once, continuing")
 	}
 
 	if downstreamersFactory != nil {
@@ -408,6 +445,12 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			if err != nil {
 				return nil, fmt.Errorf("unable to initialize issue command factory: %w", err)
 			}
+		}
+	}
+
+	if extControllerFactory != nil {
+		if c.ControllerExtension, err = extControllerFactory(ctx, c, dbase, dbase, c.kms); err != nil {
+			return nil, fmt.Errorf("unable to extend controller: %w", err)
 		}
 	}
 
@@ -503,7 +546,11 @@ func (c *Controller) Start() error {
 			}
 		}()
 	}
-
+	if c.ControllerExtension != nil {
+		if err := c.ControllerExtension.Start(c.baseContext); err != nil {
+			return fmt.Errorf("error starting controller extension: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -518,13 +565,26 @@ func (c *Controller) registerJobs() error {
 	if err := session.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, c.workerStatusGracePeriod); err != nil {
 		return err
 	}
-	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms); err != nil {
+	var serverJobOpts []serversjob.Option
+	if c.conf.TestOverrideWorkerAuthCaCertificateLifetime > 0 {
+		serverJobOpts = append(serverJobOpts,
+			serversjob.WithCertificateLifetime(c.conf.TestOverrideWorkerAuthCaCertificateLifetime),
+			serversjob.WithRotationFrequency(c.conf.TestOverrideWorkerAuthCaCertificateLifetime/2),
+		)
+	}
+	if err := serversjob.RegisterJobs(c.baseContext, c.scheduler, rw, rw, c.kms, serverJobOpts...); err != nil {
 		return err
 	}
 	if err := kmsjob.RegisterJobs(c.baseContext, c.scheduler, c.kms); err != nil {
 		return err
 	}
 	if err := cleaner.RegisterJob(c.baseContext, c.scheduler, rw); err != nil {
+		return err
+	}
+	if err := snapshot.RegisterJob(c.baseContext, c.scheduler, rw, rw); err != nil {
+		return err
+	}
+	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw); err != nil {
 		return err
 	}
 

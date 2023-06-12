@@ -17,7 +17,7 @@ import (
 func TestRegisterHandler(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	fn := func(context.Context, DecryptFn, net.Conn, *ProxyDialer, string, *anypb.Any) (ProxyConnFn, error) {
+	fn := func(context.Context, context.Context, DecryptFn, net.Conn, *ProxyDialer, string, *anypb.Any, RecordingManager) (ProxyConnFn, error) {
 		return nil, nil
 	}
 	oldHandler := handlers
@@ -40,7 +40,7 @@ func TestRegisterHandler(t *testing.T) {
 
 func TestAlwaysTcpGetHandler(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	fn := func(context.Context, DecryptFn, net.Conn, *ProxyDialer, string, *anypb.Any) (ProxyConnFn, error) {
+	fn := func(context.Context, context.Context, DecryptFn, net.Conn, *ProxyDialer, string, *anypb.Any, RecordingManager) (ProxyConnFn, error) {
 		return nil, nil
 	}
 	oldHandler := handlers

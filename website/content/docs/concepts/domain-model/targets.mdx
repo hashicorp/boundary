@@ -91,8 +91,9 @@ SSH targets have the following additional attributes:
   A valid network address for the target to connect to.
   This value cannot be used alongside host sources.
 
-- `default_port` - (required)
+- `default_port` - (optional)
   The default port to set on this target.
+  If this is not specified the default port will be 22.
 
 - `egress_worker_filter` - (optional)
   A boolean expression to [filter][] which egress workers can handle sessions

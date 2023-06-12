@@ -21,7 +21,9 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/session_recordings"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/storagebuckets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/users"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
@@ -106,6 +108,10 @@ type structInfo struct {
 	// nameOverride can be used to override the name coming from the proto,
 	// useful to avoid collisions
 	nameOverride string
+
+	// skipListFiltering indicates that the collection doesn't support
+	// filtering when listing
+	skipListFiltering bool
 
 	// recursiveListing indicates that the collection supports recursion when
 	// listing
@@ -705,6 +711,39 @@ var inputStructs = []*structInfo{
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 	},
 
+	// Storage related resources
+	{
+		inProto: &storagebuckets.StorageBucket{},
+		outFile: "storagebuckets/storage_bucket.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			commonCreateTemplate,
+			readTemplate,
+			updateTemplate,
+			deleteTemplate,
+			listTemplate,
+		},
+		extraFields: []fieldInfo{
+			{
+				Name:        "PluginName",
+				ProtoName:   "plugin_name",
+				FieldType:   "string",
+				SkipDefault: true,
+				Query:       true,
+			},
+		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "PluginId",
+				SkipDefault: true,
+			},
+		},
+		pluralResourceName:  "storage-buckets",
+		versionEnabled:      true,
+		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+		recursiveListing:    true,
+	},
+
 	// Host related resources
 	{
 		inProto: &hostcatalogs.HostCatalog{},
@@ -757,6 +796,15 @@ var inputStructs = []*structInfo{
 		recursiveListing:    true,
 	},
 	{
+		inProto:        &hosts.StaticHostAttributes{},
+		outFile:        "hosts/static_host_attributes.gen.go",
+		subtypeName:    "StaticHost",
+		parentTypeName: "Host",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
 		inProto: &hosts.Host{},
 		outFile: "hosts/host.gen.go",
 		templates: []*template.Template{
@@ -771,15 +819,6 @@ var inputStructs = []*structInfo{
 		parentTypeName:      "host-catalog",
 		versionEnabled:      true,
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
-	},
-	{
-		inProto:        &hosts.StaticHostAttributes{},
-		outFile:        "hosts/static_host_attributes.gen.go",
-		subtypeName:    "StaticHost",
-		parentTypeName: "Host",
-		templates: []*template.Template{
-			mapstructureConversionTemplate,
-		},
 	},
 	{
 		inProto: &hostsets.HostSet{},
@@ -851,6 +890,12 @@ var inputStructs = []*structInfo{
 		parentTypeName: "Target",
 		templates: []*template.Template{
 			mapstructureConversionTemplate,
+		},
+		fieldOverrides: []fieldInfo{
+			{
+				Name:        "EnableSessionRecording",
+				SkipDefault: true,
+			},
 		},
 	},
 	{
@@ -964,7 +1009,92 @@ var inputStructs = []*structInfo{
 		pluralResourceName:  "sessions",
 		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		fieldFilter:         []string{"private_key"},
+		versionEnabled:      true,
 		recursiveListing:    true,
+	},
+	{
+		inProto: &session_recordings.User{},
+		outFile: "sessionrecordings/user.gen.go",
+	},
+	{
+		inProto: &session_recordings.Target{},
+		outFile: "sessionrecordings/target.gen.go",
+	},
+	{
+		inProto:        &session_recordings.SshTargetAttributes{},
+		outFile:        "sessionrecordings/ssh_target_attributes.gen.go",
+		subtypeName:    "Ssh",
+		parentTypeName: "Target",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto: &session_recordings.Host{},
+		outFile: "sessionrecordings/host.gen.go",
+	},
+	{
+		inProto:        &session_recordings.StaticHostAttributes{},
+		outFile:        "sessionrecordings/static_host_attributes.gen.go",
+		subtypeName:    "Static",
+		parentTypeName: "Host",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto: &session_recordings.HostCatalog{},
+		outFile: "sessionrecordings/host_catalog.gen.go",
+	},
+	{
+		inProto: &session_recordings.ValuesAtTime{},
+		outFile: "sessionrecordings/values_at_time.gen.go",
+	},
+	{
+		inProto: &session_recordings.ConnectionRecording{},
+		outFile: "sessionrecordings/connection_recording.gen.go",
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "BytesUp", JsonTags: []string{"string"}},
+			{Name: "BytesDown", JsonTags: []string{"string"}},
+		},
+	},
+	{
+		inProto: &session_recordings.ChannelRecording{},
+		outFile: "sessionrecordings/channel_recording.gen.go",
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "BytesUp", JsonTags: []string{"string"}},
+			{Name: "BytesDown", JsonTags: []string{"string"}},
+		},
+	},
+	{
+		// this must be the last block of session recording blocks, otherwise
+		// the bits beyond inProto and outFile will get overwritten by
+		// subsequent session recording blocks
+		inProto: &session_recordings.SessionRecording{},
+		outFile: "sessionrecordings/session_recording.gen.go",
+		templates: []*template.Template{
+			clientTemplate,
+			readTemplate,
+			listTemplate,
+		},
+		pluralResourceName:  "session-recordings",
+		createResponseTypes: []string{ReadResponseType, ListResponseType},
+		recursiveListing:    true,
+		skipListFiltering:   true,
+		versionEnabled:      false,
+		fieldOverrides: []fieldInfo{
+			// int64 fields get marshalled by protobuf as strings, so we have
+			// to tell the json parser that their json representation is a
+			// string but they go into Go int64 types.
+			{Name: "BytesUp", JsonTags: []string{"string"}},
+			{Name: "BytesDown", JsonTags: []string{"string"}},
+		},
 	},
 	{
 		inProto: &workers.Certificate{},

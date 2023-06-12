@@ -125,6 +125,13 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.WithWorkerFilter = `"/foo" == "bar"`
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithTestWorkerFilter", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithTestWorkerFilter(`"/foo" == "bar"`))
+		testOpts := getDefaultOptions()
+		testOpts.WithTestWorkerFilter = `"/foo" == "bar"`
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithEgressWorkerFilter", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := GetOpts(WithEgressWorkerFilter(`"/foo" == "bar"`))
@@ -210,6 +217,20 @@ func Test_GetOpts(t *testing.T) {
 				},
 			},
 		}
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithStorageBucketId", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithStorageBucketId("testId"))
+		testOpts := getDefaultOptions()
+		testOpts.WithStorageBucketId = "testId"
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithEnableSessionRecording", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := GetOpts(WithEnableSessionRecording(true))
+		testOpts := getDefaultOptions()
+		testOpts.WithEnableSessionRecording = true
 		assert.Equal(opts, testOpts)
 	})
 }

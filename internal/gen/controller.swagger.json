@@ -45,7 +45,13 @@
       "name": "controller.api.services.v1.RoleService"
     },
     {
+      "name": "controller.api.services.v1.SessionRecordingService"
+    },
+    {
       "name": "controller.api.services.v1.SessionService"
+    },
+    {
+      "name": "controller.api.services.v1.StorageBucketService"
     },
     {
       "name": "controller.api.services.v1.TargetService"
@@ -83,12 +89,14 @@
         "parameters": [
           {
             "name": "auth_method_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -139,6 +147,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -162,6 +171,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -185,6 +195,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -196,12 +207,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -224,6 +229,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -241,10 +247,12 @@
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
                 "current_password": {
-                  "type": "string"
+                  "type": "string",
+                  "title": ""
                 },
                 "new_password": {
-                  "type": "string"
+                  "type": "string",
+                  "title": ""
                 }
               }
             }
@@ -270,6 +278,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -287,7 +296,8 @@
                   "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
                 },
                 "password": {
-                  "type": "string"
+                  "type": "string",
+                  "title": ""
                 }
               }
             }
@@ -313,18 +323,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -427,6 +440,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -450,6 +464,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -473,6 +488,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -484,12 +500,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -512,6 +522,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -556,18 +567,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -593,6 +607,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -616,6 +631,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -641,12 +657,14 @@
         "parameters": [
           {
             "name": "credential_store_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -697,6 +715,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -720,6 +739,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -743,6 +763,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -754,12 +775,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -782,18 +797,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -844,6 +862,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -867,6 +886,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -890,6 +910,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -901,12 +922,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -929,12 +944,14 @@
         "parameters": [
           {
             "name": "credential_store_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -985,6 +1002,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1008,6 +1026,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1031,6 +1050,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1042,12 +1062,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1070,18 +1084,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1132,6 +1149,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1155,6 +1173,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1178,6 +1197,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1189,12 +1209,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1217,6 +1231,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1237,7 +1252,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -1263,6 +1279,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1283,7 +1300,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -1309,6 +1327,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1329,7 +1348,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -1355,18 +1375,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1424,6 +1447,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1447,6 +1471,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1470,6 +1495,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1481,12 +1507,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1509,12 +1529,14 @@
         "parameters": [
           {
             "name": "host_catalog_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1565,6 +1587,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1588,6 +1611,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1611,6 +1635,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1622,12 +1647,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1650,6 +1669,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1697,6 +1717,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1744,6 +1765,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1791,12 +1813,14 @@
         "parameters": [
           {
             "name": "host_catalog_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1847,6 +1871,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1870,6 +1895,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1893,6 +1919,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -1904,12 +1931,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -1932,12 +1953,14 @@
         "parameters": [
           {
             "name": "auth_method_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -1988,6 +2011,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2011,6 +2035,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2034,6 +2059,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2045,12 +2071,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -2073,18 +2093,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -2135,6 +2158,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2158,6 +2182,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2181,6 +2206,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2192,12 +2218,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -2220,6 +2240,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2240,7 +2261,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2266,6 +2288,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2286,7 +2309,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2312,6 +2336,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2332,7 +2357,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2358,6 +2384,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2378,7 +2405,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2404,6 +2432,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2424,7 +2453,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2450,6 +2480,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2470,7 +2501,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -2496,18 +2528,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -2539,12 +2574,14 @@
           },
           {
             "name": "skip_admin_role_creation",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "skip_default_role_creation",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
@@ -2570,6 +2607,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2593,6 +2631,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2616,6 +2655,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2627,12 +2667,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -2655,6 +2689,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2680,6 +2715,7 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2744,6 +2780,101 @@
         ]
       }
     },
+    "/v1/session-recordings": {
+      "get": {
+        "summary": "ListSessionRecordings lists all Session recordings. Session recordings are ordered by start_time descending (most recently started first).",
+        "operationId": "SessionRecordingService_ListSessionRecordings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListSessionRecordingsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "description": "The scope in which to list session recordings.\nMust be set unless recursive is set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "description": "Whether to recurse into child scopes when listing.\nIf set and scope_id is empty, shows session recordings in\nall scopes the caller has access to.",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionRecordingService"
+        ]
+      }
+    },
+    "/v1/session-recordings/{id}": {
+      "get": {
+        "summary": "GetSessionRecording returns a stored Session recording if present. The provided request must include the Session recording ID for the Session recording being retrieved, or the ID of the Session that was recorded. If that ID is missing, malformed or reference a non existing resource, an error is returned.",
+        "operationId": "SessionRecordingService_GetSessionRecording",
+        "responses": {
+          "200": {
+            "description": "The requested recording.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The ID of the Session recording, or the ID of the Session that was recorded.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionRecordingService"
+        ]
+      }
+    },
+    "/v1/session-recordings/{id}:download": {
+      "get": {
+        "summary": "Download returns the contents of the specified resource in the specified mime type. Supports both Session ID and Session recording ID for looking up a Session recording. Supports both Connection ID and Connection recording ID to look up a Connection recording. A Channel recording ID is required to look up a Channel recording. The only supported mime type is \"application/x-asciicast\".",
+        "operationId": "SessionRecordingService_Download",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "string",
+              "format": "binary",
+              "properties": {},
+              "title": "Free form byte stream"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "The ID of the resource that should be downloaded. Supported types:\n  - Session ID and Session recording ID for Session recordings\n  - Connection ID and Connection recording ID for Connection recordings\n  - Channel recording ID for Channel recordings",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "mime_type",
+            "description": "The format of the response. The only supported mime type is \"application/x-asciicast\".\nDefaults to \"application/x-asciicast\" if not set.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.SessionRecordingService"
+        ]
+      }
+    },
     "/v1/sessions": {
       "get": {
         "summary": "Lists all Sessions.",
@@ -2759,18 +2890,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -2803,6 +2937,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2828,6 +2963,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2841,7 +2977,8 @@
               "properties": {
                 "version": {
                   "type": "integer",
-                  "format": "int64"
+                  "format": "int64",
+                  "title": ""
                 }
               }
             }
@@ -2849,6 +2986,160 @@
         ],
         "tags": [
           "controller.api.services.v1.SessionService"
+        ]
+      }
+    },
+    "/v1/storage-buckets": {
+      "get": {
+        "summary": "Gets a list of Storage Buckets.",
+        "operationId": "StorageBucketService_ListStorageBuckets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.ListStorageBucketsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "scope_id",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "recursive",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "filter",
+            "description": "",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.StorageBucketService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a Storage Bucket",
+        "operationId": "StorageBucketService_CreateStorageBucket",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          },
+          {
+            "name": "plugin_name",
+            "description": "As an alternative to providing the plugin id in the provided StorageBucket,\nthis field can be used to lookup the plugin using its name.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.StorageBucketService"
+        ]
+      }
+    },
+    "/v1/storage-buckets/{id}": {
+      "get": {
+        "summary": "Gets a single Storage Bucket.",
+        "operationId": "StorageBucketService_GetStorageBucket",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.StorageBucketService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a Storage Bucket",
+        "operationId": "StorageBucketService_DeleteStorageBucket",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/controller.api.services.v1.DeleteStorageBucketResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.StorageBucketService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a Storage Bucket",
+        "operationId": "StorageBucketService_UpdateStorageBucket",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "item",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.StorageBucketService"
         ]
       }
     },
@@ -2867,18 +3158,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -2929,6 +3223,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2952,6 +3247,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2975,6 +3271,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -2986,12 +3283,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -3014,6 +3305,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3035,6 +3327,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "description": "",
                   "title": "Deprecated use brokered_credential_source_ids instead"
                 },
                 "brokered_credential_source_ids": {
@@ -3075,6 +3368,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3095,7 +3389,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3124,7 +3419,8 @@
             "description": "The ID of the target. Required unless some combination of scope_id/scope_name and name are set.",
             "in": "path",
             "required": true,
-            "type": "string"
+            "type": "string",
+            "pattern": ".+"
           },
           {
             "name": "body",
@@ -3173,6 +3469,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3194,6 +3491,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "description": "",
                   "title": "Deprecated use brokered_credential_source_ids instead"
                 },
                 "brokered_credential_source_ids": {
@@ -3234,6 +3532,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3254,7 +3553,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3280,6 +3580,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3301,6 +3602,7 @@
                   "items": {
                     "type": "string"
                   },
+                  "description": "",
                   "title": "Deprecated use brokered_credential_source_ids instead"
                 },
                 "brokered_credential_source_ids": {
@@ -3342,6 +3644,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3362,7 +3665,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3388,18 +3692,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -3450,6 +3757,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3473,6 +3781,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3496,6 +3805,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3507,12 +3817,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.users.v1.User"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -3535,6 +3839,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3555,7 +3860,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3581,6 +3887,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3601,7 +3908,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3627,6 +3935,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3647,7 +3956,8 @@
                   "type": "array",
                   "items": {
                     "type": "string"
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3673,18 +3983,21 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "recursive",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "boolean"
           },
           {
             "name": "filter",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -3710,6 +4023,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3733,6 +4047,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3756,6 +4071,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3767,12 +4083,6 @@
             "schema": {
               "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
             }
-          },
-          {
-            "name": "update_mask",
-            "in": "query",
-            "required": false,
-            "type": "string"
           }
         ],
         "tags": [
@@ -3795,6 +4105,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3818,7 +4129,8 @@
                     "items": {
                       "type": "object"
                     }
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3844,6 +4156,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3867,7 +4180,8 @@
                     "items": {
                       "type": "object"
                     }
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3893,6 +4207,7 @@
         "parameters": [
           {
             "name": "id",
+            "description": "",
             "in": "path",
             "required": true,
             "type": "string"
@@ -3916,7 +4231,8 @@
                     "items": {
                       "type": "object"
                     }
-                  }
+                  },
+                  "title": ""
                 }
               }
             }
@@ -3996,6 +4312,7 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -4021,6 +4338,7 @@
         "parameters": [
           {
             "name": "scope_id",
+            "description": "",
             "in": "query",
             "required": false,
             "type": "string"
@@ -4088,6 +4406,7 @@
           "items": {
             "type": "string"
           },
+          "description": "",
           "title": "Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account",
           "readOnly": true
         },
@@ -4311,6 +4630,7 @@
         },
         "credential_type": {
           "type": "string",
+          "description": "",
           "title": "The type of credential this library will issue, defaults to Unspecified"
         },
         "credential_mapping_overrides": {
@@ -4506,6 +4826,7 @@
         "members": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.groups.v1.Member"
           },
           "description": "Output only. The members of this Group.",
@@ -5022,6 +5343,7 @@
         "principals": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.roles.v1.Principal"
           },
           "description": "Output only. The principals that are assigned to this role.",
@@ -5038,6 +5360,7 @@
         "grants": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.roles.v1.Grant"
           },
           "description": "Output only. The parsed grant information.",
@@ -5081,6 +5404,7 @@
         "versions": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.scopes.v1.KeyVersion"
           },
           "description": "The versions of the key."
@@ -5189,6 +5513,7 @@
         },
         "primary_auth_method_id": {
           "type": "string",
+          "description": "",
           "title": "The ID of the primary auth method for this scope.  A primary auth method\nis allowed to vivify users when new accounts are created and is the source for the users account info"
         },
         "authorized_actions": {
@@ -5243,39 +5568,425 @@
         }
       }
     },
+    "controller.api.resources.sessionrecordings.v1.ChannelRecording": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Channel recording."
+        },
+        "bytes_up": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes uploaded from the client in the Channel."
+        },
+        "bytes_down": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes downloaded to the client in the Channel."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Channel was created in the controller."
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time of the most recent update to the Channel."
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Channel started."
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Channel ended."
+        },
+        "duration": {
+          "type": "string",
+          "description": "The total duration of the Channel."
+        },
+        "mime_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MimeTypes define the mime types that can\nbe used to consume the recording of this Channel.\nThe only supported mime type is \"application/x-asciicast\"."
+        }
+      },
+      "description": "ChannelRecording contains recorded information about a single Channel within a Connection.\nChannels are only present in multiplexed protocols, such as SSH."
+    },
+    "controller.api.resources.sessionrecordings.v1.ConnectionRecording": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Connection recording."
+        },
+        "bytes_up": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes uploaded from the client in the Connection.\nThis includes any protocol overhead."
+        },
+        "bytes_down": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes downloaded to the client in the Connection.\nThis includes any protocol overhead."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Connection was created in the controller."
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time of the most recent update to the Connection."
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Connection started."
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Connection ended."
+        },
+        "duration": {
+          "type": "string",
+          "description": "The total duration of the Connection."
+        },
+        "mime_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MimeTypes define the mime types that can\nbe used to consume the recording of this Connection.\nNo mime types are currently supported."
+        },
+        "channel_recordings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.ChannelRecording"
+          },
+          "description": "Optionally, the channels used in this Connection,\nif it is using a multiplexed protocol, such as SSH."
+        }
+      },
+      "description": "ConnectionRecording contains the recording of a single Connection within a Session."
+    },
+    "controller.api.resources.sessionrecordings.v1.Host": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "",
+          "title": "The ID of the Host"
+        },
+        "host_catalog": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.HostCatalog",
+          "description": "",
+          "title": "The Host Catalog this Host is in"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the Host, if set."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the Host, if set."
+        },
+        "type": {
+          "type": "string",
+          "description": "",
+          "title": "The type of the host. This will be either \"static\" or \"plugin\""
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applicable for the specific Host."
+        },
+        "external_id": {
+          "type": "string",
+          "description": "The external id of the Host, if any."
+        },
+        "external_name": {
+          "type": "string",
+          "description": "The external name of the Host, if any."
+        }
+      },
+      "description": "Host describes the Host that was chosen for the recorded session."
+    },
+    "controller.api.resources.sessionrecordings.v1.HostCatalog": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "",
+          "title": "The ID of the Host Catalog"
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "",
+          "title": "The scope that the Host Catalog is in"
+        },
+        "plugin_id": {
+          "type": "string",
+          "description": "The plugin id used by this Host Catalog, if any."
+        },
+        "name": {
+          "type": "string",
+          "description": "",
+          "title": "The name of the Host Catalog, if set"
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the Host Catalog."
+        },
+        "type": {
+          "type": "string",
+          "description": "",
+          "title": "The type of the Host Catalog.  This will be either \"static\" or \"plugin\""
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes of the Host Catalog."
+        }
+      },
+      "description": "HostCatalog describes the HostCatalog that contains the host chosen for the\nrecorded session."
+    },
+    "controller.api.resources.sessionrecordings.v1.SessionRecording": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Session recording."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "The scope that the Session Recording is in.\nThis is inferred from the storage bucket associated\nwith the target."
+        },
+        "session_id": {
+          "type": "string",
+          "description": "The ID of the Session which this Session Recording recorded."
+        },
+        "storage_bucket_id": {
+          "type": "string",
+          "description": "The ID of the Storage Bucket for the Target of this Session Recording."
+        },
+        "bytes_up": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes uploaded from the client in the Session.\nThis includes all bytes uploaded over all Connections, including\nany protocol overhead."
+        },
+        "bytes_down": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The total number of bytes downloaded to the client in the Session.\nThis includes all bytes downloaded over all Connections, including\nany protocol overhead."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Session Recording was created in the controller."
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time of the most recent update to the Session Recording."
+        },
+        "start_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Session started."
+        },
+        "end_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The time the Session ended."
+        },
+        "duration": {
+          "type": "string",
+          "description": "The total duration of the Session."
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of the Session that was recorded (e.g. ssh)."
+        },
+        "state": {
+          "type": "string",
+          "description": "The current state of the session recording. One of\n\"started\", \"available\" and \"unknown\"."
+        },
+        "error_details": {
+          "type": "string",
+          "description": "Any error seen during the closing of the session recording.\nCurrently only set if state is \"unknown\"."
+        },
+        "mime_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "MimeTypes define the mime types that can\nbe used to consume the recording of this Session.\nNo mime types are currently supported."
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "The endpoint of the Session; that is, the address to which the egress worker connected."
+        },
+        "connection_recordings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.ConnectionRecording"
+          },
+          "description": "The recordings of the connections that were created in the Session.\nThis field may be unset when listing Session recordings."
+        },
+        "create_time_values": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.ValuesAtTime",
+          "description": "create_time_values contains the values of related fields at the time\nthis Session Recording was created. This may be unset when listing."
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The available actions on this resource for this user."
+        }
+      },
+      "description": "SessionRecording contains information about the recording of a Session."
+    },
+    "controller.api.resources.sessionrecordings.v1.Target": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the Target."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the Target, if set."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the Target, if set."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "The scope that the Target is in."
+        },
+        "session_max_seconds": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Maximum total lifetime of a created Session, in seconds."
+        },
+        "session_connection_limit": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Maximum number of connections allowed in a Session.  Unlimited is indicated by the value -1."
+        },
+        "worker_filter": {
+          "type": "string",
+          "description": "Optional boolean expression to filter the workers that are allowed to satisfy this request."
+        },
+        "egress_worker_filter": {
+          "type": "string",
+          "description": "Optional boolean expressions to filter the egress workers that are allowed to satisfy this request."
+        },
+        "ingress_worker_filter": {
+          "type": "string",
+          "description": "Optional boolean expressions to filter the ingress workers that are allowed to satisfy this request."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the Target."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "The attributes that are applicable for the specific Target."
+        }
+      },
+      "description": "Target describes a target in Boundary."
+    },
+    "controller.api.resources.sessionrecordings.v1.User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the User."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the User that created the Session."
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the User that created the Session."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "The scope that the User is in."
+        }
+      },
+      "description": "User describes an authenticated user in Boundary."
+    },
+    "controller.api.resources.sessionrecordings.v1.ValuesAtTime": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.User",
+          "description": "Information about the User that created the Session."
+        },
+        "target": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Target",
+          "description": "Information about the Target the Session connected to."
+        },
+        "host": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Host",
+          "description": "Information about the Host chosen for the session."
+        }
+      },
+      "description": "ValuesAtTime contain information about other Boundary resources as they\nwere at a certain time through the lifetime of the Session Recording."
+    },
     "controller.api.resources.sessions.v1.Connection": {
       "type": "object",
       "properties": {
         "client_tcp_address": {
           "type": "string",
+          "description": "",
           "title": "client_tcp_address of the connection"
         },
         "client_tcp_port": {
           "type": "integer",
           "format": "int64",
+          "description": "",
           "title": "client_tcp_port of the connection"
         },
         "endpoint_tcp_address": {
           "type": "string",
+          "description": "",
           "title": "endpoint_tcp_address of the connection"
         },
         "endpoint_tcp_port": {
           "type": "integer",
           "format": "int64",
+          "description": "",
           "title": "endpoint_tcp_port of the connection"
         },
         "bytes_up": {
           "type": "string",
           "format": "int64",
+          "description": "",
           "title": "bytes_up of the connection"
         },
         "bytes_down": {
           "type": "string",
           "format": "int64",
+          "description": "",
           "title": "bytes_down of the connection"
         },
         "closed_reason": {
           "type": "string",
+          "description": "",
           "title": "closed_reason of the connection"
         }
       },
@@ -5360,6 +6071,7 @@
         "states": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessions.v1.SessionState"
           },
           "description": "Output only. The states of this Session in descending order from the current state to the first.",
@@ -5392,6 +6104,7 @@
         "connections": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessions.v1.Connection"
           },
           "description": "Output only. The associated connections with this session.",
@@ -5420,6 +6133,98 @@
           "readOnly": true
         }
       }
+    },
+    "controller.api.resources.storagebuckets.v1.StorageBucket": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Output only. The ID of the storage bucket.",
+          "readOnly": true
+        },
+        "scope_id": {
+          "type": "string",
+          "description": "The ID of the Scope of which this storage bucket is a part."
+        },
+        "scope": {
+          "$ref": "#/definitions/controller.api.resources.scopes.v1.ScopeInfo",
+          "description": "Output only. Scope information for this resource.",
+          "readOnly": true
+        },
+        "plugin_id": {
+          "type": "string",
+          "description": "The ID of the plugin of which this storage bucket is created."
+        },
+        "plugin": {
+          "$ref": "#/definitions/controller.api.resources.plugins.v1.PluginInfo",
+          "description": "Output only. Plugin information for this resource.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "description": "Optional name for identification purposes."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional user-set description for identification purposes."
+        },
+        "bucket_name": {
+          "type": "string",
+          "description": "The name of the bucket within the external object store service."
+        },
+        "bucket_prefix": {
+          "type": "string",
+          "description": "The prefix used to organize the data held within the external object store."
+        },
+        "created_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was created.",
+          "readOnly": true
+        },
+        "updated_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The time this resource was last updated.",
+          "readOnly": true
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of Storage Bucket (currently only plugin)."
+        },
+        "attributes": {
+          "type": "object",
+          "description": "Attributes specific to the catalog type."
+        },
+        "secrets": {
+          "type": "object",
+          "description": "Secrets specific to the storage bucket type. These are never output."
+        },
+        "secrets_hmac": {
+          "type": "string",
+          "description": "Output only. The HMAC of the last secrets supplied via the API, if any.",
+          "readOnly": true
+        },
+        "worker_filter": {
+          "type": "string",
+          "description": "",
+          "title": "Filters to the worker(s) that can handle requests for this storage bucket"
+        },
+        "authorized_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The available actions on this resource for this user.",
+          "readOnly": true
+        }
+      },
+      "title": "StorageBucket manages external object stores"
     },
     "controller.api.resources.targets.v1.CredentialSource": {
       "type": "object",
@@ -5527,6 +6332,7 @@
         "credentials": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.SessionCredential"
           },
           "description": "Output only. The credentials for this session.",
@@ -5629,6 +6435,7 @@
         "host_sources": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.HostSource"
           },
           "description": "Output only. The Host Sources associated with this Target.",
@@ -5667,6 +6474,7 @@
         "application_credential_sources": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
           },
           "description": "Output only. The application credential sources associated with this Target.\nDeprecated use \"brokered_credential_sources\" instead.",
@@ -5683,6 +6491,7 @@
         "brokered_credential_sources": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
           },
           "description": "Output only. The brokered credential sources associated with this Target.",
@@ -5699,6 +6508,7 @@
         "injected_application_credential_sources": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.CredentialSource"
           },
           "description": "Output only. The injected application credential sources associated with this Target.",
@@ -5791,6 +6601,7 @@
         "accounts": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.users.v1.Account"
           },
           "description": "Output only. The Accounts linked to this User.",
@@ -5806,21 +6617,25 @@
         },
         "login_name": {
           "type": "string",
+          "description": "",
           "title": "Output only. login_name is a string that maps to the user's account \"login\nname\" from the scope's primary auth method",
           "readOnly": true
         },
         "full_name": {
           "type": "string",
+          "description": "",
           "title": "Output only. full_name is a string that maps to the user's account name\nfrom the scope's primary auth method",
           "readOnly": true
         },
         "email": {
           "type": "string",
+          "description": "",
           "title": "Output only. email is a string that maps to the user's account email from\nthe scope's primary auth method",
           "readOnly": true
         },
         "primary_account_id": {
           "type": "string",
+          "description": "",
           "title": "Output only. primary_account_id is a string that maps to the user's account\npublic_id from the scope's primary auth method",
           "readOnly": true
         }
@@ -5832,23 +6647,27 @@
       "properties": {
         "id": {
           "type": "string",
+          "description": "",
           "title": "Output only. The ID of the certificate",
           "readOnly": true
         },
         "public_key_sha256": {
           "type": "string",
+          "description": "",
           "title": "Output only. The public key of the cert authority",
           "readOnly": true
         },
         "not_before_time": {
           "type": "string",
           "format": "date-time",
+          "description": "",
           "title": "Output only. The time before which this CA is invalid",
           "readOnly": true
         },
         "not_after_time": {
           "type": "string",
           "format": "date-time",
+          "description": "",
           "title": "Output only. The time after which this CA is invalid",
           "readOnly": true
         }
@@ -5860,8 +6679,10 @@
         "certs": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.workers.v1.Certificate"
-          }
+          },
+          "title": ""
         }
       }
     },
@@ -5942,6 +6763,7 @@
         },
         "worker_generated_auth_token": {
           "type": "string",
+          "description": "",
           "title": "worker_generated_auth_token is input only. Supports the worker led node\nenrollment flow where this credentials token is produced by a worker. This\ntoken is a base58 encoded types.FetchNodeCredentialsRequest from\nhttps://github.com/hashicorp/nodeenrollment"
         },
         "controller_generated_activation_token": {
@@ -6112,7 +6934,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
@@ -6123,7 +6946,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
@@ -6134,7 +6958,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
@@ -6145,7 +6970,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
@@ -6156,7 +6982,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
@@ -6167,7 +6994,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
@@ -6178,7 +7006,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
@@ -6189,7 +7018,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
@@ -6200,7 +7030,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
@@ -6211,7 +7042,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
@@ -6222,7 +7054,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
@@ -6244,10 +7077,23 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
+        }
+      }
+    },
+    "controller.api.services.v1.CreateStorageBucketResponse": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "title": ""
+        },
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
         }
       }
     },
@@ -6255,7 +7101,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
@@ -6266,7 +7113,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.users.v1.User"
@@ -6277,7 +7125,8 @@
       "type": "object",
       "properties": {
         "uri": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "item": {
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
@@ -6323,6 +7172,9 @@
     "controller.api.services.v1.DeleteScopeResponse": {
       "type": "object"
     },
+    "controller.api.services.v1.DeleteStorageBucketResponse": {
+      "type": "object"
+    },
     "controller.api.services.v1.DeleteTargetResponse": {
       "type": "object"
     },
@@ -6336,10 +7188,12 @@
       "type": "object",
       "properties": {
         "scope_id": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "key_version_id": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         }
       }
     },
@@ -6456,11 +7310,28 @@
         }
       }
     },
+    "controller.api.services.v1.GetSessionRecordingResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording",
+          "description": "The requested recording."
+        }
+      }
+    },
     "controller.api.services.v1.GetSessionResponse": {
       "type": "object",
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+        }
+      }
+    },
+    "controller.api.services.v1.GetStorageBucketResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
         }
       }
     },
@@ -6494,6 +7365,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.accounts.v1.Account"
           }
         }
@@ -6505,6 +7377,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.authmethods.v1.AuthMethod"
           }
         }
@@ -6516,6 +7389,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.authtokens.v1.AuthToken"
           }
         }
@@ -6527,6 +7401,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.credentiallibraries.v1.CredentialLibrary"
           }
         }
@@ -6538,6 +7413,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.credentialstores.v1.CredentialStore"
           }
         }
@@ -6549,6 +7425,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.credentials.v1.Credential"
           }
         }
@@ -6560,6 +7437,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.groups.v1.Group"
           }
         }
@@ -6571,6 +7449,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.hostcatalogs.v1.HostCatalog"
           }
         }
@@ -6582,6 +7461,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
           }
         }
@@ -6593,6 +7473,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.hosts.v1.Host"
           }
         }
@@ -6604,6 +7485,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.scopes.v1.KeyVersionDestructionJob"
           }
         }
@@ -6615,6 +7497,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Key"
           }
         }
@@ -6626,6 +7509,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.managedgroups.v1.ManagedGroup"
           }
         }
@@ -6637,6 +7521,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
           }
         }
@@ -6648,8 +7533,22 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.scopes.v1.Scope"
           }
+        }
+      }
+    },
+    "controller.api.services.v1.ListSessionRecordingsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.SessionRecording"
+          },
+          "description": "All Session recordings, ordered by start_time descending (most recently started first)."
         }
       }
     },
@@ -6659,7 +7558,20 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.sessions.v1.Session"
+          }
+        }
+      }
+    },
+    "controller.api.services.v1.ListStorageBucketsResponse": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
           }
         }
       }
@@ -6670,6 +7582,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.targets.v1.Target"
           }
         }
@@ -6681,6 +7594,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.users.v1.User"
           }
         }
@@ -6692,6 +7606,7 @@
         "items": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
           }
         }
@@ -6781,10 +7696,12 @@
       "type": "object",
       "properties": {
         "scope_id": {
-          "type": "string"
+          "type": "string",
+          "title": ""
         },
         "rewrap": {
-          "type": "boolean"
+          "type": "boolean",
+          "title": ""
         }
       }
     },
@@ -6959,6 +7876,14 @@
         }
       }
     },
+    "controller.api.services.v1.UpdateStorageBucketResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.storagebuckets.v1.StorageBucket"
+        }
+      }
+    },
     "controller.api.services.v1.UpdateTargetResponse": {
       "type": "object",
       "properties": {
@@ -6982,6 +7907,40 @@
           "$ref": "#/definitions/controller.api.resources.workers.v1.Worker"
         }
       }
+    },
+    "google.api.HttpBody": {
+      "type": "object",
+      "properties": {
+        "content_type": {
+          "type": "string",
+          "description": "The HTTP Content-Type header value specifying the content type of the body."
+        },
+        "data": {
+          "type": "string",
+          "format": "byte",
+          "description": "The HTTP request/response body as raw binary."
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/google.protobuf.Any"
+          },
+          "description": "Application specific response metadata. Must be set in the first response\nfor streaming APIs."
+        }
+      },
+      "description": "Message that represents an arbitrary HTTP body. It should only be used for\npayload formats that can't be represented as JSON, such as raw binary or\nan HTML page.\n\n\nThis message can be used both in streaming and non-streaming API methods in\nthe request as well as the response.\n\nIt can be used as a top-level request field, which is convenient if one\nwants to extract parameters from either the URL or HTTP template into the\nrequest fields and also want access to the raw HTTP body.\n\nExample:\n\n    message GetResourceRequest {\n      // A unique request id.\n      string request_id = 1;\n\n      // The raw HTTP body is bound to this field.\n      google.api.HttpBody http_body = 2;\n\n    }\n\n    service ResourceService {\n      rpc GetResource(GetResourceRequest)\n        returns (google.api.HttpBody);\n      rpc UpdateResource(google.api.HttpBody)\n        returns (google.protobuf.Empty);\n\n    }\n\nExample with streaming methods:\n\n    service CaldavService {\n      rpc GetCalendar(stream google.api.HttpBody)\n        returns (stream google.api.HttpBody);\n      rpc UpdateCalendar(stream google.api.HttpBody)\n        returns (stream google.api.HttpBody);\n\n    }\n\nUse of this type only changes how the request and response bodies are\nhandled, all other features will continue to work unchanged."
+    },
+    "google.protobuf.Any": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+        }
+      },
+      "additionalProperties": {},
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\nExample 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\nExample 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
     },
     "google.protobuf.NullValue": {
       "type": "string",

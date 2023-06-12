@@ -1,0 +1,80 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "controller/api/resources/sessionrecordings/v1/session_recording.proto";
+import "google/api/annotations.proto";
+import "google/api/httpbody.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+
+service SessionRecordingService {
+  // GetSessionRecording returns a stored Session recording if present. The provided request
+  // must include the Session recording ID for the Session recording being retrieved,
+  // or the ID of the Session that was recorded. If that ID is missing, malformed or reference a
+  // non existing resource, an error is returned.
+  rpc GetSessionRecording(GetSessionRecordingRequest) returns (GetSessionRecordingResponse) {
+    option (google.api.http) = {
+      get: "/v1/session-recordings/{id}"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "GetSessionRecording returns a stored Session recording if present. The provided request must include the Session recording ID for the Session recording being retrieved, or the ID of the Session that was recorded. If that ID is missing, malformed or reference a non existing resource, an error is returned."};
+  }
+
+  // ListSessionRecordings lists all session recordings.
+  // Session recordings are ordered by start_time descending (most recently started first).
+  rpc ListSessionRecordings(ListSessionRecordingsRequest) returns (ListSessionRecordingsResponse) {
+    option (google.api.http) = {get: "/v1/session-recordings"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "ListSessionRecordings lists all Session recordings. Session recordings are ordered by start_time descending (most recently started first)."};
+  }
+
+  // Download returns the contents of the specified resource in the specified mime type.
+  // Supports both Session ID and Session recording ID for looking up a Session recording.
+  // Supports both Connection ID and Connection recording ID to look up a Connection recording.
+  // A Channel recording ID is required to look up a Channel recording.
+  // The only supported mime type is "application/x-asciicast".
+  rpc Download(DownloadRequest) returns (stream google.api.HttpBody) {
+    option (google.api.http) = {get: "/v1/session-recordings/{id}:download"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Download returns the contents of the specified resource in the specified mime type. Supports both Session ID and Session recording ID for looking up a Session recording. Supports both Connection ID and Connection recording ID to look up a Connection recording. A Channel recording ID is required to look up a Channel recording. The only supported mime type is \"application/x-asciicast\"."};
+  }
+}
+
+message GetSessionRecordingRequest {
+  // The ID of the Session recording, or the ID of the Session that was recorded.
+  string id = 1; // @gotags: class:"public"
+}
+
+message GetSessionRecordingResponse {
+  // The requested recording.
+  resources.sessionrecordings.v1.SessionRecording item = 1;
+}
+
+message ListSessionRecordingsRequest {
+  // The scope in which to list session recordings.
+  // Must be set unless recursive is set.
+  string scope_id = 1; // @gotags: class:"public"
+  // Whether to recurse into child scopes when listing.
+  // If set and scope_id is empty, shows session recordings in
+  // all scopes the caller has access to.
+  bool recursive = 2; // @gotags: class:"public"
+}
+
+message ListSessionRecordingsResponse {
+  // All Session recordings, ordered by start_time descending (most recently started first).
+  repeated resources.sessionrecordings.v1.SessionRecording items = 1;
+}
+
+message DownloadRequest {
+  // The ID of the resource that should be downloaded. Supported types:
+  //   - Session ID and Session recording ID for Session recordings
+  //   - Connection ID and Connection recording ID for Connection recordings
+  //   - Channel recording ID for Channel recordings
+  string id = 1; // @gotags: class:"public"
+  // The format of the response. The only supported mime type is "application/x-asciicast".
+  // Defaults to "application/x-asciicast" if not set.
+  string mime_type = 2 [json_name = "mime_type"]; // @gotags: class:"public"
+}

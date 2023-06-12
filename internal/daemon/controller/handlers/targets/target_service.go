@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -41,6 +42,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	fm "github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
@@ -94,10 +96,11 @@ var (
 		action.List,
 	}
 
-	validateCredentialSourcesFn    = func(context.Context, subtypes.Subtype, []target.CredentialSource) error { return nil }
-	ValidateIngressWorkerFilterFn  = IngressWorkerFilterUnsupported
-	AuthorizeSessionWorkerFilterFn = AuthorizeSessionWithWorkerFilter
-	WorkerFilterDeprecationMessage = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
+	validateCredentialSourcesFn      = func(context.Context, subtypes.Subtype, []target.CredentialSource) error { return nil }
+	ValidateIngressWorkerFilterFn    = IngressWorkerFilterUnsupported
+	AuthorizeSessionWorkerFilterFn   = AuthorizeSessionWithWorkerFilter
+	PostSessionAuthorizationCallback = DefaultPostSessionAuthorizationCallback
+	WorkerFilterDeprecationMessage   = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
 )
 
 func IngressWorkerFilterUnsupported(string) error {
@@ -119,6 +122,7 @@ type Service struct {
 	downstreams             common.Downstreamers
 	kmsCache                *kms.Kms
 	workerStatusGracePeriod *atomic.Int64
+	controllerExt           intglobals.ControllerExtension
 }
 
 var _ pbs.TargetServiceServer = (*Service)(nil)
@@ -137,8 +141,12 @@ func NewService(
 	staticCredRepoFn common.StaticCredentialRepoFactory,
 	downstreams common.Downstreamers,
 	workerStatusGracePeriod *atomic.Int64,
+	controllerExt intglobals.ControllerExtension,
 ) (Service, error) {
 	const op = "targets.NewService"
+	if kmsCache == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing kms repo")
+	}
 	if repoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing target repository")
 	}
@@ -175,6 +183,7 @@ func NewService(
 		downstreams:             downstreams,
 		kmsCache:                kmsCache,
 		workerStatusGracePeriod: workerStatusGracePeriod,
+		controllerExt:           controllerExt,
 	}, nil
 }
 
@@ -647,8 +656,17 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 }
 
 // If set, use the worker_filter or egress_worker_filter to filter the selected workers
-// and ensure we have workers available to service this request.
-func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, selectedWorkers wl.WorkerList, _ string, _ common.Downstreamers) (wl.WorkerList, error) {
+// and ensure we have workers available to service this request. The second return
+// argument is always nil.
+func AuthorizeSessionWithWorkerFilter(
+	_ context.Context,
+	t target.Target,
+	selectedWorkers wl.WorkerList,
+	_ string,
+	_ intglobals.ControllerExtension,
+	_ common.Downstreamers,
+	_ ...target.Option,
+) (wl.WorkerList, *server.Worker, error) {
 	if len(selectedWorkers) > 0 {
 		var eval *bexpr.Evaluator
 		var err error
@@ -658,28 +676,32 @@ func AuthorizeSessionWithWorkerFilter(_ context.Context, t target.Target, select
 		case len(t.GetWorkerFilter()) > 0:
 			eval, err = bexpr.CreateEvaluator(t.GetWorkerFilter())
 		default: // No filter
-			return selectedWorkers, nil
+			return selectedWorkers, nil, nil
 		}
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		selectedWorkers, err = selectedWorkers.Filtered(eval)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	if len(selectedWorkers) == 0 {
-		return nil, handlers.ApiErrorWithCodeAndMessage(
+		return nil, nil, handlers.ApiErrorWithCodeAndMessage(
 			codes.FailedPrecondition,
 			"No workers are available to handle this session, or all have been filtered.")
 	}
 
-	return selectedWorkers, nil
+	return selectedWorkers, nil, nil
 }
 
-func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (*pbs.AuthorizeSessionResponse, error) {
+func DefaultPostSessionAuthorizationCallback(context.Context, intglobals.ControllerExtension, *kms.Kms, *target.Repository, target.Target, *session.Session, *server.Worker) error {
+	return nil
+}
+
+func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSessionRequest) (_ *pbs.AuthorizeSessionResponse, retErr error) {
 	const op = "targets.(Service).AuthorizeSession"
 	if err := validateAuthorizeSessionRequest(req); err != nil {
 		return nil, err
@@ -870,7 +892,13 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 
-	selectedWorkers, err = AuthorizeSessionWorkerFilterFn(ctx, t, selectedWorkers, h, s.downstreams)
+	if len(selectedWorkers) == 0 {
+		return nil, handlers.ApiErrorWithCodeAndMessage(
+			codes.FailedPrecondition,
+			"No workers are available to handle this session.")
+	}
+
+	selectedWorkers, protoWorker, err := AuthorizeSessionWorkerFilterFn(ctx, t, selectedWorkers, h, s.controllerExt, s.downstreams)
 	if err != nil {
 		return nil, err
 	}
@@ -916,6 +944,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		DynamicCredentials:  dynCreds,
 		StaticCredentials:   staticCreds,
 	}
+	if protoWorker != nil {
+		sessionComposition.ProtocolWorkerId = protoWorker.GetPublicId()
+	}
 	sess, err := session.New(sessionComposition)
 	if err != nil {
 		return nil, err
@@ -927,6 +958,25 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	sess, err = sessionRepo.CreateSession(ctx, wrapper, sess, wl.WorkerList(selectedWorkers).Addresses())
 	if err != nil {
 		return nil, err
+	}
+	defer func() {
+		if retErr != nil {
+			// Delete created session in case of errors.
+			// Use new context for deletion in case error is because of context cancellation.
+			deleteCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_, err := sessionRepo.DeleteSession(deleteCtx, sess.PublicId)
+			retErr = multierror.Append(retErr, err)
+		}
+	}()
+
+	subtype := target.SubtypeFromId(t.GetPublicId())
+	subtypeEntry, err := subtypeRegistry.get(subtype)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if err := subtypeEntry.validateSessionStateFunc(ctx, sess); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	var dynamic []credential.Dynamic
@@ -940,6 +990,18 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
+		defer func() {
+			if retErr != nil {
+				// Revoke issued credentials in case of errors.
+				// Use new context for deletion in case error is because of context cancellation.
+				deleteCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+				defer cancel()
+				err := credRepo.Revoke(deleteCtx, sess.PublicId)
+				retErr = multierror.Append(retErr, err)
+				// This leaves the credential in a state which will allow it to be cleaned up
+				// by the periodic credential cleanup job.
+			}
+		}()
 	}
 
 	if len(staticIds) > 0 {
@@ -1007,6 +1069,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 
 	if len(workerCreds) > 0 {
 		// store credentials in repo, worker will request creds when a connection is established
+		// These credentials are deleted with the session, so nothing extra to cleanup in case of errors.
 		err = sessionRepo.AddSessionCredentials(ctx, sess.ProjectId, sess.PublicId, workerCreds)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -1053,6 +1116,21 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		Endpoint:           endpointUrl.String(),
 		Credentials:        creds,
 	}
+
+	if err := PostSessionAuthorizationCallback(
+		ctx,
+		s.controllerExt,
+		s.kmsCache,
+		repo,
+		t,
+		sess,
+		protoWorker,
+	); err != nil {
+		// Errors here will automatically delete the session and associated resources
+		// using deferred statements above.
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
 	return &pbs.AuthorizeSessionResponse{Item: ret}, nil
 }
 
@@ -1221,7 +1299,7 @@ func (s Service) listFromRepo(ctx context.Context, perms []perms.Permission) ([]
 	if err != nil {
 		return nil, err
 	}
-	ul, err := repo.ListTargets(ctx)
+	ul, err := repo.ListTargets(ctx, target.WithLimit(-1))
 	if err != nil {
 		return nil, err
 	}

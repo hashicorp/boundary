@@ -12,9 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/nodeenrollment"
 )
-
-const rotateFrequency = time.Hour
 
 // rotateRootsJob defines a periodic job that initiates root certificate rotation
 // It runs every hour; the root rotation function in the library is designed to not
@@ -23,10 +22,14 @@ type rotateRootsJob struct {
 	workerAuthRepo *server.WorkerAuthRepositoryStorage
 
 	totalRotates int
+
+	rotateFrequency time.Duration
+
+	certificateLifetime time.Duration
 }
 
 // newRotateRootsJob instantiates the rotate roots job.
-func newRotateRootsJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms) (*rotateRootsJob, error) {
+func newRotateRootsJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*rotateRootsJob, error) {
 	const op = "server.newRotateRootsJob"
 	switch {
 	case isNil(r):
@@ -42,9 +45,13 @@ func newRotateRootsJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.K
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
+	opts := getOpts(opt...)
+
 	return &rotateRootsJob{
-		workerAuthRepo: workerAuthRepo,
-		totalRotates:   0,
+		workerAuthRepo:      workerAuthRepo,
+		totalRotates:        0,
+		rotateFrequency:     opts.withRotationFrequency,
+		certificateLifetime: opts.withCertificateLifetime,
 	}, nil
 }
 
@@ -59,7 +66,7 @@ func (r *rotateRootsJob) Description() string {
 // NextRunIn returns the next run time after a job is completed.
 // This is represented by RotateFrequency
 func (r *rotateRootsJob) NextRunIn(_ context.Context) (time.Duration, error) {
-	return rotateFrequency, nil
+	return r.rotateFrequency, nil
 }
 
 // Status returns the status of the running job.
@@ -74,7 +81,7 @@ func (r *rotateRootsJob) Status() scheduler.JobStatus {
 func (r *rotateRootsJob) Run(ctx context.Context) error {
 	const op = "server.(rotateRootsJob).Run"
 
-	_, err := server.RotateRoots(ctx, r.workerAuthRepo)
+	_, err := server.RotateRoots(ctx, r.workerAuthRepo, nodeenrollment.WithCertificateLifetime(r.certificateLifetime))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

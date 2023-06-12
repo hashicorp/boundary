@@ -25,10 +25,12 @@ const (
 	Controller
 	Worker
 	Session
+	SessionRecording
 	ManagedGroup
 	CredentialStore
 	CredentialLibrary
 	Credential
+	StorageBucket
 	// NOTE: When adding a new type, be sure to update:
 	//
 	// * The Grant.validateType function and test
@@ -61,10 +63,12 @@ func (r Type) String() string {
 		"controller",
 		"worker",
 		"session",
+		"session-recording",
 		"managed-group",
 		"credential-store",
 		"credential-library",
 		"credential",
+		"storage-bucket",
 	}[r]
 }
 
@@ -94,10 +98,12 @@ var Map = map[string]Type{
 	Controller.String():        Controller,
 	Worker.String():            Worker,
 	Session.String():           Session,
+	SessionRecording.String():  SessionRecording,
 	ManagedGroup.String():      ManagedGroup,
 	CredentialStore.String():   CredentialStore,
 	CredentialLibrary.String(): CredentialLibrary,
 	Credential.String():        Credential,
+	StorageBucket.String():     StorageBucket,
 }
 
 // Parent returns the parent type for a given type; if there is no parent, it
@@ -136,8 +142,10 @@ func TopLevelType(typ Type) bool {
 		Role,
 		Scope,
 		Session,
+		SessionRecording,
 		Target,
 		User,
+		StorageBucket,
 		Worker:
 		return true
 	}

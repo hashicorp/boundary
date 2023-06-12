@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
@@ -39,6 +40,7 @@ type workerServiceServer struct {
 	updateTimes         *sync.Map
 	kms                 *kms.Kms
 	livenessTimeToStale *atomic.Int64
+	controllerExt       intglobals.ControllerExtension
 }
 
 var (
@@ -73,6 +75,7 @@ func NewWorkerServiceServer(
 	updateTimes *sync.Map,
 	kms *kms.Kms,
 	livenessTimeToStale *atomic.Int64,
+	controllerExt intglobals.ControllerExtension,
 ) *workerServiceServer {
 	return &workerServiceServer{
 		serversRepoFn:       serversRepoFn,
@@ -83,6 +86,7 @@ func NewWorkerServiceServer(
 		updateTimes:         updateTimes,
 		kms:                 kms,
 		livenessTimeToStale: livenessTimeToStale,
+		controllerExt:       controllerExt,
 	}
 }
 
@@ -207,9 +211,23 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 	}
 
 	stateReport := make([]*session.StateReport, 0, len(req.GetJobs()))
+	var monitoredSessionIds []string
 
 	for _, jobStatus := range req.GetJobs() {
 		switch jobStatus.Job.GetType() {
+		case pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION:
+			si := jobStatus.GetJob().GetMonitorSessionInfo()
+			if si == nil {
+				return nil, status.Error(codes.Internal, "Error getting monitored session info at status time")
+			}
+			switch si.Status {
+			case pbs.SESSIONSTATUS_SESSIONSTATUS_CANCELING,
+				pbs.SESSIONSTATUS_SESSIONSTATUS_TERMINATED:
+				// No need to see about canceling anything
+				continue
+			}
+
+			monitoredSessionIds = append(monitoredSessionIds, si.GetSessionId())
 		case pbs.JOBTYPE_JOBTYPE_SESSION:
 			si := jobStatus.GetJob().GetSessionInfo()
 			if si == nil {
@@ -267,14 +285,44 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 				Status:       session.StatusClosed.ProtoVal(),
 			})
 		}
+		processErr := pbs.SessionProcessingError_SESSION_PROCESSING_ERROR_UNSPECIFIED
+		if na.Unrecognized {
+			processErr = pbs.SessionProcessingError_SESSION_PROCESSING_ERROR_UNRECOGNIZED
+		}
 		ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
 			Job: &pbs.Job{
 				Type: pbs.JOBTYPE_JOBTYPE_SESSION,
 				JobInfo: &pbs.Job_SessionInfo{
 					SessionInfo: &pbs.SessionJobInfo{
-						SessionId:   na.SessionId,
-						Status:      na.Status.ProtoVal(),
-						Connections: connChanges,
+						SessionId:       na.SessionId,
+						Status:          na.Status.ProtoVal(),
+						Connections:     connChanges,
+						ProcessingError: processErr,
+					},
+				},
+			},
+			RequestType: pbs.CHANGETYPE_CHANGETYPE_UPDATE_STATE,
+		})
+	}
+
+	nonActiveMonitoredSessions, err := sessRepo.CheckIfNotActive(ctx, monitoredSessionIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal,
+			"Error checking if monitored jobs are no longer active: %v", err)
+	}
+	for _, na := range nonActiveMonitoredSessions {
+		processErr := pbs.SessionProcessingError_SESSION_PROCESSING_ERROR_UNSPECIFIED
+		if na.Unrecognized {
+			processErr = pbs.SessionProcessingError_SESSION_PROCESSING_ERROR_UNRECOGNIZED
+		}
+		ret.JobsRequests = append(ret.JobsRequests, &pbs.JobChangeRequest{
+			Job: &pbs.Job{
+				Type: pbs.JOBTYPE_JOBTYPE_MONITOR_SESSION,
+				JobInfo: &pbs.Job_MonitorSessionInfo{
+					MonitorSessionInfo: &pbs.MonitorSessionJobInfo{
+						SessionId:       na.SessionId,
+						Status:          na.Status.ProtoVal(),
+						ProcessingError: processErr,
 					},
 				},
 			},
@@ -295,7 +343,6 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 		return nil, status.Errorf(codes.Internal, "Error getting servers repo: %v", err)
 	}
 	workers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()},
-		server.WithWorkerType(server.KmsWorkerType),
 		// We use the livenessTimeToStale here instead of WorkerStatusGracePeriod
 		// since WorkerStatusGracePeriod is more for deciding which workers
 		// should be used for session proxying, but here we care about providing
@@ -306,20 +353,18 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 		return nil, status.Errorf(codes.Internal, "Error looking up workers: %v", err)
 	}
 
+	managed, _ := dcommon.SeparateManagedWorkers(workers)
 	resp := &pbs.ListHcpbWorkersResponse{}
-	if len(workers) == 0 {
+	if len(managed) == 0 {
 		return resp, nil
 	}
 
-	resp.Workers = make([]*pbs.WorkerInfo, 0, len(workers))
-	for _, worker := range workers {
-		vals := worker.CanonicalTags()[dcommon.ManagedWorkerTag]
-		if len(vals) == 1 && vals[0] == "true" {
-			resp.Workers = append(resp.Workers, &pbs.WorkerInfo{
-				Id:      worker.GetPublicId(),
-				Address: worker.GetAddress(),
-			})
-		}
+	resp.Workers = make([]*pbs.WorkerInfo, 0, len(managed))
+	for _, worker := range managed {
+		resp.Workers = append(resp.Workers, &pbs.WorkerInfo{
+			Id:      worker.GetPublicId(),
+			Address: worker.GetAddress(),
+		})
 	}
 
 	return resp, nil
@@ -337,7 +382,16 @@ func egressFilterSelector(sessionInfo *session.Session) string {
 }
 
 // noProtocolContext doesn't provide any protocol context since tcp doesn't need any
-func noProtocolContext(context.Context, *session.Repository, *server.Repository, common.WorkerAuthRepoStorageFactory, *pbs.AuthorizeConnectionRequest, []string) (*anypb.Any, error) {
+func noProtocolContext(
+	context.Context,
+	*session.Repository,
+	*server.Repository,
+	common.WorkerAuthRepoStorageFactory,
+	*pbs.AuthorizeConnectionRequest,
+	[]string,
+	string,
+	intglobals.ControllerExtension,
+) (*anypb.Any, error) {
 	return nil, nil
 }
 
@@ -581,7 +635,16 @@ func (ws *workerServiceServer) AuthorizeConnection(ctx context.Context, req *pbs
 		ConnectionsLeft: authzSummary.ConnectionLimit,
 		Route:           route,
 	}
-	if pc, err := getProtocolContext(ctx, sessionRepo, serversRepo, ws.workerAuthRepoFn, req, route); err != nil {
+	if pc, err := getProtocolContext(
+		ctx,
+		sessionRepo,
+		serversRepo,
+		ws.workerAuthRepoFn,
+		req,
+		route,
+		ret.ConnectionId,
+		ws.controllerExt,
+	); err != nil {
 		return nil, err
 	} else {
 		ret.ProtocolContext = pc

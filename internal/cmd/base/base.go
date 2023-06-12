@@ -35,16 +35,16 @@ type EnabledPlugin uint
 
 const (
 	EnabledPluginUnknown EnabledPlugin = iota
-	EnabledPluginHostLoopback
-	EnabledPluginHostAws
+	EnabledPluginLoopback
+	EnabledPluginAws
 	EnabledPluginHostAzure
 )
 
 func (e EnabledPlugin) String() string {
 	switch e {
-	case EnabledPluginHostLoopback:
+	case EnabledPluginLoopback:
 		return "Loopback"
-	case EnabledPluginHostAws:
+	case EnabledPluginAws:
 		return "AWS"
 	case EnabledPluginHostAzure:
 		return "Azure"
@@ -118,6 +118,8 @@ type Command struct {
 	FlagRecursive         bool
 	FlagFilter            string
 	FlagTags              map[string][]string
+	FlagOutputFile        string // the output file for the command
+	FlagNoClobber         bool   // Don't clobber the output file
 
 	// Attribute values
 	FlagAttributes string

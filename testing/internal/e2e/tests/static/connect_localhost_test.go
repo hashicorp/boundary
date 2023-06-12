@@ -18,7 +18,7 @@ import (
 
 func TestCliConnectTargetWithLocalhost(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()

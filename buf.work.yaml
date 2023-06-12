@@ -4,3 +4,4 @@
 version: v1
 directories:
   - internal/proto
+  - internal/bsr/proto

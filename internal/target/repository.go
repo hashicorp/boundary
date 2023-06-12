@@ -518,6 +518,8 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 		case strings.EqualFold("address", f):
 			target.SetAddress(strings.TrimSpace(target.GetAddress()))
 			addressEndpoint = target.GetAddress()
+		case strings.EqualFold("storagebucketid", f):
+		case strings.EqualFold("enablesessionrecording", f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -536,9 +538,11 @@ func (r *Repository) UpdateTarget(ctx context.Context, target Target, version ui
 			"EgressWorkerFilter":     target.GetEgressWorkerFilter(),
 			"IngressWorkerFilter":    target.GetIngressWorkerFilter(),
 			"Address":                target.GetAddress(),
+			"StorageBucketId":        target.GetStorageBucketId(),
+			"EnableSessionRecording": target.GetEnableSessionRecording(),
 		},
 		fieldMaskPaths,
-		[]string{"SessionMaxSeconds", "SessionConnectionLimit"},
+		[]string{"SessionMaxSeconds", "SessionConnectionLimit", "EnableSessionRecording"},
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.EmptyFieldMask, op, "empty field mask")

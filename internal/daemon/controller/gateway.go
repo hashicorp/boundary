@@ -36,6 +36,8 @@ func gatewayDialOptions(lis grpcServerListener) []grpc.DialOption {
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 			return lis.Dial()
 		}),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
 	}
 }
 
@@ -81,16 +83,37 @@ func newGrpcServer(
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate gateway ticket"))
 	}
-	requestCtxInterceptor, err := requestCtxInterceptor(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, ldapAuthRepoFn, kms, ticket, eventer)
+	unaryCtxInterceptor, err := requestCtxUnaryInterceptor(ctx, iamRepoFn, authTokenRepoFn, serversRepoFn, passwordAuthRepoFn, oidcAuthRepoFn, ldapAuthRepoFn, kms, ticket, eventer)
+	if err != nil {
+		return nil, "", err
+	}
+
+	streamCtxInterceptor, err := requestCtxStreamInterceptor(
+		ctx,
+		iamRepoFn,
+		authTokenRepoFn,
+		serversRepoFn,
+		passwordAuthRepoFn,
+		oidcAuthRepoFn,
+		ldapAuthRepoFn,
+		kms,
+		ticket,
+		eventer,
+	)
 	if err != nil {
 		return nil, "", err
 	}
 	return grpc.NewServer(
 		grpc.MaxRecvMsgSize(math.MaxInt32),
 		grpc.MaxSendMsgSize(math.MaxInt32),
+		grpc.StreamInterceptor(
+			grpc_middleware.ChainStreamServer(
+				streamCtxInterceptor,
+			),
+		),
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
-				requestCtxInterceptor,                         // populated requestInfo from headers into the request ctx
+				unaryCtxInterceptor,                           // populated requestInfo from headers into the request ctx
 				errorInterceptor(ctx),                         // convert domain and api errors into headers for the http proxy
 				subtypes.AttributeTransformerInterceptor(ctx), // convert to/from generic attributes from/to subtype specific attributes
 				auditRequestInterceptor(ctx),                  // before we get started, audit the request

@@ -77,6 +77,8 @@ func main() {
 		role,
 		scope,
 		session,
+		sessionRecording,
+		storageBucket,
 		target,
 		user,
 		worker,
@@ -741,6 +743,73 @@ var session = &Resource{
 	},
 }
 
+var sessionRecording = &Resource{
+	Type:   "Session Recording",
+	Scopes: iamScopes,
+	Endpoints: []*Endpoint{
+		{
+			Path: "/session-recordings",
+			Params: map[string]string{
+				"Type": "session-recording",
+			},
+			Actions: []*Action{
+				{
+					Name:        "list",
+					Description: "List session recordings",
+					Examples: []string{
+						"type=<type>;actions=list",
+					},
+				},
+			},
+		},
+		{
+			Path: "/session-recordings/<id>",
+			Params: map[string]string{
+				"ID":   "<id>",
+				"Type": "session-recording",
+			},
+			Actions: []*Action{
+				{
+					Name:        "read",
+					Description: "Read a session recording",
+					Examples: []string{
+						"id=<id>;actions=read",
+					},
+				},
+				{
+					Name:        "download",
+					Description: "Download a session recording",
+					Examples: []string{
+						"id=<id>;actions=download",
+					},
+				},
+			},
+		},
+	},
+}
+
+var storageBucket = &Resource{
+	Type:   "Storage Bucket",
+	Scopes: iamScopes,
+	Endpoints: []*Endpoint{
+		{
+			Path: "/storage-buckets",
+			Params: map[string]string{
+				"Type": "storage-bucket",
+			},
+			Actions: clActions("a storage bucket"),
+		},
+		{
+			Path: "/storage-buckets/<id>",
+			Params: map[string]string{
+				"ID":   "<id>",
+				"Type": "storage-bucket",
+			},
+			Actions: rudActions("a storage bucket", false),
+		},
+	},
+}
+
 var target = &Resource{
 	Type:   "Target",
 	Scopes: infraScope,
@@ -866,7 +935,7 @@ var worker = &Resource{
 		{
 			Path: "/workers",
 			Params: map[string]string{
-				"Type": "workers",
+				"Type": "worker",
 			},
 			Actions: append(
 				lActions("a worker"),
@@ -892,7 +961,7 @@ var worker = &Resource{
 			Path: "/workers/<id>",
 			Params: map[string]string{
 				"ID":   "<id>",
-				"Type": "workers",
+				"Type": "worker",
 			},
 			Actions: append(
 				rudActions("a worker", false),

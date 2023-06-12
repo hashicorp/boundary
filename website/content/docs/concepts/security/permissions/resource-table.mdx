@@ -1206,6 +1206,172 @@ documentation](/boundary/api-docs) for guidance.
       </td>
     </tr>
     <tr>
+      <td rowSpan="2">Session Recording</td>
+      <td rowSpan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+        </ul>
+      </td>
+      <td>
+        <code>/session-recordings</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+          <ul>
+            <li>
+              <code>session-recording</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>list</code>: List session recordings
+          </li>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/session-recordings/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
+          <li>Type</li>
+          <ul>
+            <li>
+              <code>session-recording</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a session recording
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
+          <li>
+            <code>download</code>: Download a session recording
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=download</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td rowSpan="2">Storage Bucket</td>
+      <td rowSpan="2">
+        <ul>
+          <li>Global</li>
+          <li>Org</li>
+        </ul>
+      </td>
+      <td>
+        <code>/storage-buckets</code>
+      </td>
+      <td>
+        <ul>
+          <li>Type</li>
+          <ul>
+            <li>
+              <code>storage-bucket</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>create</code>: Create a storage bucket
+          </li>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=create</code>
+            </li>
+          </ul>
+          <li>
+            <code>list</code>: List storage buckets
+          </li>
+          <ul>
+            <li>
+              <code>type=&lt;type&gt;;actions=list</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code>/storage-buckets/&lt;id&gt;</code>
+      </td>
+      <td>
+        <ul>
+          <li>ID</li>
+          <ul>
+            <li>
+              <code>&lt;id&gt;</code>
+            </li>
+          </ul>
+          <li>Type</li>
+          <ul>
+            <li>
+              <code>storage-bucket</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+      <td>
+        <ul>
+          <li>
+            <code>read</code>: Read a storage bucket
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=read</code>
+            </li>
+          </ul>
+          <li>
+            <code>update</code>: Update a storage bucket
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=update</code>
+            </li>
+          </ul>
+          <li>
+            <code>delete</code>: Delete a storage bucket
+          </li>
+          <ul>
+            <li>
+              <code>id=&lt;id&gt;;actions=delete</code>
+            </li>
+          </ul>
+        </ul>
+      </td>
+    </tr>
+    <tr>
       <td rowSpan="2">Target</td>
       <td rowSpan="2">
         <ul>
@@ -1481,7 +1647,7 @@ documentation](/boundary/api-docs) for guidance.
           <li>Type</li>
           <ul>
             <li>
-              <code>workers</code>
+              <code>worker</code>
             </li>
           </ul>
         </ul>
@@ -1536,7 +1702,7 @@ documentation](/boundary/api-docs) for guidance.
           <li>Type</li>
           <ul>
             <li>
-              <code>workers</code>
+              <code>worker</code>
             </li>
           </ul>
         </ul>

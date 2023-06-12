@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_testPlugin(t *testing.T) {
+func Test_TestPlugins(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 
-	plg := testPlugin(t, conn, "test")
+	plg := TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 }

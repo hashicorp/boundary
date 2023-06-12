@@ -11,7 +11,8 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,7 @@ func Test_TestCatalogs(t *testing.T) {
 	require.NotNil(proj)
 	assert.NotEmpty(proj.GetPublicId())
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
@@ -47,12 +48,12 @@ func Test_TestSet(t *testing.T) {
 	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
-	set := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{})}, WithName("foo"), WithDescription("bar"))
+	set := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{})}, WithName("foo"), WithDescription("bar"))
 	assert.NotEmpty(set.GetPublicId())
 	db.AssertPublicId(t, globals.PluginHostSetPrefix, set.GetPublicId())
 	assert.Equal("foo", set.GetName())
@@ -65,7 +66,7 @@ func Test_TestHosts(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
@@ -88,12 +89,12 @@ func Test_TestSetMembers(t *testing.T) {
 	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
 
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
-	s := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{})})
+	s := TestSet(t, conn, kmsCache, sched, c, map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{})})
 
 	h := TestHost(t, conn, c.GetPublicId(), plg.GetPublicId())
 	members := TestSetMembers(t, conn, s.PublicId, []*Host{h})
@@ -112,11 +113,11 @@ func Test_TestRunSetSync(t *testing.T) {
 	require.NotNil(prj)
 	assert.NotEmpty(prj.GetPublicId())
 
-	plg := host.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	require.NotNil(plg)
 	assert.NotEmpty(plg.GetPublicId())
-	pluginServer := &TestPluginServer{}
-	plgm := map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): NewWrappingPluginClient(pluginServer)}
+	pluginServer := &loopback.TestPluginServer{}
+	plgm := map[string]plgpb.HostPluginServiceClient{plg.GetPublicId(): loopback.NewWrappingPluginHostClient(pluginServer)}
 
 	c := TestCatalog(t, conn, prj.GetPublicId(), plg.GetPublicId())
 	s1 := TestSet(t, conn, kmsCache, sched, c, plgm)

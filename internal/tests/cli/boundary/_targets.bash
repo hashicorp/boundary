@@ -30,6 +30,11 @@ function create_tcp_target_with_addr() {
     -format json
 }
 
+function update_tcp_target() {
+  boundary targets \
+    update tcp $@
+}
+
 function read_target() {
   boundary targets read -id $1 -format json
 }

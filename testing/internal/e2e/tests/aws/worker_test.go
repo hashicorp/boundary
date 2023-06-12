@@ -11,12 +11,13 @@ import (
 
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCliWorker(t *testing.T) {
 	e2e.MaybeSkipTest(t)
-	c, err := loadConfig()
+	c, err := loadTestConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -60,7 +61,7 @@ func TestCliWorker(t *testing.T) {
 		),
 	)
 	require.Error(t, output.Err, string(output.Stderr))
-	require.Equal(t, output.ExitCode, 255)
+	assert.Equal(t, 255, output.ExitCode)
 	require.Contains(t, string(output.Stderr), "timed out")
 	t.Logf("Successfully detected connection failure")
 

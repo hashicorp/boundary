@@ -134,6 +134,10 @@ func TestAction(t *testing.T) {
 			action: DestroyScopeKeyVersion,
 			want:   "destroy-key-version",
 		},
+		{
+			action: Download,
+			want:   "download",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {

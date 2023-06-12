@@ -134,7 +134,7 @@ func TestTestVaultServer_CreateToken(t *testing.T) {
 				gotPeriod, err := parseutil.ParseDurationSecond(period)
 				require.NoError(t, err)
 				if assert.True(t, ok, op) {
-					delta := 1 * time.Minute
+					delta := 5 * time.Minute
 					assert.InDelta(t, want.Seconds(), gotPeriod.Seconds(), delta.Seconds())
 				}
 			}

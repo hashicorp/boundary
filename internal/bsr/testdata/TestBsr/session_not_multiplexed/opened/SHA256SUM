@@ -1,0 +1,6 @@
+.*  bsrKey.pub
+.*  wrappedBsrKey
+.*  wrappedPrivKey
+.*  pubKeyBsrSignature.sign
+.*  pubKeySelfSignature.sign
+.*  session-meta.json

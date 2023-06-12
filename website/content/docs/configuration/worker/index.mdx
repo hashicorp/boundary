@@ -5,7 +5,7 @@ description: |-
   The worker stanza configures worker-specific parameters.
 ---
 
-# `worker` Stanza
+# Worker stanza
 The `worker` stanza configures Boundary worker-specific parameters.
 
 All workers within Boundary use certificates and encryption keys to identify
@@ -92,7 +92,7 @@ Any other updated values are ignored.
 The `SIGTERM` and `SIGINT` signals initiate a graceful shutdown on a worker. The worker waits for any sessions to drain
 before shutting down. Workers in a graceful shutdown state do not receive any new work, including session proxying, from the control plane.
 
-## Multi-hop worker capabilities <sup>HCP only</sup>
+## Multi-hop worker capabilities <sup>HCP/ENT</sup>
 Multi-hop capabilities, including multi-hop sessions and Vault private access,
 is when a session or Vault credential request goes through more than one worker.
 To enable this, two or more workers must be connected to each other in some
@@ -118,25 +118,25 @@ traffic to a [target][]. Ingress worker filters determine which workers you
 connect with to initiate a session, and egress worker filters determine which
 workers are used to access targets.
 
-### Multi-hop worker requirements
+## Multi-hop worker requirements
 
 When you configure multi-hop sessions, there is an "ingress" worker, an "egress"
 worker, and any number of intermediary workers. Ingress, egress, and
 intermediary workers have the following requirements.
 
-#### Ingress worker requirements
+### Ingress worker requirements
 
 To proxy target connections, ingress workers require outbound access to the
 Boundary control plane and inbound access from clients.
 
-#### Intermediary worker requirements
+### Intermediary worker requirements
 
 Intermediary workers require outbound access to an upstream worker. The upstream
 worker may be an ingress worker or another intermediary worker. Intermediary
 workers also require inbound access from a downstream worker. The downstream
 worker may be an egress worker or another intermediary worker.
 
-#### Egress worker requirements
+### Egress worker requirements
 
 To proxy target connections, egress workers require outbound access to an
 upstream worker and outbound access to the destination host or service.

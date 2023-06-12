@@ -32,6 +32,15 @@
 // The directory that contains the copy of boundary-ui you want to use for UI tests
 // local_boundary_ui_dir = "/Users/<user>/Developer/boundary-ui"
 
+// Path to a license file if required
+// boundary_license_path = "./support/boundary.hclic"
+
+// Built binary custom name, if not "boundary"
+// boundary_binary_name = "boundary"
+
+// Build edition from CRT
+// boundary_edition = "oss"
+
 // The path to the installation bundle for the target machines. The existing
 // scenarios all use linux/amd64 architecture so bundle ought to match that
 // architecture. This is only used for variants which use the `crt` builder
@@ -48,3 +57,6 @@
 // would not be able to access the environment variables needed to test locally. Enabling this
 // will ensure that the enos scenario passes.
 // e2e_debug_no_run = true
+
+// Timeout for `go test` execution in the e2e tests, 10m default
+// go_test_timeout = "10m"

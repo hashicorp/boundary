@@ -102,6 +102,11 @@ func Test_Resource(t *testing.T) {
 			parent:     AuthMethod,
 		},
 		{
+			typeString:   "storage-bucket",
+			want:         StorageBucket,
+			topLevelType: true,
+		},
+		{
 			typeString:    "credential-store",
 			want:          CredentialStore,
 			topLevelType:  true,

@@ -8,42 +8,46 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/plugin/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func TestPlugin_ImmutableFields(t *testing.T) {
+func TestHostPlugin_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
-	plg := testPlugin(t, conn, "test")
+
+	ts := timestamp.Timestamp{Timestamp: &timestamppb.Timestamp{Seconds: 0, Nanos: 0}}
+	plg := TestPlugin(t, conn, "test")
 
 	newPlugin := plg
 
 	tests := []struct {
 		name      string
-		update    *plugin
+		update    *Plugin
 		fieldMask []string
 	}{
 		{
 			name: "public_id",
-			update: func() *plugin {
+			update: func() *Plugin {
 				c := newPlugin.testClonePlugin()
-				c.PublicId = "pi_thisIsNotAValidId"
+				c.PublicId = "hc_thisIsNotAValidId"
 				return c
 			}(),
 			fieldMask: []string{"PublicId"},
 		},
 		{
-			name: "scope",
-			update: func() *plugin {
+			name: "create time",
+			update: func() *Plugin {
 				c := newPlugin.testClonePlugin()
-				c.ScopeId = "o_1234567890"
+				c.CreateTime = &ts
 				return c
 			}(),
-			fieldMask: []string{"ScopeId"},
+			fieldMask: []string{"CreateTime"},
 		},
 	}
 	for _, tt := range tests {
@@ -67,9 +71,9 @@ func TestPlugin_ImmutableFields(t *testing.T) {
 	}
 }
 
-func (c *plugin) testClonePlugin() *plugin {
+func (c *Plugin) testClonePlugin() *Plugin {
 	cp := proto.Clone(c.Plugin)
-	return &plugin{
+	return &Plugin{
 		Plugin: cp.(*store.Plugin),
 	}
 }

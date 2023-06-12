@@ -16,6 +16,7 @@ scenario "e2e_static_with_vault" {
   locals {
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
     boundary_install_dir     = abspath(var.boundary_install_dir)
+    license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
     local_boundary_dir       = abspath(var.local_boundary_dir)
     build_path = {
       "local" = "/tmp",
@@ -36,6 +37,15 @@ scenario "e2e_static_with_vault" {
         var.worker_instance_type,
         var.controller_instance_type
       ]
+    }
+  }
+
+  step "read_license" {
+    skip_step = var.boundary_edition == "oss"
+    module    = module.read_license
+
+    variables {
+      file_name = local.license_path
     }
   }
 
@@ -72,7 +82,9 @@ scenario "e2e_static_with_vault" {
     ]
 
     variables {
+      boundary_binary_name     = var.boundary_binary_name
       boundary_install_dir     = local.boundary_install_dir
+      boundary_license         = var.boundary_edition != "oss" ? step.read_license.license : null
       common_tags              = local.tags
       controller_instance_type = var.controller_instance_type
       controller_count         = var.controller_count

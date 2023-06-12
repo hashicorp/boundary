@@ -1,0 +1,6 @@
+id: chan_1
+channelType: chan
+messages: inbound
+requests: inbound
+messages: outbound
+requests: outbound

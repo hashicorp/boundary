@@ -144,6 +144,13 @@ func TestSession(t testing.TB, conn *db.DB, rootWrapper wrapping.Wrapper, c Comp
 		TestSessionTargetAddress(t, conn, s.PublicId, s.TargetId)
 	}
 
+	if s.ProtocolWorkerId != "" {
+		p, err := NewSessionWorkerProtocol(ctx, s.PublicId, s.ProtocolWorkerId)
+		require.NoError(err)
+		err = rw.Create(ctx, p)
+		require.NoError(err)
+	}
+
 	ss, err := fetchStates(ctx, rw, s.PublicId, append(opts.withDbOpts, db.WithOrder("start_time desc"))...)
 	require.NoError(err)
 	s.States = ss

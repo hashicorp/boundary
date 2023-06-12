@@ -63,8 +63,8 @@ func TestServer_SetupKMSes_Purposes(t *testing.T) {
 		{
 			name: "multi purpose",
 			purposes: []string{
-				globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth,
-				globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeConfig,
+				globals.KmsPurposeRoot, globals.KmsPurposeRecovery, globals.KmsPurposeWorkerAuth, globals.KmsPurposeDownstreamWorkerAuth,
+				globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeConfig, globals.KmsPurposeBsr,
 			},
 		},
 		{
@@ -96,6 +96,11 @@ func TestServer_SetupKMSes_Purposes(t *testing.T) {
 			name:            "duplicate worker auth storage purposes",
 			purposes:        []string{globals.KmsPurposeWorkerAuthStorage, globals.KmsPurposeWorkerAuthStorage},
 			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeWorkerAuthStorage),
+		},
+		{
+			name:            "duplicate bsr kms purposes",
+			purposes:        []string{globals.KmsPurposeBsr, globals.KmsPurposeBsr},
+			wantErrContains: fmt.Sprintf("Duplicate KMS block for purpose '%s'", globals.KmsPurposeBsr),
 		},
 		{
 			name:            "duplicate recovery purposes",
@@ -137,6 +142,8 @@ func TestServer_SetupKMSes_Purposes(t *testing.T) {
 					assert.NotNil(s.WorkerAuthStorageKms)
 				case globals.KmsPurposeRecovery:
 					assert.NotNil(s.RecoveryKms)
+				case globals.KmsPurposeBsr:
+					assert.NotNil(s.BsrKms)
 				}
 			}
 		})

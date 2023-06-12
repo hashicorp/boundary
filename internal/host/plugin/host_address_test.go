@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/store"
 	"github.com/hashicorp/boundary/internal/iam"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +22,7 @@ func TestHostDnsName_Create(t *testing.T) {
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplugin.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 
@@ -153,7 +153,7 @@ func TestHostIpAddress_Create(t *testing.T) {
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplugin.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 
@@ -292,7 +292,7 @@ func TestHostDnsName_Delete(t *testing.T) {
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplugin.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 	addr1, err := host.NewDnsName(ctx, host1.GetPublicId(), "addr1.foo.com")
@@ -359,7 +359,7 @@ func TestHostIpAddress_Delete(t *testing.T) {
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
-	plg := hostplugin.TestPlugin(t, conn, "test")
+	plg := plugin.TestPlugin(t, conn, "test")
 	cat := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	host1 := TestHost(t, conn, cat.GetPublicId(), "external")
 	addr1, err := host.NewIpAddress(ctx, host1.GetPublicId(), "1.2.3.4")

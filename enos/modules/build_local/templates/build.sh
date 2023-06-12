@@ -14,6 +14,6 @@ root_dir="$(git rev-parse --show-toplevel)"
 pushd "${root_dir}" > /dev/null
 
 make ${BUILD_TARGET}
-zip -j ${ARTIFACT_PATH}/boundary.zip bin/boundary
+zip -j ${ARTIFACT_PATH}/boundary.zip bin/${BINARY_NAME}
 
 popd > /dev/null

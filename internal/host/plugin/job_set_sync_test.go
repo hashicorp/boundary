@@ -14,7 +14,8 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplg "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	assertpkg "github.com/stretchr/testify/assert"
@@ -29,9 +30,9 @@ func TestNewSetSyncJob(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 
-	plg := hostplg.TestPlugin(t, conn, "lookup")
+	plg := plugin.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	type args struct {
@@ -142,10 +143,10 @@ func TestSetSyncJob_Run(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	sched := scheduler.TestScheduler(t, conn, wrapper)
 
-	plgServer := &TestPluginServer{}
-	plg := hostplg.TestPlugin(t, conn, "run")
+	plgServer := &loopback.TestPluginServer{}
+	plg := plugin.TestPlugin(t, conn, "run")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(plgServer),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(plgServer),
 	}
 
 	r, err := newSetSyncJob(ctx, rw, rw, kmsCache, plgm)
@@ -411,9 +412,9 @@ func TestSetSyncJob_NextRunIn(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, prj := iam.TestScopes(t, iamRepo)
-	plg := hostplg.TestPlugin(t, conn, "lookup")
+	plg := plugin.TestPlugin(t, conn, "lookup")
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): NewWrappingPluginClient(&TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 	catalog := TestCatalog(t, conn, prj.PublicId, plg.GetPublicId())
 	hostSet := TestSet(t, conn, kmsCache, sched, catalog, plgm)

@@ -81,3 +81,24 @@ func (w WorkerList) Filtered(eval *bexpr.Evaluator) (WorkerList, error) {
 	}
 	return ret, nil
 }
+
+// SeparateManagedWorkers divides the incoming workers into managed and
+// unmanaged workers, respectively
+func SeparateManagedWorkers(workers WorkerList) (managedWorkers, nonManagedWorkers WorkerList) {
+	// Build a set of managed and unmanaged workers
+	managedWorkers = make([]*server.Worker, 0, len(workers))
+	nonManagedWorkers = make([]*server.Worker, 0, len(workers))
+	for _, worker := range workers {
+		if IsManagedWorker(worker) {
+			managedWorkers = append(managedWorkers, worker)
+		} else {
+			nonManagedWorkers = append(nonManagedWorkers, worker)
+		}
+	}
+	return managedWorkers, nonManagedWorkers
+}
+
+// IsManagedWorker indicates whether the given worker is managed
+func IsManagedWorker(worker *server.Worker) bool {
+	return len(worker.CanonicalTags()[ManagedWorkerTag]) != 0
+}

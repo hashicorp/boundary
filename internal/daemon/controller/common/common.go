@@ -12,25 +12,27 @@ import (
 	pluginhost "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
+	pluginstorage "github.com/hashicorp/boundary/internal/storage/plugin"
 )
 
 type (
-	AuthTokenRepoFactory         = oidc.AuthTokenRepoFactory
-	VaultCredentialRepoFactory   = func() (*vault.Repository, error)
-	StaticCredentialRepoFactory  = func() (*credstatic.Repository, error)
-	IamRepoFactory               = iam.IamRepoFactory
-	OidcAuthRepoFactory          = oidc.OidcRepoFactory
-	LdapAuthRepoFactory          = ldap.RepoFactory
-	PasswordAuthRepoFactory      func() (*password.Repository, error)
-	ServersRepoFactory           func() (*server.Repository, error)
-	StaticRepoFactory            func() (*static.Repository, error)
-	PluginHostRepoFactory        func() (*pluginhost.Repository, error)
-	HostPluginRepoFactory        func() (*hostplugin.Repository, error)
-	ConnectionRepoFactory        func() (*session.ConnectionRepository, error)
-	WorkerAuthRepoStorageFactory func() (*server.WorkerAuthRepositoryStorage, error)
+	AuthTokenRepoFactory           = oidc.AuthTokenRepoFactory
+	VaultCredentialRepoFactory     = func() (*vault.Repository, error)
+	StaticCredentialRepoFactory    = func() (*credstatic.Repository, error)
+	IamRepoFactory                 = iam.IamRepoFactory
+	OidcAuthRepoFactory            = oidc.OidcRepoFactory
+	LdapAuthRepoFactory            = ldap.RepoFactory
+	PasswordAuthRepoFactory        func() (*password.Repository, error)
+	ServersRepoFactory             func() (*server.Repository, error)
+	StaticRepoFactory              func() (*static.Repository, error)
+	PluginHostRepoFactory          func() (*pluginhost.Repository, error)
+	PluginRepoFactory              func() (*plugin.Repository, error)
+	ConnectionRepoFactory          func() (*session.ConnectionRepository, error)
+	WorkerAuthRepoStorageFactory   func() (*server.WorkerAuthRepositoryStorage, error)
+	PluginStorageBucketRepoFactory func() (*pluginstorage.Repository, error)
 )
 
 // Downstreamers provides at least a minimum interface that must be met by a

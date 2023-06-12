@@ -46,157 +46,65 @@
     ]
   },
   {
-    "title": "Getting Started",
+    "title": "Get Started",
     "routes": [
       {
         "title": "Overview",
         "path": "getting-started"
       },
       {
-        "title": "Installing",
-        "hidden": true,
+        "title": "Self-managed Boundary quick start",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/oss-getting-started/"
+      },
+      {
+        "title": "HCP Boundary quick start",
+        "href": "https://developer.hashicorp.com/boundary/tutorials/hcp-getting-started/"
+      },
+      {
+        "title": "Dev Mode quick start",
         "routes": [
           {
-            "title": "Overview",
-            "path": "getting-started/installing"
+            "title": "What is Dev Mode",
+            "path": "getting-started/dev-mode/dev-mode"
           },
           {
-            "title": "Production",
-            "path": "getting-started/installing/production"
+            "title": "Run and log in",
+            "path": "getting-started/dev-mode/run-and-login"
+          },
+          {
+            "title": "Connect to a target",
+            "path": "getting-started/dev-mode/connect-to-dev-target"
           }
         ]
-      },
-      {
-        "title": "Deploy and Login",
-        "path": "getting-started/deploy-and-login"
-      },
-      {
-        "title": "Connect to Target",
-        "path": "getting-started/connect-to-target"
       }
     ]
   },
   {
-    "title": "Configuration",
+    "title": "Install Boundary",
     "routes": [
       {
-        "title": "Overview/Top-Level Parameters",
-        "path": "configuration"
+        "title": "Overview",
+        "path": "install-boundary"
       },
       {
-        "title": "worker",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/worker"
-          },
-          {
-            "title": "PKI Workers",
-            "path": "configuration/worker/pki-worker"
-          },
-          {
-            "title": "KMS Workers",
-            "path": "configuration/worker/kms-worker",
-            "badge": {
-              "text": "OSS Only",
-              "type": "outlined",
-              "color": "neutral"
-            }
-          }
-        ]
+        "title": "Non-Dev Environments",
+        "path": "install-boundary/no-gen-resources"
       },
       {
-        "title": "listener",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/listener"
-          },
-          {
-            "title": "TCP",
-            "path": "configuration/listener/tcp"
-          },
-          {
-            "title": "Unix",
-            "path": "configuration/listener/unix"
-          }
-        ]
+        "title": "Systemd Install",
+        "path": "install-boundary/systemd"
       },
       {
-        "title": "KMS",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/kms"
-          },
-          {
-            "title": "AEAD",
-            "path": "configuration/kms/aead"
-          },
-          {
-            "title": "AWS KMS",
-            "path": "configuration/kms/awskms"
-          },
-          {
-            "title": "AliCloud KMS",
-            "path": "configuration/kms/alicloudkms"
-          },
-          {
-            "title": "Azure Key Vault",
-            "path": "configuration/kms/azurekeyvault"
-          },
-          {
-            "title": "GCP Cloud KMS",
-            "path": "configuration/kms/gcpckms"
-          },
-          {
-            "title": "OCI KMS",
-            "path": "configuration/kms/ocikms"
-          },
-          {
-            "title": "Vault Transit",
-            "path": "configuration/kms/transit"
-          }
-        ]
+        "title": "Postgres Install",
+        "path": "install-boundary/postgres"
       },
       {
-        "title": "events",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "configuration/events"
-          },
-          {
-            "title": "Common Sink Parameters",
-            "path": "configuration/events/common"
-          },
-          {
-            "title": "File Sink",
-            "path": "configuration/events/file"
-          },
-          {
-            "title": "Stderr Sink",
-            "path": "configuration/events/stderr"
-          }
-        ]
+        "title": "High Availability Install",
+        "path": "install-boundary/high-availability"
       },
       {
-        "title": "controller",
-        "path": "configuration/controller",
-        "badge": {
-          "text": "OSS Only",
-          "type": "outlined",
-          "color": "neutral"
-        }
-      },
-      {
-        "title": "plugins",
-        "path": "configuration/plugins",
-        "badge": {
-          "text": "OSS Only",
-          "type": "outlined",
-          "color": "neutral"
-        }
+        "title": "Reference Architectures",
+        "path": "install-boundary/reference-architectures"
       }
     ]
   },
@@ -354,6 +262,142 @@
     ]
   },
   {
+    "title": "Configuration",
+    "routes": [
+      {
+        "title": "Overview/Top-Level Parameters",
+        "path": "configuration"
+      },
+      {
+        "title": "worker",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/worker"
+          },
+          {
+            "title": "PKI Workers",
+            "path": "configuration/worker/pki-worker"
+          },
+          {
+            "title": "KMS Workers",
+            "path": "configuration/worker/kms-worker"
+          }
+        ]
+      },
+      {
+        "title": "listener",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/listener"
+          },
+          {
+            "title": "TCP",
+            "path": "configuration/listener/tcp"
+          },
+          {
+            "title": "Unix",
+            "path": "configuration/listener/unix"
+          }
+        ]
+      },
+      {
+        "title": "KMS",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/kms"
+          },
+          {
+            "title": "AEAD",
+            "path": "configuration/kms/aead"
+          },
+          {
+            "title": "AWS KMS",
+            "path": "configuration/kms/awskms"
+          },
+          {
+            "title": "AliCloud KMS",
+            "path": "configuration/kms/alicloudkms"
+          },
+          {
+            "title": "Azure Key Vault",
+            "path": "configuration/kms/azurekeyvault"
+          },
+          {
+            "title": "GCP Cloud KMS",
+            "path": "configuration/kms/gcpckms"
+          },
+          {
+            "title": "OCI KMS",
+            "path": "configuration/kms/ocikms"
+          },
+          {
+            "title": "Vault Transit",
+            "path": "configuration/kms/transit"
+          }
+        ]
+      },
+      {
+        "title": "events",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/events"
+          },
+          {
+            "title": "Common Sink Parameters",
+            "path": "configuration/events/common"
+          },
+          {
+            "title": "File Sink",
+            "path": "configuration/events/file"
+          },
+          {
+            "title": "Stderr Sink",
+            "path": "configuration/events/stderr"
+          }
+        ]
+      },
+      {
+        "title": "controller",
+        "path": "configuration/controller",
+        "badge": {
+          "text": "OSS Only",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      },
+      {
+        "title": "plugins",
+        "path": "configuration/plugins",
+        "badge": {
+          "text": "OSS Only",
+          "type": "outlined",
+          "color": "neutral"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Operations",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "operations"
+      },
+      {
+        "title": "Metrics",
+        "path": "operations/metrics"
+      },
+      {
+        "title": "Health Endpoint",
+        "path": "operations/health"
+      }
+    ]
+  },
+  {
     "title": "Troubleshoot",
     "routes": [
       {
@@ -365,10 +409,6 @@
         "path": "troubleshoot/faq"
       }
     ]
-  },
-  {
-    "title": "Common Workflows",
-    "href": "https://learn.hashicorp.com/boundary"
   },
   {
     "title": "Common Workflows",
@@ -435,89 +475,19 @@
     ]
   },
   {
-    "divider": true
-  },
-  {
-    "title": "Boundary OSS",
+    "title": "Develop Boundary",
     "routes": [
       {
         "title": "Overview",
-        "path": "oss"
+        "path": "developing"
       },
       {
-        "title": "Installation",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "oss/installing"
-          },
-          {
-            "title": "Dev Mode",
-            "path": "oss/installing/dev-mode"
-          },
-          {
-            "title": "Run and Login",
-            "path": "oss/installing/run-and-login"
-          },
-          {
-            "title": "Connect to Dev Target",
-            "path": "oss/installing/connect-to-dev-target"
-          },
-          {
-            "title": "Non-Dev Environments",
-            "path": "oss/installing/no-gen-resources"
-          },
-          {
-            "title": "Systemd Install",
-            "path": "oss/installing/systemd"
-          },
-          {
-            "title": "Postgres Install",
-            "path": "oss/installing/postgres"
-          },
-          {
-            "title": "High Availability Install",
-            "path": "oss/installing/high-availability"
-          },
-          {
-            "title": "Reference Architectures",
-            "path": "oss/installing/reference-architectures"
-          }
-        ]
+        "title": "Build Boundary",
+        "path": "developing/building"
       },
       {
-        "title": "Operations",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "oss/operations"
-          },
-          {
-            "title": "Metrics",
-            "path": "oss/operations/metrics"
-          },
-          {
-            "title": "Health Endpoint",
-            "path": "oss/operations/health"
-          }
-        ]
-      },
-      {
-        "title": "Developing Boundary",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "oss/developing"
-          },
-          {
-            "title": "Building",
-            "path": "oss/developing/building"
-          },
-          {
-            "title": "Developing the UI",
-            "path": "oss/developing/ui"
-          }
-        ]
+        "title": "Develop the UI",
+        "path": "developing/ui"
       }
     ]
   },
@@ -525,8 +495,40 @@
     "divider": true
   },
   {
+    "title": "Boundary OSS",
+    "hidden": true,
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "oss"
+      }
+    ]
+  },
+  {
     "title": "HCP Boundary",
-    "href": "https://cloud.hashicorp.com/docs/boundary/"
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "hcp"
+      },
+      {
+        "title": "Get started",
+        "routes": [
+          {
+            "title": "Deploy and login",
+            "path": "hcp/get-started/deploy-and-login"
+          },
+          {
+            "title": "Connect to target",
+            "path": "hcp/get-started/connect-to-target"
+          }
+        ]
+      },
+      {
+        "title": "Documentation",
+        "href": "https://cloud.hashicorp.com/docs/boundary/"
+      }
+    ]
   },
   {
     "divider": true

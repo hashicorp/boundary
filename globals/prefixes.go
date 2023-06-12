@@ -111,6 +111,16 @@ const (
 
 	// WorkerPrefix is the prefix for workers
 	WorkerPrefix = "w"
+
+	// PluginStorageBucketPrefix is the prefix for plugin storage buckets
+	PluginStorageBucketPrefix = "sb"
+
+	// SessionRecordingPrefix is the prefix for session recordings
+	SessionRecordingPrefix = "sr"
+	// ConnectionRecordingPrefix is the prefix for connection recordings
+	ConnectionRecordingPrefix = "cr"
+	// ChannelRecordingPrefix is the prefix for channel recordings
+	ChannelRecordingPrefix = "chr"
 )
 
 var prefixToResourceType = map[string]resource.Type{
@@ -149,6 +159,8 @@ var prefixToResourceType = map[string]resource.Type{
 	TcpTargetPrefix:                            resource.Target,
 	SshTargetPrefix:                            resource.Target,
 	WorkerPrefix:                               resource.Worker,
+	PluginStorageBucketPrefix:                  resource.StorageBucket,
+	SessionRecordingPrefix:                     resource.SessionRecording,
 }
 
 // ResourceTypeFromPrefix takes in a resource ID (or a prefix) and returns the

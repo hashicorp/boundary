@@ -36,6 +36,8 @@ type Target interface {
 	GetAddress() string
 	GetHostSources() []HostSource
 	GetCredentialSources() []CredentialSource
+	GetStorageBucketId() string
+	GetEnableSessionRecording() bool
 	Clone() Target
 	SetPublicId(context.Context, string) error
 	SetProjectId(string)
@@ -54,6 +56,8 @@ type Target interface {
 	SetAddress(string)
 	SetHostSources([]HostSource)
 	SetCredentialSources([]CredentialSource)
+	SetStorageBucketId(string)
+	SetEnableSessionRecording(bool)
 	Oplog(op oplog.OpType) oplog.Metadata
 }
 
@@ -174,5 +178,7 @@ func (t *targetView) targetSubtype(ctx context.Context, address string) (Target,
 	tt.SetAddress(address)
 	tt.SetHostSources(t.HostSource)
 	tt.SetCredentialSources(t.CredentialSources)
+	tt.SetEnableSessionRecording(t.EnableSessionRecording)
+	tt.SetStorageBucketId(t.StorageBucketId)
 	return tt, nil
 }

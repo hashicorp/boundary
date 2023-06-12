@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -106,29 +107,29 @@ func TestGet(t *testing.T) {
 		return workerAuthRepo, nil
 	}
 
-	kmsWorker := server.TestKmsWorker(t, conn, wrap,
-		server.WithName("test kms worker names"),
-		server.WithDescription("test kms worker description"),
-		server.WithAddress("test kms worker address"),
+	deprecatedKmsWorker := server.TestKmsWorker(t, conn, wrap,
+		server.WithName("test deprecated kms worker names"),
+		server.WithDescription("test deprecated kms worker description"),
+		server.WithAddress("test deprecated kms worker address"),
 		server.WithWorkerTags(&server.Tag{Key: "key", Value: "val"}))
 
-	kmsAuthzActions := make([]string, len(testAuthorizedActions))
-	copy(kmsAuthzActions, testAuthorizedActions)
+	deprecatedKmsAuthzActions := make([]string, len(testAuthorizedActions))
+	copy(deprecatedKmsAuthzActions, testAuthorizedActions)
 
-	wantKmsWorker := &pb.Worker{
-		Id:                    kmsWorker.GetPublicId(),
-		ScopeId:               kmsWorker.GetScopeId(),
-		Scope:                 &scopes.ScopeInfo{Id: kmsWorker.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
-		CreatedTime:           kmsWorker.CreateTime.GetTimestamp(),
-		UpdatedTime:           kmsWorker.UpdateTime.GetTimestamp(),
-		Version:               kmsWorker.GetVersion(),
-		Name:                  wrapperspb.String(kmsWorker.GetName()),
-		Description:           wrapperspb.String(kmsWorker.GetDescription()),
-		Address:               kmsWorker.GetAddress(),
+	wantDeprecatedKmsWorker := &pb.Worker{
+		Id:                    deprecatedKmsWorker.GetPublicId(),
+		ScopeId:               deprecatedKmsWorker.GetScopeId(),
+		Scope:                 &scopes.ScopeInfo{Id: deprecatedKmsWorker.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+		CreatedTime:           deprecatedKmsWorker.CreateTime.GetTimestamp(),
+		UpdatedTime:           deprecatedKmsWorker.UpdateTime.GetTimestamp(),
+		Version:               deprecatedKmsWorker.GetVersion(),
+		Name:                  wrapperspb.String(deprecatedKmsWorker.GetName()),
+		Description:           wrapperspb.String(deprecatedKmsWorker.GetDescription()),
+		Address:               deprecatedKmsWorker.GetAddress(),
 		ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
-		AuthorizedActions:     strutil.StrListDelete(kmsAuthzActions, action.Update.String()),
-		LastStatusTime:        kmsWorker.GetLastStatusTime().GetTimestamp(),
-		ReleaseVersion:        kmsWorker.ReleaseVersion,
+		AuthorizedActions:     strutil.StrListDelete(deprecatedKmsAuthzActions, action.Update.String()),
+		LastStatusTime:        deprecatedKmsWorker.GetLastStatusTime().GetTimestamp(),
+		ReleaseVersion:        deprecatedKmsWorker.ReleaseVersion,
 		CanonicalTags: map[string]*structpb.ListValue{
 			"key": structListValue(t, "val"),
 		},
@@ -147,7 +148,7 @@ func TestGet(t *testing.T) {
 	// Add config tags to the created worker
 	pkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
 		server.NewWorker(pkiWorker.GetScopeId(),
-			server.WithAddress("test kms worker address"),
+			server.WithAddress("test pki worker address"),
 			server.WithWorkerTags(&server.Tag{
 				Key:   "config",
 				Value: "test",
@@ -181,6 +182,62 @@ func TestGet(t *testing.T) {
 		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
 	}
 
+	var managedPkiWorkerKeyId string
+	managedPkiWorkerName := "test managed pki worker name"
+	managedPkiWorker := server.TestPkiWorker(t, conn, wrap,
+		server.WithName("test managed pki worker name"),
+		server.WithDescription("test managed pki worker description"),
+		server.WithTestPkiWorkerAuthorizedKeyId(&managedPkiWorkerKeyId),
+		// Passing this function for the ID will allow us to trick it into
+		// considering it a KMS-authed worker, so we can verify that both update
+		// and delete are removed
+		server.WithNewIdFunc(func(context.Context) (string, error) {
+			return server.NewWorkerIdFromScopeAndName(ctx, scope.Global.String(), managedPkiWorkerName)
+		}),
+	)
+
+	// Add config tags to the created worker
+	managedPkiWorker, err = repo.UpsertWorkerStatus(context.Background(),
+		server.NewWorker(managedPkiWorker.GetScopeId(),
+			server.WithAddress("test managed pki worker address"),
+			server.WithWorkerTags(&server.Tag{
+				Key:   wl.ManagedWorkerTag,
+				Value: "true",
+			})),
+		server.WithUpdateTags(true),
+		server.WithPublicId(managedPkiWorker.GetPublicId()),
+		server.WithKeyId(managedPkiWorkerKeyId))
+	require.NoError(t, err)
+
+	managedPkiAuthzActions := make([]string, len(testAuthorizedActions))
+	copy(managedPkiAuthzActions, testAuthorizedActions)
+	managedPkiAuthzActions = strutil.StrListDelete(managedPkiAuthzActions, action.Update.String())
+	managedPkiAuthzActions = strutil.StrListDelete(managedPkiAuthzActions, action.Delete.String())
+
+	wantManagedPkiWorker := &pb.Worker{
+		Id:                    managedPkiWorker.GetPublicId(),
+		ScopeId:               managedPkiWorker.GetScopeId(),
+		Scope:                 &scopes.ScopeInfo{Id: managedPkiWorker.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+		CreatedTime:           managedPkiWorker.CreateTime.GetTimestamp(),
+		UpdatedTime:           managedPkiWorker.UpdateTime.GetTimestamp(),
+		Version:               managedPkiWorker.GetVersion(),
+		Name:                  wrapperspb.String(managedPkiWorker.GetName()),
+		Description:           wrapperspb.String(managedPkiWorker.GetDescription()),
+		Address:               managedPkiWorker.GetAddress(),
+		AuthorizedActions:     managedPkiAuthzActions,
+		ActiveConnectionCount: &wrapperspb.UInt32Value{Value: 0},
+		LastStatusTime:        managedPkiWorker.GetLastStatusTime().GetTimestamp(),
+		ReleaseVersion:        managedPkiWorker.ReleaseVersion,
+		CanonicalTags: map[string]*structpb.ListValue{
+			wl.ManagedWorkerTag: structListValue(t, "true"),
+		},
+		ConfigTags: map[string]*structpb.ListValue{
+			wl.ManagedWorkerTag: structListValue(t, "true"),
+		},
+		Type:                               PkiWorkerType,
+		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+	}
+
 	cases := []struct {
 		name    string
 		scopeId string
@@ -189,16 +246,22 @@ func TestGet(t *testing.T) {
 		err     error
 	}{
 		{
-			name:    "Get an Existing KMS Worker",
-			scopeId: kmsWorker.GetScopeId(),
-			req:     &pbs.GetWorkerRequest{Id: kmsWorker.GetPublicId()},
-			res:     &pbs.GetWorkerResponse{Item: wantKmsWorker},
+			name:    "Get an Existing Deprecated KMS Worker",
+			scopeId: deprecatedKmsWorker.GetScopeId(),
+			req:     &pbs.GetWorkerRequest{Id: deprecatedKmsWorker.GetPublicId()},
+			res:     &pbs.GetWorkerResponse{Item: wantDeprecatedKmsWorker},
 		},
 		{
 			name:    "Get an Existing PKI Worker",
 			scopeId: pkiWorker.GetScopeId(),
 			req:     &pbs.GetWorkerRequest{Id: pkiWorker.GetPublicId()},
 			res:     &pbs.GetWorkerResponse{Item: wantPkiWorker},
+		},
+		{
+			name:    "Get a managed worker",
+			scopeId: managedPkiWorker.GetScopeId(),
+			req:     &pbs.GetWorkerRequest{Id: managedPkiWorker.GetPublicId()},
+			res:     &pbs.GetWorkerResponse{Item: wantManagedPkiWorker},
 		},
 		{
 			name: "Get a non-existent Worker",
@@ -410,25 +473,33 @@ func TestDelete(t *testing.T) {
 	s, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
 	require.NoError(t, err, "Error when getting new worker service.")
 
-	w := server.TestKmsWorker(t, conn, wrap)
+	wUnmanaged := server.TestKmsWorker(t, conn, wrap, server.WithWorkerTags(&server.Tag{
+		Key:   "foo",
+		Value: "bar",
+	}))
+	wManaged := server.TestKmsWorker(t, conn, wrap, server.WithWorkerTags(&server.Tag{
+		Key:   wl.ManagedWorkerTag,
+		Value: "bar",
+	}))
 
 	cases := []struct {
-		name    string
-		scopeId string
-		req     *pbs.DeleteWorkerRequest
-		res     *pbs.DeleteWorkerResponse
-		err     error
+		name        string
+		scopeId     string
+		req         *pbs.DeleteWorkerRequest
+		res         *pbs.DeleteWorkerResponse
+		err         error
+		errContains string
 	}{
 		{
 			name:    "Delete an Existing Worker",
-			scopeId: w.GetScopeId(),
+			scopeId: wUnmanaged.GetScopeId(),
 			req: &pbs.DeleteWorkerRequest{
-				Id: w.GetPublicId(),
+				Id: wUnmanaged.GetPublicId(),
 			},
 		},
 		{
 			name:    "Delete bad worker id",
-			scopeId: w.GetScopeId(),
+			scopeId: wUnmanaged.GetScopeId(),
 			req: &pbs.DeleteWorkerRequest{
 				Id: globals.WorkerPrefix + "_doesntexis",
 			},
@@ -436,11 +507,20 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name:    "Bad Worker Id formatting",
-			scopeId: w.GetScopeId(),
+			scopeId: wUnmanaged.GetScopeId(),
 			req: &pbs.DeleteWorkerRequest{
 				Id: "bad_format",
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
+		},
+		{
+			name:    "Cannot delete managed worker",
+			scopeId: wManaged.GetScopeId(),
+			req: &pbs.DeleteWorkerRequest{
+				Id: wManaged.GetPublicId(),
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "Managed workers cannot be deleted",
 		},
 	}
 	for _, tc := range cases {
@@ -450,6 +530,10 @@ func TestDelete(t *testing.T) {
 			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteWorker(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
+			}
+			if tc.errContains != "" {
+				require.Error(gErr)
+				assert.Contains(gErr.Error(), tc.errContains)
 			}
 			assert.EqualValuesf(tc.res, got, "DeleteWorker(%+v) got response %q, wanted %q", tc.req, got, tc.res)
 		})
@@ -932,7 +1016,7 @@ func TestUpdate(t *testing.T) {
 				// error here.
 				if wkr.PublicId == pkiKmsWkr.PublicId && basicInfoChange && tc.err == nil {
 					require.Error(t, gErr)
-					assert.Contains(t, gErr.Error(), "KMS-registered workers cannot have their")
+					assert.Contains(t, gErr.Error(), "KMS workers cannot be updated through the API")
 					assert.True(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)))
 					return
 				}
@@ -968,7 +1052,7 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-func TestUpdate_KMS(t *testing.T) {
+func TestUpdate_DeprecatedKMS(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1002,10 +1086,10 @@ func TestUpdate_KMS(t *testing.T) {
 	require.NoError(t, err)
 
 	cases := []struct {
-		name string
-		req  *pbs.UpdateWorkerRequest
-		res  *pbs.UpdateWorkerResponse
-		err  error
+		name        string
+		req         *pbs.UpdateWorkerRequest
+		res         *pbs.UpdateWorkerResponse
+		errContains string
 	}{
 		{
 			name: "Cant set name",
@@ -1017,6 +1101,7 @@ func TestUpdate_KMS(t *testing.T) {
 					Name: wrapperspb.String("name"),
 				},
 			},
+			errContains: "KMS workers cannot be updated through the API",
 		},
 		{
 			name: "Cant set description",
@@ -1028,6 +1113,7 @@ func TestUpdate_KMS(t *testing.T) {
 					Description: wrapperspb.String("description"),
 				},
 			},
+			errContains: "KMS workers cannot be updated through the API",
 		},
 		{
 			name: "Cant set address",
@@ -1039,6 +1125,7 @@ func TestUpdate_KMS(t *testing.T) {
 					Address: "address",
 				},
 			},
+			errContains: "This is a read only field.",
 		},
 	}
 	for _, tc := range cases {
@@ -1049,6 +1136,8 @@ func TestUpdate_KMS(t *testing.T) {
 			got, gErr := workerService.UpdateWorker(auth.DisabledAuthTestContext(iamRepoFn, scope.Global.String()), req)
 			assert.Error(t, gErr)
 			assert.Nil(t, got)
+			assert.Contains(t, gErr.Error(), tc.errContains)
+			assert.True(t, errors.Is(gErr, handlers.ApiErrorWithCode(codes.InvalidArgument)))
 		})
 	}
 }
@@ -1928,6 +2017,18 @@ func TestService_AddWorkerTags(t *testing.T) {
 			wantErrContains: "Tag values must be strings.",
 		},
 		{
+			name: "invalid-managed-tag-value",
+			req: func() *pbs.AddWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.AddWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{wl.ManagedWorkerTag: {Values: []*structpb.Value{structpb.NewStringValue("value2")}}},
+				}
+			}(),
+			wantErrContains: "Tag keys cannot be the managed worker tag.",
+		},
+		{
 			name: "mixed-invalid-tags",
 			req: func() *pbs.AddWorkerTagsRequest {
 				worker := server.TestKmsWorker(t, conn, wrapper)
@@ -2077,6 +2178,18 @@ func TestService_SetWorkerTags(t *testing.T) {
 				}
 			}(),
 			wantErrContains: "Tag values must be strings.",
+		},
+		{
+			name: "invalid-managed-tag-value",
+			req: func() *pbs.SetWorkerTagsRequest {
+				worker := server.TestKmsWorker(t, conn, wrapper)
+				return &pbs.SetWorkerTagsRequest{
+					Id:      worker.PublicId,
+					Version: worker.Version,
+					ApiTags: map[string]*structpb.ListValue{wl.ManagedWorkerTag: {Values: []*structpb.Value{structpb.NewStringValue("value2")}}},
+				}
+			}(),
+			wantErrContains: "Tag keys cannot be the managed worker tag.",
 		},
 		{
 			name: "mixed-invalid-tags",

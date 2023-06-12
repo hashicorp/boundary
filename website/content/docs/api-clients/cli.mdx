@@ -245,3 +245,9 @@ the exact output from the controller. If using the output of the CLI in scripts
 or as parameters to other tools, _always_ use formatted output. The default text
 output is meant for human users and the formatting or the information included
 within that output from the original JSON may change at any time.
+
+Note that using `-format json` on a `boundary authenticate` command results in
+Boundary not saving the token to the system password store. In this case, the
+authentication information will only be printed to your terminal in JSON format.
+You can use the `BOUNDARY_TOKEN` environment variable or `-token` flag to
+provide the token in subsequent commands.

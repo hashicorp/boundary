@@ -27,22 +27,22 @@ func init() {
 // handleProxy returns a ProxyConnFn which starts the copy between the
 // connections and blocks until an error (EOF on happy path) is received on
 // either connection.
-func handleProxy(ctx context.Context, _ proxy.DecryptFn, conn net.Conn, out *proxy.ProxyDialer, connId string, _ *anypb.Any) (proxy.ProxyConnFn, error) {
+func handleProxy(controlCtx context.Context, _ context.Context, _ proxy.DecryptFn, conn net.Conn, out *proxy.ProxyDialer, connId string, _ *anypb.Any, _ proxy.RecordingManager) (proxy.ProxyConnFn, error) {
 	const op = "tcp.HandleProxy"
 	switch {
 	case conn == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "conn is nil")
+		return nil, errors.New(controlCtx, errors.InvalidParameter, op, "conn is nil")
 	case out == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "proxy dialer is nil")
+		return nil, errors.New(controlCtx, errors.InvalidParameter, op, "proxy dialer is nil")
 	case len(connId) == 0:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "connection id is empty")
+		return nil, errors.New(controlCtx, errors.InvalidParameter, op, "connection id is empty")
 	}
-	remoteConn, err := out.Dial(ctx)
+	remoteConn, err := out.Dial(controlCtx)
 	if err != nil {
 		return nil, err
 	}
 
-	return func(ctx context.Context) {
+	return func() {
 		connWg := new(sync.WaitGroup)
 		connWg.Add(2)
 		go func() {

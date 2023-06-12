@@ -17,6 +17,8 @@ type StateReport struct {
 	SessionId   string
 	Status      Status
 	Connections []*Connection
+	// Unrecognized indicates that the SessionId was not found in the database.
+	Unrecognized bool
 }
 
 // WorkerStatusReport is a domain service function that, given a Worker's
@@ -48,7 +50,7 @@ func WorkerStatusReport(ctx context.Context, repo *Repository, connRepo *Connect
 		merr = multierror.Append(merr, errors.New(ctx, errors.Internal, op, fmt.Sprintf("failed to update bytes up and down for worker reported connections: %v", err)))
 	}
 
-	notActive, err := repo.checkIfNoLongerActive(ctx, reportedSessions)
+	notActive, err := repo.CheckIfNotActive(ctx, reportedSessions)
 	if err != nil {
 		merr = multierror.Append(merr, errors.New(ctx, errors.Internal, op, fmt.Sprintf("Error checking session state for worker %s: %v", workerId, err)))
 	}

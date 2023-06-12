@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
+	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -261,8 +262,14 @@ func (w *Worker) createClientConn(addr string) error {
 	}
 
 	w.GrpcClientConn = cc
-	w.controllerStatusConn.Store(pbs.NewServerCoordinationServiceClient(cc))
 	w.controllerMultihopConn.Store(multihop.NewMultihopServiceClient(cc))
+
+	var producer handlers.UpstreamMessageServiceClientProducer
+	producer = func(context.Context) (pbs.UpstreamMessageServiceClient, error) {
+		return pbs.NewUpstreamMessageServiceClient(cc), nil
+	}
+
+	w.controllerUpstreamMsgConn.Store(&producer)
 
 	return nil
 }

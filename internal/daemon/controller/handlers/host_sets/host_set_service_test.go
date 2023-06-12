@@ -20,11 +20,12 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/host"
-	"github.com/hashicorp/boundary/internal/host/plugin"
+	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	hostplugin "github.com/hashicorp/boundary/internal/plugin/host"
+	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
@@ -45,8 +46,8 @@ import (
 )
 
 var testAuthorizedActions = map[subtypes.Subtype][]string{
-	static.Subtype: {"no-op", "read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
-	plugin.Subtype: {"no-op", "read", "update", "delete"},
+	static.Subtype:     {"no-op", "read", "update", "delete", "add-hosts", "set-hosts", "remove-hosts"},
+	hostplugin.Subtype: {"no-op", "read", "update", "delete"},
 }
 
 func TestGet_Static(t *testing.T) {
@@ -67,8 +68,8 @@ func TestGet_Static(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -164,17 +165,17 @@ func TestGet_Plugin(t *testing.T) {
 
 	name := "test"
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
-	plg := hostplugin.TestPlugin(t, conn, name)
+	plg := plugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hs := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1))
-	hsPrev := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(prefEndpoints), plugin.WithSyncIntervalSeconds(-1), plugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostSetPreviousPrefix)))
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hs := hostplugin.TestSet(t, conn, kms, sche, hc, plgm, hostplugin.WithPreferredEndpoints(prefEndpoints), hostplugin.WithSyncIntervalSeconds(-1))
+	hsPrev := hostplugin.TestSet(t, conn, kms, sche, hc, plgm, hostplugin.WithPreferredEndpoints(prefEndpoints), hostplugin.WithSyncIntervalSeconds(-1), hostplugin.WithPublicId(fmt.Sprintf("%s_1234567890", globals.PluginHostSetPreviousPrefix)))
 
 	toMerge := &pbs.GetHostSetRequest{}
 
@@ -183,7 +184,7 @@ func TestGet_Plugin(t *testing.T) {
 		Id:            hs.GetPublicId(),
 		CreatedTime:   hs.CreateTime.GetTimestamp(),
 		UpdatedTime:   hs.UpdateTime.GetTimestamp(),
-		Type:          plugin.Subtype.String(),
+		Type:          hostplugin.Subtype.String(),
 		Scope:         &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
 		Plugin: &plugins.PluginInfo{
 			Id:          plg.GetPublicId(),
@@ -192,7 +193,7 @@ func TestGet_Plugin(t *testing.T) {
 		},
 		PreferredEndpoints:  prefEndpoints,
 		SyncIntervalSeconds: &wrappers.Int32Value{Value: -1},
-		AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+		AuthorizedActions:   testAuthorizedActions[hostplugin.Subtype],
 	}
 
 	cases := []struct {
@@ -278,8 +279,8 @@ func TestList_Static(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
@@ -378,20 +379,20 @@ func TestList_Plugin(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	name := "test"
-	plg := hostplugin.TestPlugin(t, conn, name)
+	plg := plugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	hcNoHosts := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hcNoHosts := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	preferredEndpoints := []string{"cidr:1.2.3.4", "dns:*.foobar.com"}
 
 	var wantHs []*pb.HostSet
 	for i := 0; i < 10; i++ {
-		h := plugin.TestSet(t, conn, kms, sche, hc, plgm, plugin.WithPreferredEndpoints(preferredEndpoints), plugin.WithSyncIntervalSeconds(5))
+		h := hostplugin.TestSet(t, conn, kms, sche, hc, plgm, hostplugin.WithPreferredEndpoints(preferredEndpoints), hostplugin.WithSyncIntervalSeconds(5))
 		wantHs = append(wantHs, &pb.HostSet{
 			Id:            h.GetPublicId(),
 			HostCatalogId: h.GetCatalogId(),
@@ -404,8 +405,8 @@ func TestList_Plugin(t *testing.T) {
 			CreatedTime:         h.GetCreateTime().GetTimestamp(),
 			UpdatedTime:         h.GetUpdateTime().GetTimestamp(),
 			Version:             h.GetVersion(),
-			Type:                plugin.Subtype.String(),
-			AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+			Type:                hostplugin.Subtype.String(),
+			AuthorizedActions:   testAuthorizedActions[hostplugin.Subtype],
 			PreferredEndpoints:  preferredEndpoints,
 			SyncIntervalSeconds: &wrappers.Int32Value{Value: 5},
 		})
@@ -491,8 +492,8 @@ func TestDelete_Static(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -562,17 +563,17 @@ func TestDelete_Plugin(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	pluginRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	name := "test"
-	plg := hostplugin.TestPlugin(t, conn, name)
+	plg := plugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
-	h := plugin.TestSet(t, conn, kms, sche, hc, plgm)
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	h := hostplugin.TestSet(t, conn, kms, sche, hc, plgm)
 
 	s, err := host_sets.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
@@ -640,8 +641,8 @@ func TestDelete_twice(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -677,8 +678,8 @@ func TestCreate_Static(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
@@ -834,17 +835,17 @@ func TestCreate_Plugin(t *testing.T) {
 		return static.NewRepository(rw, rw, kms)
 	}
 	name := "test"
-	plg := hostplugin.TestPlugin(t, conn, name)
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
-			plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{
+	plg := plugin.TestPlugin(t, conn, name)
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
+			plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginHostServer{
 				OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 					return nil, nil
 				},
 			}),
 		})
 	}
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
 	attrs := map[string]any{
 		"int":         1,
@@ -890,7 +891,7 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:       hc.GetPublicId(),
 				Name:                &wrappers.StringValue{Value: "No Attributes"},
 				Description:         &wrappers.StringValue{Value: "desc"},
-				Type:                plugin.Subtype.String(),
+				Type:                hostplugin.Subtype.String(),
 				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 			}},
 			res: &pbs.CreateHostSetResponse{
@@ -905,8 +906,8 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:                &wrappers.StringValue{Value: "No Attributes"},
 					Description:         &wrappers.StringValue{Value: "desc"},
-					Type:                plugin.Subtype.String(),
-					AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+					Type:                hostplugin.Subtype.String(),
+					AuthorizedActions:   testAuthorizedActions[hostplugin.Subtype],
 					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: -1},
 				},
 			},
@@ -917,7 +918,7 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:       hc.GetPublicId(),
 				Name:                &wrappers.StringValue{Value: "With Attributes"},
 				Description:         &wrappers.StringValue{Value: "desc"},
-				Type:                plugin.Subtype.String(),
+				Type:                hostplugin.Subtype.String(),
 				SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
 				Attrs: &pb.HostSet_Attributes{
 					Attributes: testInputAttrs,
@@ -935,9 +936,9 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:                &wrappers.StringValue{Value: "With Attributes"},
 					Description:         &wrappers.StringValue{Value: "desc"},
-					Type:                plugin.Subtype.String(),
+					Type:                hostplugin.Subtype.String(),
 					SyncIntervalSeconds: &wrapperspb.Int32Value{Value: 90},
-					AuthorizedActions:   testAuthorizedActions[plugin.Subtype],
+					AuthorizedActions:   testAuthorizedActions[hostplugin.Subtype],
 					Attrs: &pb.HostSet_Attributes{
 						Attributes: testOutputAttrs,
 					},
@@ -950,7 +951,7 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:      hc.GetPublicId(),
 				Name:               &wrappers.StringValue{Value: "name"},
 				Description:        &wrappers.StringValue{Value: "desc"},
-				Type:               plugin.Subtype.String(),
+				Type:               hostplugin.Subtype.String(),
 				PreferredEndpoints: prefEndpoints,
 			}},
 			res: &pbs.CreateHostSetResponse{
@@ -965,9 +966,9 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:               &wrappers.StringValue{Value: "name"},
 					Description:        &wrappers.StringValue{Value: "desc"},
-					Type:               plugin.Subtype.String(),
+					Type:               hostplugin.Subtype.String(),
 					PreferredEndpoints: prefEndpoints,
-					AuthorizedActions:  testAuthorizedActions[plugin.Subtype],
+					AuthorizedActions:  testAuthorizedActions[hostplugin.Subtype],
 				},
 			},
 		},
@@ -977,7 +978,7 @@ func TestCreate_Plugin(t *testing.T) {
 				HostCatalogId:      hc.GetPublicId(),
 				Name:               &wrappers.StringValue{Value: "name"},
 				Description:        &wrappers.StringValue{Value: "desc"},
-				Type:               plugin.Subtype.String(),
+				Type:               hostplugin.Subtype.String(),
 				PreferredEndpoints: append(prefEndpoints, "foobar:1.2.3.4"),
 			}},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1011,8 +1012,8 @@ func TestCreate_Plugin(t *testing.T) {
 					},
 					Name:              &wrappers.StringValue{Value: "no type name"},
 					Description:       &wrappers.StringValue{Value: "no type desc"},
-					Type:              plugin.Subtype.String(),
-					AuthorizedActions: testAuthorizedActions[plugin.Subtype],
+					Type:              hostplugin.Subtype.String(),
+					AuthorizedActions: testAuthorizedActions[hostplugin.Subtype],
 				},
 			},
 		},
@@ -1129,8 +1130,8 @@ func TestUpdate_Static(t *testing.T) {
 		Id: hs.GetPublicId(),
 	}
 
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	tested, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
@@ -1474,16 +1475,16 @@ func TestUpdate_Plugin(t *testing.T) {
 	rw := db.New(conn)
 
 	name := "test"
-	plg := hostplugin.TestPlugin(t, conn, name)
+	plg := plugin.TestPlugin(t, conn, name)
 	plgm := map[string]plgpb.HostPluginServiceClient{
-		plg.GetPublicId(): plugin.NewWrappingPluginClient(&plugin.TestPluginServer{}),
+		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	pluginHostRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, plgm)
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
@@ -1491,7 +1492,7 @@ func TestUpdate_Plugin(t *testing.T) {
 	tested, err := host_sets.NewService(repoFn, pluginHostRepo)
 	require.NoError(t, err, "Failed to create a new host catalog service.")
 
-	hc := plugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
+	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 
 	freshSet := func(t *testing.T) *pb.HostSet {
@@ -1503,7 +1504,7 @@ func TestUpdate_Plugin(t *testing.T) {
 			HostCatalogId: hc.GetPublicId(),
 			Name:          wrapperspb.String("default"),
 			Description:   wrapperspb.String("default"),
-			Type:          plugin.Subtype.String(),
+			Type:          hostplugin.Subtype.String(),
 			Attrs: &pb.HostSet_Attributes{
 				Attributes: attr,
 			},
@@ -1819,8 +1820,8 @@ func TestAddHostSetHosts(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -1940,8 +1941,8 @@ func TestSetHostSetHosts(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
@@ -2057,8 +2058,8 @@ func TestRemoveHostSetHosts(t *testing.T) {
 	repoFn := func() (*static.Repository, error) {
 		return static.NewRepository(rw, rw, kms)
 	}
-	plgRepoFn := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	plgRepoFn := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")

@@ -199,6 +199,9 @@ type TestWorkerOpts struct {
 	// The location of the worker's auth storage
 	WorkerAuthStoragePath string
 
+	// The location of the worker's recording storage
+	WorkerRecordingStoragePath string
+
 	// The name to use for the worker, otherwise one will be randomly
 	// generated, unless provided in a non-nil Config
 	Name string
@@ -251,6 +254,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		shutdownDoneCh: make(chan struct{}),
 		shutdownOnce:   new(sync.Once),
 	}
+	t.Cleanup(tw.Shutdown)
 
 	if opts == nil {
 		opts = new(TestWorkerOpts)
@@ -304,6 +308,11 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 	if opts.WorkerAuthStoragePath != "" {
 		opts.Config.Worker.AuthStoragePath = opts.WorkerAuthStoragePath
 	}
+	if opts.WorkerRecordingStoragePath != "" {
+		opts.Config.Worker.RecordingStoragePath = opts.WorkerRecordingStoragePath
+	}
+
+	tw.b.EnabledPlugins = append(tw.b.EnabledPlugins, base.EnabledPluginLoopback)
 	tw.name = opts.Config.Worker.Name
 
 	if opts.SuccessfulStatusGracePeriodDuration != 0 {
@@ -349,7 +358,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		Server:    tw.b,
 	}
 
-	tw.w, err = New(conf)
+	tw.w, err = New(ctx, conf)
 	if err != nil {
 		tw.Shutdown()
 		t.Fatal(err)
@@ -445,6 +454,10 @@ func NewTestMultihopWorkers(t testing.TB,
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 		DownstreamWorkerAuthKms:    childDownstreamWrapper,
 	})
+	t.Cleanup(kmsWorker.Shutdown)
+
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
 
 	// names should not be set when using pki workers
 	pkiWorkerConf, err := config.DevWorker()
@@ -463,10 +476,12 @@ func NewTestMultihopWorkers(t testing.TB,
 	})
 	t.Cleanup(pkiWorker.Shutdown)
 
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
+
 	// Get a server repo and worker auth repo
 	serversRepo, err := serversRepoFn()
 	require.NoError(err)
-
 	// Perform initial authentication of worker to controller
 	reqBytes, err := base58.FastBase58Decoding(pkiWorker.Worker().WorkerAuthRegistrationRequest)
 	require.NoError(err)
@@ -493,8 +508,13 @@ func NewTestMultihopWorkers(t testing.TB,
 		InitialUpstreams:           kmsWorker.ProxyAddrs(),
 		Logger:                     logger.Named("childPkiWorker"),
 		Config:                     childPkiWorkerConf,
+		WorkerRecordingStoragePath: t.TempDir(),
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
 	})
+	t.Cleanup(childPkiWorker.Shutdown)
+
+	// Give time for it to be inserted into the database
+	time.Sleep(2 * time.Second)
 
 	// Perform initial authentication of worker to controller
 	reqBytes, err = base58.FastBase58Decoding(childPkiWorker.Worker().WorkerAuthRegistrationRequest)
@@ -526,10 +546,18 @@ func NewTestMultihopWorkers(t testing.TB,
 		Config:                     childKmsWorkerConf,
 		WorkerAuthKms:              childDownstreamWrapper2,
 		WorkerAuthDebuggingEnabled: enableAuthDebugging,
+		DisableAutoStart:           true,
 	})
+	childKmsWorker.w.conf.WorkerAuthStorageKms = nil
+
+	err = childKmsWorker.w.Start()
+	t.Cleanup(childKmsWorker.Shutdown)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Sleep so that workers can startup and connect.
-	time.Sleep(10 * time.Second)
+	time.Sleep(12 * time.Second)
 
 	return kmsWorker, pkiWorker, childPkiWorker, childKmsWorker
 }

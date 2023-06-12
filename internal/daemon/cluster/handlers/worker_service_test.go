@@ -18,6 +18,7 @@ import (
 	dcommon "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
+	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -34,6 +35,15 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 )
+
+type fakeControllerExtension struct {
+	reader db.Reader
+	writer db.Writer
+}
+
+var _ intglobals.ControllerExtension = (*fakeControllerExtension)(nil)
+
+func (f *fakeControllerExtension) Start(_ context.Context) error { return nil }
 
 func TestLookupSession(t *testing.T) {
 	ctx := context.Background()
@@ -54,6 +64,10 @@ func TestLookupSession(t *testing.T) {
 	}
 	connectionRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)
+	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
 	}
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
@@ -144,7 +158,7 @@ func TestLookupSession(t *testing.T) {
 	err = repo.AddSessionCredentials(ctx, sessWithCreds.ProjectId, sessWithCreds.GetPublicId(), workerCreds)
 	require.NoError(t, err)
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
 	oldFn := connectionRouteFn
@@ -310,6 +324,10 @@ func TestAuthorizeConnection(t *testing.T) {
 	connectionRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kmsCache)
 	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
 
 	var workerKeyId string
 	worker := server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&workerKeyId))
@@ -340,7 +358,7 @@ func TestAuthorizeConnection(t *testing.T) {
 	repo, err := sessionRepoFn()
 	require.NoError(t, err)
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 
 	cases := []struct {
@@ -462,6 +480,10 @@ func TestCancelSession(t *testing.T) {
 	connectionRepoFn := func() (*session.ConnectionRepository, error) {
 		return session.NewConnectionRepository(ctx, rw, rw, kms)
 	}
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
 
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	uId := at.GetIamUserId()
@@ -480,7 +502,7 @@ func TestCancelSession(t *testing.T) {
 		ProjectId:   prj.GetPublicId(),
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64))
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kms, new(atomic.Int64), fce)
 	require.NotNil(t, s)
 	cases := []struct {
 		name       string
@@ -533,7 +555,7 @@ func TestCancelSession(t *testing.T) {
 }
 
 // This test creates workers of both kms and pki type and verifies that the only
-// returned workers are those of kms type with the expected tag key/value
+// returned workers are those that are alive with the expected tag key/value
 func TestHcpbWorkers(t *testing.T) {
 	t.Parallel()
 	require, assert := require.New(t), assert.New(t)
@@ -559,6 +581,10 @@ func TestHcpbWorkers(t *testing.T) {
 	}
 	var liveDur atomic.Int64
 	liveDur.Store(int64(1 * time.Second))
+	fce := &fakeControllerExtension{
+		reader: rw,
+		writer: rw,
+	}
 
 	// Stale/unalive kms worker aren't expected...
 	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
@@ -570,21 +596,34 @@ func TestHcpbWorkers(t *testing.T) {
 		server.WithAddress("kms.1"))
 	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
 		server.WithAddress("kms.2"))
+	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "unrelated_tag", Value: "true"}),
+		server.WithAddress("unrelated_tag.kms.1"))
 
 	// Shutdown workers will be removed from routes and sessions, but still returned
 	// to downstream workers
 	server.TestKmsWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
 		server.WithAddress("shutdown.kms.3"), server.WithOperationalState(server.ShutdownOperationalState.String()))
-	// PKI workers aren't expected
-	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}))
 
-	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, &liveDur)
+	// PKI workers are also expected, if they have the managed worker tag
+	serverRepo, err := serversRepoFn()
+	require.NoError(err)
+	var keyId string
+	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: dcommon.ManagedWorkerTag, Value: "true"}),
+		server.WithTestPkiWorkerAuthorizedKeyId(&keyId))
+	_, err = serverRepo.UpsertWorkerStatus(ctx, server.NewWorker(scope.Global.String(), server.WithAddress("pki.1")), server.WithKeyId(keyId))
+	require.NoError(err)
+	server.TestPkiWorker(t, conn, wrapper, server.WithWorkerTags(&server.Tag{Key: "unrelated_tag", Value: "true"}),
+		server.WithTestPkiWorkerAuthorizedKeyId(&keyId))
+	_, err = serverRepo.UpsertWorkerStatus(ctx, server.NewWorker(scope.Global.String(), server.WithAddress("unrelated_tag.pki.1")), server.WithKeyId(keyId))
+	require.NoError(err)
+
+	s := NewWorkerServiceServer(serversRepoFn, workerAuthRepoFn, sessionRepoFn, connectionRepoFn, nil, new(sync.Map), kmsCache, &liveDur, fce)
 	require.NotNil(t, s)
 
 	res, err := s.ListHcpbWorkers(ctx, &pbs.ListHcpbWorkersRequest{})
 	require.NoError(err)
 	require.NotNil(res)
-	expValues := []string{"kms.1", "kms.2", "shutdown.kms.3"}
+	expValues := []string{"kms.1", "kms.2", "shutdown.kms.3", "pki.1"}
 	var gotValues []string
 	for _, worker := range res.Workers {
 		gotValues = append(gotValues, worker.Address)

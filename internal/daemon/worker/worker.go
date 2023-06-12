@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
+	"github.com/hashicorp/boundary/internal/daemon/cluster/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/proxy"
@@ -29,9 +30,14 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/storage"
+	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
+	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
+	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
+	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"
 	nodeenet "github.com/hashicorp/nodeenrollment/net"
@@ -69,9 +75,25 @@ type downstreamers interface {
 	RootId() string
 }
 
+// recorderManager updates the status updates with relevant recording
+// information
+type recorderManager interface {
+	// ReauthorizeAllExcept should be called with the result of the status update
+	// to reauthorize all recorders for the relevant sessions except the ones provided
+	ReauthorizeAllExcept(ctx context.Context, closedSessions []string) error
+	// SessionsManaged gets the list of session ids managed by this recorderManager
+	SessionsManaged(ctx context.Context) ([]string, error)
+	// Shutdown must be called prior to exiting the process
+	Shutdown(ctx context.Context)
+}
+
 // reverseConnReceiverFactory provides a simple factory which a Worker can use to
 // create its reverseConnReceiver
 var reverseConnReceiverFactory func() reverseConnReceiver
+
+var recordingStorageFactory func(ctx context.Context, path string, plgClients map[string]plgpb.StoragePluginServiceClient, enableLoopback bool) (storage.RecordingStorage, error)
+
+var recorderManagerFactory func(*Worker) (recorderManager, error)
 
 var initializeReverseGrpcClientCollectors = noopInitializePromCollectors
 
@@ -103,13 +125,16 @@ type Worker struct {
 
 	sessionManager session.Manager
 
-	controllerStatusConn *atomic.Value
-	everAuthenticated    *ua.Uint32
-	lastStatusSuccess    *atomic.Value
-	workerStartTime      time.Time
-	operationalState     *atomic.Value
+	recorderManager recorderManager
+
+	everAuthenticated *ua.Uint32
+	lastStatusSuccess *atomic.Value
+	workerStartTime   time.Time
+	operationalState  *atomic.Value
 
 	controllerMultihopConn *atomic.Value
+
+	controllerUpstreamMsgConn atomic.Pointer[handlers.UpstreamMessageServiceClientProducer]
 
 	proxyListener *base.ServerListener
 
@@ -130,6 +155,9 @@ type Worker struct {
 	WorkerAuthRegistrationRequest string
 	workerAuthSplitListener       *nodeenet.SplitListener
 
+	// The storage for session recording
+	RecordingStorage storage.RecordingStorage
+
 	// downstream workers and routes to those workers
 	downstreamWorkers  downstreamers
 	downstreamReceiver reverseConnReceiver
@@ -138,6 +166,10 @@ type Worker struct {
 	// because they are casted to time.Duration.
 	successfulStatusGracePeriod *atomic.Int64
 	statusCallTimeoutDuration   *atomic.Int64
+
+	// AuthRotationNextRotation is useful in tests to understand how long to
+	// sleep
+	AuthRotationNextRotation atomic.Pointer[time.Time]
 
 	// Test-specific options (and possibly hidden dev-mode flags)
 	TestOverrideX509VerifyDnsName  string
@@ -149,21 +181,24 @@ type Worker struct {
 	pkiConnManager *cluster.DownstreamManager
 }
 
-func New(conf *Config) (*Worker, error) {
+func New(ctx context.Context, conf *Config) (*Worker, error) {
 	const op = "worker.New"
 	metric.InitializeHttpCollectors(conf.PrometheusRegisterer)
 	metric.InitializeWebsocketCollectors(conf.PrometheusRegisterer)
 	metric.InitializeClusterClientCollectors(conf.PrometheusRegisterer)
 	initializeReverseGrpcClientCollectors(conf.PrometheusRegisterer)
 
+	baseContext, baseCancel := context.WithCancel(context.Background())
 	w := &Worker{
-		conf:                        conf,
-		logger:                      conf.Logger.Named("worker"),
-		started:                     ua.NewBool(false),
-		controllerStatusConn:        new(atomic.Value),
-		everAuthenticated:           ua.NewUint32(authenticationStatusNeverAuthenticated),
-		lastStatusSuccess:           new(atomic.Value),
-		controllerMultihopConn:      new(atomic.Value),
+		baseContext:            baseContext,
+		baseCancel:             baseCancel,
+		conf:                   conf,
+		logger:                 conf.Logger.Named("worker"),
+		started:                ua.NewBool(false),
+		everAuthenticated:      ua.NewUint32(authenticationStatusNeverAuthenticated),
+		lastStatusSuccess:      new(atomic.Value),
+		controllerMultihopConn: new(atomic.Value),
+		// controllerUpstreamMsgConn:   new(atomic.Value),
 		tags:                        new(atomic.Value),
 		updateTags:                  ua.NewBool(false),
 		nonceFn:                     base62.Random,
@@ -173,6 +208,8 @@ func New(conf *Config) (*Worker, error) {
 		successfulStatusGracePeriod: new(atomic.Int64),
 		statusCallTimeoutDuration:   new(atomic.Int64),
 	}
+
+	w.operationalState.Store(server.UnknownOperationalState)
 
 	if reverseConnReceiverFactory != nil {
 		w.downstreamReceiver = reverseConnReceiverFactory()
@@ -185,6 +222,44 @@ func New(conf *Config) (*Worker, error) {
 
 	if conf.RawConfig.Worker == nil {
 		conf.RawConfig.Worker = new(config.Worker)
+	}
+
+	if w.conf.RawConfig.Worker.RecordingStoragePath != "" && recordingStorageFactory != nil {
+		pluginLogger, err := event.NewHclogLogger(ctx, w.conf.Server.Eventer)
+		if err != nil {
+			return nil, fmt.Errorf("error creating storage catalog plugin logger: %w", err)
+		}
+		plgClients := make(map[string]plgpb.StoragePluginServiceClient)
+		var enableStorageLoopback bool
+
+		for _, enabledPlugin := range w.conf.Server.EnabledPlugins {
+			switch enabledPlugin {
+			case base.EnabledPluginAws:
+				pluginType := strings.ToLower(enabledPlugin.String())
+				client, cleanup, err := external_plugins.CreateStoragePlugin(
+					ctx,
+					pluginType,
+					external_plugins.WithPluginOptions(
+						pluginutil.WithPluginExecutionDirectory(conf.RawConfig.Plugins.ExecutionDir),
+						pluginutil.WithPluginsFilesystem(boundary_plugin_assets.PluginPrefix, boundary_plugin_assets.FileSystem()),
+					),
+					external_plugins.WithLogger(pluginLogger.Named(pluginType)),
+				)
+				if err != nil {
+					return nil, fmt.Errorf("error creating %s storage plugin: %w", pluginType, err)
+				}
+				conf.ShutdownFuncs = append(conf.ShutdownFuncs, cleanup)
+				plgClients[pluginType] = client
+			case base.EnabledPluginLoopback:
+				enableStorageLoopback = true
+			}
+		}
+
+		s, err := recordingStorageFactory(ctx, w.conf.RawConfig.Worker.RecordingStoragePath, plgClients, enableStorageLoopback)
+		if err != nil {
+			return nil, fmt.Errorf("error create recording storage: %w", err)
+		}
+		w.RecordingStorage = s
 	}
 
 	w.parseAndStoreTags(conf.RawConfig.Worker.Tags)
@@ -222,6 +297,14 @@ func New(conf *Config) (*Worker, error) {
 	}
 	// FIXME: This is really ugly, but works.
 	session.CloseCallTimeout = w.statusCallTimeoutDuration
+
+	if recorderManagerFactory != nil {
+		var err error
+		w.recorderManager, err = recorderManagerFactory(w)
+		if err != nil {
+			return nil, fmt.Errorf("error calling recorderManagerFactory: %w", err)
+		}
+	}
 
 	var listenerCount int
 	for i := range conf.Listeners {
@@ -278,15 +361,10 @@ func (w *Worker) Reload(ctx context.Context, newConf *config.Config) {
 
 func (w *Worker) Start() error {
 	const op = "worker.(Worker).Start"
-
-	w.baseContext, w.baseCancel = context.WithCancel(context.Background())
-
 	if w.started.Load() {
 		event.WriteSysEvent(w.baseContext, op, "already started, skipping")
 		return nil
 	}
-
-	w.operationalState.Store(server.UnknownOperationalState)
 
 	if !w.conf.RawConfig.Worker.UseDeprecatedKmsAuthMethod {
 		// In this section, we look for existing worker credentials. The two
@@ -449,7 +527,7 @@ func (w *Worker) Start() error {
 	w.tickerWg.Add(2)
 	go func() {
 		defer w.tickerWg.Done()
-		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers)
+		w.startStatusTicking(w.baseContext, w.sessionManager, &w.addressReceivers, w.recorderManager)
 	}()
 	go func() {
 		defer w.tickerWg.Done()
@@ -542,6 +620,18 @@ func (w *Worker) Shutdown() error {
 		return fmt.Errorf("error stopping worker servers and listeners: %w", err)
 	}
 
+	var recManWg sync.WaitGroup
+	if w.recorderManager != nil {
+		recManWg.Add(1)
+		go func() {
+			// Shutdown recorder manager to close all recorders, done in a go routine
+			// since it will not force shutdown of channels until the passed in context
+			// is Done.
+			defer recManWg.Done()
+			w.recorderManager.Shutdown(w.baseContext)
+		}()
+	}
+
 	// Shut down all connections.
 	w.cleanupConnections(w.baseContext, true, w.sessionManager)
 
@@ -572,6 +662,7 @@ func (w *Worker) Shutdown() error {
 
 	w.started.Store(false)
 	w.tickerWg.Wait()
+	recManWg.Wait()
 	if w.conf.Eventer != nil {
 		if err := w.conf.Eventer.FlushNodes(context.Background()); err != nil {
 			return fmt.Errorf("error flushing worker eventer nodes: %w", err)
@@ -694,4 +785,19 @@ func (w *Worker) getSessionTls(sessionManager session.Manager) func(hello *tls.C
 		}
 		return tlsConf, nil
 	}
+}
+
+// SendUpstreamMessage facilitates sending upstream messages to the controller.
+func (w *Worker) SendUpstreamMessage(ctx context.Context, m proto.Message) (proto.Message, error) {
+	const op = "worker.(Worker).SendUpstreamMessage"
+	nodeCreds, err := types.LoadNodeCredentials(w.baseContext, w.WorkerAuthStorage, nodeenrollment.CurrentId, nodeenrollment.WithStorageWrapper(w.conf.WorkerAuthStorageKms))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	initKeyId, err := nodeenrollment.KeyIdFromPkix(nodeCreds.CertificatePublicKeyPkix)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	clientProducer := w.controllerUpstreamMsgConn.Load()
+	return handlers.SendUpstreamMessage(ctx, *clientProducer, initKeyId, m, handlers.WithKeyProducer(nodeCreds))
 }

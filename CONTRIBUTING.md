@@ -153,7 +153,7 @@ $ make test-database-up
 $ docker logs custom-name
 ```
 
-The default docker image is built using the `postgres:11` base image.
+The default docker image is built using the `postgres:12` base image.
 The image can be changed using a make option to test against other versions:
 
 ```

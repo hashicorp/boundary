@@ -39,10 +39,11 @@ import (
 )
 
 const (
-	PkiControllerLedWorkerAuthMechanism = "pki-controller-led"
-	PkiWorkerLedWorkerAuthMechanism     = "pki-worker-led"
-	PkiKmsWorkerAuthMechanism           = "pki-kms"
-	PkiRandomWorkerAuthMechanism        = "pki"
+	ControllerGeneratedAuthTokenWorkerAuthMechanism = "controller-generated-auth-token"
+	WorkerGeneratedAuthTokenWorkerAuthMechanism     = "worker-generated-auth-token"
+	KmsWorkerAuthMechanism                          = "kms"
+	RandomWorkerAuthMechanism                       = "random"
+	DeprecatedKmsWorkerAuthMechanism                = "deprecated-kms"
 )
 
 var (
@@ -65,45 +66,48 @@ type Command struct {
 	controller *controller.Controller
 	worker     *worker.Worker
 
-	flagLogLevel                     string
-	flagLogFormat                    string
-	flagCombineLogs                  bool
-	flagLoginName                    string
-	flagPassword                     string
-	flagUnprivilegedLoginName        string
-	flagUnprivilegedPassword         string
-	flagIdSuffix                     string
-	flagSecondaryIdSuffix            string
-	flagHostAddress                  string
-	flagTargetDefaultPort            int
-	flagTargetSessionMaxSeconds      int
-	flagTargetSessionConnectionLimit int
-	flagControllerAPIListenAddr      string
-	flagControllerClusterListenAddr  string
-	flagControllerPublicClusterAddr  string
-	flagControllerOnly               bool
-	flagWorkerAuthKey                string
-	flagWorkerProxyListenAddr        string
-	flagWorkerPublicAddr             string
-	flagOpsListenAddr                string
-	flagUiPassthroughDir             string
-	flagRecoveryKey                  string
-	flagDatabaseUrl                  string
-	flagContainerImage               string
-	flagDisableDatabaseDestruction   bool
-	flagEventFormat                  string
-	flagAudit                        string
-	flagObservations                 string
-	flagSysEvents                    string
-	flagEveryEventAllowFilters       []string
-	flagEveryEventDenyFilters        []string
-	flagCreateLoopbackHostPlugin     bool
-	flagPluginExecutionDir           string
-	flagWorkerAuthMethod             string
-	flagWorkerAuthStorageDir         string
-	flagWorkerAuthStorageSkipCleanup bool
-	flagWorkerAuthRotationInterval   time.Duration
-	flagWorkerAuthDebuggingEnabled   bool
+	flagLogLevel                         string
+	flagLogFormat                        string
+	flagCombineLogs                      bool
+	flagLoginName                        string
+	flagPassword                         string
+	flagUnprivilegedLoginName            string
+	flagUnprivilegedPassword             string
+	flagIdSuffix                         string
+	flagSecondaryIdSuffix                string
+	flagHostAddress                      string
+	flagTargetDefaultPort                int
+	flagTargetSessionMaxSeconds          int
+	flagTargetSessionConnectionLimit     int
+	flagControllerAPIListenAddr          string
+	flagControllerClusterListenAddr      string
+	flagControllerPublicClusterAddr      string
+	flagControllerOnly                   bool
+	flagWorkerAuthKey                    string
+	flagWorkerProxyListenAddr            string
+	flagWorkerPublicAddr                 string
+	flagOpsListenAddr                    string
+	flagUiPassthroughDir                 string
+	flagRecoveryKey                      string
+	flagDatabaseUrl                      string
+	flagContainerImage                   string
+	flagDisableDatabaseDestruction       bool
+	flagEventFormat                      string
+	flagAudit                            string
+	flagObservations                     string
+	flagSysEvents                        string
+	flagEveryEventAllowFilters           []string
+	flagEveryEventDenyFilters            []string
+	flagCreateLoopbackPlugin             bool
+	flagPluginExecutionDir               string
+	flagWorkerAuthMethod                 string
+	flagWorkerAuthStorageDir             string
+	flagWorkerAuthStorageSkipCleanup     bool
+	flagWorkerAuthWorkerRotationInterval time.Duration
+	flagWorkerAuthCaCertificateLifetime  time.Duration
+	flagWorkerAuthDebuggingEnabled       bool
+	flagWorkerRecordingStorageDir        string
+	flagBsrKey                           string
 }
 
 func (c *Command) Synopsis() string {
@@ -278,6 +282,13 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "If set, a valid base64-encoded AES key to be used for worker-auth purposes",
 	})
 
+	f.StringVar(&base.StringVar{
+		Name:   "bsr-key",
+		Target: &c.flagBsrKey,
+		EnvVar: "BOUNDARY_DEV_BSR_KEY",
+		Usage:  "If set, a valid base64-encoded AES key to be used for bsr purposes",
+	})
+
 	f.BoolVar(&base.BoolVar{
 		Name:   "disable-database-destruction",
 		Target: &c.flagDisableDatabaseDestruction,
@@ -357,16 +368,24 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.StringVar(&base.StringVar{
-		Name:    "worker-auth-method",
-		Target:  &c.flagWorkerAuthMethod,
-		Default: PkiRandomWorkerAuthMechanism,
-		Usage:   `Allows specifying how the generated worker will authenticate to the controller. Valid values are "kms" for the deprecated KMS-based mechanism; "pki-kms" for the new-style KMS mechanism; "pki-controller-led" for the PKI mechanism via the server-led authorization flow; "pki-worker-led" for the PKI mechanism via the worker-led authorization flow; and "pki" to randomly choose one of the PKI methods.`,
+		Name:       "worker-auth-method",
+		Target:     &c.flagWorkerAuthMethod,
+		Default:    RandomWorkerAuthMechanism,
+		Completion: complete.PredictSet(ControllerGeneratedAuthTokenWorkerAuthMechanism, WorkerGeneratedAuthTokenWorkerAuthMechanism, KmsWorkerAuthMechanism, RandomWorkerAuthMechanism),
+		Usage:      `Allows specifying how the generated worker will authenticate to the controller.`,
 	})
 	f.StringVar(&base.StringVar{
 		Name:   "worker-auth-storage-dir",
 		Target: &c.flagWorkerAuthStorageDir,
 		Usage:  "Specifies the directory to store worker authentication credentials in dev mode. Setting this will make use of file storage at the specified location; otherwise in-memory storage or a temporary directory will be used.",
 	})
+
+	f.StringVar(&base.StringVar{
+		Name:   "worker-recording-storage-dir",
+		Target: &c.flagWorkerRecordingStorageDir,
+		Usage:  "Specifies the directory to store worker session recordings in dev mode. If not provided a temp directory will be created. Session recording is an Enterprise-only feature.",
+	})
+
 	f.BoolVar(&base.BoolVar{
 		Name:   "worker-auth-storage-skip-cleanup",
 		Target: &c.flagWorkerAuthStorageSkipCleanup,
@@ -379,14 +398,19 @@ func (c *Command) Flags() *base.FlagSets {
 	})
 
 	f.BoolVar(&base.BoolVar{
-		Name:   "create-loopback-host-plugin",
-		Target: &c.flagCreateLoopbackHostPlugin,
+		Name:   "create-loopback-plugin",
+		Target: &c.flagCreateLoopbackPlugin,
 		Hidden: true,
 	})
 
 	f.DurationVar(&base.DurationVar{
-		Name:   "worker-auth-rotation-interval",
-		Target: &c.flagWorkerAuthRotationInterval,
+		Name:   "worker-auth-worker-rotation-interval",
+		Target: &c.flagWorkerAuthWorkerRotationInterval,
+		Hidden: true,
+	})
+	f.DurationVar(&base.DurationVar{
+		Name:   "worker-auth-ca-certificate-lifetime",
+		Target: &c.flagWorkerAuthCaCertificateLifetime,
 		Hidden: true,
 	})
 
@@ -440,6 +464,15 @@ func (c *Command) Run(args []string) int {
 		}
 	}
 
+	if c.flagBsrKey != "" {
+		c.Config.DevBsrKey = c.flagBsrKey
+		for _, kms := range c.Config.Seals {
+			if strutil.StrListContains(kms.Purpose, globals.KmsPurposeBsr) {
+				kms.Config["key"] = c.flagBsrKey
+			}
+		}
+	}
+
 	c.WorkerAuthDebuggingEnabled.Store(c.flagWorkerAuthDebuggingEnabled)
 
 	c.DevLoginName = c.flagLoginName
@@ -448,7 +481,23 @@ func (c *Command) Run(args []string) int {
 	c.DevUnprivilegedPassword = c.flagUnprivilegedPassword
 	c.DevTargetDefaultPort = c.flagTargetDefaultPort
 	c.Config.Plugins.ExecutionDir = c.flagPluginExecutionDir
-	c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
+
+	if !c.flagControllerOnly {
+		c.Config.Worker.AuthStoragePath = c.flagWorkerAuthStorageDir
+		c.Config.Worker.RecordingStoragePath = c.flagWorkerRecordingStorageDir
+
+		if c.Config.Worker.RecordingStoragePath == "" {
+			// Create a temp dir for recording storage
+			const pattern = "recordingstorage"
+			c.Config.Worker.RecordingStoragePath, err = os.MkdirTemp("", pattern)
+			if err != nil {
+				c.UI.Error(fmt.Errorf("Error creating storage temp dir: %w", err).Error())
+				return base.CommandCliError
+			}
+			c.ShutdownFuncs = append(c.ShutdownFuncs, func() error { return os.RemoveAll(c.Config.Worker.RecordingStoragePath) })
+		}
+	}
+
 	if c.flagIdSuffix != "" {
 		if len(c.flagIdSuffix) != 10 {
 			c.UI.Error("Invalid ID suffix, must be exactly 10 characters")
@@ -460,6 +509,7 @@ func (c *Command) Run(args []string) int {
 		}
 		c.DevPasswordAuthMethodId = fmt.Sprintf("%s_%s", globals.PasswordAuthMethodPrefix, c.flagIdSuffix)
 		c.DevOidcAuthMethodId = fmt.Sprintf("%s_%s", globals.OidcAuthMethodPrefix, c.flagIdSuffix)
+		c.DevLdapAuthMethodId = fmt.Sprintf("%s_%s", globals.LdapAuthMethodPrefix, c.flagIdSuffix)
 		c.DevUserId = fmt.Sprintf("%s_%s", globals.UserPrefix, c.flagIdSuffix)
 		c.DevPasswordAccountId = fmt.Sprintf("%s_%s", globals.PasswordAccountPrefix, c.flagIdSuffix)
 		c.DevOidcAccountId = fmt.Sprintf("%s_%s", globals.OidcAccountPrefix, c.flagIdSuffix)
@@ -630,7 +680,8 @@ func (c *Command) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if c.flagWorkerAuthMethod != "kms" {
+	if c.flagWorkerAuthMethod != DeprecatedKmsWorkerAuthMechanism &&
+		c.flagWorkerAuthMethod != KmsWorkerAuthMechanism {
 		// Flip a coin to decide between file storage and inmem. It's
 		// transparent to users, but keeps both exercised.
 		randStorage := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(2)
@@ -653,6 +704,8 @@ func (c *Command) Run(args []string) int {
 	c.Info["[Recovery] AEAD Key Bytes"] = c.Config.DevRecoveryKey
 	c.InfoKeys = append(c.InfoKeys, "[Worker-Auth] AEAD Key Bytes")
 	c.Info["[Worker-Auth] AEAD Key Bytes"] = c.Config.DevWorkerAuthKey
+	c.InfoKeys = append(c.InfoKeys, "[Bsr] AEAD Key Bytes")
+	c.Info["[Bsr] AEAD Key Bytes"] = c.Config.DevBsrKey
 
 	// Initialize the listeners
 	if err := c.SetupListeners(c.UI, c.Config.SharedConfig, []string{"api", "cluster", "proxy", "ops"}); err != nil {
@@ -667,10 +720,11 @@ func (c *Command) Run(args []string) int {
 	}
 
 	var opts []base.Option
-	if c.flagCreateLoopbackHostPlugin {
-		c.DevLoopbackHostPluginId = "pl_1234567890"
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostLoopback)
+	if c.flagCreateLoopbackPlugin {
+		c.DevLoopbackPluginId = "pl_1234567890"
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginLoopback)
 		c.Config.Controller.Scheduler.JobRunIntervalDuration = 100 * time.Millisecond
+		c.Info["Generated Dev Loopback plugin id"] = c.DevLoopbackPluginId
 	}
 	switch c.flagDatabaseUrl {
 	case "":
@@ -703,10 +757,11 @@ func (c *Command) Run(args []string) int {
 	}
 
 	{
-		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginHostAws, base.EnabledPluginHostAzure)
+		c.EnabledPlugins = append(c.EnabledPlugins, base.EnabledPluginAws, base.EnabledPluginHostAzure)
 		conf := &controller.Config{
 			RawConfig: c.Config,
 			Server:    c.Server,
+			TestOverrideWorkerAuthCaCertificateLifetime: c.flagWorkerAuthCaCertificateLifetime,
 		}
 
 		var err error
@@ -736,31 +791,28 @@ func (c *Command) Run(args []string) int {
 		}
 
 		var err error
-		c.worker, err = worker.New(conf)
+		c.worker, err = worker.New(c.Context, conf)
 		if err != nil {
 			c.UI.Error(fmt.Errorf("Error initializing worker: %w", err).Error())
 			return base.CommandCliError
 		}
+		c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthWorkerRotationInterval
 
-		if c.flagWorkerAuthRotationInterval > 0 {
-			c.worker.TestOverrideAuthRotationPeriod = c.flagWorkerAuthRotationInterval
-		}
-
-		if c.flagWorkerAuthMethod == PkiRandomWorkerAuthMechanism {
+		if c.flagWorkerAuthMethod == RandomWorkerAuthMechanism {
 			// Flip a coin. Use one method or the other; it's transparent to
 			// users, but keeps both exercised.
 			randPki := rand.New(rand.NewSource(time.Now().UnixMicro())).Intn(3)
 			switch randPki {
 			case 0:
-				c.flagWorkerAuthMethod = PkiControllerLedWorkerAuthMechanism
+				c.flagWorkerAuthMethod = ControllerGeneratedAuthTokenWorkerAuthMechanism
 			case 1:
-				c.flagWorkerAuthMethod = PkiWorkerLedWorkerAuthMechanism
+				c.flagWorkerAuthMethod = WorkerGeneratedAuthTokenWorkerAuthMechanism
 			default:
-				c.flagWorkerAuthMethod = PkiKmsWorkerAuthMechanism
+				c.flagWorkerAuthMethod = KmsWorkerAuthMechanism
 			}
 		}
 		switch c.flagWorkerAuthMethod {
-		case PkiControllerLedWorkerAuthMechanism:
+		case ControllerGeneratedAuthTokenWorkerAuthMechanism:
 			// Controller-led
 			serversRepo, err := c.controller.ServersRepoFn()
 			if err != nil {
@@ -790,11 +842,11 @@ func (c *Command) Run(args []string) int {
 			c.WorkerAuthKms = nil
 			conf.RawConfig.Worker.ControllerGeneratedActivationToken = worker.ControllerGeneratedActivationToken
 
-		case PkiWorkerLedWorkerAuthMechanism:
+		case WorkerGeneratedAuthTokenWorkerAuthMechanism:
 			// Clear this out as presence of it causes PKI-KMS behavior
 			c.WorkerAuthKms = nil
 
-		case PkiKmsWorkerAuthMechanism, "kms":
+		case KmsWorkerAuthMechanism, DeprecatedKmsWorkerAuthMechanism:
 			if c.WorkerAuthKms == nil {
 				c.UI.Error("Worker Auth KMS not found after parsing KMS blocks")
 				return base.CommandUserError
@@ -814,7 +866,7 @@ func (c *Command) Run(args []string) int {
 			return base.CommandCliError
 		}
 
-		if c.flagWorkerAuthMethod != "kms" {
+		if c.flagWorkerAuthMethod != DeprecatedKmsWorkerAuthMechanism {
 			c.InfoKeys = append(c.InfoKeys, "worker auth current key id")
 			c.Info["worker auth current key id"] = c.worker.WorkerAuthCurrentKeyId.Load()
 			c.InfoKeys = append(c.InfoKeys, "worker auth storage path")
@@ -824,7 +876,7 @@ func (c *Command) Run(args []string) int {
 				c.Info["worker auth storage path"] = "(in-memory)"
 			}
 
-			if c.flagWorkerAuthMethod == PkiWorkerLedWorkerAuthMechanism {
+			if c.flagWorkerAuthMethod == WorkerGeneratedAuthTokenWorkerAuthMechanism {
 				req := c.worker.WorkerAuthRegistrationRequest
 				if req == "" {
 					c.UI.Error("No worker auth registration request found at worker start time")
