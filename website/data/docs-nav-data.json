@@ -412,11 +412,11 @@
       },
       {
         "title": "Controller",
-        "path": "configuration/controller",
+        "path": "configuration/controller"
       },
       {
         "title": "Plugins",
-        "path": "configuration/plugins",
+        "path": "configuration/plugins"
       }
     ]
   },
