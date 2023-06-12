@@ -25,6 +25,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/2912))
 * ui: Display external names when listing dynamic hosts ([PR](https://github.com/hashicorp/boundary-ui/pull/1664))
 * ui: Add support for LDAP authentication ([PR](https://github.com/hashicorp/boundary-ui/pull/1645))
+* Dynamic Host Catalog: You can now view the AWS or Azure host name when listing hosts in CLI, admin console, and desktop client. ([PR](https://github.com/hashicorp/boundary/pull/3074))
 
 ### Deprecations/Changes
 
