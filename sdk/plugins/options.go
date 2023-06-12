@@ -18,7 +18,7 @@ func getOpts(opt ...Option) (*options, error) {
 			continue
 		}
 		if err := o(opts); err != nil {
-			return nil, fmt.Errorf("error running option function: %w", err)
+			return nil, fmt.Errorf("1error running option function: %w", err)
 		}
 	}
 	return opts, nil
