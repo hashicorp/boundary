@@ -18,6 +18,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   port to use on the client side when connecting to a target, unless overridden
   by the client via `-listen-port`
   ([PR](https://github.com/hashicorp/boundary/pull/2767))
+* cli/api/sdk: New LDAP auth method type added with support for create, read,
+  update, delete, and list (see new cli `ldap` subcommands available on CRUDL
+  operations for examples), as well as the ability to authenticate against it
+  via the SDK, CLI, admin UI, and desktop client.
+  ([PR](https://github.com/hashicorp/boundary/pull/2912))
 * ui: Display external names when listing dynamic hosts ([PR](https://github.com/hashicorp/boundary-ui/pull/1664))
 * ui: Add support for LDAP authentication ([PR](https://github.com/hashicorp/boundary-ui/pull/1645))
 
