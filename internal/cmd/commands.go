@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/accountscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
@@ -30,6 +32,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/storagebucketscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/unsupported"
 	"github.com/hashicorp/boundary/internal/cmd/commands/userscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/version"
 	"github.com/hashicorp/boundary/internal/cmd/commands/workerscmd"
@@ -66,212 +69,180 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"authenticate": func() (cli.Command, error) {
-			return &authenticate.Command{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
-		"authenticate password": func() (cli.Command, error) {
-			return &authenticate.PasswordCommand{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
-		"authenticate oidc": func() (cli.Command, error) {
-			return &authenticate.OidcCommand{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
-		"authenticate ldap": func() (cli.Command, error) {
-			return &authenticate.LdapCommand{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
+		"authenticate": commandFactoryWrapper(ui,
+			&authenticate.Command{
+				Command: base.NewCommand(ui),
+			}),
+		"authenticate password": commandFactoryWrapper(ui,
+			&authenticate.PasswordCommand{
+				Command: base.NewCommand(ui),
+			}),
+		"authenticate oidc": commandFactoryWrapper(ui,
+			&authenticate.OidcCommand{
+				Command: base.NewCommand(ui),
+			}),
+		"authenticate ldap": commandFactoryWrapper(ui,
+			&authenticate.LdapCommand{
+				Command: base.NewCommand(ui),
+			}),
 
 		"accounts": func() (cli.Command, error) {
 			return &accountscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"accounts read": func() (cli.Command, error) {
-			return &accountscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"accounts read": commandFactoryWrapper(ui,
+			&accountscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"accounts delete": func() (cli.Command, error) {
-			return &accountscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts delete": commandFactoryWrapper(ui,
+			&accountscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"accounts list": func() (cli.Command, error) {
-			return &accountscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts list": commandFactoryWrapper(ui,
+			&accountscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"accounts set-password": func() (cli.Command, error) {
-			return &accountscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts set-password": commandFactoryWrapper(ui,
+			&accountscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "set-password",
-			}, nil
-		},
-		"accounts change-password": func() (cli.Command, error) {
-			return &accountscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts change-password": commandFactoryWrapper(ui,
+			&accountscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "change-password",
-			}, nil
-		},
-		"accounts create": func() (cli.Command, error) {
-			return &accountscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts create": commandFactoryWrapper(ui,
+			&accountscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"accounts create password": func() (cli.Command, error) {
-			return &accountscmd.PasswordCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts create password": commandFactoryWrapper(ui,
+			&accountscmd.PasswordCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"accounts create oidc": func() (cli.Command, error) {
-			return &accountscmd.OidcCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts create oidc": commandFactoryWrapper(ui,
+			&accountscmd.OidcCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"accounts create ldap": func() (cli.Command, error) {
-			return &accountscmd.LdapCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts create ldap": commandFactoryWrapper(ui,
+			&accountscmd.LdapCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"accounts update": func() (cli.Command, error) {
-			return &accountscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts update": commandFactoryWrapper(ui,
+			&accountscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"accounts update password": func() (cli.Command, error) {
-			return &accountscmd.PasswordCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts update password": commandFactoryWrapper(ui,
+			&accountscmd.PasswordCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"accounts update oidc": func() (cli.Command, error) {
-			return &accountscmd.OidcCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts update oidc": commandFactoryWrapper(ui,
+			&accountscmd.OidcCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"accounts update ldap": func() (cli.Command, error) {
-			return &accountscmd.LdapCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"accounts update ldap": commandFactoryWrapper(ui,
+			&accountscmd.LdapCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"auth-methods": func() (cli.Command, error) {
 			return &authmethodscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"auth-methods read": func() (cli.Command, error) {
-			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"auth-methods read": commandFactoryWrapper(ui,
+			&authmethodscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"auth-methods delete": func() (cli.Command, error) {
-			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods delete": commandFactoryWrapper(ui,
+			&authmethodscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"auth-methods list": func() (cli.Command, error) {
-			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods list": commandFactoryWrapper(ui,
+			&authmethodscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"auth-methods create": func() (cli.Command, error) {
-			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods create": commandFactoryWrapper(ui,
+			&authmethodscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods create password": func() (cli.Command, error) {
-			return &authmethodscmd.PasswordCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods create password": commandFactoryWrapper(ui,
+			&authmethodscmd.PasswordCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods create oidc": func() (cli.Command, error) {
-			return &authmethodscmd.OidcCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods create oidc": commandFactoryWrapper(ui,
+			&authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods create ldap": func() (cli.Command, error) {
-			return &authmethodscmd.LdapCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods create ldap": commandFactoryWrapper(ui,
+			&authmethodscmd.LdapCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"auth-methods update": func() (cli.Command, error) {
-			return &authmethodscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods update": commandFactoryWrapper(ui,
+			&authmethodscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods update password": func() (cli.Command, error) {
-			return &authmethodscmd.PasswordCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods update password": commandFactoryWrapper(ui,
+			&authmethodscmd.PasswordCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods update oidc": func() (cli.Command, error) {
-			return &authmethodscmd.OidcCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods update oidc": commandFactoryWrapper(ui,
+			&authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods update ldap": func() (cli.Command, error) {
-			return &authmethodscmd.LdapCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods update ldap": commandFactoryWrapper(ui,
+			&authmethodscmd.LdapCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"auth-methods change-state oidc": func() (cli.Command, error) {
-			return &authmethodscmd.OidcCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-methods change-state oidc": commandFactoryWrapper(ui,
+			&authmethodscmd.OidcCommand{
+				Command: base.NewCommand(ui),
 				Func:    "change-state",
-			}, nil
-		},
+			}),
 
 		"auth-tokens": func() (cli.Command, error) {
 			return &authtokenscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"auth-tokens read": func() (cli.Command, error) {
-			return &authtokenscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"auth-tokens read": commandFactoryWrapper(ui,
+			&authtokenscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"auth-tokens delete": func() (cli.Command, error) {
-			return &authtokenscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-tokens delete": commandFactoryWrapper(ui,
+			&authtokenscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"auth-tokens list": func() (cli.Command, error) {
-			return &authtokenscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"auth-tokens list": commandFactoryWrapper(ui,
+			&authtokenscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
+			}),
 
 		"config": func() (cli.Command, error) {
 			return &config.Command{
@@ -315,42 +286,36 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"connect": func() (cli.Command, error) {
-			return &connect.Command{
-				Command: base.NewCommand(ui, opts...),
+		"connect": commandFactoryWrapper(ui,
+			&connect.Command{
+				Command: base.NewCommand(ui),
 				Func:    "connect",
-			}, nil
-		},
-		"connect http": func() (cli.Command, error) {
-			return &connect.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"connect http": commandFactoryWrapper(ui,
+			&connect.Command{
+				Command: base.NewCommand(ui),
 				Func:    "http",
-			}, nil
-		},
-		"connect kube": func() (cli.Command, error) {
-			return &connect.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"connect kube": commandFactoryWrapper(ui,
+			&connect.Command{
+				Command: base.NewCommand(ui),
 				Func:    "kube",
-			}, nil
-		},
-		"connect postgres": func() (cli.Command, error) {
-			return &connect.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"connect postgres": commandFactoryWrapper(ui,
+			&connect.Command{
+				Command: base.NewCommand(ui),
 				Func:    "postgres",
-			}, nil
-		},
-		"connect rdp": func() (cli.Command, error) {
-			return &connect.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"connect rdp": commandFactoryWrapper(ui,
+			&connect.Command{
+				Command: base.NewCommand(ui),
 				Func:    "rdp",
-			}, nil
-		},
-		"connect ssh": func() (cli.Command, error) {
-			return &connect.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"connect ssh": commandFactoryWrapper(ui,
+			&connect.Command{
+				Command: base.NewCommand(ui),
 				Func:    "ssh",
-			}, nil
-		},
+			}),
 
 		"database": func() (cli.Command, error) {
 			return &database.Command{
@@ -373,190 +338,178 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"credential-libraries read": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"credential-libraries read": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"credential-libraries delete": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-libraries delete": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"credential-libraries list": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-libraries list": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"credential-libraries create": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-libraries create": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-libraries create vault-generic": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultGenericCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-libraries create vault": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.VaultCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-libraries create vault-ssh-certificate": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultSshCertificateCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-libraries create vault-generic": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.VaultGenericCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-libraries update": func() (cli.Command, error) {
-			return &credentiallibrariescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-libraries create vault-ssh-certificate": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.VaultSshCertificateCommand{
+				Command: base.NewCommand(ui),
+				Func:    "create",
+			}),
+		"credential-libraries update": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credential-libraries update vault-generic": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultGenericCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-libraries update vault": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.VaultGenericCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credential-libraries update vault-ssh-certificate": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultSshCertificateCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-libraries update vault-generic": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.VaultGenericCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
+		"credential-libraries update vault-ssh-certificate": commandFactoryWrapper(ui,
+			&credentiallibrariescmd.VaultSshCertificateCommand{
+				Command: base.NewCommand(ui),
+				Func:    "update",
+			}),
 
 		"credential-stores": func() (cli.Command, error) {
 			return &credentialstorescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"credential-stores read": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"credential-stores read": commandFactoryWrapper(ui,
+			&credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"credential-stores delete": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-stores delete": commandFactoryWrapper(ui,
+			&credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"credential-stores list": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-stores list": commandFactoryWrapper(ui,
+			&credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"credential-stores create": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-stores create": commandFactoryWrapper(ui,
+			&credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-stores create vault": func() (cli.Command, error) {
-			return &credentialstorescmd.VaultCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-stores create vault": commandFactoryWrapper(ui,
+			&credentialstorescmd.VaultCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-stores create static": func() (cli.Command, error) {
-			return &credentialstorescmd.StaticCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-stores create static": commandFactoryWrapper(ui,
+			&credentialstorescmd.StaticCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credential-stores update": func() (cli.Command, error) {
-			return &credentialstorescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-stores update": commandFactoryWrapper(ui,
+			&credentialstorescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credential-stores update vault": func() (cli.Command, error) {
-			return &credentialstorescmd.VaultCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-stores update vault": commandFactoryWrapper(ui,
+			&credentialstorescmd.VaultCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credential-stores update static": func() (cli.Command, error) {
-			return &credentialstorescmd.StaticCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credential-stores update static": commandFactoryWrapper(ui,
+			&credentialstorescmd.StaticCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"credentials": func() (cli.Command, error) {
 			return &credentialscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"credentials read": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"credentials read": commandFactoryWrapper(ui,
+			&credentialscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"credentials delete": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credentials delete": commandFactoryWrapper(ui,
+			&credentialscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"credentials list": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credentials list": commandFactoryWrapper(ui,
+			&credentialscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"credentials create": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credentials create": commandFactoryWrapper(ui,
+			&credentialscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credentials create username-password": func() (cli.Command, error) {
-			return &credentialscmd.UsernamePasswordCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credentials create username-password": commandFactoryWrapper(ui,
+			&credentialscmd.UsernamePasswordCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credentials create ssh-private-key": func() (cli.Command, error) {
-			return &credentialscmd.SshPrivateKeyCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credentials create ssh-private-key": commandFactoryWrapper(ui,
+			&credentialscmd.SshPrivateKeyCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credentials create json": func() (cli.Command, error) {
-			return &credentialscmd.JsonCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credentials create json": commandFactoryWrapper(ui,
+			&credentialscmd.JsonCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"credentials update": func() (cli.Command, error) {
-			return &credentialscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credentials update": commandFactoryWrapper(ui,
+			&credentialscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credentials update username-password": func() (cli.Command, error) {
-			return &credentialscmd.UsernamePasswordCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credentials update username-password": commandFactoryWrapper(ui,
+			&credentialscmd.UsernamePasswordCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credentials update ssh-private-key": func() (cli.Command, error) {
-			return &credentialscmd.SshPrivateKeyCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credentials update ssh-private-key": commandFactoryWrapper(ui,
+			&credentialscmd.SshPrivateKeyCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"credentials update json": func() (cli.Command, error) {
-			return &credentialscmd.JsonCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"credentials update json": commandFactoryWrapper(ui,
+			&credentialscmd.JsonCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
+			}),
+
+		"daemon": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui),
+				CommandName: "daemon",
 			}, nil
 		},
 
@@ -572,240 +525,204 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"groups create": func() (cli.Command, error) {
-			return &groupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"groups create": commandFactoryWrapper(ui,
+			&groupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"groups update": func() (cli.Command, error) {
-			return &groupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"groups update": commandFactoryWrapper(ui,
+			&groupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"groups read": func() (cli.Command, error) {
-			return &groupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"groups read": commandFactoryWrapper(ui,
+			&groupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"groups delete": func() (cli.Command, error) {
-			return &groupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"groups delete": commandFactoryWrapper(ui,
+			&groupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"groups list": func() (cli.Command, error) {
-			return &groupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"groups list": commandFactoryWrapper(ui,
+			&groupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"groups add-members": func() (cli.Command, error) {
-			return &groupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"groups add-members": commandFactoryWrapper(ui,
+			&groupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "add-members",
-			}, nil
-		},
-		"groups set-members": func() (cli.Command, error) {
-			return &groupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"groups set-members": commandFactoryWrapper(ui,
+			&groupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "set-members",
-			}, nil
-		},
-		"groups remove-members": func() (cli.Command, error) {
-			return &groupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"groups remove-members": commandFactoryWrapper(ui,
+			&groupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "remove-members",
-			}, nil
-		},
+			}),
 
 		"host-catalogs": func() (cli.Command, error) {
 			return &hostcatalogscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"host-catalogs read": func() (cli.Command, error) {
-			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"host-catalogs read": commandFactoryWrapper(ui,
+			&hostcatalogscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"host-catalogs delete": func() (cli.Command, error) {
-			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-catalogs delete": commandFactoryWrapper(ui,
+			&hostcatalogscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"host-catalogs list": func() (cli.Command, error) {
-			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-catalogs list": commandFactoryWrapper(ui,
+			&hostcatalogscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"host-catalogs create": func() (cli.Command, error) {
-			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-catalogs create": commandFactoryWrapper(ui,
+			&hostcatalogscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-catalogs create static": func() (cli.Command, error) {
-			return &hostcatalogscmd.StaticCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-catalogs create static": commandFactoryWrapper(ui,
+			&hostcatalogscmd.StaticCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-catalogs create plugin": func() (cli.Command, error) {
-			return &hostcatalogscmd.PluginCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-catalogs create plugin": commandFactoryWrapper(ui,
+			&hostcatalogscmd.PluginCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-catalogs update": func() (cli.Command, error) {
-			return &hostcatalogscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-catalogs update": commandFactoryWrapper(ui,
+			&hostcatalogscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"host-catalogs update static": func() (cli.Command, error) {
-			return &hostcatalogscmd.StaticCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-catalogs update static": commandFactoryWrapper(ui,
+			&hostcatalogscmd.StaticCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"host-catalogs update plugin": func() (cli.Command, error) {
-			return &hostcatalogscmd.PluginCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-catalogs update plugin": commandFactoryWrapper(ui,
+			&hostcatalogscmd.PluginCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"host-sets": func() (cli.Command, error) {
 			return &hostsetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"host-sets read": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"host-sets read": commandFactoryWrapper(ui,
+			&hostsetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"host-sets delete": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets delete": commandFactoryWrapper(ui,
+			&hostsetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"host-sets list": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets list": commandFactoryWrapper(ui,
+			&hostsetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"host-sets create": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets create": commandFactoryWrapper(ui,
+			&hostsetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-sets create static": func() (cli.Command, error) {
-			return &hostsetscmd.StaticCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets create static": commandFactoryWrapper(ui,
+			&hostsetscmd.StaticCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-sets create plugin": func() (cli.Command, error) {
-			return &hostsetscmd.PluginCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets create plugin": commandFactoryWrapper(ui,
+			&hostsetscmd.PluginCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"host-sets update": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets update": commandFactoryWrapper(ui,
+			&hostsetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"host-sets update static": func() (cli.Command, error) {
-			return &hostsetscmd.StaticCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets update static": commandFactoryWrapper(ui,
+			&hostsetscmd.StaticCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"host-sets update plugin": func() (cli.Command, error) {
-			return &hostsetscmd.PluginCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets update plugin": commandFactoryWrapper(ui,
+			&hostsetscmd.PluginCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"host-sets add-hosts": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets add-hosts": commandFactoryWrapper(ui,
+			&hostsetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "add-hosts",
-			}, nil
-		},
-		"host-sets remove-hosts": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets remove-hosts": commandFactoryWrapper(ui,
+			&hostsetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "remove-hosts",
-			}, nil
-		},
-		"host-sets set-hosts": func() (cli.Command, error) {
-			return &hostsetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"host-sets set-hosts": commandFactoryWrapper(ui,
+			&hostsetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "set-hosts",
-			}, nil
-		},
+			}),
 
 		"hosts": func() (cli.Command, error) {
 			return &hostscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"hosts read": func() (cli.Command, error) {
-			return &hostscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"hosts read": commandFactoryWrapper(ui,
+			&hostscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"hosts delete": func() (cli.Command, error) {
-			return &hostscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"hosts delete": commandFactoryWrapper(ui,
+			&hostscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"hosts list": func() (cli.Command, error) {
-			return &hostscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"hosts list": commandFactoryWrapper(ui,
+			&hostscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"hosts create": func() (cli.Command, error) {
-			return &hostscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"hosts create": commandFactoryWrapper(ui,
+			&hostscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"hosts create static": func() (cli.Command, error) {
-			return &hostscmd.StaticCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"hosts create static": commandFactoryWrapper(ui,
+			&hostscmd.StaticCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"hosts update": func() (cli.Command, error) {
-			return &hostscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"hosts update": commandFactoryWrapper(ui,
+			&hostscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"hosts update static": func() (cli.Command, error) {
-			return &hostscmd.StaticCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"hosts update static": commandFactoryWrapper(ui,
+			&hostscmd.StaticCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"logout": func() (cli.Command, error) {
 			return &logout.LogoutCommand{
@@ -818,60 +735,51 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"managed-groups read": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"managed-groups read": commandFactoryWrapper(ui,
+			&managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"managed-groups delete": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"managed-groups delete": commandFactoryWrapper(ui,
+			&managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"managed-groups list": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"managed-groups list": commandFactoryWrapper(ui,
+			&managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"managed-groups create": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"managed-groups create": commandFactoryWrapper(ui,
+			&managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"managed-groups create oidc": func() (cli.Command, error) {
-			return &managedgroupscmd.OidcCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"managed-groups create oidc": commandFactoryWrapper(ui,
+			&managedgroupscmd.OidcCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"managed-groups create ldap": func() (cli.Command, error) {
-			return &managedgroupscmd.LdapCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"managed-groups create ldap": commandFactoryWrapper(ui,
+			&managedgroupscmd.LdapCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"managed-groups update": func() (cli.Command, error) {
-			return &managedgroupscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"managed-groups update": commandFactoryWrapper(ui,
+			&managedgroupscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"managed-groups update oidc": func() (cli.Command, error) {
-			return &managedgroupscmd.OidcCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"managed-groups update oidc": commandFactoryWrapper(ui,
+			&managedgroupscmd.OidcCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"managed-groups update ldap": func() (cli.Command, error) {
-			return &managedgroupscmd.LdapCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"managed-groups update ldap": commandFactoryWrapper(ui,
+			&managedgroupscmd.LdapCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"read": func() (cli.Command, error) {
 			return &genericcmd.Command{
@@ -885,126 +793,113 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"roles create": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"roles create": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"roles update": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"roles update": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"roles read": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"roles read": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"roles delete": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"roles delete": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"roles list": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"roles list": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"roles add-principals": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"roles add-principals": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "add-principals",
-			}, nil
-		},
-		"roles set-principals": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"roles set-principals": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "set-principals",
-			}, nil
-		},
-		"roles remove-principals": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"roles remove-principals": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "remove-principals",
-			}, nil
-		},
-		"roles add-grants": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"roles add-grants": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "add-grants",
-			}, nil
-		},
-		"roles set-grants": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"roles set-grants": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "set-grants",
-			}, nil
-		},
-		"roles remove-grants": func() (cli.Command, error) {
-			return &rolescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"roles remove-grants": commandFactoryWrapper(ui,
+			&rolescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "remove-grants",
-			}, nil
-		},
+			}),
 
 		"scopes": func() (cli.Command, error) {
 			return &scopescmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"scopes create": func() (cli.Command, error) {
-			return &scopescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"scopes create": commandFactoryWrapper(ui,
+			&scopescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"scopes read": func() (cli.Command, error) {
-			return &scopescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"scopes read": commandFactoryWrapper(ui,
+			&scopescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"scopes update": func() (cli.Command, error) {
-			return &scopescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"scopes update": commandFactoryWrapper(ui,
+			&scopescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"scopes delete": func() (cli.Command, error) {
-			return &scopescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"scopes delete": commandFactoryWrapper(ui,
+			&scopescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"scopes list": func() (cli.Command, error) {
-			return &scopescmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"scopes list": commandFactoryWrapper(ui,
+			&scopescmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"scopes list-keys": func() (cli.Command, error) {
-			return &scopescmd.ListKeysCommand{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
-		"scopes rotate-keys": func() (cli.Command, error) {
-			return &scopescmd.RotateKeysCommand{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
-		"scopes list-key-version-destruction-jobs": func() (cli.Command, error) {
-			return &scopescmd.ListKeyVersionDestructionJobsCommand{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
-		"scopes destroy-key-version": func() (cli.Command, error) {
-			return &scopescmd.DestroyKeyVersionCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"scopes list-keys": commandFactoryWrapper(ui,
+			&scopescmd.ListKeysCommand{
+				Command: base.NewCommand(ui),
+			}),
+		"scopes rotate-keys": commandFactoryWrapper(ui,
+			&scopescmd.RotateKeysCommand{
+				Command: base.NewCommand(ui),
+			}),
+		"scopes list-key-version-destruction-jobs": commandFactoryWrapper(ui,
+			&scopescmd.ListKeyVersionDestructionJobsCommand{
+				Command: base.NewCommand(ui),
+			}),
+		"scopes destroy-key-version": commandFactoryWrapper(ui,
+			&scopescmd.DestroyKeyVersionCommand{
+				Command: base.NewCommand(ui),
+			}),
+
+		"search": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui),
+				CommandName: "search",
 			}, nil
 		},
 
@@ -1013,185 +908,158 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"sessions read": func() (cli.Command, error) {
-			return &sessionscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"sessions read": commandFactoryWrapper(ui,
+			&sessionscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"sessions list": func() (cli.Command, error) {
-			return &sessionscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"sessions list": commandFactoryWrapper(ui,
+			&sessionscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"sessions cancel": func() (cli.Command, error) {
-			return &sessionscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"sessions cancel": commandFactoryWrapper(ui,
+			&sessionscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "cancel",
-			}, nil
-		},
+			}),
 
 		"session-recordings": func() (cli.Command, error) {
 			return &sessionrecordingscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"session-recordings read": func() (cli.Command, error) {
-			return &sessionrecordingscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"session-recordings read": commandFactoryWrapper(ui,
+			&sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"session-recordings list": func() (cli.Command, error) {
-			return &sessionrecordingscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"session-recordings list": commandFactoryWrapper(ui,
+			&sessionrecordingscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"session-recordings download": func() (cli.Command, error) {
-			return &sessionrecordingscmd.DownloadCommand{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
+			}),
+		"session-recordings download": commandFactoryWrapper(ui,
+			&sessionrecordingscmd.DownloadCommand{
+				Command: base.NewCommand(ui),
+			}),
 
 		"storage-buckets": func() (cli.Command, error) {
 			return &storagebucketscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"storage-buckets read": func() (cli.Command, error) {
-			return &storagebucketscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"storage-buckets read": commandFactoryWrapper(ui,
+			&storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"storage-buckets delete": func() (cli.Command, error) {
-			return &storagebucketscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"storage-buckets delete": commandFactoryWrapper(ui,
+			&storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"storage-buckets list": func() (cli.Command, error) {
-			return &storagebucketscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"storage-buckets list": commandFactoryWrapper(ui,
+			&storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"storage-buckets create": func() (cli.Command, error) {
-			return &storagebucketscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"storage-buckets create": commandFactoryWrapper(ui,
+			&storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"storage-buckets update": func() (cli.Command, error) {
-			return &storagebucketscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"storage-buckets update": commandFactoryWrapper(ui,
+			&storagebucketscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
+			}),
 
 		"targets": func() (cli.Command, error) {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"targets authorize-session": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"targets authorize-session": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "authorize-session",
-			}, nil
-		},
-		"targets read": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets read": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"targets delete": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets delete": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"targets list": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets list": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"targets create": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets create": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"targets create tcp": func() (cli.Command, error) {
-			return &targetscmd.TcpCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets create tcp": commandFactoryWrapper(ui,
+			&targetscmd.TcpCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"targets create ssh": func() (cli.Command, error) {
-			return &targetscmd.SshCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets create ssh": commandFactoryWrapper(ui,
+			&targetscmd.SshCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"targets update": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets update": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"targets update tcp": func() (cli.Command, error) {
-			return &targetscmd.TcpCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets update tcp": commandFactoryWrapper(ui,
+			&targetscmd.TcpCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"targets update ssh": func() (cli.Command, error) {
-			return &targetscmd.SshCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets update ssh": commandFactoryWrapper(ui,
+			&targetscmd.SshCommand{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"targets add-host-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets add-host-sources": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "add-host-sources",
-			}, nil
-		},
-		"targets remove-host-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets remove-host-sources": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "remove-host-sources",
-			}, nil
-		},
-		"targets set-host-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets set-host-sources": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "set-host-sources",
-			}, nil
-		},
-		"targets add-credential-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets add-credential-sources": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "add-credential-sources",
-			}, nil
-		},
-		"targets remove-credential-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets remove-credential-sources": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "remove-credential-sources",
-			}, nil
-		},
-		"targets set-credential-sources": func() (cli.Command, error) {
-			return &targetscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"targets set-credential-sources": commandFactoryWrapper(ui,
+			&targetscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "set-credential-sources",
-			}, nil
-		},
+			}),
 
 		"update": func() (cli.Command, error) {
 			return &genericcmd.Command{
@@ -1205,144 +1073,142 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"users create": func() (cli.Command, error) {
-			return &userscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"users create": commandFactoryWrapper(ui,
+			&userscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"users read": func() (cli.Command, error) {
-			return &userscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"users read": commandFactoryWrapper(ui,
+			&userscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"users update": func() (cli.Command, error) {
-			return &userscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"users update": commandFactoryWrapper(ui,
+			&userscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"users delete": func() (cli.Command, error) {
-			return &userscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"users delete": commandFactoryWrapper(ui,
+			&userscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"users list": func() (cli.Command, error) {
-			return &userscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"users list": commandFactoryWrapper(ui,
+			&userscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"users add-accounts": func() (cli.Command, error) {
-			return &userscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"users add-accounts": commandFactoryWrapper(ui,
+			&userscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "add-accounts",
-			}, nil
-		},
-		"users set-accounts": func() (cli.Command, error) {
-			return &userscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"users set-accounts": commandFactoryWrapper(ui,
+			&userscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "set-accounts",
-			}, nil
-		},
-		"users remove-accounts": func() (cli.Command, error) {
-			return &userscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"users remove-accounts": commandFactoryWrapper(ui,
+			&userscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "remove-accounts",
-			}, nil
-		},
+			}),
 
 		"workers": func() (cli.Command, error) {
 			return &workerscmd.Command{
 				Command: base.NewCommand(ui, opts...),
 			}, nil
 		},
-		"workers create": func() (cli.Command, error) {
-			return &workerscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+		"workers create": commandFactoryWrapper(ui,
+			&workerscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"workers create worker-led": func() (cli.Command, error) {
-			return &workerscmd.WorkerLedCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers create worker-led": commandFactoryWrapper(ui,
+			&workerscmd.WorkerLedCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"workers create controller-led": func() (cli.Command, error) {
-			return &workerscmd.ControllerLedCommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers create controller-led": commandFactoryWrapper(ui,
+			&workerscmd.ControllerLedCommand{
+				Command: base.NewCommand(ui),
 				Func:    "create",
-			}, nil
-		},
-		"workers read": func() (cli.Command, error) {
-			return &workerscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers read": commandFactoryWrapper(ui,
+			&workerscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"workers update": func() (cli.Command, error) {
-			return &workerscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers update": commandFactoryWrapper(ui,
+			&workerscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "update",
-			}, nil
-		},
-		"workers delete": func() (cli.Command, error) {
-			return &workerscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers delete": commandFactoryWrapper(ui,
+			&workerscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "delete",
-			}, nil
-		},
-		"workers list": func() (cli.Command, error) {
-			return &workerscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers list": commandFactoryWrapper(ui,
+			&workerscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "list",
-			}, nil
-		},
-		"workers add-worker-tags": func() (cli.Command, error) {
-			return &workerscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers add-worker-tags": commandFactoryWrapper(ui,
+			&workerscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "add-worker-tags",
-			}, nil
-		},
-		"workers set-worker-tags": func() (cli.Command, error) {
-			return &workerscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers set-worker-tags": commandFactoryWrapper(ui,
+			&workerscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "set-worker-tags",
-			}, nil
-		},
-		"workers remove-worker-tags": func() (cli.Command, error) {
-			return &workerscmd.Command{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers remove-worker-tags": commandFactoryWrapper(ui,
+			&workerscmd.Command{
+				Command: base.NewCommand(ui),
 				Func:    "remove-worker-tags",
-			}, nil
-		},
-		"workers certificate-authority": func() (cli.Command, error) {
-			return &workerscmd.WorkerCACommand{
-				Command: base.NewCommand(ui, opts...),
-			}, nil
-		},
-		"workers certificate-authority read": func() (cli.Command, error) {
-			return &workerscmd.WorkerCACommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers certificate-authority": commandFactoryWrapper(ui,
+			&workerscmd.WorkerCACommand{
+				Command: base.NewCommand(ui),
+			}),
+		"workers certificate-authority read": commandFactoryWrapper(ui,
+			&workerscmd.WorkerCACommand{
+				Command: base.NewCommand(ui),
 				Func:    "read",
-			}, nil
-		},
-		"workers certificate-authority reinitialize": func() (cli.Command, error) {
-			return &workerscmd.WorkerCACommand{
-				Command: base.NewCommand(ui, opts...),
+			}),
+		"workers certificate-authority reinitialize": commandFactoryWrapper(ui,
+			&workerscmd.WorkerCACommand{
+				Command: base.NewCommand(ui),
 				Func:    "reinitialize",
-			}, nil
-		},
+			}),
 	}
 
 	for _, fn := range extraCommandsFuncs {
 		if fn != nil {
-			fn()
+			fn(ui, serverCmdUi, runOpts)
 		}
 	}
 }
 
-var extraCommandsFuncs []func()
+var extraCommandsFuncs []func(ui, serverCmdUi cli.Ui, runOpts *RunOptions)
+
+type clientAndTokenProvider interface {
+	Client(opt ...base.Option) (*api.Client, error)
+	DiscoverKeyringTokenInfo() (string, string, error)
+	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
+}
+
+type wrappableCommand interface {
+	cli.Command
+	clientAndTokenProvider
+}
+
+// commandFactoryWrapper wraps all short lived, non server, command factories.
+// The default func is a noop.
+var commandFactoryWrapper = func(ui cli.Ui, c wrappableCommand) cli.CommandFactory {
+	return func() (cli.Command, error) {
+		return c, nil
+	}
+}

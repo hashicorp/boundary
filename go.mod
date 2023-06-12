@@ -88,8 +88,9 @@ require github.com/hashicorp/go-dbw v0.1.1
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/cenkalti/backoff/v4 v4.2.1
-	github.com/creack/pty v1.1.20
+	github.com/cenkalti/backoff/v4 v4.2.0
+	github.com/creack/pty v1.1.18
+	github.com/glebarez/sqlite v1.9.0
 	github.com/golang/protobuf v1.5.3
 	github.com/hashicorp/cap/ldap v0.0.0-20231012003312-273118a6e3b8
 	github.com/hashicorp/dbassert v0.0.0-20231012105025-1bc1bd88e22b
@@ -102,10 +103,28 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/miekg/dns v1.1.56
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
+	github.com/mitchellh/go-homedir v1.1.0
+	github.com/sevlyar/go-daemon v0.1.6
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/net v0.17.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20231030173426-d783a09b4405
 	gopkg.in/square/go-jose.v2 v2.6.0
+)
+
+require (
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	modernc.org/libc v1.22.5 // indirect
+	modernc.org/mathutil v1.5.0 // indirect
+	modernc.org/memory v1.5.0 // indirect
+	modernc.org/sqlite v1.23.1 // indirect
+)
+
+require (
+	github.com/glebarez/go-sqlite v1.21.2 // indirect
+	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
+	gorm.io/driver/sqlite v1.5.4 // indirect
 )
 
 require (
@@ -148,6 +167,7 @@ require (
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5 // indirect
 	github.com/hashicorp/go-plugin v1.5.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.3 // indirect
+	github.com/hashicorp/mql v0.0.0-20230814234610-74af33a21d7f
 	github.com/hashicorp/vault/sdk v0.3.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
@@ -160,16 +180,14 @@ require (
 	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/jefferai/go-libsecret v0.0.0-20210525195240-b53481abef97 // indirect
 	github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f // indirect
-	github.com/jinzhu/gorm v1.9.12 // indirect
+	github.com/jinzhu/gorm v1.9.16 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
-	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/term v0.5.0 // indirect
@@ -202,5 +220,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231030173426-d783a09b4405 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/sqlite v1.5.4 // indirect
 )
