@@ -28,11 +28,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/security/permissions/permission-grant-formats',
-    destination: '/boundary/docs/concepts/security/permissions/',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/getting-started/connect-to-target',
     destination: '/boundary/docs/hcp/get-started/connect-to-target',
     permanent: true,
