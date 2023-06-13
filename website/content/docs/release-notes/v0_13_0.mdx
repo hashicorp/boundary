@@ -98,7 +98,7 @@ The checks are designed to reject grants that are not properly configured.
 Previously, these would have been accepted without error, but the permissions would not be granted.
 An error message is provided now, with hints for resolution.
 
-- &#32; `WithAutomaticVersioning` for auth tokens from the Go SDK was incorrectly being generated for auth token resources, which do not support versioning.
+- `WithAutomaticVersioning` for auth tokens from the Go SDK was incorrectly being generated for auth token resources, which do not support versioning.
 It has now been removed.
 
 - With the introduction of new plugin services, the Azure and AWS Host plugin repositories have been renamed to drop the word `host`:
