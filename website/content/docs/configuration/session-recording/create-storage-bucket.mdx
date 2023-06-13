@@ -21,11 +21,10 @@ For more information about using session recording to audit user sessions, refer
 
 **Requirements**:
 - An AWS S3 storage bucket
-- A Boundary PKI worker with access to the AWS S3 storage bucket
 
    At this time, the only supported storage for storage buckets is AWS S3.
    In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the access and secret key.
-
+- A Boundary PKI worker with access to the AWS S3 storage bucket. This worker must be configured with a local recording storage path, defined as `recording_storage_path`. For more details, refer to [PKI Workers](/boundary/docs/configuration/worker/pki-worker)
 - An AWS IAM role policy with the following statement:
    ```json
     {
@@ -68,9 +67,11 @@ Complete the following steps to create a storage bucket for session recording:
     Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the storage bucket:
 
     - `region`: (Required) The AWS region to use.
+    - `bucket-name`: (Required) Name of the bucket in AWS.
     - `access_key_id`: (Required) The AWS access key to use.
     - `secret_access_key_id`: (Required) The AWS secret access key to use.
     This attribute contains the secret access key for static credentials.
+    - `worker-filter`: (Required) A filter that indicated which Boundary workers have access to the storage. Note: This must match an existing worker in order to create a storage bucket
     - `shared_credentials_file`: (Optional) The shared credentials file to use.
     - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
 
@@ -91,7 +92,7 @@ Complete the following steps to create a storage bucket for session recording:
    - **Region**: (Required) The AWS region to use.
    - **Access key ID**: (Required) The access key ID that AWS generates for the IAM user to use with the storage bucket.
    - **Secret access key**: (Required) The secret access key that AWS generates for the IAM user to use with this storage bucket.
-   - **Worker filter** (Required) A filter that indicated which Boundary workers have access to the storage.
+   - **Worker filter** (Required) A filter that indicated which Boundary workers have access to the storage. Note: This must match an existing worker in order to create a storage bucket
    - **Disable credential rotation** (Optional) Although credentials are stored encrypted within Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
 
       Select this option to disable this behavior and prevent the automatic rotation of credentials.
