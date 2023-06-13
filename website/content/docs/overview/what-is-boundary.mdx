@@ -25,7 +25,16 @@ Boundary's foundation is based on the following important concepts.
 
 ## How does Boundary work?
 
-Boundary provides secure access to hosts and critical systems without distributing and managing credentials, configuring firewalls, or exposing the organization's private network. Traditionally, for users to access their resources, it's required that organizations establish and maintain SSH bastion hosts and VPNs. The illustration below displays Boundary's core workflow.
+Boundary provides secure access to hosts and critical systems without distributing and managing credentials, configuring firewalls, or exposing the organization's private network. Traditionally, for users to access their resources, it's required that organizations establish and maintain SSH bastion hosts and VPNs.
+
+The video below provides an overview of the Boundary architecture, components, and deployment models.
+It also gives a brief walkthrough of the end user's experience.
+
+  <video controls>
+    <source src="https://www.datocms-assets.com/2885/1686339121-how-boundary-works-v2.mp4" type="video/mp4" />
+  </video>
+
+The illustration below displays Boundary's core workflow.
 
 ![Boundary core workflow](/img/boundary-core-workflow.png)
 
@@ -48,7 +57,7 @@ role-based access for dynamic infrastructure.
 
 The key features and concepts of Boundary include:
 
-### Identity & Permission Management
+### Identity & permission management
 
 Identity is a core concept in Boundary. Identity is represented by two types of
 resources, mapping to common security principals:
@@ -62,7 +71,7 @@ resources, mapping to common security principals:
 [grants](/boundary/docs/concepts/security/permissions), which provides the ability to
 perform actions within the system.
 
-### Resource Management
+### Resource management
 
 Boundary enables flexible management of the hosts and services to
 broker access. Boundary administrators define [host
@@ -73,6 +82,15 @@ equivalent hosts. Finally, [targets](/boundary/docs/concepts/domain-model/target
 together host sets with connection information. Access to a resource is
 granted via [roles](/boundary/docs/concepts/domain-model/roles) that provide
 authorization to create sessions against these targets.
+
+### Auditing
+
+A fundamental challenge of securing access to sensitive computing resources is creating a system of record around users' access and actions over remote sessions.
+Boundary provides [auditing](/boundary/docs/concepts/auditing) features via [session recording](/boundary/docs/configuration/session-recording) to help organizations address compliance and threat management needs.
+
+When [session recording](/boundary/docs/configuration/session-recording) is enabled on a target, any sessions established to that target are recorded.
+Recorded sessions are stored in an admin-specified storage backend.
+Administrators can access recorded sessions at a later time using a session player that runs in a browser.
 
 ### Filtering
 
@@ -85,7 +103,13 @@ supported for the specific inputs and examples with those inputs.
 
 ## What is HCP Boundary?
 
-Boundary offers two types of deployment options. A first option is an *OSS self-managed* deployment solution as discussed above. A self-managed approach enables organizations to proxy all session data through their own network while still providing the convenience of a managed service. A second option is an *HCP-managed* deployment solution where both the control plan and worker nodes are managed by HashiCorp. With this managed solution, an option of private workers is offered. **HCP Boundary** is a fully-managed, cloud-based workflow that enables secure connections to remote hosts and critical systems across cloud and on-premise environments. Refer to the [HCP Boundary](/hcp/docs/boundary) documentation to learn more.
+Boundary offers three types of deployment options.
+The first two options are self-managed deployments.
+A self-managed approach enables organizations to proxy all session data through their own networks, while still providing the convenience of a managed service.
+HashiCorp offers Boundary in both open source (OSS) and enterprise self-managed versions.
+The Enterprise version contains commercial-only features, and comes with support.
+
+The third option is an *HCP-managed* deployment solution where both the control plane and worker nodes are managed by HashiCorp. With this managed solution, an option of private workers is offered. **HCP Boundary** is a fully-managed, cloud-based workflow that enables secure connections to remote hosts and critical systems across cloud and on-premise environments. Refer to the [HCP Boundary](/hcp/docs/boundary) documentation to learn more.
 
 -> **Hands On:** Try the [Create a Boundary Instance on HCP](/boundary/tutorials/hcp-getting-started/hcp-getting-started-create) tutorial to deploy an HCP Boundary instance.
 

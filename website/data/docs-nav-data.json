@@ -53,18 +53,18 @@
         "path": "getting-started"
       },
       {
-        "title": "Self-managed Boundary quick start",
+        "title": "Self-Managed Boundary Quick Start",
         "href": "https://developer.hashicorp.com/boundary/tutorials/oss-getting-started/"
       },
       {
-        "title": "HCP Boundary quick start",
+        "title": "HCP Boundary Quick Start",
         "href": "https://developer.hashicorp.com/boundary/tutorials/hcp-getting-started/"
       },
       {
-        "title": "Dev Mode quick start",
+        "title": "Dev Mode Quick Start",
         "routes": [
           {
-            "title": "What is Dev Mode",
+            "title": "Overview",
             "path": "getting-started/dev-mode/dev-mode"
           },
           {
@@ -87,24 +87,41 @@
         "path": "install-boundary"
       },
       {
+        "title": "Recommended Architecture",
+        "path": "install-boundary/recommended-architecture"
+      },
+      {
+        "title": "System Requirements",
+        "path": "install-boundary/system-requirements"
+      },
+      {
+        "title": "Fault Tolerance Recommendations",
+        "path": "install-boundary/fault-tolerance"
+      },
+      {
+        "title": "Install Boundary",
+        "path": "install-boundary/install"
+      },
+      {
+        "title": "Configure Controllers",
+        "path": "install-boundary/configure-controllers"
+      },
+      {
+        "title": "Configure Workers",
+        "path": "install-boundary/configure-workers"
+      },
+      {
         "title": "Non-Dev Environments",
         "path": "install-boundary/no-gen-resources"
       },
       {
         "title": "Systemd Install",
+        "hidden": true,
         "path": "install-boundary/systemd"
       },
       {
-        "title": "Postgres Install",
-        "path": "install-boundary/postgres"
-      },
-      {
-        "title": "High Availability Install",
+        "title": "Configure High Availability",
         "path": "install-boundary/high-availability"
-      },
-      {
-        "title": "Reference Architectures",
-        "path": "install-boundary/reference-architectures"
       }
     ]
   },
@@ -128,6 +145,10 @@
         "path": "concepts/credential-management"
       },
       {
+        "title": "Auditing",
+        "path": "concepts/auditing"
+      },
+      {
         "title": "Security",
         "routes": [
           {
@@ -142,12 +163,12 @@
                 "path": "concepts/security/permissions"
               },
               {
-                "title": "Grant Strings",
-                "path": "concepts/security/permissions/grants"
+                "title": "Assignable Permissions",
+                "path": "concepts/security/permissions/assignable-permissions"
               },
               {
-                "title": "Advanced Concepts",
-                "path": "concepts/security/permissions/advanced"
+                "title": "Permission Grant Formats",
+                "path": "concepts/security/permissions/permission-grant-formats"
               },
               {
                 "title": "Resource Table",
@@ -225,6 +246,14 @@
             "path": "concepts/domain-model/session-connections"
           },
           {
+            "title": "Session Recordings",
+            "path": "concepts/domain-model/session-recordings"
+          },
+          {
+            "title": "Storage Buckets",
+            "path": "concepts/domain-model/storage-buckets"
+          },
+          {
             "title": "Targets",
             "path": "concepts/domain-model/targets"
           },
@@ -273,7 +302,7 @@
         "path": "configuration"
       },
       {
-        "title": "worker",
+        "title": "Worker",
         "routes": [
           {
             "title": "Overview",
@@ -290,7 +319,7 @@
         ]
       },
       {
-        "title": "listener",
+        "title": "Listener",
         "routes": [
           {
             "title": "Overview",
@@ -344,7 +373,24 @@
         ]
       },
       {
-        "title": "events",
+        "title": "Session Recordings",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "configuration/session-recording"
+          },
+          {
+            "title": "Create Storage Buckets",
+            "path": "configuration/session-recording/create-storage-bucket"
+          },
+          {
+            "title": "Enable Session Recording",
+            "path": "configuration/session-recording/enable-session-recording"
+          }
+        ]
+      },
+      {
+        "title": "Events",
         "routes": [
           {
             "title": "Overview",
@@ -365,22 +411,12 @@
         ]
       },
       {
-        "title": "controller",
-        "path": "configuration/controller",
-        "badge": {
-          "text": "OSS Only",
-          "type": "outlined",
-          "color": "neutral"
-        }
+        "title": "Controller",
+        "path": "configuration/controller"
       },
       {
-        "title": "plugins",
-        "path": "configuration/plugins",
-        "badge": {
-          "text": "OSS Only",
-          "type": "outlined",
-          "color": "neutral"
-        }
+        "title": "Plugins",
+        "path": "configuration/plugins"
       }
     ]
   },
@@ -398,6 +434,10 @@
       {
         "title": "Health Endpoint",
         "path": "operations/health"
+      },
+      {
+        "title": "Session Recordings",
+        "path": "operations/manage-recorded-sessions"
       }
     ]
   },
@@ -411,6 +451,10 @@
       {
         "title": "FAQ",
         "path": "troubleshoot/faq"
+      },
+      {
+        "title": "Recorded Sessions",
+        "path": "troubleshoot/troubleshoot-recorded-sessions"
       }
     ]
   },
@@ -538,11 +582,39 @@
     "divider": true
   },
   {
+    "title": "Boundary Enterprise",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "enterprise"
+      },
+      {
+        "title": "Licensing",
+        "path": "enterprise/licensing"
+      },
+      {
+        "title": "Automated License Reporting",
+        "path": "enterprise/automated-license-reporting"
+      },
+      {
+        "title": "Supported Versions Policy",
+        "path": "enterprise/supported-versions"
+      }
+    ]
+  },
+  {
+    "divider": true
+  },
+  {
     "title": "Release Notes",
     "routes": [
       {
         "title": "Overview",
         "path": "release-notes"
+      },
+      {
+        "title": "v0.13.0",
+        "path": "release-notes/v0_13_0"
       },
       {
         "title": "v0.12.0",

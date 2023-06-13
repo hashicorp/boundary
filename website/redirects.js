@@ -28,11 +28,6 @@ module.exports = [
     permanent: true,
   },
   {
-    source: '/boundary/docs/concepts/security/permissions/permission-grant-formats',
-    destination: '/boundary/docs/concepts/security/permissions/',
-    permanent: true,
-  },
-  {
     source: '/boundary/docs/getting-started/connect-to-target',
     destination: '/boundary/docs/hcp/get-started/connect-to-target',
     permanent: true,
@@ -115,12 +110,17 @@ module.exports = [
   },
   {
     source: '/boundary/docs/oss/installing/postgres',
-    destination: '/boundary/docs/install-boundary/postgres',
+    destination: '/boundary/docs/install-boundary/system-requirements',
+    permanent: true,
+  },
+  {
+    source: '/boundary/docs/install-boundary/postgres',
+    destination: '/boundary/docs/install-boundary/system-requirements',
     permanent: true,
   },
   {
     source: '/boundary/docs/oss/installing/reference-architectures',
-    destination: '/boundary/docs/install-boundary/reference-architectures',
+    destination: '/boundary/docs/install-boundary/recommended-architecture',
     permanent: true,
   },
   {

@@ -1,0 +1,74 @@
+---
+layout: docs
+page_title: Domain Model - Storage Bucket
+description: |-
+  The anatomy of a Boundary storage bucket
+---
+
+# Storage buckets <sup>HCP/ENT</sup>
+
+
+A resource known as a storage bucket is used to store the [session recordings][].
+The storage bucket represents a bucket in an external object store.
+A storage bucket's name is optional, but it must be unique if you define one.
+Storage buckets can be associated with zero to many [targets][].
+
+A storage bucket exists in either the Global scope or an Org scope.
+A storage bucket that is associated with the Global scope can be associated with any target.
+However, a storage bucket in an Org scope can only be associated with targets in a project from the same Org scope.
+Any storage buckets associated with an Org scope are deleted when the Org itself is deleted.
+
+Deleting a storage bucket in Boundary does not delete the bucket in the external object store, nor does it delete the recorded sessions in the bucket.
+The storage bucket's lifecycle does not affect the lifecycle of the bucket in the external object store.
+Any session recording metadata that is attached to the storage bucket is deleted, when the storage bucket is deleted.
+
+## Attributes
+
+A storage bucket has the following configurable attributes:
+
+- `name` - (Optional) The name of the resource in Boundary.
+The name is optional, but if you set it, it must be unique within the scope ID.
+- `description` - (Optional) A description of the resource.
+- `bucket_name` - (Required) The name of the bucket in the external object store.
+You must provide a name for the bucket in the external object store.
+- `bucket_prefix` - (Optional) The prefix used to organize the data that is stored in the external object store.
+- `plugin_name` - (Required) The plugin name must reference an installed plugin.
+- `worker_filter` - (Required) A filter to identify the worker or workers that can process requests for the storage bucket.
+- `attributes` - (Optional) A collection of fields the plugin uses to interface with the backing service.
+- `secrets` - (Optional) A collection of sensitive fields, like [credentials][], which the plugin uses to interface with the backing service.
+These fields are write only.
+
+### AWS S3 attributes and secrets
+
+At this time, the only supported storage for storage buckets is AWS S3.
+In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the secret key.
+
+#### Attributes
+
+AWS S3 buckets have the following attributes:
+
+- `region` - (Required) The S3 region to configure the storage bucket in.
+- `disable_credential_rotation` - (Optional) If set to `true`, credential rotation is not performed.
+By default, the AWS plugin [rotates credentials](https://github.com/hashicorp/boundary-plugin-aws/blob/main/README.md#credential-rotation).
+
+#### Secrets
+
+AWS S3 buckets have the following secrets:
+
+- `access_key_id` - (Required) The access key ID for the IAM user to use with this storage bucket.
+- `secret_access_key` - (Required) The secret access key for the IAM user to use with this storage bucket.
+
+# Referenced by
+
+- [Session recordings](/boundary/docs/concepts/domain-model/session-recordings)
+
+## Service API Docs
+
+The following services are relevant to this resource:
+
+- [Session recording service](/boundary/api-docs/session-recording-service)
+
+[session recordings]: /boundary/docs/concepts/domain-model/session-recordings
+[credentials]: /boundary/docs/concepts/domain-model/credentials
+[targets]: /boundary/docs/concepts/domain-model/targets
+[scope]: /boundary/docs/concepts/domain-model/scopes

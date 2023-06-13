@@ -1,0 +1,17 @@
+---
+layout: docs
+page_title: Overview
+description: |-
+  An overview of session recording in Boundary
+---
+
+# Overview
+
+Boundary provides auditing capabilities via session recording.
+In Boundary, a session represents a set of connections between a user and a host from a target.
+The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
+
+When you enable session recording on a target, a worker records any sessions that access that target.
+You can view the recordings later with a session player that runs in a web browser.
+
+To enable session recording you must first [create a storage bucket](/boundary/docs/configuration/session-recording/create-storage-bucket) and then [enable session recording on the target](/boundary/docs/configuration/session-recording/enable-session-recording).

@@ -1,0 +1,130 @@
+---
+layout: docs
+page_title: Permission Grant Formats
+description: |-
+  Permission Grant Formats
+---
+
+## Permission Grant Formats
+
+Because of the aforementioned properties of the permissions model, grants are
+relatively simple. All grants take one of four forms. These examples use the
+canonical string syntax; the JSON equivalents are simply an object with a string
+`id` value, a string `type` value, a string array `actions` value, and a string
+array `output_fields` value.
+
+~> `output_fields` is omitted in most example below for brevity but are valid
+in all of them. It is also valid in each case to omit `actions` and specify
+_only_ `output_fields`.
+
+### ID Only
+
+This is the simplest form: for a given specific resource, allow these actions.
+Example:
+
+`id=hsst_1234567890;actions=read,update`
+
+This grants `read` and `update` actions to that single resource. It is invalid
+to specify `create` or `list` as actions in this format, as this format
+explicitly identifies a resource, whereas those actions operate exclusively on
+collections.
+
+### Type Only
+
+For a given type, allow these actions. Example:
+
+`type=host-catalog;actions=create,list`
+
+Because type specifies only a collection as opposed to specific resources within
+that collection, only collection actions are allowed in this format. Currently,
+this is `create` and `list`.
+
+There is one additional restriction: this is only valid against "top-level"
+resource types, which currently are:
+
+- Auth Methods
+- Auth Tokens
+- Groups
+- Host Catalogs
+- Roles
+- Scopes
+- Sessions
+- Targets
+- Users
+
+The reason for this is that other types of resources are contained within one of
+these resource types; for instance, accounts are instantiated within an auth
+method. To specify actions against those, you must also specify to which
+specific containing resource you want the grants to apply. This can be done with
+the pinned format shown below.
+
+### Pinned ID
+
+This form "pins" actions to a non-top-level type within a specific ID. It's
+easiest to explain with an example:
+
+`id=hcst_1234567890;type=host-set;actions=create,read,update`
+
+In this example, the user is able to create, read, or update host sets within
+the scope, but _only the host sets belonging to host catalog hcst_1234567890_.
+Pinning is essentially a way to use top-level resources to create mini
+permission boundaries for their subordinate resources.
+
+### Wildcard ID
+
+Various wildcard possibilities are allowed:
+
+#### Wildcard ID
+
+When just the ID is `*`, it matches all IDs of the given type. This can be used
+with both top-level resource types and not. Example:
+
+`id=*;type=host-set;actions=create,read,update,set-hosts`
+
+#### Wildcard Type
+
+For non-top-level resources with pinned IDs, the `type` can be a wildcard:
+
+`id=hcst_1234567890;type=*;actions=create,read,update`
+
+This would allow `create`, `read`, and `update` actions for all types of
+subordinate resources (in this case host sets and hosts) underneath the host
+catalog with ID `hcst_1234567890`.
+
+#### Wildcard ID and Type
+
+If ID and type are both a wildcard, the grant is essentially a catch-all that
+will match any resource of any type within the scope and allow the given
+actions.
+
+`id=*;type=*;actions=read,list`
+
+#### Wildcard ID, Type, and Actions
+
+Finally, ID, type, and actions can all be wildcards:
+
+`id=*;type=*;actions=*`
+
+Such a grant is essentially a full administrator grant for a scope.
+
+### Templates
+
+A few template possibilities exist, which will at grant evaluation time
+substitute the given value into the ID field of the grant string:
+
+- `{{.Account.Id}}`: The substituted value is the account ID associated with the
+  token used to perform the action. As an example,
+  `id={{.Account.Id}};actions=read,change-password"` is one of Boundary's
+  default grants to allow users that have authenticated with the Password auth
+  method to change their own password.
+  - **NOTE**: Prior to Boundary 0.11.1, `{{account.id}}` must be used instead.
+    Boundary 0.11.1+ changes this for consistency with other places within
+    Boundary that are gaining templating support, but supports both formats for
+    backwards compatibility.
+
+- `{{.User.Id}}`: The substituted value is the user ID associated with the token
+  used to perform the action.
+  - **NOTE**: Prior to Boundary 0.11.1, `{{user.id}}` must be used instead.
+    Boundary 0.11.1+ changes this for consistency with other places within
+    Boundary that are gaining templating support, but supports both formats for
+    backwards compatibility.

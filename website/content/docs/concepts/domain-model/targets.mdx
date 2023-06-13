@@ -79,7 +79,7 @@ TCP targets have the following additional attributes:
   The default is 8 hours (28800 seconds).
   This value must be greater than 0.
 
-### SSH target attributes <sup>HCP Only</sup>
+### SSH target attributes <sup>HCP/ENT</sup>
 
 SSH targets can source username/password or SSH private key credentials from Vault [credential libraries][] or static
 [credentials][]. Boundary then injects credentials into the SSH session between a client and end host. This allows users to
@@ -102,7 +102,11 @@ SSH targets have the following additional attributes:
   You can configure an egress filter to enable [multi-hop](/boundary/docs/configuration/worker/pki-worker#multi-hop-workershcp-only) connections.
   If you do not configure an egress filter, then Boundary uses a single worker to connect to the controller.
 
-- `ingress_worker_filter` - (optional) <sup>HCP Only</sup>
+- `enable_session_recording` - (optional)
+  Set to `true` to enable [session recordings][] for a target.
+  If you enable session recording, the `storage_bucket_id` is required.
+
+- `ingress_worker_filter` - (optional) <sup>HCP/ENT</sup>
   A boolean expression to [filter][] which ingress workers can handle sessions
   for this target.
   Ingress worker filters determine which workers you connect with to initiate a session.
@@ -123,12 +127,17 @@ SSH targets have the following additional attributes:
   The default is 8 hours (28800 seconds).
   This value must be greater than 0.
 
+- `storage_bucket_id` - (optional)
+  Designates the storage bucket to be used for session recording.
+  This attribute is required if you set `enable_session_recording` to `true`.
+
 ## Referenced by
 
 - [Credential Library][]
 - [Host Set][]
 - [Project][]
 - [Session][]
+- [Session Recordings][]
 - [Worker Filtering][]
 
 [credentials]: /boundary/docs/concepts/domain-model/credentials
@@ -150,6 +159,7 @@ SSH targets have the following additional attributes:
 [roles]: /boundary/docs/concepts/domain-model/roles
 [session]: /boundary/docs/concepts/domain-model/sessions
 [sessions]: /boundary/docs/concepts/domain-model/sessions
+[session recordings]: /boundary/docs/concepts/domain-model/session-recordings
 [filter]: /boundary/docs/concepts/filtering/worker-tags
 [worker filtering]: /boundary/docs/concepts/filtering/worker-tags
 [user]: /boundary/docs/concepts/domain-model/users
