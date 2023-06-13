@@ -20,6 +20,8 @@ scenario "e2e_docker" {
     aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
     local_boundary_dir         = abspath(var.local_boundary_dir)
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
+    license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+
     build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
@@ -54,6 +56,15 @@ scenario "e2e_docker" {
     module = module.docker_postgres
   }
 
+  step "read_license" {
+    skip_step = var.boundary_edition == "oss"
+    module    = module.read_license
+
+    variables {
+      file_name = local.license_path
+    }
+  }
+
   step "create_boundary" {
     module = module.docker_boundary
     depends_on = [
@@ -65,6 +76,7 @@ scenario "e2e_docker" {
       image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
       network_name     = step.create_docker_network.network_name
       postgres_address = step.create_boundary_database.address
+      boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
     }
   }
 
