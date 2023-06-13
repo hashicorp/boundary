@@ -11,7 +11,7 @@ In this topic, we present an opinionated deployment model to show Boundary Enter
 
 Before you configure workers, you should have completed the following steps:
 
-- Installed Boundary on at least three [controller nodes](/docs/install-boundary/configure-controllers).
+- Installed Boundary on at least three [controller nodes](/boundary/docs/install-boundary/configure-controllers).
 - Prepared or have three existing network boundaries:
    - Public/DMZ network
    - Intermediary network
@@ -60,7 +60,7 @@ Refer to your cloud provider's documentation, for more information.
 After you create the requisite key or keys in the cloud provider of your choice, you can begin configuring the workers.
 
 The following configuration examples all employ the PKI method of authentication with a worker-led authorization flow.
-For more information on configuring KMS authentication for Boundary workers, refer to the [KMS worker configuration documenation](/docs/configuration/worker/kms-worker).
+For more information on configuring KMS authentication for Boundary workers, refer to the [KMS worker configuration documenation](/boundary/docs/configuration/worker/kms-worker).
 
 ### Ingress worker configuration
 
@@ -292,18 +292,18 @@ If present, `boundary server` starts a controller subprocess.
    The example events configuration above is exhaustive and writes all events to both `stderr` and a file.
    This configuration may or may not work for your organization's logging solution.
 
-- &#32; `kms` - Configures KMS blocks for [various purposes](/docs/concepts/security/data-encryption).
+- &#32; `kms` - Configures KMS blocks for [various purposes](/boundary/docs/concepts/security/data-encryption).
 
    Refer to the links below for configuration information for the different cloud KMS blocks:
 
-   - [AWS](/docs/configuration/kms/awskms)
-   - [Azure](/docs/configuration/kms/azurekeyvault)
-   - [GCP](/docs/configuration/kms/gcpckms)
-   - [OCI](/docs/configuration/kms/ocikms)
-   - [AliCloud](/docs/configuration/kms/alicloudkms)
-   - [Vault Transit](/docs/configuration/kms/transit)
+   - [AWS](/boundary/docs/configuration/kms/awskms)
+   - [Azure](/boundary/docs/configuration/kms/azurekeyvault)
+   - [GCP](/boundary/docs/configuration/kms/gcpckms)
+   - [OCI](/boundary/docs/configuration/kms/ocikms)
+   - [AliCloud](/boundary/docs/configuration/kms/alicloudkms)
+   - [Vault Transit](/boundary/docs/configuration/kms/transit)
 
-Refer to the documentation for additional [top-level configuration options](/docs/configuration) and additional [controller-specific options](/docs/configuration/controller).
+Refer to the documentation for additional [top-level configuration options](/boundary/docs/configuration) and additional [controller-specific options](/boundary/docs/configuration/controller).
 
 ## Start the Boundary service
 
@@ -331,7 +331,7 @@ Note that only KMS workers are listed.
 
 1. Click **New**.
 
-1. (Optional) You can use the new PKI workers page to construct the contents of the `pki-worker.hcl` file, if you did not [create the configuration file](/docs/install-boundary/configure-workers#create-the-worker-configurations) as part of the installation process above.
+1. (Optional) You can use the new PKI workers page to construct the contents of the `pki-worker.hcl` file, if you did not [create the configuration file](/boundary/docs/install-boundary/configure-workers#create-the-worker-configurations) as part of the installation process above.
 Provide the following details, and Boundary constructs the worker configuration file for you:
    - Boundary Cluster ID
    - Worker Public Address
