@@ -69,14 +69,14 @@ Projects.
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-   - &#32; `id=*;type=*;actions=*`
+   - `id=*;type=*;actions=*`
 
 ### Boundary Viewer
 1. **Each** of the 7 scopes requires a role (ex. “viewer”)
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-   - &#32; `id=*;type=*;actions=read,list`
+   - `id=*;type=*;actions=read,list`
 
 ### Org_A admin
 1. The following scopes **each** require a role (ex. “admin”)
@@ -86,22 +86,22 @@ Projects.
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
 
-   - &#32; `id=*;type=*;actions=*`
+   - `id=*;type=*;actions=*`
 
 ### Project_1 admin
 1. Project_1 requires a role (ex. “admin”)
 2. The role needs to have the user/group added as a principal
 3. The role needs to have the grants of
 
-   - &#32; `id=*;type=*;actions=*`
+   - `id=*;type=*;actions=*`
 
 ### Project_1 target access
 1. Project_1 requires a role (ex. “target_access”)
 2. The role needs to have the user/group added as a principal
 3. The role needs to have the grants of
 
-   - &#32; `id=*;type=target;actions=list,read,authorize-session`
-   - &#32; `id=*;type=session;actions=read:self,cancel:self,list`
+   - `id=*;type=target;actions=list,read,authorize-session`
+   - `id=*;type=session;actions=read:self,cancel:self,list`
 
 <Tip>
 You can use the same roles across “Boundary Admin”, “Org_A Admin”, and “Project_1 Admin” since the scopes and grants are the same. The only difference is

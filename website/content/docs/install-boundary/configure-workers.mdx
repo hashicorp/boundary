@@ -271,7 +271,7 @@ kms "awskms" {
 
 Refer to the list below for explanations of the parameters used in the example above:
 
-- &#32;`disable mlcok (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory from being swapped to the disk.
+- `disable mlcok (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory from being swapped to the disk.
 This is fine for local development and testing.
 However, it is not recommended for production unless the systems running Boundary use only encrypted swap or do not use swap at all.
 Boundary only supports memory locking on UNIX-like systems that support `mlock()` syscall like Linux and FreeBSD.
@@ -284,15 +284,15 @@ Boundary only supports memory locking on UNIX-like systems that support `mlock()
 
    `LimitMEMLOCK=infinity`
 
-- &#32; `listener` - Configures the listeners on which Boundary serves traffic (API cluster and proxy).
-- &#32; `controller` - Configures the controller.
+- `listener` - Configures the listeners on which Boundary serves traffic (API cluster and proxy).
+- `controller` - Configures the controller.
 If present, `boundary server` starts a controller subprocess.
-- &#32; `events` - Configures event-specific parameters.
+- `events` - Configures event-specific parameters.
 
    The example events configuration above is exhaustive and writes all events to both `stderr` and a file.
    This configuration may or may not work for your organization's logging solution.
 
-- &#32; `kms` - Configures KMS blocks for [various purposes](/boundary/docs/concepts/security/data-encryption).
+- `kms` - Configures KMS blocks for [various purposes](/boundary/docs/concepts/security/data-encryption).
 
    Refer to the links below for configuration information for the different cloud KMS blocks:
 
@@ -310,8 +310,8 @@ Refer to the documentation for additional [top-level configuration options](/bou
 When the configuration files are in place on each Boundary controller, you can proceed to enable and start the binary on each of the Boundary worker nodes using `systemd`.
 Run the following commands to start the service:
 
-1. &#32;`sudo systemctl enable boundary`
-1. &#32;`sudo systemctl start boundary`
+1. `sudo systemctl enable boundary`
+1. `sudo systemctl start boundary`
 
 ## Adopt the PKI workers (optional)
 
