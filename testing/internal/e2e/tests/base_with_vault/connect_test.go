@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package static_with_vault_test
+package base_with_vault_test
 
 import (
 	"context"

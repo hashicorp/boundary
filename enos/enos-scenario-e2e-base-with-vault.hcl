@@ -1,7 +1,7 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
 
-scenario "e2e_static_with_vault" {
+scenario "e2e_base_with_vault" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
@@ -144,7 +144,7 @@ scenario "e2e_static_with_vault" {
     ]
 
     variables {
-      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/static_with_vault"
+      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_with_vault"
       debug_no_run             = var.e2e_debug_no_run
       alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
       auth_method_id           = step.create_boundary_cluster.auth_method_id

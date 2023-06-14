@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package static_test
+package base_test
 
 import (
 	"context"
@@ -15,13 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliSessionEndWhenTargetIsDeleted tests that an active session is canceled when the respective
-// target for the session is deleted.
-func TestCliSessionEndWhenTargetIsDeleted(t *testing.T) {
+// TestCliSessionCancelAdmin uses the boundary cli to start and then cancel a session
+func TestCliSessionCancelAdmin(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
-	require.NoError(t, err)
-	bc, err := boundary.LoadConfig()
 	require.NoError(t, err)
 
 	ctx := context.Background()
@@ -40,38 +37,15 @@ func TestCliSessionEndWhenTargetIsDeleted(t *testing.T) {
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
-	acctName := "e2e-account"
-	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
-	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("accounts", "delete", "-id", newAccountId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
-	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
-	})
-	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
-	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
-	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
 
 	// Connect to target to create a session
 	ctxCancel, cancel := context.WithCancel(context.Background())
 	errChan := make(chan *e2e.CommandResult)
 	go func() {
-		token := boundary.GetAuthenticationTokenCli(t, ctx, acctName, acctPassword)
-		t.Log("Starting session as user...")
+		t.Log("Starting session...")
 		errChan <- e2e.RunCommand(ctxCancel, "boundary",
 			e2e.WithArgs(
 				"connect",
-				"-token", "env://E2E_AUTH_TOKEN",
 				"-target-id", newTargetId,
 				"-exec", "/usr/bin/ssh", "--",
 				"-l", c.TargetSshUser,
@@ -83,7 +57,6 @@ func TestCliSessionEndWhenTargetIsDeleted(t *testing.T) {
 				"{{boundary.ip}}",
 				"hostname -i; sleep 60",
 			),
-			e2e.WithEnv("E2E_AUTH_TOKEN", token),
 		)
 	}()
 	t.Cleanup(cancel)
@@ -92,13 +65,15 @@ func TestCliSessionEndWhenTargetIsDeleted(t *testing.T) {
 	assert.Equal(t, newTargetId, s.TargetId)
 	assert.Equal(t, newHostId, s.HostId)
 
-	// Delete Target
-	t.Log("Deleting target...")
-	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("targets", "delete", "-id", newTargetId))
+	// Cancel session
+	t.Log("Canceling session...")
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("sessions", "cancel", "-id", s.Id),
+	)
 	require.NoError(t, output.Err, string(output.Stderr))
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusTerminated.String())
 
-	// Check if session has terminated
-	t.Log("Waiting for session to be canceling/terminated...")
+	// Check output from session
 	select {
 	case output := <-errChan:
 		// `boundary connect` returns a 255 when cancelled
@@ -107,6 +82,5 @@ func TestCliSessionEndWhenTargetIsDeleted(t *testing.T) {
 		t.Fatal("Timed out waiting for session command to exit")
 	}
 
-	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusTerminated.String())
-	t.Log("Session successfully ended after target was deleted")
+	t.Log("Successfully cancelled session")
 }

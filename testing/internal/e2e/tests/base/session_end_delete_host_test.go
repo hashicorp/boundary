@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package static_test
+package base_test
 
 import (
 	"context"
@@ -15,9 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliSessionEndWhenHostSetIsDeleted tests that an active session is canceled when the respective
+// TestCliSessionEndWhenHostIsDeleted tests that an active session is canceled when the respective
 // host set for the session is deleted.
-func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
+func TestCliSessionEndWhenHostIsDeleted(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -92,9 +92,9 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 	assert.Equal(t, newTargetId, s.TargetId)
 	assert.Equal(t, newHostId, s.HostId)
 
-	// Delete Host Set
-	t.Log("Deleting host set...")
-	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("host-sets", "delete", "-id", newHostSetId))
+	// Delete Host
+	t.Log("Deleting host...")
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "delete", "-id", newHostId))
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Check if session has terminated
@@ -107,5 +107,5 @@ func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 	}
 
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusTerminated.String())
-	t.Log("Session successfully ended after host set was deleted")
+	t.Log("Session successfully ended after host was deleted")
 }

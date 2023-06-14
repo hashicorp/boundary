@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package static_test
+package base_test
 
 import (
 	"context"
@@ -15,9 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliSessionEndWhenHostIsDeleted tests that an active session is canceled when the respective
-// host set for the session is deleted.
-func TestCliSessionEndWhenHostIsDeleted(t *testing.T) {
+// TestCliSessionEndWhenUserIsDeleted tests that an active session is canceled when the respective
+// user who started the session is deleted.
+func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
+	userIsDeleted := false
+
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -51,11 +53,14 @@ func TestCliSessionEndWhenHostIsDeleted(t *testing.T) {
 	})
 	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
 	t.Cleanup(func() {
-		boundary.AuthenticateAdminCli(t, context.Background())
-		output := e2e.RunCommand(ctx, "boundary",
-			e2e.WithArgs("users", "delete", "-id", newUserId),
-		)
-		require.NoError(t, output.Err, string(output.Stderr))
+		if !userIsDeleted {
+			t.Log("Deleting user...")
+			boundary.AuthenticateAdminCli(t, context.Background())
+			output := e2e.RunCommand(ctx, "boundary",
+				e2e.WithArgs("users", "delete", "-id", newUserId),
+			)
+			require.NoError(t, output.Err, string(output.Stderr))
+		}
 	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
@@ -92,12 +97,14 @@ func TestCliSessionEndWhenHostIsDeleted(t *testing.T) {
 	assert.Equal(t, newTargetId, s.TargetId)
 	assert.Equal(t, newHostId, s.HostId)
 
-	// Delete Host
-	t.Log("Deleting host...")
-	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("hosts", "delete", "-id", newHostId))
+	// Delete User
+	t.Log("Deleting user...")
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("users", "delete", "-id", newUserId))
 	require.NoError(t, output.Err, string(output.Stderr))
+	userIsDeleted = true
 
 	// Check if session has terminated
+	t.Log("Waiting for session to be canceling/terminated...")
 	select {
 	case output := <-errChan:
 		// `boundary connect` returns a 255 when cancelled
@@ -107,5 +114,5 @@ func TestCliSessionEndWhenHostIsDeleted(t *testing.T) {
 	}
 
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusTerminated.String())
-	t.Log("Session successfully ended after host was deleted")
+	t.Log("Session successfully ended after user was deleted")
 }

@@ -101,7 +101,7 @@ scenario "e2e_docker" {
     ]
 
     variables {
-      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/static_with_vault"
+      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_with_vault"
       debug_no_run             = var.e2e_debug_no_run
       alb_boundary_api_addr    = step.create_boundary.address
       auth_method_id           = step.create_boundary.auth_method_id
