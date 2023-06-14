@@ -129,3 +129,8 @@ variable "controller_sg_id" {
   description = "The controllers' security group ID for adding rules allowing this worker to communicate with them"
   type        = string
 }
+
+variable "config_file_path" {
+  description = "Path to a config file (relative to module directory)"
+  type        = string
+}
