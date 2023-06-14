@@ -119,7 +119,7 @@ This also means that you can use a simple layer 4 load balancer to pass through 
 ## Database recommendations
 
 Boundary clusters depend on a PostgreSQL database for managing state and configuration.
-Boundary has only been tested on PostgreSQL 11 or greater.
+Ensure you are using a version of PostgreSQL covered under [Boundary's supported version policy](https://developer.hashicorp.com/boundary/docs/enterprise/supported-versions#postgresql-support-policy).
 
 Each major cloud provider offers a managed PostgreSQL database service:
 
