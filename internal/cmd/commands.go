@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authmethodscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokenscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/cache"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentiallibrariescmd"
@@ -359,6 +360,17 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 		"database migrate": func() (cli.Command, error) {
 			return &database.MigrateCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+
+		"cache server": func() (cli.Command, error) {
+			return &cache.ServerCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+		"cache search targets": func() (cli.Command, error) {
+			return &cache.SearchTargetsCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
