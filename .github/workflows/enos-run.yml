@@ -81,7 +81,7 @@ jobs:
           - filter: 'e2e_base builder:crt'
           - filter: 'e2e_base_with_vault builder:crt'
           # - filter: 'e2e_ui builder:crt' # Don't run UI tests yet. takes too long.
-    runs-on: ${{ fromJSON(vars.RUNNER) }}
+    runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
       # Scenario variables
