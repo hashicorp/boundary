@@ -621,7 +621,10 @@ func (c *Command) Run(args []string) (retCode int) {
 		}
 	}
 
-	if sendSessionCancel {
+	// Only send it if we should, and also if we're not after expiration, with a
+	// bit of buffer in case clocks are not quite the same between worker and
+	// this machine.
+	if sendSessionCancel && time.Now().Before(c.expiration.Add(-5*time.Minute)) {
 		ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
 		wsConn, err := c.getWsConn(ctx, workerAddr, transport)
 		if err != nil {
