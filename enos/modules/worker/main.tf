@@ -173,7 +173,7 @@ resource "enos_file" "worker_config" {
   depends_on = [enos_bundle_install.worker]
 
   destination = "/etc/boundary/boundary.hcl"
-  content = templatefile("${path.module}/templates/worker.hcl", {
+  content = templatefile("${path.module}/${var.config_file_path}", {
     id                   = random_pet.worker.id
     kms_key_id           = data.aws_kms_key.kms_key.id
     public_addr          = aws_instance.worker.public_ip

@@ -195,6 +195,7 @@ scenario "e2e_aws" {
       controller_addresses      = step.create_boundary_cluster.public_controller_addresses
       controller_sg_id          = step.create_boundary_cluster.controller_aux_sg_id
       worker_type_tags          = ["worker_e2e_test"]
+      config_file_path          = "templates/worker.hcl"
     }
   }
 
