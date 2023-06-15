@@ -48,53 +48,50 @@ func AddHostSourceToTargetApi(t testing.TB, ctx context.Context, client *api.Cli
 // Returns the id of the new target.
 func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string, opt ...target.Option) string {
 	opts := target.GetOpts(opt...)
+	var args []string
 
-	args := []string{
-		"targets", "create", "tcp",
+	// Set target type. Default to tcp if not specified
+	if opts.WithType != "" {
+		args = append(args, string(opts.WithType))
+	} else {
+		args = append(args, "tcp")
+	}
+
+	args = append(args,
 		"-scope-id", projectId,
 		"-default-port", defaultPort,
 		"-name", "e2e Target",
 		"-format", "json",
-	}
+	)
 
+	if opts.WithAddress != "" {
+		args = append(args, "-address", opts.WithAddress)
+	}
 	if opts.WithDefaultClientPort != 0 {
 		args = append(args, "-default-client-port", fmt.Sprintf("%d", opts.WithDefaultClientPort))
 	}
+	if opts.WithEnableSessionRecording != false {
+		args = append(args, "-enable-session-recording", fmt.Sprintf("%v", opts.WithEnableSessionRecording))
+	}
+	if opts.WithStorageBucketId != "" {
+		args = append(args, "-storage-bucket-id", opts.WithStorageBucketId)
+	}
+	if opts.WithIngressWorkerFilter != "" {
+		args = append(args, "-ingress-worker-filter", opts.WithIngressWorkerFilter)
+	}
 
 	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("targets", "create"),
 		e2e.WithArgs(args...),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
+
 	var newTargetResult targets.TargetCreateResult
 	err := json.Unmarshal(output.Stdout, &newTargetResult)
 	require.NoError(t, err)
+
 	newTargetId := newTargetResult.Item.Id
 	t.Logf("Created Target: %s", newTargetId)
-
-	return newTargetId
-}
-
-// CreateNewAddressTargetCli uses the cli to create a new target using an
-// address in boundary.
-// Returns the id of the new target.
-func CreateNewAddressTargetCli(t testing.TB, ctx context.Context, projectId string, defaultPort string, address string) string {
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs(
-			"targets", "create", "tcp",
-			"-scope-id", projectId,
-			"-default-port", defaultPort,
-			"-name", "e2e Target",
-			"-address", address,
-			"-format", "json",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
-	var newTargetResult targets.TargetCreateResult
-	err := json.Unmarshal(output.Stdout, &newTargetResult)
-	require.NoError(t, err)
-	newTargetId := newTargetResult.Item.Id
-	t.Logf("Created Target: %s", newTargetId)
-
 	return newTargetId
 }
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/session"
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,7 @@ func TestCliSessionEndWhenProjectIsDeleted(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewAddressTargetCli(t, ctx, newProjectId, c.TargetPort, c.TargetIp)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetIp))
 	acctName := "e2e-account"
 	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	t.Cleanup(func() {
