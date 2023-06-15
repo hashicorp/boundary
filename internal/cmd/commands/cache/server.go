@@ -328,7 +328,7 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenN
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		filter, err := handlers.NewFilter(r.URL.Query().Get(filterKey))
+		filter, err := handlers.NewFilter(ctx, r.URL.Query().Get(filterKey))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -336,7 +336,7 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenN
 
 		reqTokenName := r.Header.Get("token_name")
 		if tokenName != reqTokenName {
-			http.Error(w, err.Error(), http.StatusForbidden)
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
