@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package static_test
+package base_test
 
 import (
 	"context"
@@ -15,9 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliSessionEndWhenProjectIsDeleted tests that an active session is canceled when the respective
-// project for the session is deleted.
-func TestCliSessionEndWhenProjectIsDeleted(t *testing.T) {
+// TestCliSessionEndWhenHostSetIsDeleted tests that an active session is canceled when the respective
+// host set for the session is deleted.
+func TestCliSessionEndWhenHostSetIsDeleted(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -34,7 +34,12 @@ func TestCliSessionEndWhenProjectIsDeleted(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewAddressTargetCli(t, ctx, newProjectId, c.TargetPort, c.TargetIp)
+	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
+	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
+	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 	acctName := "e2e-account"
 	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	t.Cleanup(func() {
@@ -85,14 +90,14 @@ func TestCliSessionEndWhenProjectIsDeleted(t *testing.T) {
 	s := boundary.WaitForSessionCli(t, ctx, newProjectId)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
 	assert.Equal(t, newTargetId, s.TargetId)
+	assert.Equal(t, newHostId, s.HostId)
 
-	// Delete Project
-	t.Log("Deleting project...")
-	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newProjectId))
+	// Delete Host Set
+	t.Log("Deleting host set...")
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("host-sets", "delete", "-id", newHostSetId))
 	require.NoError(t, output.Err, string(output.Stderr))
 
 	// Check if session has terminated
-	t.Log("Waiting for session to be canceling/terminated...")
 	select {
 	case output := <-errChan:
 		// `boundary connect` returns a 255 when cancelled
@@ -101,5 +106,6 @@ func TestCliSessionEndWhenProjectIsDeleted(t *testing.T) {
 		t.Fatal("Timed out waiting for session command to exit")
 	}
 
-	t.Log("Session successfully ended after project was deleted")
+	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusTerminated.String())
+	t.Log("Session successfully ended after host set was deleted")
 }

@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package static_test
+package base_test
 
 import (
 	"context"
@@ -15,11 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliSessionEndWhenUserIsDeleted tests that an active session is canceled when the respective
-// user who started the session is deleted.
-func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
-	userIsDeleted := false
-
+// TestCliSessionEndWhenProjectIsDeleted tests that an active session is canceled when the respective
+// project for the session is deleted.
+func TestCliSessionEndWhenProjectIsDeleted(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -36,12 +34,7 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
-	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
-	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
-	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
+	newTargetId := boundary.CreateNewAddressTargetCli(t, ctx, newProjectId, c.TargetPort, c.TargetIp)
 	acctName := "e2e-account"
 	newAccountId, acctPassword := boundary.CreateNewAccountCli(t, ctx, bc.AuthMethodId, acctName)
 	t.Cleanup(func() {
@@ -53,14 +46,11 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	})
 	newUserId := boundary.CreateNewUserCli(t, ctx, "global")
 	t.Cleanup(func() {
-		if !userIsDeleted {
-			t.Log("Deleting user...")
-			boundary.AuthenticateAdminCli(t, context.Background())
-			output := e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs("users", "delete", "-id", newUserId),
-			)
-			require.NoError(t, output.Err, string(output.Stderr))
-		}
+		boundary.AuthenticateAdminCli(t, context.Background())
+		output := e2e.RunCommand(ctx, "boundary",
+			e2e.WithArgs("users", "delete", "-id", newUserId),
+		)
+		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
@@ -95,13 +85,11 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 	s := boundary.WaitForSessionCli(t, ctx, newProjectId)
 	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusActive.String())
 	assert.Equal(t, newTargetId, s.TargetId)
-	assert.Equal(t, newHostId, s.HostId)
 
-	// Delete User
-	t.Log("Deleting user...")
-	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("users", "delete", "-id", newUserId))
+	// Delete Project
+	t.Log("Deleting project...")
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newProjectId))
 	require.NoError(t, output.Err, string(output.Stderr))
-	userIsDeleted = true
 
 	// Check if session has terminated
 	t.Log("Waiting for session to be canceling/terminated...")
@@ -113,6 +101,5 @@ func TestCliSessionEndWhenUserIsDeleted(t *testing.T) {
 		t.Fatal("Timed out waiting for session command to exit")
 	}
 
-	boundary.WaitForSessionStatusCli(t, ctx, s.Id, session.StatusTerminated.String())
-	t.Log("Session successfully ended after user was deleted")
+	t.Log("Session successfully ended after project was deleted")
 }
