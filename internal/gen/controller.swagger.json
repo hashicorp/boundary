@@ -2225,6 +2225,54 @@
         ]
       }
     },
+    "/v1/roles/{id}:add-grant-scopes": {
+      "post": {
+        "summary": "Adds grant scopes to a Role",
+        "operationId": "RoleService_AddRoleGrantScopes",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "Version is used to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+                },
+                "grant_scope_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": ""
+                }
+              }
+            }
+          }
+        ],
+        "tags": [
+          "controller.api.services.v1.RoleService"
+        ]
+      }
+    },
     "/v1/roles/{id}:add-grants": {
       "post": {
         "summary": "Adds grants to a Role",
@@ -5340,6 +5388,14 @@
           "type": "string",
           "description": "The Scope the grants will apply to. If the Role is at the global scope, this can be an org or project. If the Role is at an org scope, this can be a project within the org. It is invalid for this to be anything other than the Role's scope when the Role's scope is a project."
         },
+        "grant_scope_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Output only. The IDs of Scopes the grants will apply to. This can include\nthe role's own scope ID, or \"this\" for the same behavior; specific IDs of\nscopes that are children of the role's scope; the value \"children\" to match\nall direct child scopes of the role's scope; or the value \"descendants\" to\nmatch all descendant scopes (e.g. child scopes, children of child scopes).",
+          "readOnly": true
+        },
         "principal_ids": {
           "type": "array",
           "items": {
@@ -6958,6 +7014,14 @@
       "properties": {
         "item": {
           "$ref": "#/definitions/controller.api.resources.hostsets.v1.HostSet"
+        }
+      }
+    },
+    "controller.api.services.v1.AddRoleGrantScopesResponse": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/definitions/controller.api.resources.roles.v1.Role"
         }
       }
     },

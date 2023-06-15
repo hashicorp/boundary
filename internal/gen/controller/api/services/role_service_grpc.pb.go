@@ -79,6 +79,11 @@ type RoleServiceClient interface {
 	// grants will be removed. If missing, malformed, or references a non-existing
 	// resource, an error is returned.
 	RemoveRoleGrants(ctx context.Context, in *RemoveRoleGrantsRequest, opts ...grpc.CallOption) (*RemoveRoleGrantsResponse, error)
+	// AddRoleGrantScopes adds grants scopes to a Role. The provided request must
+	// include the Role id which the grant scopes will be added to. An error is
+	// returned if the provided id is malformed or references a non-existing
+	// resource.
+	AddRoleGrantScopes(ctx context.Context, in *AddRoleGrantScopesRequest, opts ...grpc.CallOption) (*AddRoleGrantScopesResponse, error)
 }
 
 type roleServiceClient struct {
@@ -188,6 +193,15 @@ func (c *roleServiceClient) RemoveRoleGrants(ctx context.Context, in *RemoveRole
 	return out, nil
 }
 
+func (c *roleServiceClient) AddRoleGrantScopes(ctx context.Context, in *AddRoleGrantScopesRequest, opts ...grpc.CallOption) (*AddRoleGrantScopesResponse, error) {
+	out := new(AddRoleGrantScopesResponse)
+	err := c.cc.Invoke(ctx, "/controller.api.services.v1.RoleService/AddRoleGrantScopes", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RoleServiceServer is the server API for RoleService service.
 // All implementations must embed UnimplementedRoleServiceServer
 // for forward compatibility
@@ -253,6 +267,11 @@ type RoleServiceServer interface {
 	// grants will be removed. If missing, malformed, or references a non-existing
 	// resource, an error is returned.
 	RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error)
+	// AddRoleGrantScopes adds grants scopes to a Role. The provided request must
+	// include the Role id which the grant scopes will be added to. An error is
+	// returned if the provided id is malformed or references a non-existing
+	// resource.
+	AddRoleGrantScopes(context.Context, *AddRoleGrantScopesRequest) (*AddRoleGrantScopesResponse, error)
 	mustEmbedUnimplementedRoleServiceServer()
 }
 
@@ -292,6 +311,9 @@ func (UnimplementedRoleServiceServer) SetRoleGrants(context.Context, *SetRoleGra
 }
 func (UnimplementedRoleServiceServer) RemoveRoleGrants(context.Context, *RemoveRoleGrantsRequest) (*RemoveRoleGrantsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveRoleGrants not implemented")
+}
+func (UnimplementedRoleServiceServer) AddRoleGrantScopes(context.Context, *AddRoleGrantScopesRequest) (*AddRoleGrantScopesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddRoleGrantScopes not implemented")
 }
 func (UnimplementedRoleServiceServer) mustEmbedUnimplementedRoleServiceServer() {}
 
@@ -504,6 +526,24 @@ func _RoleService_RemoveRoleGrants_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RoleService_AddRoleGrantScopes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddRoleGrantScopesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RoleServiceServer).AddRoleGrantScopes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/controller.api.services.v1.RoleService/AddRoleGrantScopes",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RoleServiceServer).AddRoleGrantScopes(ctx, req.(*AddRoleGrantScopesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RoleService_ServiceDesc is the grpc.ServiceDesc for RoleService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -554,6 +594,10 @@ var RoleService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveRoleGrants",
 			Handler:    _RoleService_RemoveRoleGrants_Handler,
+		},
+		{
+			MethodName: "AddRoleGrantScopes",
+			Handler:    _RoleService_AddRoleGrantScopes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

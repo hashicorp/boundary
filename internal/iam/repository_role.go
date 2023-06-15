@@ -6,6 +6,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -51,16 +52,16 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*
 // included in fieldMask. Name, Description, and GrantScopeId are the only
 // updatable fields, If no updatable fields are included in the fieldMaskPaths,
 // then an error is returned.
-func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32, fieldMaskPaths []string, _ ...Option) (*Role, []*PrincipalRole, []*RoleGrant, int, error) {
+func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32, fieldMaskPaths []string, _ ...Option) (*Role, []*PrincipalRole, []*RoleGrant, []*RoleGrantScope, int, error) {
 	const op = "iam.(Repository).UpdateRole"
 	if role == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role")
+		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role")
 	}
 	if role.Role == nil {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
+		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
 	}
 	if role.PublicId == "" {
-		return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	for _, f := range fieldMaskPaths {
 		switch {
@@ -68,7 +69,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		case strings.EqualFold("description", f):
 		case strings.EqualFold("grantscopeid", f):
 		default:
-			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
+			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
 	}
 	var dbMask, nullFields []string
@@ -82,12 +83,13 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		nil,
 	)
 	if len(dbMask) == 0 && len(nullFields) == 0 {
-		return nil, nil, nil, db.NoRowsAffected, errors.E(ctx, errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
+		return nil, nil, nil, nil, db.NoRowsAffected, errors.E(ctx, errors.WithCode(errors.EmptyFieldMask), errors.WithOp(op))
 	}
 	var resource Resource
 	var rowsUpdated int
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
+	var grantScopes []*RoleGrantScope
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -111,29 +113,34 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
+			grantScopes, err = repo.ListRoleGrantScopes(ctx, role.PublicId)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
 			return nil
 		},
 	)
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in org %s", role.Name, role.ScopeId))
+			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in org %s", role.Name, role.ScopeId))
 		}
-		return nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
+		return nil, nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
 	}
-	return resource.(*Role), pr, rg, rowsUpdated, nil
+	return resource.(*Role), pr, rg, grantScopes, rowsUpdated, nil
 }
 
 // LookupRole will look up a role in the repository.  If the role is not
 // found, it will return nil, nil.
-func (r *Repository) LookupRole(ctx context.Context, withPublicId string, _ ...Option) (*Role, []*PrincipalRole, []*RoleGrant, error) {
+func (r *Repository) LookupRole(ctx context.Context, withPublicId string, _ ...Option) (*Role, []*PrincipalRole, []*RoleGrant, []*RoleGrantScope, error) {
 	const op = "iam.(Repository).LookupRole"
 	if withPublicId == "" {
-		return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
+		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
 	role := allocRole()
 	role.PublicId = withPublicId
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
+	var rgs []*RoleGrantScope
 	_, err := r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
@@ -154,16 +161,21 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, _ ...O
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
+			rgs, err = repo.ListRoleGrantScopes(ctx, withPublicId)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
 			return nil
 		},
 	)
 	if err != nil {
 		if errors.IsNotFoundError(err) {
-			return nil, nil, nil, nil
+			return nil, nil, nil, nil, nil
 		}
-		return nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}
-	return &role, pr, rg, nil
+	log.Println("len role grant scopes", op, len(rgs))
+	return &role, pr, rg, rgs, nil
 }
 
 // DeleteRole will delete a role from the repository.

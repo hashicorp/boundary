@@ -6,6 +6,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -13,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/kr/pretty"
 )
 
 // AddRoleGrant will add role grants associated with the role ID in the
@@ -389,6 +391,22 @@ func (r *Repository) ListRoleGrants(ctx context.Context, roleId string, opt ...O
 	return roleGrants, nil
 }
 
+// ListRoleGrantScopes returns the grant scopes for the roleId and supports the WithLimit
+// option.
+func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleId string, opt ...Option) ([]*RoleGrantScope, error) {
+	const op = "iam.(Repository).ListRoleGrantScopes"
+	if roleId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
+	}
+	var roleGrantScopes []*RoleGrantScope
+	log.Println("len role grant scopes before", op, len(roleGrantScopes))
+	if err := r.list(ctx, &roleGrantScopes, "role_id = ?", []any{roleId}, opt...); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup role grant scopes"))
+	}
+	log.Println("len role grant scopes after", op, len(roleGrantScopes), pretty.Sprint(roleGrantScopes))
+	return roleGrantScopes, nil
+}
+
 func (r *Repository) GrantsForUser(ctx context.Context, userId string, _ ...Option) ([]perms.GrantTuple, error) {
 	const op = "iam.(Repository).GrantsForUser"
 	if userId == "" {
@@ -453,7 +471,7 @@ user_group_roles (role_id) as (
 ),
 roles (role_id, grant_scope_id) as (
   select iam_role.public_id,
-         iam_role.grant_scope_id
+         coalesce(iam_role.grant_scope_id, iam_role.scope_id)
     from iam_role,
          user_group_roles
    where public_id in (user_group_roles.role_id)

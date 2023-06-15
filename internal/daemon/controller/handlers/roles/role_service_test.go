@@ -622,12 +622,12 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, err, "Couldn't get a new repo")
 		if proj {
 			prVersion++
-			pr, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
+			pr, _, _, _, _, err = repo.UpdateRole(context.Background(), pr, prVersion, []string{"Name", "Description"})
 			require.NoError(t, err, "Failed to reset the role")
 			prVersion++
 		} else {
 			orVersion++
-			or, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
+			or, _, _, _, _, err = repo.UpdateRole(context.Background(), or, orVersion, []string{"Name", "Description"})
 			require.NoError(t, err, "Failed to reset the role")
 			orVersion++
 		}

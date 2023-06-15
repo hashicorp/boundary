@@ -944,6 +944,24 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "remove-grants",
 			}, nil
 		},
+		"roles add-grant-scopes": func() (cli.Command, error) {
+			return &rolescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "add-grant-scopes",
+			}, nil
+		},
+		"roles set-grant-scopes": func() (cli.Command, error) {
+			return &rolescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "set-grant-scopes",
+			}, nil
+		},
+		"roles remove-grant-scopes": func() (cli.Command, error) {
+			return &rolescmd.Command{
+				Command: base.NewCommand(ui),
+				Func:    "remove-grant-scopes",
+			}, nil
+		},
 
 		"scopes": func() (cli.Command, error) {
 			return &scopescmd.Command{
