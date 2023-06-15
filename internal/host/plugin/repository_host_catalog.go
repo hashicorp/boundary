@@ -130,6 +130,9 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 		if err := normalizeCatalogAttributes(ctx, plgClient, plgHc); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
+		if c.Attributes, err = proto.Marshal(plgHc.GetAttributes()); err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	oplogWrapper, err := r.kms.GetWrapper(ctx, c.ProjectId, kms.KeyPurposeOplog)

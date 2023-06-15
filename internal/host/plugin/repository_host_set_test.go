@@ -259,7 +259,15 @@ func TestRepository_CreateSet(t *testing.T) {
 					CatalogId:   catalog.PublicId,
 					Description: ("test-description-repo"),
 					Attributes: func() []byte {
-						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{"k1": structpb.NewStringValue("foo")}})
+						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{
+							"k1": structpb.NewStringValue("foo"),
+							normalizeToSliceKey: structpb.NewListValue(
+								&structpb.ListValue{
+									Values: []*structpb.Value{
+										structpb.NewStringValue("normalizeme"),
+									},
+								}),
+						}})
 						require.NoError(t, err)
 						return b
 					}(),
@@ -328,6 +336,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			assert.Equal(tt.want.Name, got.GetName())
 			assert.Equal(tt.want.Description, got.GetDescription())
 			assert.Equal(got.GetCreateTime(), got.GetUpdateTime())
+			assert.Equal(string(tt.want.GetAttributes()), string(got.GetAttributes()))
 
 			if origPluginAttrs != nil {
 				if normalizeVal := origPluginAttrs.Fields[normalizeToSliceKey]; normalizeVal != nil {

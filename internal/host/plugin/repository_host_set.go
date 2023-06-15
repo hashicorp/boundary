@@ -132,6 +132,9 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 		if err := normalizeSetAttributes(ctx, plgClient, plgHs); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
+		if s.Attributes, err = proto.Marshal(plgHs.GetAttributes()); err != nil {
+			return nil, nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	var preferredEndpoints []any
