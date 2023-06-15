@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -107,6 +108,19 @@ func (c *SearchTargetsCommand) Run(args []string) int {
 		Items []*targets.Target `json:"items"`
 	}{}
 
+	if resp.StatusCode() >= 400 {
+		resp.Body = new(bytes.Buffer)
+		if _, err := resp.Body.ReadFrom(resp.HttpResponse().Body); err != nil {
+			c.PrintCliError(err)
+			return base.CommandUserError
+		}
+		if resp.Body.Len() > 0 {
+			c.PrintCliError(fmt.Errorf(resp.Body.String()))
+			return base.CommandUserError
+		}
+		c.PrintCliError(fmt.Errorf("error reading response body: status was %d", resp.StatusCode()))
+		return base.CommandUserError
+	}
 	apiError, err := resp.Decode(&marshaledResp)
 	switch {
 	case err != nil:
