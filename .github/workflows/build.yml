@@ -1,9 +1,13 @@
 name: build
 
 on:
-  - workflow_dispatch
-  - push
-  - workflow_call
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+  workflow_call:
+  workflow_dispatch:
 
 env:
   PKG_NAME: "boundary"
