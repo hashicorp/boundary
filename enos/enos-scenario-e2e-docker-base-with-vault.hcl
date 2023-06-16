@@ -4,11 +4,10 @@
 # For this scenario to work, add the following line to /etc/hosts
 # 127.0.0.1 localhost boundary
 
-scenario "e2e_docker" {
+scenario "e2e_docker_base_with_vault" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
-    provider.aws.default,
     provider.enos.default
   ]
 
@@ -22,10 +21,6 @@ scenario "e2e_docker" {
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
 
-    build_path = {
-      "local" = "/tmp",
-      "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
-    }
     tags = merge({
       "Project Name" : var.project_name
       "Project" : "Enos",
