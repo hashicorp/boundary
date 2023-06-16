@@ -10,7 +10,7 @@ User=boundary
 Group=boundary
 ProtectSystem=full
 ProtectHome=read-only
-ExecStart=/usr/bin/boundary server -config=/etc/boundary.d/%i.hcl
+ExecStart=/usr/bin/boundary server -config=/etc/boundary.d/boundary.hcl
 ExecReload=/bin/kill --signal HUP $MAINPID
 KillMode=process
 KillSignal=SIGINT
