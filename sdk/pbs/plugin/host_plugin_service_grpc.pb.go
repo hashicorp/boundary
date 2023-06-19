@@ -39,6 +39,14 @@ type HostPluginServiceClient interface {
 	// allows those values to be normalized prior to creating or updating those
 	// values in the host set data.
 	//
+	// NormalizeSetData is useful for converting the values of attributes from
+	// a certain format/type to an expected value format/type. This is useful
+	// during migration of values.
+	//
+	// NormalizeSetData is called before the values of attributes are persisted.
+	// All normalized values will be persisted in Boundary and returned
+	// to all clients.
+	//
 	// NormalizeSetData is called before:
 	// * OnCreateSet
 	// * OnUpdateSet
@@ -166,6 +174,14 @@ type HostPluginServiceServer interface {
 	// NormalizeSetData is a hook that passes attributes to the plugin and
 	// allows those values to be normalized prior to creating or updating those
 	// values in the host set data.
+	//
+	// NormalizeSetData is useful for converting the values of attributes from
+	// a certain format/type to an expected value format/type. This is useful
+	// during migration of values.
+	//
+	// NormalizeSetData is called before the values of attributes are persisted.
+	// All normalized values will be persisted in Boundary and returned
+	// to all clients.
 	//
 	// NormalizeSetData is called before:
 	// * OnCreateSet
