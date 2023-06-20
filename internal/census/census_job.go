@@ -62,7 +62,7 @@ func runInternal(ctx context.Context, c *censusJob) error {
 // NextRunIn returns the duration until the next job run should be scheduled.
 // Census will run every hour to ensure any interrupted jobs will be re-attempted
 func (c *censusJob) NextRunIn(_ context.Context) (time.Duration, error) {
-	return 3600, nil
+	return 1*time.Hour, nil
 }
 
 // Name is the unique name of the job.
