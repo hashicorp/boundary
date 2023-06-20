@@ -486,7 +486,7 @@ var inputStructs = []*structInfo{
 			listTemplate,
 		},
 		pluralResourceName:  "auth-tokens",
-		createResponseTypes: []string{CreateResponseType, ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
+		createResponseTypes: []string{ReadResponseType, UpdateResponseType, DeleteResponseType, ListResponseType},
 		recursiveListing:    true,
 	},
 	// Credentials

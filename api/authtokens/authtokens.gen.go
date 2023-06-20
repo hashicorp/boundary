@@ -44,7 +44,6 @@ func (n AuthTokenReadResult) GetResponse() *api.Response {
 	return n.response
 }
 
-type AuthTokenCreateResult = AuthTokenReadResult
 type AuthTokenUpdateResult = AuthTokenReadResult
 
 type AuthTokenDeleteResult struct {
