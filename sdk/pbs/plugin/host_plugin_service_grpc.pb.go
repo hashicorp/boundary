@@ -30,11 +30,11 @@ type HostPluginServiceClient interface {
 	// All normalized values will be persisted in Boundary and returned
 	// to all clients.
 	//
-	// NormalizeCatalogData could affect other clients. For example, on Terraform, if data
-	// is passed to Boundary and then normalized into a new data structure,
-	// it could cause diffs in Terraform for unchanged values. This is because, the data
-	// structure in Terraform's state will now be different from the normalized data
-	// structure returned from Boundary.
+	// NormalizeCatalogData could affect other clients. For example, on Terraform,
+	// if data is passed to Boundary and then normalized into a new data
+	// structure, it could cause diffs in Terraform for unchanged values.
+	// This is because, the data structure in Terraform's state will now be
+	// different from the normalized data structure returned from Boundary.
 	//
 	// NormalizeCatalogData is called before:
 	// * OnCreateCatalog
@@ -61,11 +61,11 @@ type HostPluginServiceClient interface {
 	// All normalized values will be persisted in Boundary and returned
 	// to all clients.
 	//
-	// NormalizeSetData could affect other clients. For example, on Terraform, if data
-	// is passed to Boundary and then normalized into a new data structure,
-	// it could cause diffs in Terraform for unchanged values. This is because, the data
-	// structure in Terraform's state will now be different from the normalized data
-	// structure returned from Boundary.
+	// NormalizeSetData could affect other clients. For example, on Terraform,
+	// if data is passed to Boundary and then normalized into a new data
+	// structure, it could cause diffs in Terraform for unchanged values.
+	// This is because, the data structure in Terraform's state will now be
+	// different from the normalized data structure returned from Boundary.
 	//
 	// NormalizeSetData is called before:
 	// * OnCreateSet
@@ -186,11 +186,11 @@ type HostPluginServiceServer interface {
 	// All normalized values will be persisted in Boundary and returned
 	// to all clients.
 	//
-	// NormalizeCatalogData could affect other clients. For example, on Terraform, if data
-	// is passed to Boundary and then normalized into a new data structure,
-	// it could cause diffs in Terraform for unchanged values. This is because, the data
-	// structure in Terraform's state will now be different from the normalized data
-	// structure returned from Boundary.
+	// NormalizeCatalogData could affect other clients. For example, on Terraform,
+	// if data is passed to Boundary and then normalized into a new data
+	// structure, it could cause diffs in Terraform for unchanged values.
+	// This is because, the data structure in Terraform's state will now be
+	// different from the normalized data structure returned from Boundary.
 	//
 	// NormalizeCatalogData is called before:
 	// * OnCreateCatalog
@@ -217,11 +217,11 @@ type HostPluginServiceServer interface {
 	// All normalized values will be persisted in Boundary and returned
 	// to all clients.
 	//
-	// NormalizeSetData could affect other clients. For example, on Terraform, if data
-	// is passed to Boundary and then normalized into a new data structure,
-	// it could cause diffs in Terraform for unchanged values. This is because, the data
-	// structure in Terraform's state will now be different from the normalized data
-	// structure returned from Boundary.
+	// NormalizeSetData could affect other clients. For example, on Terraform,
+	// if data is passed to Boundary and then normalized into a new data
+	// structure, it could cause diffs in Terraform for unchanged values.
+	// This is because, the data structure in Terraform's state will now be
+	// different from the normalized data structure returned from Boundary.
 	//
 	// NormalizeSetData is called before:
 	// * OnCreateSet
