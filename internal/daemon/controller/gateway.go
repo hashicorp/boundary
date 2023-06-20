@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/internal/warning"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 )
@@ -58,6 +59,7 @@ func newGrpcGatewayMux() *runtime.ServeMux {
 		}),
 		runtime.WithErrorHandler(handlers.ErrorHandler()),
 		runtime.WithForwardResponseOption(handlers.OutgoingResponseFilter),
+		runtime.WithOutgoingHeaderMatcher(warning.OutgoingHeaderMatcher()),
 	)
 }
 
@@ -114,6 +116,7 @@ func newGrpcServer(
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				unaryCtxInterceptor,                           // populated requestInfo from headers into the request ctx
+				warning.GrpcInterceptor(ctx),                  // add warning handling to the ctx and convert them to an http header
 				errorInterceptor(ctx),                         // convert domain and api errors into headers for the http proxy
 				subtypes.AttributeTransformerInterceptor(ctx), // convert to/from generic attributes from/to subtype specific attributes
 				eventsRequestInterceptor(ctx),                 // before we get started, send the required events with the request
