@@ -205,9 +205,15 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					ProjectId: prj.GetPublicId(),
 					PluginId:  plg.GetPublicId(),
 					Attributes: func() []byte {
-						st, err := structpb.NewStruct(map[string]any{"k1": "foo"})
-						require.NoError(t, err)
-						b, err := proto.Marshal(st)
+						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{
+							"k1": structpb.NewStringValue("foo"),
+							normalizeToSliceKey: structpb.NewListValue(
+								&structpb.ListValue{
+									Values: []*structpb.Value{
+										structpb.NewStringValue("normalizeme"),
+									},
+								}),
+						}})
 						require.NoError(t, err)
 						return b
 					}(),
@@ -323,6 +329,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(got.CreateTime, got.UpdateTime)
+			assert.Equal(tt.want.Attributes, got.Attributes)
 
 			if origPluginAttrs != nil {
 				if normalizeVal := origPluginAttrs.Fields[normalizeToSliceKey]; normalizeVal != nil {
