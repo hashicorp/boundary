@@ -22,6 +22,20 @@ type HostPluginServiceClient interface {
 	// allows those values to be normalized prior to creating or updating those
 	// values in the host catalog data.
 	//
+	// NormalizeCatalogData is useful for converting the values of attributes from
+	// a certain format/type to an expected value format/type. This is useful
+	// during migration of values.
+	//
+	// NormalizeCatalogData is called before the values of attributes are persisted.
+	// All normalized values will be persisted in Boundary and returned
+	// to all clients.
+	//
+	// NormalizeCatalogData could affect other clients. For example, on Terraform, if data
+	// is passed to Boundary and then normalized into a new data structure,
+	// it could cause diffs in Terraform for unchanged values. This is because, the data
+	// structure in Terraform's state will now be different from the normalized data
+	// structure returned from Boundary.
+	//
 	// NormalizeCatalogData is called before:
 	// * OnCreateCatalog
 	// * OnUpdateCatalog
@@ -46,6 +60,12 @@ type HostPluginServiceClient interface {
 	// NormalizeSetData is called before the values of attributes are persisted.
 	// All normalized values will be persisted in Boundary and returned
 	// to all clients.
+	//
+	// NormalizeSetData could affect other clients. For example, on Terraform, if data
+	// is passed to Boundary and then normalized into a new data structure,
+	// it could cause diffs in Terraform for unchanged values. This is because, the data
+	// structure in Terraform's state will now be different from the normalized data
+	// structure returned from Boundary.
 	//
 	// NormalizeSetData is called before:
 	// * OnCreateSet
@@ -158,6 +178,20 @@ type HostPluginServiceServer interface {
 	// allows those values to be normalized prior to creating or updating those
 	// values in the host catalog data.
 	//
+	// NormalizeCatalogData is useful for converting the values of attributes from
+	// a certain format/type to an expected value format/type. This is useful
+	// during migration of values.
+	//
+	// NormalizeCatalogData is called before the values of attributes are persisted.
+	// All normalized values will be persisted in Boundary and returned
+	// to all clients.
+	//
+	// NormalizeCatalogData could affect other clients. For example, on Terraform, if data
+	// is passed to Boundary and then normalized into a new data structure,
+	// it could cause diffs in Terraform for unchanged values. This is because, the data
+	// structure in Terraform's state will now be different from the normalized data
+	// structure returned from Boundary.
+	//
 	// NormalizeCatalogData is called before:
 	// * OnCreateCatalog
 	// * OnUpdateCatalog
@@ -182,6 +216,12 @@ type HostPluginServiceServer interface {
 	// NormalizeSetData is called before the values of attributes are persisted.
 	// All normalized values will be persisted in Boundary and returned
 	// to all clients.
+	//
+	// NormalizeSetData could affect other clients. For example, on Terraform, if data
+	// is passed to Boundary and then normalized into a new data structure,
+	// it could cause diffs in Terraform for unchanged values. This is because, the data
+	// structure in Terraform's state will now be different from the normalized data
+	// structure returned from Boundary.
 	//
 	// NormalizeSetData is called before:
 	// * OnCreateSet
