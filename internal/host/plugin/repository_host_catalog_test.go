@@ -189,7 +189,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					PluginId:  plg.GetPublicId(),
 					Attributes: func() []byte {
 						st, err := structpb.NewStruct(map[string]any{
-							"k1":                "foo",
+							"k1":                nil,
 							"nilkey":            nil,
 							normalizeToSliceKey: "normalizeme",
 						})
@@ -206,7 +206,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					PluginId:  plg.GetPublicId(),
 					Attributes: func() []byte {
 						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{
-							"k1": structpb.NewStringValue("foo"),
 							normalizeToSliceKey: structpb.NewListValue(
 								&structpb.ListValue{
 									Values: []*structpb.Value{
