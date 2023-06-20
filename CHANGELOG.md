@@ -10,6 +10,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   still be accepted for now, up until 0.15.0). In the `ids` field, multiple IDs
   can now be specified in a grant, either via commas (text format) or array
   (JSON format). ([PR](https://github.com/hashicorp/boundary/pull/3263)).
+* dev environment: When running `boundary dev` the initial LDAP auth-method with an
+  ID of `amldap_1234567890` is now in a public-active state, so it will be returned
+  in the response from `boundary auth-methods list`
 
 ### Deprecations/Changes
 

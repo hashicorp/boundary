@@ -330,6 +330,7 @@ func (b *Server) createInitialLdapAuthMethod(ctx context.Context, host string, p
 		ldap.WithDiscoverDn(ctx),
 		ldap.WithUserDn(ctx, testdirectory.DefaultUserDN),
 		ldap.WithGroupDn(ctx, testdirectory.DefaultGroupDN),
+		ldap.WithOperationalState(ctx, ldap.ActivePublicState),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new in memory ldap auth method: %w", err)
