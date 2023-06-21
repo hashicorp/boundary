@@ -127,9 +127,12 @@ module.exports = [
     source: '/boundary/docs/oss/installing/systemd',
     destination: '/boundary/docs/install-boundary/systemd',
     permanent: true,
+  },
+  {
     source:
       '/boundary/docs/concepts/security/permissions/permission-grant-formats',
     destination: '/boundary/docs/concepts/security/permissions/',
+    permanent: true,
   },
   {
     source: '/boundary/docs/concepts/service-discovery',
