@@ -171,27 +171,27 @@ service RoleService {
   // request must include the Role ID on which the grants will be set. If
   // missing, malformed, or referencing a non-existing resource, an error is
   // returned.
-  //rpc SetRoleGrantScopes(SetRoleGrantScopesRequest) returns (SetRoleGrantScopesResponse) {
-  //  option (google.api.http) = {
-  //    post: "/v1/roles/{id}:set-grant-scopes"
-  //    body: "*"
-  //    response_body: "item"
-  //  };
-  //  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set grant scopes for a Role, removing any grant scopes that are not specified in the request."};
-  //}
+  rpc SetRoleGrantScopes(SetRoleGrantScopesRequest) returns (SetRoleGrantScopesResponse) {
+    option (google.api.http) = {
+      post: "/v1/roles/{id}:set-grant-scopes"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Set grant scopes for a Role, removing any grant scopes that are not specified in the request."};
+  }
 
   // RemoveRoleGrantScopes removes the grant scopes from the specified Role. The
   // provided request must include the Role IDs from which the grants will be
   // removed. If missing, malformed, or references a non-existing resource, an
   // error is returned.
-  //rpc RemoveRoleGrantScopes(RemoveRoleGrantScopesRequest) returns (RemoveRoleGrantScopesResponse) {
-  //  option (google.api.http) = {
-  //    post: "/v1/roles/{id}:remove-grant-scopes"
-  //    body: "*"
-  //    response_body: "item"
-  //  };
-  //  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes grant scopes from a Role."};
-  //}
+  rpc RemoveRoleGrantScopes(RemoveRoleGrantScopesRequest) returns (RemoveRoleGrantScopesResponse) {
+    option (google.api.http) = {
+      post: "/v1/roles/{id}:remove-grant-scopes"
+      body: "*"
+      response_body: "item"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {summary: "Removes grant scopes from a Role."};
+  }
 }
 
 message GetRoleRequest {

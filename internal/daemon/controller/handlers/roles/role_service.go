@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -525,7 +526,7 @@ func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrants
 func (s Service) AddRoleGrantScopes(ctx context.Context, req *pbs.AddRoleGrantScopesRequest) (*pbs.AddRoleGrantScopesResponse, error) {
 	const op = "roles.(Service).AddRoleGrantScopes"
 
-	if err := validateAddRoleGrantScopesRequest(ctx, req); err != nil {
+	if err := validateRoleGrantScopesRequest(ctx, req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.AddGrantScopes)
@@ -533,7 +534,7 @@ func (s Service) AddRoleGrantScopes(ctx context.Context, req *pbs.AddRoleGrantSc
 		return nil, authResults.Error
 	}
 
-	r, prs, rgs, grantScopes, err := s.addGrantScopesInRepo(ctx, req.GetId(), req.GetGrantScopeIds(), req.GetVersion())
+	r, prs, rgs, grantScopes, err := s.addGrantScopesInRepo(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -558,6 +559,83 @@ func (s Service) AddRoleGrantScopes(ctx context.Context, req *pbs.AddRoleGrantSc
 	}
 
 	return &pbs.AddRoleGrantScopesResponse{Item: item}, nil
+}
+
+// SetRoleGrantScopes implements the interface pbs.RoleServiceServer.
+func (s Service) SetRoleGrantScopes(ctx context.Context, req *pbs.SetRoleGrantScopesRequest) (*pbs.SetRoleGrantScopesResponse, error) {
+	const op = "roles.(Service).SetRoleGrantScopes"
+
+	if err := validateRoleGrantScopesRequest(ctx, req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.SetGrantScopes)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+
+	r, prs, rgs, grantScopes, err := s.setGrantScopesInRepo(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, r.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, r, prs, rgs, grantScopes, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.SetRoleGrantScopesResponse{Item: item}, nil
+}
+
+// RemoveRoleGrantScopes implements the interface pbs.RoleServiceServer.
+func (s Service) RemoveRoleGrantScopes(ctx context.Context, req *pbs.RemoveRoleGrantScopesRequest) (*pbs.RemoveRoleGrantScopesResponse, error) {
+	const op = "roles.(Service).RemoveRoleGrantScopes"
+
+	if err := validateRoleGrantScopesRequest(ctx, req); err != nil {
+		return nil, err
+	}
+	authResults := s.authResult(ctx, req.GetId(), action.RemoveGrants)
+	if authResults.Error != nil {
+		return nil, authResults.Error
+	}
+	r, prs, rgs, grantScopes, err := s.removeGrantsInRepo(ctx, req.GetId(), req.GetGrantScopeIds(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+
+	outputFields, ok := requests.OutputFields(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, r.GetPublicId(), IdActions).Strings()))
+	}
+
+	item, err := toProto(ctx, r, prs, rgs, grantScopes, outputOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pbs.RemoveRoleGrantScopesResponse{Item: item}, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, []*iam.RoleGrantScope, error) {
@@ -803,43 +881,68 @@ func (s Service) removeGrantsInRepo(ctx context.Context, roleId string, grants [
 	return out, pr, roleGrants, grantScopes, nil
 }
 
-func (s Service) addGrantScopesInRepo(ctx context.Context, roleId string, scopeIds []string, version uint32) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, []*iam.RoleGrantScope, error) {
+func (s Service) addGrantScopesInRepo(ctx context.Context, req grantScopeRequest) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, []*iam.RoleGrantScope, error) {
 	const op = "service.(Service).addGrantScopesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 
-	// We want to ensure they can't perform this function if there is already a
-	// grant_scope_id value set. We perform this check after authentication to limit
-	// the possibility of an anonymous user causing DB load due to this lookup,
-	// which is not a cheap one.
-	role, pr, roleGrants, grantScopes, err := repo.LookupRole(ctx, roleId)
-	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up role before adding grant scopes"))
-	}
-	if role == nil {
-		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role before adding grant scopes to it.")
-	}
-
-	if role.GrantScopeId != "" {
-		return nil, nil, nil, nil, handlers.InvalidArgumentErrorf(
-			"Error in provided request.",
-			map[string]string{"grant_scope_ids": fmt.Sprintf("Role contains deprecated %q field, which must be cleared before this field can be set.", "grant_scope_id")},
-		)
-	}
-
-	_, err = repo.AddRoleGrantScopes(ctx, role, strutil.RemoveDuplicates(scopeIds, false))
+	_, err = repo.AddRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), strutil.RemoveDuplicates(req.GetGrantScopeIds(), false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
 		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add grant scopes to role: %v.", err)
 	}
-	out, pr, roleGrants, grantScopes, err := repo.LookupRole(ctx, roleId)
+	out, pr, roleGrants, grantScopes, err := repo.LookupRole(ctx, req.GetId())
 	if err != nil {
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up role after adding grant scopes"))
 	}
 	if out == nil {
 		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after adding grant scopes to it.")
+	}
+	return out, pr, roleGrants, grantScopes, nil
+}
+
+func (s Service) setGrantScopesInRepo(ctx context.Context, req grantScopeRequest) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, []*iam.RoleGrantScope, error) {
+	const op = "service.(Service).setGrantScopesInRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	_, _, err = repo.SetRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), strutil.RemoveDuplicates(req.GetGrantScopeIds(), false))
+	if err != nil {
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add grant scopes to role: %v.", err)
+	}
+	out, pr, roleGrants, grantScopes, err := repo.LookupRole(ctx, req.GetId())
+	if err != nil {
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up role after setting grant scopes"))
+	}
+	if out == nil {
+		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after setting grant scopes to it.")
+	}
+	return out, pr, roleGrants, grantScopes, nil
+}
+
+func (s Service) removeGrantScopesInRepo(ctx context.Context, req grantScopeRequest) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, []*iam.RoleGrantScope, error) {
+	const op = "service.(Service).setGrantScopesInRepo"
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	_, err = repo.DeleteRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), strutil.RemoveDuplicates(req.GetGrantScopeIds(), false))
+	if err != nil {
+		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
+		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add grant scopes to role: %v.", err)
+	}
+	out, pr, roleGrants, grantScopes, err := repo.LookupRole(ctx, req.GetId())
+	if err != nil {
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to look up role after removing grant scopes"))
+	}
+	if out == nil {
+		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to lookup role after removing grant scopes to it.")
 	}
 	return out, pr, roleGrants, grantScopes, nil
 }
@@ -930,6 +1033,7 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 		for _, gs := range grantScopes {
 			out.GrantScopeIds = append(out.GrantScopeIds, gs.GetScopeId())
 		}
+		sort.Strings(out.GrantScopeIds)
 	}
 	if outputFields.Has(globals.PrincipalsField) {
 		for _, p := range principals {
@@ -1251,7 +1355,15 @@ func validateRemoveRoleGrantsRequest(ctx context.Context, req *pbs.RemoveRoleGra
 	return nil
 }
 
-func validateAddRoleGrantScopesRequest(ctx context.Context, req *pbs.AddRoleGrantScopesRequest) error {
+// grantScopeRequest allows us to reuse a few request types in a common way for
+// grant scope add/set/remove operations
+type grantScopeRequest interface {
+	GetId() string
+	GetVersion() uint32
+	GetGrantScopeIds() []string
+}
+
+func validateRoleGrantScopesRequest(ctx context.Context, req grantScopeRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
