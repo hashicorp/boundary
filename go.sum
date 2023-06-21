@@ -851,8 +851,8 @@ github.com/jefferai/keyring v1.1.7-0.20220316160357-58a74bb55891/go.mod h1:iwmrB
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jhump/protoreflect v1.6.0/go.mod h1:eaTn3RZAmMBcV0fifFvlm6VHNz3wSkYyXYWUh7ymB74=
 github.com/jhump/protoreflect v1.9.1-0.20210817181203-db1a327a393e h1:Yb4fEGk+GtBSNuvy5rs0ZJt/jtopc/z9azQaj3xbies=
-github.com/jimlambrt/gldap v0.1.6 h1:fnpRGhuHxWjavhDvEjwwveneNrQZuoEfOoDxKWYmtF8=
-github.com/jimlambrt/gldap v0.1.6/go.mod h1:BRdefIDhx2uYBjxL0fRBGi3eyOvAkkRIXSJYMCyzCaI=
+github.com/jimlambrt/gldap v0.1.7 h1:q6W1xyjnHax/JAhjsN/EQ88+DCOEYPy/GDM7/3tk7bA=
+github.com/jimlambrt/gldap v0.1.7/go.mod h1:BRdefIDhx2uYBjxL0fRBGi3eyOvAkkRIXSJYMCyzCaI=
 github.com/jinzhu/gorm v1.9.12 h1:Drgk1clyWT9t9ERbzHza6Mj/8FY/CqMyVzOiHviMo6Q=
 github.com/jinzhu/gorm v1.9.12/go.mod h1:vhTjlKSJUTWNtcbQtrMBFCxy7eXTzeCAzfL5fBZT/Qs=
 github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=
