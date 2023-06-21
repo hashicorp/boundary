@@ -130,4 +130,31 @@ begin;
   create trigger ensure_role_grant_scope_id_valid before insert or update on iam_role_grant_scope
     for each row execute procedure role_grant_scope_id_valid();
 
+
+  -- Now perform migrations:
+
+  -- First, copy current grant scope ID values from existing roles to the new
+  -- table and set the grant scope ID value on each role to the scope ID
+  insert into iam_role_grant_scope(role_id, scope_id)
+    select public_id as role_id, grant_scope_id as scope_id from iam_role;
+  update iam_role set grant_scope_id=scope_id;
+
+  -- Next, replace the original grant scope id valid function with one that
+  -- requires that the grant scope id is not null and is the same as the role
+  -- (we will enforce this on the application side too)
+  -- Replaces function from 0/06_iam
+  create or replace function grant_scope_id_valid() returns trigger
+  as $$
+  begin
+    new.grant_scope_id = new.scope_id;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  -- Finally, set that field immutable
+  drop trigger a_immutable_columns on iam_role;
+  -- Replaces trigger from 0/06_iam
+  create trigger a_immutable_columns before update on iam_role
+    for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id', 'grant_scope_id');
+
 commit;

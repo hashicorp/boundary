@@ -223,6 +223,8 @@ begin
 end;
 $$ language plpgsql;
 
+-- Replaced in 73/01_iam_role_grant_scope to always set the grant scope id to
+-- the scope id since it's deprecated and not used for logic anymore
 create or replace function grant_scope_id_valid() returns trigger
 as $$
 declare parent_scope_id text;
@@ -377,6 +379,7 @@ create trigger ensure_grant_scope_id_valid before insert or update on iam_role
 
 -- define the immutable fields for iam_role (started trigger name with "a_" so
 -- it will run first)
+-- Updated in 73/01_iam_role_grant_scope to include grant_scope_id
 create trigger a_immutable_columns before update on iam_role
   for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id');
 
