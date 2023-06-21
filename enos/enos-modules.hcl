@@ -40,6 +40,10 @@ module "worker" {
   ssh_aws_keypair = var.aws_ssh_keypair_name
 }
 
+module "bucket" {
+  source = "./modules/bucket"
+}
+
 module "build_crt" {
   source = "./modules/build_crt"
 }

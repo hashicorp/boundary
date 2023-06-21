@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/testing/internal/e2e"
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,7 @@ func TestCliCreateUpdateTargetAddress(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewAddressTargetCli(t, ctx, newProjectId, c.TargetPort, c.TargetIp)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetIp))
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",
@@ -151,7 +152,7 @@ func TestCliTargetAddressToHostSource(t *testing.T) {
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
 	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
-	newTargetId := boundary.CreateNewAddressTargetCli(t, ctx, newProjectId, c.TargetPort, c.TargetIp)
+	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort, target.WithAddress(c.TargetIp))
 
 	// Connect to target and print host's IP address
 	output := e2e.RunCommand(ctx, "boundary",

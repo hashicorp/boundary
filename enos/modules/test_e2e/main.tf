@@ -112,6 +112,16 @@ variable "aws_host_set_ips2" {
   type        = list(string)
   default     = [""]
 }
+variable "aws_region" {
+  description = "AWS region where the resources will be created"
+  type        = string
+  default     = ""
+}
+variable "aws_bucket_name" {
+  description = "AWS S3 bucket name"
+  type        = string
+  default     = ""
+}
 variable "worker_tags" {
   type    = list(string)
   default = [""]
@@ -149,11 +159,15 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1,
     E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1,
     E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2,
-    E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
+    E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2,
+    E2E_AWS_REGION                = var.aws_region,
+    E2E_AWS_BUCKET_NAME           = var.aws_bucket_name,
     E2E_WORKER_TAG                = jsonencode(var.worker_tags),
   }
 
-  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json -timeout ${var.test_timeout}| tparse -follow -format plain 2>&1 | tee ${path.module}/../../test-e2e-${local.package_name}.log"]
+  inline = var.debug_no_run ? [""] : [
+    "set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json -timeout ${var.test_timeout}| tparse -follow -format plain 2>&1 | tee ${path.module}/../../test-e2e-${local.package_name}.log"
+  ]
 }
 
 output "test_results" {
