@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -888,6 +889,10 @@ func (s Service) addGrantScopesInRepo(ctx context.Context, req grantScopeRequest
 		return nil, nil, nil, nil, err
 	}
 
+	if err := validateRoleGrantScopesHierarchy(ctx, repo, req.GetId()); err != nil {
+		return nil, nil, nil, nil, err
+	}
+
 	_, err = repo.AddRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), strutil.RemoveDuplicates(req.GetGrantScopeIds(), false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
@@ -907,6 +912,10 @@ func (s Service) setGrantScopesInRepo(ctx context.Context, req grantScopeRequest
 	const op = "service.(Service).setGrantScopesInRepo"
 	repo, err := s.repoFn()
 	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	if err := validateRoleGrantScopesHierarchy(ctx, repo, req.GetId()); err != nil {
 		return nil, nil, nil, nil, err
 	}
 
@@ -1021,9 +1030,6 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		out.AuthorizedActions = opts.WithAuthorizedActions
 	}
-	if outputFields.Has(globals.GrantScopeIdField) && in.GetGrantScopeId() != "" {
-		out.GrantScopeId = &wrapperspb.StringValue{Value: in.GetGrantScopeId()}
-	}
 	if outputFields.Has(globals.PrincipalIdsField) {
 		for _, p := range principals {
 			out.PrincipalIds = append(out.PrincipalIds, p.GetPrincipalId())
@@ -1034,6 +1040,9 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 			out.GrantScopeIds = append(out.GrantScopeIds, gs.GetScopeId())
 		}
 		sort.Strings(out.GrantScopeIds)
+	}
+	if outputFields.Has(globals.GrantScopeIdField) && len(grantScopes) == 1 {
+		out.GrantScopeId = &wrapperspb.StringValue{Value: grantScopes[0].ScopeId}
 	}
 	if outputFields.Has(globals.PrincipalsField) {
 		for _, p := range principals {
@@ -1392,6 +1401,63 @@ func validateRoleGrantScopesRequest(ctx context.Context, req grantScopeRequest) 
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
+	}
+	return nil
+}
+
+// validateRoleGrantScopesHierarchy is the companion to the domain-side logic to
+// validate scopes. It doesn't do all of the same checking but will allow for
+// better error messages when possible. We perform this check after
+// authentication to limit the possibility of an anonymous user causing DB load
+// due to this lookup, which is not a cheap one.
+func validateRoleGrantScopesHierarchy(ctx context.Context, repo *iam.Repository, roleId string) error {
+	const op = "service.(Service).validateRoleGrantScopesHierarchy"
+	// We want to ensure that the values being passed in make sense to whatever
+	// extent we can right now, so we can provide nice errors back instead of DB
+	// errors.
+	role, _, _, grantScopes, err := repo.LookupRole(ctx, roleId)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	switch {
+	case role.ScopeId == scope.Global.String():
+		// Nothing, any grant scope is allowed for global
+	case strings.HasPrefix(role.ScopeId, scope.Project.Prefix()):
+		// In this case only "this" or the same project scope is allowed
+		for _, grantScope := range grantScopes {
+			switch grantScope.ScopeId {
+			case "this", role.ScopeId:
+			default:
+				return handlers.InvalidArgumentErrorf(
+					"Invalid grant scope.",
+					map[string]string{
+						"grant_scope_id": `Project scopes can only have their own scope ID or "this" as a grant scope ID.`,
+					})
+			}
+		}
+	case strings.HasPrefix(role.ScopeId, scope.Org.Prefix()):
+		for _, grantScope := range grantScopes {
+			switch {
+			case grantScope.ScopeId == "this",
+				grantScope.ScopeId == role.ScopeId,
+				grantScope.ScopeId == "children",
+				grantScope.ScopeId == "descendants":
+			case strings.HasPrefix(grantScope.ScopeId, scope.Project.Prefix()):
+			default:
+				return handlers.InvalidArgumentErrorf(
+					"Invalid grant scope.",
+					map[string]string{
+						"grant_scope_id": fmt.Sprintf("Grant scope ID %q is not valid to set on an organization role.", grantScope.ScopeId),
+					})
+			}
+		}
+	default:
+		// Should never happen
+		return handlers.InvalidArgumentErrorf(
+			"Improperly formatted identifier.",
+			map[string]string{
+				"grant_scope_id": `Unknown scope prefix type.`,
+			})
 	}
 	return nil
 }
