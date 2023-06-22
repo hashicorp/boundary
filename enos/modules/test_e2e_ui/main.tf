@@ -107,26 +107,15 @@ variable "aws_host_set_ips1" {
   type        = list(string)
   default     = [""]
 }
-variable "aws_host_set_filter2" {
-  description = "Filter tag for host set used in dynamic host catalogs"
-  type        = string
-  default     = ""
-}
-variable "aws_host_set_ips2" {
-  description = "List of IP addresses in aws_host_set_filter2"
-  type        = list(string)
-  default     = [""]
-}
 
 locals {
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
   vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:${var.vault_port}" : ""
   vault_addr_internal      = var.vault_addr_internal != "" ? "http://${var.vault_addr_internal}:8200" : local.vault_addr
   aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
-  aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)
 }
 
-resource "enos_local_exec" "run_e2e_ui_test" {
+resource "enos_local_exec" "run_e2e_test" {
   environment = {
     BOUNDARY_ADDR                 = var.alb_boundary_api_addr,
     E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id,
@@ -143,13 +132,11 @@ resource "enos_local_exec" "run_e2e_ui_test" {
     E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key,
     E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1,
     E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1,
-    E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2,
-    E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
   }
 
   inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" yarn --cwd ${var.local_boundary_ui_src_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]
 }
 
 output "test_results" {
-  value = enos_local_exec.run_e2e_ui_test.stdout
+  value = enos_local_exec.run_e2e_test.stdout
 }

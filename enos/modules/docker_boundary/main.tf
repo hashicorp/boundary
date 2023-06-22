@@ -133,6 +133,10 @@ output "address" {
   value = "http://${var.container_name}:9200"
 }
 
+output "address_localhost" {
+  value = "http://localhost:9200"
+}
+
 output "auth_method_id" {
   value = local.auth_method_id
 }
