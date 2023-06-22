@@ -68,8 +68,8 @@ type StorageBucket struct {
 	// @inject_tag: `gorm:"not_null"`
 	Attributes []byte `protobuf:"bytes,12,opt,name=attributes,proto3" json:"attributes,omitempty" gorm:"not_null"`
 	// secrets_hmac is a sha256-hmac of the unencrypted secrets stored in the db.
-	// @inject_tag: `gorm:"not_null"`
-	SecretsHmac []byte `protobuf:"bytes,13,opt,name=secrets_hmac,json=secretsHmac,proto3" json:"secrets_hmac,omitempty" gorm:"not_null"`
+	// @inject_tag: `gorm:"default:null"`
+	SecretsHmac []byte `protobuf:"bytes,13,opt,name=secrets_hmac,json=secretsHmac,proto3" json:"secrets_hmac,omitempty" gorm:"default:null"`
 }
 
 func (x *StorageBucket) Reset() {
