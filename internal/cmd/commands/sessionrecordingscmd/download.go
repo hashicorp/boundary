@@ -54,18 +54,18 @@ func (c *DownloadCommand) Flags() *base.FlagSets {
 	f.StringVar(&base.StringVar{
 		Name:   "id",
 		Target: &c.FlagId,
-		Usage:  "The id of the session recording resource to download",
+		Usage:  "The id of the session recording resource to download.",
 	})
 	f.StringVar(&base.StringVar{
 		Name:    "output",
 		Target:  &c.FlagOutputFile,
-		Usage:   "An optional output file for the download. If not provided the recording id will be used with a \".cast\" extension. Use \"-\" for stdout",
+		Usage:   "An optional output file for the download. If not provided the recording id will be used with a \".cast\" extension. Use \"-\" for stdout.",
 		Aliases: []string{"o"},
 	})
 	f.BoolVar(&base.BoolVar{
 		Name:    "no-clobber",
 		Target:  &c.FlagNoClobber,
-		Usage:   "An option to stop downloads that would overwrite existing files",
+		Usage:   "An option to stop downloads that would overwrite existing files.",
 		Aliases: []string{"nc"},
 	})
 	return set
