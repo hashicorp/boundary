@@ -21,6 +21,9 @@ begin;
   insert into oplog_ticket (name, version)
     values
     ('iam_role_grant_scope', 1);
+  
+  create trigger default_create_time_column before insert on iam_role_grant_scope
+    for each row execute procedure default_create_time();
 
   -- iam_immutable_role_grant_scope() ensures that grant scopes assigned to
   -- roles are immutable. 
@@ -40,6 +43,7 @@ begin;
   as $$
   begin
     delete from iam_role_grant_scope where scope_id = old.public_id;
+    return old;
   end;
   $$ language plpgsql;
 
@@ -130,7 +134,6 @@ begin;
   create trigger ensure_role_grant_scope_id_valid before insert or update on iam_role_grant_scope
     for each row execute procedure role_grant_scope_id_valid();
 
-
   -- Now perform migrations:
 
   -- First, copy current grant scope ID values from existing roles to the new
@@ -153,8 +156,26 @@ begin;
 
   -- Finally, set that field immutable
   drop trigger a_immutable_columns on iam_role;
-  -- Replaces trigger from 0/06_iam
-  create trigger a_immutable_columns before update on iam_role
+  -- Replaces trigger from 0/06_iam. Note that we have changed this to
+  -- b_immutable_columns, so that we can have the forcing function for
+  -- overriding grant scope id (below) run first to not fall afoul of this.
+  create trigger b_immutable_columns before update on iam_role
     for each row execute procedure immutable_columns('public_id', 'create_time', 'scope_id', 'grant_scope_id');
+
+
+  -- Provide an easy path for allowing existing update logic but no longer
+  -- applying to the immutable column, which we do by just forcing the value on
+  -- any update.
+  create or replace function override_iam_role_grant_scope_id() returns trigger
+  as $$
+  begin
+    new.grant_scope_id = old.grant_scope_id;
+    return new;
+  end;
+  $$ language plpgsql;
+
+  -- The trigger to run this is named to come before the immutable columns check
+  create trigger a_override_role_grant_scope_id_update before insert or update on iam_role
+    for each row execute procedure override_iam_role_grant_scope_id();
 
 commit;

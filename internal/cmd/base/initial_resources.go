@@ -51,7 +51,7 @@ func (b *Server) CreateInitialLoginRole(ctx context.Context) (*iam.Role, error) 
 	if err != nil {
 		return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
 	}
-	role, err := iamRepo.CreateRole(ctx, pr)
+	role, _, _, _, err := iamRepo.CreateRole(ctx, pr)
 	if err != nil {
 		return nil, fmt.Errorf("error creating role for default generated grants: %w", err)
 	}
@@ -206,7 +206,7 @@ func (b *Server) CreateInitialPasswordAuthMethod(ctx context.Context) (*password
 		if err != nil {
 			return nil, fmt.Errorf("error creating in memory role for generated grants: %w", err)
 		}
-		defPermsRole, err := iamRepo.CreateRole(ctx, pr)
+		defPermsRole, _, _, _, err := iamRepo.CreateRole(ctx, pr)
 		if err != nil {
 			return nil, fmt.Errorf("error creating role for default generated grants: %w", err)
 		}
@@ -687,7 +687,7 @@ func unprivilegedDevUserRoleSetup(ctx context.Context, repo *iam.Repository, use
 		return fmt.Errorf("failed to create role object: %w", err)
 	}
 
-	asRole, err = repo.CreateRole(ctx, asRole)
+	asRole, _, _, _, err = repo.CreateRole(ctx, asRole)
 	if err != nil {
 		return fmt.Errorf("failed to create role for unprivileged user: %w", err)
 	}

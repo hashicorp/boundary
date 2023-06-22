@@ -6,6 +6,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -222,7 +223,7 @@ func (r *Repository) DeleteRoleGrantScopes(ctx context.Context, roleId string, r
 // db version
 // must match the roleVersion or an error will be returned. Zero is not a valid
 // value for the WithVersion option and will return an error.
-func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, roleVersion uint32, grantScopes []string, _ ...Option) ([]*RoleGrantScope, int, error) {
+func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, roleVersion uint32, grantScopes []string, opt ...Option) ([]*RoleGrantScope, int, error) {
 	const op = "iam.(Repository).SetRoleGrantScopes"
 	if roleId == "" {
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
@@ -236,6 +237,16 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing grants")
 	}
 
+	reader := r.reader
+	writer := r.writer
+	needFreshReaderWriter := true
+	opts := getOpts(opt...)
+	if opts.withReader != nil && opts.withWriter != nil {
+		reader = opts.withReader
+		writer = opts.withWriter
+		needFreshReaderWriter = false
+	}
+
 	role := allocRole()
 	role.PublicId = roleId
 
@@ -245,7 +256,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 
 	// Find existing grant scopes
 	roleGrantScopes := []*RoleGrantScope{}
-	if err := r.reader.SearchWhere(ctx, &roleGrantScopes, "role_id = ?", []any{roleId}); err != nil {
+	if err := reader.SearchWhere(ctx, &roleGrantScopes, "role_id = ?", []any{roleId}); err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to search for grant scopes"))
 	}
 	found := map[string]*RoleGrantScope{}
@@ -278,6 +289,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 
 	if len(found) > 0 {
 		for _, rgs := range found {
+			log.Println("Appending delete rgs", rgs.RoleId, rgs.ScopeId)
 			deleteRoleGrantScopes = append(deleteRoleGrantScopes, rgs)
 		}
 	}
@@ -286,7 +298,7 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 		return currentRoleGrantScopes, db.NoRowsAffected, nil
 	}
 
-	scope, err := role.GetScope(ctx, r.reader)
+	scope, err := role.GetScope(ctx, reader)
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to get role %s scope", roleId)))
 	}
@@ -296,70 +308,76 @@ func (r *Repository) SetRoleGrantScopes(ctx context.Context, roleId string, role
 	}
 
 	var totalRowsDeleted int
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(reader db.Reader, w db.Writer) error {
-			msgs := make([]*oplog.Message, 0, 2)
-			roleTicket, err := w.GetTicket(ctx, &role)
+	currentRoleGrantScopes = currentRoleGrantScopes[:0]
+	txFunc := func(rdr db.Reader, wtr db.Writer) error {
+		msgs := make([]*oplog.Message, 0, 2)
+		roleTicket, err := wtr.GetTicket(ctx, &role)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+		}
+		updatedRole := allocRole()
+		updatedRole.PublicId = roleId
+		updatedRole.Version = roleVersion + 1
+		var roleOplogMsg oplog.Message
+		rowsUpdated, err := wtr.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
+		}
+		if rowsUpdated != 1 {
+			return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
+		}
+		msgs = append(msgs, &roleOplogMsg)
+
+		// Write the new ones in
+		if len(addRoleGrantScopes) > 0 {
+			roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, len(addRoleGrantScopes))
+			if err := wtr.CreateItems(ctx, addRoleGrantScopes, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope during set"))
+			}
+			msgs = append(msgs, roleGrantScopeOplogMsgs...)
+		}
+
+		// Anything we didn't take out of found needs to be removed
+		if len(deleteRoleGrantScopes) > 0 {
+			roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, len(deleteRoleGrantScopes))
+			rowsDeleted, err := wtr.DeleteItems(ctx, deleteRoleGrantScopes, db.NewOplogMsgs(&roleGrantScopeOplogMsgs))
 			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to get ticket"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete role grant scope"))
 			}
-			updatedRole := allocRole()
-			updatedRole.PublicId = roleId
-			updatedRole.Version = roleVersion + 1
-			var roleOplogMsg oplog.Message
-			rowsUpdated, err := w.Update(ctx, &updatedRole, []string{"Version"}, nil, db.NewOplogMsg(&roleOplogMsg), db.WithVersion(&roleVersion))
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to update role version"))
+			if rowsDeleted != len(deleteRoleGrantScopes) {
+				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("role grant scope deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrantScopes)))
 			}
-			if rowsUpdated != 1 {
-				return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("updated role and %d rows updated", rowsUpdated))
-			}
-			msgs = append(msgs, &roleOplogMsg)
+			totalRowsDeleted = rowsDeleted
+			msgs = append(msgs, roleGrantScopeOplogMsgs...)
+		}
 
-			// Write the new ones in
-			if len(addRoleGrantScopes) > 0 {
-				roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, len(addRoleGrantScopes))
-				if err := w.CreateItems(ctx, addRoleGrantScopes, db.NewOplogMsgs(&roleGrantScopeOplogMsgs)); err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to add grant scope during set"))
-				}
-				msgs = append(msgs, roleGrantScopeOplogMsgs...)
-			}
+		metadata := oplog.Metadata{
+			"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String(), oplog.OpType_OP_TYPE_CREATE.String()},
+			"scope-id":           []string{scope.PublicId},
+			"scope-type":         []string{scope.Type},
+			"resource-public-id": []string{roleId},
+		}
+		if err := wtr.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
+		}
 
-			// Anything we didn't take out of found needs to be removed
-			if len(deleteRoleGrantScopes) > 0 {
-				roleGrantScopeOplogMsgs := make([]*oplog.Message, 0, len(deleteRoleGrantScopes))
-				rowsDeleted, err := w.DeleteItems(ctx, deleteRoleGrantScopes, db.NewOplogMsgs(&roleGrantScopeOplogMsgs))
-				if err != nil {
-					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete role grant scope"))
-				}
-				if rowsDeleted != len(deleteRoleGrantScopes) {
-					return errors.New(ctx, errors.MultipleRecords, op, fmt.Sprintf("role grant scope deleted %d did not match request for %d", rowsDeleted, len(deleteRoleGrantScopes)))
-				}
-				totalRowsDeleted = rowsDeleted
-				msgs = append(msgs, roleGrantScopeOplogMsgs...)
-			}
+		if err := r.list(ctx, &currentRoleGrantScopes, "role_id = ?", []any{roleId}, opt...); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current role grant scopes after set"))
+		}
 
-			metadata := oplog.Metadata{
-				"op-type":            []string{oplog.OpType_OP_TYPE_DELETE.String(), oplog.OpType_OP_TYPE_CREATE.String()},
-				"scope-id":           []string{scope.PublicId},
-				"scope-type":         []string{scope.Type},
-				"resource-public-id": []string{roleId},
-			}
-			if err := w.WriteOplogEntryWith(ctx, oplogWrapper, roleTicket, metadata, msgs); err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to write oplog"))
-			}
+		return nil
+	}
 
-			currentRoleGrantScopes, err = r.ListRoleGrantScopes(ctx, roleId)
-			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to retrieve current role grant scopes after set"))
-			}
-
-			return nil
-		},
-	)
+	if !needFreshReaderWriter {
+		err = txFunc(reader, writer)
+	} else {
+		_, err = r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			txFunc,
+		)
+	}
 	if err != nil {
 		return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}

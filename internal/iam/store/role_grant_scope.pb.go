@@ -31,15 +31,15 @@ type RoleGrantScope struct {
 
 	// create_time from the RDBMS
 	// @inject_tag: `gorm:"default:current_timestamp"`
-	CreateTime *timestamp.Timestamp `protobuf:"bytes,1,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	CreateTime *timestamp.Timestamp `protobuf:"bytes,1,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// role_id is the ID of the role this is a part of
-	// @inject_tag: gorm:"primary_key"
-	RoleId string `protobuf:"bytes,2,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty"`
+	// @inject_tag: `gorm:"primary_key"`
+	RoleId string `protobuf:"bytes,2,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty" gorm:"primary_key"`
 	// scope_id is the string grant scope value as provided by the user; note that
 	// this does allow some special values
 	//
-	// @inject_tag: `gorm:"default:null"`
-	ScopeId string `protobuf:"bytes,3,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty"`
+	// @inject_tag: `gorm:"primary_key"`
+	ScopeId string `protobuf:"bytes,3,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" gorm:"primary_key"`
 }
 
 func (x *RoleGrantScope) Reset() {

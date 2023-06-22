@@ -6,7 +6,6 @@ package roles
 import (
 	"context"
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 
@@ -180,7 +179,6 @@ func (s Service) GetRole(ctx context.Context, req *pbs.GetRoleRequest) (*pbs.Get
 		return nil, err
 	}
 
-	log.Println("len role grant scopes", op, len(grantScopes))
 	outputFields, ok := requests.OutputFields(ctx)
 	if !ok {
 		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
@@ -214,7 +212,7 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	r, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
+	r, prs, rgs, grantScopes, err := s.createInRepo(ctx, authResults.Scope.GetId(), req.GetItem())
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +231,7 @@ func (s Service) CreateRole(ctx context.Context, req *pbs.CreateRoleRequest) (*p
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, r.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, r, nil, nil, nil, outputOpts...)
+	item, err := toProto(ctx, r, prs, rgs, grantScopes, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -612,7 +610,7 @@ func (s Service) RemoveRoleGrantScopes(ctx context.Context, req *pbs.RemoveRoleG
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	r, prs, rgs, grantScopes, err := s.removeGrantsInRepo(ctx, req.GetId(), req.GetGrantScopeIds(), req.GetVersion())
+	r, prs, rgs, grantScopes, err := s.removeGrantScopesInRepo(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -657,7 +655,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (*iam.Role, []*iam.
 	return out, pr, roleGrants, roleGrantScopes, nil
 }
 
-func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role) (*iam.Role, error) {
+func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, []*iam.RoleGrantScope, error) {
 	const op = "roles.(Service).createInRepo"
 	var opts []iam.Option
 	if item.GetName() != nil {
@@ -671,20 +669,20 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	}
 	u, err := iam.NewRole(ctx, scopeId, opts...)
 	if err != nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build role for creation: %v.", err)
+		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build role for creation: %v.", err)
 	}
 	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, nil, err
 	}
-	out, err := repo.CreateRole(ctx, u)
+	out, pr, roleGrants, roleGrantScopes, err := repo.CreateRole(ctx, u)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
 	if out == nil {
-		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create role but no error returned from repository.")
+		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create role but no error returned from repository.")
 	}
-	return out, nil
+	return out, pr, roleGrants, roleGrantScopes, nil
 }
 
 func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []string, item *pb.Role) (*iam.Role, []*iam.PrincipalRole, []*iam.RoleGrant, []*iam.RoleGrantScope, error) {
@@ -922,7 +920,7 @@ func (s Service) setGrantScopesInRepo(ctx context.Context, req grantScopeRequest
 	_, _, err = repo.SetRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), strutil.RemoveDuplicates(req.GetGrantScopeIds(), false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add grant scopes to role: %v.", err)
+		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to set grant scopes on role: %v.", err)
 	}
 	out, pr, roleGrants, grantScopes, err := repo.LookupRole(ctx, req.GetId())
 	if err != nil {
@@ -944,7 +942,7 @@ func (s Service) removeGrantScopesInRepo(ctx context.Context, req grantScopeRequ
 	_, err = repo.DeleteRoleGrantScopes(ctx, req.GetId(), req.GetVersion(), strutil.RemoveDuplicates(req.GetGrantScopeIds(), false))
 	if err != nil {
 		// TODO: Figure out a way to surface more helpful error info beyond the Internal error.
-		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to add grant scopes to role: %v.", err)
+		return nil, nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to remove grant scopes from role: %v.", err)
 	}
 	out, pr, roleGrants, grantScopes, err := repo.LookupRole(ctx, req.GetId())
 	if err != nil {

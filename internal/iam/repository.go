@@ -55,6 +55,8 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit
+//
+// Supported options: WithLimit, WithReaderWriter
 func (r *Repository) list(ctx context.Context, resources any, where string, args []any, opt ...Option) error {
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -62,11 +64,17 @@ func (r *Repository) list(ctx context.Context, resources any, where string, args
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	return r.reader.SearchWhere(ctx, resources, where, args, db.WithLimit(limit))
+	reader := r.reader
+	if opts.withReader != nil {
+		reader = opts.withReader
+	}
+	return reader.SearchWhere(ctx, resources, where, args, db.WithLimit(limit))
 }
 
 // create will create a new iam resource in the db repository with an oplog entry
-func (r *Repository) create(ctx context.Context, resource Resource, _ ...Option) (Resource, error) {
+//
+// Supported options: WithReaderWriter
+func (r *Repository) create(ctx context.Context, resource Resource, opt ...Option) (Resource, error) {
 	const op = "iam.(Repository).create"
 	if resource == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing resource")
@@ -90,24 +98,20 @@ func (r *Repository) create(ctx context.Context, resource Resource, _ ...Option)
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to get oplog wrapper"))
 	}
 
-	var returnedResource any
-	_, err = r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(_ db.Reader, w db.Writer) error {
-			returnedResource = resourceCloner.Clone()
-			err := w.Create(
-				ctx,
-				returnedResource,
-				db.WithOplog(oplogWrapper, metadata),
-			)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			return nil
-		},
-	)
+	returnedResource := resourceCloner.Clone()
+	opts := getOpts(opt...)
+	if opts.withWriter != nil {
+		err = opts.withWriter.Create(ctx, returnedResource, db.WithOplog(oplogWrapper, metadata))
+	} else {
+		_, err = r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			func(_ db.Reader, w db.Writer) error {
+				return w.Create(ctx, returnedResource, db.WithOplog(oplogWrapper, metadata))
+			},
+		)
+	}
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

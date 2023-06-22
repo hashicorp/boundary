@@ -3,7 +3,11 @@
 
 package iam
 
-import "io"
+import (
+	"io"
+
+	"github.com/hashicorp/boundary/internal/db"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -32,6 +36,8 @@ type options struct {
 	withRandomReader            io.Reader
 	withAccountIds              []string
 	withPrimaryAuthMethodId     string
+	withReader                  db.Reader
+	withWriter                  db.Writer
 }
 
 func getDefaultOptions() options {
@@ -142,5 +148,17 @@ func WithAccountIds(id ...string) Option {
 func WithPrimaryAuthMethodId(id string) Option {
 	return func(o *options) {
 		o.withPrimaryAuthMethodId = id
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction. The purpose of the
+// WithReaderWriter(...) option is to allow the caller to create the scope and
+// all of its keys in the same transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) {
+		o.withReader = r
+		o.withWriter = w
 	}
 }

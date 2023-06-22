@@ -33,14 +33,14 @@ type RoleGrant struct {
 	// @inject_tag: `gorm:"default:current_timestamp"`
 	CreateTime *timestamp.Timestamp `protobuf:"bytes,1,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty" gorm:"default:current_timestamp"`
 	// role_id is the ID of the role this is a part of
-	// @inject_tag: gorm:"primary_key"
+	// @inject_tag: `gorm:"primary_key"`
 	RoleId string `protobuf:"bytes,2,opt,name=role_id,json=roleId,proto3" json:"role_id,omitempty" gorm:"primary_key"`
 	// raw_grant is the string grant value as provided by the user
 	// @inject_tag: `gorm:"default:null"`
 	RawGrant string `protobuf:"bytes,3,opt,name=raw_grant,json=rawGrant,proto3" json:"raw_grant,omitempty" gorm:"default:null"`
 	// canonical_grant is the canonical string representation of the grant value.
 	// We use this as the unique constraint.
-	// @inject_tag: gorm:"primary_key"
+	// @inject_tag: `gorm:"primary_key"`
 	CanonicalGrant string `protobuf:"bytes,4,opt,name=canonical_grant,json=canonicalGrant,proto3" json:"canonical_grant,omitempty" gorm:"primary_key"`
 }
 

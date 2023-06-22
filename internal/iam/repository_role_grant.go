@@ -6,7 +6,6 @@ package iam
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -14,7 +13,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/kr/pretty"
 )
 
 // AddRoleGrant will add role grants associated with the role ID in the
@@ -399,11 +397,9 @@ func (r *Repository) ListRoleGrantScopes(ctx context.Context, roleId string, opt
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role id")
 	}
 	var roleGrantScopes []*RoleGrantScope
-	log.Println("len role grant scopes before", op, len(roleGrantScopes))
 	if err := r.list(ctx, &roleGrantScopes, "role_id = ?", []any{roleId}, opt...); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to lookup role grant scopes"))
 	}
-	log.Println("len role grant scopes after", op, len(roleGrantScopes), pretty.Sprint(roleGrantScopes))
 	return roleGrantScopes, nil
 }
 

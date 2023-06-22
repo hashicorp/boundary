@@ -6,7 +6,6 @@ package iam
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -16,34 +15,69 @@ import (
 
 // CreateRole will create a role in the repository and return the written
 // role.  No options are currently supported.
-func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*Role, error) {
+func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*Role, []*PrincipalRole, []*RoleGrant, []*RoleGrantScope, error) {
 	const op = "iam.(Repository).CreateRole"
 	if role == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role")
+		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role")
 	}
 	if role.Role == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
+		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing role store")
 	}
 	if role.PublicId != "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
+		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "public id not empty")
 	}
 	if role.ScopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
 	id, err := newRoleId(ctx)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op)
 	}
 	c := role.Clone().(*Role)
 	c.PublicId = id
-	resource, err := r.create(ctx, c)
+
+	initialScope := c.GrantScopeId
+	if initialScope == "" {
+		initialScope = "this"
+	}
+
+	var resource Resource
+	var pr []*PrincipalRole
+	var rg []*RoleGrant
+	var grantScopes []*RoleGrantScope
+	_, err = r.writer.DoTx(
+		ctx,
+		db.StdRetryCnt,
+		db.ExpBackoff{},
+		func(reader db.Reader, writer db.Writer) error {
+			resource, err = r.create(ctx, c, WithReaderWriter(reader, writer))
+			if err != nil {
+				return errors.Wrap(ctx, err, op, errors.WithMsg("while creating role"))
+			}
+			if initialScope != "" {
+				_, _, err = r.SetRoleGrantScopes(ctx, id, resource.(*Role).Version, []string{initialScope}, WithReaderWriter(reader, writer))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
+				}
+			}
+			// Do a fresh lookup since version may have gone up by 1 or 2 based
+			// on grant scope id
+			resource, pr, rg, grantScopes, err = r.LookupRole(ctx, resource.(*Role).PublicId, WithReaderWriter(reader, writer))
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			return nil
+		})
 	if err != nil {
 		if errors.IsUniqueError(err) {
-			return nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in scope %s", role.Name, role.ScopeId))
+			return nil, nil, nil, nil, errors.New(ctx, errors.NotUnique, op, fmt.Sprintf("role %s already exists in scope %s", role.Name, role.ScopeId))
 		}
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", c.PublicId)))
+		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", c.PublicId)))
 	}
-	return resource.(*Role), nil
+	// FIXME: This is for ensuring that we properly fix perms calculations
+	role = resource.(*Role)
+	role.GrantScopeId = ""
+	return role, pr, rg, grantScopes, nil
 }
 
 // UpdateRole will update a role in the repository and return the written role.
@@ -63,11 +97,13 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 	if role.PublicId == "" {
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
+	var wantGrantScopeIdUpdate bool
 	for _, f := range fieldMaskPaths {
 		switch {
 		case strings.EqualFold("name", f):
 		case strings.EqualFold("description", f):
 		case strings.EqualFold("grantscopeid", f):
+			wantGrantScopeIdUpdate = true
 		default:
 			return nil, nil, nil, nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, fmt.Sprintf("invalid field mask: %s", f))
 		}
@@ -101,19 +137,22 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			repo, err := NewRepository(ctx, read, w, r.kms)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
+			if wantGrantScopeIdUpdate {
+				// If the value is empty, they're trying to clear it (e.g. a
+				// null field), which is represented by an empty slice in
+				// SetRoleGrantScopes
+				grantScopeIdToSet := make([]string, 0, 1)
+				if c.GrantScopeId != "" {
+					grantScopeIdToSet = append(grantScopeIdToSet, c.GrantScopeId)
+				}
+				_, _, err = r.SetRoleGrantScopes(ctx, role.PublicId, resource.(*Role).Version, grantScopeIdToSet, WithReaderWriter(read, w))
+				if err != nil {
+					return errors.Wrap(ctx, err, op, errors.WithMsg("while setting grant scopes"))
+				}
 			}
-			pr, err = repo.ListPrincipalRoles(ctx, role.PublicId)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			rg, err = repo.ListRoleGrants(ctx, role.PublicId)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			grantScopes, err = repo.ListRoleGrantScopes(ctx, role.PublicId)
+			// Do a fresh lookup since version may have gone up by 1 or 2 based
+			// on grant scope id
+			resource, pr, rg, grantScopes, err = r.LookupRole(ctx, role.PublicId, WithReaderWriter(read, w))
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -126,55 +165,70 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 		}
 		return nil, nil, nil, nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", role.PublicId)))
 	}
-	return resource.(*Role), pr, rg, grantScopes, rowsUpdated, nil
+	// FIXME: This is for ensuring that we properly fix perms calculations
+	role = resource.(*Role)
+	role.GrantScopeId = ""
+	return role, pr, rg, grantScopes, rowsUpdated, nil
 }
 
 // LookupRole will look up a role in the repository.  If the role is not
 // found, it will return nil, nil.
-func (r *Repository) LookupRole(ctx context.Context, withPublicId string, _ ...Option) (*Role, []*PrincipalRole, []*RoleGrant, []*RoleGrantScope, error) {
+//
+// Supported options: WithReaderWriter
+func (r *Repository) LookupRole(ctx context.Context, withPublicId string, opt ...Option) (*Role, []*PrincipalRole, []*RoleGrant, []*RoleGrantScope, error) {
 	const op = "iam.(Repository).LookupRole"
 	if withPublicId == "" {
 		return nil, nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
+	opts := getOpts(opt...)
 	role := allocRole()
 	role.PublicId = withPublicId
 	var pr []*PrincipalRole
 	var rg []*RoleGrant
 	var rgs []*RoleGrantScope
-	_, err := r.writer.DoTx(
-		ctx,
-		db.StdRetryCnt,
-		db.ExpBackoff{},
-		func(read db.Reader, w db.Writer) error {
-			if err := read.LookupByPublicId(ctx, &role); err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			repo, err := NewRepository(ctx, read, w, r.kms)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			pr, err = repo.ListPrincipalRoles(ctx, withPublicId)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			rg, err = repo.ListRoleGrants(ctx, withPublicId)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			rgs, err = repo.ListRoleGrantScopes(ctx, withPublicId)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			return nil
-		},
-	)
+
+	lookupFunc := func(read db.Reader, w db.Writer) error {
+		if err := read.LookupByPublicId(ctx, &role); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		repo, err := NewRepository(ctx, read, w, r.kms)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		pr, err = repo.ListPrincipalRoles(ctx, withPublicId)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		rg, err = repo.ListRoleGrants(ctx, withPublicId)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		rgs, err = repo.ListRoleGrantScopes(ctx, withPublicId)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		return nil
+	}
+
+	var err error
+	if opts.withReader != nil && opts.withWriter != nil {
+		err = lookupFunc(opts.withReader, opts.withWriter)
+	} else {
+		_, err = r.writer.DoTx(
+			ctx,
+			db.StdRetryCnt,
+			db.ExpBackoff{},
+			lookupFunc,
+		)
+	}
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, nil, nil, nil, nil
 		}
 		return nil, nil, nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("for %s", withPublicId)))
 	}
-	log.Println("len role grant scopes", op, len(rgs))
+	// FIXME: This is for ensuring that we properly fix perms calculations
+	role.GrantScopeId = ""
 	return &role, pr, rg, rgs, nil
 }
 
@@ -206,6 +260,10 @@ func (r *Repository) ListRoles(ctx context.Context, withScopeIds []string, opt .
 	err := r.list(ctx, &roles, "scope_id in (?)", []any{withScopeIds}, opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	// FIXME: This is for ensuring that we properly fix perms calculations
+	for _, role := range roles {
+		role.GrantScopeId = ""
 	}
 	return roles, nil
 }
