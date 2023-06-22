@@ -37,6 +37,11 @@ variable "vault_token" {
   type        = string
   default     = "boundarytok"
 }
+variable "vault_port" {
+  description = "External Port to use"
+  type        = string
+  default     = "8300"
+}
 
 resource "docker_image" "vault" {
   name         = var.image_name
@@ -51,7 +56,7 @@ resource "docker_container" "vault" {
   ]
   ports {
     internal = 8200
-    external = 8200
+    external = var.vault_port
   }
   capabilities {
     add = ["IPC_LOCK"]
@@ -66,7 +71,7 @@ resource "enos_local_exec" "check_address" {
     docker_container.vault
   ]
 
-  inline = ["timeout 10s bash -c 'until curl http://0.0.0.0:8200; do sleep 2; done'"]
+  inline = ["timeout 10s bash -c 'until curl http://0.0.0.0:${var.vault_port}; do sleep 2; done'"]
 }
 
 resource "enos_local_exec" "check_health" {
@@ -75,7 +80,7 @@ resource "enos_local_exec" "check_health" {
   ]
 
   environment = {
-    VAULT_ADDR  = "http://0.0.0.0:8200"
+    VAULT_ADDR  = "http://0.0.0.0:${var.vault_port}"
     VAULT_TOKEN = var.vault_token
   }
 
@@ -92,4 +97,8 @@ output "address_internal" {
 
 output "token" {
   value = var.vault_token
+}
+
+output "port" {
+  value = var.vault_port
 }

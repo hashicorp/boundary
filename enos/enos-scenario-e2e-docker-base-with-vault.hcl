@@ -122,6 +122,7 @@ scenario "e2e_docker_base_with_vault" {
       vault_addr               = step.create_vault.address
       vault_addr_internal      = step.create_vault.address_internal
       vault_root_token         = step.create_vault.token
+      vault_port               = step.create_vault.port
     }
   }
 
