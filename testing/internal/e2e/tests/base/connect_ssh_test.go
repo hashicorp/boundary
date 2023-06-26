@@ -42,7 +42,7 @@ func TestCliConnectTargetWithSsh(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 	newCredentialStoreId := boundary.CreateNewCredentialStoreStaticCli(t, ctx, newProjectId)
 	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
-	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
 
 	// Get credentials for target
 	output := e2e.RunCommand(ctx, "boundary",

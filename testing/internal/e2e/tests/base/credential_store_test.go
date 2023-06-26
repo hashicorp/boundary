@@ -79,9 +79,9 @@ func TestCliStaticCredentialStore(t *testing.T) {
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
 	// Add credentials to target
-	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, privateKeyCredentialsId)
-	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, jsonCredentialsId)
-	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, pwCredentialsId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, privateKeyCredentialsId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, jsonCredentialsId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, pwCredentialsId)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",
