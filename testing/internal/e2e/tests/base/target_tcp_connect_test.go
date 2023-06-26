@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/testing/internal/e2e/boundary"
 )
 
-// TestCliConnectTargetBasic uses the boundary cli to create a number of
+// TestCliTcpTargetConnectTargetBasic uses the boundary cli to create a number of
 // supporting objects to connect to a target. It then attempts to connect to
 // that target and verifies that the connection was successful.
 func TestCliTcpTargetConnectTargetBasic(t *testing.T) {

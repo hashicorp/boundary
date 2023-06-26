@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliConnectTargetWithAuthzToken uses the boundary cli to connect to a target using the
+// TestCliTcpTargetConnectTargetWithAuthzToken uses the boundary cli to connect to a target using the
 // `authz_token` option
 func TestCliTcpTargetConnectTargetWithAuthzToken(t *testing.T) {
 	e2e.MaybeSkipTest(t)
