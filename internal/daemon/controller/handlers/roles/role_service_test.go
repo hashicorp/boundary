@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -1037,6 +1038,9 @@ func TestAddPrincipal(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
+	ldapAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+	ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAuthMethod, []string{"admin"})
+
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1129,6 +1133,14 @@ func TestAddPrincipal(t *testing.T) {
 			},
 			addManagedGroups:    []string{managedGroups[1].GetPublicId(), managedGroups[1].GetPublicId()},
 			resultManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
+		},
+		{
+			name: "Add ldap managed group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			addManagedGroups:    []string{ldapManagedGroup.GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId(), ldapManagedGroup.GetPublicId()},
 		},
 		{
 			name:     "Add invalid u_recovery on role",

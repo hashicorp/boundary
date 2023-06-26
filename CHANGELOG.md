@@ -20,6 +20,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   the `ids` parameter. In 0.15.0 the ability to add new grants via the `id`
   parameter will be removed.
 
+### Bug Fixes
+
+* LDAP managed groups: adding a principal to a role now works properly when it's
+  an LDAP managed group. ([PR](https://github.com/hashicorp/boundary/pull/3361))
+
 ## 0.13 (2023/06/13)
 
 ### New and Improved
