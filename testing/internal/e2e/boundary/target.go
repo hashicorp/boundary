@@ -141,3 +141,16 @@ func AddBrokeredCredentialSourceToTargetCli(t testing.TB, ctx context.Context, t
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 }
+
+// RemoveBrokeredCredentialSourceFromTargetCli uses the cli to remove a credential source (credential library or
+// credential) from a target
+func RemoveBrokeredCredentialSourceFromTargetCli(t testing.TB, ctx context.Context, targetId string, credentialSourceId string) {
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"targets", "remove-credential-sources",
+			"-id", targetId,
+			"-brokered-credential-source", credentialSourceId,
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+}
