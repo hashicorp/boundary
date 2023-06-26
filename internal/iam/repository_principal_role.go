@@ -610,6 +610,11 @@ func splitPrincipals(ctx context.Context, principals []string) (users, groups, m
 				managedGroups = make([]string, 0, len(principals))
 			}
 			managedGroups = append(managedGroups, principal)
+		case strings.HasPrefix(principal, globals.LdapManagedGroupPrefix):
+			if managedGroups == nil {
+				managedGroups = make([]string, 0, len(principals))
+			}
+			managedGroups = append(managedGroups, principal)
 		default:
 			return nil, nil, nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("invalid principal ID %q", principal))
 		}
