@@ -117,7 +117,7 @@ func TestCliVaultConnectTargetWithAuthzToken(t *testing.T) {
 	newCredentialLibraryId := newCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
 
-	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",

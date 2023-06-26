@@ -117,7 +117,7 @@ func TestCliVaultConnectTargetWithSsh(t *testing.T) {
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
 
 	// Add brokered credentials to target
-	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",

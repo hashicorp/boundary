@@ -145,8 +145,8 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	require.True(t, newSessionAuthorizationResult.Item.Credentials == nil)
 
 	// Add credentials to target
-	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newPrivateKeyCredentialLibraryId)
-	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newPasswordCredentialLibraryId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newPrivateKeyCredentialLibraryId)
+	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newPasswordCredentialLibraryId)
 
 	// Get credentials for target
 	output = e2e.RunCommand(ctx, "boundary",
