@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCliConnectTargetWithLocalhost(t *testing.T) {
+func TestCliTcpTargetConnectTargetWithLocalhost(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)

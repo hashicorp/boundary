@@ -19,7 +19,7 @@ import (
 // TestCliConnectTargetBasic uses the boundary cli to create a number of
 // supporting objects to connect to a target. It then attempts to connect to
 // that target and verifies that the connection was successful.
-func TestCliConnectTargetBasic(t *testing.T) {
+func TestCliTcpTargetConnectTargetBasic(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -65,7 +65,7 @@ func TestCliConnectTargetBasic(t *testing.T) {
 	t.Log("Successfully connected to target")
 }
 
-func TestCliConnectTargetWithTargetClientPort(t *testing.T) {
+func TestCliTcpTargetConnectTargetWithTargetClientPort(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)

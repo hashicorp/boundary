@@ -20,7 +20,7 @@ import (
 
 // TestCliConnectTargetWithAuthzToken uses the boundary cli to connect to a target using the
 // `authz_token` option
-func TestCliConnectTargetWithAuthzToken(t *testing.T) {
+func TestCliTcpTargetConnectTargetWithAuthzToken(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
