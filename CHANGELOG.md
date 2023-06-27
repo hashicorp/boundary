@@ -22,8 +22,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
-* LDAP managed groups: adding a principal to a role now works properly when it's
-  an LDAP managed group. ([PR](https://github.com/hashicorp/boundary/pull/3361))
+* LDAP managed groups: adding/setting/removing a principal to a role now works
+  properly when it's an LDAP managed group.
+  ([PR](https://github.com/hashicorp/boundary/pull/3361) and
+  [PR](https://github.com/hashicorp/boundary/pull/3363))  
 
 ## 0.13 (2023/06/13)
 

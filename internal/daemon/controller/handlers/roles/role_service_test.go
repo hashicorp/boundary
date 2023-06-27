@@ -1246,6 +1246,9 @@ func TestSetPrincipal(t *testing.T) {
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 
+	ldapAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+	ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAuthMethod, []string{"admin"})
+
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1331,6 +1334,14 @@ func TestSetPrincipal(t *testing.T) {
 			},
 			setManagedGroups:    []string{managedGroups[1].GetPublicId()},
 			resultManagedGroups: []string{managedGroups[1].GetPublicId()},
+		},
+		{
+			name: "Set LDAP managed group on populated role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			setManagedGroups:    []string{ldapManagedGroup.GetPublicId()},
+			resultManagedGroups: []string{ldapManagedGroup.GetPublicId()},
 		},
 		{
 			name:     "Set invalid u_recovery on role",
@@ -1435,6 +1446,9 @@ func TestRemovePrincipal(t *testing.T) {
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
+
+	ldapAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
+	ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAuthMethod, []string{"admin"})
 
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1568,6 +1582,15 @@ func TestRemovePrincipal(t *testing.T) {
 			},
 			removeManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
 			resultManagedGroups: []string{},
+		},
+		{
+			name: "Remove LDAP managed groups from role",
+			setup: func(r *iam.Role) {
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), ldapManagedGroup.GetPublicId())
+				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
+			},
+			removeManagedGroups: []string{ldapManagedGroup.GetPublicId()},
+			resultManagedGroups: []string{managedGroups[0].GetPublicId()},
 		},
 	}
 

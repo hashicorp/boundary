@@ -1006,7 +1006,8 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 	for _, id := range req.GetPrincipalIds() {
 		if !handlers.ValidId(handlers.Id(id), globals.GroupPrefix) &&
 			!handlers.ValidId(handlers.Id(id), globals.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) {
+			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) &&
+			!handlers.ValidId(handlers.Id(id), globals.LdapManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
@@ -1035,7 +1036,8 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 	for _, id := range req.GetPrincipalIds() {
 		if !handlers.ValidId(handlers.Id(id), globals.GroupPrefix) &&
 			!handlers.ValidId(handlers.Id(id), globals.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) {
+			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) &&
+			!handlers.ValidId(handlers.Id(id), globals.LdapManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
