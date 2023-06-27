@@ -23,91 +23,39 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+func TestApiWarnings(t *testing.T) {
+	for i := 1; i <= int(zzzKeepThisLastSentinel); i++ {
+		assert.NotNil(t, apiWarning(i).toProto(), "Api warning with code: %d", i)
+	}
+}
+
 func TestContext(t *testing.T) {
-	t.Run("no warning on context", func(t *testing.T) {
+	t.Run("no apiWarning on context", func(t *testing.T) {
 		ctx := context.Background()
-		assert.Error(t, ForField(ctx, "test", "test value"))
+		assert.Error(t, Warn(ctx, FieldDeprecatedTargetWorkerFilters))
 	})
 
-	t.Run("empty warning on context", func(t *testing.T) {
+	t.Run("empty apiWarning on context", func(t *testing.T) {
 		ctx := newContext(context.Background())
-		newW, ok := ctx.Value(warnerContextkey).(*warner)
+		newW, ok := ctx.Value(warnerContextKey).(*warner)
 		assert.True(t, ok)
 		assert.Empty(t, newW)
 	})
 }
 
-func TestForField(t *testing.T) {
+func TestWarn(t *testing.T) {
 	ctx := newContext(context.Background())
-	assert.NoError(t, ForField(ctx, "test_field", "this is a test"))
+	assert.NoError(t, Warn(ctx, FieldDeprecatedTargetWorkerFilters))
 
-	newW, ok := ctx.Value(warnerContextkey).(*warner)
+	newW, ok := ctx.Value(warnerContextKey).(*warner)
 	assert.True(t, ok)
-	assert.Equal(t, &warner{fieldWarnings: []*pbwarnings.FieldWarning{
-		{
-			Name:    "test_field",
-			Warning: "this is a test",
-		},
-	}}, newW)
-}
-
-func TestForAction(t *testing.T) {
-	ctx := newContext(context.Background())
-	assert.NoError(t, ForAction(ctx, "test_action", "this is a test"))
-
-	newW, ok := ctx.Value(warnerContextkey).(*warner)
-	assert.True(t, ok)
-	assert.Equal(t, &warner{actionWarnings: []*pbwarnings.ActionWarning{
-		{
-			Name:    "test_action",
-			Warning: "this is a test",
-		},
-	}}, newW)
-}
-
-func TestForBehavior(t *testing.T) {
-	ctx := newContext(context.Background())
-	assert.NoError(t, ForBehavior(ctx, "this is a test"))
-
-	newW, ok := ctx.Value(warnerContextkey).(*warner)
-	assert.True(t, ok)
-	assert.Equal(t, &warner{behaviorWarnings: []*pbwarnings.BehaviorWarning{
-		{
-			Warning: "this is a test",
-		},
+	assert.Equal(t, &warner{warnings: []*pbwarnings.Warning{
+		FieldDeprecatedTargetWorkerFilters.toProto(),
 	}}, newW)
 }
 
 func TestGrpcGatwayWiring(t *testing.T) {
 	ctx := context.Background()
-	fieldWarnings := []*pbwarnings.FieldWarning{
-		{
-			Name:    "test_field_1",
-			Warning: "test warning description 1",
-		},
-		{
-			Name:    "test_field_2",
-			Warning: "test warning description 2",
-		},
-	}
-	actionWarnings := []*pbwarnings.ActionWarning{
-		{
-			Name:    "test_action1",
-			Warning: "test warning description 1",
-		},
-		{
-			Name:    "test_action2",
-			Warning: "test warning description 2",
-		},
-	}
-	behaviorWarnings := []*pbwarnings.BehaviorWarning{
-		{
-			Warning: "test warning 1",
-		},
-		{
-			Warning: "test warning 2",
-		},
-	}
 
 	service := &fakeService{addWarnFunc: func(ctx context.Context) {}}
 	grpcSrv := grpc.NewServer(grpc.UnaryInterceptor(GrpcInterceptor(ctx)))
@@ -146,81 +94,52 @@ func TestGrpcGatwayWiring(t *testing.T) {
 		assert.NoError(t, httpSrv.Shutdown(ctx))
 	})
 
-	t.Run("field warning only", func(t *testing.T) {
+	t.Run("field apiWarning only", func(t *testing.T) {
 		service.addWarnFunc = func(ctx context.Context) {
-			for _, w := range fieldWarnings {
-				assert.NoError(t, ForField(ctx, w.GetName(), w.GetWarning()))
-			}
+			Warn(ctx, FieldDeprecatedTargetWorkerFilters)
 		}
 		resp, err := http.Get(fmt.Sprintf("http://%s/health", lis.Addr().String()))
 		require.NoError(t, err)
 		got := resp.Header.Get(warningHeader)
 		require.NoError(t, err)
 
-		want, err := protojson.Marshal(&pbwarnings.Warning{
-			RequestFields: fieldWarnings,
+		want, err := protojson.Marshal(&pbwarnings.WarningResponse{
+			Warnings: []*pbwarnings.Warning{FieldDeprecatedTargetWorkerFilters.toProto()},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, string(want), got)
 	})
 
-	t.Run("action warning only", func(t *testing.T) {
+	t.Run("behavior apiWarning only", func(t *testing.T) {
 		service.addWarnFunc = func(ctx context.Context) {
-			for _, w := range actionWarnings {
-				assert.NoError(t, ForAction(ctx, w.GetName(), w.GetWarning()))
-			}
+			assert.NoError(t, Warn(ctx, OidcAuthMethodInactiveCannotBeUsed))
 		}
 		resp, err := http.Get(fmt.Sprintf("http://%s/health", lis.Addr().String()))
 		require.NoError(t, err)
 		got := resp.Header.Get(warningHeader)
 		require.NoError(t, err)
 
-		want, err := protojson.Marshal(&pbwarnings.Warning{
-			Actions: actionWarnings,
+		want, err := protojson.Marshal(&pbwarnings.WarningResponse{
+			Warnings: []*pbwarnings.Warning{OidcAuthMethodInactiveCannotBeUsed.toProto()},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, string(want), got)
 	})
-
-	t.Run("behavior warning only", func(t *testing.T) {
+	t.Run("all apiWarning types", func(t *testing.T) {
 		service.addWarnFunc = func(ctx context.Context) {
-			for _, w := range behaviorWarnings {
-				assert.NoError(t, ForBehavior(ctx, w.GetWarning()))
-			}
+			assert.NoError(t, Warn(ctx, FieldDeprecatedTargetWorkerFilters))
+			assert.NoError(t, Warn(ctx, OidcAuthMethodInactiveCannotBeUsed))
 		}
 		resp, err := http.Get(fmt.Sprintf("http://%s/health", lis.Addr().String()))
 		require.NoError(t, err)
 		got := resp.Header.Get(warningHeader)
 		require.NoError(t, err)
 
-		want, err := protojson.Marshal(&pbwarnings.Warning{
-			Behaviors: behaviorWarnings,
-		})
-		require.NoError(t, err)
-		assert.Equal(t, string(want), got)
-	})
-	t.Run("all warning types", func(t *testing.T) {
-
-		service.addWarnFunc = func(ctx context.Context) {
-			for _, w := range fieldWarnings {
-				assert.NoError(t, ForField(ctx, w.GetName(), w.GetWarning()))
-			}
-			for _, w := range actionWarnings {
-				assert.NoError(t, ForAction(ctx, w.GetName(), w.GetWarning()))
-			}
-			for _, w := range behaviorWarnings {
-				assert.NoError(t, ForBehavior(ctx, w.GetWarning()))
-			}
-		}
-		resp, err := http.Get(fmt.Sprintf("http://%s/health", lis.Addr().String()))
-		require.NoError(t, err)
-		got := resp.Header.Get(warningHeader)
-		require.NoError(t, err)
-
-		want, err := protojson.Marshal(&pbwarnings.Warning{
-			RequestFields: fieldWarnings,
-			Actions:       actionWarnings,
-			Behaviors:     behaviorWarnings,
+		want, err := protojson.Marshal(&pbwarnings.WarningResponse{
+			Warnings: []*pbwarnings.Warning{
+				FieldDeprecatedTargetWorkerFilters.toProto(),
+				OidcAuthMethodInactiveCannotBeUsed.toProto(),
+			},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, string(want), got)

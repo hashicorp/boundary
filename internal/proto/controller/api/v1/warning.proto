@@ -32,14 +32,18 @@ message BehaviorWarning {
   string warning = 1;
 }
 
-// Warning is returned by the JSON API when a warning occurs.
+// A warning in the Boundary system.
 message Warning {
+  uint32 code = 1;
+  oneof warning {
+    FieldWarning request_field = 2 [json_name = "request_fields"];
+    ActionWarning action = 3;
+    BehaviorWarning behavior = 4;
+  }
+}
+
+// Warning is returned by the JSON API when a warning occurs.
+message WarningResponse {
   // Request-field-specific warning details.
-  repeated FieldWarning request_fields = 1 [json_name = "request_fields"];
-
-  // Action specific warning details.
-  repeated ActionWarning actions = 2;
-
-  // Boundary behavior warning details.
-  repeated BehaviorWarning behaviors = 3;
+  repeated Warning warnings = 1;
 }
