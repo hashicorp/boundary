@@ -20,11 +20,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliVaultConnectTarget uses the boundary and vault clis to add secrets management
+// TestCliTcpTargetVaultConnectTarget uses the boundary and vault clis to add secrets management
 // for a target. The test sets up vault as a credential store, creates a set of credentials
 // in vault to be attached to a target, and attempts to connect to that target using those
 // credentials.
-func TestCliVaultConnectTarget(t *testing.T) {
+func TestCliTcpTargetVaultConnectTarget(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)

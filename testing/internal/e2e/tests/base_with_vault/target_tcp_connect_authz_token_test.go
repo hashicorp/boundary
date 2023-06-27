@@ -19,11 +19,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliVaultConnectTargetWithAuthzToken uses the boundary and vault clis to add secrets
+// TestCliTcpTargetVaultConnectTargetWithAuthzToken uses the boundary and vault clis to add secrets
 // management for a target. The test sets up vault as a credential store, creates a set of
 // credentials in vault to be attached to a target, and attempts to connect to that target (with the
 // authz-token option) using those credentials.
-func TestCliVaultConnectTargetWithAuthzToken(t *testing.T) {
+func TestCliTcpTargetVaultConnectTargetWithAuthzToken(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
