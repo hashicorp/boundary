@@ -2,7 +2,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package credentials
+package sessionrecordings
 
 import (
 	"fmt"
@@ -10,19 +10,17 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-type SshPrivateKeyAttributes struct {
+type SshPrivateKeyCredentialAttributes struct {
 	Username                 string `json:"username,omitempty"`
-	PrivateKey               string `json:"private_key,omitempty"`
 	PrivateKeyHmac           string `json:"private_key_hmac,omitempty"`
-	PrivateKeyPassphrase     string `json:"private_key_passphrase,omitempty"`
 	PrivateKeyPassphraseHmac string `json:"private_key_passphrase_hmac,omitempty"`
 }
 
-func AttributesMapToSshPrivateKeyAttributes(in map[string]interface{}) (*SshPrivateKeyAttributes, error) {
+func AttributesMapToSshPrivateKeyCredentialAttributes(in map[string]interface{}) (*SshPrivateKeyCredentialAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}
-	var out SshPrivateKeyAttributes
+	var out SshPrivateKeyCredentialAttributes
 	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		Result:  &out,
 		TagName: "json",
@@ -36,9 +34,9 @@ func AttributesMapToSshPrivateKeyAttributes(in map[string]interface{}) (*SshPriv
 	return &out, nil
 }
 
-func (pt *Credential) GetSshPrivateKeyAttributes() (*SshPrivateKeyAttributes, error) {
+func (pt *Credential) GetSshPrivateKeyCredentialAttributes() (*SshPrivateKeyCredentialAttributes, error) {
 	if pt.Type != "ssh_private_key" {
 		return nil, fmt.Errorf("asked to fetch %s-type attributes but credential is of type %s", "ssh_private_key", pt.Type)
 	}
-	return AttributesMapToSshPrivateKeyAttributes(pt.Attributes)
+	return AttributesMapToSshPrivateKeyCredentialAttributes(pt.Attributes)
 }

@@ -2,7 +2,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package credentiallibraries
+package sessionrecordings
 
 import (
 	"fmt"
@@ -16,7 +16,6 @@ type VaultSSHCertificateCredentialLibraryAttributes struct {
 	KeyType         string            `json:"key_type,omitempty"`
 	KeyBits         uint32            `json:"key_bits,omitempty"`
 	Ttl             string            `json:"ttl,omitempty"`
-	KeyId           string            `json:"key_id,omitempty"`
 	CriticalOptions map[string]string `json:"critical_options,omitempty"`
 	Extensions      map[string]string `json:"extensions,omitempty"`
 }

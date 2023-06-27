@@ -80,6 +80,11 @@ type structInfo struct {
 	// the attributes map.
 	subtypeName string
 
+	// subtype specifies exactly the value expected in the resource's "type"
+	// Field.  This is used when checking if the attributes returned can be
+	// marshaled into a specific generated attributes struct.
+	subtype string
+
 	// For non-top-level collections, this can be used to indicate the name of
 	// the argument that should be used
 	parentTypeName string
@@ -549,6 +554,7 @@ var inputStructs = []*structInfo{
 		inProto:     &credentiallibraries.VaultCredentialLibraryAttributes{},
 		outFile:     "credentiallibraries/vault_credential_library_attributes.gen.go",
 		subtypeName: "VaultCredentialLibrary",
+		subtype:     "vault-generic",
 		fieldOverrides: []fieldInfo{
 			{
 				Name:        "Path",
@@ -564,6 +570,7 @@ var inputStructs = []*structInfo{
 		inProto:     &credentiallibraries.VaultSSHCertificateCredentialLibraryAttributes{},
 		outFile:     "credentiallibraries/vault_ssh_certificate_credential_library_attributes.gen.go",
 		subtypeName: "VaultSSHCertificateCredentialLibrary",
+		subtype:     "vault-ssh-certificate",
 		fieldOverrides: []fieldInfo{
 			{
 				Name:        "Path",
@@ -626,6 +633,7 @@ var inputStructs = []*structInfo{
 		inProto:     &credentials.UsernamePasswordAttributes{},
 		outFile:     "credentials/username_password_attributes.gen.go",
 		subtypeName: "UsernamePasswordCredential",
+		subtype:     "username_password",
 		fieldOverrides: []fieldInfo{
 			{
 				Name:        "Username",
@@ -645,6 +653,7 @@ var inputStructs = []*structInfo{
 		inProto:     &credentials.SshPrivateKeyAttributes{},
 		outFile:     "credentials/ssh_private_key_attributes.gen.go",
 		subtypeName: "SshPrivateKeyCredential",
+		subtype:     "ssh_private_key",
 		fieldOverrides: []fieldInfo{
 			{
 				Name:        "Username",
@@ -1045,6 +1054,82 @@ var inputStructs = []*structInfo{
 	{
 		inProto: &session_recordings.HostCatalog{},
 		outFile: "sessionrecordings/host_catalog.gen.go",
+	},
+	{
+		inProto: &session_recordings.Credential{},
+		outFile: "sessionrecordings/credential.gen.go",
+	},
+	{
+		inProto:        &session_recordings.UsernamePasswordCredentialAttributes{},
+		outFile:        "sessionrecordings/username_password_credential_attributes.gen.go",
+		subtype:        "username_password",
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:        &session_recordings.JsonCredentialAttributes{},
+		outFile:        "sessionrecordings/json_credential_attributes.gen.go",
+		subtype:        "json",
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:        &session_recordings.SshPrivateKeyCredentialAttributes{},
+		outFile:        "sessionrecordings/ssh_private_key_credential_attributes.gen.go",
+		subtype:        "ssh_private_key",
+		parentTypeName: "Credential",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto: &session_recordings.CredentialLibrary{},
+		outFile: "sessionrecordings/credential_library.gen.go",
+	},
+	{
+		inProto:        &session_recordings.VaultCredentialLibraryAttributes{},
+		outFile:        "sessionrecordings/vault_credential_library_attributes.gen.go",
+		subtype:        "vault-generic",
+		parentTypeName: "CredentialLibrary",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto:        &session_recordings.VaultSSHCertificateCredentialLibraryAttributes{},
+		outFile:        "sessionrecordings/vault_ssh_certificate_credential_library_attributes.gen.go",
+		subtype:        "vault-ssh-certificate",
+		parentTypeName: "CredentialLibrary",
+		fieldOverrides: []fieldInfo{
+			{
+				Name:      "CriticalOptions",
+				FieldType: "map[string]string",
+			},
+			{
+				Name:      "Extensions",
+				FieldType: "map[string]string",
+			},
+		},
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
+	},
+	{
+		inProto: &session_recordings.CredentialStore{},
+		outFile: "sessionrecordings/credential_store.gen.go",
+	},
+	{
+		inProto:        &session_recordings.VaultCredentialStoreAttributes{},
+		outFile:        "sessionrecordings/vault_credential_store_attributes.gen.go",
+		subtype:        "vault",
+		parentTypeName: "CredentialStore",
+		templates: []*template.Template{
+			mapstructureConversionTemplate,
+		},
 	},
 	{
 		inProto: &session_recordings.ValuesAtTime{},
