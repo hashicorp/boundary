@@ -40,6 +40,9 @@ A target has the following configurable attributes:
   Represents a network resource address and is used when establishing a session.
   Accepts no port, only an IP address or DNS name.
 
+- `default_client_port` - (optional)
+  Represents a local port that you want Boundary to listen to by default whenever someone initiates a session on a client.
+
 ### TCP target attributes
 
 TCP targets have the following additional attributes:
