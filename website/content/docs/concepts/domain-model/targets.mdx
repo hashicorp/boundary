@@ -37,74 +37,18 @@ A target has the following configurable attributes:
 - `description` - (optional)
 
 - `address` - (optional)
-  Represents a network resource address and is used when establishing a session.
-  Accepts no port, only an IP address or DNS name.
+  This value represents a network resource address and is used when establishing a session.
+  It does not accept a port, only an IP address or DNS name.
 
-### TCP target attributes
-
-TCP targets have the following additional attributes:
-
-- `address` - (optional)
-  A valid network address for the target to connect to.
-  This value cannot be used alongside host sources.
-
-- `default_port` - (required)
-  The default port to set on this target.
+- `default_client_port` - (optional)
+  Represents a local port that you want Boundary to listen to by default when someone initiates a session on the client.
 
 - `egress_worker_filter` - (optional)
   A boolean expression to [filter][] which egress workers can handle sessions
   for this target.
   Egress worker filters determine which workers are used to access targets.
-  You can configure an egress filter to enable [multi-hop](/boundary/docs/configuration/worker/pki-worker#multi-hop-workershcp-only) connections.
+  You can configure an egress filter to enable [multi-hop](/boundary/docs/configuration/worker#multi-hop-worker-capabilities-hcp-ent) connections.
   If you do not configure an egress filter, then Boundary uses a single worker to connect to the controller.
-
-- `ingress_worker_filter` - (optional) <sup>HCP Only</sup>
-  A boolean expression to [filter][] which ingress workers can handle sessions
-  for this target.
-  Ingress worker filters determine which workers you connect with to initiate a session.
-  If you do not configure an ingress filter, Boundary selects a front line worker for the session.
-  A front line worker is any worker directly connected to the control plane; for HCP Boundary this will be an HCP worker.
-
-- `session_connection_limit` - (required)
-  The cumulative number of TCP connections allowed during a session.
-  A -1 value means no limit.
-  The default is -1.
-  The value must be greater than 0 or exactly -1.
-
-- `session_max_seconds` - (required)
-  The maximum duration of an individual session between the user and the target.
-  All connections for a session are closed
-  and the session is terminated
-  when a session reaches the maximum duration.
-  The default is 8 hours (28800 seconds).
-  This value must be greater than 0.
-
-### SSH target attributes <sup>HCP/ENT</sup>
-
-SSH targets can source username/password or SSH private key credentials from Vault [credential libraries][] or static
-[credentials][]. Boundary then injects credentials into the SSH session between a client and end host. This allows users to
-securely connect to remote hosts using SSH, while never being in possession of a valid credential for that target host.
-
-SSH targets have the following additional attributes:
-
-- `address` - (optional)
-  A valid network address for the target to connect to.
-  This value cannot be used alongside host sources.
-
-- `default_port` - (optional)
-  The default port to set on this target.
-  If this is not specified the default port will be 22.
-
-- `egress_worker_filter` - (optional)
-  A boolean expression to [filter][] which egress workers can handle sessions
-  for this target.
-  Egress worker filters determine which workers are used to access targets.
-  You can configure an egress filter to enable [multi-hop](/boundary/docs/configuration/worker/pki-worker#multi-hop-workershcp-only) connections.
-  If you do not configure an egress filter, then Boundary uses a single worker to connect to the controller.
-
-- `enable_session_recording` - (optional)
-  Set to `true` to enable [session recordings][] for a target.
-  If you enable session recording, the `storage_bucket_id` is required.
 
 - `ingress_worker_filter` - (optional) <sup>HCP/ENT</sup>
   A boolean expression to [filter][] which ingress workers can handle sessions
@@ -114,7 +58,7 @@ SSH targets have the following additional attributes:
   A front line worker is any worker directly connected to the control plane; for HCP Boundary this will be an HCP worker.
 
 - `session_connection_limit` - (required)
-  The cumulative number of TCP connections allowed during a session.
+  The cumulative number of connections allowed during a session.
   A -1 value means no limit.
   The default is -1.
   The value must be greater than 0 or exactly -1.
@@ -126,6 +70,29 @@ SSH targets have the following additional attributes:
   when a session reaches the maximum duration.
   The default is 8 hours (28800 seconds).
   This value must be greater than 0.
+
+### TCP target attributes
+
+TCP targets have the following additional attribute:
+
+- `default_port` - (required)
+  The default port to set on this target.
+
+### SSH target attributes <sup>HCP/ENT</sup>
+
+SSH targets can source username/password or SSH private key credentials from Vault [credential libraries][] or static
+[credentials][]. Boundary then injects credentials into the SSH session between a client and end host. This allows users to
+securely connect to remote hosts using SSH, while never being in possession of a valid credential for that target host.
+
+SSH targets have the following additional attributes:
+
+- `default_port` - (optional)
+  The default port to set on this target.
+  If this is not specified the default port will be 22.
+
+- `enable_session_recording` - (optional)
+  Set to `true` to enable [session recordings][] for a target.
+  If you enable session recording, the `storage_bucket_id` is required.
 
 - `storage_bucket_id` - (optional)
   Designates the storage bucket to be used for session recording.
