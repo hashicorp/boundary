@@ -271,7 +271,7 @@ kms "awskms" {
 
 Refer to the list below for explanations of the parameters used in the example above:
 
-- `disable mlcok (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory from being swapped to the disk.
+- `disable mlock (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory from being swapped to the disk.
 This is fine for local development and testing.
 However, it is not recommended for production unless the systems running Boundary use only encrypted swap or do not use swap at all.
 Boundary only supports memory locking on UNIX-like systems that support `mlock()` syscall like Linux and FreeBSD.
