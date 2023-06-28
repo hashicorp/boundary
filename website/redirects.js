@@ -128,4 +128,9 @@ module.exports = [
     destination: '/boundary/docs/install-boundary/systemd',
     permanent: true,
   },
+  {
+    source: '/boundary/docs/concepts/service-discovery',
+    destination: '/boundary/docs/concepts/host-discovery',
+    permanent: true,
+  },
 ]
