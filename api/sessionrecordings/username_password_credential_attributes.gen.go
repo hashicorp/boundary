@@ -2,7 +2,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package credentials
+package sessionrecordings
 
 import (
 	"fmt"
@@ -10,17 +10,16 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-type UsernamePasswordAttributes struct {
+type UsernamePasswordCredentialAttributes struct {
 	Username     string `json:"username,omitempty"`
-	Password     string `json:"password,omitempty"`
 	PasswordHmac string `json:"password_hmac,omitempty"`
 }
 
-func AttributesMapToUsernamePasswordAttributes(in map[string]interface{}) (*UsernamePasswordAttributes, error) {
+func AttributesMapToUsernamePasswordCredentialAttributes(in map[string]interface{}) (*UsernamePasswordCredentialAttributes, error) {
 	if in == nil {
 		return nil, fmt.Errorf("nil input map")
 	}
-	var out UsernamePasswordAttributes
+	var out UsernamePasswordCredentialAttributes
 	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		Result:  &out,
 		TagName: "json",
@@ -34,9 +33,9 @@ func AttributesMapToUsernamePasswordAttributes(in map[string]interface{}) (*User
 	return &out, nil
 }
 
-func (pt *Credential) GetUsernamePasswordAttributes() (*UsernamePasswordAttributes, error) {
+func (pt *Credential) GetUsernamePasswordCredentialAttributes() (*UsernamePasswordCredentialAttributes, error) {
 	if pt.Type != "username_password" {
 		return nil, fmt.Errorf("asked to fetch %s-type attributes but credential is of type %s", "username_password", pt.Type)
 	}
-	return AttributesMapToUsernamePasswordAttributes(pt.Attributes)
+	return AttributesMapToUsernamePasswordCredentialAttributes(pt.Attributes)
 }
