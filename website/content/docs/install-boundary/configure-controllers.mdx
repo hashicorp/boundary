@@ -248,7 +248,7 @@ kms "awskms" {
 
 Refer to the list below for explanations of the parameters used in the example above:
 
-- `disable mlcok (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory from being swapped to the disk.
+- `disable mlock (bool: false)` - Disables the server from executing the `mlock` syscall, which prevents memory from being swapped to the disk.
 This is fine for local development and testing.
 However, it is not recommended for production unless the systems running Boundary use only encrypted swap or do not use swap at all.
 Boundary only supports memory locking on UNIX-like systems that support `mlock()` syscall like Linux and FreeBSD.
@@ -321,4 +321,4 @@ Upon logging in to Boundary for the first time, HashiCorp recommends creating an
 This allows you to configure targets within those scopes and manage them.
 
 We recommend that you use the [KMS recovery workflow](/boundary/docs/install-boundary/no-gen-resources#recovery-kms-workflow) to log in to Boundary for the first time.
-Refer to [Creating your first login account](/boundary/docs/install-boundary/no-gen-resources/#creating-your-first-login-account) to learn about setting up your first auth method, user, account, and role to log in to Boundary going forward without the reecovery KMS workflow.
+Refer to [Creating your first login account](/boundary/docs/install-boundary/no-gen-resources/#creating-your-first-login-account) to learn about setting up your first auth method, user, account, and role to log in to Boundary going forward without the recovery KMS workflow.
