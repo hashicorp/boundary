@@ -137,8 +137,8 @@
         "path": "concepts/iam"
       },
       {
-        "title": "Service Discovery",
-        "path": "concepts/service-discovery"
+        "title": "Host Discovery",
+        "path": "concepts/host-discovery"
       },
       {
         "title": "Credential Management",
