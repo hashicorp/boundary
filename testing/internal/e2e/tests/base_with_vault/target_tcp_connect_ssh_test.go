@@ -6,6 +6,7 @@ package base_with_vault_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
@@ -18,11 +19,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliVaultConnectTargetWithSsh uses the boundary and vault clis to add secrets management for a
+// TestCliTcpTargetVaultConnectTargetWithSsh uses the boundary and vault clis to add secrets management for a
 // target. The test sets up vault as a credential store, creates a set of credentials in vault to be
 // attached to a target, and attempts to connect to that target (with the ssh option) using those
 // credentials.
-func TestCliVaultConnectTargetWithSsh(t *testing.T) {
+func TestCliTcpTargetVaultConnectTargetWithSsh(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -54,7 +55,7 @@ func TestCliVaultConnectTargetWithSsh(t *testing.T) {
 	})
 
 	output := e2e.RunCommand(ctx, "vault",
-		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
+		e2e.WithArgs("secrets", "enable", fmt.Sprintf("-path=%s", c.VaultSecretPath), "kv-v2"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
@@ -80,8 +81,8 @@ func TestCliVaultConnectTargetWithSsh(t *testing.T) {
 		e2e.WithArgs(
 			"token", "create",
 			"-no-default-policy=true",
-			"-policy="+boundaryPolicyName,
-			"-policy="+kvPolicyName,
+			fmt.Sprintf("-policy=%s", boundaryPolicyName),
+			fmt.Sprintf("-policy=%s", kvPolicyName),
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",
@@ -103,7 +104,7 @@ func TestCliVaultConnectTargetWithSsh(t *testing.T) {
 		e2e.WithArgs(
 			"credential-libraries", "create", "vault",
 			"-credential-store-id", newCredentialStoreId,
-			"-vault-path", c.VaultSecretPath+"/data/"+privateKeySecretName,
+			"-vault-path", fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 			"-name", "e2e Automated Test Vault Credential Library",
 			"-credential-type", "ssh_private_key",
 			"-format", "json",

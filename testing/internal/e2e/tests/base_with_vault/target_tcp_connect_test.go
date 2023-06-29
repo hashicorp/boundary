@@ -56,7 +56,7 @@ func TestCliTcpTargetVaultConnectTarget(t *testing.T) {
 	})
 
 	output := e2e.RunCommand(ctx, "vault",
-		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
+		e2e.WithArgs("secrets", "enable", fmt.Sprintf("-path=%s", c.VaultSecretPath), "kv-v2"),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
 	t.Cleanup(func() {
@@ -82,8 +82,8 @@ func TestCliTcpTargetVaultConnectTarget(t *testing.T) {
 		e2e.WithArgs(
 			"token", "create",
 			"-no-default-policy=true",
-			"-policy="+boundaryPolicyName,
-			"-policy="+kvPolicyName,
+			fmt.Sprintf("-policy=%s", boundaryPolicyName),
+			fmt.Sprintf("-policy=%s", kvPolicyName),
 			"-orphan=true",
 			"-period=20m",
 			"-renewable=true",
@@ -105,7 +105,7 @@ func TestCliTcpTargetVaultConnectTarget(t *testing.T) {
 		e2e.WithArgs(
 			"credential-libraries", "create", "vault",
 			"-credential-store-id", newCredentialStoreId,
-			"-vault-path", c.VaultSecretPath+"/data/"+privateKeySecretName,
+			"-vault-path", fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 			"-name", "e2e Automated Test Vault Credential Library",
 			"-credential-type", "ssh_private_key",
 			"-format", "json",
