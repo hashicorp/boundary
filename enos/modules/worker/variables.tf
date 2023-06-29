@@ -133,4 +133,11 @@ variable "controller_sg_id" {
 variable "config_file_path" {
   description = "Path to a config file (relative to module directory)"
   type        = string
+  default     = "templates/worker.hcl"
+}
+
+variable "recording_storage_path" {
+  description = "Path on instance to store recordings"
+  type        = string
+  default     = ""
 }
