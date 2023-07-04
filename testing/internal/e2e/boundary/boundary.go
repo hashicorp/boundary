@@ -8,6 +8,12 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 )
 
+// ConnectCliOutput parses the json response from running `boundary connect`
+type ConnectCliOutput struct {
+	Port    int    `json:"port"`
+	Address string `json:"address"`
+}
+
 // AuthenticateCliOutput parses the json response from running `boundary authenticate`
 type AuthenticateCliOutput struct {
 	Item       *authmethods.AuthenticateResult
