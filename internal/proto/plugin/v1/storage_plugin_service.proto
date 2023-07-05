@@ -133,3 +133,12 @@ message PutObjectResponse {
   // 256-bit SHA-256 digest of the object.
   bytes checksum_sha_256 = 10;
 }
+
+message ErrorDetail {
+  // Required. HTTP status code from the plugin or external service or our nearest approximation of it.
+  int32 status = 10;  // signed because some services like using negatives for non-http codes
+  // Required. Underlying error code from the plugin or external service. Should be lookup-able.
+  string code = 20;
+  // Required. Error details, for human consupmtion.
+  string message = 30;
+}

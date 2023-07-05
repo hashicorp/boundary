@@ -154,7 +154,7 @@ func local_request_CredentialStoreService_CreateCredentialStore_0(ctx context.Co
 }
 
 var (
-	filter_CredentialStoreService_UpdateCredentialStore_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 2, 4, 0, 0, 0, 0}, Check: []int{0, 1, 1, 2, 2, 3, 3}}
+	filter_CredentialStoreService_UpdateCredentialStore_0 = &utilities.DoubleArray{Encoding: map[string]int{"item": 0, "id": 1}, Base: []int{1, 1, 2, 0, 0}, Check: []int{0, 1, 1, 2, 3}}
 )
 
 func request_CredentialStoreService_UpdateCredentialStore_0(ctx context.Context, marshaler runtime.Marshaler, client CredentialStoreServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
@@ -442,7 +442,7 @@ func RegisterCredentialStoreServiceHandlerServer(ctx context.Context, mux *runti
 // RegisterCredentialStoreServiceHandlerFromEndpoint is same as RegisterCredentialStoreServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterCredentialStoreServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return err
 	}

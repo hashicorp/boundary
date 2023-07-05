@@ -136,7 +136,7 @@ func RegisterTestAuthMethodServiceHandlerServer(ctx context.Context, mux *runtim
 // RegisterTestAuthMethodServiceHandlerFromEndpoint is same as RegisterTestAuthMethodServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
 func RegisterTestAuthMethodServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
-	conn, err := grpc.DialContext(ctx, endpoint, opts...)
+	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return err
 	}
