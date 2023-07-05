@@ -144,11 +144,11 @@ when you configure [targets](/boundary/docs/concepts/domain-model/targets).
 The `egress_worker_filter` attribute controls which workers are used for egress to a target. This is the worker
 that accesses the target.
 
-The `ingress_worker_filter`<sup>HCP Only</sup> attribute controls which workers are used for ingress to a target.
+The `ingress_worker_filter`<sup>HCP/ENT</sup> attribute controls which workers are used for ingress to a target.
 This is the worker a client connects to when initiating a connection to a target.
 
 
-# Vault worker filtering <sup>HCP only</sup>
+# Vault worker filtering <sup>HCP/ENT</sup>
 Tags are used to control which [PKI workers] can manage Vault requests by specifying
 a `worker_filter`attribute when configuring [credential stores].
 
