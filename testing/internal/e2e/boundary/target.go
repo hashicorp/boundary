@@ -60,10 +60,14 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 	args = append(args,
 		"-scope-id", projectId,
 		"-default-port", defaultPort,
-		"-name", "e2e Target",
 		"-format", "json",
 	)
 
+	if opts.WithName != "" {
+		args = append(args, "-name", opts.WithName)
+	} else {
+		args = append(args, "-name", "e2e Target")
+	}
 	if opts.WithAddress != "" {
 		args = append(args, "-address", opts.WithAddress)
 	}
