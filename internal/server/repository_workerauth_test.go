@@ -8,7 +8,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -588,7 +587,6 @@ func TestStoreNodeInformationTx(t *testing.T) {
 				err = StoreNodeInformationTx(testCtx, tc.reader, tc.writer, tc.kms, tc.scope, node)
 				if tc.wantSecondStoreErr {
 					require.Error(err)
-					fmt.Println()
 					if tc.wantSecondStoreErrIs != errors.Unknown {
 						assert.True(errors.Match(errors.T(tc.wantSecondStoreErrIs), err))
 					}
