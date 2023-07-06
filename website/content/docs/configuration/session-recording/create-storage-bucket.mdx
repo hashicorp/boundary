@@ -26,7 +26,7 @@ For more information about using session recording to audit user sessions, refer
    In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the access and secret key.
 - A Boundary PKI worker with access to the AWS S3 storage bucket
 
-   This worker must be configured with a local recording storage path, defined as `recording_storage_path`. For more details, refer to [PKI workers](/boundary/docs/configuration/worker/pki-worker).
+   This worker must be configured with a local recording storage path, defined as `recording_storage_path`. For more details, refer to [PKI workers](/boundary/docs/configuration/worker/pki-worker#session-recording-hcp-ent).
 - An AWS IAM role policy with the following statement:
    ```json
     {
