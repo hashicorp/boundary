@@ -19,7 +19,7 @@ security by default with simplicity of operation.
 
 Details are in the individual sections below.
 
-## Client-to-Controller TLS
+## Client-to-controller TLS
 
 Boundary's API access (that is, the Controller server defaulting to port 9200)
 uses standard PKI. TLS is configured by providing a valid certificate (and
@@ -29,7 +29,7 @@ provides broad compatibility with a wide array of clients.
 It is possible to require client certificates; see the configuration for
 `listener` blocks to see the available TLS parameters.
 
-## Client-to-Worker TLS
+## Client-to-worker TLS
 
 Workers do not require any configuration for their client-facing listeners to
 support a high degree of security. Instead, the TLS configuration to use is
@@ -94,7 +94,7 @@ certificate/private key would instead act as credentials for the session,
 similar to a username/password.
 
 
-## Worker-to-Upstream TLS
+## Worker-to-upstream TLS
 
 Workers connect to upstreams (Controllers, or other Workers) via TLS
 connections. In order to make these connections, Workers have to be
@@ -108,7 +108,7 @@ cluster, while the PKI mechanism provides positive access control at
 registration time. Currently, HCP Boundary deployments only support PKI
 authentication for self-managed Workers.
 
-### PKI-Based Worker Authentication
+### PKI-based worker authentication
 
 In the PKI-based authentication mechanisms, Workers are registered to the
 cluster by informing the cluster of a Worker's public signing and encryption
@@ -127,7 +127,7 @@ produces the initial key material.
 
 Note that the mechanisms described in this section omit detail for clarity.
 
-#### Worker-Led PKI-Based Registration
+#### Worker-led PKI-based registration
 
 Registration proceeds as follows:
 
@@ -169,7 +169,7 @@ Registration proceeds as follows:
    bundle; and validates the nonce, storing the issued certificate and CA
    certificate.
 
-#### PKI-Based Session Establishment
+#### PKI-based session establishment
 
 Using the stored credentials, a PKI-based worker establishes a session as
 follows:
@@ -202,7 +202,7 @@ follows:
 5. The TLS connection is now established, and the upstream can handle the Worker
    protocol.
 
-#### PKI-Based Credential Rotation
+#### PKI-based credential rotation
 
 Periodically, a PKI-based Worker will trigger rotation of its credentials. The
 mechanism is as follows:
@@ -239,7 +239,7 @@ mechanism is as follows:
    can be used to successfully derive a shared symmetric encryption key. The
    Worker saves the new credentials and uses them going forwardl
 
-### KMS-Based Worker Authentication
+### KMS-based worker authentication
 
 Workers can take advantage of the [KMS](/boundary/docs/concepts/security/data-encryption)
 key designated for `worker-auth` within Boundary's configuration file, which
