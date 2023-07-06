@@ -8,6 +8,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -351,6 +352,28 @@ func TestStoreNodeInformationTx(t *testing.T) {
 		}
 		return nodeInfo
 	}
+	testNodeInfoFn2 := func() *types.NodeInformation {
+		// This happens on the worker
+		storage, err := inmem.New(testCtx)
+		require.NoError(t, err)
+		nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
+		require.NoError(t, err)
+
+		nodePubKey, err := curve25519.X25519(nodeCreds.EncryptionPrivateKeyBytes, curve25519.Basepoint)
+		require.NoError(t, err)
+		// Add in node information to storage so we have a key to use
+		nodeInfo := &types.NodeInformation{
+			Id:                              "fake-secondary-key-id",
+			CertificatePublicKeyPkix:        nodeCreds.CertificatePublicKeyPkix,
+			CertificatePublicKeyType:        nodeCreds.CertificatePrivateKeyType,
+			EncryptionPublicKeyBytes:        nodePubKey,
+			EncryptionPublicKeyType:         nodeCreds.EncryptionPrivateKeyType,
+			ServerEncryptionPrivateKeyBytes: []byte("whatever"),
+			RegistrationNonce:               nodeCreds.RegistrationNonce,
+			State:                           testState,
+		}
+		return nodeInfo
+	}
 
 	// For swapping out key ID for wrapping registration flow
 	wrappingRegFlowStorage, err := inmem.New(testCtx)
@@ -374,15 +397,20 @@ func TestStoreNodeInformationTx(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		reader          db.Reader
-		writer          db.Writer
-		scope           string
-		kms             *kms.Kms
-		node            *types.NodeInformation
-		wantErr         bool
-		wantErrIs       errors.Code
-		wantErrContains string
+		name                       string
+		reader                     db.Reader
+		writer                     db.Writer
+		scope                      string
+		kms                        *kms.Kms
+		node                       *types.NodeInformation
+		wantErr                    bool
+		wantErrIs                  errors.Code
+		wantErrContains            string
+		storeTwice                 bool
+		secondStoreNode            bool
+		wantSecondStoreErr         bool
+		wantSecondStoreErrIs       errors.Code
+		wantSecondStoreErrContains string
 	}{
 		{
 			name:            "missing-writer",
@@ -495,12 +523,26 @@ func TestStoreNodeInformationTx(t *testing.T) {
 			wantErrContains: "in wrapping registration flow but boundary version not provided",
 		},
 		{
-			name:   "success",
-			reader: rw,
-			writer: rw,
-			scope:  scope.Global.String(),
-			kms:    kmsCache,
-			node:   testNodeInfoFn(),
+			name:       "success",
+			reader:     rw,
+			writer:     rw,
+			scope:      scope.Global.String(),
+			kms:        kmsCache,
+			node:       testNodeInfoFn(),
+			storeTwice: true,
+		},
+		{
+			name:                       "store-twice-different-node-info",
+			reader:                     rw,
+			writer:                     rw,
+			scope:                      scope.Global.String(),
+			kms:                        kmsCache,
+			node:                       testNodeInfoFn2(),
+			storeTwice:                 true,
+			secondStoreNode:            true,
+			wantSecondStoreErr:         true,
+			wantSecondStoreErrIs:       errors.NotUnique,
+			wantSecondStoreErrContains: "server.(WorkerAuthRepositoryStorage).StoreNodeInformationTx: db.Create: duplicate key value violates unique constraint \"worker_auth_authorized_pkey\": unique constraint violation: integrity violation: error #1002",
 		},
 		{
 			name:   "success-wrapflow",
@@ -533,6 +575,30 @@ func TestStoreNodeInformationTx(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			// Try to store the "same" node information twice
+			if tc.storeTwice {
+				node := tc.node
+				if tc.secondStoreNode {
+					storage, err := inmem.New(testCtx)
+					require.NoError(err)
+					nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
+					require.NoError(err)
+					node.CertificatePublicKeyPkix = nodeCreds.CertificatePublicKeyPkix
+				}
+				err = StoreNodeInformationTx(testCtx, tc.reader, tc.writer, tc.kms, tc.scope, node)
+				if tc.wantSecondStoreErr {
+					require.Error(err)
+					fmt.Println()
+					if tc.wantSecondStoreErrIs != errors.Unknown {
+						assert.True(errors.Match(errors.T(tc.wantSecondStoreErrIs), err))
+					}
+					if tc.wantSecondStoreErrContains != "" {
+						assert.Contains(err.Error(), tc.wantSecondStoreErrContains)
+					}
+					return
+				}
+				require.NoError(err)
+			}
 		})
 	}
 }
