@@ -406,7 +406,7 @@ func TestStoreNodeInformationTx(t *testing.T) {
 		wantErrIs                  errors.Code
 		wantErrContains            string
 		storeTwice                 bool
-		secondStoreNode            bool
+		secondStoreDifferentNode   bool
 		wantSecondStoreErr         bool
 		wantSecondStoreErrIs       errors.Code
 		wantSecondStoreErrContains string
@@ -538,7 +538,7 @@ func TestStoreNodeInformationTx(t *testing.T) {
 			kms:                        kmsCache,
 			node:                       testNodeInfoFn2(),
 			storeTwice:                 true,
-			secondStoreNode:            true,
+			secondStoreDifferentNode:   true,
 			wantSecondStoreErr:         true,
 			wantSecondStoreErrIs:       errors.NotUnique,
 			wantSecondStoreErrContains: "server.(WorkerAuthRepositoryStorage).StoreNodeInformationTx: db.Create: duplicate key value violates unique constraint \"worker_auth_authorized_pkey\": unique constraint violation: integrity violation: error #1002",
@@ -577,7 +577,7 @@ func TestStoreNodeInformationTx(t *testing.T) {
 			// Try to store the "same" node information twice
 			if tc.storeTwice {
 				node := tc.node
-				if tc.secondStoreNode {
+				if tc.secondStoreDifferentNode {
 					storage, err := inmem.New(testCtx)
 					require.NoError(err)
 					nodeCreds, err := types.NewNodeCredentials(testCtx, storage)
