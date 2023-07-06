@@ -27,8 +27,8 @@ var (
 	// particular protocol.
 	ErrNotSupported = errors.New("not supported by protocol")
 
-	// ErrAlreadyRegistered is an error with registering chunk decoder functions.
-	ErrAlreadyRegistered = errors.New("chunk type already registered")
+	// ErrAlreadyRegistered is an error with registering functions.
+	ErrAlreadyRegistered = errors.New("type already registered")
 
 	// ErrEndChunkNotEmpty indicates a malformed END chunk.
 	ErrEndChunkNotEmpty = errors.New("end chunk not empty")

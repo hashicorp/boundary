@@ -79,14 +79,31 @@ func TestPopulateMeta(t *testing.T) {
 func TestOpenBSRMethods(t *testing.T) {
 	ctx := context.Background()
 
+	protocol := Protocol("Test")
+
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
+	require.NoError(t, err)
+
+	err = RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
+		return &BaseChannelSummary{Id: "TEST_CHANNEL_ID", ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID"}
+	})
+	require.NoError(t, err)
+
+	err = RegisterSummaryAllocFunc(protocol, SessionContainer, func(ctx context.Context) Summary {
+		return &BaseSessionSummary{Id: "TEST_SESSION_ID", ConnectionCount: 1}
+	})
+	require.NoError(t, err)
+
+	err = RegisterSummaryAllocFunc(protocol, ConnectionContainer, func(ctx context.Context) Summary {
+		return &BaseConnectionSummary{Id: "TEST_CONNECTION_ID", ChannelCount: 1}
+	})
 	require.NoError(t, err)
 
 	f := &fstest.MemFS{}
 	sessionId := "s_01234567890"
 	srm := &SessionRecordingMeta{
 		Id:       "sr_012344567890",
-		Protocol: Protocol("TEST"),
+		Protocol: protocol,
 	}
 	sessionMeta := TestSessionMeta(sessionId)
 
@@ -94,11 +111,21 @@ func TestOpenBSRMethods(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, sesh)
 
+	sesh.EncodeSummary(ctx, &BaseChannelSummary{
+		Id:                    "TEST_CHANNEL_ID",
+		ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID",
+	})
+
 	connectionId := "connection"
 	connMeta := &ConnectionRecordingMeta{Id: connectionId}
 	conn, err := sesh.NewConnection(ctx, connMeta)
 	require.NoError(t, err)
 	require.NotNil(t, conn)
+
+	conn.EncodeSummary(ctx, &BaseConnectionSummary{
+		Id:           "TEST_CONNECTION_ID",
+		ChannelCount: 1,
+	})
 
 	channelId := "channel"
 	chanMeta := &ChannelRecordingMeta{
@@ -108,6 +135,11 @@ func TestOpenBSRMethods(t *testing.T) {
 	ch, err := conn.NewChannel(ctx, chanMeta)
 	require.NoError(t, err)
 	require.NotNil(t, ch)
+
+	ch.EncodeSummary(ctx, &BaseSessionSummary{
+		Id:              "TEST_SESSION_ID",
+		ConnectionCount: 1,
+	})
 
 	ch.Close(ctx)
 	conn.Close(ctx)

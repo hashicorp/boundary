@@ -23,7 +23,7 @@ func TestSyncBsrKeys(t *testing.T) {
 	fc, err := f.New(ctx, fmt.Sprintf(bsrFileNameTemplate, "session-id"))
 	require.NoError(t, err)
 
-	c, err := newContainer(ctx, sessionContainer, fc, keys)
+	c, err := newContainer(ctx, SessionContainer, fc, keys)
 	require.NoError(t, err)
 	require.NotNil(t, c)
 
