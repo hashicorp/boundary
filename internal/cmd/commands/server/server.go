@@ -302,7 +302,7 @@ func (c *Command) Run(args []string) int {
 			c.UI.Error(`Config activates controller but no listener with "cluster" purpose found`)
 			return base.CommandUserError
 		}
-		if err := c.Config.SetupControllerPublicClusterAddress(""); err != nil {
+		if err := c.Config.SetupControllerPublicClusterAddress(c.Config.Controller.PublicClusterAddr); err != nil {
 			c.UI.Error(err.Error())
 			return base.CommandUserError
 		}
@@ -821,7 +821,7 @@ func (c *Command) Reload(newConf *config.Config) error {
 	if newConf != nil && c.worker != nil {
 		workerReloadErr := func() error {
 			if newConf.Controller != nil {
-				if err := newConf.SetupControllerPublicClusterAddress(""); err != nil {
+				if err := newConf.SetupControllerPublicClusterAddress(newConf.Controller.PublicClusterAddr); err != nil {
 					return err
 				}
 			}
