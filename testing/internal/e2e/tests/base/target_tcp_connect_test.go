@@ -83,8 +83,8 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 		output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("scopes", "delete", "-id", newOrgId))
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
-	testProjectName := "E2E Project With Name"
-	testTargetName := "E2E Test Target With Name"
+	testProjectName := `E2E/Project-With\Name`
+	testTargetName := `E2E/Test-Target-With\Name`
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId, boundary.WithName(testProjectName))
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
@@ -115,7 +115,31 @@ func TestCliTcpTargetConnectTargetViaTargetAndScopeNames(t *testing.T) {
 	parts := strings.Fields(string(output.Stdout))
 	hostIp := parts[len(parts)-1]
 	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
-	t.Log("Successfully connected to target")
+	t.Log("Successfully connected to target by its name and scope name")
+
+	// Connect to target via target name and scope ID, and print host's IP address
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"connect",
+			"-target-name", testTargetName,
+			"-target-scope-id", newProjectId,
+			"-exec", "/usr/bin/ssh", "--",
+			"-l", c.TargetSshUser,
+			"-i", c.TargetSshKeyPath,
+			"-o", "UserKnownHostsFile=/dev/null",
+			"-o", "StrictHostKeyChecking=no",
+			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
+			"-p", "{{boundary.port}}", // this is provided by boundary
+			"{{boundary.ip}}",
+			"hostname", "-i",
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+
+	parts = strings.Fields(string(output.Stdout))
+	hostIp = parts[len(parts)-1]
+	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	t.Log("Successfully connected to target by its name and scope ID")
 }
 
 func TestCliTcpTargetConnectTargetWithTargetClientPort(t *testing.T) {
