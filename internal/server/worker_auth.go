@@ -55,11 +55,11 @@ func (w *WorkerAuth) compare(other *WorkerAuth) bool {
 	switch {
 	case w.WorkerId != other.WorkerId:
 		return false
-	case !bytes.EqualFold(w.WorkerEncryptionPubKey, other.WorkerEncryptionPubKey):
+	case !bytes.Equal(w.WorkerEncryptionPubKey, other.WorkerEncryptionPubKey):
 		return false
-	case !bytes.EqualFold(w.WorkerSigningPubKey, other.WorkerSigningPubKey):
+	case !bytes.Equal(w.WorkerSigningPubKey, other.WorkerSigningPubKey):
 		return false
-	case !bytes.EqualFold(w.Nonce, other.Nonce):
+	case !bytes.Equal(w.Nonce, other.Nonce):
 		return false
 	default:
 		return true

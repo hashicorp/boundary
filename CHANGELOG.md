@@ -22,6 +22,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Bug Fixes
 
+* PKI worker authentication: A worker authentication record can be stored more than once, if it matches the 
+  existing record for that worker auth key ID. Fixes an edge case where a worker attempted authorization
+  and the controller successfully stored the worker auth record but went down before returning authorization
+  details to the worker. ([PR](https://github.com/hashicorp/boundary/pull/3389))
 * LDAP managed groups: adding/setting/removing a principal to a role now works
   properly when it's an LDAP managed group.
   ([PR](https://github.com/hashicorp/boundary/pull/3361) and

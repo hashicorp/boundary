@@ -238,7 +238,7 @@ func StoreNodeInformationTx(ctx context.Context, reader db.Reader, writer db.Wri
 	nodeAuthLookup.WorkerKeyIdentifier = node.Id
 	if err := reader.LookupById(ctx, nodeAuthLookup); err != nil {
 		switch {
-		case errors.Convert(err) != nil && errors.Convert(err).Code == errors.RecordNotFound:
+		case errors.IsNotFoundError(err):
 			// If we didn't find it, that's fine
 		default:
 			return errors.Wrap(ctx, err, op)

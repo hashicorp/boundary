@@ -531,7 +531,9 @@ func TestStoreNodeInformationTx(t *testing.T) {
 			storeTwice: true,
 		},
 		{
-			name:                       "store-twice-different-node-info",
+			// This test will fail because on the second store we change the incoming NodeInformation
+			// so that it does not match the already inserted record
+			name:                       "fail-store-twice-different-node-info",
 			reader:                     rw,
 			writer:                     rw,
 			scope:                      scope.Global.String(),
