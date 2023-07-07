@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Boundary Health Endpoints
+page_title: Boundary health endpoints
 description: |-
   Verify the Boundary controller server is up and able to receive requests
 ---
 
-# Boundary Health Endpoints
+# Boundary health endpoints
 
 Boundary provides health monitoring through the `/health` path using a listener
 with the `"ops"` purpose. By default, a listener with that purpose runs on port
@@ -21,7 +21,7 @@ listener must be defined in Boundary's configuration file. Additionally, a
 file. Under these conditions, the `ops` server (which hosts the controller health
 api) will be exposed.
 
-## Shutdown Grace Period
+## Shutdown grace period
 
 Optionally, when the controller health endpoint is enabled, Boundary can be
 configured to change the controller health response to `503 Service Unavailable`
