@@ -1,13 +1,13 @@
 ---
 layout: docs
-page_title: Unix Domain Socket - Listeners - Configuration
+page_title: Unix domain socket - listeners - configuration
 description: |-
   The Unix listener configures Boundary to listen on the specified Unix domain socket.
 ---
 
-# `unix` Listener
+# `unix` listener
 
-The Unix listener configures Boundary to listen on a Unix domain socket.
+The `unix` listener configures Boundary to listen on a Unix domain socket.
 
 ~> **Note:** This is only available for listeners for `api` and `cluster` purpose.
 Unix sockets cannot currently be used for `"proxy"` purpose on a Worker.
@@ -23,7 +23,9 @@ The `listener` stanza may be specified more than once to make Boundary listen on
 multiple interfaces; however, only one listener marked for `cluster` purpose is
 allowed.
 
-## `unix` Listener Parameters
+## `unix` listener parameters
+
+Refer to the following sections for the supported `unix` listener parameters.
 
 ### General
 
@@ -46,7 +48,7 @@ allowed.
   reading the entire request, including the body. This is specified using a
   label suffix like `"30s"` or `"1h"`.
 
-- `http_write_timeout` `string: "0")` - Specifies the maximum duration before
+- `http_write_timeout` `(string: "0")` - Specifies the maximum duration before
   timing out writes of the response and is reset whenever a new request's header
   is read. The default value of `"0"` means infinity. This is specified using a
   label suffix like `"30s"` or `"1h"`.
@@ -158,15 +160,17 @@ page](/boundary/docs/concepts/security/connections-tls).
   there is no X-Forwarded-For header or it is empty, the client address will be
   used as-is, rather than the client connection rejected.
 
-### `telemetry` Parameters
+### `telemetry` parameters
 
 - `unauthenticated_metrics_access` `(string: "false")` - If set to true, allows
   unauthenticated access to the `/v1/sys/metrics` endpoint.
 !-->
 
-## `unix` Listener Examples
+## `unix` listener examples
 
-### Configuring TLS
+Refer to the following sections for examples of `unix` listeners.
+
+### Configure TLS
 
 This example shows enabling a TLS listener.
 
@@ -179,7 +183,7 @@ listener "unix" {
 }
 ```
 
-### Listening on Multiple Interfaces
+### Listen on multiple interfaces
 
 This example shows Boundary listening on a private interface, as well as localhost.
 

@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Controller/Worker - Events
+page_title: Controller/worker - events
 description: |-
   The events stanza configures events-specific parameters.
 ---
 
-# `events` Stanza
+# `events` stanza
 
 The `events` stanza configures Boundary events-specific parameters.
 
@@ -34,7 +34,7 @@ events {
 }
 ```
 
-- `audit_enabled` - Specifies if audit events should be emitted.  
+- `audit_enabled` - Specifies if audit events should be emitted.
 
 - `observations_enabled` - Specifies if observation events should be emitted.
 
@@ -45,7 +45,7 @@ events {
   events will be sent to a default [stderr](/boundary/docs/configuration/events/stderr) sink. Events may be sent to multiple
   sinks.
 
-## Default Events Stanza
+## Default events stanza
 
 If no event stanza is specified then the following default is used:
 

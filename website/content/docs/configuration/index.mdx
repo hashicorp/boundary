@@ -1,6 +1,6 @@
 ---
 layout: docs
-page_title: Overview/Top-Level Parameters
+page_title: Overview/top-level parameters
 description: Boundary configuration reference.
 ---
 
@@ -21,13 +21,13 @@ configuration block examples for Boundary controllers and workers.
 After the configuration is written, use the `-config` flag to specify a local
 path to the file.
 
-## HCP Boundary-Only Parameters
+## HCP Boundary-only parameters
 
 - `hcp_boundary_cluster_id` `(string)` - The ID of an HCP Boundary cluster.
   Setting this allows discovery of upstream addresses for self-managed workers
   to connect to the cluster.
 
-## Shared OSS and HCP Boundary Parameters
+## Shared self-managed and HCP Boundary parameters
 
 - [`worker`](/boundary/docs/configuration/worker): Worker specific configuration. If
   present, `boundary server` will start a Worker subprocess.
@@ -80,7 +80,7 @@ path to the file.
   Specifies the log format to use; overridden by CLI and env var parameters.
   Supported log formats: `"standard"`, `"json"`.
 
-## OSS-Only Parameters
+## Self-managed Boundary-only parameters
 
 - [`controller`](/boundary/docs/configuration/controller): Controller specific
   configuration. If present, `boundary server` will start a Controller subprocess.
@@ -88,6 +88,7 @@ path to the file.
 - [`plugins`](/boundary/docs/configuration/plugins): Configures options for plugins.
 
 ## Signals
+
 The `SIGHUP` signal causes worker and controller processes to reload their configuration files to pick up updated values.
 
 ~> **Note:** You cannot reload all configuration values using the `SIGHUP` signal. Refer to the configuration pages for
@@ -97,7 +98,7 @@ on which values can be reloaded on `SIGHUP`.
 The `SIGTERM` and `SIGINT` signals cause worker and controller processes to enter graceful shutdown. A graceful shutdown for a controller closes listeners and servers before shutting down the controller. A graceful shutdown for a worker waits for any sessions to drain
 before shutting down the worker. Workers in a graceful shutdown state do not receive any new work, including session proxying, from the control plane.
 
-## Example Configurations
+## Example configurations
 
 For complete example configurations see the sections for
 [controller](/boundary/docs/configuration/controller) and
