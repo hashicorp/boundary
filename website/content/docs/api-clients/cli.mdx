@@ -11,7 +11,7 @@ Boundary's CLI has predictable behavior throughout its various commands. This
 page details the common patterns used in order to help users make better use
 of the CLI.
 
-## CLI Command Structure
+## CLI command structure
 
 There are a number of command and subcommand options available.
 To see all available command options, run `boundary -h`
@@ -26,7 +26,7 @@ boundary <command> <subcommand> [options] [args]
 - `options` - [Client](/boundary/docs/api-clients/cli#client-options) and [connection](/boundary/docs/api-clients/cli#connection-options) options to specify additional settings
 - `args` - API arguments specific to the operation
 
-#### Examples:
+### Examples
 
 The following shows use of the [`-addr`](/boundary/docs/api-clients/cli#addr) flag to specify which Boundary controller to send the request to.
 
@@ -53,7 +53,7 @@ If you want to install it manually, for Bash, the following line in a
 
 `complete -C /path/to/boundary boundary`
 
-## Keyring Token storage
+## Keyring token storage
 
 Boundary uses various mechanisms, depending on platform, to allow for secure
 storage of authentication tokens for later use. Each platform has a
@@ -100,7 +100,7 @@ Available keyring types:
 - `secret-service`
 - `none`
 
-## Mapping to Collections and Sub-Types
+## Map to collections and sub-types
 
 Generally speaking, Boundary's CLI commands map to the collections they operate
 on. For instance, when operating on roles, the command will be `boundary roles ...`.
@@ -139,7 +139,7 @@ Similar to `read`, `update` operates on an existing target so will always take
 an `-id` parameter. Similar to `list`, `create` operates on a collection so will
 either take a `-scope-id` parameter or a parameter defining the parent resource.
 
-## Parameter Handling
+## Parameter handling
 
 All parameters specified on the CLI are specified as a Go-style flag with a
 single dash, e.g. `-id`. The arguments to those flags can be specified via an
@@ -161,7 +161,7 @@ But the following results in an error:
 
 This applies to `-h` as well!
 
-### Clearing/Defaulting Values
+### Clear/default values
 
 On the CLI, you can use `null` as a value to indicate to Boundary that you want
 to unset a value, reverting to Boundary's default. In many cases this default
@@ -178,7 +178,7 @@ call's JSON object but with the value set to the JSON `null`. This in turn
 informs the Controller that this value should be set to its default. Keep in
 mind that this is not a direct translation to database `NULL` semantics!
 
-### Connection Options
+### Connection options
 
 Every command that results in an API call contains a set of flags that control
 connection options, which control TLS and other settings for the connection.
@@ -217,7 +217,7 @@ You can also run `boundary dev -h` to see the available connection options.
       environment variable.
 
 
-### Client Options
+### Client options
 
 Every command that results in an API call contains a set of flags that control
 client options. Some notable options:
@@ -237,7 +237,7 @@ client options. Some notable options:
   the information necessary to access a KMS configured to be used for the recovery
   workflow within a Boundary controller.
 
-### Output Options
+### Output options
 
 Nearly every command supports having its success output be formatted as JSON via
 `-format json`. For commands that result in an API call, the JSON output will be

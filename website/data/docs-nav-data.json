@@ -7,22 +7,22 @@
         "path": "overview/what-is-boundary"
       },
       {
-        "title": "Use Cases",
+        "title": "Use cases",
         "path": "overview/use-cases"
       },
       {
-        "title": "Boundary vs. Other Software",
+        "title": "Boundary vs. other software",
         "routes": [
           {
             "title": "Overview",
             "path": "overview/vs/other-software"
           },
           {
-            "title": "Zero Trust",
+            "title": "Zero trust",
             "path": "overview/vs/zero-trust"
           },
           {
-            "title": "Bastion Hosts",
+            "title": "Bastion hosts",
             "path": "overview/vs/bastion-hosts"
           },
           {
@@ -30,15 +30,15 @@
             "path": "overview/vs/vpn"
           },
           {
-            "title": "Privileged Access Management",
+            "title": "Privileged access management",
             "path": "overview/vs/pam"
           },
           {
-            "title": "Software Defined Perimeter",
+            "title": "Software-defined perimeter",
             "path": "overview/vs/sdp"
           },
           {
-            "title": "Secrets Management Tools",
+            "title": "Secrets management tools",
             "path": "overview/vs/secrets-management"
           }
         ]
@@ -53,15 +53,15 @@
         "path": "getting-started"
       },
       {
-        "title": "Self-Managed Boundary Quick Start",
+        "title": "Self-managed Boundary quick start",
         "href": "https://developer.hashicorp.com/boundary/tutorials/oss-getting-started/"
       },
       {
-        "title": "HCP Boundary Quick Start",
+        "title": "HCP Boundary quick start",
         "href": "https://developer.hashicorp.com/boundary/tutorials/hcp-getting-started/"
       },
       {
-        "title": "Dev Mode Quick Start",
+        "title": "Dev mode quick start",
         "routes": [
           {
             "title": "Overview",
@@ -87,15 +87,15 @@
         "path": "install-boundary"
       },
       {
-        "title": "Recommended Architecture",
+        "title": "Recommended architecture",
         "path": "install-boundary/recommended-architecture"
       },
       {
-        "title": "System Requirements",
+        "title": "System requirements",
         "path": "install-boundary/system-requirements"
       },
       {
-        "title": "Fault Tolerance Recommendations",
+        "title": "Fault tolerance recommendations",
         "path": "install-boundary/fault-tolerance"
       },
       {
@@ -103,24 +103,24 @@
         "path": "install-boundary/install"
       },
       {
-        "title": "Configure Controllers",
+        "title": "Configure controllers",
         "path": "install-boundary/configure-controllers"
       },
       {
-        "title": "Configure Workers",
+        "title": "Configure workers",
         "path": "install-boundary/configure-workers"
       },
       {
-        "title": "Non-Dev Environments",
+        "title": "Non-dev environments",
         "path": "install-boundary/no-gen-resources"
       },
       {
-        "title": "Systemd Install",
+        "title": "Systemd install",
         "hidden": true,
         "path": "install-boundary/systemd"
       },
       {
-        "title": "Configure High Availability",
+        "title": "Configure high availability",
         "path": "install-boundary/high-availability"
       }
     ]
@@ -133,15 +133,15 @@
         "path": "concepts"
       },
       {
-        "title": "Identity and Access Management",
+        "title": "Identity and access management",
         "path": "concepts/iam"
       },
       {
-        "title": "Host Discovery",
+        "title": "Host discovery",
         "path": "concepts/host-discovery"
       },
       {
-        "title": "Credential Management",
+        "title": "Credential management",
         "path": "concepts/credential-management"
       },
       {
@@ -163,21 +163,21 @@
                 "path": "concepts/security/permissions"
               },
               {
-                "title": "Assignable Permissions",
+                "title": "Assignable permissions",
                 "path": "concepts/security/permissions/assignable-permissions"
               },
               {
-                "title": "Permission Grant Formats",
+                "title": "Permission grant formats",
                 "path": "concepts/security/permissions/permission-grant-formats"
               },
               {
-                "title": "Resource Table",
+                "title": "Resource table",
                 "path": "concepts/security/permissions/resource-table"
               }
             ]
           },
           {
-            "title": "Data Encryption",
+            "title": "Data encryption",
             "path": "concepts/security/data-encryption"
           },
           {
@@ -187,7 +187,7 @@
         ]
       },
       {
-        "title": "Domain Model",
+        "title": "Domain model",
         "routes": [
           {
             "title": "Overview",
@@ -198,7 +198,7 @@
             "path": "concepts/domain-model/accounts"
           },
           {
-            "title": "Auth Methods",
+            "title": "Auth methods",
             "path": "concepts/domain-model/auth-methods"
           },
           {
@@ -206,11 +206,11 @@
             "path": "concepts/domain-model/credentials"
           },
           {
-            "title": "Credential Libraries",
+            "title": "Credential libraries",
             "path": "concepts/domain-model/credential-libraries"
           },
           {
-            "title": "Credential Stores",
+            "title": "Credential stores",
             "path": "concepts/domain-model/credential-stores"
           },
           {
@@ -222,15 +222,15 @@
             "path": "concepts/domain-model/hosts"
           },
           {
-            "title": "Host Catalogs",
+            "title": "Host catalogs",
             "path": "concepts/domain-model/host-catalogs"
           },
           {
-            "title": "Host Sets",
+            "title": "Host sets",
             "path": "concepts/domain-model/host-sets"
           },
           {
-            "title": "Managed Groups",
+            "title": "Managed groups",
             "path": "concepts/domain-model/managed-groups"
           },
           {
@@ -242,15 +242,15 @@
             "path": "concepts/domain-model/sessions"
           },
           {
-            "title": "Session Connections",
+            "title": "Session connections",
             "path": "concepts/domain-model/session-connections"
           },
           {
-            "title": "Session Recordings",
+            "title": "Session recordings",
             "path": "concepts/domain-model/session-recordings"
           },
           {
-            "title": "Storage Buckets",
+            "title": "Storage buckets",
             "path": "concepts/domain-model/storage-buckets"
           },
           {
@@ -275,15 +275,15 @@
             "path": "concepts/filtering"
           },
           {
-            "title": "OIDC Managed Groups",
+            "title": "OIDC managed groups",
             "path": "concepts/filtering/oidc-managed-groups"
           },
           {
-            "title": "Resource Listing",
+            "title": "Resource listing",
             "path": "concepts/filtering/resource-listing"
           },
           {
-            "title": "Worker Tags",
+            "title": "Worker tags",
             "path": "concepts/filtering/worker-tags"
           },
           {
@@ -298,7 +298,7 @@
     "title": "Configuration",
     "routes": [
       {
-        "title": "Overview/Top-Level Parameters",
+        "title": "Overview/top-level parameters",
         "path": "configuration"
       },
       {
@@ -309,11 +309,11 @@
             "path": "configuration/worker"
           },
           {
-            "title": "PKI Workers",
+            "title": "PKI workers",
             "path": "configuration/worker/pki-worker"
           },
           {
-            "title": "KMS Workers",
+            "title": "KMS workers",
             "path": "configuration/worker/kms-worker"
           }
         ]
@@ -367,24 +367,24 @@
             "path": "configuration/kms/ocikms"
           },
           {
-            "title": "Vault Transit",
+            "title": "Vault transit",
             "path": "configuration/kms/transit"
           }
         ]
       },
       {
-        "title": "Session Recordings",
+        "title": "Session recordings",
         "routes": [
           {
             "title": "Overview",
             "path": "configuration/session-recording"
           },
           {
-            "title": "Create Storage Buckets",
+            "title": "Create storage buckets",
             "path": "configuration/session-recording/create-storage-bucket"
           },
           {
-            "title": "Enable Session Recording",
+            "title": "Enable session recording",
             "path": "configuration/session-recording/enable-session-recording"
           }
         ]
@@ -397,15 +397,15 @@
             "path": "configuration/events"
           },
           {
-            "title": "Common Sink Parameters",
+            "title": "Common sink parameters",
             "path": "configuration/events/common"
           },
           {
-            "title": "File Sink",
+            "title": "File sink",
             "path": "configuration/events/file"
           },
           {
-            "title": "Stderr Sink",
+            "title": "Stderr sink",
             "path": "configuration/events/stderr"
           }
         ]
@@ -432,11 +432,11 @@
         "path": "operations/metrics"
       },
       {
-        "title": "Health Endpoint",
+        "title": "Health endpoint",
         "path": "operations/health"
       },
       {
-        "title": "Session Recordings",
+        "title": "Session recordings",
         "path": "operations/manage-recorded-sessions"
       }
     ]
@@ -445,7 +445,7 @@
     "title": "Troubleshoot",
     "routes": [
       {
-        "title": "Common Error Messages",
+        "title": "Common error messages",
         "path": "troubleshoot/common-errors"
       },
       {
@@ -453,13 +453,13 @@
         "path": "troubleshoot/faq"
       },
       {
-        "title": "Recorded Sessions",
+        "title": "Recorded sessions",
         "path": "troubleshoot/troubleshoot-recorded-sessions"
       }
     ]
   },
   {
-    "title": "Common Workflows",
+    "title": "Common workflows",
     "hidden": true,
     "routes": [
       {
@@ -467,33 +467,33 @@
         "path": "common-workflows"
       },
       {
-        "title": "Manage Roles",
+        "title": "Manage roles",
         "path": "common-workflows/manage-roles"
       },
       {
-        "title": "Manage Scopes",
+        "title": "Manage scopes",
         "path": "common-workflows/manage-scopes"
       },
       {
-        "title": "Manage Sessions",
+        "title": "Manage sessions",
         "path": "common-workflows/manage-sessions"
       },
       {
-        "title": "Manage Targets",
+        "title": "Manage targets",
         "path": "common-workflows/manage-targets"
       },
       {
-        "title": "Manage Users and Groups",
+        "title": "Manage users and groups",
         "path": "common-workflows/manage-users-groups"
       },
       {
-        "title": "Workflow SSH Proxy",
+        "title": "Workflow SSH proxy",
         "path": "common-workflows/workflow-ssh-proxycommand"
       }
     ]
   },
   {
-    "title": "API/Clients",
+    "title": "API/clients",
     "routes": [
       {
         "title": "Overview",
@@ -593,11 +593,11 @@
         "path": "enterprise/licensing"
       },
       {
-        "title": "Automated License Reporting",
+        "title": "Automated license reporting",
         "path": "enterprise/automated-license-reporting"
       },
       {
-        "title": "Supported Versions Policy",
+        "title": "Supported versions policy",
         "path": "enterprise/supported-versions"
       }
     ]
@@ -606,7 +606,7 @@
     "divider": true
   },
   {
-    "title": "Release Notes",
+    "title": "Release notes",
     "routes": [
       {
         "title": "Overview",

@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Running Boundary in Non-Dev Environments
+page_title: Running Boundary in non-dev environments
 description: |-
   How to install boundary in non-dev environments.
 ---
 
-# Installing Boundary Without Generated Resources
+# Install Boundary without generated resources
 
 What are generated resources? When you run `boundary dev` or `boundary database init`, Boundary automatically
 generates a number of resources to make getting started easier. Default scopes, auth methods, user, account, and
@@ -16,7 +16,7 @@ Boundary from scratch isn't straight forward. How do you create your first user 
 deployment that has no authentication methods, users, accounts, etc.? This section describes how to get your freshly
 deployed Boundary installation off the ground for non-dev environments.
 
-## Recovery KMS Workflow
+## Recovery KMS workflow
 
 Initializing Boundary without generated resources starts with your Boundary configuration file. Specifically,
 the controller configuration specifies three KMS blocks:
@@ -104,7 +104,7 @@ EOT
 </Tabs>
 
 
-## Initialize the Database
+## Initialize the database
 
 Before you can start Boundary, the database must be initialized. It's useful to look at the help output for the init command:
 
@@ -131,13 +131,13 @@ you use the KMS recovery workflow described above to create at a minimum an auth
 role with sufficient grants. Otherwise, you need to continue to use the recovery workflow for management. It's important
 to realize that this is effectively a global super user type of workflow and comes with security concerns.
 
-## Creating Your First Login Account
+## Create your first login account
 
 This section covers how to configure your first auth method, user, account, and role to login to Boundary without
 the recovery KMS workflow. In this example, we're going to make an admin user for the global and project level
 scopes we create. This will allow our user to configure targets within those scopes and manage them.
 
-### Create Org and Project Scopes
+### Create org and project scopes
 
 In this example, we're going to create an org and project scope and skip creating an administrator and admin role
 for each scope. We're going to specify a role for managing these scopes by selected users in a later step.
@@ -187,7 +187,7 @@ resource "boundary_scope" "project" {
 </Tabs>
 
 
-### Create an Auth Method
+### Create an auth method
 
 Create an auth method in the organization scope.
 
@@ -220,7 +220,7 @@ resource "boundary_auth_method" "password" {
 </Tabs>
 
 
-### Create a Login Account
+### Create a login account
 
 Create a login account for the auth method.
 
@@ -254,7 +254,7 @@ resource "boundary_account" "myuser" {
 </Tabs>
 
 
-### Create a User
+### Create a user
 
 Create a user and associate the user with the login account created in the previous step.
 This user will also be the principal in the role we create in the following step.
@@ -292,7 +292,7 @@ resource "boundary_user" "myuser" {
 </Tabs>
 
 
-### Create Roles to Manage Scopes
+### Create roles to manage scopes
 
 The following describes the four baseline roles you'll need to create to manage resources within the org and project
 scopes created above. These roles are similar to the roles created for you if generation had not been skipped during `boundary database init` when executed with the `-skip-initial-login-role-creation` flag, Declaring roles explicitly
@@ -478,7 +478,7 @@ resource "boundary_role" "project_admin" {
 </Tabs>
 
 
-### Login as Your New User
+### Log in as your new user
 
 ```shell-session
 boundary authenticate password \

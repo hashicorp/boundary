@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Data Encryption
+page_title: Data encryption
 description: |-
   How Boundary secures data at rest
 ---
 
-# Data Security in Boundary
+# Data security in Boundary
 
 Boundary has multiple mechanisms to ensure secure end-to-end behavior of the
 system. A key part of this is [support for various Key Management
@@ -13,14 +13,14 @@ Systems](/boundary/docs/configuration/kms) that protect the base encryption keys
 for various functions. This page describes the various KMS key purposes that
 Boundary supports and how they are used within the system.
 
-## The `worker-auth-storage` KMS Key
+## The `worker-auth-storage` KMS key
 
 The `worker-auth-storage` KMS key is used by a [PKI
 Worker](/boundary/docs/configuration/worker/pki-worker) for storage of authentication
 keys. It is optional for PKI workers; if not specified the authentication keys
 will not be encrypted on disk. This is not used by KMS workers.
 
-## The `root` KMS Key and Per-Scope KEK/DEKs <sup>OSS Only</sup>
+## The `root` KMS key and per-scope KEK/DEKs <sup>OSS only</sup>
 
 Following best practices of using different encryption keys for different
 purposes, Boundary has a number of encryption keys generated within each scope.
@@ -58,7 +58,7 @@ The current scoped DEKs and their purposes are detailed below:
 - `sessions`: This is used as a base key against which to derive
   session-specific encryption keys.
 
-### Key version lifecycle Management
+### Key version lifecycle management
 
 You can control the lifecycles of the per-scope KEK and DEKs via the CLI or
 API using the key endpoints under the scopes section. To rotate all the keys
@@ -110,14 +110,14 @@ The `bsr` KMS key is required for [session recording](/boundary/docs/configurati
 If you do not add a `bsr` key to your controller configuration, you will receive an error when you attempt to enable session recording.
 The key is used for encrypting data and checking the integrity of recordings.
 
-## The `previous-root` KMS key <sup>OSS Only</sup>
+## The `previous-root` KMS key <sup>OSS only</sup>
 
 The `previous-root` KMS key is used when migrating to a new `root` key. Adding
 the `previous-root` KMS key to your configuration informs the Controller to use
 it for decrypting the existing information in the database, allowing you to
 rotate and rewrap the KEKs to complete the migration to the new root key.
 
-## The `worker-auth` KMS Key <sup>OSS Only</sup>
+## The `worker-auth` KMS key <sup>OSS only</sup>
 
 The `worker-auth` KMS key is a key shared by the Controller and Worker in order
 to authenticate a Worker to the Controller. Specifics of this mechanism can be
@@ -125,7 +125,7 @@ found on the [Connections/TLS page](/boundary/docs/concepts/security/connections
 a worker is used with [PKI
 authentication](/boundary/docs/configuration/worker/pki-worker) this is unnecessary.
 
-## The `recovery` KMS Key <sup>OSS Only</sup>
+## The `recovery` KMS key <sup>OSS only</sup>
 
 The `recovery` KMS key is used for rescue/recovery operations that can be used
 by a client to authenticate almost any operation within Boundary. Its mechanism
@@ -161,7 +161,7 @@ with the options to skip creating default resources, Terraform can be used to
 create the specific resources needed instead, with the `recovery` KMS used to
 authenticate setting up the initial auth method(s).
 
-## The `config` KMS Key <sup>OSS Only</sup>
+## The `config` KMS key <sup>OSS only</sup>
 
 This key can be used to encrypt values within Boundary's configuration file. By
 sharing this block between Boundary and an operator, the operator can put

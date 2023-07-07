@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Controller - Configuration
+page_title: Controller - configuration
 description: |-
   The controller stanza configures controller-specifc parameters.
 ---
 
-# `controller` Stanza
+# `controller` stanza
 
 The `controller` stanza configures Boundary controller-specific parameters.
 
@@ -107,11 +107,12 @@ description will be read.
   used when an `ops` listener is set and the Controller is present. Default is 0 seconds.
 
 ## Signals
+
 The `SIGHUP` signal causes a controller to reload its configuration file to pick up any updates to the `database url` value. Any other updated values are ignored.
 
 The `SIGTERM` and `SIGINT` signals initiate a graceful shutdown on a controller. A graceful shutdown closes listeners and servers before shutting down the controller.
 
-## KMS Configuration
+## KMS configuration
 
 The controller requires two KMS stanzas for `root` and `worker-auth` purposes:
 
@@ -164,7 +165,7 @@ kms "aead" {
 Boundary supports many kinds of KMS integrations. For a complete guide to all available
 KMS types, see our [KMS documentation](/boundary/docs/configuration/kms).
 
-# Complete Configuration Example
+## Complete configuration example
 
 ```hcl
 # Disable memory lock: https://www.man7.org/linux/man-pages/man2/mlock.2.html

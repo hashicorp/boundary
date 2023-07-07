@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Filtering - Worker Tags
+page_title: Filtering - worker tags
 description: |-
   How to use worker tags to control which workers can handle a given resource.
 ---
 
-# Worker Tags
+# Filter worker tags
 
 This page describes how to use worker tags and filters to control which workers
 are allowed to handle a given resource. This can be used to control traffic
@@ -100,7 +100,7 @@ array with the tags intended for the particular key is required:
 ["prod", "webservers"]
 ```
 
-# Worker filtering
+## Workers
 
 As filters operate on JSON Pointer selectors, the values that are input into the
 filter come from the JSON representation of the values in the configuration file
@@ -135,7 +135,7 @@ Following are some examples of using these values in filters:
 ~> **Note:** Each tag can have multiple values, so the `in` operator must be used to match values.
 If you know that you have only one value, an equivalent would be `"/tags/key/0" == "value"`.
 
-# Target worker filtering
+## Target workers
 
 Once workers have tags, you can use these tags to control which
 workers are allowed to manage a given session by specifying optional worker filter attributes
@@ -148,7 +148,7 @@ The `ingress_worker_filter`<sup>HCP/ENT</sup> attribute controls which workers a
 This is the worker a client connects to when initiating a connection to a target.
 
 
-# Vault worker filtering <sup>HCP/ENT</sup>
+## Vault workers <sup>HCP/ENT</sup>
 Tags are used to control which [PKI workers] can manage Vault requests by specifying
 a `worker_filter`attribute when configuring [credential stores].
 

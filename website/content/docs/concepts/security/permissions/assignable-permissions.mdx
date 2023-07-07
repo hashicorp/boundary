@@ -1,17 +1,17 @@
 ---
 layout: docs
-page_title: Assignable Permissions
+page_title: Assignable permissions
 description: |-
-  Assignable Permissions
+  Assignable permissions
 ---
 
-## Assignable Permissions
+# Assignable permissions
 
 Resources identified by the ID/Type selectors have permissions granted to the
 user in the form of actions and visibility (via `output_fields`). Each of these
 is detailed in the subsections below.
 
-### Actions
+## Actions
 
 Actions convey the ability to perform some action against a resource or
 collection. Many of these are common CRUD actions (`create`, `read`, `update`,
@@ -22,7 +22,7 @@ making a connection to that target, and `auth-method` resources have an
 part these are straightforward, however there are a couple of special cases to
 know.
 
-#### Subactions
+### Subactions
 
 Some subactions are supported. These actions have a format
 `top_level_action:subaction`, such as `read:self`. Being granted the top level
@@ -30,7 +30,7 @@ action infers being granted all subactions. Thus, if a grant conveys `read`, it
 also matches the API actions `read` and `read:self`. However, if a grant conveys
 `read:self`, it will match the API action `read:self` but will not match `read`.
 
-#### The `no-op` Action and Listing Visibility
+### The `no-op` action and listing visibility
 
 There is an action that can be granted called `no-op`. As might be apparent,
 `no-op` is not used for any real action in Boundary; the purpose of this action
@@ -45,7 +45,7 @@ Boundary (that is, granting access to `u_anon`).
 By granting the `no-op` action to users, they can see the resources in the
 output of a list command without needing other capability grants as well.
 
-### Anonymous User Restrictions
+## Anonymous user restrictions
 
 Starting in Boundary 0.9.0, there are severe limits placed on the actions
 allowed to be assigned to the anonymous user `u_anon`. This is meant to avoid
@@ -65,7 +65,7 @@ anonymous user. In the future this may change, but trying to limit this
 introduces other restrictions on reasonable administrative workflows so an
 acceptable set of tradeoffs would need to be figured out.
 
-### Output Fields
+## Output fields
 
 Grant strings can contain an `output_fields` field. This allows fine-grained
 control over visibility of data returned to users.

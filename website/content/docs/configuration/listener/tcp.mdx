@@ -1,12 +1,12 @@
 ---
 layout: docs
-page_title: TCP - Listeners - Configuration
+page_title: TCP - listeners - configuration
 description: |-
   The TCP listener configures Boundary to listen on the specified TCP address and
   port.
 ---
 
-# `tcp` Listener
+# `tcp` listener
 
 The TCP listener configures Boundary to listen on a TCP address/port.
 
@@ -37,7 +37,9 @@ There are two different config parameters that define headers: `custom_api_respo
 with `/v1/`. UI headers apply to all other paths. This allows for configuring headers specifically
 for serving content to a web browser, such as CSP headers.
 
-## `tcp` Listener Parameters
+## `tcp` listener parameters
+
+Refer to the following sections for `tcp` listener parameters.
 
 ### General
 
@@ -61,7 +63,7 @@ for serving content to a web browser, such as CSP headers.
   reading the entire request, including the body. This is specified using a
   label suffix like `"30s"` or `"1h"`.
 
-- `http_write_timeout` `string: "0")` - Specifies the maximum duration before
+- `http_write_timeout` `(string: "0")` - Specifies the maximum duration before
   timing out writes of the response and is reset whenever a new request's header
   is read. The default value of `"0"` means infinity. This is specified using a
   label suffix like `"30s"` or `"1h"`.
@@ -100,7 +102,7 @@ for serving content to a web browser, such as CSP headers.
   default, such as `"Content-Type"`, `"X-Requested-With"`, and
   `"Authorization"`.
 
-### `custom_api_response_headers` Parameters
+### `custom_api_response_headers` parameters
 
 - `default` `(key-value-map: {})` - A map of string header names to an array of
   string values. The default headers are set on all endpoints regardless of
@@ -121,7 +123,7 @@ for serving content to a web browser, such as CSP headers.
   is set when the http response status code is `"200"`. This overrides headers defined at
   the `default` and `collective status code` level.
 
-### `custom_ui_response_headers` Parameters
+### `custom_ui_response_headers` parameters
 
 - `default` `(key-value-map: {})` - A map of string header names to an array of
   string values. The default headers are set on all endpoints regardless of
@@ -145,7 +147,7 @@ for serving content to a web browser, such as CSP headers.
 ### TLS
 
 ~> `tls` parameters are valid for `api` and `ops` listeners. `cluster`
-and `proxy` connections use their own ephemeral TLS stacks. For more 
+and `proxy` connections use their own ephemeral TLS stacks. For more
 information, see [the connections security concepts
 page](/boundary/docs/concepts/security/connections-tls).
 
@@ -215,15 +217,17 @@ page](/boundary/docs/concepts/security/connections-tls).
   there is no X-Forwarded-For header or it is empty, the client address will be
   used as-is, rather than the client connection rejected.
 
-### `telemetry` Parameters
+### `telemetry` parameters
 
 - `unauthenticated_metrics_access` `(string: "false")` - If set to true, allows
   unauthenticated access to the `/v1/sys/metrics` endpoint.
 !-->
 
-## `tcp` Listener Examples
+## `tcp` listener examples
 
-### Configuring TLS
+Refer to the following sections for examples of `tcp` listeners.
+
+### Configure TLS
 
 This example shows enabling a TLS listener.
 
@@ -235,7 +239,7 @@ listener "tcp" {
 }
 ```
 
-### Configuring custom http response headers
+### Configure custom http response headers
 
 This example shows configuring custom http response headers. Operators can configure
 `"custom_api_response_headers"` and `"custom_ui_response_headers"` sub-stanzas in the listener stanza to
@@ -321,7 +325,7 @@ listener "tcp" {
 }
 ```
 
-### Listening on Multiple Interfaces
+### Listen on mulitple interfaces
 
 This example shows Boundary listening on a private interface, as well as localhost.
 

@@ -5,7 +5,7 @@ description: |-
   An introduction to the filtering syntax used in Boundary.
 ---
 
-# Filtering
+# Filter expressions
 
 Filter expressions can be used by various parts of Boundary to provide useful
 functionality. This page describes the overall syntax; see the sub-pages for
@@ -15,13 +15,13 @@ including examples.
 Each filter expression has matching operators composed with selectors and
 values.
 
-## Creating Expressions
+## Create expressions
 
 A single expression is a matching operator with a selector and value. They are
 written in plain text format, and Boolean logic and parenthesization are
 supported. In general whitespace is ignored, except within literal strings.
 
-### Matching Operators
+### Matching operators
 
 All matching operators use a selector or value to choose what data should be
 matched. Each endpoint that supports filtering accepts a potentially different
@@ -71,7 +71,7 @@ When quoting strings, they may either be enclosed in double quotes or backticks.
 When enclosed in backticks they are treated as raw strings and escape sequences
 such as `\n` will not be expanded.
 
-## Connecting Expressions
+## Connect expressions
 
 There are several methods for connecting expressions, including
 
@@ -107,7 +107,7 @@ the following two expressions would be equivalent.
 ( <Expression 1> and (not <Expression 2> )) or <Expression 3>
 ```
 
-### Performance
+## Performance
 
 Filters are executed on the controllers and therefore will consume some amount
 of CPU time on the controller.

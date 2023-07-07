@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Permission Grant Formats
+page_title: Permission grant formats
 description: |-
-  Permission Grant Formats
+  Permission grant formats
 ---
 
-## Permission Grant Formats
+# Permission grant formats
 
 Because of the aforementioned properties of the permissions model, grants are
 relatively simple. All grants take one of four forms. These examples use the
@@ -17,7 +17,7 @@ array `output_fields` value.
 in all of them. It is also valid in each case to omit `actions` and specify
 _only_ `output_fields`.
 
-### ID Only
+## ID only
 
 This is the simplest form: for a given specific resource, allow these actions.
 Example:
@@ -29,7 +29,7 @@ to specify `create` or `list` as actions in this format, as this format
 explicitly identifies a resource, whereas those actions operate exclusively on
 collections.
 
-### Type Only
+## Type only
 
 For a given type, allow these actions. Example:
 
@@ -58,7 +58,7 @@ method. To specify actions against those, you must also specify to which
 specific containing resource you want the grants to apply. This can be done with
 the pinned format shown below.
 
-### Pinned ID
+## Pinned ID
 
 This form "pins" actions to a non-top-level type within a specific ID. It's
 easiest to explain with an example:
@@ -70,18 +70,18 @@ the scope, but _only the host sets belonging to host catalog hcst_1234567890_.
 Pinning is essentially a way to use top-level resources to create mini
 permission boundaries for their subordinate resources.
 
-### Wildcard ID
+## Wildcards
 
 Various wildcard possibilities are allowed:
 
-#### Wildcard ID
+### Wildcard ID
 
 When just the ID is `*`, it matches all IDs of the given type. This can be used
 with both top-level resource types and not. Example:
 
 `id=*;type=host-set;actions=create,read,update,set-hosts`
 
-#### Wildcard Type
+### Wildcard type
 
 For non-top-level resources with pinned IDs, the `type` can be a wildcard:
 
@@ -91,7 +91,7 @@ This would allow `create`, `read`, and `update` actions for all types of
 subordinate resources (in this case host sets and hosts) underneath the host
 catalog with ID `hcst_1234567890`.
 
-#### Wildcard ID and Type
+### Wildcard ID and type
 
 If ID and type are both a wildcard, the grant is essentially a catch-all that
 will match any resource of any type within the scope and allow the given
@@ -99,7 +99,7 @@ actions.
 
 `id=*;type=*;actions=read,list`
 
-#### Wildcard ID, Type, and Actions
+### Wildcard ID, type, and actions
 
 Finally, ID, type, and actions can all be wildcards:
 
@@ -107,7 +107,7 @@ Finally, ID, type, and actions can all be wildcards:
 
 Such a grant is essentially a full administrator grant for a scope.
 
-### Templates
+## Templates
 
 A few template possibilities exist, which will at grant evaluation time
 substitute the given value into the ID field of the grant string:

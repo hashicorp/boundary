@@ -1,6 +1,6 @@
 ---
 layout: docs
-page_title: Connect to Target
+page_title: Connect to target
 description: |-
   Connecting to your first target
 ---
@@ -52,7 +52,7 @@ The dev-mode default target allows you to make as many connections as you want
 within the authorized session. When you are finished making connections, simply
 `Ctrl-C/Command-C` the `boundary connect` process to shut down the session.
 
-### Using Connect Helpers
+### Use connect helpers
 
 Boundary includes connect helpers that automatically accept host SSH key prompts
 for you. These are written as `boundary connect <subcommand>`.
@@ -85,7 +85,7 @@ specify a username other than your currently logged-in user. This ensures that
 regardless of your `-style` choice, the username is properly passed to the
 executed client, and you don't need to figure out the syntax yourself.
 
-## Selecting Targets
+## Select targets
 
 When using `boundary connect` you must identify the target used for connecting.
 Convention in this documentation is to use the target ID because it refers to a
@@ -106,7 +106,7 @@ Here is an SSH example in dev-mode:
 $ boundary connect ssh -target-name "Generated target" -target-scope-name "Generated project scope"
 ```
 
-## Built-In vs. Exec
+## Built-in vs. exec
 
 Boundary comes with built-in wrappers for popular layer 7 connection protocols,
 such as:
@@ -201,7 +201,7 @@ correct available binary (as WSL must use `.exe` when invoking Windows binaries)
 $ boundary connect ssh -style putty -exec putty.exe -target-id ttcp_eTcZMueUYv
 ```
 
-## Connect using Desktop Client
+## Connect using the desktop client
 
 While using the desktop client, choose the target and connect to retrieve local
 proxy details.
@@ -223,7 +223,7 @@ proxy details.
 
 Refer to the [Connect to your First Target](/boundary/tutorials/hcp-getting-started/hcp-getting-started-connect) tutorial for steps on how to create a host catalog, host set, and a target in Boundary.
 
-## Next Steps
+## Next steps
 
 Refer to our [basic administration
 workflows](/boundary/tutorials/hcp-administration) tutorial series
