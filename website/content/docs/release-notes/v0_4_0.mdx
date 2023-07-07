@@ -11,7 +11,7 @@ The release notes below contain information about new functionality available in
 
 Lastly, for instructions on how to upgrade an existing Boundary deployment to v0.4.0, please review Boundary’s [general upgrade guide](/boundary/tutorials/oss-configuration/upgrade-version).
 
-## Boundary v0.4.0 Highlights
+## Boundary v0.4.0 highlights
 
 **Session Credential Brokering:** Boundary 0.4, adds a Vault integration for the brokering of [Vault](https://www.vaultproject.io/) secrets to Boundary clients (both command line and desktop clients) for use
 in Boundary sessions. Brokering of Vault secrets is the foundation of Boundary’s larger credential-management story for seamless single sign-on to infrastructure targets. This feature introduces new Boundary resources - [credential stores](/boundary/docs/concepts/domain-model/credential-stores), [credential libraries](/boundary/docs/concepts/domain-model/credential-libraries), and [credentials](/boundary/docs/concepts/domain-model/credentials) -
@@ -21,6 +21,6 @@ to support binding credentials with user sessions, as well as surfacing those cr
 
 **Session Security Improvements:** Boundary workers will now close any existing proxy connections they're handling when they cannot make a status request to the worker. The timeout for this behavior is currenly 15 seconds.
 
-## What's Changed
+## What's changed
 
 For more detailed information of all changes since 0.3.0, please refer to the [Changelog](https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md)

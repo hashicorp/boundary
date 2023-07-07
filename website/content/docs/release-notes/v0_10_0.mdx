@@ -13,7 +13,7 @@ To learn about what Boundary consists of, we highly recommend you start at the [
 
 Lastly, for instructions on how to upgrade an existing Boundary deployment to v0.10.0, please review Boundary's [general upgrade guide](/boundary/tutorials/oss-configuration/upgrade-version).
 
-## Boundary v0.10.0 Highlights
+## Boundary v0.10.0 highlights
 
 **Credential Management of SSH Keys:** Boundary 0.10 includes enhancements to credential management, including added support for management of SSH private keys.
 
@@ -27,10 +27,8 @@ project scope to resources such as group members and principals that reside in o
 **SSH Credential Injection via Password and Public Key Authentication:** HCP Boundary now supports SSH Credential Injection, an active method of injecting credentials into an
 established connection, so that credentials are never exposed to users. [Learn more here](/boundary/tutorials/hcp-administration/hcp-ssh-cred-injection).
 
+## What's changed
 
-
-
-## What's Changed
 * `ssh` Target Type With Credential Injection (HCP Boundary only): Boundary has
   gained a new `ssh` target type. Using this type, username/password or SSH
   private key credentials can be sourced from `vault` credential libraries or
