@@ -17,7 +17,7 @@ Boundary's API is also described via OpenAPI v2; the version corresponding to an
 
 Boundary's current API version is 1; all API paths begin with `/v1/`.
 
-## Status Codes
+## Status codes
 
 - `2XX`: Boundary returns a code between `200` and `299` on success. Generally this is `200`, but implementations should be prepared to accept any `2XX` status code as indicating success. If a call returns a `2XX` code that is not `200`, it will follow well-understood semantics for those status codes. (Starting with Boundary 0.2.1, `delete` actions return `204` on success.)
 - `400`: Boundary returns `400` when a command cannot be completed due to invalid user input, except for a properly-formatted identifier that does not map to an existing resource, which will return a `404` as discussed below.
@@ -27,7 +27,7 @@ Boundary's current API version is 1; all API paths begin with `/v1/`.
 - `405`: Boundary returns a `405` to indicate that the method (HTTP verb or custom action) is not implemented for the given resource.
 - `500`: Boundary returns `500` if an error occurred that is not (directly) tied to invalid user input. If a `500` is generated, information about the error will be logged to Boundary's server log but is not generally provided to the client.
 
-## Path Layout
+## Path layout
 
 Boundary follows a predictable path layout. There are two fundamental types of URL paths, each supporting a different set of operations.
 

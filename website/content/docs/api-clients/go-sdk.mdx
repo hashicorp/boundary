@@ -22,7 +22,7 @@ authenticating to Boundary:
 
 We'll cover how to authenticate to Boundary via both of these workflows.
 
-### Auth Method
+### Auth method
 
 This is the most common way for a client to authenticate to Boundary. To demonstrate this, we'll
 use the [authmethods](https://github.com/hashicorp/boundary/tree/main/api/authmethods) library to generate
@@ -129,7 +129,7 @@ if err != nil {
 client.SetToken(fmt.Sprint(authenticationResult.Attributes["token"]))
 ```
 
-### Recovery KMS Workflow
+### Recovery KMS workflow
 
 The recovery KMS workflow allows you to use a valid [KMS
 configuration](/boundary/docs/configuration/kms) to authenticate and authorize calls
