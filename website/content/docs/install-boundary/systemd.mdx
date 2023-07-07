@@ -1,15 +1,15 @@
 ---
 layout: docs
-page_title: Systemd Installation
+page_title: systemd Installation
 description: |-
-  How to install Boundary under Systemd on Linux
+  How to install Boundary under systemd on Linux
 ---
 
-# Installing Boundary under Systemd
+# Install Boundary under systemd
 
 This section covers how to install Boundary under the [systemd](https://systemd.io/) init system on modern Linux distributions. In this section, we'll cover an example of breaking out the controller and worker servers onto separate instances, though you can opt to run both on a single server.
 
-## Filesystem Configuration
+## Filesystem configuration
 
 `TYPE` below can be either `worker` or `controller` if you want to run them independently, e.g. for high availability. If you want to run combined nodes, modify as desired.
 
@@ -19,11 +19,11 @@ This section covers how to install Boundary under the [systemd](https://systemd.
 
 3. `/etc/systemd/system/boundary-${TYPE}.service`: Systemd unit file for the Boundary service.
 
-## User & Group Configuration
+## User and group configuration
 
 We recommend running Boundary as a non-root user and using this user to manage the Boundary process running under systemd. The example init files here do exactly that. Our example install script below creates a user and group on Ubuntu or Debian-like systems.
 
-## Systemd Unit file
+## systemd unit file
 
 ```
 [Unit]
@@ -41,7 +41,7 @@ CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
 WantedBy=multi-user.target
 ```
 
-## Systemd All-in-One Installation Script
+## systemd all-in-one installation script
 
 Here's a simple install script that creates the `boundary` group and user, installs the
 systemd unit file, and enables it at startup:

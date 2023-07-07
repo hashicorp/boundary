@@ -1,11 +1,11 @@
 ---
 layout: docs
-page_title: Domain Model - Managed Groups
+page_title: Domain model - managed groups
 description: |-
   The anatomy of a Boundary managed group
 ---
 
-# Managed Groups
+# Managed groups
 
 A managed group is a resource that represents a collection of [accounts][]. The
 collection is formed by evaluating account information defined by the [auth
@@ -23,7 +23,7 @@ All managed group types have the following configurable attributes:
 
 - `description` - (optional)
 
-### OIDC Managed Group Information and Attributes
+### OIDC managed group information and attributes
 
 Membership in OIDC managed groups is evaluated when the auth method is used for
 authentication, based on information contained within the OIDC ID token and the
@@ -41,7 +41,7 @@ OIDC managed groups have the following additional attributes:
 [filtering concepts]: /boundary/docs/concepts/filtering
 [oidc managed groups filtering]: /boundary/docs/concepts/filtering/oidc-managed-groups
 
-### LDAP Managed Group Information and Attributes <sup>Beta</sup>
+### LDAP managed group information and attributes <sup>Beta</sup>
 
 Membership in LDAP managed groups is evaluated when the auth method is used for
 authentication, based on information contained within the LDAP server. Every
@@ -51,7 +51,7 @@ LDAP managed groups have the following additional attributes:
 - `group-names` - (required)
   A list of group names.
 
-## Referenced By
+## Referenced by
 
 - [Accounts][]
 - [Auth Method][]
@@ -60,7 +60,7 @@ LDAP managed groups have the following additional attributes:
 [auth method]: /boundary/docs/concepts/domain-model/auth-methods
 [roles]: /boundary/docs/concepts/domain-model/roles
 
-## Service API Docs
+## Service API docs
 
 The following services are relevant to this resource:
 

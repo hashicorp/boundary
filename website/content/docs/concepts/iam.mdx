@@ -1,11 +1,12 @@
 ---
 layout: docs
-page_title: Identity and Access Management (IAM)
+page_title: Identity and access management (IAM)
 description: |-
-  Identity and Access Management in Boundary
+  Identity and access management in Boundary
 ---
 
 # Identity and access management (IAM)
+
 ## IAM components
 There are 6 key components to Boundary's identity and access management system: **Scopes**, **Auth Methods**, **Accounts**, **Users**, **Groups**, and **Roles**.
 
@@ -41,18 +42,19 @@ method's identity provider to provide up-to-date information.
 can be contained by any scope, and the permissions can be applied to the same scope or any child scope.
 
 ## Access management
-### Configuring users - username/password
+
+### Configure users - username/password
 There are 3 steps to adding new users to Boundary using the password auth method:
 1. Choose the **scope** and the **auth method** that the user will use to authenticate to Boundary. If the desired auth method does not exist, you must create a new one.
 2. After the auth method is selected, you can create an **account** under the auth method.
 3. In the same scope, create a new **user**, and then attach the new account to the new user. The user is now able to authenticate to Boundary.
 
-### Configuring users - OIDC/LDAP
+### Configure users - OIDC/LDAP
 [OIDC](/boundary/tutorials/identity-management/oidc-auth) and LDAP accounts and users are auto-vivified (automatically generated) in Boundary in the same scope
 as the auth method. The accounts and users are only created once the user authenticates to Boundary for the first time. The same applies to OIDC/LDAP
 [managed groups](/boundary/tutorials/identity-management/oidc-idp-groups).
 
-### Granting permissions
+### Grant permissions
 When setting up access controls for a user, it is important to first consider which scope(s) the user needs access to. **Each scope requires its own set of roles**,
 giving users permission to perform actions through grants strings.
 It is recommended to add the user to a group, and then add the group to the role(s), instead of adding the user directly to the role(s). This way, you can manage multiple users at the same time, and it is easier to
@@ -71,7 +73,7 @@ Projects.
 
    - `id=*;type=*;actions=*`
 
-### Boundary Viewer
+### Boundary viewer
 1. **Each** of the 7 scopes requires a role (ex. “viewer”)
 2. Each role needs to have the user/group added as a principal
 3. Each role needs to have the grants of
