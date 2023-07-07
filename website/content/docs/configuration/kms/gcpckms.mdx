@@ -1,6 +1,6 @@
 ---
 layout: docs
-page_title: GCP Cloud KMS - KMSs - Configuration
+page_title: GCP Cloud KMS - KMSs - configuration
 description: >-
   The GCP Cloud KMS configures Boundary to use GCP Cloud KMS for key management.
 ---
@@ -11,7 +11,7 @@ The GCP Cloud KMS configures Boundary to use GCP Cloud KMS for key management.
 
 The GCP Cloud KMS seal is activated by the presence of a `seal "gcpckms"` block in Boundary's configuration file.
 
-## `gcpckms` Example
+## `gcpckms` example
 
 This example shows configuring GCP Cloud KMS through the Boundary
 configuration file by providing all the required values:
@@ -27,7 +27,7 @@ kms "gcpckms" {
 }
 ```
 
-## `gcpckms` Parameters
+## `gcpckms` parameters
 
 These parameters apply to the `kms` stanza in the Boundary configuration file:
 
@@ -53,7 +53,7 @@ These parameters apply to the `kms` stanza in the Boundary configuration file:
   encryption and decryption. May also be specified by the `GCPCKMS_WRAPPER_CRYPTO_KEY`
   environment variable.
 
-## Authentication &amp; Permissions
+## Authentication &amp; permissions
 
 Authentication-related values must be provided, either as environment
 variables or as configuration parameters.

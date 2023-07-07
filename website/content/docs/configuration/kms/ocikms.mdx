@@ -1,6 +1,6 @@
 ---
 layout: docs
-page_title: OCI KMS - KMSs - Configuration
+page_title: OCI KMS - KMSs - configuration
 description: |-
   The OCI KMS configures Boundary to use OCI KMS for key management.
 ---
@@ -11,7 +11,7 @@ The OCI KMS configures Boundary to use OCI KMS for key management.
 
 The OCI KMS is activated by the presence of a `kms "ocikms"` block in Boundary's configuration file.
 
-## `ocikms` Example
+## `ocikms` example
 
 This example shows configuring the OCI KMS through the Boundary configuration file
 by providing all the required values:
@@ -26,7 +26,7 @@ kms "ocikms" {
 }
 ```
 
-## `ocikms` Parameters
+## `ocikms` parameters
 
 These parameters apply to the `kms` stanza in the Boundary configuration file:
 
@@ -91,7 +91,7 @@ admit dynamic-group <dynamic-group-name> of tenancy tenantA to use keys in compa
 
 ```
 
-## `ocikms` Rotate OCI KMS Key
+## `ocikms` rotate OCI KMS key
 
 For the [OCI KMS key rotation feature][oci-kms-rotation], OCI KMS will create a new version of key internally. This process is independent from Boundary, and boundary still uses the same `key_id` without any interruption.
 

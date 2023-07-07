@@ -2,7 +2,7 @@
 layout: docs
 page_title: AWS KMS - KMSs - Configuration
 description: |-
-  The AWS KMS configures Boundary to use AWS KMS for key management. 
+  The AWS KMS configures Boundary to use AWS KMS for key management.
   mechanism.
 ---
 
@@ -10,7 +10,7 @@ description: |-
 
 The AWS KMS configures Boundary to use AWS KMS for key management.
 
-## `awskms` Example
+## `awskms` example
 
 This example shows configuring AWS KMS through the Boundary configuration file
 by providing all the required values:
@@ -26,7 +26,7 @@ kms "awskms" {
 }
 ```
 
-## `awskms` Parameters
+## `awskms` parameters
 
 These parameters apply to the `kms` stanza in the Boundary configuration file:
 
@@ -106,7 +106,7 @@ Boundary needs the following permissions on the KMS key:
 These can be granted via IAM permissions on the principal that Boundary uses, on
 the KMS key policy for the KMS key, or via KMS Grants on the key.
 
-## Key Rotation
+## Key rotation
 
 This KMS supports rotating the master keys defined in AWS KMS
 [doc](https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html). Both automatic
