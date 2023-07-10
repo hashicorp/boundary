@@ -40,7 +40,8 @@ create function update_sessions_pending_daily_snapshot()
     daily_range (day) as (
         select bucket
           from generate_series(
-                  coalesce(date_trunc('day', (select min(session_pending_time) from wh_session_accumulating_fact)),
+                  coalesce(date_trunc('day', (select max(snapshot_date) from sessions_pending_daily_snapshot) + '1 day'::interval),
+                           date_trunc('day', (select min(session_pending_time) from wh_session_accumulating_fact)),
                            date_trunc('day', now()) - '1 day'::interval),
                   now() - '1 day'::interval,
                   '1 day'::interval
