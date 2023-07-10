@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.13.1 (2023/07/10)
 
 ### New and Improved
 
@@ -31,7 +31,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/3361) and
   [PR](https://github.com/hashicorp/boundary/pull/3363))  
 
-## 0.13 (2023/06/13)
+## 0.13.0 (2023/06/13)
 
 ### New and Improved
 
