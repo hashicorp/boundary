@@ -4,9 +4,9 @@
 begin;
 
 -- replaces function from 70/01_hcp_billing_daily.up.sql
-drop function update_sessions_pending_daily_snapshot;
+  drop function update_sessions_pending_daily_snapshot;
 
-create function update_sessions_pending_daily_snapshot()
+  create function update_sessions_pending_daily_snapshot()
     returns setof sessions_pending_daily_snapshot
   as $$
   begin
