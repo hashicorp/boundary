@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: MPL-2.0
 
 begin;
-  select plan(27);
+  select plan(38);
 
   select has_function('update_sessions_pending_daily_snapshot');
   select volatility_is('update_sessions_pending_daily_snapshot', 'volatile');
@@ -103,7 +103,7 @@ begin;
   insert into test_table_data (snapshot_date, sessions_pending_count) select yesterday()::date, 1;
   select results_eq('call_update_sessions_pending_daily_snapshot', 'select_test_table_data');
 
-  -- upgrade install, sessions are for today, yesterday, and 3 days ago
+  -- upgrade install, sessions are for today, yesterday, and 2 days ago
   select reset_data();
   select test_add_session(yesterday() - '1 day'::interval);
   select test_add_session(yesterday());
@@ -112,5 +112,14 @@ begin;
   insert into test_table_data (snapshot_date, sessions_pending_count) select yesterday()::date, 1;
   select results_eq('call_update_sessions_pending_daily_snapshot', 'select_test_table_data');
 
+  -- upgrade install, add session for 2 days ago, do not add a session for yesterday
+  -- add row to real sessions_pending table, as update_sessions_pending_daily_snapshot fn needs to read from it if missing data from yesterday
+  select reset_data();
+  select test_add_session(yesterday() - '1 day'::interval);
+  insert into sessions_pending_daily_snapshot (snapshot_date, sessions_pending_count) select yesterday()::date - '1 day'::interval, 1;
+  insert into test_table_data (snapshot_date, sessions_pending_count) select yesterday()::date, 0;
+  select results_eq('call_update_sessions_pending_daily_snapshot', 'select_test_table_data');
+
+  select reset_data();
   select * from finish();
 rollback;

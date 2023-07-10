@@ -58,7 +58,6 @@ create function update_sessions_pending_daily_snapshot()
         (snapshot_date, sessions_pending_count)
       select day::date, sessions_pending_count
         from missing
-          on conflict (snapshot_date) do nothing
       returning *
     )
       select day, sessions_pending_count
