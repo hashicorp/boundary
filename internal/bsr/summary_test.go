@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package bsr_test
+package bsr
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/bsr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,27 +20,27 @@ func TestRegisterSummaryAllocFunc_TestProtocol(t *testing.T) {
 
 	cases := []struct {
 		name            string
-		p               bsr.Protocol
-		c               bsr.ContainerType
-		cf              bsr.SummaryAllocFunc
-		wantP           bsr.Protocol
-		want            *bsr.BaseSummary
+		p               Protocol
+		c               ContainerType
+		cf              SummaryAllocFunc
+		wantP           Protocol
+		want            *BaseSummary
 		wantRegisterErr error
 		wantGetAllocErr bool
 	}{
 		{
 			"valid summary",
-			bsr.Protocol("TEST_PROTOCOL"),
-			bsr.ChannelContainer,
-			func(ctx context.Context) bsr.Summary {
-				return &bsr.BaseSummary{
+			Protocol("TEST_PROTOCOL"),
+			ChannelContainer,
+			func(ctx context.Context) Summary {
+				return &BaseSummary{
 					Id:        "TEST_ID",
 					StartTime: startTime,
 					EndTime:   endTime,
 				}
 			},
-			bsr.Protocol("TEST_PROTOCOL"),
-			&bsr.BaseSummary{
+			Protocol("TEST_PROTOCOL"),
+			&BaseSummary{
 				Id:        "TEST_ID",
 				StartTime: startTime,
 				EndTime:   endTime,
@@ -51,21 +50,21 @@ func TestRegisterSummaryAllocFunc_TestProtocol(t *testing.T) {
 		},
 		{
 			"already-registered-container",
-			bsr.Protocol("TEST_PROTOCOL"),
-			bsr.ChannelContainer,
+			Protocol("TEST_PROTOCOL"),
+			ChannelContainer,
 			nil,
-			bsr.Protocol("TEST_PROTOCOL"),
-			&bsr.BaseSummary{},
+			Protocol("TEST_PROTOCOL"),
+			&BaseSummary{},
 			errors.New("bsr.RegisterSummaryAllocFunc: TEST_PROTOCOL protocol with channel container: type already registered"),
 			false,
 		},
 		{
 			"invalid-protocol",
-			bsr.Protocol("TEST_PROTOCOL_2"),
-			bsr.ChannelContainer,
+			Protocol("TEST_PROTOCOL_2"),
+			ChannelContainer,
 			nil,
-			bsr.Protocol("TEST_INVALID_PROTOCOL"),
-			&bsr.BaseSummary{},
+			Protocol("TEST_INVALID_PROTOCOL"),
+			&BaseSummary{},
 			nil,
 			true,
 		},
@@ -73,14 +72,14 @@ func TestRegisterSummaryAllocFunc_TestProtocol(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := bsr.RegisterSummaryAllocFunc(tc.p, tc.c, tc.cf)
+			err := RegisterSummaryAllocFunc(tc.p, tc.c, tc.cf)
 			if tc.wantRegisterErr != nil {
 				assert.EqualError(t, tc.wantRegisterErr, err.Error())
 				return
 			}
 			require.NoError(t, err)
 
-			af, ok := bsr.SummaryAllocFuncs.Get(tc.wantP, tc.c)
+			af, ok := summaryAllocFuncs.Get(tc.wantP, tc.c)
 			if tc.wantGetAllocErr {
 				require.False(t, ok, "found invalid summary")
 				return
@@ -99,8 +98,8 @@ func TestRegisterSummaryAllocFunc_TestProtocol(t *testing.T) {
 func TestRegisterSummaryAllocFunc_TestChannel(t *testing.T) {
 	ctx := context.Background()
 
-	protocol := bsr.Protocol("TEST_CHANNEL_PROTOCOL")
-	chs := &bsr.BaseChannelSummary{
+	protocol := Protocol("TEST_CHANNEL_PROTOCOL")
+	chs := &BaseChannelSummary{
 		Id:                    "TEST_ID",
 		ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID",
 		ChannelType:           "CONTAINER",
@@ -110,16 +109,16 @@ func TestRegisterSummaryAllocFunc_TestChannel(t *testing.T) {
 		BytesDown:             200,
 	}
 
-	err := bsr.RegisterSummaryAllocFunc(protocol, bsr.ChannelContainer, func(ctx context.Context) bsr.Summary {
+	err := RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
 		return chs
 	})
 	require.NoError(t, err)
 
-	af, ok := bsr.SummaryAllocFuncs.Get(protocol, bsr.ChannelContainer)
+	af, ok := summaryAllocFuncs.Get(protocol, ChannelContainer)
 	require.True(t, ok, "could not get channel summary")
 
 	cf := af(ctx)
-	got := cf.(*bsr.BaseChannelSummary)
+	got := cf.(*BaseChannelSummary)
 
 	assert.Equal(t, chs.GetId(), got.GetId())
 	assert.Equal(t, chs.GetConnectionRecordingId(), got.GetConnectionRecordingId())
@@ -133,8 +132,8 @@ func TestRegisterSummaryAllocFunc_TestChannel(t *testing.T) {
 func TestRegisterSummaryAllocFunc_TestConnection(t *testing.T) {
 	ctx := context.Background()
 
-	protocol := bsr.Protocol("TEST_CONNECTION_PROTOCOL")
-	chs := &bsr.BaseConnectionSummary{
+	protocol := Protocol("TEST_CONNECTION_PROTOCOL")
+	chs := &BaseConnectionSummary{
 		Id:           "TEST_ID",
 		ChannelCount: 1,
 		StartTime:    time.Now(),
@@ -143,16 +142,16 @@ func TestRegisterSummaryAllocFunc_TestConnection(t *testing.T) {
 		BytesDown:    200,
 	}
 
-	err := bsr.RegisterSummaryAllocFunc(protocol, bsr.ChannelContainer, func(ctx context.Context) bsr.Summary {
+	err := RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
 		return chs
 	})
 	require.NoError(t, err)
 
-	af, ok := bsr.SummaryAllocFuncs.Get(protocol, bsr.ChannelContainer)
+	af, ok := summaryAllocFuncs.Get(protocol, ChannelContainer)
 	require.True(t, ok, "could not get connection summary")
 
 	cf := af(ctx)
-	got := cf.(*bsr.BaseConnectionSummary)
+	got := cf.(*BaseConnectionSummary)
 
 	assert.Equal(t, chs.GetId(), got.GetId())
 	assert.Equal(t, chs.GetChannelCount(), got.GetChannelCount())
@@ -165,24 +164,24 @@ func TestRegisterSummaryAllocFunc_TestConnection(t *testing.T) {
 func TestRegisterSummaryAllocFunc_TestSession(t *testing.T) {
 	ctx := context.Background()
 
-	protocol := bsr.Protocol("TEST_SESSION_PROTOCOL")
-	chs := &bsr.BaseSessionSummary{
+	protocol := Protocol("TEST_SESSION_PROTOCOL")
+	chs := &BaseSessionSummary{
 		Id:              "TEST_ID",
 		ConnectionCount: 1,
 		StartTime:       time.Now(),
 		EndTime:         time.Now(),
 	}
 
-	err := bsr.RegisterSummaryAllocFunc(protocol, bsr.ChannelContainer, func(ctx context.Context) bsr.Summary {
+	err := RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
 		return chs
 	})
 	require.NoError(t, err)
 
-	af, ok := bsr.SummaryAllocFuncs.Get(protocol, bsr.ChannelContainer)
+	af, ok := summaryAllocFuncs.Get(protocol, ChannelContainer)
 	require.True(t, ok, "could not get session summary")
 
 	cf := af(ctx)
-	got := cf.(*bsr.BaseSessionSummary)
+	got := cf.(*BaseSessionSummary)
 
 	assert.Equal(t, chs.GetId(), got.GetId())
 	assert.Equal(t, chs.GetConnectionCount(), got.GetConnectionCount())

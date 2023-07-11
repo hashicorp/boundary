@@ -11,9 +11,11 @@ import (
 // SummaryAllocFunc is a function that returns a summary type
 type SummaryAllocFunc func(ctx context.Context) Summary
 
-type SummaryAllocFuncRegistry map[Protocol]map[ContainerType]SummaryAllocFunc
+// summaryAllocFuncRegistry mappings of protocols and container type
+// for each SummaryAllocFunc
+type summaryAllocFuncRegistry map[Protocol]map[ContainerType]SummaryAllocFunc
 
-func (r SummaryAllocFuncRegistry) Get(p Protocol, c ContainerType) (SummaryAllocFunc, bool) {
+func (r summaryAllocFuncRegistry) Get(p Protocol, c ContainerType) (SummaryAllocFunc, bool) {
 	protocol, ok := r[p]
 	if !ok {
 		return nil, false
@@ -22,7 +24,7 @@ func (r SummaryAllocFuncRegistry) Get(p Protocol, c ContainerType) (SummaryAlloc
 	return af, ok
 }
 
-var SummaryAllocFuncs SummaryAllocFuncRegistry
+var summaryAllocFuncs summaryAllocFuncRegistry
 
 // RegisterSummaryAllocFunc registers a SummaryAllocFunc for the given Protocol.
 // A given Protocol and Container can only have one SummaryAllocFunc function
@@ -30,11 +32,11 @@ var SummaryAllocFuncs SummaryAllocFuncRegistry
 func RegisterSummaryAllocFunc(p Protocol, c ContainerType, af SummaryAllocFunc) error {
 	const op = "bsr.RegisterSummaryAllocFunc"
 
-	if SummaryAllocFuncs == nil {
-		SummaryAllocFuncs = make(map[Protocol]map[ContainerType]SummaryAllocFunc)
+	if summaryAllocFuncs == nil {
+		summaryAllocFuncs = make(map[Protocol]map[ContainerType]SummaryAllocFunc)
 	}
 
-	protocol, ok := SummaryAllocFuncs[p]
+	protocol, ok := summaryAllocFuncs[p]
 	if !ok {
 		protocol = make(map[ContainerType]SummaryAllocFunc)
 	}
@@ -44,6 +46,6 @@ func RegisterSummaryAllocFunc(p Protocol, c ContainerType, af SummaryAllocFunc) 
 		return fmt.Errorf("%s: %s protocol with %s container: %w", op, p, c, ErrAlreadyRegistered)
 	}
 	protocol[c] = af
-	SummaryAllocFuncs[p] = protocol
+	summaryAllocFuncs[p] = protocol
 	return nil
 }

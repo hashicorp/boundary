@@ -16,26 +16,27 @@ type BaseSummary struct {
 	Errors    error
 }
 
+// Summary contains statistics for a container
 type Summary interface {
-	// GetId returns the Id of the summary file.
+	// GetId returns the Id of the container.
 	GetId() string
-	// GetStartTime returns the start time using a monotonic clock of the summary.
+	// GetStartTime returns the start time using a monotonic clock.
 	GetStartTime() time.Time
-	// GetEndTime returns the end time using a monotonic clock of the summary.
+	// GetEndTime returns the end time using a monotonic clock.
 	GetEndTime() time.Time
 }
 
-// GetId returns the Id of the summary file.
+// GetId returns the Id of the container.
 func (b *BaseSummary) GetId() string {
 	return b.Id
 }
 
-// GetStartTime returns the start time using a monotonic clock of the summary.
+// GetStartTime returns the start time using a monotonic clock.
 func (b *BaseSummary) GetStartTime() time.Time {
 	return b.StartTime
 }
 
-// GetEndTime returns the end time using a monotonic clock of the summary.
+// GetEndTime returns the end time using a monotonic clock.
 func (b *BaseSummary) GetEndTime() time.Time {
 	return b.EndTime
 }
@@ -50,6 +51,7 @@ type BaseSessionSummary struct {
 	Errors          error
 }
 
+// SessionSummary contains statistics for a session container
 type SessionSummary interface {
 	Summary
 	// GetConnectionCount returns the connection count.
@@ -60,17 +62,17 @@ func AllocSessionSummary(_ context.Context) Summary {
 	return &BaseSessionSummary{}
 }
 
-// GetId returns the Id of the summary file.
+// GetId returns the Id of the container.
 func (b *BaseSessionSummary) GetId() string {
 	return b.Id
 }
 
-// GetStartTime returns the start time using a monotonic clock of the summary.
+// GetStartTime returns the start time using a monotonic clock.
 func (b *BaseSessionSummary) GetStartTime() time.Time {
 	return b.StartTime
 }
 
-// GetEndTime returns the end time using a monotonic clock of the summary.
+// GetEndTime returns the end time using a monotonic clock.
 func (b *BaseSessionSummary) GetEndTime() time.Time {
 	return b.EndTime
 }
@@ -92,6 +94,7 @@ type BaseChannelSummary struct {
 	ChannelType           string
 }
 
+// ChannelSummary contains statistics for a channel container
 type ChannelSummary interface {
 	Summary
 	// GetConnectionRecordingId returns the connection recording id of the channel.
@@ -108,22 +111,22 @@ func AllocChannelSummary(_ context.Context) Summary {
 	return &BaseChannelSummary{}
 }
 
-// GetId returns the Id of the summary file.
+// GetId returns the Id of the container.
 func (b *BaseChannelSummary) GetId() string {
 	return b.Id
 }
 
-// GetId returns the Id of the summary file.
+// GetId returns the Id of the container.
 func (b *BaseChannelSummary) GetConnectionRecordingId() string {
 	return b.ConnectionRecordingId
 }
 
-// GetStartTime returns the start time using a monotonic clock of the summary.
+// GetStartTime returns the start time using a monotonic clock.
 func (b *BaseChannelSummary) GetStartTime() time.Time {
 	return b.StartTime
 }
 
-// GetEndTime returns the end time using a monotonic clock of the summary.
+// GetEndTime returns the end time using a monotonic clock.
 func (b *BaseChannelSummary) GetEndTime() time.Time {
 	return b.EndTime
 }
@@ -155,6 +158,7 @@ type BaseConnectionSummary struct {
 	Errors       error
 }
 
+// ConnectionSummary contains statistics for a connection container
 type ConnectionSummary interface {
 	Summary
 	// GetChannelCount returns the channel count.
@@ -174,17 +178,17 @@ func (b *BaseConnectionSummary) GetChannelCount() uint64 {
 	return b.ChannelCount
 }
 
-// GetId returns the Id of the summary file.
+// GetId returns the Id of the container.
 func (b *BaseConnectionSummary) GetId() string {
 	return b.Id
 }
 
-// GetStartTime returns the start time using a monotonic clock of the summary.
+// GetStartTime returns the start time using a monotonic clock.
 func (b *BaseConnectionSummary) GetStartTime() time.Time {
 	return b.StartTime
 }
 
-// GetEndTime returns the end time using a monotonic clock of the summary.
+// GetEndTime returns the end time using a monotonic clock.
 func (b *BaseConnectionSummary) GetEndTime() time.Time {
 	return b.EndTime
 }

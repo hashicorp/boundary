@@ -110,22 +110,22 @@ type ChannelSummary struct {
 	OpenFailure           *OpenChannelError `json:",omitempty"`
 }
 
-// GetId returns the Id of the summary file.
+// GetId returns the Id of the container.
 func (c *ChannelSummary) GetId() string {
 	return c.ChannelSummary.Id
 }
 
-// GetId returns the Id of the summary file.
+// GetId returns the Id of the container.
 func (c *ChannelSummary) GetConnectionRecordingId() string {
 	return c.ChannelSummary.ConnectionRecordingId
 }
 
-// GetStartTime returns the start time using a monotonic clock of the summary.
+// GetStartTime returns the start time using a monotonic clock.
 func (c *ChannelSummary) GetStartTime() time.Time {
 	return c.ChannelSummary.StartTime
 }
 
-// GetEndTime returns the end time using a monotonic clock of the summary.
+// GetEndTime returns the end time using a monotonic clock.
 func (c *ChannelSummary) GetEndTime() time.Time {
 	return c.ChannelSummary.EndTime
 }

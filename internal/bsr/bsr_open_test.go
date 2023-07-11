@@ -5,6 +5,8 @@ package bsr
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
@@ -79,7 +81,7 @@ func TestPopulateMeta(t *testing.T) {
 func TestOpenBSRMethods(t *testing.T) {
 	ctx := context.Background()
 
-	protocol := Protocol("Test")
+	protocol := Protocol("TEST")
 
 	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
 	require.NoError(t, err)
@@ -322,6 +324,146 @@ func TestOpenChannel(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.NotNil(t, got)
+		})
+	}
+}
+
+func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
+	ctx := context.Background()
+	f := &fstest.MemFS{}
+
+	cases := []struct {
+		name                string
+		protocol            Protocol
+		sessionAllocFunc    SessionSummary
+		connectionAllocFunc ConnectionSummary
+		channelAllocFunc    ChannelSummary
+		expectedError       string
+		wantSessionErr      bool
+		wantConnErr         bool
+		wantChanErr         bool
+	}{
+		{
+			name:                "without-session-allocFunc",
+			protocol:            Protocol("TEST_SESSION_PROTOCOL"),
+			sessionAllocFunc:    nil,
+			connectionAllocFunc: &BaseConnectionSummary{Id: "TEST_CONNECTION_ID", ChannelCount: 1},
+			channelAllocFunc:    &BaseChannelSummary{Id: "TEST_CHANNEL_ID", ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID"},
+			expectedError:       "bsr.OpenSession: failed to get summary type",
+			wantSessionErr:      true,
+		},
+		{
+			name:                "without-connection-allocFunc",
+			protocol:            Protocol("TEST_CONNECTION_PROTOCOL"),
+			sessionAllocFunc:    &BaseSessionSummary{Id: "TEST_SESSION_ID", ConnectionCount: 1},
+			connectionAllocFunc: nil,
+			channelAllocFunc:    &BaseChannelSummary{Id: "TEST_CHANNEL_ID", ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID"},
+			expectedError:       "bsr.(Session).OpenConnection: failed to get summary type",
+			wantConnErr:         true,
+		},
+		{
+			name:                "without-channel-allocFunc",
+			protocol:            Protocol("TEST_CHANNEL_PROTOCOL"),
+			sessionAllocFunc:    &BaseSessionSummary{Id: "TEST_SESSION_ID", ConnectionCount: 1},
+			connectionAllocFunc: &BaseConnectionSummary{Id: "TEST_CONNECTION_ID", ChannelCount: 1},
+			expectedError:       "bsr.OpenChannel: failed to get summary type",
+			wantChanErr:         true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.sessionAllocFunc != nil {
+				err := RegisterSummaryAllocFunc(tc.protocol, SessionContainer, func(ctx context.Context) Summary {
+					return tc.sessionAllocFunc
+				})
+				require.NoError(t, err)
+			}
+			if tc.connectionAllocFunc != nil {
+				err := RegisterSummaryAllocFunc(tc.protocol, ConnectionContainer, func(ctx context.Context) Summary {
+					return tc.connectionAllocFunc
+				})
+				require.NoError(t, err)
+			}
+			if tc.channelAllocFunc != nil {
+				err := RegisterSummaryAllocFunc(tc.protocol, ChannelContainer, func(ctx context.Context) Summary {
+					return tc.channelAllocFunc
+				})
+				require.NoError(t, err)
+			}
+
+			keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
+			require.NoError(t, err)
+
+			generatedId := rand.Intn(100)
+			sessionId := fmt.Sprintf("s_%v", generatedId)
+			srm := &SessionRecordingMeta{
+				Id:       fmt.Sprintf("sr_%v", generatedId),
+				Protocol: tc.protocol,
+			}
+			sessionMeta := TestSessionMeta(sessionId)
+
+			sesh, err := NewSession(ctx, srm, sessionMeta, f, keys, WithSupportsMultiplex(true))
+			require.NoError(t, err)
+			require.NotNil(t, sesh)
+
+			connectionId := "connection"
+			connMeta := &ConnectionRecordingMeta{Id: connectionId}
+			conn, err := sesh.NewConnection(ctx, connMeta)
+			require.NoError(t, err)
+			require.NotNil(t, conn)
+
+			channelId := "channel"
+			chanMeta := &ChannelRecordingMeta{
+				Id:   channelId,
+				Type: "chan",
+			}
+			ch, err := conn.NewChannel(ctx, chanMeta)
+			require.NoError(t, err)
+			require.NotNil(t, ch)
+
+			sesh.EncodeSummary(ctx, tc.sessionAllocFunc)
+			conn.EncodeSummary(ctx, tc.connectionAllocFunc)
+			ch.EncodeSummary(ctx, tc.channelAllocFunc)
+
+			ch.Close(ctx)
+			conn.Close(ctx)
+			sesh.Close(ctx)
+
+			keyFn := func(w kms.WrappedKeys) (kms.UnwrappedKeys, error) {
+				u := kms.UnwrappedKeys{
+					BsrKey:  keys.BsrKey,
+					PrivKey: keys.PrivKey,
+				}
+				return u, nil
+			}
+
+			opSesh, err := OpenSession(ctx, srm.Id, f, keyFn)
+			if tc.wantSessionErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tc.expectedError)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, opSesh)
+
+			opConn, err := opSesh.OpenConnection(ctx, connectionId)
+			if tc.wantConnErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tc.expectedError)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, opConn)
+
+			opChan, err := opConn.OpenChannel(ctx, channelId)
+			if tc.wantChanErr {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tc.expectedError)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, opChan)
 		})
 	}
 }

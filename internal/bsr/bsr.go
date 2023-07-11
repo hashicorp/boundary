@@ -41,7 +41,7 @@ type Session struct {
 
 	Meta        *SessionRecordingMeta
 	SessionMeta *SessionMeta
-	summary     SessionSummary
+	Summary     SessionSummary
 }
 
 // NewSession creates a Session container for a given session id.
@@ -216,7 +216,7 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 		return nil, err
 	}
 
-	af, ok := SummaryAllocFuncs.Get(meta.Protocol, SessionContainer)
+	af, ok := summaryAllocFuncs.Get(meta.Protocol, SessionContainer)
 	if !ok {
 		return nil, fmt.Errorf("%s: failed to get summary type", op)
 	}
@@ -231,7 +231,7 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 		container:   cc,
 		Meta:        meta,
 		SessionMeta: sessionMeta,
-		summary:     sessionSummary,
+		Summary:     sessionSummary,
 	}
 
 	return session, nil
@@ -250,7 +250,7 @@ type Connection struct {
 
 	Meta    *ConnectionRecordingMeta
 	session *Session
-	summary ConnectionSummary
+	Summary ConnectionSummary
 }
 
 // NewConnection creates a Connection container for a given connection id.
@@ -330,7 +330,7 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connectio
 		return nil, err
 	}
 
-	af, ok := SummaryAllocFuncs.Get(s.Meta.Protocol, ConnectionContainer)
+	af, ok := summaryAllocFuncs.Get(s.Meta.Protocol, ConnectionContainer)
 	if !ok {
 		return nil, fmt.Errorf("%s: failed to get summary type", op)
 	}
@@ -345,7 +345,7 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connectio
 		container: cc,
 		Meta:      sm,
 		session:   s,
-		summary:   connectionSummary,
+		Summary:   connectionSummary,
 	}
 
 	return connection, nil
@@ -431,7 +431,7 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 		return nil, err
 	}
 
-	af, ok := SummaryAllocFuncs.Get(c.session.Meta.Protocol, ChannelContainer)
+	af, ok := summaryAllocFuncs.Get(c.session.Meta.Protocol, ChannelContainer)
 	if !ok {
 		return nil, fmt.Errorf("%s: failed to get summary type", op)
 	}
@@ -445,7 +445,7 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 	channel := &Channel{
 		container: cc,
 		Meta:      sm,
-		summary:   channelSummary,
+		Summary:   channelSummary,
 	}
 
 	return channel, nil
@@ -506,7 +506,7 @@ type Channel struct {
 	*container
 
 	Meta    *ChannelRecordingMeta
-	summary ChannelSummary
+	Summary ChannelSummary
 }
 
 // Close closes the Channel container.
