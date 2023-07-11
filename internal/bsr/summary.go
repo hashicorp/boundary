@@ -41,7 +41,7 @@ func RegisterSummaryAllocFunc(p Protocol, c ContainerType, af SummaryAllocFunc) 
 
 	_, ok = protocol[c]
 	if ok {
-		return fmt.Errorf("%s: %s %s: %w", op, p, c, ErrAlreadyRegistered)
+		return fmt.Errorf("%s: %s protocol with %s container: %w", op, p, c, ErrAlreadyRegistered)
 	}
 	protocol[c] = af
 	SummaryAllocFuncs[p] = protocol

@@ -50,13 +50,13 @@ func TestRegisterSummaryAllocFunc_TestProtocol(t *testing.T) {
 			false,
 		},
 		{
-			"already-registered-protocol",
+			"already-registered-container",
 			bsr.Protocol("TEST_PROTOCOL"),
 			bsr.ChannelContainer,
 			nil,
 			bsr.Protocol("TEST_PROTOCOL"),
 			&bsr.BaseSummary{},
-			errors.New("bsr.RegisterSummaryAllocFunc: TEST_PROTOCOL channel: type already registered"),
+			errors.New("bsr.RegisterSummaryAllocFunc: TEST_PROTOCOL protocol with channel container: type already registered"),
 			false,
 		},
 		{
