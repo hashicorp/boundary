@@ -6,7 +6,6 @@ package bsr
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
@@ -335,6 +334,7 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 	cases := []struct {
 		name                string
 		protocol            Protocol
+		sId                 int
 		sessionAllocFunc    SessionSummary
 		connectionAllocFunc ConnectionSummary
 		channelAllocFunc    ChannelSummary
@@ -346,6 +346,7 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 		{
 			name:                "without-session-allocFunc",
 			protocol:            Protocol("TEST_BSR_OPEN_SESSION_PROTOCOL"),
+			sId:                 12345,
 			sessionAllocFunc:    nil,
 			connectionAllocFunc: &BaseConnectionSummary{Id: "TEST_CONNECTION_ID", ChannelCount: 1},
 			channelAllocFunc:    &BaseChannelSummary{Id: "TEST_CHANNEL_ID", ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID"},
@@ -355,6 +356,7 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 		{
 			name:                "without-connection-allocFunc",
 			protocol:            Protocol("TEST_BSR_OPEN_CONNECTION_PROTOCOL"),
+			sId:                 45678,
 			sessionAllocFunc:    &BaseSessionSummary{Id: "TEST_SESSION_ID", ConnectionCount: 1},
 			connectionAllocFunc: nil,
 			channelAllocFunc:    &BaseChannelSummary{Id: "TEST_CHANNEL_ID", ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID"},
@@ -364,6 +366,7 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 		{
 			name:                "without-channel-allocFunc",
 			protocol:            Protocol("TEST_BSR_OPEN_CHANNEL_PROTOCOL"),
+			sId:                 23588,
 			sessionAllocFunc:    &BaseSessionSummary{Id: "TEST_SESSION_ID", ConnectionCount: 1},
 			connectionAllocFunc: &BaseConnectionSummary{Id: "TEST_CONNECTION_ID", ChannelCount: 1},
 			expectedError:       "bsr.OpenChannel: failed to get summary type",
@@ -395,10 +398,9 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 			keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
 			require.NoError(t, err)
 
-			generatedId := rand.Intn(100)
-			sessionId := fmt.Sprintf("s_%v", generatedId)
+			sessionId := fmt.Sprintf("s_%v", tc.sId)
 			srm := &SessionRecordingMeta{
-				Id:       fmt.Sprintf("sr_%v", generatedId),
+				Id:       fmt.Sprintf("sr_%v", tc.sId),
 				Protocol: tc.protocol,
 			}
 			sessionMeta := TestSessionMeta(sessionId)
