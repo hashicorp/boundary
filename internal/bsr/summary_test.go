@@ -142,12 +142,12 @@ func TestRegisterSummaryAllocFunc_TestConnection(t *testing.T) {
 		BytesDown:    200,
 	}
 
-	err := RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
+	err := RegisterSummaryAllocFunc(protocol, ConnectionContainer, func(ctx context.Context) Summary {
 		return chs
 	})
 	require.NoError(t, err)
 
-	af, ok := summaryAllocFuncs.get(protocol, ChannelContainer)
+	af, ok := summaryAllocFuncs.get(protocol, ConnectionContainer)
 	require.True(t, ok, "could not get connection summary")
 
 	cf := af(ctx)
@@ -172,12 +172,12 @@ func TestRegisterSummaryAllocFunc_TestSession(t *testing.T) {
 		EndTime:         time.Now(),
 	}
 
-	err := RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
+	err := RegisterSummaryAllocFunc(protocol, SessionContainer, func(ctx context.Context) Summary {
 		return chs
 	})
 	require.NoError(t, err)
 
-	af, ok := summaryAllocFuncs.get(protocol, ChannelContainer)
+	af, ok := summaryAllocFuncs.get(protocol, SessionContainer)
 	require.True(t, ok, "could not get session summary")
 
 	cf := af(ctx)
