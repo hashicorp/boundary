@@ -100,6 +100,35 @@ specify a username other than your currently logged-in user. This ensures that
 regardless of your `-style` choice, the username is properly passed to the
 executed client, and you don't need to figure out the syntax yourself.
 
+#### RDP connect helper
+
+The RDP helper will attempt to determine which RDP client to use
+depending on your operating system. On Windows, it will use `mstsc.exe`. On
+Mac, it will use `open`. Other operating systems are not currently supported.
+
+```shell-session
+$ boundary connect rdp -target-id ttcp_eTcZMueUYv
+```
+
+This will execute the RDP client and proxy the connection through
+Boundary.
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689201572-boundary-rdp-connect.mov"
+  />
+</video>
+
+The RDP helper also supports a `-style` flag to allow you to override the
+default RDP client. Recognized styles are `mstsc` and `open`.
+
 ## Select targets
 
 When using `boundary connect` you must identify the target used for connecting.
