@@ -15,11 +15,11 @@ repository {
   plugin "semgrep" {
     use_git_ignore = true
     exclude = ["testing", "website"]
-    config = ["p/r2c-security-audit"]
-    exclude_rule = ["generic.html-templates.security.unquoted-attribute-var.unquoted-attribute-var"]
+    config = ["p/gosec"]
+    # exclude_rule = ["generic.html-templates.security.unquoted-attribute-var.unquoted-attribute-var"]
   }
   
-  # plugin "codeql" {
-  #  languages = ["go"]
-  # }
+  plugin "codeql" {
+    languages = ["go"]
+   }
 }
