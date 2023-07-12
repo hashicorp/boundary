@@ -57,6 +57,8 @@ within the authorized session. When you are finished making connections, simply
 Boundary includes connect helpers that automatically accept host SSH key prompts
 for you. These are written as `boundary connect <subcommand>`.
 
+#### SSH connect helper
+
 In the following example, the helper will automatically execute `ssh` for you,
 filling in the local address and port. An expected host ID is set to avoid
 warnings on future connections when a different port is allocated automatically.
@@ -65,6 +67,19 @@ A host key must still be accepted upon first connect.
 ```shell-session
 $ boundary connect ssh -target-id ttcp_eTcZMueUYv
 ```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689253766-boundary-ssh-connect.mov"
+  />
+</video>
 
 If you want to pass additional flags to the SSH client, add them to the command
 line separated by a double-dash; anything after the double dash will be passed
