@@ -41,6 +41,10 @@ method's identity provider to provide up-to-date information.
 [permissions](/boundary/docs/concepts/security/permissions) which are granted to any principal (user or group) from any scope. Roles
 can be contained by any scope, and the permissions can be applied to the same scope or any child scope.
 
+<Tip>
+Roles can only be applied to a single scope at a time in Boundary, meaning each scope requires its own role.
+</Tip>
+
 ## Access management
 
 ### Configure users - username/password
@@ -50,9 +54,9 @@ There are 3 steps to adding new users to Boundary using the password auth method
 3. In the same scope, create a new **user**, and then attach the new account to the new user. The user is now able to authenticate to Boundary.
 
 ### Configure users - OIDC/LDAP
-[OIDC](/boundary/tutorials/identity-management/oidc-auth) and LDAP accounts and users are auto-vivified (automatically generated) in Boundary in the same scope
-as the auth method. The accounts and users are only created once the user authenticates to Boundary for the first time. The same applies to OIDC/LDAP
-[managed groups](/boundary/tutorials/identity-management/oidc-idp-groups).
+With the [OIDC](/boundary/tutorials/identity-management/oidc-auth) and LDAP auth methods, Boundary uses data from the identity provider to automatically generate accounts and users in the same scope
+as the auth method. The accounts and users are only created once the user authenticates to Boundary for the first time. 
+The same applies to OIDC/LDAP [managed groups](/boundary/tutorials/identity-management/oidc-idp-groups).
 
 ### Grant permissions
 When setting up access controls for a user, it is important to first consider which scope(s) the user needs access to. **Each scope requires its own set of roles**,
