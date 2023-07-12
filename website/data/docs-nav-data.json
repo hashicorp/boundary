@@ -504,8 +504,29 @@
         "path": "api-clients/api"
       },
       {
-        "title": "CLI",
-        "path": "api-clients/cli"
+        "title": "Commands (CLI)",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "api-clients/commands"
+          },
+          {
+            "title": "accounts",
+            "path": "api-clients/commands/accounts"
+          },
+          {
+            "title": "auth-methods",
+            "path": "api-clients/commands/auth-methods"
+          },
+          {
+            "title": "auth-tokens",
+            "path": "api-clients/commands/auth-tokens"
+          },
+          {
+            "title": "connect",
+            "path": "api-clients/commands/connect"
+          }
+        ]
       },
       {
         "title": "Go SDK",
