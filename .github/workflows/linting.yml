@@ -1,5 +1,9 @@
 name: "golangci-lint"
-on: ["pull_request"]
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'website/**'
 
 permissions:
   contents: read

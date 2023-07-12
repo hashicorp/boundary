@@ -1,9 +1,11 @@
 name: test-sql
 
 on:
-  - workflow_dispatch
-  - push
-  - workflow_call
+  push:
+    paths-ignore:
+      - 'website/**'
+  workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read
