@@ -546,7 +546,40 @@
           },
           {
             "title": "accounts",
-            "path": "api-clients/commands/accounts"
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/accounts"
+              },
+              {
+                "title": "change-password",
+                "path": "api-clients/commands/accounts/change-password"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/accounts/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/accounts/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/accounts/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/accounts/read"
+              },
+              {
+                "title": "set-password",
+                "path": "api-clients/commands/accounts/set-password"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/accounts/update"
+              }
+            ]
           },
           {
             "title": "auth-methods",
