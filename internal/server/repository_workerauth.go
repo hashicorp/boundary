@@ -245,9 +245,10 @@ func StoreNodeInformationTx(ctx context.Context, reader db.Reader, writer db.Wri
 		}
 	}
 
-	// If the incoming workerAuth matches what we have stored, then we can return as it's already stored
+	// If the incoming workerAuth matches what we have stored, return a duplicate record error
+	// This will cause nodeenrollment to lookup and return the already stored nodeInfo
 	if nodeAuth.compare(nodeAuthLookup) {
-		return nil
+		return new(types.DuplicateRecordError)
 	}
 
 	if err := writer.Create(ctx, &nodeAuth); err != nil {
