@@ -328,6 +328,15 @@ If set, after connecting to the worker, the given binary will be executed. This 
 an absolute path. If all command flags are followed by " -- " (space, two hyphens, space), then any arguments after
 that will be sent directly to the binary.
 
+### `BOUNDARY_CONNECT_LISTEN_ADDR`
+
+If set, the CLI will attempt to bind its listening address to the given value, which must be an IP address. If it cannot,
+the command will error. If not set, defaults to the most common IPv4 loopback address (127.0.0.1).
+
+### `BOUNDARY_CONNECT_LISTEN_PORT`
+
+If set, the CLI will attempt to bind its listening port to the given value. If it cannot, the command will error.
+
 ### `BOUNDARY_CONNECT_TARGET_SCOPE_ID`
 
 Target scope ID, if authorizing the session via scope parameters and target name. Mutually exclusive with `BOUNDARY_CONNECT_TARGET_SCOPE_NAME`
