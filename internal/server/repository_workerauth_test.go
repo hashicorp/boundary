@@ -633,7 +633,7 @@ func TestStoreNodeInformationTx_Twice(t *testing.T) {
 			kms:                        kmsCache,
 			node:                       testNodeInfoFn(),
 			wantSecondStoreErr:         true,
-			wantSecondStoreErrContains: "duplicate NodeInformation record found",
+			wantSecondStoreErrContains: "duplicate record found",
 		},
 		{
 			// This test will fail because on the second store we change the incoming NodeInformation
