@@ -557,7 +557,32 @@
           },
           {
             "title": "connect",
-            "path": "api-clients/commands/connect"
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/connect"
+              },
+              {
+                "title": "http",
+                "path": "api-clients/commands/connect/http"
+              },
+              {
+                "title": "kube",
+                "path": "api-clients/commands/connect/kube"
+              },
+              {
+                "title": "postgres",
+                "path": "api-clients/commands/connect/postgres"
+              },
+              {
+                "title": "rdp",
+                "path": "api-clients/commands/connect/rdp"
+              },
+              {
+                "title": "ssh",
+                "path": "api-clients/commands/connect/ssh"
+              }
+            ]
           }
         ]
       },
