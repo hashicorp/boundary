@@ -45,21 +45,31 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 
 	// Set up a host set
 	newHostSetId1 := boundary.CreateNewAwsHostSetCli(t, ctx, newHostCatalogId, c.AwsHostSetFilter1)
-	actualHostSetCount1 := boundary.WaitForHostsInHostSetCli(t, ctx, newHostSetId1)
 	var targetIps1 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps1), &targetIps1)
 	expectedHostSetCount1 := len(targetIps1)
 	require.NoError(t, err)
-	assert.Equal(t, expectedHostSetCount1, actualHostSetCount1, "Numbers of hosts in host set did not match expected amount")
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, newHostSetId1, expectedHostSetCount1)
 
 	// Set up another host set
 	newHostSetId2 := boundary.CreateNewAwsHostSetCli(t, ctx, newHostCatalogId, c.AwsHostSetFilter2)
-	actualHostSetCount2 := boundary.WaitForHostsInHostSetCli(t, ctx, newHostSetId2)
 	var targetIps2 []string
 	err = json.Unmarshal([]byte(c.AwsHostSetIps2), &targetIps2)
-	expectedHostSetCount2 := len(targetIps2)
 	require.NoError(t, err)
-	assert.Equal(t, expectedHostSetCount2, actualHostSetCount2, "Numbers of hosts in host set did not match expected amount")
+	expectedHostSetCount2 := len(targetIps2)
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, newHostSetId2, expectedHostSetCount2)
+
+	// Update host set with a different filter
+	t.Log("Updating host set 2 with host set 1's filter...")
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs(
+			"host-sets", "update", "plugin",
+			"-id", newHostSetId2,
+			"-attr", fmt.Sprintf("filters=%s", c.AwsHostSetFilter1),
+		),
+	)
+	require.NoError(t, output.Err, string(output.Stderr))
+	boundary.WaitForNumberOfHostsInHostSetCli(t, ctx, newHostSetId2, expectedHostSetCount1)
 
 	// Get list of all hosts from host catalog
 	t.Logf("Looking for items in the host catalog...")
@@ -102,7 +112,7 @@ func TestCliCreateAwsDynamicHostCatalogWithHostSet(t *testing.T) {
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId1)
 
 	// Connect to target
-	output := e2e.RunCommand(ctx, "boundary",
+	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
 			"-target-id", newTargetId,
