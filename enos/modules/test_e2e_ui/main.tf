@@ -77,11 +77,6 @@ variable "vault_root_token" {
   type        = string
   default     = ""
 }
-variable "vault_port" {
-  description = "External Port that vault instance is attached to (outside of docker network)"
-  type        = string
-  default     = "8200"
-}
 variable "aws_access_key_id" {
   description = "Access Key Id for AWS IAM user used in dynamic host catalogs"
   type        = string
@@ -120,7 +115,7 @@ variable "aws_host_set_ips2" {
 
 locals {
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
-  vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:${var.vault_port}" : ""
+  vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:8200" : ""
   vault_addr_internal      = var.vault_addr_internal != "" ? "http://${var.vault_addr_internal}:8200" : local.vault_addr
   aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
   aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)

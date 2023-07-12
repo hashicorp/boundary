@@ -32,18 +32,18 @@ func TestListAnonymousRecursing(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(am)
 
-	// We expect to see all four with the normal token
+	// We expect to see all three with the normal token
 	l, err := amClient.List(tc.Context(), scope.Global.String(), amapi.WithRecursive(true))
 	require.NoError(err)
 	require.NotNil(l)
 	require.Len(l.GetItems(), 4)
 
-	// Originally we also expect to see all four as anon user
+	// Originally we also expect to see all three as anon user
 	amClient.ApiClient().SetToken("")
 	l, err = amClient.List(tc.Context(), scope.Global.String(), amapi.WithRecursive(true))
 	require.NoError(err)
 	require.NotNil(l)
-	require.Len(l.GetItems(), 4)
+	require.Len(l.GetItems(), 3)
 
 	// Find the global roles and delete them
 	rl, err := rolesClient.List(tc.Context(), scope.Global.String())

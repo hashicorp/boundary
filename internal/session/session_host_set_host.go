@@ -3,11 +3,7 @@
 
 package session
 
-import (
-	"context"
-
-	"github.com/hashicorp/boundary/internal/errors"
-)
+import "github.com/hashicorp/boundary/internal/errors"
 
 const (
 	defaultSessionHostSetHostTableName = "session_host_set_host"
@@ -26,16 +22,16 @@ type SessionHostSetHost struct {
 }
 
 // NewSessionHostSetHost creates a new in memory session to host set & host association.
-func NewSessionHostSetHost(ctx context.Context, sessionId, hostSetId, hostId string) (*SessionHostSetHost, error) {
+func NewSessionHostSetHost(sessionId, hostSetId, hostId string) (*SessionHostSetHost, error) {
 	const op = "session.NewSessionHostSetHost"
 	if sessionId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if hostSetId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host set id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing host set id")
 	}
 	if hostId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing host id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing host id")
 	}
 	shs := &SessionHostSetHost{
 		SessionId: sessionId,

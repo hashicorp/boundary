@@ -4,8 +4,6 @@
 package handlers
 
 import (
-	"context"
-
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/filter"
 	"github.com/hashicorp/go-bexpr"
@@ -23,14 +21,14 @@ type Filter struct {
 
 // NewFilter returns a Filter which can be evluated against.  An empty string paramter indicates
 // all items passed to it should succeed.
-func NewFilter(ctx context.Context, f string) (*Filter, error) {
+func NewFilter(f string) (*Filter, error) {
 	const op = "handlers.NewFilter"
 	if f == "" {
 		return &Filter{}, nil
 	}
 	e, err := bexpr.CreateEvaluator(f, bexpr.WithTagName("json"), bexpr.WithHookFn(filter.WellKnownTypeFilterHook))
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("couldn't build filter"), errors.WithCode(errors.InvalidParameter))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("couldn't build filter"), errors.WithCode(errors.InvalidParameter))
 	}
 	return &Filter{eval: e}, nil
 }

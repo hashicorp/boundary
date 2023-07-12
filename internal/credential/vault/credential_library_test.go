@@ -302,7 +302,7 @@ func TestCredentialLibrary_New(t *testing.T) {
 				assert.Failf("Unknown credential type", "%s", ct)
 			}
 
-			id, err := newCredentialLibraryId(ctx)
+			id, err := newCredentialLibraryId()
 			assert.NoError(err)
 
 			tt.want.PublicId = id

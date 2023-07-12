@@ -25,7 +25,7 @@ const (
 
 func newAuthMethodId(ctx context.Context) (string, error) {
 	const op = "oidc.newAuthMethodId"
-	id, err := db.NewPublicId(ctx, globals.OidcAuthMethodPrefix)
+	id, err := db.NewPublicId(globals.OidcAuthMethodPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
@@ -43,7 +43,7 @@ func newAccountId(ctx context.Context, authMethodId, issuer, sub string) (string
 	if sub == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing subject")
 	}
-	id, err := db.NewPublicId(ctx, globals.OidcAccountPrefix, db.WithPrngValues([]string{authMethodId, issuer, sub}))
+	id, err := db.NewPublicId(globals.OidcAccountPrefix, db.WithPrngValues([]string{authMethodId, issuer, sub}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
@@ -52,7 +52,7 @@ func newAccountId(ctx context.Context, authMethodId, issuer, sub string) (string
 
 func newManagedGroupId(ctx context.Context) (string, error) {
 	const op = "oidc.newManagedGroupId"
-	id, err := db.NewPublicId(ctx, globals.OidcManagedGroupPrefix)
+	id, err := db.NewPublicId(globals.OidcManagedGroupPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

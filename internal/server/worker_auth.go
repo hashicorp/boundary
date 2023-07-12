@@ -4,7 +4,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -49,21 +48,6 @@ func (w *WorkerAuth) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
-}
-
-func (w *WorkerAuth) compare(other *WorkerAuth) bool {
-	switch {
-	case w.WorkerId != other.WorkerId:
-		return false
-	case !bytes.Equal(w.WorkerEncryptionPubKey, other.WorkerEncryptionPubKey):
-		return false
-	case !bytes.Equal(w.WorkerSigningPubKey, other.WorkerSigningPubKey):
-		return false
-	case !bytes.Equal(w.Nonce, other.Nonce):
-		return false
-	default:
-		return true
-	}
 }
 
 // WorkerAuthSet is intended to store a set of WorkerAuth records

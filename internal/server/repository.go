@@ -4,7 +4,6 @@
 package server
 
 import (
-	"context"
 	"reflect"
 	"time"
 
@@ -30,16 +29,16 @@ type Repository struct {
 
 // NewRepository creates a new server Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "server.NewRepository"
 	if r == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
 
 	opts := GetOpts(opt...)

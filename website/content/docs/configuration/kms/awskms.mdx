@@ -31,7 +31,9 @@ kms "awskms" {
 These parameters apply to the `kms` stanza in the Boundary configuration file:
 
 - `purpose` - Purpose of this KMS, acceptable values are: `worker-auth`, `worker-auth-storage`,
-   `root`, `previous-root`, `recovery`, or `config`.
+   `root`, `previous-root`, `recovery`, `bsr`, or `config`.
+
+   To [enable session recording](/boundary/docs/configuration/session-recording/enable-session-recording), you must configure the `bsr` value for the `purpose`.
 
 - `region` `(string: "us-east-1")`: The AWS region where the encryption key
   lives. If not provided, may be populated from the `AWS_REGION` or

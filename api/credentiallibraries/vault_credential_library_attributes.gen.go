@@ -35,8 +35,8 @@ func AttributesMapToVaultCredentialLibraryAttributes(in map[string]interface{}) 
 }
 
 func (pt *CredentialLibrary) GetVaultCredentialLibraryAttributes() (*VaultCredentialLibraryAttributes, error) {
-	if pt.Type != "vault-generic" {
-		return nil, fmt.Errorf("asked to fetch %s-type attributes but credential-library is of type %s", "vault-generic", pt.Type)
+	if pt.Type != "vault" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but credential-library is of type %s", "vault", pt.Type)
 	}
 	return AttributesMapToVaultCredentialLibraryAttributes(pt.Attributes)
 }

@@ -13,6 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
       - name: Check workflow files
-        uses: docker://docker.mirror.hashicorp.services/rhysd/actionlint@sha256:3f24bf9d72ca67af6f9f8f3cc63b0e24621b57bf421cecfc452c3312e32b68cc # 1.6.24
+        uses: docker://docker.mirror.hashicorp.services/rhysd/actionlint@sha256:02ccb6d91e4cb4a7b21eb99d5274d257e81ae667688d730e89d7ea0d6d35db91
         with:
           args: -color -ignore SC2129 -ignore "'property \"download-path\" is not defined in object type'"

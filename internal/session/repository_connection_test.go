@@ -310,7 +310,7 @@ func TestRepository_DeleteConnection(t *testing.T) {
 			args: args{
 				connection: func() *Connection {
 					c := AllocConnection()
-					id, err := newConnectionId(ctx)
+					id, err := newConnectionId()
 					require.NoError(t, err)
 					c.PublicId = id
 					return &c
@@ -580,7 +580,7 @@ func TestUpdateBytesUpDown(t *testing.T) {
 	cws := make([]CloseWith, 0, len(conns))
 	for i := 0; i < len(conns); i++ {
 		conns[i].ClosedReason = closeReasons[rand.Intn(len(closeReasons))].String()
-		cr, err := convertToClosedReason(ctx, conns[i].ClosedReason)
+		cr, err := convertToClosedReason(conns[i].ClosedReason)
 		require.NoError(t, err)
 
 		cws = append(cws, CloseWith{

@@ -40,8 +40,8 @@ func AttributesMapToVaultSSHCertificateCredentialLibraryAttributes(in map[string
 }
 
 func (pt *CredentialLibrary) GetVaultSSHCertificateCredentialLibraryAttributes() (*VaultSSHCertificateCredentialLibraryAttributes, error) {
-	if pt.Type != "vault-ssh-certificate" {
-		return nil, fmt.Errorf("asked to fetch %s-type attributes but credential-library is of type %s", "vault-ssh-certificate", pt.Type)
+	if pt.Type != "vaultsshcertificate" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but credential-library is of type %s", "vaultsshcertificate", pt.Type)
 	}
 	return AttributesMapToVaultSSHCertificateCredentialLibraryAttributes(pt.Attributes)
 }

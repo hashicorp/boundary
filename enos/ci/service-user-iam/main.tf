@@ -218,13 +218,9 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "rds:ModifyDBSubnetGroup",
       "rds:RemoveTagsFromResource",
       "s3:ListAllMyBuckets",
-      "s3:CreateBucket*",
-      "s3:DeleteBucket*",
-      "s3:GetBucket*",
-      "s3:HeadBucket",
-      "s3:PutBucket*"
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
     ]
-
     resources = ["*"]
   }
 }
@@ -232,7 +228,6 @@ data "aws_iam_policy_document" "enos_policy_document" {
 
 data "aws_iam_policy_document" "aws_nuke_policy_document" {
   provider = aws.us_east_1
-
   statement {
     effect = "Allow"
     actions = [
@@ -252,12 +247,9 @@ data "aws_iam_policy_document" "aws_nuke_policy_document" {
       "iam:ListUsers",
       "iam:UntagUser",
       "servicequotas:ListServiceQuotas",
-      "s3:Head*",
-      "s3:List*",
-      "s3:Get*",
-      "s3:Delete*"
+      "s3:ListAllMyBuckets",
+      "s3:DeleteBucket",
     ]
-
     resources = ["*"]
   }
 }
@@ -271,45 +263,23 @@ resource "aws_iam_policy" "demo_user" {
 
 data "aws_iam_policy_document" "demo_user_policy_document" {
   statement {
-    sid = "BoundaryHostPlugin"
+    sid = "DemoUserEC2Permissions"
     actions = [
       "ec2:DescribeInstances*"
     ]
-
     resources = ["*"]
   }
-
   statement {
-    sid = "BoundarySessionS3OnlyMyAccount"
-    effect = "Allow"
-    actions = [
-      "s3:DeleteObject",
-      "s3:GetObject",
-      "s3:GetObjectAttributes",
-      "s3:PutObject",
-    ]
-
-    condition {
-      test = "StringEquals"
-      variable = "s3:ResourceAccount"
-      values = [data.aws_caller_identity.current.account_id]
-    }
-
-    resources = ["*"]
-  }
-
-  statement {
-    sid = "IAMAKRotate"
+    sid = "DemoUserIAMPermissions"
     actions = [
       "iam:CreateAccessKey",
       "iam:DeleteAccessKey",
       "iam:ListAccessKeys",
       "iam:UpdateAccessKey"
     ]
+    resources = ["arn:aws:iam::147451547303:user/&{aws:username}"]
 
-    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/&{aws:username}"]
   }
-
   statement {
     sid       = "ExplicitDeny"
     effect    = "Deny"
@@ -319,11 +289,7 @@ data "aws_iam_policy_document" "demo_user_policy_document" {
       "iam:CreateAccessKey",
       "iam:DeleteAccessKey",
       "iam:ListAccessKeys",
-      "iam:UpdateAccessKey",
-      "s3:DeleteObject",
-      "s3:GetObject",
-      "s3:GetObjectAttributes",
-      "s3:PutObject",
-     ]
+      "iam:UpdateAccessKey"
+    ]
   }
 }

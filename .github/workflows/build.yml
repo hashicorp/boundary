@@ -1,13 +1,9 @@
 name: build
 
 on:
-  push:
-    branches:
-      - '**'
-    tags-ignore:
-      - '**'
-  workflow_call:
-  workflow_dispatch:
+  - workflow_dispatch
+  - push
+  - workflow_call
 
 env:
   PKG_NAME: "boundary"
@@ -403,6 +399,7 @@ jobs:
     needs:
       - set-product-version
       - product-metadata
+      - build-linux
       - build-docker
     uses: ./.github/workflows/enos-run.yml
     with:

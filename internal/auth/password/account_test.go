@@ -4,7 +4,6 @@
 package password
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/auth/password/store"
@@ -102,7 +101,7 @@ func TestAccount_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAccount(context.Background(), tt.args.authMethodId, tt.args.opts...)
+			got, err := NewAccount(tt.args.authMethodId, tt.args.opts...)
 			if tt.wantErr {
 				assert.Error(err)
 				require.Nil(got)

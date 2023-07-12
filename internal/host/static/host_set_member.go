@@ -4,8 +4,6 @@
 package static
 
 import (
-	"context"
-
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 )
@@ -18,13 +16,13 @@ type HostSetMember struct {
 
 // NewHostSetMember creates a new in memory HostSetMember representing the
 // membership of hostId in hostSetId.
-func NewHostSetMember(ctx context.Context, hostSetId, hostId string, opt ...Option) (*HostSetMember, error) {
+func NewHostSetMember(hostSetId, hostId string, opt ...Option) (*HostSetMember, error) {
 	const op = "static.NewHostSetMember"
 	if hostSetId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no host set id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no host set id")
 	}
 	if hostId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no host id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no host id")
 	}
 	member := &HostSetMember{
 		HostSetMember: &store.HostSetMember{

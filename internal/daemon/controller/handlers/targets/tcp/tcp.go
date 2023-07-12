@@ -122,7 +122,6 @@ func init() {
 	var err error
 
 	if maskManager, err = handlers.NewMaskManager(
-		context.Background(),
 		handlers.MaskDestination{&tcpStore.Target{}, &store.TargetAddress{}},
 		handlers.MaskSource{&pb.Target{}, &pb.TcpTargetAttributes{}},
 	); err != nil {

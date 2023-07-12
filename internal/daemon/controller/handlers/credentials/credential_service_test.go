@@ -43,7 +43,6 @@ import (
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
 func TestList(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kkms := kms.TestKms(t, conn, wrapper)
@@ -54,14 +53,14 @@ func TestList(t *testing.T) {
 		return iamRepo, nil
 	}
 	staticRepoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kkms)
+		return static.NewRepository(context.Background(), rw, rw, kkms)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 	storeNoCreds := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
-	databaseWrapper, err := kkms.GetWrapper(ctx, prj.GetPublicId(), kms.KeyPurposeDatabase)
+	databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.GetPublicId(), kms.KeyPurposeDatabase)
 	require.NoError(t, err)
 
 	var wantCreds []*pb.Credential
@@ -69,7 +68,7 @@ func TestList(t *testing.T) {
 		user := fmt.Sprintf("user-%d", i)
 		pass := fmt.Sprintf("pass-%d", i)
 		c := static.TestUsernamePasswordCredential(t, conn, wrapper, user, pass, store.GetPublicId(), prj.GetPublicId())
-		hm, err := crypto.HmacSha256(ctx, []byte(pass), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
+		hm, err := crypto.HmacSha256(context.Background(), []byte(pass), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 		require.NoError(t, err)
 		wantCreds = append(wantCreds, &pb.Credential{
 			Id:                c.GetPublicId(),
@@ -89,7 +88,7 @@ func TestList(t *testing.T) {
 		})
 
 		spk := static.TestSshPrivateKeyCredential(t, conn, wrapper, user, static.TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId())
-		hm, err = crypto.HmacSha256(ctx, []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
+		hm, err = crypto.HmacSha256(context.Background(), []byte(static.TestSshPrivateKeyPem), databaseWrapper, []byte(store.GetPublicId()), nil)
 		require.NoError(t, err)
 		wantCreds = append(wantCreds, &pb.Credential{
 			Id:                spk.GetPublicId(),
@@ -112,7 +111,7 @@ func TestList(t *testing.T) {
 		assert.NoError(t, err)
 
 		credJson := static.TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj)
-		hm, err = crypto.HmacSha256(ctx, objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
+		hm, err = crypto.HmacSha256(context.Background(), objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
 		require.NoError(t, err)
 		wantCreds = append(wantCreds, &pb.Credential{
 			Id:                credJson.GetPublicId(),
@@ -176,7 +175,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(ctx, staticRepoFn, iamRepoFn)
+			s, err := NewService(staticRepoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new host set service.")
 
 			// Test non-anonymous listing
@@ -205,7 +204,6 @@ func TestList(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kkms := kms.TestKms(t, conn, wrapper)
@@ -224,7 +222,7 @@ func TestGet(t *testing.T) {
 	require.NoError(t, err)
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	s, err := NewService(ctx, staticRepoFn, iamRepoFn)
+	s, err := NewService(staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
@@ -402,7 +400,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -422,7 +419,7 @@ func TestDelete(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := static.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	s, err := NewService(ctx, staticRepoFn, iamRepoFn)
+	s, err := NewService(staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	upCred := static.TestUsernamePasswordCredential(t, conn, wrapper, "user", "pass", store.GetPublicId(), prj.GetPublicId())
@@ -480,7 +477,6 @@ func TestDelete(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kkms := kms.TestKms(t, conn, wrapper)
@@ -751,7 +747,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(ctx, repoFn, iamRepoFn)
+			s, err := NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Error when getting new credential store service.")
 
 			got, gErr := s.CreateCredential(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), tc.req)
@@ -777,13 +773,13 @@ func TestCreate(t *testing.T) {
 				assert.True(gotUpdateTime.AsTime().After(store.CreateTime.AsTime()), "New credential should have been updated after default credential store. Was updated %v, which is after %v", gotUpdateTime, store.CreateTime.AsTime())
 
 				// Calculate hmac
-				databaseWrapper, err := kkms.GetWrapper(ctx, prj.PublicId, kms.KeyPurposeDatabase)
+				databaseWrapper, err := kkms.GetWrapper(context.Background(), prj.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(err)
 
 				switch tc.req.Item.Type {
 				case credential.UsernamePasswordSubtype.String():
 					password := tc.req.GetItem().GetUsernamePasswordAttributes().GetPassword().GetValue()
-					hm, err := crypto.HmacSha256(ctx, []byte(password), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
+					hm, err := crypto.HmacSha256(context.Background(), []byte(password), databaseWrapper, []byte(store.GetPublicId()), nil, crypto.WithEd25519())
 					require.NoError(err)
 
 					// Validate attributes equal
@@ -794,7 +790,7 @@ func TestCreate(t *testing.T) {
 
 				case credential.SshPrivateKeySubtype.String():
 					pk := tc.req.GetItem().GetSshPrivateKeyAttributes().GetPrivateKey().GetValue()
-					hm, err := crypto.HmacSha256(ctx, []byte(pk), databaseWrapper, []byte(store.GetPublicId()), nil)
+					hm, err := crypto.HmacSha256(context.Background(), []byte(pk), databaseWrapper, []byte(store.GetPublicId()), nil)
 					require.NoError(err)
 
 					// Validate attributes equal
@@ -804,7 +800,7 @@ func TestCreate(t *testing.T) {
 					assert.Empty(got.GetItem().GetSshPrivateKeyAttributes().GetPrivateKey())
 
 					if pass := tc.req.GetItem().GetSshPrivateKeyAttributes().GetPrivateKeyPassphrase().GetValue(); pass != "" {
-						hm, err := crypto.HmacSha256(ctx, []byte(pass), databaseWrapper, []byte(store.GetPublicId()), nil)
+						hm, err := crypto.HmacSha256(context.Background(), []byte(pass), databaseWrapper, []byte(store.GetPublicId()), nil)
 						require.NoError(err)
 
 						assert.Equal(base64.RawURLEncoding.EncodeToString([]byte(hm)), got.GetItem().GetSshPrivateKeyAttributes().GetPrivateKeyPassphraseHmac())
@@ -812,7 +808,7 @@ func TestCreate(t *testing.T) {
 					}
 
 				case credential.JsonSubtype.String():
-					hm, err := crypto.HmacSha256(ctx, objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
+					hm, err := crypto.HmacSha256(context.Background(), objBytes, databaseWrapper, []byte(store.GetPublicId()), nil)
 					require.NoError(err)
 
 					// Validate attributes equal
@@ -863,7 +859,7 @@ func TestUpdate(t *testing.T) {
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(ctx, staticRepoFn, iamRepoFn)
+	s, err := NewService(staticRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {

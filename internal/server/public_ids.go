@@ -12,7 +12,7 @@ import (
 )
 
 func newWorkerId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(ctx, globals.WorkerPrefix)
+	id, err := db.NewPublicId(globals.WorkerPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "server.newWorkerId")
 	}
@@ -24,7 +24,7 @@ func newWorkerId(ctx context.Context) (string, error) {
 // upsert time.
 func NewWorkerIdFromScopeAndName(ctx context.Context, scope, name string) (string, error) {
 	const op = "server.NewWorkerIdFromScopeAndName"
-	id, err := db.NewPublicId(ctx, globals.WorkerPrefix, db.WithPrngValues([]string{scope, name}))
+	id, err := db.NewPublicId(globals.WorkerPrefix, db.WithPrngValues([]string{scope, name}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "server.newWorkerId")
 	}

@@ -59,7 +59,7 @@ func testServerCommand(t *testing.T, opts testServerCommandOpts) *Command {
 	}
 
 	require.NoError(cmd.SetupLogging("trace", "", "", ""))
-	require.NoError(cmd.SetupEventing(cmd.Context, cmd.Logger, cmd.StderrLock, "test-server-command"))
+	require.NoError(cmd.SetupEventing(cmd.Logger, cmd.StderrLock, "test-server-command"))
 
 	if !opts.EnableMetrics {
 		cmd.PrometheusRegisterer = nil

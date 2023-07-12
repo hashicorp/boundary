@@ -1,0 +1,114 @@
+---
+layout: docs
+page_title: Azure dynamic host catalogs
+description: |-
+  An overview of Azure host discovery in Boundary
+---
+# Azure dynamic host catalogs
+Boundary uses dynamic host catalogs to automatically discover Azure resources available through Azure Resource Manager (ARM) and add them as hosts.
+
+## Create a host catalog to connect with Azure
+Boundary uses plugins to integrate with a variety of providers.   To use a
+dynamic host catalog to integrate with Azure, you create a host catalog of the
+`plugin` type and set the `plugin-name` value to `azure`.  You must also provide the 
+specific fields needed for Boundary to authenticate with Azure.
+
+<Tabs>
+<Tab heading="CLI">
+
+```shell-session
+$ boundary host-catalogs create plugin \
+  -scope-id $PROJECT_ID \
+  -plugin-name azure \
+  -attr disable_credential_rotation=true \
+  -attr tenant_id=env://ARM_TENANT_ID \
+  -attr subscription_id=env://ARM_SUBSCRIPTION_ID \
+  -attr client_id=env://ARM_CLIENT_ID \
+  -secret secret_value=env://ARM_CLIENT_SECRET
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+```hcl
+resource "boundary_host_catalog_plugin" "azure_host_catalog" {
+  name        = "Azure Catalog"
+  description = "Azure Host Catalog"
+  scope_id    = boundary_scope.project.id
+  plugin_name = "azure"
+
+  attributes_json = jsonencode({
+    "tenant_id"       = "ARM_TENANT_ID",
+    "subscription_id" = "ARM_SUBSCRIPTION_ID"
+    "client_id"       = "ARM_CLIENT_ID"
+    "disable_credential_rotation" = true })
+  secrets_json = jsonencode({
+    "secret_value" = "ARM_CLIENT_SECRET"})
+}
+```
+
+</Tab>
+</Tabs>
+
+The `scope-id` and `plugin-name` fields are required when you create a
+dynamic host catalog.
+
+The fields following the `attr` and `secret` flags are specific to Azure and are required by
+  Boundary for authentication.
+
+- `disable_credential_rotation`: When set to `true`, Boundary will not rotate the credentials automatically.
+- `tenant_id`: The ARM Tenant(Directory) ID
+- `subscription_id`: The ARM Subscription ID
+- `client_id`: The ARM Client (Application) ID
+- `secret_value`: The ARM Client Secret
+
+Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+
+## Create a host set to connect with Azure
+[Host sets](/boundary/docs/concepts/domain-model/host-sets) specify which Azure
+Resource Manager (ARM) filters should be used to identify the discovered hosts that should be added as members.
+
+Create a host set using the following command:
+
+
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+```shell-session
+$ boundary host-sets create plugin \
+  -name database \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filter="tagName eq 'service-type' and tagValue eq 'database'"
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+```hcl
+  resource "boundary_host_set_plugin" "azure_host_set" {
+  name        = "Azure Set"
+  description = "Azure Host Set"
+  host_catalog_id  = boundary_scope.azure_host_catalog.id
+  attributes_json = jsonencode({
+    "filter" = "tagName eq 'service-type' and tagValue eq 'database'" })
+}
+```
+
+</Tab>
+</Tabs>
+
+The `host-catalog-id` value is a required field that specifies in which host catalog to
+  create this host set.
+
+The fields following the `attr` flag are specific to Azure.
+
+The `filter` field represents the ARM filter used to select resources that should be a part of
+  this host set.  There are some limitations with the filtering syntax.
+  Specifically, when you use tags, other types of filters (such as on resource
+  type) are not allowed. As a result, it is generally useful to filter
+  directly on tag names or values as in the following examples:
+    - `tagName eq 'application'`
+    - `tagName eq 'application' and tagValue eq 'app2'`
+
+Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.

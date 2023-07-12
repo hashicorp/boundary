@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -25,7 +24,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
-	"github.com/hashicorp/boundary/version"
 	"github.com/kr/pretty"
 	"google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
@@ -177,7 +175,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := roles.NewService(context.Background(), repoFn)
+			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
 			got, gErr := s.GetRole(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -300,7 +298,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := roles.NewService(context.Background(), repoFn)
+			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Couldn't create new role service.")
 
 			// Test the non-anon case
@@ -333,7 +331,7 @@ func TestList(t *testing.T) {
 func TestDelete(t *testing.T) {
 	or, pr, repoFn := createDefaultRolesAndRepo(t)
 
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	cases := []struct {
@@ -399,7 +397,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	or, pr, repoFn := createDefaultRolesAndRepo(t)
 
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(repoFn)
 	require.NoError(err, "Error when getting new role service")
 	req := &pbs.DeleteRoleRequest{
 		Id: or.GetPublicId(),
@@ -544,7 +542,7 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateRoleRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := roles.NewService(context.Background(), repoFn)
+			s, err := roles.NewService(repoFn)
 			require.NoError(err, "Error when getting new role service.")
 
 			got, gErr := s.CreateRole(auth.DisabledAuthTestContext(repoFn, tc.req.GetItem().GetScopeId()), req)
@@ -572,9 +570,8 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	ctx := context.Background()
 	grantString := "id=*;type=*;actions=*"
-	g, err := perms.Parse(context.Background(), "global", grantString)
+	g, err := perms.Parse("global", grantString)
 	require.NoError(t, err)
 	_, actions := g.Actions()
 	grant := &pb.Grant{
@@ -582,7 +579,6 @@ func TestUpdate(t *testing.T) {
 		Canonical: g.CanonicalString(),
 		Json: &pb.GrantJson{
 			Id:      g.Id(),
-			Ids:     g.Ids(),
 			Type:    g.Type().String(),
 			Actions: actions,
 		},
@@ -614,7 +610,7 @@ func TestUpdate(t *testing.T) {
 	var orVersion uint32 = 1
 	var prVersion uint32 = 1
 
-	tested, err := roles.NewService(ctx, repoFn)
+	tested, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	resetRoles := func(proj bool) {
@@ -1015,7 +1011,6 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestAddPrincipal(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -1023,9 +1018,10 @@ func TestAddPrincipal(t *testing.T) {
 		return iamRepo, nil
 	}
 	o, p := iam.TestScopes(t, iamRepo)
-	s, err := roles.NewService(ctx, repoFn)
+	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
+	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrap)
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -1037,9 +1033,6 @@ func TestAddPrincipal(t *testing.T) {
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-
-	ldapAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
-	ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAuthMethod, []string{"admin"})
 
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1135,14 +1128,6 @@ func TestAddPrincipal(t *testing.T) {
 			resultManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
 		},
 		{
-			name: "Add ldap managed group on populated role",
-			setup: func(r *iam.Role) {
-				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
-			},
-			addManagedGroups:    []string{ldapManagedGroup.GetPublicId()},
-			resultManagedGroups: []string{managedGroups[0].GetPublicId(), ldapManagedGroup.GetPublicId()},
-		},
-		{
 			name:     "Add invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
 			addUsers: []string{globals.RecoveryUserId},
@@ -1228,7 +1213,7 @@ func TestSetPrincipal(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
@@ -1245,9 +1230,6 @@ func TestSetPrincipal(t *testing.T) {
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-
-	ldapAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
-	ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAuthMethod, []string{"admin"})
 
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1336,14 +1318,6 @@ func TestSetPrincipal(t *testing.T) {
 			resultManagedGroups: []string{managedGroups[1].GetPublicId()},
 		},
 		{
-			name: "Set LDAP managed group on populated role",
-			setup: func(r *iam.Role) {
-				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
-			},
-			setManagedGroups:    []string{ldapManagedGroup.GetPublicId()},
-			resultManagedGroups: []string{ldapManagedGroup.GetPublicId()},
-		},
-		{
 			name:     "Set invalid u_recovery on role",
 			setup:    func(r *iam.Role) {},
 			setUsers: []string{globals.RecoveryUserId},
@@ -1423,18 +1397,18 @@ func TestSetPrincipal(t *testing.T) {
 }
 
 func TestRemovePrincipal(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(ctx, repoFn)
+	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
 
+	ctx := context.Background()
 	kmsCache := kms.TestKms(t, conn, wrap)
 	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
 	require.NoError(t, err)
@@ -1446,9 +1420,6 @@ func TestRemovePrincipal(t *testing.T) {
 		oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.alice.com")[0]),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
-
-	ldapAuthMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
-	ldapManagedGroup := ldap.TestManagedGroup(t, conn, ldapAuthMethod, []string{"admin"})
 
 	users := []*iam.User{
 		iam.TestUser(t, iamRepo, o.GetPublicId()),
@@ -1583,15 +1554,6 @@ func TestRemovePrincipal(t *testing.T) {
 			removeManagedGroups: []string{managedGroups[0].GetPublicId(), managedGroups[1].GetPublicId()},
 			resultManagedGroups: []string{},
 		},
-		{
-			name: "Remove LDAP managed groups from role",
-			setup: func(r *iam.Role) {
-				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), ldapManagedGroup.GetPublicId())
-				iam.TestManagedGroupRole(t, conn, r.GetPublicId(), managedGroups[0].GetPublicId())
-			},
-			removeManagedGroups: []string{ldapManagedGroup.GetPublicId()},
-			resultManagedGroups: []string{managedGroups[0].GetPublicId()},
-		},
 	}
 
 	for _, tc := range addCases {
@@ -1670,7 +1632,7 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 	require.Equal(len(expected), len(got.GrantStrings))
 	require.Equal(len(expected), len(got.Grants))
 	for i, v := range expected {
-		parsed, err := perms.Parse(context.Background(), "o_abc123", v)
+		parsed, err := perms.Parse("o_abc123", v)
 		require.NoError(err)
 		assert.Equal(expected[i], got.GrantStrings[i])
 		assert.Equal(expected[i], got.Grants[i].GetRaw())
@@ -1678,7 +1640,6 @@ func checkEqualGrants(t *testing.T, expected []string, got *pb.Role) {
 		j := got.Grants[i].GetJson()
 		require.NotNil(j)
 		assert.Equal(parsed.Id(), j.GetId())
-		assert.Equal(parsed.Ids(), j.GetIds())
 		assert.Equal(parsed.Type().String(), j.GetType())
 		_, acts := parsed.Actions()
 		assert.Equal(acts, j.GetActions())
@@ -1692,7 +1653,7 @@ func TestAddGrants(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	addCases := []struct {
@@ -1705,42 +1666,33 @@ func TestAddGrants(t *testing.T) {
 	}{
 		{
 			name:   "Add grant on empty role",
-			add:    []string{"ids=*;type=*;actions=delete"},
-			result: []string{"ids=*;type=*;actions=delete"},
+			add:    []string{"id=*;type=*;actions=delete"},
+			result: []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add grant on role with grant",
 			existing: []string{"id=u_foo;actions=read"},
-			add:      []string{"ids=*;type=*;actions=delete"},
-			result:   []string{"id=u_foo;actions=read", "ids=*;type=*;actions=delete"},
+			add:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add duplicate grant on role with grant",
 			existing: []string{"id=u_fooaA1;actions=read"},
-			add:      []string{"ids=*;type=*;actions=delete", "ids=*;type=*;actions=delete"},
-			result:   []string{"id=u_fooaA1;actions=read", "ids=*;type=*;actions=delete"},
+			add:      []string{"id=*;type=*;actions=delete", "id=*;type=*;actions=delete"},
+			result:   []string{"id=u_fooaA1;actions=read", "id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Add grant matching existing grant",
-			existing: []string{"ids=u_foo;actions=read", "ids=*;type=*;actions=delete"},
-			add:      []string{"ids=*;type=*;actions=delete"},
+			existing: []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
+			add:      []string{"id=*;type=*;actions=delete"},
 			wantErr:  true,
 		},
 		{
-			name:            "Check add-host-sets deprecation",
+			name:            "Check deprecation",
 			existing:        []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
-			add:             []string{"ids=*;type=target;actions=add-host-sets"},
+			add:             []string{"id=*;type=target;actions=add-host-sets"},
 			wantErr:         true,
 			wantErrContains: "Use \\\"add-host-sources\\\" instead",
-		},
-		{
-			name:     "Check id field deprecation",
-			existing: []string{"id=u_fooaA1;actions=read"},
-			add:      []string{"id=*;type=*;actions=delete"},
-			result:   []string{"id=u_fooaA1;actions=read", "id=*;type=*;actions=delete"},
-			wantErr: func() bool {
-				return !version.SupportsFeature(version.Binary, version.SupportIdInGrants)
-			}(),
 		},
 	}
 
@@ -1787,7 +1739,7 @@ func TestAddGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"ids=*;type=*;actions=create"},
+				GrantStrings: []string{"id=*;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
@@ -1796,7 +1748,7 @@ func TestAddGrants(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           "bad id",
-				GrantStrings: []string{"ids=*;type=*;actions=create"},
+				GrantStrings: []string{"id=*;type=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1805,7 +1757,7 @@ func TestAddGrants(t *testing.T) {
 			name: "Unparseable Grant",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"ids=*;type=*;actions=create", "unparseable"},
+				GrantStrings: []string{"id=*;type=*;actions=create", "unparseable"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1814,7 +1766,7 @@ func TestAddGrants(t *testing.T) {
 			name: "Empty Grant",
 			req: &pbs.AddRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"ids=*;type=*;actions=create", ""},
+				GrantStrings: []string{"id=*;type=*;actions=create", ""},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1840,7 +1792,7 @@ func TestSetGrants(t *testing.T) {
 		return iamRepo, nil
 	}
 
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	setCases := []struct {
@@ -1853,26 +1805,26 @@ func TestSetGrants(t *testing.T) {
 	}{
 		{
 			name:   "Set grant on empty role",
-			set:    []string{"ids=*;type=*;actions=delete"},
-			result: []string{"ids=*;type=*;actions=delete"},
+			set:    []string{"id=*;type=*;actions=delete"},
+			result: []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set grant on role with grant",
 			existing: []string{"id=u_foo;actions=read"},
-			set:      []string{"ids=*;type=*;actions=delete"},
-			result:   []string{"ids=*;type=*;actions=delete"},
+			set:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set grant matching existing grant",
 			existing: []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
-			set:      []string{"ids=*;type=*;actions=delete"},
-			result:   []string{"ids=*;type=*;actions=delete"},
+			set:      []string{"id=*;type=*;actions=delete"},
+			result:   []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set duplicate grant matching existing grant",
 			existing: []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
-			set:      []string{"ids=*;type=*;actions=delete", "ids=*;type=*;actions=delete"},
-			result:   []string{"ids=*;type=*;actions=delete"},
+			set:      []string{"id=*;type=*;actions=delete", "id=*;type=*;actions=delete"},
+			result:   []string{"id=*;type=*;actions=delete"},
 		},
 		{
 			name:     "Set empty on role",
@@ -1881,20 +1833,11 @@ func TestSetGrants(t *testing.T) {
 			result:   nil,
 		},
 		{
-			name:            "Check add-host-sets deprecation",
+			name:            "Check deprecation",
 			existing:        []string{"id=u_foo;actions=read", "id=*;type=*;actions=delete"},
-			set:             []string{"ids=*;type=target;actions=add-host-sets"},
+			set:             []string{"id=*;type=target;actions=add-host-sets"},
 			wantErr:         true,
 			wantErrContains: "Use \\\"add-host-sources\\\" instead",
-		},
-		{
-			name:     "Check id field deprecation",
-			existing: []string{"id=u_fooaA1;actions=read"},
-			set:      []string{"id=*;type=*;actions=delete"},
-			result:   []string{"id=*;type=*;actions=delete"},
-			wantErr: func() bool {
-				return !version.SupportsFeature(version.Binary, version.SupportIdInGrants)
-			}(),
 		},
 	}
 
@@ -1942,7 +1885,7 @@ func TestSetGrants(t *testing.T) {
 			name: "Bad Version",
 			req: &pbs.SetRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"ids=*;type=*;actions=create"},
+				GrantStrings: []string{"id=*;type=*;actions=create"},
 				Version:      role.GetVersion() + 2,
 			},
 			err: handlers.ApiErrorWithCode(codes.Internal),
@@ -1951,7 +1894,7 @@ func TestSetGrants(t *testing.T) {
 			name: "Bad Role Id",
 			req: &pbs.SetRoleGrantsRequest{
 				Id:           "bad id",
-				GrantStrings: []string{"ids=*;type=*;actions=create"},
+				GrantStrings: []string{"id=*;type=*;actions=create"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1960,7 +1903,7 @@ func TestSetGrants(t *testing.T) {
 			name: "Unparsable grant",
 			req: &pbs.SetRoleGrantsRequest{
 				Id:           role.GetPublicId(),
-				GrantStrings: []string{"ids=*;type=*;actions=create", "unparseable"},
+				GrantStrings: []string{"id=*;type=*;actions=create", "unparseable"},
 				Version:      role.GetVersion(),
 			},
 			err: handlers.ApiErrorWithCode(codes.InvalidArgument),
@@ -1985,7 +1928,7 @@ func TestRemoveGrants(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := roles.NewService(context.Background(), repoFn)
+	s, err := roles.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new role service.")
 
 	removeCases := []struct {

@@ -40,7 +40,7 @@ type opsBundle struct {
 
 // NewServer iterates through all the listeners and sets up HTTP Servers for each, along with individual handlers.
 // If Controller is set-up, NewServer will set-up a health endpoint for it.
-func NewServer(ctx context.Context, l hclog.Logger, c *controller.Controller, w *worker.Worker, listeners ...*base.ServerListener) (*Server, error) {
+func NewServer(l hclog.Logger, c *controller.Controller, w *worker.Worker, listeners ...*base.ServerListener) (*Server, error) {
 	const op = "ops.NewServer()"
 	if l == nil {
 		return nil, fmt.Errorf("%s: missing logger", op)
@@ -58,7 +58,7 @@ func NewServer(ctx context.Context, l hclog.Logger, c *controller.Controller, w 
 			return nil, fmt.Errorf("%s: missing ops listener", op)
 		}
 
-		h, err := createOpsHandler(ctx, ln.Config, c, w)
+		h, err := createOpsHandler(ln.Config, c, w)
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +132,7 @@ func (s *Server) WaitIfHealthExists(d time.Duration, ui cli.Ui) {
 	<-time.After(d)
 }
 
-func createOpsHandler(ctx context.Context, lncfg *listenerutil.ListenerConfig, c *controller.Controller, w *worker.Worker) (http.Handler, error) {
+func createOpsHandler(lncfg *listenerutil.ListenerConfig, c *controller.Controller, w *worker.Worker) (http.Handler, error) {
 	mux := http.NewServeMux()
 	var h http.Handler
 	var err error

@@ -23,14 +23,14 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 	rw := db.New(conn)
 	tar, err := target.New(ctx, Subtype, projectId, opt...)
 	require.NoError(err)
-	id, err := db.NewPublicId(ctx, TargetPrefix)
+	id, err := db.NewPublicId(TargetPrefix)
 	require.NoError(err)
 	tar.SetPublicId(ctx, id)
-	err = rw.Create(ctx, tar)
+	err = rw.Create(context.Background(), tar)
 	require.NoError(err)
 
 	if opts.WithAddress != "" {
-		address, err := target.NewAddress(ctx, tar.GetPublicId(), opts.WithAddress)
+		address, err := target.NewAddress(tar.GetPublicId(), opts.WithAddress)
 		require.NoError(err)
 		require.NotNil(address)
 		err = rw.Create(context.Background(), address)
@@ -39,11 +39,11 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 	if len(opts.WithHostSources) > 0 {
 		newHostSets := make([]any, 0, len(opts.WithHostSources))
 		for _, s := range opts.WithHostSources {
-			hostSet, err := target.NewTargetHostSet(ctx, tar.GetPublicId(), s)
+			hostSet, err := target.NewTargetHostSet(tar.GetPublicId(), s)
 			require.NoError(err)
 			newHostSets = append(newHostSets, hostSet)
 		}
-		err := rw.CreateItems(ctx, newHostSets)
+		err := rw.CreateItems(context.Background(), newHostSets)
 		require.NoError(err)
 	}
 	if len(opts.WithCredentialLibraries) > 0 {
@@ -52,7 +52,7 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 			cl.TargetId = tar.GetPublicId()
 			newCredLibs = append(newCredLibs, cl)
 		}
-		err := rw.CreateItems(ctx, newCredLibs)
+		err := rw.CreateItems(context.Background(), newCredLibs)
 		require.NoError(err)
 	}
 	if len(opts.WithStaticCredentials) > 0 {
@@ -61,7 +61,7 @@ func TestTarget(ctx context.Context, t testing.TB, conn *db.DB, projectId, name 
 			c.TargetId = tar.GetPublicId()
 			newCreds = append(newCreds, c)
 		}
-		err := rw.CreateItems(ctx, newCreds)
+		err := rw.CreateItems(context.Background(), newCreds)
 		require.NoError(err)
 	}
 	return tar

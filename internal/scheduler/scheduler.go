@@ -47,13 +47,13 @@ type Scheduler struct {
 //
 // WithRunJobsLimit, WithRunJobsInterval, WithMonitorInterval and WithInterruptThreshold are
 // the only valid options.
-func New(ctx context.Context, serverId string, jobRepoFn jobRepoFactory, opt ...Option) (*Scheduler, error) {
+func New(serverId string, jobRepoFn jobRepoFactory, opt ...Option) (*Scheduler, error) {
 	const op = "scheduler.New"
 	if serverId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing server id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing server id")
 	}
 	if jobRepoFn == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing job repo function")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing job repo function")
 	}
 
 	opts := getOpts(opt...)
@@ -77,7 +77,7 @@ func New(ctx context.Context, serverId string, jobRepoFn jobRepoFactory, opt ...
 // WithNextRunIn is the only valid options.
 func (s *Scheduler) RegisterJob(ctx context.Context, j Job, opt ...Option) error {
 	const op = "scheduler.(Scheduler).RegisterJob"
-	if err := validateJob(ctx, j); err != nil {
+	if err := validateJob(j); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 

@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   make-gen-delta:
-    name: "Check for uncommitted changes from make gen"
+    name: "Check for uncommited changes from make gen"
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
@@ -26,9 +26,6 @@ jobs:
         uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
-      - name: Running go mod tidy
-        run: |
-          go mod tidy
       - name: Install Dependencies
         run: |
           make tools

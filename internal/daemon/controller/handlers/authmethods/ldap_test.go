@@ -55,15 +55,15 @@ func Test_UpdateLdap(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
+		return password.NewRepository(rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	tested, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -761,10 +761,10 @@ func TestAuthenticate_Ldap(t *testing.T) {
 		return ldap.NewRepository(testCtx, testRw, testRw, testKms)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(testCtx, testRw, testRw, testKms)
+		return password.NewRepository(testRw, testRw, testKms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(testCtx, testRw, testRw, testKms)
+		return authtoken.NewRepository(testRw, testRw, testKms)
 	}
 
 	orgDbWrapper, err := testKms.GetWrapper(testCtx, o.GetPublicId(), kms.KeyPurposeDatabase)
@@ -945,7 +945,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(testCtx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+			s, err := authmethods.NewService(testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 			require.NoError(err)
 
 			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
