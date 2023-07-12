@@ -216,7 +216,7 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 		return nil, err
 	}
 
-	af, ok := summaryAllocFuncs.Get(meta.Protocol, SessionContainer)
+	af, ok := summaryAllocFuncs.get(meta.Protocol, SessionContainer)
 	if !ok {
 		return nil, fmt.Errorf("%s: failed to get summary type", op)
 	}
@@ -330,7 +330,7 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connectio
 		return nil, err
 	}
 
-	af, ok := summaryAllocFuncs.Get(s.Meta.Protocol, ConnectionContainer)
+	af, ok := summaryAllocFuncs.get(s.Meta.Protocol, ConnectionContainer)
 	if !ok {
 		return nil, fmt.Errorf("%s: failed to get summary type", op)
 	}
@@ -431,7 +431,7 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 		return nil, err
 	}
 
-	af, ok := summaryAllocFuncs.Get(c.session.Meta.Protocol, ChannelContainer)
+	af, ok := summaryAllocFuncs.get(c.session.Meta.Protocol, ChannelContainer)
 	if !ok {
 		return nil, fmt.Errorf("%s: failed to get summary type", op)
 	}

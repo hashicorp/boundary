@@ -79,7 +79,7 @@ func TestRegisterSummaryAllocFunc_TestProtocol(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			af, ok := summaryAllocFuncs.Get(tc.wantP, tc.c)
+			af, ok := summaryAllocFuncs.get(tc.wantP, tc.c)
 			if tc.wantGetAllocErr {
 				require.False(t, ok, "found invalid summary")
 				return
@@ -114,7 +114,7 @@ func TestRegisterSummaryAllocFunc_TestChannel(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	af, ok := summaryAllocFuncs.Get(protocol, ChannelContainer)
+	af, ok := summaryAllocFuncs.get(protocol, ChannelContainer)
 	require.True(t, ok, "could not get channel summary")
 
 	cf := af(ctx)
@@ -147,7 +147,7 @@ func TestRegisterSummaryAllocFunc_TestConnection(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	af, ok := summaryAllocFuncs.Get(protocol, ChannelContainer)
+	af, ok := summaryAllocFuncs.get(protocol, ChannelContainer)
 	require.True(t, ok, "could not get connection summary")
 
 	cf := af(ctx)
@@ -177,7 +177,7 @@ func TestRegisterSummaryAllocFunc_TestSession(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	af, ok := summaryAllocFuncs.Get(protocol, ChannelContainer)
+	af, ok := summaryAllocFuncs.get(protocol, ChannelContainer)
 	require.True(t, ok, "could not get session summary")
 
 	cf := af(ctx)

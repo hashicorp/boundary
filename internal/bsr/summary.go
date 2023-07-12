@@ -15,7 +15,7 @@ type SummaryAllocFunc func(ctx context.Context) Summary
 // for each SummaryAllocFunc
 type summaryAllocFuncRegistry map[Protocol]map[ContainerType]SummaryAllocFunc
 
-func (r summaryAllocFuncRegistry) Get(p Protocol, c ContainerType) (SummaryAllocFunc, bool) {
+func (r summaryAllocFuncRegistry) get(p Protocol, c ContainerType) (SummaryAllocFunc, bool) {
 	protocol, ok := r[p]
 	if !ok {
 		return nil, false
