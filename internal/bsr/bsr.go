@@ -225,7 +225,7 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 	if err := cc.decodeJsonFile(ctx, fmt.Sprintf(summaryFileNameTemplate, SessionContainer), summary); err != nil {
 		return nil, err
 	}
-	sessionSummary := summary.(*BaseSessionSummary)
+	sessionSummary := summary.(SessionSummary)
 
 	session := &Session{
 		container:   cc,
@@ -339,7 +339,7 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connectio
 	if err := cc.decodeJsonFile(ctx, fmt.Sprintf(summaryFileNameTemplate, ConnectionContainer), summary); err != nil {
 		return nil, err
 	}
-	connectionSummary := summary.(*BaseConnectionSummary)
+	connectionSummary := summary.(ConnectionSummary)
 
 	connection := &Connection{
 		container: cc,
@@ -440,7 +440,7 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 	if err := cc.decodeJsonFile(ctx, fmt.Sprintf(summaryFileNameTemplate, ChannelContainer), summary); err != nil {
 		return nil, err
 	}
-	channelSummary := summary.(*BaseChannelSummary)
+	channelSummary := summary.(ChannelSummary)
 
 	channel := &Channel{
 		container: cc,

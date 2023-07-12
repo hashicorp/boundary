@@ -345,7 +345,7 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 	}{
 		{
 			name:                "without-session-allocFunc",
-			protocol:            Protocol("TEST_SESSION_PROTOCOL"),
+			protocol:            Protocol("TEST_BSR_OPEN_SESSION_PROTOCOL"),
 			sessionAllocFunc:    nil,
 			connectionAllocFunc: &BaseConnectionSummary{Id: "TEST_CONNECTION_ID", ChannelCount: 1},
 			channelAllocFunc:    &BaseChannelSummary{Id: "TEST_CHANNEL_ID", ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID"},
@@ -354,7 +354,7 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 		},
 		{
 			name:                "without-connection-allocFunc",
-			protocol:            Protocol("TEST_CONNECTION_PROTOCOL"),
+			protocol:            Protocol("TEST_BSR_OPEN_CONNECTION_PROTOCOL"),
 			sessionAllocFunc:    &BaseSessionSummary{Id: "TEST_SESSION_ID", ConnectionCount: 1},
 			connectionAllocFunc: nil,
 			channelAllocFunc:    &BaseChannelSummary{Id: "TEST_CHANNEL_ID", ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID"},
@@ -363,7 +363,7 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 		},
 		{
 			name:                "without-channel-allocFunc",
-			protocol:            Protocol("TEST_CHANNEL_PROTOCOL"),
+			protocol:            Protocol("TEST_BSR_OPEN_CHANNEL_PROTOCOL"),
 			sessionAllocFunc:    &BaseSessionSummary{Id: "TEST_SESSION_ID", ConnectionCount: 1},
 			connectionAllocFunc: &BaseConnectionSummary{Id: "TEST_CONNECTION_ID", ChannelCount: 1},
 			expectedError:       "bsr.OpenChannel: failed to get summary type",
