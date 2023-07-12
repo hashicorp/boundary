@@ -70,4 +70,26 @@ Select your distribution, and complete the steps to install Boundary.
     ```
 
 </Tab>
+
+<Tab heading="Amazon Linux">
+
+1. Use the following command to install `yum-config-manager` to manage your repositories:
+
+    ```shell-session
+    $ sudo yum install -y yum-utils shadow-utils
+    ```
+
+2. Add the official HashiCorp Linux repository:
+
+    ```shell-session
+    $ sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+    ```
+
+3. Install Boundary:
+
+    ```shell-session
+    $ sudo yum -y install boundary-enterprise
+    ```
+
+</Tab>
 </Tabs>
