@@ -97,9 +97,15 @@ It contains all the data transmitted between a user and a target during a single
 
 Boundary creates the top-level directory of the BSR as `<sessionID>.bsr`. This top level directory contains session summary information and subdirectories for connections.
 
+![BSR top-level directory](/img/session-recording-bsr-top-level.png)
+
 A BSR connections directory contains a summary of connections, as well as inbound and outbound requests.
+
+![BSR connection-level directory](/img/session-recording-bsr-connection-level.png)
+
 If you use a multiplexed protocol, there are subdirectories for the channels.
 
+![BSR channel-level directory](/img/session-recording-bsr-channel-level.png)
 
 BSR directories are validated based on the contents in the directory.
 Each BSR directory contains a SHA256SUMS and SHA256SUMS.sign file that can be used to cryptographically verify the BSR directory's contents.
