@@ -56,6 +56,10 @@ type SessionSummary interface {
 	Summary
 	// GetConnectionCount returns the connection count.
 	GetConnectionCount() uint64
+	// GetErrors returns errors.
+	GetErrors() error
+	// SetErrors sets errors.
+	SetErrors(e error)
 }
 
 func AllocSessionSummary(_ context.Context) Summary {
@@ -80,6 +84,16 @@ func (b *BaseSessionSummary) GetEndTime() time.Time {
 // GetConnectionCount returns the connection count.
 func (b *BaseSessionSummary) GetConnectionCount() uint64 {
 	return b.ConnectionCount
+}
+
+// GetErrors returns errors.
+func (b *BaseSessionSummary) GetErrors() error {
+	return b.Errors
+}
+
+// SetErrors sets errors.
+func (b *BaseSessionSummary) SetErrors(e error) {
+	b.Errors = e
 }
 
 // BaseChannelSummary encapsulates data for a channel, including its id, channel type,
@@ -167,6 +181,10 @@ type ConnectionSummary interface {
 	GetBytesUp() uint64
 	// BytesDown returns download bytes.
 	GetBytesDown() uint64
+	// GetErrors returns errors.
+	GetErrors() error
+	// SetErrors sets errors.
+	SetErrors(e error)
 }
 
 func AllocConnectionSummary(_ context.Context) Summary {
@@ -201,4 +219,14 @@ func (b *BaseConnectionSummary) GetBytesUp() uint64 {
 // GetBytesDown returns download bytes.
 func (b *BaseConnectionSummary) GetBytesDown() uint64 {
 	return b.BytesDown
+}
+
+// GetErrors returns errors.
+func (b *BaseConnectionSummary) GetErrors() error {
+	return b.Errors
+}
+
+// SetErrors sets errors.
+func (b *BaseConnectionSummary) SetErrors(e error) {
+	b.Errors = e
 }
