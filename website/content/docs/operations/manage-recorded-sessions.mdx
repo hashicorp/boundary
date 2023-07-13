@@ -13,8 +13,6 @@ The session begins when an authorized user requests access to a target, and it e
 When you enable session recording on a target, any user session that connects to the target is automatically recorded.
 An administrator can later view the recordings to investigate security issues, review system activity, or perform regular assessments of security policies and procedures.
 
-## Find recorded sessions
-
 Recorded sessions are stored in an external storage bucket that you create.
 Storing session recordings in a system external to Boundary means those recordings can be accessed, modified, deleted, and even restored independently of Boundary.
 You can view any sessions that Boundary recorded in your storage provider or via the CLI.
@@ -69,19 +67,34 @@ Substitute the ID of the channel for **chr_1234567890**:
 </Tab>
 <Tab heading="Admin Console">
 
-## View recorded sessions
+## Find all recorded sessions
 
-You can view all recorded sessions in the UI from the global scope.
+You can find all recorded sessions in the UI from the global scope.
 
 1. Log in to Boundary.
 1. Select **Session Recordings** in the navigation pane.
 
-   The **Session Recordings** page displays the created time, user, project, target, and duration of the recording.
+   The **Session Recordings** page displays the created time, user, project,
+   target, and duration of the recording.
+
+## View Session Recording details
+
 1. Select **View** next to the session recording you want to view.
+
+   The details page has information related to the session recording and
+   links to related inforation like user, target, and storage bucket.
+
+## Playback Channel Recording
+
 1. Select **Play** next to the channel recording you want to view.
 
    The recorded session appears in the media player.
-   You can click the **Play** button to watch the recording.
+   You can click the **Play** button located at the bottom of the media player
+   to watch the recording.
+
+   If a recorded session channel does not support playback a **View** button
+   will be shown. The playback page will display a message stating playback
+   is not supported but still show details specific to that channel.
 
 </Tab>
 </Tabs>
