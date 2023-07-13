@@ -52,6 +52,19 @@ For more information about using session recording to audit user sessions, refer
          }
       ]
    }
+
+   ```
+- If KMS encryption is applied to the storage bucket, you will need to add these additional permissions for the Storage Bucket IAM User to the role policy:
+   ```json
+   {
+      "Action": [
+      "kms:Decrypt",
+      "kms:GenerateDataKey",
+      "kms:DescribeKey"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:kms:us-east-1:1234567890:key/uuid"
+   }
    ```
 
 Complete the following steps to create a storage bucket for session recording:
