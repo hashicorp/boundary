@@ -1,0 +1,73 @@
+---
+layout: docs
+page_title: Azure dynamic host catalogs
+description: |-
+  An overview of Azure host discovery in Boundary
+---
+# Azure dynamic host catalogs
+Boundary can auto discover Azure resources available through Azure Resource
+Manager (ARM) and adds them as hosts by using dynamic host catalogs.
+
+## Creating a host catalog to connect with Azure
+Boundary uses plugins to integrate with a variety of providers.   To use a
+dynamic host catalog to integrate with Azure you create a host catalog of the
+"plugin" type and set the "plugin-name" value to "azure" along with providing
+specific fields needed for Boundary to authenticate with Azure.
+
+```shell-session
+boundary host-catalogs create plugin \
+  -scope-id $PROJECT_ID \
+  -plugin-name azure \
+  -attr disable_credential_rotation=true \
+  -attr tenant_id=env://ARM_TENANT_ID \
+  -attr subscription_id=env://ARM_SUBSCRIPTION_ID \
+  -attr client_id=env://ARM_CLIENT_ID \
+  -secret secret_value=env://ARM_CLIENT_SECRET
+```
+
+"scope-id" and "plugin-name" are fields the boundary requires when creating a
+dynamic host catalog.
+
+The fields following the "attr" and "secret" flags are specific to Azure which
+Boundary needs to authenticate.
+
+- "disable_credential_rotation": When true, Boundary will not handle the
+  rotation of the credentials automatically.
+- "tenant_id": The ARM Tenant(Directory) ID
+- "subscription_id": The ARM Subscription ID
+- "client_id": The ARM Client (Application) ID
+- "secret_value": The ARM Client Secret
+
+For more fields which can be used when creating host catalogs refer to
+[the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs).
+
+## Creating a host set to connect with Azure
+[Host sets](/boundary/docs/concepts/domain-model/host-sets) specify which Azure
+Resource Manager (ARM) filters should be used to identify which discovered
+hosts should be its members.
+
+Create a host set using the following command:
+
+```shell-session
+boundary host-sets create plugin \
+  -name database \
+  -host-catalog-id $HOST_CATALOG_ID \
+  -attr filter="tagName eq 'service-type' and tagValue eq 'database'"
+```
+
+- "host-catalog-id" is a required field that specifies in which host catalog to
+  create this host set.
+
+Like with the host catalog, the fields passed in after the "attr" flag are
+fields specific to Azure.
+
+- "filter": The ARM filter used to select resources that should be a part of
+  this host set.  There are some limitations with the filtering syntax;
+  specifically, when using tags, other types of filters (such as on resource
+  type) are not allowed. As a result, it will generally be useful to filter
+  directly on tag names or values as in the following examples:
+    - tagName eq 'application'
+    - tagName eq 'application' and tagValue eq 'app2'
+
+For more fields which can be used when creating host sets refer to
+[the domain model documentation](/boundary/docs/concepts/domain-model/host-sets).

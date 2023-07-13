@@ -10,7 +10,11 @@ description: |-
 Traditionally, connecting to remote hosts and services requires knowledge of
 the endpoint’s connection info (e.g. the IP address and port of the service).
 This creates complexity when managing the onboarding of new resources at scale
-or dealing with dynamic services whose connection info frequently changes.
+or dealing with dynamic, ephemeral services whose connection info frequently changes.
+Furthermore, the increased operational overhead of having to manually manage and update
+new or old resources is an inefficient use of time.
+Resources should be tagged appropriately and depending on the identity of the end-user,
+automatically have the resources that they are allowed to connect to.
 
 **Host discovery** focuses on automating the process of onboarding new or
 changed infrastructure resources – and their connection info – to Boundary
@@ -33,7 +37,7 @@ infrastructure targets can be automated with
 This allows for dynamic configuration of a host and target without the need
 for prior knowledge of the target’s connection info.
 
-**[Runtime host discovery via dynamic host catalogs](/boundary/tutorials/access-management/azure-host-catalogs)**:
+**[Runtime host discovery via dynamic host catalogs](/boundary/tutorials/access-management/aws-host-catalogs)**:
 Boundary dynamic host catalogs automate the ingestion of resources from
 infrastructure providers into Boundary. Boundary hosts are automatically
 created, updated and added to host sets in order to reflect the connection
@@ -44,14 +48,15 @@ configure new or changed resources.
 ## Dynamic host catalogs
 Dynamic host catalogs are an agentless workflow for Boundary to
 securely query infrastructure providers at runtime to discover and configure
-new services. Boundary dynamic host catalogs are written in go-plugin and run
-as separate processes. Boundary administrators can define rules for which
+new services. Boundary administrators can define rules for which
 external resources should be ingested into the catalog by
-[creating dynamic host](/boundary/docs/concepts/domain-model/host-sets)
- sets with an attributes filter. Attributes specify the fields which the plugin
- should use to lookup which hosts should be members of this host set.
+[creating a host sets](/boundary/docs/concepts/domain-model/host-sets)
+with an attributes filter. These filters specify which discovered hosts
+should be members of the host set.
 
-Currently, Boundary supports dynamic host catalog implementations for AWS and
+Boundary currently supports dynamic host catalog for AWS and
 Azure and we will continue to grow this ecosystem to support additional providers.
 
-You can get started with dynamic host catalogs [here](/boundary/tutorials/access-management/azure-host-catalogs).
+You can get started with dynamic host catalogs for AWS
+[here](/boundary/tutorials/access-management/aws-host-catalogs)
+and for Azure [here](/boundary/tutorials/access-management/azure-host-catalogs).
