@@ -20,8 +20,11 @@ Any storage buckets associated with an Org scope are deleted when the Org itself
 For more information about using session recording to audit user sessions, refer to [Auditing](/boundary/docs/concepts/auditing).
 
 ## Requirements
-
-### AWS Requirements
+	
+Before you can create a storage bucket, you must ensure that your environment meets certain requirements.
+Session recording requires specific configuration for both the AWS S3 storage bucket and the Boundary worker.
+	
+### AWS requirements
 
 - An AWS S3 storage bucket
 
@@ -54,13 +57,13 @@ For more information about using session recording to audit user sessions, refer
    }
    ```
 
-### Boundary Workers Requirements
+### Boundary workers requirements
 
-[Session recording](/boundary/docs/configuration/session-recording) requires at least one PKI worker with access to local and remote storage.
-- A Boundary PKI worker with access to the AWS S3 storage bucket
-- A Boundary PKI worker with an accessible directory defined by `recording_storage_path` for storing in-progress session recordings. On session closure, a local session recording is moved to remote storage and deleted locally. For more details, refer to [PKI workers](/boundary/docs/configuration/worker/pki-worker#session-recording-hcp-ent).
-- A Boundary PKI worker with a minimum of 1 MB available disk space.
-- A Boundary PKI worker running on darwin, windows or linux. The following binaries are not supported for session recording: nestbsd, openbsd, solaris
+[Session recording](/boundary/docs/configuration/session-recording) requires at least one PKI worker that:
+- Has access to the AWS S3 storage bucket
+- Has an accessible directory defined by `recording_storage_path` for storing session recordings while they are in progress. On session closure, Boundary moves the local session recording to remote storage and deletes the local copy. For more details, refer to [PKI workers](/boundary/docs/configuration/worker/pki-worker#session-recording-hcp-ent).
+- Has at least 1 MB of available disk space.
+- Runs Darwin, Windows, or Linux. The following binaries are not supported for session recording: NetBSD, OpenBSD, Solaris.
 
 Development example:
 
