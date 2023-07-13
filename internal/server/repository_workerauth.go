@@ -80,8 +80,6 @@ func (r *WorkerAuthRepositoryStorage) Store(ctx context.Context, msg nodee.Messa
 	// Determine type of message to store
 	switch t := msg.(type) {
 	case *types.NodeInformation:
-		// Encrypt the private key
-
 		if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(read db.Reader, w db.Writer) error {
 			return StoreNodeInformationTx(ctx, read, w, r.kms, scope.Global.String(), t)
 		}); err != nil {
@@ -248,7 +246,7 @@ func StoreNodeInformationTx(ctx context.Context, reader db.Reader, writer db.Wri
 	// If the incoming workerAuth matches what we have stored, return a duplicate record error
 	// This will cause nodeenrollment to lookup and return the already stored nodeInfo
 	if nodeAuth.compare(nodeAuthLookup) {
-		return new(types.DuplicateRecordError)
+		return types.DuplicateRecordError{}
 	}
 
 	if err := writer.Create(ctx, &nodeAuth); err != nil {
