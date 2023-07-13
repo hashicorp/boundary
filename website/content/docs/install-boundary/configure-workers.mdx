@@ -285,8 +285,8 @@ Boundary only supports memory locking on UNIX-like systems that support `mlock()
    `LimitMEMLOCK=infinity`
 
 - `listener` - Configures the listeners on which Boundary serves traffic (API cluster and proxy).
-- `controller` - Configures the controller.
-If present, `boundary server` starts a controller subprocess.
+- `worker` - Configures the worker.
+If present, `boundary server` starts a worker subprocess.
 - `events` - Configures event-specific parameters.
 
    The example events configuration above is exhaustive and writes all events to both `stderr` and a file.
