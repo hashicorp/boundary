@@ -19,9 +19,13 @@ and to see all available subcommand options run `boundary <command> -h`.
 
 Below is the typical structure for most Boundary CLI commands:
 
+<CodeBlockConfig hideClipboard>
+
 ```text
 boundary <command> <subcommand> [options] [args]
 ```
+
+</CodeBlockConfig>
 
 - `options` - [Client](/boundary/docs/api-clients/cli#client-options) and [connection](/boundary/docs/api-clients/cli#connection-options) options to specify additional settings
 - `args` - API arguments specific to the operation
@@ -38,20 +42,23 @@ $ boundary authenticate password \
 
 Instead of specifying the `-addr` flag for every command, you can set an environment variable `BOUNDARY_ADDR=https://boundary.controller.com:9200`.
 
-## Completion
+## Auto-completion
 
-Before detailing how parameters work, it's useful to note that Boundary's CLI
-supports autocompletion, which allows tab completion of commands, flags, and in
-some cases the parameters to those flags.
+Boundary's CLI supports autocompletion, which allows tab completion of commands,
+flags, and in some cases the parameters to those flags.
 
 This can be installed via the CLI itself:
 
-`boundary config autocomplete install`
+```shell-session
+$ boundary config autocomplete install
+```
 
-If you want to install it manually, for Bash, the following line in a
+If you want to install it manually using Bash, add the following line in a
 `~/.bash_profile` or similar file will work:
 
-`complete -C /path/to/boundary boundary`
+```shell-session
+complete -C /path/to/boundary boundary
+```
 
 ## Keyring token storage
 
@@ -66,7 +73,8 @@ Additionally, more than one token can be stored or retrieved at once via the
 `-token-name` flag or `BOUNDARY_TOKEN_NAME` env var. This allows for storing
 tokens used by different Boundary installations, or other needs.
 
-### Windows
+<Tabs>
+<Tab heading="Windows">
 
 On Windows, the Windows credential store (`wincred`) is used.
 
@@ -76,7 +84,8 @@ Available keyring types:
 - `pass`
 - `none`
 
-### macOS
+</Tab>
+<Tab heading="macOS">
 
 On macOS, Keychain is used via `/usr/bin/security`. (Using this binary allows us
 to keep the Boundary binary statically linked, which we prefer.)
@@ -87,7 +96,8 @@ Available keyring types:
 - `pass`
 - `none`
 
-### Other platforms
+</Tab>
+<Tab heading="Other platforms">
 
 On all other platforms, the default is `pass`. However, if an implementation of
 the [freedesktop.org secret
@@ -99,6 +109,10 @@ Available keyring types:
 - `pass` (default)
 - `secret-service`
 - `none`
+
+</Tab>
+</Tabs>
+
 
 ## Map to collections and sub-types
 
