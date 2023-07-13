@@ -97,15 +97,63 @@ It contains all the data transmitted between a user and a target during a single
 
 Boundary creates the top-level directory of the BSR as `<sessionID>.bsr`. This top level directory contains session summary information and subdirectories for connections.
 
-[![Screenshot of a BSR top-level directory](/img/session-recording-bsr-top-level.png)](/img/session-recording-bsr-top-level.png)
-
 A BSR connections directory contains a summary of connections, as well as inbound and outbound requests.
-
-[![Screenshot of a BSR connection-level directory](/img/session-recording-bsr-connection-level.png)](/img/session-recording-bsr-connection-level.png)
-
 If you use a multiplexed protocol, there are subdirectories for the channels.
 
-[![Screenshot of a BSR channel-level directory](/img/session-recording-bsr-channel-level.png)](/img/session-recording-bsr-channel-level.png)
+```
+└── sr_iNCdGSREeX.bsr
+    ├── SHA256SUM
+    ├── SHA256SUM.sig
+    ├── bsrKey.pub
+    ├── cr_3bB78W53Y9.connection
+    │   ├── SHA256SUM
+    │   ├── SHA256SUM.sig
+    │   ├── chr_VUnVuVnITu.channel
+    │   │   ├── SHA256SUM
+    │   │   ├── SHA256SUM.sig
+    │   │   ├── channel-recording-summary.json
+    │   │   ├── channel-recording.meta
+    │   │   ├── messages-inbound.data
+    │   │   ├── messages-outbound.data
+    │   │   ├── requests-inbound.data
+    │   │   └── requests-outbound.data
+    │   ├── chr_nITuVUnVuV.channel
+    │   │   ├── SHA256SUM
+    │   │   ├── SHA256SUM.sig
+    │   │   ├── channel-recording-summary.json
+    │   │   ├── channel-recording.meta
+    │   │   ├── messages-inbound.data
+    │   │   ├── messages-outbound.data
+    │   │   ├── requests-inbound.data
+    │   │   └── requests-outbound.data
+    │   ├── connection-recording-summary.json
+    │   ├── connection-recording.meta
+    │   ├── requests-inbound.data
+    │   └── requests-outbound.data
+    ├── cr_W53Y93bB78.connection
+    │   ├── SHA256SUM
+    │   ├── SHA256SUM.sig
+    │   ├── chr_uVVuUITnVn.channel
+    │   │   ├── SHA256SUM
+    │   │   ├── SHA256SUM.sig
+    │   │   ├── channel-recording-summary.json
+    │   │   ├── channel-recording.meta
+    │   │   ├── messages-inbound.data
+    │   │   ├── messages-outbound.data
+    │   │   ├── requests-inbound.data
+    │   │   └── requests-outbound.data
+    │   ├── connection-recording-summary.json
+    │   ├── connection-recording.meta
+    │   ├── requests-inbound.data
+    │   └── requests-outbound.data
+    ├── pubKeyBsrSignature.sign
+    ├── pubKeySelfSignature.sign
+    ├── session-meta.json
+    ├── session-recording-summary.json
+    ├── session-recording.meta
+    ├── wrappedBsrKey
+    └── wrappedPrivKey
+```
 
 BSR directories are validated based on the contents in the directory.
 Each BSR directory contains a SHA256SUMS and SHA256SUMS.sign file that can be used to cryptographically verify the BSR directory's contents.
