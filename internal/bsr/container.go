@@ -31,13 +31,13 @@ const (
 )
 
 // ContainerType defines the type of container.
-type containerType string
+type ContainerType string
 
 // Valid container types.
 const (
-	sessionContainer    containerType = "session"
-	connectionContainer containerType = "connection"
-	channelContainer    containerType = "channel"
+	SessionContainer    ContainerType = "session"
+	ConnectionContainer ContainerType = "connection"
+	ChannelContainer    ContainerType = "channel"
 )
 
 // container contains a group of files in a BSR.
@@ -64,7 +64,7 @@ type container struct {
 }
 
 // newContainer creates a container for the given type backed by the provide storage.Container.
-func newContainer(ctx context.Context, t containerType, c storage.Container, keys *kms.Keys) (*container, error) {
+func newContainer(ctx context.Context, t ContainerType, c storage.Container, keys *kms.Keys) (*container, error) {
 	j, err := c.OpenFile(ctx, journalFileName,
 		storage.WithCreateFile(),
 		storage.WithFileAccessMode(storage.WriteOnly),
@@ -124,7 +124,7 @@ func newContainer(ctx context.Context, t containerType, c storage.Container, key
 type populateKeyFunc func(c *container) (*kms.Keys, error)
 
 // openContainer will set keys and load and verify the checksums for this container
-func openContainer(ctx context.Context, t containerType, c storage.Container, keyGetFunc populateKeyFunc) (*container, error) {
+func openContainer(ctx context.Context, t ContainerType, c storage.Container, keyGetFunc populateKeyFunc) (*container, error) {
 	const op = "bsr.openContainer"
 	switch {
 	case t == "":
