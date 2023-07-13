@@ -6,6 +6,8 @@ on:
       - '**'
     tags-ignore:
       - '**'
+    paths-ignore:
+      - 'website/'
   workflow_call:
   workflow_dispatch:
 
