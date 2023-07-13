@@ -208,6 +208,39 @@ The HTTP helper supports several flags:
 The helper also supports a `-style` flag to allow you to override the
 default HTTP client. The only recognized style is `curl`.
 
+### Kubernetes connect helper
+
+The Kubernetes connect helper executes `kubectl` by proxying the call through Boundary.
+It can be useful to access a Kubernetes cluster that does not publicly expose its API server.
+To pass subcommands to `kubectl`, use `--` followed by the command you want to pass. In
+this example, we're calling `kubectl top node`:
+
+```shell-session
+$ boundary connect kube -target-id ttcp_Yq0QCUMSe2 -- top node
+```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689288553-boundary-kube-connect.mov"
+  />
+</video>
+
+The Kubernetes helper supports several flags:
+
+- `host`: Specifies the host value to use, overriding the endpoint address from the session information.
+
+- `scheme`: Specifies the scheme to use. The default is https.
+
+The helper also supports a `-style` flag to allow you to override the
+default Kubernetes client. The only recognized style is `kubectl`.
+
 ## Select targets
 
 When using `boundary connect` you must identify the target used for connecting.
