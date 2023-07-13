@@ -264,18 +264,10 @@ $ boundary connect ssh -target-name "Generated target" -target-scope-name "Gener
 
 ## Built-in vs. exec
 
-Boundary comes with built-in wrappers for popular layer 7 connection protocols,
-such as:
-
-- `ssh`: defaults to the local SSH client (`ssh`)
-- `postgres`: defaults to the official Postgres CLI client (`psql`)
-- `rdp`: defaults to the built-in Windows RDP client (`mstsc`)
-- `http`: defaults to `curl`
-- `kube`: defaults to `kubectl`
-
-However, `boundary connect` can accommodate executing clients even when there is
-no built-in support for a specific client using `-exec`. The `-exec` flag is a
-very powerful tool, allowing you to wrap Boundary TCP sessions in your preferred
+We've seen the built-in connect helpers above, however, `boundary connect`
+can accommodate executing clients even when there is no built-in support
+for a specific client using `-exec`. The `-exec` flag is a very powerful
+tool, allowing you to wrap Boundary TCP sessions in your preferred
 client. You can use this flag to create an authenticated proxy to almost
 anything.
 
