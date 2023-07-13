@@ -68,8 +68,9 @@ The ldap auth method has the following additional attributes:
 
 - `user_filter` - (optional) If set, the Go template used to construct an LDAP
   user search filter. The template can access the following context variables:
-  [UserAttr, Username]. The default user_filter is ({{.UserAttr}}={{.Username}})
-  or (userPrincipalName={{.Username}}@UPNDomain) if the upn-domain parameter is
+  [UserAttr, Username]. The default `user_filter` is
+  `({{.UserAttr}}={{.Username}})` or
+  `(userPrincipalName={{.Username}}@UPNDomain)` if the `upn-domain` parameter is
   set.
 
 - `enable_groups` - (optional) If `true`, an authenticated user's groups are
