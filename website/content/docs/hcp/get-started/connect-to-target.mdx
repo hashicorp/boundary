@@ -174,6 +174,43 @@ $ boundary connect postgres -target-id ttcp_eTcZMueUYv -dbname postgres
 The helper also supports a `-style` flag to allow you to override the
 default PostgreSQL client. The only recognized style is `psql`.
 
+#### HTTP connect helper
+
+The HTTP connect helper executes `curl`, passing information such as the HTTP path,
+method, verb and others. It can be useful to call API endpoints through the Boundary
+proxy. In the example below, we call a Weather API endpoint to get the rain forecast for
+New York for the next few days.
+
+```shell-session
+$ boundary connect http -target-id ttcp_VlpkajEuuf -path '/v1/forecast?latitude=40.7143&longitude=-74.006&daily=precipitation_sum&timezone=America%2FNew_York'
+```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689278326-boundary-http-connect.mov"
+  />
+</video>
+
+The HTTP helper supports several flags:
+
+- `host`: Specifies the host value to use, overriding the endpoint address from the session information.
+
+- `method`: Specifies the method to use. If not set, will use the client's default.
+
+- `path`: Specifies a path that will be appended to the generated URL.
+
+- `scheme`: Specifies the scheme to use. The default is https.
+
+The helper also supports a `-style` flag to allow you to override the
+default HTTP client. The only recognized style is `curl`.
+
 ## Select targets
 
 When using `boundary connect` you must identify the target used for connecting.
