@@ -13,20 +13,16 @@ import (
 const permsFile = "website/content/docs/concepts/security/permissions/resource-table.mdx"
 
 var (
-	iamScopes  = []string{"Global", "Org"}
-	infraScope = []string{"Project"}
+	iamScopes    = []string{"Global", "Org"}
+	infraScope   = []string{"Project"}
+	tableHeaders = []string{
+		"API endpoint",
+		"Parameters into permissions engine",
+		"Available actions / examples",
+	}
 )
 
-type Table struct {
-	Header *Header
-	Body   *Body
-}
-
-type Header struct {
-	Titles []string
-}
-
-type Body struct {
+type Page struct {
 	Resources []*Resource
 }
 
@@ -48,23 +44,12 @@ type Action struct {
 	Examples    []string
 }
 
-var table = &Table{
-	Header: &Header{
-		Titles: []string{
-			"Resource Type",
-			"Applicable Scopes",
-			"API Endpoint",
-			"Parameters into Permissions Engine",
-			"Available Actions / Examples",
-		},
-	},
-	Body: &Body{
-		Resources: make([]*Resource, 0, 12),
-	},
+var page = &Page{
+	Resources: make([]*Resource, 0, 12),
 }
 
 func main() {
-	table.Body.Resources = append(table.Body.Resources,
+	page.Resources = append(page.Resources,
 		account,
 		authMethod,
 		authToken,
@@ -114,9 +99,10 @@ func main() {
 		post = append(post, lines[i])
 	}
 
-	final := fmt.Sprintf("%s\n\n%s\n\n%s",
+	final := fmt.Sprintf("%s\n\n%s\n\n%s\n\n%s",
 		strings.Join(pre, "\n"),
-		strings.Join(table.Marshal(), "\n"),
+		strings.Join(page.MarshalTableOfContents(), "\n"),
+		strings.Join(page.MarshalBody(), "\n"),
 		strings.Join(post, "\n"))
 
 	if err := os.WriteFile(permsFile, []byte(final), 0o644); err != nil {
@@ -125,119 +111,105 @@ func main() {
 	}
 }
 
-func (t *Table) Marshal() (ret []string) {
-	ret = append(ret, "<table>")
-	ret = append(ret, "  <thead>")
-	ret = append(ret, t.Header.Marshal()...)
-	ret = append(ret, "  </thead>")
-	ret = append(ret, "  <tbody>")
-	ret = append(ret, t.Body.Marshal()...)
-	ret = append(ret, "  </tbody>")
-	ret = append(ret, "</table>")
-
-	return
-}
-
-func (h *Header) Marshal() (ret []string) {
-	ret = append(ret, fmt.Sprintf(`%s<tr>`, indent(4)))
-	for _, v := range h.Titles {
-		ret = append(ret,
-			fmt.Sprintf("%s<th>%s</th>", indent(6), v),
-		)
+func (p *Page) MarshalTableOfContents() (ret []string) {
+	for _, v := range p.Resources {
+		ret = append(ret, fmt.Sprintf(
+			"- [%s](#%s)",
+			toSentenceCase(v.Type),
+			strings.ReplaceAll(strings.ToLower(v.Type), " ", "-"),
+		))
 	}
-	ret = append(ret, fmt.Sprintf(`%s</tr>`, indent(4)))
 
 	return
 }
 
-func (b *Body) Marshal() (ret []string) {
-	for _, v := range b.Resources {
+func (p *Page) MarshalBody() (ret []string) {
+	for _, v := range p.Resources {
 		ret = append(ret, v.Marshal()...)
+		ret = append(ret, "")
 	}
 
 	return
 }
 
 func (r *Resource) Marshal() (ret []string) {
-	for i, v := range r.Endpoints {
-		ret = append(ret, fmt.Sprintf(`%s<tr>`, indent(4)))
-		if i == 0 {
-			ret = append(ret,
-				fmt.Sprintf(`%s<td rowSpan="%d">%s</td>`, indent(6), len(r.Endpoints), r.Type),
-				fmt.Sprintf(`%s<td rowSpan="%d">`, indent(6), len(r.Endpoints)),
-				fmt.Sprintf(`%s<ul>`, indent(8)),
-			)
-			for _, s := range r.Scopes {
-				ret = append(ret,
-					fmt.Sprintf(`%s<li>%s</li>`, indent(10), s),
-				)
-			}
-			ret = append(ret,
-				fmt.Sprintf(`%s</ul>`, indent(8)),
-				fmt.Sprintf(`%s</td>`, indent(6)),
-			)
-		}
+	// Section Header
+	ret = append(ret, fmt.Sprintf("## %s\n", toSentenceCase(r.Type)))
+
+	// Scopes information
+	var scopes []string
+	for _, s := range r.Scopes {
+		scopes = append(scopes, fmt.Sprintf("**%s**", s))
+	}
+	ret = append(ret, fmt.Sprintf(
+		"The **%s** resource type supports the following scopes: %s\n",
+		toSentenceCase(r.Type),
+		strings.TrimSpace(strings.Join(scopes, ", ")),
+	))
+
+	// Table Header
+	ret = append(ret, fmt.Sprintf("| %s |", strings.Join(tableHeaders, " | ")))
+	var headerSeparators []string
+	for _, t := range tableHeaders {
+		headerSeparators = append(headerSeparators, strings.Repeat("-", len(t)))
+	}
+	ret = append(ret, fmt.Sprintf("| %s |", strings.Join(headerSeparators, " | ")))
+
+	// Table Body
+	for _, v := range r.Endpoints {
 		ret = append(ret, v.Marshal()...)
-		ret = append(ret, fmt.Sprintf(`%s</tr>`, indent(4)))
 	}
 
 	return
 }
 
 func (e *Endpoint) Marshal() (ret []string) {
-	ret = append(ret,
-		fmt.Sprintf(`%s<td>`, indent(6)),
-		fmt.Sprintf(`%s<code>%s</code>`, indent(8), escape(e.Path)),
-		fmt.Sprintf(`%s</td>`, indent(6)),
-		fmt.Sprintf(`%s<td>`, indent(6)),
-		fmt.Sprintf(`%s<ul>`, indent(8)),
-	)
+	var row []string
 
+	// Endpoint Field
+	row = append(row, fmt.Sprintf("<code>%s</code>", escape(e.Path)))
+
+	// Parameters Field
+	pString := "<ul>"
 	for _, v := range sortedKeys(e.Params) {
-		ret = append(ret,
-			fmt.Sprintf(`%s<li>%s</li>`, indent(10), v),
-			fmt.Sprintf(`%s<ul>`, indent(10)),
-			fmt.Sprintf(`%s<li>`, indent(12)),
-			fmt.Sprintf(`%s<code>%s</code>`, indent(14), escape(e.Params[v])),
-			fmt.Sprintf(`%s</li>`, indent(12)),
-			fmt.Sprintf(`%s</ul>`, indent(10)),
-		)
+		pString = fmt.Sprintf("%s<li>%s</li>", pString, v)
+		pString = fmt.Sprintf("%s<ul><li><code>%s</code></li></ul>", pString, escape(e.Params[v]))
 	}
+	pString = fmt.Sprintf("%s</ul>", pString)
+	row = append(row, pString)
 
-	ret = append(ret,
-		fmt.Sprintf(`%s</ul>`, indent(8)),
-		fmt.Sprintf(`%s</td>`, indent(6)),
-		fmt.Sprintf(`%s<td>`, indent(6)),
-		fmt.Sprintf(`%s<ul>`, indent(8)),
-	)
-
+	// Actions Field
+	aString := "<ul>"
 	for _, v := range e.Actions {
-		ret = append(ret,
-			fmt.Sprintf(`%s<li>`, indent(10)),
-			fmt.Sprintf(`%s<code>%s</code>: %s`, indent(12), v.Name, v.Description),
-			fmt.Sprintf(`%s</li>`, indent(10)),
+		aString = fmt.Sprintf(
+			"%s<li><code>%s</code>: %s</li>",
+			aString,
+			escape(v.Name),
+			v.Description,
 		)
-		ret = append(ret,
-			fmt.Sprintf(`%s<ul>`, indent(10)),
-		)
-		for _, x := range v.Examples {
-			ret = append(ret,
-				fmt.Sprintf(`%s<li>`, indent(12)),
-				fmt.Sprintf(`%s<code>%s</code>`, indent(14), escape(x)),
-				fmt.Sprintf(`%s</li>`, indent(12)),
-			)
-		}
-		ret = append(ret,
-			fmt.Sprintf(`%s</ul>`, indent(10)),
-		)
-	}
 
-	ret = append(ret,
-		fmt.Sprintf(`%s</ul>`, indent(8)),
-		fmt.Sprintf(`%s</td>`, indent(6)),
-	)
+		eString := "<ul>"
+		for _, x := range v.Examples {
+			// Intentionally using markdown code highlighting here for readability
+			eString = fmt.Sprintf("%s<li>`%s`</li>", eString, x)
+		}
+		eString = fmt.Sprintf("%s</ul>", eString)
+
+		aString = fmt.Sprintf("%s%s", aString, eString)
+	}
+	aString = fmt.Sprintf("%s</ul>", aString)
+	row = append(row, aString)
+
+	ret = append(ret, fmt.Sprintf("| %s |", strings.Join(row, " | ")))
 
 	return
+}
+
+func toSentenceCase(s string) string {
+	return fmt.Sprintf(
+		"%s%s",
+		strings.ToUpper(s[:1]), strings.ToLower(s[1:]),
+	)
 }
 
 func escape(s string) string {
