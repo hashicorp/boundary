@@ -386,6 +386,10 @@
           {
             "title": "Enable session recording",
             "path": "configuration/session-recording/enable-session-recording"
+          },
+          {
+            "title": "Audit events",
+            "path": "configuration/session-recording/audit-events"
           }
         ]
       },
