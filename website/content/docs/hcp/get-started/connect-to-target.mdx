@@ -129,6 +129,51 @@ Boundary.
 The RDP helper also supports a `-style` flag to allow you to override the
 default RDP client. Recognized styles are `mstsc` and `open`.
 
+#### PostgreSQL connect helper
+
+The PostgreSQL helper executes `psql`, passing information such as the username and
+database name from the command line.
+
+```shell-session
+$ boundary connect postgres -target-id ttcp_eTcZMueUYv -username admin -dbname postgres
+```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689253770-boundary-postgres-connect.mov"
+  />
+</video>
+
+The PostgreSQL helper will automatically inject brokered credentials, allowing you
+to access the PostgreSQL instance without knowing the username and password.
+
+```shell-session
+$ boundary connect postgres -target-id ttcp_eTcZMueUYv -dbname postgres
+```
+
+<video
+  muted
+  playsInline
+  autoPlay
+  loop
+  class="boundary-clickthrough-video boundary-clickthrough-desktop-video"
+>
+  <source
+    type="video/mp4"
+    src="https://www.datocms-assets.com/2885/1689278343-boundary-passwordless-postgres-connect.mov"
+  />
+</video>
+
+The helper also supports a `-style` flag to allow you to override the
+default PostgreSQL client. The only recognized style is `psql`.
+
 ## Select targets
 
 When using `boundary connect` you must identify the target used for connecting.
