@@ -6,7 +6,9 @@ on:
   pull_request:
     branches:
       - 'main'
-
+    paths-ignore:
+      - 'website/'
+      
 jobs:
   scan:
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
