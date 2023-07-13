@@ -1,0 +1,29 @@
+---
+layout: docs
+page_title: Session recording audit events
+description: |-
+  Audit events emitted by Boundary for session recording
+---
+
+# Session recording audit events
+Boundary emits audit events for actions performed by users. Here are **some** of the possible event field types that are emitted:
+
+| Event Field Types                                                                                         | Description                                                    |
+|-----------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| `timestamp`                                                                                               | The timestamp of the event. |
+| `auth`                                                                                                    | Authentication information about the user who performed the action. |
+| `response.details.item.connection_recordings.id`                                                          | Session recording connection Id. |
+| `response.details.item.connection_recordings.channel_recordings.id`                                       | Session recording channel Id. |
+| `response.details.item.connection_recordings.start_time.seconds`                                          | Start time of session recording. |
+| `response.details.item.connection_recordings.end_time.seconds`                                            | End time of session recording. |
+| `response.details.item.connection_recordings.channel_recordings.bytes_up`                                 | Upload bytes during session. |
+| `response.details.item.connection_recordings.channel_recordings.bytes_down`                               | Download bytes during session. |
+| `request_info.client_ip`                                                                                  | The client IP address used by the user. |
+| `response.details.item.connection_recordings.channel_recordings.duration.seconds`                         | Length of time a session took. Recorded in seconds. |
+| `response.details.item.create_time_values.target.name`                                                    | The name of the targets. |
+| `response.details.item.create_time_values.target.id`                                                      | The ID of the target accessed during the recording. |
+| `response.details.item.create_time_values.target.type`                                                    | The type of protocol used. |
+| `response.details.items.create_time_values.target.scope.name`                                             | Name of the scope the target accessed belongs to. |
+| `response.details.items.create_time_values.target.scope.parent_scope_id`                                  | Parent ID of the scope the target accessed belongs to. |
+| `response.details.item.Attrs.SshTargetAttributes.storage_bucket_id.value`                                 | Storage bucket ID attached to a target that is used for storing session recordings. |
+| `response.details.item.Attrs.SshTargetAttributes.enable_session_recording.value`                          | Determines if session recording is enabled on a target or not. |
