@@ -95,7 +95,7 @@ require (
 	github.com/hashicorp/dbassert v0.0.0-20230405175854-2d88acd5134b
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c893099f13
 	github.com/hashicorp/go-version v1.6.0
-	github.com/hashicorp/nodeenrollment v0.2.5
+	github.com/hashicorp/nodeenrollment v0.2.6
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/jimlambrt/gldap v0.1.7
 	github.com/kelseyhightower/envconfig v1.4.0
