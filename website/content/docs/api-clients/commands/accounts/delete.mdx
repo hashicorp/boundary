@@ -9,11 +9,29 @@ description: |-
 
 Command: `boundary accounts delete`
 
+The `accounts delete` command deletes an existing account.
+
 
 ## Examples
 
+Delete an account with the given ID. 
+
+```shell-session
+$ boundary accounts delete -id=acctpw_0987654321
+The delete operation completed successfully.
+```
 
 ## Usage
 
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary accounts delete [options] [args]
+```
+
+</CodeBlockConfig>
+
 
 ### Command options
+
+- `-id` `(string: "")` - ID of the account to delete.

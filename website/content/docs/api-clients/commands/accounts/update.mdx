@@ -1,5 +1,5 @@
 ---
-layout: docs
+layout: docsboundary accounts update password -id=acctpw_w3N3PlV34D -name="tester" -login-name="test-engineer" -description="Only to be used for testing"
 page_title: accounts update - Command
 description: |-
   The "accounts update" command allows Boundary admin to update an account resource.
@@ -9,11 +9,168 @@ description: |-
 
 Command: `boundary accounts update`
 
+The `accounts update` command updates an existing account's information for
+LDAP, OIDC, or password auth method.
 
 ## Examples
 
+An existing password-type account (`acctpw_w3N3PlV34D`) has the following
+detail. 
+
+```plaintext
+ID:                    acctpw_w3N3PlV34D
+   Version:             1
+   Type:                password
+   Name:                test_account
+   Description:         Test password account
+   Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      set-password
+      change-password
+
+  Attributes:
+    Login Name:        tester01
+```
+
+Update the name, login name, and description.
+
+```shell-session
+$ boundary accounts update password -id=acctpw_w3N3PlV34D \
+   -name="tester" \
+   -login-name="test-engineer" \
+   -description="Only to be used for testing"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard highlight="4,6,25">
+
+```plaintext
+Account information:
+  Auth Method ID:      ampw_1234567890
+  Created Time:        Thu, 13 Jul 2023 22:30:53 PDT
+  Description:         Only to be used for testing
+  ID:                  acctpw_w3N3PlV34D
+  Name:                tester
+  Type:                password
+  Updated Time:        Thu, 13 Jul 2023 22:40:48 PDT
+  Version:             3
+
+  Scope:
+    ID:                global
+    Name:              global
+    Type:              global
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    set-password
+    change-password
+
+  Attributes:
+    Login Name:        test-engineer
+```
+
+</CodeBlockConfig>
 
 ## Usage
 
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary accounts update [type] [options] [args]
+```
+
+</CodeBlockConfig>
+
+The available types are: `ldap`, `oidc`, and `password`.
 
 ### Command options
+
+- `-description` `(string: "")` - Description to set on the account.
+- `-id` `(string: "")` - ID of the account on which to operate.
+- `-name` `(string: "")` - Name to set on the account.
+- `-version` `(string: "")` - The version of the account against which to
+   perform an update operation. If not specified, the command will perform a
+   check-and-set automatically.
+
+#### Usages by type
+
+<Tabs>
+<Tab heading="ldap">
+
+Update an account of `ldap` type.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary accounts update ldap [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+#### Example
+
+```shell-session
+$ boundary accounts update ldap -id acctldap_1234567890 \
+   -name "devops" \
+   -description "ldap account for DevOps"
+```
+
+</Tab>
+<Tab heading="oidc">
+
+Update an account of `oidc` type.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary accounts update oidc [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Exampleboundary accounts update
+
+```shell-session
+$ boundary accounts update oidc -id acctoidc_1234567890 \
+   -name "devops" \
+   -description "Oidc account for DevOps"
+```
+
+</Tab>
+<Tab heading="password">
+
+Update an account of `password` type.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary accounts update password [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Password account options
+
+The following are password account specific options in addition to the command
+options.
+
+- `-login-name` `(string: "")` - The login name for the account
+
+#### Example
+
+```shell-session
+$ boundary accounts update password -id acctpw_1234567890 \
+   -name "devops" \
+   -description "Password account for DevOps"
+```
+
+</Tab>
+</Tabs>

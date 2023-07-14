@@ -9,11 +9,63 @@ description: |-
 
 Command: `boundary accounts list`
 
+The `accounts list` command list all accounts created for a given auth method.
 
 ## Examples
 
+List all accounts for an auth method with ID, `ampw_1234567890`. 
+
+```shell-session
+$ boundary accounts list -auth-method-id ampw_1234567890
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Account information:
+  ID:                    acctpw_0987654321
+    Version:             1
+    Type:                password
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      set-password
+      change-password
+
+  ID:                    acctpw_1234567890
+    Version:             5
+    Type:                password
+    Authorized Actions:
+      no-op
+      read
+      update
+      delete
+      set-password
+      change-password
+```
+
+</CodeBlockConfig>
 
 ## Usage
 
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary accounts list [options] [args]
+```
+
+</CodeBlockConfig>
+
 
 ### Command options
+
+- `-auth-method-id` `(string: "")` - The auth-method resource to use for the
+   operation. This can also be specified via the `BOUNDARY_AUTH_METHOD_ID`
+   environment variable.
+- `-filter` `(string: "")` - If set, the list operation will be filtered before
+   being returned. The filter operates against each item in the list. Using
+   single quotes is recommended as filters contain double quotes. 
