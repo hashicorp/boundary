@@ -163,16 +163,12 @@
                 "path": "concepts/security/permissions"
               },
               {
-                "title": "Assignable permissions",
-                "path": "concepts/security/permissions/assignable-permissions"
-              },
-              {
-                "title": "Grants",
+                "title": "Grant Strings",
                 "path": "concepts/security/permissions/grants"
               },
               {
-                "title": "Permission grant formats",
-                "path": "concepts/security/permissions/permission-grant-formats"
+                "title": "Advanced Concepts",
+                "path": "concepts/security/permissions/advanced"
               },
               {
                 "title": "Resource table",
