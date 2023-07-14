@@ -15,19 +15,19 @@ Boundary and Vault achieve these two things by removing the requirement for the 
 
 From a security perspective, we can use dynamic, ephemeral credentials that are only valid for the lifetime of the session, unless a specific TTL has been attached to the Vault token that would result in a session having a finite amount of time.
 
-The security benefits also extend past an organisation's internal team, but also caters for third-party or contractors that may need to access certain resources. It would be more preferable to not share credentials for resource access with temporary staff, whilst still ensuring that access is secure and granted in a timely manner.
+The security benefits also extend past an organisation's internal team, but also caters for third-party or contractors that may need to access certain resources. It would be preferable to not expose credentials for resource access with temporary staff, whilst still ensuring that access is secure and granted in a timely manner.
 
 Ensuring access is granted in a timely manner then leads to that improvement in workflow efficiency. This is the result of end-users not having to be concerned with credentials, therefore removing a large bottleneck, in relation to gaining credentials through access requests and the time associated with such a task.
 
 # Credentials
-Vault can work with Boundary to be a credential store and library, which allows for credentials to be stored in Vault and used by Boundary. There are two options here for configuration:
+Vault can work with Boundary to be a credential [store](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-stores) and [library](https://developer.hashicorp.com/boundary/docs/concepts/domain-model/credential-libraries), which allows for credentials to be stored in Vault and used by Boundary. There are two options here for configuration:
 
 - Generic Secrets.
 - SSH Certificates.
 
 The Generic Secrets references a Vault KV path, where static secrets are stored and can be used to broker credentials to the end-user when connecting to a target.
 
-The SSH Certificates takes advantage of Vault being the CA for SSH certificates by utilising the HashiCorp Vault SSH Secrets Engine and can inject SSH certificates into the Boundary session.
+The SSH Certificates takes advantage of Vault being the CA for SSH certificates by utilising the [HashiCorp Vault SSH Secrets Engine](https://developer.hashicorp.com/vault/docs/secrets/ssh) and can inject SSH certificates into the Boundary session.
 
 It is worth detailing that users must bring their own Vault deployment to Boundary.
 
@@ -59,3 +59,4 @@ It is worth highlighting the effect this integration has on Vault client count. 
 
 When an end user goes to connect to a target, which leverages Vault for dynamic SSH certificates, a new certificate is generated for every target connection. As long as the target trusts the CA, then access will be granted without the end-user having any visibility.
 
+## Resources
