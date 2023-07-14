@@ -1,11 +1,9 @@
 name: test
 
 on:
-  push:
-    paths-ignore:
-      - 'website/**'
-  workflow_call:
-  workflow_dispatch:
+  - workflow_dispatch
+  - push
+  - workflow_call
 
 permissions:
   contents: read
