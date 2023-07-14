@@ -44,19 +44,17 @@ existing authorization token) and launches a proxied kube connection.
 
 ### Kubernetes Options:
 
-- `-host=<string>`
-  Specifies the host value to use, overriding the endpoint address from
-  the session information. The specified hostname will be passed through
-  to the client (if supported) for use in the TLS SNI value. This can also
-  be specified via the BOUNDARY_CONNECT_KUBE_HOST environment variable.
+- `-host` `(string: "")` - Specifies the host value to use, overriding the
+  endpoint address from the session information. The specified hostname will be
+  passed through to the client (if supported) for use in the TLS SNI value. This
+  can also be specified via the `BOUNDARY_CONNECT_KUBE_HOST` environment variable.
 
-- `-scheme=<string>`
-  Specifies the scheme to use. The default is https. This can also be
-  specified via the BOUNDARY_CONNECT_KUBE_SCHEME environment variable.
-
-- `-style=<string>`
-  Specifies how the CLI will attempt to invoke a Kubernetes client. This
-  will also set a suitable default for -exec if a value was not specified.
-  Currently-understood values are "kubectl". The default is kubectl. This
-  can also be specified via the BOUNDARY_CONNECT_KUBE_STYLE environment
+- `-scheme` `(string: "")` - Specifies the scheme to use. The default is https.
+  This can also be specified via the `BOUNDARY_CONNECT_KUBE_SCHEME` environment
   variable.
+
+- `-style` `(string: "")` - Specifies how the CLI will attempt to invoke a
+  Kubernetes client. This will also set a suitable default for -exec if a value
+  was not specified. Currently-understood values are "kubectl". The default is
+  kubectl. This can also be specified via the `BOUNDARY_CONNECT_KUBE_STYLE`
+  environment variable.

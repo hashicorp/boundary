@@ -52,10 +52,9 @@ existing authorization token) and launches a proxied rdp connection.
 
 ### RDP Options:
 
-- `-style=<string>`
-  Specifies how the CLI will attempt to invoke an RDP client. This will
-  also set a suitable default for -exec if a value was not specified.
-  urrently-understood values are "mstsc", which is the default on Windows
-  and launches the Windows client, and "open", which is the default on
+- `-style` `(string: "")` - Specifies how the CLI will attempt to invoke an RDP
+  client. This will also set a suitable default for -exec if a value was not
+  specified. urrently-understood values are "mstsc", which is the default on
+  Windows and launches the Windows client, and "open", which is the default on
   Mac and launches via an rdp:// URL. This can also be specified via the
-  BOUNDARY_CONNECT_RDP_STYLE environment variable.
+  `BOUNDARY_CONNECT_RDP_STYLE` environment variable.
