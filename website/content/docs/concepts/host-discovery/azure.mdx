@@ -32,7 +32,7 @@ $ boundary host-catalogs create plugin \
 <Tab heading="Terraform">
 
 ```hcl
-resource "boundary_host_catalog_plugin" "azure_plugin" {
+resource "boundary_host_catalog_plugin" "azure_host_catalog" {
   name        = "Azure Catalog"
   description = "Azure Host Catalog"
   scope_id    = boundary_scope.project.id
@@ -90,10 +90,10 @@ $ boundary host-sets create plugin \
 <Tab heading="Terraform" group="terraform">
 
 ```hcl
-  resource "boundary_host_set_plugin" "azure_plugin" {
+  resource "boundary_host_set_plugin" "azure_host_set" {
   name        = "Azure Set"
   description = "Azure Host Set"
-  host_catalog_id  = boundary_scope.boundary_host_catalog_plugin.id
+  host_catalog_id  = boundary_scope.azure_host_catalog.id
   attributes_json = jsonencode({
     "filter" = "tagName eq 'service-type' and tagValue eq 'database'" })
 }

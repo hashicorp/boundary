@@ -31,7 +31,7 @@ $ boundary host-catalogs create plugin \
 <Tab heading="Terraform">
 
   ```hcl
-  resource "boundary_host_catalog_plugin" "aws_plugin" {
+  resource "boundary_host_catalog_plugin" "aws_host_catalog" {
     name        = "AWS Catalog"
     description = "AWS Host Catalog"
     scope_id    = boundary_scope.project.id
@@ -88,10 +88,10 @@ $ boundary host-sets create plugin \
 <Tab heading="Terraform" group="terraform">
 
 ```hcl
-resource "boundary_host_set_plugin" "aws_plugin" {
+resource "boundary_host_set_plugin" "aws_host_set" {
   name        = "AWS Host Set"
   description = "AWS Host Set"
-  host_catalog_id  = boundary_scope.boundary_host_catalog_plugin.id
+  host_catalog_id  = boundary_scope.aws_host_catalog.id
   attributes_json = jsonencode({
   "filters" = ["tag-key=foo,bar", "tag-key=baz"] })
 }
