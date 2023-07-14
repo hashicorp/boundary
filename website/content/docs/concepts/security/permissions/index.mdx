@@ -41,7 +41,7 @@ Every role assigns grants within a **specific scope**: either the scope in which
 exists, or a scope that is a child of the scope in which the role exists,
 as determined by the role's "grant scope ID" value.
 
-When a request is made, the scope in which to discover grants is either provided by the client 
+When a user makes a request, the scope in which to discover grants is either provided by the client 
 (if against a resource collection itself) or is looked up using the resource's ID. This scope ID, 
 along with the user's ID and the IDs of the groups the user belongs to, controls which roles are 
 fetched to provide grants for the request.
@@ -62,4 +62,4 @@ scope ID and one or more of the following are true:
 Roles are composable; a user's final set of grants will be composed of grants
 that originate from all matching roles.
 
-To learn more about Boundary's access management system, see IAM [LINK TBD].
+To learn more about Boundary's access management system, see [Identity and Access Management](/boundary/docs/concepts/iam).
