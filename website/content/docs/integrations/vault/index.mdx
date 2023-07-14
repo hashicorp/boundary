@@ -53,8 +53,9 @@ Vault is configured to act as the certificate authority (CA), to ensure that the
 
 `/sign` - The Boundary controllers will generate the key pair to then send to Vault to sign.
 
-Note:
-It is worth highlighting the implications this integration has on Vault client count. If Boundary is leveraging Vault for secrets management then one credential store equates to one Vault token. The number of Boundary targets sourcing credentials from the stores, the number of users connecting to the targets, the number of sessions that get created or how many Credential Libraries the Credential Store contains, has no impact on the client count in Vault.
+<Note>
+It is worth highlighting the effect this integration has on Vault client count. If Boundary is leveraging Vault for secrets management then one credential store equates to one Vault token. The number of Boundary targets sourcing credentials from the stores, the number of users connecting to the targets, the number of sessions that get created or how many Credential Libraries the Credential Store contains, has no impact on the client count in Vault.
+</Note>
 
 When an end user goes to connect to a target, which leverages Vault for dynamic SSH certificates, a new certificate is generated for every target connection. As long as the target trusts the CA, then access will be granted without the end-user having any visibility.
 
