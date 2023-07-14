@@ -32,7 +32,7 @@ $ boundary host-catalogs create plugin \
 <Tab heading="Terraform">
 
 ```hcl
-resource "boundary_host_catalog_plugin" "aws_plugin" {
+resource "boundary_host_catalog_plugin" "azure_plugin" {
   name        = "Azure Catalog"
   description = "Azure Host Catalog"
   scope_id    = boundary_scope.project.id
