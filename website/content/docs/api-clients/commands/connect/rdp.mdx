@@ -6,3 +6,56 @@ description: |-
 ---
 
 # connect rdp
+
+Command: `boundary connect rdp`
+
+The `connect rdp` command will authorize a session against a target and invoke an
+RDP client to connect, filling in the local address and port.
+
+You also have access to some templated values that are substituted into the
+command arguments, and these values are additionally injected as environment
+variables in the executed command:
+
+- `{{boundary.ip}}` (`BOUNDARY_PROXIED_IP`): The IP address of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.port}}` (`BOUNDARY_PROXIED_PORT`): The port of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.addr}}` (`BOUNDARY_PROXIED_ADDR`): The host:port format of the
+  address. This is essentially equivalent to `{{boundary.ip}}:{{boundary.port}}`.
+
+## Examples
+
+Authorize a session to target id named "ttcp_1234567890" and invoke an RDP session with built-in Windows RDP client (`mstsc`)
+
+```shell-session
+$ boundary connect rdp \
+   -target-id ttcp_1234567890
+```
+
+Authorize a session to a target id named "ttcp_123457890" and invoke a custom command for RDP (macOS) client
+
+```shell-session
+$ boundary connect rdp \
+   -target-id ttcp_1234567890
+   -exec bash \
+   -- -c "open rdp://full%20address=s={{boundary.addr}} && sleep 600"
+```
+
+## Usage
+
+```shell-session
+$ boundary connect rdp [options] [args]
+```
+
+This command performs a target authorization (or consumes an
+existing authorization token) and launches a proxied rdp connection.
+
+### RDP Options:
+
+- `-style=<string>`
+  Specifies how the CLI will attempt to invoke an RDP client. This will
+  also set a suitable default for -exec if a value was not specified.
+  urrently-understood values are "mstsc", which is the default on Windows
+  and launches the Windows client, and "open", which is the default on
+  Mac and launches via an rdp:// URL. This can also be specified via the
+  BOUNDARY_CONNECT_RDP_STYLE environment variable.
