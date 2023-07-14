@@ -548,14 +548,6 @@
             ]
           },
           {
-            "title": "auth-methods",
-            "path": "api-clients/commands/auth-methods"
-          },
-          {
-            "title": "auth-tokens",
-            "path": "api-clients/commands/auth-tokens"
-          },
-          {
             "title": "connect",
             "routes": [
               {
