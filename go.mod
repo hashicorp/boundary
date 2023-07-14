@@ -21,7 +21,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
 	github.com/hashicorp/boundary/api v0.0.39
 	github.com/hashicorp/boundary/sdk v0.0.35
-	github.com/hashicorp/cap v0.3.0
+	github.com/hashicorp/cap v0.3.2
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/eventlogger v0.1.2-0.20230428153751-cca445805f24
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20230428153751-cca445805f24
