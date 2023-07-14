@@ -6,3 +6,67 @@ description: |-
 ---
 
 # connect http
+
+Command: `boundary connect http`
+
+The `connect http` command will authorize a session against a target and invoke an
+http client to connect, filling in the local address and port.
+
+You also have access to some templated values that are substituted into the
+command arguments, and these values are additionally injected as environment
+variables in the executed command:
+
+- `{{boundary.ip}}` (`BOUNDARY_PROXIED_IP`): The IP address of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.port}}` (`BOUNDARY_PROXIED_PORT`): The port of the listening
+  socket that `boundary connect` has opened.
+- `{{boundary.addr}}` (`BOUNDARY_PROXIED_ADDR`): The host:port format of the
+  address. This is essentially equivalent to `{{boundary.ip}}:{{boundary.port}}`.
+
+## Examples
+
+Authorize a session to target id named "ttcp_1234567890" and invoke default http client `curl`
+
+```shell-session
+$ boundary connect http \
+   -target-id ttcp_1234567890
+```
+
+## Usage
+
+```shell-session
+$ boundary connect http [options] [args]
+```
+
+This command performs a target authorization (or consumes an
+existing authorization token) and launches a proxied http connection.
+
+### HTTP Options:
+
+- `-host=<string>`
+  Specifies the host value to use, overriding the endpoint address from
+  the session information. The specified hostname will be passed through
+  to the client (if supported) for use in the Host header and TLS SNI
+  value. This can also be specified via the BOUNDARY_CONNECT_HTTP_HOST
+  environment variable.
+
+- `-method=<string>`
+  Specifies the method to use. If not set, will use the client's default.
+  This can also be specified via the BOUNDARY_CONNECT_HTTP_METHOD
+  environment variable.
+
+- `-path=<string>`
+  Specifies a path that will be appended to the generated URL. This
+  can also be specified via the BOUNDARY_CONNECT_HTTP_PATH environment
+  variable.
+
+- `-scheme=<string>`
+  Specifies the scheme to use. The default is https. This can also be
+  specified via the BOUNDARY_CONNECT_HTTP_SCHEME environment variable.
+
+- `-style=<string>`
+  Specifies how the CLI will attempt to invoke an HTTP client. This will
+  also set a suitable default for -exec if a value was not specified.
+  Currently-understood values are "curl". The default is curl. This
+  can also be specified via the BOUNDARY_CONNECT_HTTP_STYLE environment
+  variable.
