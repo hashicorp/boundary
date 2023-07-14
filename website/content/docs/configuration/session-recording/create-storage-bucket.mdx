@@ -57,7 +57,7 @@ Session recording requires specific configuration for both the AWS S3 storage bu
    }
 
    ```
-- If KMS encryption is applied to the storage bucket, you will need to add these additional permissions for the Storage Bucket IAM User to the role policy:
+- If you apply KMS encryption to the storage bucket, you must add these additional permissions to the role policy for the storage bucket's IAM user:
    ```json
    {
       "Action": [
