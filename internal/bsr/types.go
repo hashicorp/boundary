@@ -5,6 +5,7 @@ package bsr
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -48,7 +49,7 @@ type BaseSessionSummary struct {
 	ConnectionCount uint64
 	StartTime       time.Time
 	EndTime         time.Time
-	Errors          error
+	Errors          string
 }
 
 // SessionSummary contains statistics for a session container
@@ -88,12 +89,12 @@ func (b *BaseSessionSummary) GetConnectionCount() uint64 {
 
 // GetErrors returns errors.
 func (b *BaseSessionSummary) GetErrors() error {
-	return b.Errors
+	return errors.New(b.Errors)
 }
 
 // SetErrors sets errors.
 func (b *BaseSessionSummary) SetErrors(e error) {
-	b.Errors = e
+	b.Errors = e.Error()
 }
 
 // BaseChannelSummary encapsulates data for a channel, including its id, channel type,
@@ -169,7 +170,7 @@ type BaseConnectionSummary struct {
 	EndTime      time.Time
 	BytesUp      uint64
 	BytesDown    uint64
-	Errors       error
+	Errors       string
 }
 
 // ConnectionSummary contains statistics for a connection container
@@ -223,10 +224,10 @@ func (b *BaseConnectionSummary) GetBytesDown() uint64 {
 
 // GetErrors returns errors.
 func (b *BaseConnectionSummary) GetErrors() error {
-	return b.Errors
+	return errors.New(b.Errors)
 }
 
 // SetErrors sets errors.
 func (b *BaseConnectionSummary) SetErrors(e error) {
-	b.Errors = e
+	b.Errors = e.Error()
 }
