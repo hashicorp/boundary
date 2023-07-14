@@ -7,7 +7,7 @@ on:
     tags-ignore:
       - '**'
     paths-ignore:
-      - 'website/'
+      - 'website/**'
   workflow_call:
   workflow_dispatch:
 
