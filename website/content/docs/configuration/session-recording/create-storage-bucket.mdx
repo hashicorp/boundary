@@ -55,6 +55,19 @@ Session recording requires specific configuration for both the AWS S3 storage bu
          }
       ]
    }
+
+   ```
+- If you apply KMS encryption to the storage bucket, you must add these additional permissions to the role policy for the storage bucket's IAM user:
+   ```json
+   {
+      "Action": [
+      "kms:Decrypt",
+      "kms:GenerateDataKey",
+      "kms:DescribeKey"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:kms:us-east-1:1234567890:key/uuid"
+   }
    ```
 
 ### Boundary workers requirements
