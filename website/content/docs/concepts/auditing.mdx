@@ -350,28 +350,40 @@ requests: inbound
 `*.data` files are binary files containing all data transmitted during a session.
 `SHA256SUM` and `SHA256SUM.sig` files are to be used for cryptographically verifying the contents of this directory.
 
-## Validating the Integrity of Session Recordings
+## Validate the integrity of session recordings
 
 BSR directories are validated based on the contents in the directory.
 Boundary cryptographically verifies each individual Boundary Session Recording (BSR) file. The keys used for verifying all
-Boundary Session Recording files are written to storage and are wrapped by your configured KMS. Each Session Recording will
-have its own individual key. The following keys will be generated when a Session Recording is authorized:
+Boundary Session Recording files are written to storage and are wrapped by the KMS you configured. Each session recording 
+has its own individual key. Boundary generates the following keys when a session recording is authorized:
 
-- BSR Key: AES-GCM used for signing the public key.
+- BSR key is a plaintext AES-GCM key. (This is not uploaded to the external object store)
 
-- Private/Public key pair: ed25519 key pair.  Private key is used to sign BSR files: initially the public key and the BSR checksums file.
+- Private and Public key pair is a ed25519 key pair. (The key pair is not uploaded to the external object store)
 
-The BSR’s key and the derived key-pair will be written to storage beside all the other BSR files.
+The following files are stored in the BSR file structure to ensure the integrity of a session recording:
+
+- `bsrKey.pub` is the Public ed25519 key.
+
+- `wrappedBsrKey` is the BSR key wrapped by the external KMS AES-GCM key configured by you.
+
+- `wrappedPrivKey` is the Private ed25519 key wrapped by the external KMS AES-GCM key configured by you.
+
+- `pubKeySelfSignature.sign` is a self-signature of the plaintext Public ed25519 key created with its Private key.
+
+- `pubKeyBsrSignature.sign` is a signature of the plaintext Public ed25519 key created with the BSR key.
+
+- `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the Private key.
+
 Encrypting the BSR key with an external KMS means that Boundary is not responsible for the longevity of the keys.
-The Boundary admin can always use that external KMS they control to decrypt BSR keys.
-A BSR’s key will be encrypted using the `go-kms-wrapping` package and therefore the encrypted BlobInfo will include the metadata required to identify the key-version used during encryption,
-so if the wrapper is reinitialized properly; the keys can be unwrapped even if the key has been rotated.
-Users can use `go-kms-wrapping` independently from Boundary to unwrap the BSR keys as needed.
+The Boundary admin can always use that external KMS to unwrap the `wrappedBsrKey` and `wrappedPrivKey`.
+A BSR’s key is encrypted using the `go-kms-wrapping` package, and therefore the encrypted BlobInfo will includes the metadata required to identify the key-version used during encryption.
+So if the wrapper is reinitialized properly, you can unwrap the keys even if the key has been rotated.
 
-Each BSR directory contains a SHA256SUM and SHA256SUM.sign file that can be used to cryptographically verify the BSR directory's contents.
+Each BSR directory contains a SHA256SUM and SHA256SUM.sig file that you can use to cryptographically verify the BSR directory's contents.
 The SHA256SUM file contains rows of file names paired with a checksum for the file contents.
-The SHA256SUM.sign is a copy of the SHA256SUM file, signed with the BSR's private key.
-An example of the SHA256SUM file:
+The SHA256SUM.sig is a copy of the SHA256SUM file, signed with the BSR's private key.
+Refer to the following example of a SHA256SUM file:
 
    ```
    dc8ce2c42553ce510197c99efe21d89d6229feb4b49170511f49965f2e3cf1a3  wrappedBsrKey
@@ -384,25 +396,20 @@ An example of the SHA256SUM file:
    ad76483e7cf3e65391a3a1d0b86a3ad436333ee225bea042b13900abc188b226  session-recording-summary.json
    ```
 
-Workers will use these keys to sign BSR data as follows:
+You can follow these steps to validate a session recording:
 
-- The BSR key will be used to sign the public key using `go-kms-wrapping` package HmacSha256(...)
+1. Unwrap `wrappedBsrKey` using the external KMS configured by you to retrieve the BSR key.
+2. Unwrap `wrappedPrivKey` using the external KMS configured by you to retrieve the Private key.
+3. Use the BSR key or the Private key to verify the `bsrKey.pub` key using `go-kms-wrapping` HmacSha256(...)
+4. Once verified, you can use the `bsrKey.pub` key to verify the BSR SHA256SUM file using `go-kms-wrapping` ed25519.Sign(...)
 
-- The private key will be used to sign the public key using `go-kms-wrapping` package ed25519.Sign(...)
+## Validate the data integrity in the external object store
 
-- The private key will be used to sign the BSR SHA256SUM file using `go-kms-wrapping` package ed25519.Sign(...)
-
-Workers will use these keys to verify BSR data as follows:
-
-- The BSR key or the private key can be used to verify the public key using `go-kms-wrapping` HmacSha256(...)
-
-- Once verified, the public key can be used to verify the BSR SHA256SUM file using `go-kms-wrapping` ed25519.Sign(...)
-
-## Validating the Data Integrity in the External Object Store
-
-When a Boundary worker is uploading a BSR file to AWS S3 through the Boundary AWS Plugin, the worker calculates the SHA256 checksum of the
-contents of the BSR file and attaches this information to the object that is uploaded to S3. The stored SHA256 checksum value can now be used
-to validate the contents of the BSR file when downloading it from AWS S3 through the Boundary AWS Plugin. This process ensures that
-no tampering of BSR files occurs between the worker, plugin, and S3.
+When a Boundary worker uploads a BSR file to AWS S3 through the Boundary AWS plugin, the plugin calculates the SHA256 checksum of the
+contents of the BSR file and attaches this information to the object that is uploaded to S3. The SHA256 checksum value attached to the
+S3 object is returned to the Boundary worker. The Boundary worker will calculate the SHA256 checksum value of the BSR file's content from
+local disk and compare it to the plugin value. This process ensures that no tampering of BSR files occurs between the worker, plugin, and S3.
+The SHA256 checksum value generated by the plugin is not a part of the BSR file structure and should not be confused with how Boundary
+cryptographically verifies BSR directory's contents.
 
 For more information, refer to the [overview of configuring session recording](/boundary/docs/configuration/session-recording).
