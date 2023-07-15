@@ -54,14 +54,13 @@ The `scope-id` and `plugin-name` fields are required when you create a
 The fields following the `attr` and `secret` flags are specific to AWS and are required by
   Boundary for authentication.
 
-- "disable_credential_rotation": When true, Boundary will not handle the
-  rotation of the credentials with AWS automatically.
-- "region": The region to configure the host catalog for. All host sets in this
+- `disable_credential_rotation`: When set to `true`, Boundary will not rotate the credentials with AWS automatically.
+- `region`: The region to configure the host catalog for. All host sets in this
   catalog will be configured for this region.
-- "access_key_id": The access key ID for the IAM user to use with this host
-  catalog
-- "secret_access_key": The secret access key for the IAM user to use with this
-  host catalog
+- `access_key_id`: The access key ID for the IAM user to use with this host
+  catalog.
+- `secret_access_key`: The secret access key for the IAM user to use with this
+  host catalog.
 
 
 Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
