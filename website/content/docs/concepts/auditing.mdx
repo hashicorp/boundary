@@ -45,6 +45,31 @@ A controller retrieves the contents of a recording from a worker with access to 
 The controller decodes the contents of the recording into a format that is usable by the player.
 The player then retrieves the data from the controller.
 
+### Session recording audit events
+
+Boundary emits audit events for actions performed by users. Here are **some** of the possible event field types that are emitted:
+
+- `timestamp` - The timestamp of the event
+- `auth` - Authentication information about the user who performed the action.
+- `response.details.item.connection_recordings.`
+   - `id` - Session recording ID.
+   - `channel_recordings.id` - Session recording channel ID.
+   - `start_time.seconds` - Start time of session recording.
+   - `end_time.seconds` - End time of session recording.
+   - `bytes_up` - Upload bytes during session.
+   - `bytes_down` - Download bytes during session.
+   - `channel_recordings.duration.seconds`- Length of time a session took, recorded in seconds.
+- `request_info.client_ip` - The client IP address used by the user.
+- `response.details.item.create_time_values.`
+   - `target.name` - The name of the targets.
+   - `target.id` - The ID of the target accessed during the recording.
+   - `target.type` - The type of protocol used.
+   - `target.scope.name` - Name of the scope the target accessed belongs to.
+   - `target.scope.parent_scope_id` - Parent ID of the scope the target accessed belongs to.
+- `response.details.item.Attrs.SshTargetAttributes.`
+   - `storage_bucket_id.value` - Storage bucket ID attached to a target that is used for storing session recordings.
+   - `enable_session_recording.value` - Determines if session recording is enabled on a target.
+
 ## Storage buckets
 
 A resource known as a [storage bucket](/boundary/docs/concepts/domain-model/storage-buckets) is used to store the recorded sessions.
