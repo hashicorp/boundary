@@ -5,9 +5,48 @@ package bsr
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 )
+
+type SummaryError struct {
+	Message string `json:"message"`
+}
+
+func (e *SummaryError) Error() string {
+	return e.Message
+}
+
+func (e *SummaryError) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.Message)
+}
+
+func (e *SummaryError) UnmarshalJSON(data []byte) error {
+	var rawMessage json.RawMessage
+	var message string
+
+	err := json.Unmarshal(data, &rawMessage)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case len(rawMessage) > 0 && string(rawMessage) == `"{}"`:
+		e.Message = ""
+	case len(rawMessage) > 0 && string(rawMessage) == `"null"`:
+		e.Message = ""
+	case len(rawMessage) <= 0:
+		e.Message = ""
+	default:
+		if err := json.Unmarshal(data, &message); err != nil {
+			return err
+		}
+		e.Message = message
+	}
+
+	return nil
+}
 
 // BaseSummary contains the common fields of all summary types.
 type BaseSummary struct {
@@ -49,7 +88,7 @@ type BaseSessionSummary struct {
 	ConnectionCount uint64
 	StartTime       time.Time
 	EndTime         time.Time
-	Errors          string
+	Errors          SummaryError
 }
 
 // SessionSummary contains statistics for a session container
@@ -89,12 +128,12 @@ func (b *BaseSessionSummary) GetConnectionCount() uint64 {
 
 // GetErrors returns errors.
 func (b *BaseSessionSummary) GetErrors() error {
-	return errors.New(b.Errors)
+	return errors.New(b.Errors.Message)
 }
 
 // SetErrors sets errors.
 func (b *BaseSessionSummary) SetErrors(e error) {
-	b.Errors = e.Error()
+	b.Errors = SummaryError{Message: e.Error()}
 }
 
 // BaseChannelSummary encapsulates data for a channel, including its id, channel type,
@@ -170,7 +209,7 @@ type BaseConnectionSummary struct {
 	EndTime      time.Time
 	BytesUp      uint64
 	BytesDown    uint64
-	Errors       string
+	Errors       SummaryError
 }
 
 // ConnectionSummary contains statistics for a connection container
@@ -224,10 +263,10 @@ func (b *BaseConnectionSummary) GetBytesDown() uint64 {
 
 // GetErrors returns errors.
 func (b *BaseConnectionSummary) GetErrors() error {
-	return errors.New(b.Errors)
+	return &b.Errors
 }
 
 // SetErrors sets errors.
 func (b *BaseConnectionSummary) SetErrors(e error) {
-	b.Errors = e.Error()
+	b.Errors = SummaryError{Message: e.Error()}
 }
