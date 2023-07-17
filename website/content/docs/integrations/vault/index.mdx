@@ -39,7 +39,7 @@ An example workflow and use case for this feature would be database access. Cert
 
 If Boundary and Vault is added into this workflow, we would be mitigating against this potentially security risk. The Vault database secrets engine can be enabled, with the relevant database plugin configured, to then be able to issue dynamic and short-lived database credentials to the end-user. Organisations can set a limit on the amount of time these credentials are valid and once they have timed-out, access is revoked.
 
-** ADD BROKERED DB CREDS SCREENSHOT **
+![Brokered Credentials](/img/brokered-creds-ui.png)
 
 Upon connecting to the database through Boundary, Boundary displays the newly generated credentials and displays to the end user to connect to the target.
 
