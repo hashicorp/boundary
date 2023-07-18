@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/credentiallibraries"
@@ -19,11 +20,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliTcpTargetVaultConnectTargetWithAuthzToken uses the boundary and vault clis to add secrets
-// management for a target. The test sets up vault as a credential store, creates a set of
-// credentials in vault to be attached to a target, and attempts to connect to that target (with the
-// authz-token option) using those credentials.
-func TestCliTcpTargetVaultConnectTargetWithAuthzToken(t *testing.T) {
+// TestCliTcpTargetVaultGenericConnectTarget uses the boundary and vault clis to add secrets management
+// for a target. The test sets up vault as a credential store, creates a set of credentials
+// in vault to be attached to a target, and attempts to connect to that target using those
+// credentials.
+func TestCliTcpTargetVaultGenericConnectTarget(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -102,7 +103,7 @@ func TestCliTcpTargetVaultConnectTargetWithAuthzToken(t *testing.T) {
 	// Create a credential library
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credential-libraries", "create", "vault",
+			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", newCredentialStoreId,
 			"-vault-path", fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 			"-name", "e2e Automated Test Vault Credential Library",
@@ -117,6 +118,7 @@ func TestCliTcpTargetVaultConnectTargetWithAuthzToken(t *testing.T) {
 	newCredentialLibraryId := newCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
 
+	// Add brokered credentials to target
 	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
 
 	// Get credentials for target
@@ -140,9 +142,6 @@ func TestCliTcpTargetVaultConnectTargetWithAuthzToken(t *testing.T) {
 	require.Equal(t, string(k), retrievedKey)
 	t.Log("Successfully retrieved credentials for target")
 
-	// Get auth token for session
-	newAuthToken := newSessionAuthorizationResult.Item.AuthorizationToken
-
 	// Create key file
 	retrievedKeyPath := fmt.Sprintf("%s/%s", t.TempDir(), "target_private_key.pem")
 	f, err := os.Create(retrievedKeyPath)
@@ -156,7 +155,7 @@ func TestCliTcpTargetVaultConnectTargetWithAuthzToken(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect",
-			"-authz-token", newAuthToken,
+			"-target-id", newTargetId,
 			"-exec", "/usr/bin/ssh", "--",
 			"-l", retrievedUser,
 			"-i", retrievedKeyPath,
@@ -169,5 +168,9 @@ func TestCliTcpTargetVaultConnectTargetWithAuthzToken(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
+
+	parts := strings.Fields(string(output.Stdout))
+	hostIp := parts[len(parts)-1]
+	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 }
