@@ -54,8 +54,8 @@ There are 3 steps to adding new users to Boundary using the password auth method
 3. In the same scope, create a new **user**, and then attach the new account to the new user. The user is now able to authenticate to Boundary.
 
 ### Configure users - OIDC/LDAP
-With the [OIDC](/boundary/tutorials/identity-management/oidc-auth) and LDAP auth methods, Boundary automatically generates accounts and users in the same scope
-as the auth method, using data provided by the identity provider. The accounts and users are only created once the user authenticates to Boundary for the first time. 
+With the [OIDC](/boundary/tutorials/identity-management/oidc-auth) and LDAP auth methods, Boundary uses data from the identity provider to automatically generate accounts and users in the same scope
+as the auth method. The accounts and users are only created once the user authenticates to Boundary for the first time. 
 The same applies to OIDC/LDAP [managed groups](/boundary/tutorials/identity-management/oidc-idp-groups).
 
 ### Grant permissions
