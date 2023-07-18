@@ -2,7 +2,7 @@
 layout: docs
 page_title: Advanced Concepts
 description: |-
-  Advanced permissions concepts 
+  Advanced permissions concepts
 ---
 
 # Advanced concepts
@@ -10,10 +10,10 @@ description: |-
 ## Assignable permissions
 
 ### Advanced actions
-From a permissions standpoint, all actions take place against directly implemented 
-or abstract types. There may be actions that are only implemented by some concrete 
-types (e.g., not all auth-method implementations support a change-password 
-action), but the permissions model still defines these capabilities at the abstract 
+From a permissions standpoint, all actions take place against directly implemented
+or abstract types. There may be actions that are only implemented by some concrete
+types (e.g., not all auth-method implementations support a change-password
+action), but the permissions model still defines these capabilities at the abstract
 type level. This helps keep the overall system relatively simple and predictable.
 
 #### Subactions
@@ -169,7 +169,7 @@ Such a grant is essentially a full administrator grant for a scope.
 
 ## Templates
 
-A few template possibilities exist, which will 
+A few template possibilities exist, which
 substitute the given value into the ID field of the grant string at grant evaluation time:
 
 - `{{.Account.Id}}`: The substituted value is the account ID associated with the
@@ -188,4 +188,3 @@ substitute the given value into the ID field of the grant string at grant evalua
     Boundary 0.11.1+ changes this for consistency with other places within
     Boundary that are gaining templating support, but supports both formats for
     backwards compatibility.
-
