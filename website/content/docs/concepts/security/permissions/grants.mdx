@@ -57,7 +57,7 @@ _only_ `output_fields`.
 
 The **ID** is the specific resource that you select for the grant.
 You can use a [wildcard](/boundary/docs/concepts/security/permissions/advanced#wildcard) (*) to include all resources of the type and scope.
-Each grant string supports only 1 ID or a wildcard. By specifying a single ID, the top-level resource 
+Each grant string supports a single ID, a comma separated list of IDs, or a wildcard. By specifying a single ID, the top-level resource 
 is "pinned", meaning the permissions only apply to that resource and any subordinate resources.
 
 Some examples of valid IDs are:
@@ -152,7 +152,7 @@ This example is only applicable to project scopes, since targets can only exist 
 
 This **project scope** grant string allows users to list, read, and connect to a specific target.
 In addition, these grants let users list, read, and cancel any sessions initiated by the same user.
-If you want to include several specific targets, you can duplicate the first grant string using the respective IDs of those targets.
+If you want to include several specific targets, you can define the id to be a comma separated list containing the respective IDs.
 This example is only applicable to project scopes, since targets can only exist in a project:
 
 - &#32; `id=<target-id>;actions=read,authorize-session`
