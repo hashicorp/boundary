@@ -137,16 +137,29 @@
         "path": "concepts/iam"
       },
       {
-        "title": "Host discovery",
-        "path": "concepts/host-discovery"
-      },
-      {
         "title": "Credential management",
         "path": "concepts/credential-management"
       },
       {
         "title": "Auditing",
         "path": "concepts/auditing"
+      },
+      {
+        "title": "Host discovery",
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "concepts/host-discovery"
+          },
+          {
+            "title": "AWS dynamic hosts",
+            "path": "concepts/host-discovery/aws"
+          },
+          {
+            "title": "Azure dynamic hosts",
+            "path": "concepts/host-discovery/azure"
+          }
+        ]
       },
       {
         "title": "Security",
