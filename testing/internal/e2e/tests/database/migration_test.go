@@ -213,7 +213,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	newGroupId := boundary.CreateNewGroupCli(t, ctx, "global")
 	boundary.AddUserToGroup(t, ctx, newUserId, newGroupId)
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
+	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newGroupId)
 
 	// Create static credentials
