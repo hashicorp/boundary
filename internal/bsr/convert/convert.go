@@ -70,10 +70,9 @@ func ToAsciicast(ctx context.Context, session *bsr.Session, tmp storage.TempFile
 			}
 
 			return sshChannelToAsciicast(ctx, reqScanner, msgScanner, tmp, options...)
+		case "":
+			return nil, fmt.Errorf("%s: session program not set for asciicast conversion", op)
 		default:
-			if chs.SessionProgram == "" {
-				return nil, fmt.Errorf("%s: session program not set for asciicast conversion", op)
-			}
 			return nil, fmt.Errorf("%s: unsupported %q session program for asciicast conversion", op, chs.SessionProgram)
 		}
 
