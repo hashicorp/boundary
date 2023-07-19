@@ -12,6 +12,7 @@ There are 6 key components to Boundary's identity and access management system: 
 
 ### Scopes
 [Scopes](/boundary/docs/concepts/domain-model/scopes) can be considered as containers for resources and permissions. Each scope also has a permissions boundary that is isolated from other scopes on the same level. There are three types of scopes:
+
 - **Global** - The highest-level scope of Boundary where administrators configure and manage Boundary for the entire company.
 - **Org (Organization)** - Org scopes are contained in the global scope and are typically used to represent business units, organizations, or departments.
 Org scopes can also be used to contain multiple production-level auth methods in separate scopes.
