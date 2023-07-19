@@ -9,6 +9,6 @@ root_dir="$(git rev-parse --show-toplevel)"
 pushd "${root_dir}" > /dev/null
 
 export IMAGE_TAG_DEV="${IMAGE_NAME}"
-make docker-build-dev
+make build-ui docker-build-dev
 
 popd > /dev/null
