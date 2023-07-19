@@ -69,7 +69,7 @@ message StorageBucket {
   bytes attributes = 12;
 
   // secrets_hmac is a sha256-hmac of the unencrypted secrets stored in the db.
-  // @inject_tag: `gorm:"not_null"`
+  // @inject_tag: `gorm:"default:null"`
   bytes secrets_hmac = 13;
 }
 
