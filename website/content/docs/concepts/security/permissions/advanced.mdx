@@ -73,7 +73,7 @@ The resulting behavior is as follows: `output_fields` references the field names
 of the JSON object response, composes just like other parts of the RBAC model,
 and are action-specific. That is, a grant like:
 
-`id=*;type=auth-methods;actions=list,no-op;output_fields=scope_id,name,description`
+`ids=*;type=auth-methods;actions=list,no-op;output_fields=scope_id,name,description`
 
 will, if all by itself, result in those three identified output fields applying
 to `list` (and `no-op`) actions for all auth methods in the scope. Thus when
@@ -83,14 +83,14 @@ use defaults.
 
 A grant like:
 
-`id=*;type=auth-methods;output_fields=id`
+`ids=*;type=auth-methods;output_fields=id`
 
 will, if all by itself, result in _any_ action against auth methods in the scope
-having only `id` returned.
+having only `ids` returned.
 
 However, if both of the above grants are included, since grants are composable
-the final set of output fields will be `id,scope_id,name,description` for `list`
-(and `no-op`) actions, and `id` for all other actions.
+the final set of output fields will be `ids,scope_id,name,description` for `list`
+(and `no-op`) actions, and `ids` for all other actions.
 
 If, after the grants are composed for a given request, none of the grants
 applicable to the resource/action contain `output_fields` definitions, the
@@ -98,7 +98,7 @@ defaults are used. These defaults are implemented using internal values for
 `output_fields` and vary based on whether the user is the anonymous user:
 
 - If the user is the anonymous user, a useful but restricted set of fields is
-  returned. This includes `id`, `scope_id`, `scope`, `name`, `description`, and a
+  returned. This includes `ids`, `scope_id`, `scope`, `name`, `description`, and a
   few more.
 
 - If the user is any authenticated user, the full set of fields is returned
@@ -134,36 +134,36 @@ acceptable set of tradeoffs would need to be figured out.
 
 Various wildcard possibilities are allowed:
 
-### Wildcard ID
+### Wildcard IDs
 
-When you use only a wildcard for the ID, `*`, it matches all IDs of the given type. You can use this format
+When you use only a wildcard for the IDs, `*`, it matches all IDs of the given type. You can use this format
 with both top-level resource types or none. For example:
 
-`id=*;type=host-set;actions=create,read,update,set-hosts`
+`ids=*;type=host-set;actions=create,read,update,set-hosts`
 
 ### Wildcard type
 
 You can use a wildcard for the `type` for any non-top-level resources with pinned IDs:
 
-`id=hcst_1234567890;type=*;actions=create,read,update`
+`ids=hcst_1234567890;type=*;actions=create,read,update`
 
 This grant format would allow `create`, `read`, and `update` actions for all types of
 subordinate resources (in this case host sets and hosts) underneath the host
 catalog with ID `hcst_1234567890`.
 
-### Wildcard ID and type
+### Wildcard IDs and type
 
-If ID and type are both wildcards, the grant is essentially a catch-all that
+If IDs and type are both wildcards, the grant is essentially a catch-all that
 matches any resource of any type within the scope and allows the given
 actions.
 
-`id=*;type=*;actions=read,list`
+`ids=*;type=*;actions=read,list`
 
-### Wildcard ID, type, and actions
+### Wildcard IDs, type, and actions
 
-Finally, ID, type, and actions can all be wildcards:
+Finally, IDs, type, and actions can all be wildcards:
 
-`id=*;type=*;actions=*`
+`ids=*;type=*;actions=*`
 
 Such a grant is essentially a full administrator grant for a scope.
 
@@ -174,7 +174,7 @@ substitute the given value into the ID field of the grant string at grant evalua
 
 - `{{.Account.Id}}`: The substituted value is the account ID associated with the
   token used to perform the action. As an example,
-  `id={{.Account.Id}};actions=read,change-password"` is one of Boundary's
+  `ids={{.Account.Id}};actions=read,change-password"` is one of Boundary's
   default grants to allow users that have authenticated with the Password auth
   method to change their own password.
   - **NOTE**: Prior to Boundary 0.11.1, `{{account.id}}` must be used instead.

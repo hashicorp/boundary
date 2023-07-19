@@ -7,8 +7,8 @@ description: |-
 
 # Grant Strings
 
-In Boundary, grants are a set of permissions that you give to the principals, or 
-[users](/boundary/docs/concepts/domain-model/users) and [groups](/boundary/docs/concepts/domain-model/groups), 
+In Boundary, grants are a set of permissions that you give to the principals, or
+[users](/boundary/docs/concepts/domain-model/users) and [groups](/boundary/docs/concepts/domain-model/groups),
 of a specific role defined in a specific scope.
 
 When you write grant strings, you should consider the following questions:
@@ -19,8 +19,8 @@ When you write grant strings, you should consider the following questions:
 - What resource types should this apply to?
 - What kinds of actions should the principals (users and groups) be able to perform?
 
-Grant strings can be composed of up to 4 parts: 
-- [ID](#id)
+Grant strings can be composed of up to 4 parts:
+- [IDs](#ids)
 - [Type](#type)
 - [Actions](#actions)
 - [Output fields](#output-fields)
@@ -28,7 +28,7 @@ Grant strings can be composed of up to 4 parts:
 You use selectors to indicate which resources the grant should apply to.
 Selectors can be specific IDs or wildcard IDs and type selectors. There are currently two types of selectors:
 
-- An `id` field that indicates a specific resource or a wildcard to match all
+- The `ids` field indicates specific resources or a wildcard to match all
 
 - A `type` field that indicates a specific resource type or a wildcard to match
   all; it might also be used to grant permissions on collections of resources
@@ -36,41 +36,41 @@ Selectors can be specific IDs or wildcard IDs and type selectors. There are curr
 Additionally, there are two types of assigned permissions:
 
 - An `actions` field indicates which actions to allow the client to perform on
-  the resources matched by `id` and `type`
+  the resources matched by `ids` and `type`
 
 - An `output_fields` field indicates which top-level fields to return in the
   response
 
 The format of a full grant string is:
 
-- &#32; `id=<id>;type=<type>;actions=<action-list>;output_fields=<fields-list>`
+- &#32; `ids=<ids>;type=<type>;actions=<action-list>;output_fields=<fields-list>`
 
 You can find grant [examples](#common-grant-examples) at the bottom of this page.
- 
+
 <Note>
 `output_fields` is omitted in most examples for brevity, but they are valid
 in all of them. It is also valid in each case to omit `actions` and specify
 _only_ `output_fields`.
 </Note>
 
-## ID
+## IDs
 
-The **ID** is the specific resource that you select for the grant.
+**IDs** are the specific resources that you select for the grant.
 You can use a [wildcard](/boundary/docs/concepts/security/permissions/advanced#wildcard) (*) to include all resources of the type and scope.
-Each grant string supports a single ID, a comma separated list of IDs, or a wildcard. By specifying a single ID, the top-level resource 
+Each grant string supports a single ID, a comma separated list of IDs, or a wildcard. By specifying a single ID, the top-level resource
 is "pinned", meaning the permissions only apply to that resource and any subordinate resources.
 
 Some examples of valid IDs are:
 
-- &#32; `id=*` (all)
-- &#32; `id=ttcp_123456789`
-- &#32; `id=w_abcdefghi`
+- &#32; `ids=*` (all)
+- &#32; `ids=ttcp_123456789`
+- &#32; `ids=w_abcdefghi`
 
 
 ## Type
 
 The **Type** is the type of resource that you select for the grant.
-You can use a [wildcard](/boundary/docs/concepts/security/permissions/advanced#wildcard) (*) to 
+You can use a [wildcard](/boundary/docs/concepts/security/permissions/advanced#wildcard) (*) to
 include all resource types in the scope.
 Each grant string supports only 1 type or a wildcard.
 
@@ -88,7 +88,7 @@ For a full list of types, see the [Resource Table](/boundary/docs/concepts/secur
 
 **Actions** convey the ability to perform some action against a resource or collection.
 You can select which actions you want to apply to a grant.
-You can also use a [wildcard](/boundary/docs/concepts/security/permissions/permission-grant-formats#wildcard-id) to include all valid actions.
+You can also use a [wildcard](/boundary/docs/concepts/security/permissions/permission-grant-formats#wildcard-ids) to include all valid actions.
 Each grant string can include one or more comma separated actions.
 Some commonly used actions include:
 
@@ -110,7 +110,7 @@ are **optional** and not commonly used.
 Examples of valid output fields include:
 
 - &#32; `none`
-- &#32; `id`
+- &#32; `ids`
 - &#32; `name`
 - &#32; `description`
 
@@ -120,24 +120,24 @@ To learn more about output fields, see [output fields](/boundary/docs/concepts/s
 
 The following are examples of commonly used grant strings for specific roles and scopes.
 
-**All actions** 
+**All actions**
 
 This grant string allows users to perform any actions on any resources in the scope:
 
-- &#32; `id=*;type=*;actions=*`
+- &#32; `ids=*;type=*;actions=*`
 
-**View all** 
+**View all**
 
 This grant string allows users to list and read any resources in the scope:
 
-- &#32; `id=*;type=*;actions=read,list`
+- &#32; `ids=*;type=*;actions=read,list`
 
-**View targets only** 
+**View targets only**
 
 This **project scope** grant string allows users to list and read any targets in the specific project.
 This example is only applicable to project scopes because targets can only exist inside a project:
 
-- &#32; `id=*;type=target;actions=read,list`
+- &#32; `ids=*;type=target;actions=read,list`
 
 **Connect to any target**
 
@@ -145,19 +145,19 @@ This **project scope** grant string allows users to list, read, and connect to a
 In addition, these grants allow the user to list, read, and cancel any sessions initiated by the same user.
 This example is only applicable to project scopes, since targets can only exist in a project:
 
-- &#32; `id=*;type=target;actions=list,read,authorize-session`
-- &#32; `id=*;type=session;actions=read:self,cancel:self,list`
+- &#32; `ids=*;type=target;actions=list,read,authorize-session`
+- &#32; `ids=*;type=session;actions=read:self,cancel:self,list`
 
-**Connect to a specific target** 
+**Connect to a specific target**
 
 This **project scope** grant string allows users to list, read, and connect to a specific target.
 In addition, these grants let users list, read, and cancel any sessions initiated by the same user.
 If you want to include several specific targets, you can define the id to be a comma separated list containing the respective IDs.
 This example is only applicable to project scopes, since targets can only exist in a project:
 
-- &#32; `id=<target-id>;actions=read,authorize-session`
+- &#32; `ids=<target-id>;actions=read,authorize-session`
 - &#32; `type=target;actions=list`
-- &#32; `id=*;type=session;actions=read:self,cancel:self,list`
+- &#32; `ids=*;type=session;actions=read:self,cancel:self,list`
 
 ## General grant examples
 
@@ -165,18 +165,18 @@ The following are examples of general grant strings for any scope:
 
 **Manage all of 1 resource type**
 
-- &#32; `id=*;type=<resource-type>;actions=*`
+- &#32; `ids=*;type=<resource-type>;actions=*`
 
 **View all of 1 resource type**
 
-- &#32; `id=*;type=<resource-type>;actions=list,read`
+- &#32; `ids=*;type=<resource-type>;actions=list,read`
 
 **Manage a specific resource item**
 
 - &#32; `type=<resource-type>;actions=list`
-- &#32; `id=<resource-id>;actions=*`
+- &#32; `ids=<resource-id>;actions=*`
 
 **View a specific resource item**
 
 - &#32; `type=<resource-type>;actions=list`
-- &#32; `id=<resource-id>;actions=read`
+- &#32; `ids=<resource-id>;actions=read`

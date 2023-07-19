@@ -9,7 +9,7 @@ description: |-
 
 Boundary's permissions model is a composable, RBAC, allow-only model that
 attempts to marry flexibility with usability. This section discusses the permission
-model's fundamental concepts, provides examples grant strings, and contains a table 
+model's fundamental concepts, provides examples grant strings, and contains a table
 that acts as a cheat sheet to help those new to its grant syntax with crafting roles.
 
 Boundary's [domain model](/boundary/docs/concepts/domain-model) is based on resource
@@ -24,26 +24,26 @@ and mapped to users via roles.
 
 ## Grant strings
 
-A [grant string](/boundary/docs/concepts/security/permissions/grants) is a mapping 
-that describes a resource or set of resources and the permissions that should be 
-granted on them. Grant strings can be composed of up to 4 parts: 
-- ID
+A [grant string](/boundary/docs/concepts/security/permissions/grants) is a mapping
+that describes a resource or set of resources and the permissions that should be
+granted on them. Grant strings can be composed of up to 4 parts:
+- IDs
 - Type
-- Actions 
+- Actions
 - Output fields
 
 To learn about writing grant strings with examples, see [Grant Strings](/boundary/docs/concepts/security/permissions/grants).
 
 ## Roles
 
-A [role](/boundary/docs/concepts/domain-model/roles) maps grant strings to principals (users and groups). 
+A [role](/boundary/docs/concepts/domain-model/roles) maps grant strings to principals (users and groups).
 Every role assigns grants within a **specific scope**: either the scope in which the role
 exists, or a scope that is a child of the scope in which the role exists,
 as determined by the role's "grant scope ID" value.
 
-When a user makes a request, the scope in which to discover grants is either provided by the client 
-(if against a resource collection itself) or is looked up using the resource's ID. This scope ID, 
-along with the user's ID and the IDs of the groups the user belongs to, controls which roles are 
+When a user makes a request, the scope in which to discover grants is either provided by the client
+(if against a resource collection itself) or is looked up using the resource's ID. This scope ID,
+along with the user's ID and the IDs of the groups the user belongs to, controls which roles are
 fetched to provide grants for the request.
 
 A role provides grants for a request if the grant scope ID matches the request's
