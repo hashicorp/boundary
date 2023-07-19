@@ -321,9 +321,9 @@ $ boundary roles create -name 'global_anon_listing' \
 
 $ boundary roles add-grants -id <global_anon_listing_id> \
   -recovery-config /tmp/recovery.hcl \
-  -grant 'id=*;type=auth-method;actions=list,authenticate' \
-  -grant 'id=*;type=scope;actions=list,no-op' \
-  -grant 'id={{.Account.Id}};actions=read,change-password'
+  -grant 'ids=*;type=auth-method;actions=list,authenticate' \
+  -grant 'ids=*;type=scope;actions=list,no-op' \
+  -grant 'ids={{.Account.Id}};actions=read,change-password'
 
 $ boundary roles add-principals -id <global_anon_listing_id> \
   -recovery-config /tmp/recovery.hcl \
@@ -338,9 +338,9 @@ $ boundary roles add-principals -id <global_anon_listing_id> \
 resource "boundary_role" "global_anon_listing" {
   scope_id = "global"
   grant_strings = [
-    "id=*;type=auth-method;actions=list,authenticate",
-    "id=*;type=scope;actions=list,no-op",
-    "id={{.Account.Id}};actions=read,change-password"
+    "ids=*;type=auth-method;actions=list,authenticate",
+    "ids=*;type=scope;actions=list,no-op",
+    "ids={{.Account.Id}};actions=read,change-password"
   ]
   principal_ids = ["u_anon"]
 }
@@ -365,9 +365,9 @@ $ boundary roles create -name 'org_anon_listing' \
 
 $ boundary roles add-grants -id <org_anon_listing_id> \
   -recovery-config /tmp/recovery.hcl \
-  -grant 'id=*;type=auth-method;actions=list,authenticate' \
+  -grant 'ids=*;type=auth-method;actions=list,authenticate' \
   -grant 'type=scope;actions=list' \
-  -grant 'id={{.Account.Id}};actions=read,change-password'
+  -grant 'ids={{.Account.Id}};actions=read,change-password'
 
 $ boundary roles add-principals -id <org_anon_listing_id> \
   -recovery-config /tmp/recovery.hcl \
@@ -382,9 +382,9 @@ $ boundary roles add-principals -id <org_anon_listing_id> \
 resource "boundary_role" "org_anon_listing" {
   scope_id = boundary_scope.org.id
   grant_strings = [
-    "id=*;type=auth-method;actions=list,authenticate",
+    "ids=*;type=auth-method;actions=list,authenticate",
     "type=scope;actions=list",
-    "id={{.Account.Id}};actions=read,change-password"
+    "ids={{.Account.Id}};actions=read,change-password"
   ]
   principal_ids = ["u_anon"]
 }
@@ -410,7 +410,7 @@ $ boundary roles create -name 'org_admin' \
 
 $ boundary roles add-grants -id <org_admin_id> \
   -recovery-config /tmp/recovery.hcl \
-  -grant 'id=*;type=*;actions=*'
+  -grant 'ids=*;type=*;actions=*'
 
 $ boundary roles add-principals -id <org_admin_id> \
   -recovery-config /tmp/recovery.hcl \
@@ -426,7 +426,7 @@ resource "boundary_role" "org_admin" {
   scope_id       = "global"
   grant_scope_id = boundary_scope.org.id
   grant_strings = [
-    "id=*;type=*;actions=*"
+    "ids=*;type=*;actions=*"
   ]
   principal_ids = [boundary_user.myuser.id]
 }
@@ -452,7 +452,7 @@ $ boundary roles create -name 'project_admin' \
 
 $ boundary roles add-grants -id <project_admin_id> \
   -recovery-config /tmp/recovery.hcl \
-  -grant 'id=*;type=*;actions=*'
+  -grant 'ids=*;type=*;actions=*'
 
 $ boundary roles add-principals -id <project_admin_id> \
   -recovery-config /tmp/recovery.hcl \
@@ -468,7 +468,7 @@ resource "boundary_role" "project_admin" {
   scope_id       = boundary_scope.org.id
   grant_scope_id = boundary_scope.project.id
   grant_strings = [
-    "id=*;type=*;actions=*"
+    "ids=*;type=*;actions=*"
   ]
   principal_ids = [boundary_user.myuser.id]
 }
