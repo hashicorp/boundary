@@ -3499,38 +3499,57 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	cases := []struct {
-		name  string
-		setup []func(target.Target) uint32
-		err   bool
+		name            string
+		setup           []func(target.Target) uint32
+		useTargetId     bool
+		wantErr         bool
+		wantErrContains string
 	}{
 		{
 			// This one must be run first since it relies on the DB not having any worker details
-			name:  "no worker",
-			setup: []func(tcpTarget target.Target) uint32{hostExists, libraryExists},
-			err:   true,
+			name:            "no worker",
+			setup:           []func(tcpTarget target.Target) uint32{hostExists, libraryExists},
+			useTargetId:     true,
+			wantErr:         true,
+			wantErrContains: "No workers are available to handle this session",
 		},
 		{
-			name:  "success",
-			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+			name:        "success",
+			setup:       []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+			useTargetId: true,
 		},
 		{
-			name:  "no host port",
-			setup: []func(tcpTarget target.Target) uint32{workerExists, hostWithoutPort, libraryExists},
+			name:            "no target",
+			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
+			useTargetId:     false,
+			wantErr:         true,
+			wantErrContains: "Resource not found",
 		},
 		{
-			name:  "no hosts",
-			setup: []func(tcpTarget target.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
-			err:   true,
+			name:        "no host port",
+			setup:       []func(tcpTarget target.Target) uint32{workerExists, hostWithoutPort, libraryExists},
+			useTargetId: true,
 		},
 		{
-			name:  "bad library configuration",
-			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
-			err:   true,
+			name:            "no hosts",
+			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
+			useTargetId:     true,
+			wantErr:         true,
+			wantErrContains: "No host sources or address found for given target",
 		},
 		{
-			name:  "expired token library",
-			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
-			err:   true,
+			name:            "bad library configuration",
+			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
+			useTargetId:     true,
+			wantErr:         true,
+			wantErrContains: "external system issue: error #3014: Error making API request",
+		},
+		{
+			name:            "expired token library",
+			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
+			useTargetId:     true,
+			wantErr:         true,
+			wantErrContains: "vault.newClient: invalid configuration",
 		},
 	}
 	for i, tc := range cases {
@@ -3542,12 +3561,18 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 				tar.SetVersion(ver)
 			}
 
+			id := tar.GetPublicId()
+			if !tc.useTargetId {
+				id = "ttcp_bogusid"
+			}
+
 			res, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
-				Id: tar.GetPublicId(),
+				Id: id,
 			})
-			if tc.err {
+			if tc.wantErr {
 				require.Error(t, err)
 				require.Nil(t, res)
+				require.ErrorContains(t, err, tc.wantErrContains)
 				return
 			}
 			require.NoError(t, err)

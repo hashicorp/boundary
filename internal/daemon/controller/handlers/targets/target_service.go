@@ -754,9 +754,6 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 	t, err = repo.LookupTarget(ctx, t.GetPublicId())
-	hostSources := t.GetHostSources()
-	credSources := t.GetCredentialSources()
-
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
@@ -766,6 +763,8 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if t == nil {
 		return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 	}
+	hostSources := t.GetHostSources()
+	credSources := t.GetCredentialSources()
 	if len(credSources) > 0 {
 		if err := validateCredentialSourcesFn(ctx, t.GetType(), credSources); err != nil {
 			return nil, err
