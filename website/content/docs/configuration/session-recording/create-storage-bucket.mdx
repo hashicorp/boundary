@@ -8,9 +8,9 @@ description: |-
 # Create a storage bucket
 
 As of Boundary 0.13.0, you can record and audit user sessions.
-A resource known as a [storage bucket](/boundary/docs/concepts/domain-model/storage-buckets) is used to store the recorded sessions.
+A Boundary resource known as a [storage bucket](/boundary/docs/concepts/domain-model/storage-buckets) is used to store the recorded sessions.
 The storage bucket represents a bucket in an external store.
-Before you can enable session recording, you must create one or more storage buckets.
+Before you can enable session recording, you must create one or more storage buckets in Boundary and associate them with the external store.
 
 A storage bucket can only belong to the Global scope or an Org scope.
 A storage bucket that is associated with the Global scope can be associated with any target.
@@ -20,16 +20,17 @@ Any storage buckets associated with an Org scope are deleted when the Org itself
 For more information about using session recording to audit user sessions, refer to [Auditing](/boundary/docs/concepts/auditing).
 
 ## Requirements
-	
-Before you can create a storage bucket, you must ensure that your environment meets certain requirements.
-Session recording requires specific configuration for both the AWS S3 storage bucket and the Boundary worker.
-	
+
+Before you can create a storage bucket in Boundary, you must ensure that your environment meets certain requirements.
+Session recording requires specific configuration for both the external store and the Boundary worker.
+At this time, the only supported storage is AWS S3.
+
 ### AWS requirements
 
 - An AWS S3 storage bucket
 
-   At this time, the only supported storage for storage buckets is AWS S3.
-   In AWS S3, a storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the access and secret key.
+   You must associate the Boundary storage bucket with an AWS S3 storage bucket.
+   An AWS S3 storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the access and secret key.
 - An AWS IAM role policy with the following statement:
    ```json
     {
@@ -88,22 +89,22 @@ recording_storage_path="/local/storage/directory"
 }
 ```
 
-Complete the following steps to create a storage bucket for session recording:
+Complete the following steps to create a storage bucket in Boundary for session recording:
 
 <Tabs>
 <Tab heading="CLI">
 
 1. Log in to Boundary.
-1. Use the following command to create a storage bucket:
+1. Use the following command to create a storage bucket in Boundary:
 
     ```bash
     boundary storage-buckets create -bucket-name mybucket1 -plugin-name aws -secrets ‘{“access_key_id”: “123456789” , “secret_access_key” : “123/456789/12345678”}’ -worker-filter ‘“dev” in “/tags/type”’ -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true}’ -scope-id o_1234567890
     ```
 
-    Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the storage bucket:
+    Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
 
     - `region`: (Required) The AWS region to use.
-    - `bucket-name`: (Required) Name of the bucket in AWS.
+    - `bucket-name`: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
     - `access_key_id`: (Required) The AWS access key to use.
     - `secret_access_key_id`: (Required) The AWS secret access key to use.
     This attribute contains the secret access key for static credentials.
@@ -123,7 +124,7 @@ Complete the following steps to create a storage bucket for session recording:
    - **Description**: (Optional) An optional description of the bucket for identification purposes.
    - **Scope**: (Required) A storage bucket can belong to the Global scope or an Org scope.
    It can only associated with targets from the scope it belongs to.
-   - **Bucket name**: (Required) Name of the bucket in AWS.
+   - **Bucket name**: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
    - **Bucket prefix**: (Optional) A base path where session recordings are stored.
    - **Region**: (Required) The AWS region to use.
    - **Access key ID**: (Required) The access key ID that AWS generates for the IAM user to use with the storage bucket.
@@ -138,5 +139,5 @@ Complete the following steps to create a storage bucket for session recording:
 </Tab>
 </Tabs>
 
-Boundary creates the storage bucket and provides you with the bucket's ID.
-Once the storage bucket is created, you can use the bucket's ID to [enable session recording on targets](/boundary/docs/configuration/session-recording/enable-session-recording).
+Boundary creates the storage bucket resource and provides you with the bucket's ID.
+Once the storage bucket is created in Boundary, you can use the bucket's ID to [enable session recording on targets](/boundary/docs/configuration/session-recording/enable-session-recording).
