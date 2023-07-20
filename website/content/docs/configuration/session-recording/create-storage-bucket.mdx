@@ -108,7 +108,7 @@ Complete the following steps to create a storage bucket in Boundary for session 
     - `access_key_id`: (Required) The AWS access key to use.
     - `secret_access_key_id`: (Required) The AWS secret access key to use.
     This attribute contains the secret access key for static credentials.
-    - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a storage bucket.
+    - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
     - `shared_credentials_file`: (Optional) The shared credentials file to use.
     - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
 
@@ -119,9 +119,9 @@ Complete the following steps to create a storage bucket in Boundary for session 
 1. Log in to Boundary.
 1. Select **Storage Buckets** in the navigation bar.
 1. Select **New Storage Bucket**.
-1. Complete the following fields:
+1. Complete the following fields to create the Boundary storage bucket:
    - **Name**: (Optional) The name field is optional, but if you enter a name it must be unique.
-   - **Description**: (Optional) An optional description of the bucket for identification purposes.
+   - **Description**: (Optional) An optional description of the Boundary storage bucket for identification purposes.
    - **Scope**: (Required) A storage bucket can belong to the Global scope or an Org scope.
    It can only associated with targets from the scope it belongs to.
    - **Bucket name**: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
@@ -129,7 +129,7 @@ Complete the following steps to create a storage bucket in Boundary for session 
    - **Region**: (Required) The AWS region to use.
    - **Access key ID**: (Required) The access key ID that AWS generates for the IAM user to use with the storage bucket.
    - **Secret access key**: (Required) The secret access key that AWS generates for the IAM user to use with this storage bucket.
-   - **Worker filter** (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a storage bucket.
+   - **Worker filter** (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
    - **Disable credential rotation** (Optional) Although credentials are stored encrypted within Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
 
       Select this option to disable this behavior and prevent the automatic rotation of credentials.
