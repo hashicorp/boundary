@@ -754,6 +754,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 	t, err = repo.LookupTarget(ctx, t.GetPublicId())
+	if err != nil {
+		return nil, err
+	}
 	hostSources := t.GetHostSources()
 	credSources := t.GetCredentialSources()
 
