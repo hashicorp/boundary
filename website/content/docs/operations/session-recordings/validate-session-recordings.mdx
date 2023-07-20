@@ -8,26 +8,24 @@ description: |-
 # Validate the integrity of session recordings
 
 BSR directories are validated based on the contents in the directory.
-Boundary cryptographically verifies each individual Boundary Session Recording (BSR) file. The keys used for verifying all
-Boundary Session Recording files are written to storage and wrapped by the KMS you configured. Each session recording
-has its own individual key. Boundary generates the following keys when a session recording is authorized:
+Boundary cryptographically verifies each individual Boundary Session Recording (BSR) file.
+The keys used for verifying all Boundary Session Recording files are written to storage and wrapped by the KMS you configured.
+Each session recording has its own individual key.
+Boundary generates the following keys when a session recording is authorized:
 
--  The BSR key is a plaintext AES-GCM key. It is not uploaded to the external object store.
+-  The BSR key is a plaintext AES-GCM key.
+It is not uploaded to the external object store.
 
-- The private and public key pair is a ed25519 key pair. The key pair is not uploaded to the external object store.
+- The private and public key pair is a ed25519 key pair.
+The key pair is not uploaded to the external object store.
 
 The following files are stored in the BSR file structure to ensure the integrity of a session recording:
 
 - `bsrKey.pub` is the public ed25519 key.
-
 - `wrappedBsrKey` is the BSR key wrapped by the external KMS AES-GCM key that you configure.
-
 - `wrappedPrivKey` is the private ed25519 key wrapped by the external KMS AES-GCM key that you configure.
-
 - `pubKeySelfSignature.sign` is a self-signature of the plaintext public ed25519 key created with its private key.
-
 - `pubKeyBsrSignature.sign` is a signature of the plaintext public ed25519 key created with the BSR key.
-
 - `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the private key.
 
 Encrypting the BSR key with an external KMS means that Boundary is not responsible for the longevity of the keys.
@@ -55,5 +53,5 @@ Follow these steps to validate a session recording:
 
 1. Unwrap `wrappedBsrKey` using the external KMS you configured to retrieve the BSR key.
 2. Unwrap `wrappedPrivKey` using the external KMS you configured to retrieve the private key.
-3. Use the BSR key or the private key to verify the `bsrKey.pub` key using `go-kms-wrapping` HmacSha256(...)
-4. When the key is verified, use the `bsrKey.pub` key to verify the BSR SHA256SUM file using `go-kms-wrapping` ed25519.Sign(...)
+3. Use the BSR key or the private key to verify the `bsrKey.pub` key using `go-kms-wrapping` HmacSha256(...).
+4. When the key is verified, use the `bsrKey.pub` key to verify the BSR SHA256SUM file using `go-kms-wrapping` ed25519.Sign(...).
