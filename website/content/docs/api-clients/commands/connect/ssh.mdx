@@ -43,7 +43,6 @@ ubuntu@ip-172-32-88-177:~
 
 </CodeBlockConfig>
 
-</CodeBlockConfig>
 ### Usage
 
 <CodeBlockConfig hideClipboard>
@@ -56,18 +55,17 @@ $ boundary connect ssh [options] [args]
 
 @include 'cmd-connect-command-options.mdx'
 
-### SSH Options:
+### SSH options:
 
--  `style=<string>`
-   Specifies how the CLI will attempt to invoke an SSH client. This will
-   also set a suitable default for `-exec` if a value was not specified.
-   Currently-understood values are `ssh` and `putty`. The default is
+-  `style` `(string: "")` - Specifies how the CLI will attempt to invoke an SSH
+   client. This will also set a suitable default for `-exec` if a value was not
+   specified. Currently-understood values are `ssh` and `putty`. The default is
    ssh. This can also be specified via the `BOUNDARY_CONNECT_SSH_STYLE`
    environment variable.
 
--  `username=<string>`
-   Specifies the username to pass through to the client This can also be
-   specified via the `BOUNDARY_CONNECT_USERNAME` environment variable.
+-  `username` `(string: "")` - Specifies the username to pass through to the
+   client This can also be specified via the `BOUNDARY_CONNECT_USERNAME`
+   environment variable.
 
 
 
