@@ -21,7 +21,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
 	github.com/hashicorp/boundary/api v0.0.39
 	github.com/hashicorp/boundary/sdk v0.0.35
-	github.com/hashicorp/cap v0.3.2
+	github.com/hashicorp/cap v0.3.0
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/eventlogger v0.1.2-0.20230428153751-cca445805f24
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20230428153751-cca445805f24
@@ -95,9 +95,9 @@ require (
 	github.com/hashicorp/dbassert v0.0.0-20230405175854-2d88acd5134b
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c893099f13
 	github.com/hashicorp/go-version v1.6.0
-	github.com/hashicorp/nodeenrollment v0.2.6
+	github.com/hashicorp/nodeenrollment v0.2.4
 	github.com/jackc/pgx/v5 v5.3.1
-	github.com/jimlambrt/gldap v0.1.7
+	github.com/jimlambrt/gldap v0.1.6
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53

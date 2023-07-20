@@ -76,7 +76,7 @@ func TestMigrations_DeleteOrphanedAccounts(t *testing.T) {
 
 	// Create the user we will associate accounts with
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	usr, err := iam.NewUser(ctx, scope.Global.String())
+	usr, err := iam.NewUser(scope.Global.String())
 	require.NoError(t, err)
 	usr.PublicId = "u_1234567890"
 	num, err := rw.Exec(ctx, `
@@ -90,7 +90,7 @@ values
 
 	// Create the accounts we will delete and assert their behavior
 
-	pwAm1, err := password.NewAuthMethod(ctx, scope.Global.String())
+	pwAm1, err := password.NewAuthMethod(scope.Global.String())
 	require.NoError(t, err)
 	pwAm1.PublicId = "ampw_1234567890"
 	_, err = rw.DoTx(ctx, 0, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
@@ -112,7 +112,7 @@ values
 		return err
 	})
 	require.NoError(t, err)
-	pwAcct1, err := password.NewAccount(ctx, pwAm1.GetPublicId(), password.WithLoginName("account1"), password.WithPassword("password"))
+	pwAcct1, err := password.NewAccount(pwAm1.GetPublicId(), password.WithLoginName("account1"), password.WithPassword("password"))
 	require.NoError(t, err)
 	pwAcct1.PublicId = "acctpw_1234567890"
 	num, err = rw.Exec(ctx, `
@@ -124,7 +124,7 @@ values
 	require.NoError(t, err)
 	assert.Equal(t, 1, num)
 
-	pwAm2, err := password.NewAuthMethod(ctx, scope.Global.String())
+	pwAm2, err := password.NewAuthMethod(scope.Global.String())
 	require.NoError(t, err)
 	pwAm2.PublicId = "ampw_0123456789"
 	_, err = rw.DoTx(ctx, 0, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
@@ -145,7 +145,7 @@ values
 			`, []any{pwAm2.PublicId, "arg2conf_0123456789", pwAm2.ScopeId})
 		return err
 	})
-	pwAcct2, err := password.NewAccount(ctx, pwAm2.GetPublicId(), password.WithLoginName("account2"), password.WithPassword("password"))
+	pwAcct2, err := password.NewAccount(pwAm2.GetPublicId(), password.WithLoginName("account2"), password.WithPassword("password"))
 	require.NoError(t, err)
 	pwAcct2.PublicId = "acctpw_0123456789"
 	num, err = rw.Exec(ctx, `

@@ -4,7 +4,6 @@
 package vault
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/credential"
@@ -68,7 +67,7 @@ func Test_GetOpts(t *testing.T) {
 		inCert := testClientCert(t, testCaCert(t))
 		cert := inCert.Cert.Cert
 		key := inCert.Cert.Key
-		clientCert, err := NewClientCertificate(context.Background(), cert, key)
+		clientCert, err := NewClientCertificate(cert, key)
 		assert.NoError(t, err)
 		assert.NotNil(t, clientCert)
 		opts := getOpts(WithClientCert(clientCert))

@@ -130,7 +130,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := vault.NewRepository(ctx, rw, rw, kms, sche)
+	repo, err := vault.NewRepository(rw, rw, kms, sche)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 	err = vault.RegisterJobs(ctx, sche, rw, rw, kms)
@@ -146,7 +146,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 
 	var opts []vault.Option
 	opts = append(opts, vault.WithCACert(v.CaCert))
-	clientCert, err := vault.NewClientCertificate(ctx, v.ClientCert, v.ClientKey)
+	clientCert, err := vault.NewClientCertificate(v.ClientCert, v.ClientKey)
 	require.NoError(t, err)
 	opts = append(opts, vault.WithClientCert(clientCert))
 
@@ -555,12 +555,12 @@ func TestRepository_Revoke(t *testing.T) {
 		sessions[sess.GetPublicId()] = credentials
 	}
 
-	ctx := context.Background()
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := vault.NewRepository(ctx, rw, rw, kms, sche)
+	repo, err := vault.NewRepository(rw, rw, kms, sche)
 	require.NoError(err)
 	require.NotNil(repo)
 
+	ctx := context.Background()
 	assert.Error(repo.Revoke(ctx, ""))
 
 	type credCount struct {
@@ -673,12 +673,12 @@ func Test_TerminateSession(t *testing.T) {
 		sessions[sess.GetPublicId()] = credentials
 	}
 
-	ctx := context.Background()
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := vault.NewRepository(ctx, rw, rw, kms, sche)
+	repo, err := vault.NewRepository(rw, rw, kms, sche)
 	require.NoError(err)
 	require.NotNil(repo)
 
+	ctx := context.Background()
 	assert.Error(repo.Revoke(ctx, ""))
 
 	type credCount struct {

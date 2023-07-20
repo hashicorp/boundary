@@ -223,7 +223,6 @@ func TestRepository_ListRoleGrants(t *testing.T) {
 
 func TestRepository_DeleteRoleGrants(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -341,7 +340,7 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 			grants := make([]*RoleGrant, 0, tt.args.createCnt)
 			grantStrings := make([]string, 0, tt.args.createCnt)
 			for i := 0; i < tt.args.createCnt; i++ {
-				g, err := NewRoleGrant(ctx, tt.args.role.PublicId, fmt.Sprintf("actions=*;id=s_%d", i), tt.args.opt...)
+				g, err := NewRoleGrant(tt.args.role.PublicId, fmt.Sprintf("actions=*;id=s_%d", i), tt.args.opt...)
 				require.NoError(err)
 				grantStrings = append(grantStrings, g.RawGrant)
 				grants = append(grants, g)
@@ -406,7 +405,6 @@ func TestRepository_DeleteRoleGrants(t *testing.T) {
 
 func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -423,7 +421,7 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 	totalCnt := 30
 	grants := make([]*roleGrantWrapper, 0, totalCnt)
 	for i := 0; i < totalCnt; i++ {
-		g, err := NewRoleGrant(ctx, role.PublicId, fmt.Sprintf("id=s_%d;actions=*", i))
+		g, err := NewRoleGrant(role.PublicId, fmt.Sprintf("id=s_%d;actions=*", i))
 		require.NoError(err)
 		grants = append(grants, &roleGrantWrapper{
 			grantString: g.RawGrant,
@@ -448,16 +446,16 @@ func TestRepository_SetRoleGrants_Randomize(t *testing.T) {
 
 		// First time, run a couple of error conditions
 		if i == 1 {
-			_, _, err := repo.SetRoleGrants(ctx, "", 1, []string{})
+			_, _, err := repo.SetRoleGrants(context.Background(), "", 1, []string{})
 			require.Error(err)
-			_, _, err = repo.SetRoleGrants(ctx, role.PublicId, 1, nil)
+			_, _, err = repo.SetRoleGrants(context.Background(), role.PublicId, 1, nil)
 			require.Error(err)
 		}
 
-		_, _, err := repo.SetRoleGrants(ctx, role.PublicId, uint32(i), grantsToSet)
+		_, _, err := repo.SetRoleGrants(context.Background(), role.PublicId, uint32(i), grantsToSet)
 		require.NoError(err)
 
-		roleGrants, err := repo.ListRoleGrants(ctx, role.PublicId)
+		roleGrants, err := repo.ListRoleGrants(context.Background(), role.PublicId)
 		require.NoError(err)
 		require.Equal(len(grantsToSet), len(roleGrants))
 		for _, rg := range roleGrants {

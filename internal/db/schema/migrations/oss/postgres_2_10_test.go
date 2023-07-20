@@ -53,9 +53,9 @@ func Test_AuthMethodSubtypes(t *testing.T) {
 	assert.Equal(updatedOidc.Name, oidcParent.Name)
 
 	// test password subtype insert
-	pw, err := password.NewAuthMethod(ctx, org.PublicId, password.WithName("eve's favorite"))
+	pw, err := password.NewAuthMethod(org.PublicId, password.WithName("eve's favorite"))
 	require.NoError(err)
-	passRepo, err := password.NewRepository(ctx, rw, rw, kmsCache)
+	passRepo, err := password.NewRepository(rw, rw, kmsCache)
 	require.NoError(err)
 	pw, err = passRepo.CreateAuthMethod(ctx, pw)
 	require.NoError(err)

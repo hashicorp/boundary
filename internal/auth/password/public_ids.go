@@ -4,8 +4,6 @@
 package password
 
 import (
-	"context"
-
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
@@ -24,20 +22,20 @@ const (
 	Subtype = subtypes.Subtype("password")
 )
 
-func newAuthMethodId(ctx context.Context) (string, error) {
+func newAuthMethodId() (string, error) {
 	const op = "password.newAuthMethodId"
-	id, err := db.NewPublicId(ctx, globals.PasswordAuthMethodPrefix)
+	id, err := db.NewPublicId(globals.PasswordAuthMethodPrefix)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }
 
-func newAccountId(ctx context.Context) (string, error) {
+func newAccountId() (string, error) {
 	const op = "password.newAccountId"
-	id, err := db.NewPublicId(ctx, globals.PasswordAccountPrefix)
+	id, err := db.NewPublicId(globals.PasswordAccountPrefix)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }

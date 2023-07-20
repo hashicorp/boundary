@@ -113,7 +113,7 @@ func (r *WorkerAuthRepositoryStorage) Store(ctx context.Context, msg nodee.Messa
 // * the workerAuth record is stored with a reference to a worker
 // * certificate bundles are stored with a reference to the workerAuth record and issuing root certificate
 func StoreNodeInformationTx(ctx context.Context, reader db.Reader, writer db.Writer, kmsCache *kms.Kms, scopeId string, node *types.NodeInformation, _ ...Option) error {
-	const op = "server.(WorkerAuthRepositoryStorage).StoreNodeInformationTx"
+	const op = "server.(WorkerAuthRepositoryStorage).storeNodeInformation"
 	if isNil(reader) {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing reader")
 	}
@@ -233,24 +233,7 @@ func StoreNodeInformationTx(ctx context.Context, reader db.Reader, writer db.Wri
 		return errors.Wrap(ctx, err, op)
 	}
 
-	// Check if we already have a workerAuth record for this key id
-	nodeAuthLookup := allocWorkerAuth()
-	nodeAuthLookup.WorkerKeyIdentifier = node.Id
-	if err := reader.LookupById(ctx, nodeAuthLookup); err != nil {
-		switch {
-		case errors.IsNotFoundError(err):
-			// If we didn't find it, that's fine
-		default:
-			return errors.Wrap(ctx, err, op)
-		}
-	}
-
-	// If the incoming workerAuth matches what we have stored, return a duplicate record error
-	// This will cause nodeenrollment to lookup and return the already stored nodeInfo
-	if nodeAuth.compare(nodeAuthLookup) {
-		return new(types.DuplicateRecordError)
-	}
-
+	// Store WorkerAuth
 	if err := writer.Create(ctx, &nodeAuth); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

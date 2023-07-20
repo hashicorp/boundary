@@ -23,7 +23,6 @@ import (
 
 func TestRepository_UpsertJob(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -78,10 +77,10 @@ func TestRepository_UpsertJob(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.UpsertJob(ctx, tt.in.name, tt.in.description)
+			got, err := repo.UpsertJob(context.Background(), tt.in.name, tt.in.description)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -100,17 +99,17 @@ func TestRepository_UpsertJob(t *testing.T) {
 
 	t.Run("re-register-same-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(ctx, rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
-		got, err := repo.UpsertJob(ctx, "test-dup-name", "description")
+		got, err := repo.UpsertJob(context.Background(), "test-dup-name", "description")
 		require.NoError(err)
 		require.NotNil(got)
 		assert.Equal("test-dup-name", got.Name)
 		assert.Equal("description", got.Description)
 
-		got2, err := repo.UpsertJob(ctx, "test-dup-name", "updated description")
+		got2, err := repo.UpsertJob(context.Background(), "test-dup-name", "updated description")
 		require.NoError(err)
 		require.NotNil(got2)
 		assert.Equal("test-dup-name", got2.Name)
@@ -120,7 +119,6 @@ func TestRepository_UpsertJob(t *testing.T) {
 
 func TestRepository_LookupJob(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -158,10 +156,10 @@ func TestRepository_LookupJob(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.LookupJob(ctx, tt.in)
+			got, err := repo.LookupJob(context.Background(), tt.in)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -184,7 +182,6 @@ func TestRepository_LookupJob(t *testing.T) {
 
 func TestRepository_deleteJob(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -223,10 +220,10 @@ func TestRepository_deleteJob(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.deleteJob(ctx, tt.in)
+			got, err := repo.deleteJob(context.Background(), tt.in)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Truef(errors.Match(errors.T(tt.wantErrCode), err), "Unexpected error %s", err)
@@ -242,7 +239,6 @@ func TestRepository_deleteJob(t *testing.T) {
 
 func TestRepository_ListJobs(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -288,10 +284,10 @@ func TestRepository_ListJobs(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListJobs(ctx, tt.opts...)
+			got, err := repo.ListJobs(context.Background(), tt.opts...)
 			require.NoError(err)
 			opts := []cmp.Option{
 				cmpopts.SortSlices(func(x, y *Job) bool { return x.Name < y.Name }),
@@ -304,7 +300,6 @@ func TestRepository_ListJobs(t *testing.T) {
 
 func TestRepository_ListJobs_Limits(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -365,10 +360,10 @@ func TestRepository_ListJobs_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms, tt.repoOpts...)
+			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListJobs(ctx, tt.listOpts...)
+			got, err := repo.ListJobs(context.Background(), tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 		})
@@ -377,7 +372,6 @@ func TestRepository_ListJobs_Limits(t *testing.T) {
 
 func TestRepository_UpdateJobNextRunInAtLeast(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -386,7 +380,7 @@ func TestRepository_UpdateJobNextRunInAtLeast(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(ctx, rw, rw, kmsCache)
+		repo, err := NewRepository(rw, rw, kmsCache)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -407,7 +401,7 @@ func TestRepository_UpdateJobNextRunInAtLeast(t *testing.T) {
 
 	t.Run("next-run-already-sooner", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(ctx, rw, rw, kmsCache)
+		repo, err := NewRepository(rw, rw, kmsCache)
 		require.NoError(err)
 		require.NotNil(repo)
 		job, err := repo.UpsertJob(context.Background(), "next-run-already-sooner", "description", WithNextRunIn(time.Hour))
@@ -436,7 +430,7 @@ func TestRepository_UpdateJobNextRunInAtLeast(t *testing.T) {
 
 	t.Run("no-name", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(ctx, rw, rw, kmsCache)
+		repo, err := NewRepository(rw, rw, kmsCache)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -449,7 +443,7 @@ func TestRepository_UpdateJobNextRunInAtLeast(t *testing.T) {
 
 	t.Run("job-not-found", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(ctx, rw, rw, kmsCache)
+		repo, err := NewRepository(rw, rw, kmsCache)
 		require.NoError(err)
 		require.NotNil(repo)
 

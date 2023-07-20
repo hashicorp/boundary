@@ -24,7 +24,6 @@ import (
 )
 
 func TestRepository_CreateSet(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -115,10 +114,10 @@ func TestRepository_CreateSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms)
 			require.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.CreateSet(ctx, prj.GetPublicId(), tt.in, tt.opts...)
+			got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -138,7 +137,7 @@ func TestRepository_CreateSet(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(ctx, rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -152,7 +151,7 @@ func TestRepository_CreateSet(t *testing.T) {
 			},
 		}
 
-		got, err := repo.CreateSet(ctx, prj.GetPublicId(), in)
+		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, globals.StaticHostSetPrefix, got.PublicId)
@@ -161,14 +160,14 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert.Equal(in.Description, got.Description)
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
-		got2, err := repo.CreateSet(ctx, prj.GetPublicId(), in)
+		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 	})
 
 	t.Run("valid-duplicate-names-diff-catalogs", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(ctx, rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms)
 		require.NoError(err)
 		require.NotNil(repo)
 
@@ -185,7 +184,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		in2 := in.clone()
 
 		in.CatalogId = catalogA.PublicId
-		got, err := repo.CreateSet(ctx, prj.GetPublicId(), in)
+		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		require.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, globals.StaticHostSetPrefix, got.PublicId)
@@ -195,7 +194,7 @@ func TestRepository_CreateSet(t *testing.T) {
 		assert.Equal(got.CreateTime, got.UpdateTime)
 
 		in2.CatalogId = catalogB.PublicId
-		got2, err := repo.CreateSet(ctx, prj.GetPublicId(), in2)
+		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in2)
 		require.NoError(err)
 		require.NotNil(got2)
 		assertPublicId(t, globals.StaticHostSetPrefix, got2.PublicId)
@@ -468,7 +467,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
 
@@ -477,7 +476,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			hosts := TestHosts(t, conn, catalog.PublicId, 5)
 
 			tt.orig.CatalogId = catalog.PublicId
-			orig, err := repo.CreateSet(ctx, prj.GetPublicId(), tt.orig)
+			orig, err := repo.CreateSet(context.Background(), prj.GetPublicId(), tt.orig)
 			assert.NoError(err)
 			require.NotNil(orig)
 			TestSetMembers(t, conn, orig.PublicId, hosts)
@@ -485,7 +484,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 			if tt.chgFn != nil {
 				orig = tt.chgFn(orig)
 			}
-			got, gotHosts, gotCount, err := repo.UpdateSet(ctx, prj.GetPublicId(), orig, 1, tt.masks)
+			got, gotHosts, gotCount, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), orig, 1, tt.masks)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Equal(tt.wantCount, gotCount, "row count")
@@ -526,7 +525,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 	t.Run("invalid-duplicate-names", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(ctx, rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -538,7 +537,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		sA, sB := ss[0], ss[1]
 
 		sA.Name = name
-		got1, gotHosts1, gotCount1, err := repo.UpdateSet(ctx, prj.GetPublicId(), sA, 1, []string{"name"})
+		got1, gotHosts1, gotCount1, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sA, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got1)
 		assert.Equal(name, got1.Name)
@@ -547,7 +546,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		assert.Empty(gotHosts1)
 
 		sB.Name = name
-		got2, gotHosts, gotCount2, err := repo.UpdateSet(ctx, prj.GetPublicId(), sB, 1, []string{"name"})
+		got2, gotHosts, gotCount2, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sB, 1, []string{"name"})
 		assert.Truef(errors.Match(errors.T(errors.NotUnique), err), "want err code: %v got err: %v", errors.NotUnique, err)
 		assert.Nil(got2)
 		assert.Equal(db.NoRowsAffected, gotCount2, "row count")
@@ -559,7 +558,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 	t.Run("valid-duplicate-names-diff-Catalogs", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(ctx, rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -576,7 +575,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		in2 := in.clone()
 
 		in.CatalogId = catalogA.PublicId
-		got, err := repo.CreateSet(ctx, prj.GetPublicId(), in)
+		got, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in)
 		assert.NoError(err)
 		require.NotNil(got)
 		assertPublicId(t, globals.StaticHostSetPrefix, got.PublicId)
@@ -586,11 +585,11 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 		in2.CatalogId = catalogB.PublicId
 		in2.Name = "first-name"
-		got2, err := repo.CreateSet(ctx, prj.GetPublicId(), in2)
+		got2, err := repo.CreateSet(context.Background(), prj.GetPublicId(), in2)
 		assert.NoError(err)
 		require.NotNil(got2)
 		got2.Name = got.Name
-		got3, gotHosts3, gotCount3, err := repo.UpdateSet(ctx, prj.GetPublicId(), got2, 1, []string{"name"})
+		got3, gotHosts3, gotCount3, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), got2, 1, []string{"name"})
 		assert.NoError(err)
 		require.NotNil(got3)
 		assert.NotSame(got2, got3)
@@ -603,7 +602,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 
 	t.Run("change-project-id", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		repo, err := NewRepository(ctx, rw, rw, kms)
+		repo, err := NewRepository(rw, rw, kms)
 		assert.NoError(err)
 		require.NotNil(repo)
 
@@ -621,7 +620,7 @@ func TestRepository_UpdateSet(t *testing.T) {
 		sA.CatalogId = sB.CatalogId
 		assert.Equal(sA.CatalogId, sB.CatalogId)
 
-		got1, gotHosts1, gotCount1, err := repo.UpdateSet(ctx, prj.GetPublicId(), sA, 1, []string{"name"})
+		got1, gotHosts1, gotCount1, err := repo.UpdateSet(context.Background(), prj.GetPublicId(), sA, 1, []string{"name"})
 
 		assert.NoError(err)
 		require.NotNil(got1)
@@ -633,7 +632,6 @@ func TestRepository_UpdateSet(t *testing.T) {
 }
 
 func TestRepository_UpdateSet_Limits(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -695,12 +693,12 @@ func TestRepository_UpdateSet_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms, tt.repoOpts...)
+			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			hs := hostSet.clone()
 			hs.Description = tt.name
-			got, gotHosts, _, err := repo.UpdateSet(ctx, prj.PublicId, hs, hs.Version, []string{"Description"}, tt.updateOpts...)
+			got, gotHosts, _, err := repo.UpdateSet(context.Background(), prj.PublicId, hs, hs.Version, []string{"Description"}, tt.updateOpts...)
 			require.NoError(err)
 			require.NotNil(got)
 			assert.Len(gotHosts, tt.wantLen)
@@ -711,7 +709,6 @@ func TestRepository_UpdateSet_Limits(t *testing.T) {
 }
 
 func TestRepository_LookupSet(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -726,7 +723,7 @@ func TestRepository_LookupSet(t *testing.T) {
 
 	emptyHostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
 
-	hostSetId, err := newHostSetId(ctx)
+	hostSetId, err := newHostSetId()
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -762,10 +759,10 @@ func TestRepository_LookupSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, gotHosts, err := repo.LookupSet(ctx, tt.in)
+			got, gotHosts, err := repo.LookupSet(context.Background(), tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -784,7 +781,6 @@ func TestRepository_LookupSet(t *testing.T) {
 }
 
 func TestRepository_LookupSet_Limits(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -846,7 +842,7 @@ func TestRepository_LookupSet_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms, tt.repoOpts...)
+			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
 			got, gotHosts, err := repo.LookupSet(context.Background(), hostSet.PublicId, tt.lookupOpts...)
@@ -858,7 +854,6 @@ func TestRepository_LookupSet_Limits(t *testing.T) {
 }
 
 func TestRepository_ListSets(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -898,10 +893,10 @@ func TestRepository_ListSets(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListSets(ctx, tt.in, tt.opts...)
+			got, err := repo.ListSets(context.Background(), tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -918,7 +913,6 @@ func TestRepository_ListSets(t *testing.T) {
 }
 
 func TestRepository_ListSets_Limits(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -978,10 +972,10 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms, tt.repoOpts...)
+			repo, err := NewRepository(rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListSets(ctx, hostSets[0].CatalogId, tt.listOpts...)
+			got, err := repo.ListSets(context.Background(), hostSets[0].CatalogId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 		})
@@ -989,7 +983,6 @@ func TestRepository_ListSets_Limits(t *testing.T) {
 }
 
 func TestRepository_DeleteSet(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1000,7 +993,7 @@ func TestRepository_DeleteSet(t *testing.T) {
 	catalog := TestCatalogs(t, conn, prj.PublicId, 1)[0]
 	hostSet := TestSets(t, conn, catalog.PublicId, 1)[0]
 
-	newHostSetId, err := newHostSetId(ctx)
+	newHostSetId, err := newHostSetId()
 	require.NoError(t, err)
 	tests := []struct {
 		name      string
@@ -1028,10 +1021,10 @@ func TestRepository_DeleteSet(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			repo, err := NewRepository(ctx, rw, rw, kms)
+			repo, err := NewRepository(rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.DeleteSet(ctx, prj.PublicId, tt.in)
+			got, err := repo.DeleteSet(context.Background(), prj.PublicId, tt.in)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Zero(got)

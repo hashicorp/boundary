@@ -16,7 +16,6 @@ import (
 )
 
 func TestPlugin_Create(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 
 	tests := []struct {
@@ -74,7 +73,7 @@ func TestPlugin_Create(t *testing.T) {
 			require.NotNil(t, got)
 			require.Emptyf(t, got.PublicId, "PublicId set")
 
-			id, err := newPluginId(ctx)
+			id, err := newPluginId()
 			require.NoError(t, err)
 			got.PublicId = id
 
@@ -82,7 +81,7 @@ func TestPlugin_Create(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 
 			w := db.New(conn)
-			err = w.Create(ctx, got)
+			err = w.Create(context.Background(), got)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

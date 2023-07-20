@@ -36,11 +36,11 @@ var (
 // NewUser creates a new in memory user and allows options:
 // WithName - to specify the user's friendly name and WithDescription - to
 // specify a user description
-func NewUser(ctx context.Context, scopeId string, opt ...Option) (*User, error) {
+func NewUser(scopeId string, opt ...Option) (*User, error) {
 	const op = "iam.NewUser"
 	opts := getOpts(opt...)
 	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	u := &User{
 		User: &store.User{

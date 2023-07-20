@@ -67,7 +67,7 @@ func TestState_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewState(context.Background(), tt.args.sessionId, tt.args.status)
+			got, err := NewState(tt.args.sessionId, tt.args.status)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -90,7 +90,6 @@ func TestState_Create(t *testing.T) {
 
 func TestState_Delete(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -116,7 +115,7 @@ func TestState_Delete(t *testing.T) {
 			name:  "bad-id",
 			state: TestState(t, conn, session2.PublicId, StatusTerminated),
 			deleteStateId: func() string {
-				id, err := db.NewPublicId(ctx, StatePrefix)
+				id, err := db.NewPublicId(StatePrefix)
 				require.NoError(t, err)
 				return id
 			}(),
@@ -129,7 +128,7 @@ func TestState_Delete(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			var initialState State
-			err := rw.LookupWhere(ctx, &initialState, "session_id = ? and state = ?", []any{tt.state.SessionId, tt.state.Status})
+			err := rw.LookupWhere(context.Background(), &initialState, "session_id = ? and state = ?", []any{tt.state.SessionId, tt.state.Status})
 			require.NoError(err)
 
 			deleteState := allocState()
@@ -139,7 +138,7 @@ func TestState_Delete(t *testing.T) {
 				deleteState.SessionId = tt.state.SessionId
 			}
 			deleteState.StartTime = initialState.StartTime
-			deletedRows, err := rw.Delete(ctx, &deleteState)
+			deletedRows, err := rw.Delete(context.Background(), &deleteState)
 			if tt.wantErr {
 				require.Error(err)
 				return
@@ -151,7 +150,7 @@ func TestState_Delete(t *testing.T) {
 			}
 			assert.Equal(tt.wantRowsDeleted, deletedRows)
 			foundState := allocState()
-			err = rw.LookupWhere(ctx, &foundState, "session_id = ? and start_time = ?", []any{tt.state.SessionId, initialState.StartTime})
+			err = rw.LookupWhere(context.Background(), &foundState, "session_id = ? and start_time = ?", []any{tt.state.SessionId, initialState.StartTime})
 			require.Error(err)
 			assert.True(errors.IsNotFoundError(err))
 		})

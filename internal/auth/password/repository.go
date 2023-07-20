@@ -4,7 +4,6 @@
 package password
 
 import (
-	"context"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -26,15 +25,15 @@ type Repository struct {
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it.  WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "password.NewRepository"
 	switch {
 	case r == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := GetOpts(opt...)

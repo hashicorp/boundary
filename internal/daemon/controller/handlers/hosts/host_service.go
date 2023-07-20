@@ -61,11 +61,7 @@ const domain = "host"
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.Host{}},
-		handlers.MaskSource{&pb.Host{}, &pb.StaticHostAttributes{}},
-	); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Host{}}, handlers.MaskSource{&pb.Host{}, &pb.StaticHostAttributes{}}); err != nil {
 		panic(err)
 	}
 }
@@ -81,19 +77,19 @@ var _ pbs.HostServiceServer = (*Service)(nil)
 
 // NewService returns a host Service which handles host related requests to boundary and uses the provided
 // repositories for storage and retrieval.
-func NewService(ctx context.Context, repoFn common.StaticRepoFactory, pluginRepoFn common.PluginHostRepoFactory) (Service, error) {
+func NewService(repoFn common.StaticRepoFactory, pluginRepoFn common.PluginHostRepoFactory) (Service, error) {
 	const op = "hosts.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
 	if pluginRepoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing plugin host repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing plugin host repository")
 	}
 	return Service{staticRepoFn: repoFn, pluginRepoFn: pluginRepoFn}, nil
 }
 
 func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs.ListHostsResponse, error) {
-	if err := validateListRequest(ctx, req); err != nil {
+	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
@@ -108,7 +104,7 @@ func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs
 		return &pbs.ListHostsResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +341,7 @@ func (s Service) createInRepo(ctx context.Context, projectId, catalogId string, 
 	if item.GetDescription() != nil {
 		opts = append(opts, static.WithDescription(item.GetDescription().GetValue()))
 	}
-	h, err := static.NewHost(ctx, catalogId, opts...)
+	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host for creation"))
 	}
@@ -377,7 +373,7 @@ func (s Service) updateInRepo(ctx context.Context, projectId, catalogId, id stri
 	if addr := ha.GetAddress(); addr != nil {
 		opts = append(opts, static.WithAddress(addr.GetValue()))
 	}
-	h, err := static.NewHost(ctx, catalogId, opts...)
+	h, err := static.NewHost(catalogId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to build host for update"))
 	}
@@ -723,12 +719,12 @@ func validateDeleteRequest(req *pbs.DeleteHostRequest) error {
 	}, req, globals.StaticHostPrefix)
 }
 
-func validateListRequest(ctx context.Context, req *pbs.ListHostsRequest) error {
+func validateListRequest(req *pbs.ListHostsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetHostCatalogId()), globals.StaticHostCatalogPrefix, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix) {
 		badFields["host_catalog_id"] = "The field is incorrectly formatted."
 	}
-	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

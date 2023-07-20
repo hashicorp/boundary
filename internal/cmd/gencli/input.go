@@ -204,11 +204,10 @@ var inputStructs = map[string][]*cmdInfo{
 	},
 	"authtokens": {
 		{
-			ResourceType:     resource.AuthToken.String(),
-			Pkg:              "authtokens",
-			StdActions:       []string{"read", "delete", "list"},
-			HasExtraHelpFunc: true,
-			Container:        "Scope",
+			ResourceType: resource.AuthToken.String(),
+			Pkg:          "authtokens",
+			StdActions:   []string{"read", "delete", "list"},
+			Container:    "Scope",
 		},
 	},
 	"credentialstores": {

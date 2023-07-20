@@ -34,10 +34,10 @@ var (
 
 // NewRole creates a new in memory role with a scope (project/org)
 // allowed options include: withDescripion, WithName, withGrantScopeId.
-func NewRole(ctx context.Context, scopeId string, opt ...Option) (*Role, error) {
+func NewRole(scopeId string, opt ...Option) (*Role, error) {
 	const op = "iam.NewRole"
 	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 	r := &Role{

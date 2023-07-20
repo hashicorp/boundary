@@ -49,7 +49,7 @@ func testVaultToken(t *testing.T,
 	rw := db.New(conn)
 
 	secret, _ := v.CreateToken(t)
-	inToken, err := newToken(context.Background(), cs.PublicId, []byte(secret.Auth.ClientToken), []byte(secret.Auth.Accessor), expiration)
+	inToken, err := newToken(cs.PublicId, []byte(secret.Auth.ClientToken), []byte(secret.Auth.Accessor), expiration)
 	require.NoError(err)
 	inToken.Status = string(status)
 
@@ -116,7 +116,7 @@ func testVaultCred(t *testing.T,
 	require.NoError(err)
 	require.NotNil(secret)
 
-	id, err := newCredentialId(ctx)
+	id, err := newCredentialId()
 	require.NoError(err)
 
 	query := insertCredentialWithExpirationQuery
@@ -219,7 +219,7 @@ func TestNewTokenRenewalJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newTokenRenewalJob(context.Background(), tt.args.r, tt.args.w, tt.args.kms, tt.options...)
+			got, err := newTokenRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -238,7 +238,6 @@ func TestNewTokenRenewalJob(t *testing.T) {
 
 func TestTokenRenewalJob_RunLimits(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -281,11 +280,11 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 			_, token := v.CreateToken(t)
 			in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 			require.NoError(err)
-			repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+			repo, err := NewRepository(rw, rw, kmsCache, sche)
 			require.NoError(err)
-			err = RegisterJobs(ctx, sche, rw, rw, kmsCache)
+			err = RegisterJobs(context.Background(), sche, rw, rw, kmsCache)
 			require.NoError(err)
-			cs, err := repo.CreateCredentialStore(ctx, in)
+			cs, err := repo.CreateCredentialStore(context.Background(), in)
 			require.NoError(err)
 
 			// Create additional tokens and alternative between token statuses, revoked and
@@ -304,19 +303,19 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 			}
 
 			// inserting new tokens moves the current token to a maintaining state, move it back to current and set expiration time
-			numRows, err := rw.Exec(ctx, testUpdateTokenStatusExpirationQuery, []any{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
+			numRows, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []any{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
 			require.NoError(err)
 			assert.Equal(1, numRows)
 
-			r, err := newTokenRenewalJob(ctx, rw, rw, kmsCache, tt.opts...)
+			r, err := newTokenRenewalJob(rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
-			err = r.Run(ctx)
+			err = r.Run(context.Background())
 			require.NoError(err)
 			assert.Equal(tt.wantLen, r.numTokens)
 
 			// Set all tokens to revoked for next test
-			_, err = rw.Exec(ctx, "update credential_vault_token set status = 'revoked'", nil)
+			_, err = rw.Exec(context.Background(), "update credential_vault_token set status = 'revoked'", nil)
 			assert.NoError(err)
 		})
 	}
@@ -324,7 +323,6 @@ func TestTokenRenewalJob_RunLimits(t *testing.T) {
 
 func TestTokenRenewalJob_Run(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -341,17 +339,17 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	require.NoError(err)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 
-	r, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	r, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
-	err = sche.RegisterJob(ctx, r)
-	require.NoError(err)
-
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
-	require.NoError(err)
-	cs, err := repo.CreateCredentialStore(ctx, in)
+	err = sche.RegisterJob(context.Background(), r)
 	require.NoError(err)
 
-	err = r.Run(ctx)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
+	require.NoError(err)
+	cs, err := repo.CreateCredentialStore(context.Background(), in)
+	require.NoError(err)
+
+	err = r.Run(context.Background())
 	require.NoError(err)
 	// No tokens should have been renewed since token expiration is 24 hours by default
 	assert.Equal(0, r.numProcessed)
@@ -362,15 +360,15 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	expiredToken := testVaultToken(t, conn, wrapper, v, cs, ExpiredToken, time.Minute)
 
 	// inserting new tokens moves the current token to a maintaining state, move it back to current and set expiration time
-	count, err := rw.Exec(ctx, testUpdateTokenStatusExpirationQuery, []any{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
+	count, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []any{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	currentToken := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &currentToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, cs.ProjectId, kms.KeyPurposeDatabase)
+	require.NoError(rw.LookupWhere(context.Background(), &currentToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
+	databaseWrapper, err := kmsCache.GetWrapper(context.Background(), cs.ProjectId, kms.KeyPurposeDatabase)
 	require.NoError(err)
-	require.NoError(currentToken.decrypt(ctx, databaseWrapper))
+	require.NoError(currentToken.decrypt(context.Background(), databaseWrapper))
 
 	// Sleep to move clock
 	time.Sleep(time.Second * 2)
@@ -390,7 +388,7 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 	require.NoError(err)
 
 	// Run token renewal again
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	// Current and maintaining token should have been processed
 	assert.Equal(2, r.numProcessed)
@@ -417,24 +415,23 @@ func TestTokenRenewalJob_Run(t *testing.T) {
 
 	// Verify current and maintaining tokens were renewed in repo
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{currentToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{currentToken.TokenHmac}))
 	assert.True(currentToken.GetExpirationTime().AsTime().Before(repoToken.GetExpirationTime().AsTime()))
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{maintainToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{maintainToken.TokenHmac}))
 	assert.True(maintainToken.GetExpirationTime().AsTime().Before(repoToken.GetExpirationTime().AsTime()))
 
 	// Verify revoked and expired tokens were not renewed in the repo
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{revokedToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{revokedToken.TokenHmac}))
 	assert.Equal(revokedToken.GetExpirationTime().AsTime(), repoToken.GetExpirationTime().AsTime())
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{expiredToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{expiredToken.TokenHmac}))
 	assert.Equal(expiredToken.GetExpirationTime().AsTime(), repoToken.GetExpirationTime().AsTime())
 }
 
 func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -452,28 +449,28 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(in)
 
-	r, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	r, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
 
-	err = sche.RegisterJob(ctx, r)
+	err = sche.RegisterJob(context.Background(), r)
 	require.NoError(err)
 
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
-	cs, err := repo.CreateCredentialStore(ctx, in)
+	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
 	// Sleep to move clock and expire token
 	time.Sleep(time.Second * 2)
 
 	// Token should have expired in vault, run should now expire in repo
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(1, r.numTokens)
 
 	// Verify token was expired in repo
 	token := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &token, "store_id = ?", []any{cs.GetPublicId()}))
+	require.NoError(rw.LookupWhere(context.Background(), &token, "store_id = ?", []any{cs.GetPublicId()}))
 	assert.Equal(string(ExpiredToken), token.Status)
 
 	// Updating the credential store with a token that will expire before the job scheduler can run should return an error
@@ -482,7 +479,7 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	assert.NoError(err)
 	require.NotNil(in)
 
-	cs, _, err = repo.UpdateCredentialStore(ctx, in, cs.Version+1, []string{"Token"})
+	cs, _, err = repo.UpdateCredentialStore(context.Background(), in, cs.Version+1, []string{"Token"})
 	assert.Error(err)
 	assert.Nil(cs)
 
@@ -493,15 +490,13 @@ func TestTokenRenewalJob_RunExpired(t *testing.T) {
 	require.NotNil(in)
 
 	// Should return error because token ttl expires before the run job scheduler interval
-	cs, err = repo.CreateCredentialStore(ctx, in)
+	cs, err = repo.CreateCredentialStore(context.Background(), in)
 	require.Error(err)
 	require.Nil(cs)
 }
 
 func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	t.Parallel()
-
-	ctx := context.Background()
 
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -589,7 +584,7 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			r, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+			r, err := newTokenRenewalJob(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(r)
 
@@ -597,11 +592,11 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 				_, token := v.CreateToken(t)
 				in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 				require.NoError(err)
-				repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+				repo, err := NewRepository(rw, rw, kmsCache, sche)
 				require.NoError(err)
-				err = RegisterJobs(ctx, sche, rw, rw, kmsCache)
+				err = RegisterJobs(context.Background(), sche, rw, rw, kmsCache)
 				require.NoError(err)
-				cs, err := repo.CreateCredentialStore(ctx, in)
+				cs, err := repo.CreateCredentialStore(context.Background(), in)
 				require.NoError(err)
 
 				for _, token := range tt.tokens {
@@ -609,18 +604,18 @@ func TestTokenRenewalJob_NextRunIn(t *testing.T) {
 				}
 
 				// inserting new tokens moves the current token to a maintaining state, move it back to current and set expiration time
-				count, err := rw.Exec(ctx, testUpdateTokenStatusExpirationQuery, []any{CurrentToken, tt.currentTokenExp.Seconds(), cs.outputToken.TokenHmac})
+				count, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []any{CurrentToken, tt.currentTokenExp.Seconds(), cs.outputToken.TokenHmac})
 				require.NoError(err)
 				assert.Equal(1, count)
 			}
 
-			got, err := r.NextRunIn(ctx)
+			got, err := r.NextRunIn(context.Background())
 			require.NoError(err)
 			// Round to time.Minute to account for lost time between creating tokens and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
 
 			// Set all tokens to revoked for next test
-			_, err = rw.Exec(ctx, "update credential_vault_token set status = 'revoked'", nil)
+			_, err = rw.Exec(context.Background(), "update credential_vault_token set status = 'revoked'", nil)
 			assert.NoError(err)
 		})
 	}
@@ -693,7 +688,7 @@ func TestNewTokenRevocationJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newTokenRevocationJob(context.Background(), tt.args.r, tt.args.w, tt.args.kms, tt.options...)
+			got, err := newTokenRevocationJob(tt.args.r, tt.args.w, tt.args.kms, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -712,8 +707,6 @@ func TestNewTokenRevocationJob(t *testing.T) {
 
 func TestTokenRevocationJob_RunLimits(t *testing.T) {
 	t.Parallel()
-
-	ctx := context.Background()
 
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -758,12 +751,12 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 			_, token := v.CreateToken(t)
 			in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 			require.NoError(err)
-			repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+			repo, err := NewRepository(rw, rw, kmsCache, sche)
 			require.NoError(err)
-			err = RegisterJobs(ctx, sche, rw, rw, kmsCache)
+			err = RegisterJobs(context.Background(), sche, rw, rw, kmsCache)
 			require.NoError(err)
 
-			cs, err := repo.CreateCredentialStore(ctx, in)
+			cs, err := repo.CreateCredentialStore(context.Background(), in)
 			require.NoError(err)
 
 			for i := 0; i < count*3; i++ {
@@ -782,19 +775,19 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 			}
 
 			// inserting new tokens moves the current token to a maintaining state, move it back to current and set expiration time
-			numRows, err := rw.Exec(ctx, testUpdateTokenStatusExpirationQuery, []any{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
+			numRows, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []any{CurrentToken, time.Minute.Seconds(), cs.outputToken.TokenHmac})
 			require.NoError(err)
 			assert.Equal(1, numRows)
 
-			r, err := newTokenRevocationJob(ctx, rw, rw, kmsCache, tt.opts...)
+			r, err := newTokenRevocationJob(rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
-			err = r.Run(ctx)
+			err = r.Run(context.Background())
 			require.NoError(err)
 			assert.Equal(tt.wantLen, r.numTokens)
 
 			// Set all tokens to revoked for next test
-			_, err = rw.Exec(ctx, "update credential_vault_token set status = 'revoked'", nil)
+			_, err = rw.Exec(context.Background(), "update credential_vault_token set status = 'revoked'", nil)
 			require.NoError(err)
 		})
 	}
@@ -802,7 +795,6 @@ func TestTokenRevocationJob_RunLimits(t *testing.T) {
 
 func TestTokenRevocationJob_Run(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -817,25 +809,25 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
 	require.NoError(err)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
 
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
-	err = sche.RegisterJob(ctx, j)
-	require.NoError(err)
-
-	cs, err := repo.CreateCredentialStore(ctx, in)
+	err = sche.RegisterJob(context.Background(), j)
 	require.NoError(err)
 
-	r, err := newTokenRevocationJob(ctx, rw, rw, kmsCache)
+	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
-	err = sche.RegisterJob(ctx, r)
+	r, err := newTokenRevocationJob(rw, rw, kmsCache)
+	require.NoError(err)
+
+	err = sche.RegisterJob(context.Background(), r)
 	require.NoError(err)
 
 	// No tokens should have been revoked since only the current token exists
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(0, r.numProcessed)
 
@@ -845,7 +837,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	revokeToken := testVaultToken(t, conn, wrapper, v, cs, RevokeToken, 5*time.Minute)
 
 	// inserting new tokens moves the current token to a maintaining state, move it back to current and set expiration time
-	count, err := rw.Exec(ctx, testUpdateTokenStatusExpirationQuery, []any{CurrentToken, (5 * time.Minute).Seconds(), cs.outputToken.TokenHmac})
+	count, err := rw.Exec(context.Background(), testUpdateTokenStatusExpirationQuery, []any{CurrentToken, (5 * time.Minute).Seconds(), cs.outputToken.TokenHmac})
 	require.NoError(err)
 	assert.Equal(1, count)
 
@@ -853,9 +845,9 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	libPath := path.Join("database", "creds", "opened")
 	cl, err := NewCredentialLibrary(cs.PublicId, libPath, WithMethod(MethodGet))
 	require.NoError(err)
-	cl.PublicId, err = newCredentialLibraryId(ctx)
+	cl.PublicId, err = newCredentialLibraryId()
 	require.NoError(err)
-	err = rw.Create(ctx, cl)
+	err = rw.Create(context.Background(), cl)
 	require.NoError(err)
 
 	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
@@ -864,7 +856,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -884,7 +876,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Running should revoke noCredsToken and the revokeToken even though it has active
 	// credentials it has been marked for revocation
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(2, r.numProcessed)
 
@@ -893,7 +885,7 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Verify noCredsToken was set to revoked in repo
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{noCredsToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{noCredsToken.TokenHmac}))
 	assert.Equal(string(RevokedToken), repoToken.Status)
 
 	// Verify revokeToken was revoked in vault
@@ -901,13 +893,13 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Verify revokeToken was set to revoked in repo
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{revokeToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{revokeToken.TokenHmac}))
 	assert.Equal(string(RevokedToken), repoToken.Status)
 
 	// Verify revokeCred attached to revokeToken were marked as revoked
 	lookupCred := allocCredential()
 	lookupCred.PublicId = revokeCred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(string(RevokedCredential), lookupCred.Status)
 
 	// Verify credsToken was not revoked in vault
@@ -916,12 +908,12 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Revoke credential in repo
 	query, queryValues := cred.updateStatusQuery(RevokedCredential)
-	rows, err := rw.Exec(ctx, query, queryValues)
+	rows, err := rw.Exec(context.Background(), query, queryValues)
 	assert.Equal(1, rows)
 	assert.NoError(err)
 
 	// Running again should now revoke the credsToken
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(1, r.numProcessed)
 
@@ -930,10 +922,10 @@ func TestTokenRevocationJob_Run(t *testing.T) {
 
 	// Verify credsToken was set to revoked in repo
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{credsToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{credsToken.TokenHmac}))
 	assert.Equal(string(RevokedToken), repoToken.Status)
 
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	// With only the current token remaining no tokens should be revoked
 	assert.Equal(0, r.numProcessed)
@@ -1006,7 +998,7 @@ func TestNewCredentialRenewalJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newCredentialRenewalJob(context.Background(), tt.args.r, tt.args.w, tt.args.kms, tt.options...)
+			got, err := newCredentialRenewalJob(tt.args.r, tt.args.w, tt.args.kms, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -1025,7 +1017,6 @@ func TestNewCredentialRenewalJob(t *testing.T) {
 
 func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1039,23 +1030,23 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
 	require.NoError(t, err)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(t, err)
 
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(t, err)
-	err = sche.RegisterJob(ctx, j)
+	err = sche.RegisterJob(context.Background(), j)
 	require.NoError(t, err)
 
-	cs, err := repo.CreateCredentialStore(ctx, in)
+	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(t, err)
 
 	libPath := path.Join("database", "creds", "opened")
 	cl, err := NewCredentialLibrary(cs.PublicId, libPath, WithMethod(MethodGet))
 	require.NoError(t, err)
-	cl.PublicId, err = newCredentialLibraryId(ctx)
+	cl.PublicId, err = newCredentialLibraryId()
 	require.NoError(t, err)
-	err = rw.Create(ctx, cl)
+	err = rw.Create(context.Background(), cl)
 	require.NoError(t, err)
 
 	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
@@ -1064,7 +1055,7 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -1125,15 +1116,15 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 				testVaultCred(t, conn, v, cl, sess, credsToken, status, 5*time.Minute)
 			}
 
-			r, err := newCredentialRenewalJob(ctx, rw, rw, kmsCache, tt.opts...)
+			r, err := newCredentialRenewalJob(rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
-			err = r.Run(ctx)
+			err = r.Run(context.Background())
 			require.NoError(err)
 			assert.Equal(tt.wantLen, r.numCreds)
 
 			// Set all credentials to revoked for next test
-			_, err = rw.Exec(ctx, "update credential_vault_credential set status = 'revoked'", nil)
+			_, err = rw.Exec(context.Background(), "update credential_vault_credential set status = 'revoked'", nil)
 			assert.NoError(err)
 		})
 	}
@@ -1141,7 +1132,6 @@ func TestCredentialRenewalJob_RunLimits(t *testing.T) {
 
 func TestCredentialRenewalJob_Run(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
@@ -1153,23 +1143,23 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
 
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
-	err = sche.RegisterJob(ctx, j)
+	err = sche.RegisterJob(context.Background(), j)
 	require.NoError(err)
-	cs, err := repo.CreateCredentialStore(ctx, credStoreIn)
+	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
 	require.NoError(err)
 
 	libPath := path.Join("database", "creds", "opened")
 	libIn, err := NewCredentialLibrary(cs.GetPublicId(), libPath)
 	require.NoError(err)
-	cl, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+	cl, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), libIn)
 	require.NoError(err)
 
 	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
@@ -1190,12 +1180,12 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	})
 
 	csToken := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &csToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &csToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
-	credRenewal, err := newCredentialRenewalJob(ctx, rw, rw, kmsCache)
+	credRenewal, err := newCredentialRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
 
-	err = credRenewal.Run(ctx)
+	err = credRenewal.Run(context.Background())
 	require.NoError(err)
 	// No credentials should have been renewed
 	assert.Equal(0, credRenewal.numCreds)
@@ -1212,7 +1202,7 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	// Sleep to move clock
 	time.Sleep(2 * time.Second)
 
-	err = credRenewal.Run(ctx)
+	err = credRenewal.Run(context.Background())
 	require.NoError(err)
 	// The active credential should have been renewed
 	assert.Equal(1, credRenewal.numCreds)
@@ -1220,21 +1210,21 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 	// Active credential expiration time should have been updated
 	lookupCred := allocCredential()
 	lookupCred.PublicId = activeCred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Truef(lookupCred.ExpirationTime.AsTime().After(activeCred.ExpirationTime.AsTime()), "expected expiration time to be updated")
 
 	// Revoke, Revoked and Expired credentials expiration times should not have changed
 	lookupCred = allocCredential()
 	lookupCred.PublicId = revokeCred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(lookupCred.ExpirationTime.AsTime(), revokeCred.ExpirationTime.AsTime())
 	lookupCred = allocCredential()
 	lookupCred.PublicId = revokedCred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(lookupCred.ExpirationTime.AsTime(), revokedCred.ExpirationTime.AsTime())
 	lookupCred = allocCredential()
 	lookupCred.PublicId = expiredCred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(lookupCred.ExpirationTime.AsTime(), expiredCred.ExpirationTime.AsTime())
 
 	// Active credential should have a last renewal time in Vault
@@ -1252,7 +1242,6 @@ func TestCredentialRenewalJob_Run(t *testing.T) {
 
 func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
@@ -1264,23 +1253,23 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
 
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
-	err = sche.RegisterJob(ctx, j)
+	err = sche.RegisterJob(context.Background(), j)
 	require.NoError(err)
-	cs, err := repo.CreateCredentialStore(ctx, credStoreIn)
+	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
 	require.NoError(err)
 
 	libPath := path.Join("database", "creds", "opened")
 	libIn, err := NewCredentialLibrary(cs.GetPublicId(), libPath)
 	require.NoError(err)
-	cl, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+	cl, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), libIn)
 	require.NoError(err)
 
 	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
@@ -1289,7 +1278,7 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1301,9 +1290,9 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	})
 
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
-	credRenewal, err := newCredentialRenewalJob(ctx, rw, rw, kmsCache)
+	credRenewal, err := newCredentialRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
 
 	_, cred := testVaultCred(t, conn, v, cl, sess, repoToken, ActiveCredential, time.Minute)
@@ -1315,10 +1304,10 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	// Credential status should still be active
 	lookupCred := allocCredential()
 	lookupCred.PublicId = cred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(string(ActiveCredential), lookupCred.Status)
 
-	err = credRenewal.Run(ctx)
+	err = credRenewal.Run(context.Background())
 	require.NoError(err)
 	// The active credential should have been processed
 	assert.Equal(1, credRenewal.numCreds)
@@ -1326,13 +1315,12 @@ func TestCredentialRenewalJob_RunExpired(t *testing.T) {
 	// Credential status should have been updated to expired
 	lookupCred = allocCredential()
 	lookupCred.PublicId = cred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(string(ExpiredCredential), lookupCred.Status)
 }
 
 func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1346,19 +1334,19 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
 	require.NoError(t, err)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(t, err)
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(t, err)
-	err = sche.RegisterJob(ctx, j)
+	err = sche.RegisterJob(context.Background(), j)
 	require.NoError(t, err)
-	cs, err := repo.CreateCredentialStore(ctx, in)
+	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(t, err)
 
 	libPath := path.Join("database", "creds", "opened")
 	libIn, err := NewCredentialLibrary(cs.GetPublicId(), libPath)
 	require.NoError(t, err)
-	cl, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+	cl, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), libIn)
 	require.NoError(t, err)
 
 	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
@@ -1367,7 +1355,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -1467,7 +1455,7 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			r, err := newCredentialRenewalJob(ctx, rw, rw, kmsCache)
+			r, err := newCredentialRenewalJob(rw, rw, kmsCache)
 			assert.NoError(err)
 			require.NotNil(r)
 
@@ -1476,13 +1464,13 @@ func TestCredentialRenewalJob_NextRunIn(t *testing.T) {
 				testVaultCred(t, conn, v, cl, sess, token, cred.s, cred.e)
 			}
 
-			got, err := r.NextRunIn(ctx)
+			got, err := r.NextRunIn(context.Background())
 			require.NoError(err)
 			// Round to time.Minute to account for lost time between creating credentials and determining next run
 			assert.Equal(tt.want.Round(time.Minute), got.Round(time.Minute))
 
 			// Set all credentials to revoked for next test
-			_, err = rw.Exec(ctx, "update credential_vault_credential set status = 'revoked'", nil)
+			_, err = rw.Exec(context.Background(), "update credential_vault_credential set status = 'revoked'", nil)
 			assert.NoError(err)
 		})
 	}
@@ -1555,7 +1543,7 @@ func TestNewCredentialRevocationJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newCredentialRevocationJob(context.Background(), tt.args.r, tt.args.w, tt.args.kms, tt.options...)
+			got, err := newCredentialRevocationJob(tt.args.r, tt.args.w, tt.args.kms, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -1574,7 +1562,6 @@ func TestNewCredentialRevocationJob(t *testing.T) {
 
 func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -1588,21 +1575,21 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
 	require.NoError(t, err)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(t, err)
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(t, err)
-	err = sche.RegisterJob(ctx, j)
+	err = sche.RegisterJob(context.Background(), j)
 	require.NoError(t, err)
-	cs, err := repo.CreateCredentialStore(ctx, in)
+	cs, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(t, err)
 
 	libPath := path.Join("database", "creds", "opened")
 	cl, err := NewCredentialLibrary(cs.PublicId, libPath, WithMethod(MethodGet))
 	require.NoError(t, err)
-	cl.PublicId, err = newCredentialLibraryId(ctx)
+	cl.PublicId, err = newCredentialLibraryId()
 	require.NoError(t, err)
-	err = rw.Create(ctx, cl)
+	err = rw.Create(context.Background(), cl)
 	require.NoError(t, err)
 
 	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
@@ -1611,7 +1598,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	target.TestCredentialLibrary(t, conn, tar.GetPublicId(), cl.GetPublicId())
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
@@ -1624,7 +1611,7 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 	})
 
 	repoToken := allocToken()
-	require.NoError(t, rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
+	require.NoError(t, rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
 	count := 10
 	tests := []struct {
@@ -1674,15 +1661,15 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 				testVaultCred(t, conn, v, cl, sess, repoToken, status, 5*time.Minute)
 			}
 
-			r, err := newCredentialRevocationJob(ctx, rw, rw, kmsCache, tt.opts...)
+			r, err := newCredentialRevocationJob(rw, rw, kmsCache, tt.opts...)
 			require.NoError(err)
 
-			err = r.Run(ctx)
+			err = r.Run(context.Background())
 			require.NoError(err)
 			assert.Equal(tt.wantLen, r.numCreds)
 
 			// Set all credentials to revoked for next test
-			_, err = rw.Exec(ctx, "update credential_vault_credential set status = 'revoked'", nil)
+			_, err = rw.Exec(context.Background(), "update credential_vault_credential set status = 'revoked'", nil)
 			assert.NoError(err)
 		})
 	}
@@ -1690,7 +1677,6 @@ func TestCredentialRevocationJob_RunLimits(t *testing.T) {
 
 func TestCredentialRevocationJob_Run(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
@@ -1702,23 +1688,23 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
 
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
-	err = sche.RegisterJob(ctx, j)
+	err = sche.RegisterJob(context.Background(), j)
 	require.NoError(err)
-	cs, err := repo.CreateCredentialStore(ctx, credStoreIn)
+	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
 	require.NoError(err)
 
 	libPath := path.Join("database", "creds", "opened")
 	libIn, err := NewCredentialLibrary(cs.GetPublicId(), libPath)
 	require.NoError(err)
-	cl, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+	cl, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), libIn)
 	require.NoError(err)
 
 	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
@@ -1727,7 +1713,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1739,12 +1725,12 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	})
 
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
-	r, err := newCredentialRevocationJob(ctx, rw, rw, kmsCache)
+	r, err := newCredentialRevocationJob(rw, rw, kmsCache)
 	require.NoError(err)
 
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	// No credentials should have been revoked
 	assert.Equal(0, r.numCreds)
@@ -1757,13 +1743,13 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	// Verify the revokeCred has a status of revoke
 	lookupCred := allocCredential()
 	lookupCred.PublicId = revokeCred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(string(RevokeCredential), lookupCred.Status)
 
 	// Verify revokeCred is valid in testDb
 	assert.NoError(testDb.ValidateCredential(t, revokeSecret))
 
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	// The revoke credential should have been revoked
 	assert.Equal(1, r.numCreds)
@@ -1771,7 +1757,7 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 	// revokeCred should now have a status of revoked
 	lookupCred = allocCredential()
 	lookupCred.PublicId = revokeCred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(string(RevokedCredential), lookupCred.Status)
 
 	// revokeCred should no longer be valid in test database
@@ -1785,7 +1771,6 @@ func TestCredentialRevocationJob_Run(t *testing.T) {
 
 func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
@@ -1797,23 +1782,23 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
 
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
-	err = sche.RegisterJob(ctx, j)
+	err = sche.RegisterJob(context.Background(), j)
 	require.NoError(err)
-	cs, err := repo.CreateCredentialStore(ctx, credStoreIn)
+	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
 	require.NoError(err)
 
 	libPath := path.Join("database", "creds", "opened")
 	libIn, err := NewCredentialLibrary(cs.GetPublicId(), libPath)
 	require.NoError(err)
-	cl, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+	cl, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), libIn)
 	require.NoError(err)
 
 	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
@@ -1822,7 +1807,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -1834,24 +1819,24 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	})
 
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
-	r, err := newCredentialRevocationJob(ctx, rw, rw, kmsCache)
+	r, err := newCredentialRevocationJob(rw, rw, kmsCache)
 	require.NoError(err)
 
 	secret, cred := testVaultCred(t, conn, v, cl, sess, repoToken, ActiveCredential, 5*time.Hour)
 
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	// No credentials should have been revoked as expiration is 5 hours from now
 	assert.Equal(0, r.numCreds)
 
 	// Deleting the library should set the cred library_id to null, but not revoke the cred
-	count, err := rw.Delete(ctx, cl)
+	count, err := rw.Delete(context.Background(), cl)
 	require.NoError(err)
 	assert.Equal(1, count)
 
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	// No credentials should have been revoked
 	assert.Equal(0, r.numCreds)
@@ -1859,7 +1844,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	// Verify the cred has a status of active with an empty libraryId
 	lookupCred := allocCredential()
 	lookupCred.PublicId = cred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(string(ActiveCredential), lookupCred.Status)
 	assert.Empty(lookupCred.LibraryId)
 
@@ -1867,18 +1852,18 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	assert.NoError(testDb.ValidateCredential(t, secret))
 
 	// Deleting the session should set the cred session_id to null and schedule cred for revocation
-	count, err = rw.Delete(ctx, sess)
+	count, err = rw.Delete(context.Background(), sess)
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	// cred should now have a status of revoke and empty sessionId
 	lookupCred = allocCredential()
 	lookupCred.PublicId = cred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Empty(lookupCred.SessionId)
 	assert.Equal(string(RevokeCredential), lookupCred.Status)
 
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	// The revoke credential should have been revoked
 	assert.Equal(1, r.numCreds)
@@ -1886,7 +1871,7 @@ func TestCredentialRevocationJob_RunDeleted(t *testing.T) {
 	// cred should now have a status of revoked
 	lookupCred = allocCredential()
 	lookupCred.PublicId = cred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(string(RevokedCredential), lookupCred.Status)
 
 	// secret should no longer be valid in test database
@@ -1960,7 +1945,7 @@ func TestNewCredentialStoreCleanupJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newCredentialStoreCleanupJob(context.Background(), tt.args.r, tt.args.w, tt.args.kms, tt.options...)
+			got, err := newCredentialStoreCleanupJob(tt.args.r, tt.args.w, tt.args.kms, tt.options...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -1979,7 +1964,6 @@ func TestNewCredentialStoreCleanupJob(t *testing.T) {
 
 func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -1993,139 +1977,139 @@ func TestCredentialStoreCleanupJob_Run(t *testing.T) {
 	in, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
 	require.NoError(err)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
 	err = sche.RegisterJob(context.Background(), j)
 	require.NoError(err)
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
-	cs1, err := repo.CreateCredentialStore(ctx, in)
+	cs1, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
 	_, ct = v.CreateToken(t)
 	in, err = NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(ct))
 	require.NoError(err)
-	cs2, err := repo.CreateCredentialStore(ctx, in)
+	cs2, err := repo.CreateCredentialStore(context.Background(), in)
 	require.NoError(err)
 
 	// Get token hmac for verifications below
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "store_id = ?", []any{cs1.PublicId}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []any{cs1.PublicId}))
 	cs1TokenHmac := repoToken.TokenHmac
 
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "store_id = ?", []any{cs2.PublicId}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []any{cs2.PublicId}))
 	cs2TokenHmac := repoToken.TokenHmac
 
 	// create second token on cs2
 	secondToken := testVaultToken(t, conn, wrapper, v, cs2, MaintainingToken, time.Hour)
 
-	r, err := newCredentialStoreCleanupJob(ctx, rw, rw, kmsCache)
+	r, err := newCredentialStoreCleanupJob(rw, rw, kmsCache)
 	require.NoError(err)
 
-	err = sche.RegisterJob(ctx, r)
+	err = sche.RegisterJob(context.Background(), r)
 	require.NoError(err)
 
 	// No credential stores should have been cleaned up
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(0, r.numStores)
 
 	// Register token revocation job needed for delete
-	j1, err := newTokenRevocationJob(ctx, rw, rw, kmsCache)
+	j1, err := newTokenRevocationJob(rw, rw, kmsCache)
 	require.NoError(err)
-	err = sche.RegisterJob(ctx, j1)
+	err = sche.RegisterJob(context.Background(), j1)
 	require.NoError(err)
 
 	// Soft delete both credential stores
-	count, err := repo.DeleteCredentialStore(ctx, cs1.PublicId)
+	count, err := repo.DeleteCredentialStore(context.Background(), cs1.PublicId)
 	require.NoError(err)
 	assert.Equal(1, count)
 
-	count, err = repo.DeleteCredentialStore(ctx, cs2.PublicId)
+	count, err = repo.DeleteCredentialStore(context.Background(), cs2.PublicId)
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	// Verify tokens have been set to revoke
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "store_id = ?", []any{cs1.PublicId}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []any{cs1.PublicId}))
 	assert.Equal(string(RevokeToken), repoToken.Status)
 
 	repoToken = allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "store_id = ?", []any{cs2.PublicId}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "store_id = ?", []any{cs2.PublicId}))
 	assert.Equal(string(RevokeToken), repoToken.Status)
 
 	// Both soft deleted credential stores should not be cleaned up yet
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(0, r.numStores)
 
 	// Update cs1 token to be marked as revoked
-	count, err = rw.Exec(ctx, updateTokenStatusQuery, []any{RevokedToken, cs1TokenHmac})
+	count, err = rw.Exec(context.Background(), updateTokenStatusQuery, []any{RevokedToken, cs1TokenHmac})
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	// cs1 should be deleted
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(1, r.numStores)
 
 	// Lookup of cs1 and its token should fail
 	agg := allocListLookupStore()
 	agg.PublicId = cs1.PublicId
-	err = rw.LookupByPublicId(ctx, agg)
+	err = rw.LookupByPublicId(context.Background(), agg)
 	require.Error(err)
 	assert.True(errors.IsNotFoundError(err))
 	repoToken = allocToken()
-	err = rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs1TokenHmac})
+	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs1TokenHmac})
 	require.Error(err)
 	assert.True(errors.IsNotFoundError(err))
 
 	// Lookup of cs2 and its token should not error
-	_, err = repo.LookupCredentialStore(ctx, cs2.PublicId)
+	_, err = repo.LookupCredentialStore(context.Background(), cs2.PublicId)
 	require.NoError(err)
 	repoToken = allocToken()
-	err = rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs2TokenHmac})
+	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs2TokenHmac})
 	require.NoError(err)
 
 	// Update cs2 token expiration time
-	count, err = rw.Exec(ctx, "update credential_vault_token set expiration_time = now() where token_hmac = ?;", []any{cs2TokenHmac})
+	count, err = rw.Exec(context.Background(), "update credential_vault_token set expiration_time = now() where token_hmac = ?;", []any{cs2TokenHmac})
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	// cs2 still has a second token not yet revoked/expired
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(0, r.numStores)
 
 	// Lookup of cs2 and its token should not error
-	_, err = repo.LookupCredentialStore(ctx, cs2.PublicId)
+	_, err = repo.LookupCredentialStore(context.Background(), cs2.PublicId)
 	require.NoError(err)
 	repoToken = allocToken()
-	err = rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs2TokenHmac})
+	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs2TokenHmac})
 	require.NoError(err)
 
 	// set secondToken with an expired status
-	count, err = rw.Exec(ctx, updateTokenStatusQuery, []any{ExpiredToken, secondToken.TokenHmac})
+	count, err = rw.Exec(context.Background(), updateTokenStatusQuery, []any{ExpiredToken, secondToken.TokenHmac})
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	// With no un-expired or un-revoked tokens cs2 should now be deleted
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(1, r.numStores)
 
 	// Lookup of cs2 and its token should fail
 	agg = allocListLookupStore()
 	agg.PublicId = cs2.PublicId
-	err = rw.LookupByPublicId(ctx, agg)
+	err = rw.LookupByPublicId(context.Background(), agg)
 	require.Error(err)
 	assert.True(errors.IsNotFoundError(err))
 	repoToken = allocToken()
-	err = rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs2TokenHmac})
+	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs2TokenHmac})
 	require.Error(err)
 	assert.True(errors.IsNotFoundError(err))
-	err = rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{secondToken.TokenHmac})
+	err = rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{secondToken.TokenHmac})
 	require.Error(err)
 	assert.True(errors.IsNotFoundError(err))
 }
@@ -2163,7 +2147,7 @@ func TestNewCredentialCleanupJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := newCredentialCleanupJob(context.Background(), tt.args.w)
+			got, err := newCredentialCleanupJob(tt.args.w)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Nil(got)
@@ -2179,7 +2163,6 @@ func TestNewCredentialCleanupJob(t *testing.T) {
 
 func TestCredentialCleanupJob_Run(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 
 	v := NewTestVaultServer(t, WithDockerNetwork(true))
@@ -2191,23 +2174,23 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sche)
+	repo, err := NewRepository(rw, rw, kmsCache, sche)
 	require.NoError(err)
 
 	_, token := v.CreateToken(t, WithPolicies([]string{"default", "boundary-controller", "database"}))
 	credStoreIn, err := NewCredentialStore(prj.GetPublicId(), v.Addr, []byte(token))
 	require.NoError(err)
-	j, err := newTokenRenewalJob(ctx, rw, rw, kmsCache)
+	j, err := newTokenRenewalJob(rw, rw, kmsCache)
 	require.NoError(err)
-	err = sche.RegisterJob(ctx, j)
+	err = sche.RegisterJob(context.Background(), j)
 	require.NoError(err)
-	cs, err := repo.CreateCredentialStore(ctx, credStoreIn)
+	cs, err := repo.CreateCredentialStore(context.Background(), credStoreIn)
 	require.NoError(err)
 
 	libPath := path.Join("database", "creds", "opened")
 	libIn, err := NewCredentialLibrary(cs.GetPublicId(), libPath)
 	require.NoError(err)
-	cl, err := repo.CreateCredentialLibrary(ctx, prj.GetPublicId(), libIn)
+	cl, err := repo.CreateCredentialLibrary(context.Background(), prj.GetPublicId(), libIn)
 	require.NoError(err)
 
 	at := authtoken.TestAuthToken(t, conn, kmsCache, org.GetPublicId())
@@ -2216,7 +2199,7 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
-	tar := tcp.TestTarget(ctx, t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+	tar := tcp.TestTarget(context.Background(), t, conn, prj.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
 	sess1 := session.TestSession(t, conn, wrapper, session.ComposedOf{
 		UserId:      uId,
 		HostId:      h.GetPublicId(),
@@ -2237,9 +2220,9 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	})
 
 	repoToken := allocToken()
-	require.NoError(rw.LookupWhere(ctx, &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
+	require.NoError(rw.LookupWhere(context.Background(), &repoToken, "token_hmac = ?", []any{cs.outputToken.TokenHmac}))
 
-	r, err := newCredentialCleanupJob(ctx, rw)
+	r, err := newCredentialCleanupJob(rw)
 	require.NoError(err)
 
 	_, sess1Cred1 := testVaultCred(t, conn, v, cl, sess1, repoToken, ActiveCredential, 5*time.Hour)
@@ -2248,56 +2231,56 @@ func TestCredentialCleanupJob_Run(t *testing.T) {
 	_, sess2Cred := testVaultCred(t, conn, v, cl, sess2, repoToken, ActiveCredential, 5*time.Hour)
 
 	// No credentials should be cleaned up
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(0, r.numCreds)
 
 	// Delete sess1
-	count, err := rw.Delete(ctx, sess1)
+	count, err := rw.Delete(context.Background(), sess1)
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	// Credentials are still in the revoke state so none should be deleted yet
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(0, r.numCreds)
 
 	query, queryArgs := sess1Cred1.updateStatusQuery(RevokedCredential)
-	count, err = rw.Exec(ctx, query, queryArgs)
+	count, err = rw.Exec(context.Background(), query, queryArgs)
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	query, queryArgs = sess1Cred2.updateStatusQuery(ExpiredCredential)
-	count, err = rw.Exec(ctx, query, queryArgs)
+	count, err = rw.Exec(context.Background(), query, queryArgs)
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	query, queryArgs = sess1Cred3.updateStatusQuery(UnknownCredentialStatus)
-	count, err = rw.Exec(ctx, query, queryArgs)
+	count, err = rw.Exec(context.Background(), query, queryArgs)
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	query, queryArgs = sess2Cred.updateStatusQuery(RevokedCredential)
-	count, err = rw.Exec(ctx, query, queryArgs)
+	count, err = rw.Exec(context.Background(), query, queryArgs)
 	require.NoError(err)
 	assert.Equal(1, count)
 
 	// Only the three credentials associated with the deleted session should be deleted
-	err = r.Run(ctx)
+	err = r.Run(context.Background())
 	require.NoError(err)
 	assert.Equal(3, r.numCreds)
 
 	// Session 1 creds should no longer exist
 	lookupCred := allocCredential()
 	lookupCred.PublicId = sess1Cred1.PublicId
-	require.Error(rw.LookupById(ctx, lookupCred))
+	require.Error(rw.LookupById(context.Background(), lookupCred))
 	lookupCred.PublicId = sess1Cred2.PublicId
-	require.Error(rw.LookupById(ctx, lookupCred))
+	require.Error(rw.LookupById(context.Background(), lookupCred))
 	lookupCred.PublicId = sess1Cred3.PublicId
-	require.Error(rw.LookupById(ctx, lookupCred))
+	require.Error(rw.LookupById(context.Background(), lookupCred))
 
 	// Session 2 creds should still exist but be revoked
 	lookupCred.PublicId = sess2Cred.PublicId
-	require.NoError(rw.LookupById(ctx, lookupCred))
+	require.NoError(rw.LookupById(context.Background(), lookupCred))
 	assert.Equal(string(RevokedCredential), lookupCred.Status)
 }

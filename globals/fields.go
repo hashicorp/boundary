@@ -5,7 +5,6 @@ package globals
 
 const (
 	IdField                                     = "id"
-	IdsField                                    = "ids"
 	VersionField                                = "version"
 	NameField                                   = "name"
 	DescriptionField                            = "description"

@@ -36,12 +36,12 @@ import (
 
 func TestDeleteWorker(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
-	ctx := context.Background()
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := server.NewRepository(ctx, rw, rw, kms)
+	repo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
+	ctx := context.Background()
 
 	type args struct {
 		worker *server.Worker
@@ -78,7 +78,7 @@ func TestDeleteWorker(t *testing.T) {
 			args: args{
 				worker: func() *server.Worker {
 					w := server.Worker{Worker: &store.Worker{}}
-					id, err := db.NewPublicId(ctx, "w")
+					id, err := db.NewPublicId("w")
 					require.NoError(t, err)
 					w.PublicId = id
 					return &w
@@ -111,13 +111,13 @@ func TestDeleteWorker(t *testing.T) {
 }
 
 func TestLookupWorkerByName(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := server.NewRepository(ctx, rw, rw, kms)
+	repo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
+	ctx := context.Background()
 
 	w := server.TestKmsWorker(t, conn, wrapper)
 	t.Run("success", func(t *testing.T) {
@@ -133,8 +133,8 @@ func TestLookupWorkerByName(t *testing.T) {
 	t.Run("db error", func(t *testing.T) {
 		conn, mock := db.TestSetupWithMock(t)
 		rw := db.New(conn)
-		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(ctx, errors.Internal, "test", "lookup-error"))
-		r, err := server.NewRepository(ctx, rw, rw, kms)
+		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
+		r, err := server.NewRepository(rw, rw, kms)
 		require.NoError(t, err)
 		got, err := r.LookupWorkerByName(ctx, w.GetName())
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -144,14 +144,14 @@ func TestLookupWorkerByName(t *testing.T) {
 }
 
 func TestLookupWorkerIdByKeyId(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	require.NoError(t, kmsCache.CreateKeys(ctx, scope.Global.String(), kms.WithRandomReader(rand.Reader)))
-	repo, err := server.NewRepository(ctx, rw, rw, kmsCache)
+	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+	repo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
+	ctx := context.Background()
 	var workerKeyId string
 	w := server.TestPkiWorker(t, conn, wrapper, server.WithTestPkiWorkerAuthorizedKeyId(&workerKeyId))
 	t.Run("success", func(t *testing.T) {
@@ -168,7 +168,7 @@ func TestLookupWorkerIdByKeyId(t *testing.T) {
 		conn, mock := db.TestSetupWithMock(t)
 		rw := db.New(conn)
 		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
-		r, err := server.NewRepository(ctx, rw, rw, kmsCache)
+		r, err := server.NewRepository(rw, rw, kmsCache)
 		require.NoError(t, err)
 		got, err := r.LookupWorkerIdByKeyId(ctx, "somekey")
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -178,13 +178,13 @@ func TestLookupWorkerIdByKeyId(t *testing.T) {
 }
 
 func TestLookupWorker(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := server.NewRepository(ctx, rw, rw, kms)
+	repo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
+	ctx := context.Background()
 
 	w := server.TestKmsWorker(t, conn, wrapper,
 		server.WithName("name"),
@@ -244,7 +244,7 @@ func TestLookupWorker(t *testing.T) {
 		conn, mock := db.TestSetupWithMock(t)
 		rw := db.New(conn)
 		mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "lookup-error"))
-		r, err := server.NewRepository(ctx, rw, rw, kms)
+		r, err := server.NewRepository(rw, rw, kms)
 		require.NoError(t, err)
 		got, err := r.LookupWorker(ctx, w.GetPublicId())
 		assert.NoError(t, mock.ExpectationsWereMet())
@@ -254,14 +254,15 @@ func TestLookupWorker(t *testing.T) {
 }
 
 func TestUpsertWorkerStatus(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
-	repo, err := server.NewRepository(ctx, rw, rw, kmsCache)
+	repo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
+
+	ctx := context.Background()
 
 	t.Run("create an initial kms worker and update status", func(t *testing.T) {
 		wStatus1 := server.NewWorker(scope.Global.String(),
@@ -419,7 +420,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 				mock.ExpectBegin()
 				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "create-error"))
 				mock.ExpectRollback()
-				r, err := server.NewRepository(ctx, rw, rw, kmsCache)
+				r, err := server.NewRepository(rw, rw, kmsCache)
 				require.NoError(t, err)
 				return r
 			}(),
@@ -489,14 +490,14 @@ func TestUpsertWorkerStatus(t *testing.T) {
 }
 
 func TestTagUpdatingListing(t *testing.T) {
-	ctx := context.Background()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := server.NewRepository(ctx, rw, rw, kms)
+	repo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(err)
+	ctx := context.Background()
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 	wStatus := server.NewWorker(scope.Global.String(),
@@ -545,7 +546,6 @@ func TestTagUpdatingListing(t *testing.T) {
 
 func TestListWorkers(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -553,8 +553,9 @@ func TestListWorkers(t *testing.T) {
 	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
 	const testLimit = 10
-	repo, err := server.NewRepository(ctx, rw, rw, kmsCache, server.WithLimit(testLimit))
+	repo, err := server.NewRepository(rw, rw, kmsCache, server.WithLimit(testLimit))
 	require.NoError(t, err)
+	ctx := context.Background()
 
 	tests := []struct {
 		name      string
@@ -654,7 +655,6 @@ func TestListWorkers(t *testing.T) {
 
 func TestListWorkers_WithWorkerPool(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -662,8 +662,9 @@ func TestListWorkers_WithWorkerPool(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	require.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
-	serversRepo, err := server.NewRepository(ctx, rw, rw, kmsCache)
+	serversRepo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(err)
+	ctx := context.Background()
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 	worker2 := server.TestPkiWorker(t, conn, wrapper)
@@ -710,14 +711,14 @@ func TestListWorkers_WithWorkerPool(t *testing.T) {
 
 func TestListWorkers_WithActiveWorkers(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := server.NewRepository(ctx, rw, rw, kms)
+	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(err)
+	ctx := context.Background()
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 	worker2 := server.TestKmsWorker(t, conn, wrapper)
@@ -831,14 +832,14 @@ func TestListWorkers_WithActiveWorkers(t *testing.T) {
 
 func TestListWorkers_WithLiveness(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	require := require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := server.NewRepository(ctx, rw, rw, kms)
+	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(err)
+	ctx := context.Background()
 
 	worker1 := server.TestKmsWorker(t, conn, wrapper)
 	worker2 := server.TestKmsWorker(t, conn, wrapper)
@@ -906,7 +907,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
-	testRepo, err := server.NewRepository(testCtx, rw, rw, testKms)
+	testRepo, err := server.NewRepository(rw, rw, testKms)
 	require.NoError(t, err)
 
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -948,7 +949,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 			setup: func() *server.Worker {
 				w := server.NewWorker(scope.Global.String())
 				var err error
-				w.PublicId, err = db.NewPublicId(testCtx, globals.WorkerPrefix)
+				w.PublicId, err = db.NewPublicId(globals.WorkerPrefix)
 				require.NoError(t, err)
 				return w
 			},
@@ -1004,7 +1005,7 @@ func TestRepository_CreateWorker(t *testing.T) {
 				mock.ExpectBegin()
 				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New(testCtx, errors.Internal, "test", "create-error"))
 				mock.ExpectRollback()
-				r, err := server.NewRepository(testCtx, rw, writer, testKms)
+				r, err := server.NewRepository(rw, writer, testKms)
 				require.NoError(t, err)
 				return r
 			}(),
@@ -1060,9 +1061,9 @@ func TestRepository_CreateWorker(t *testing.T) {
 			repo: func() *server.Repository {
 				mockConn, mock := db.TestSetupWithMock(t)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(testCtx, errors.Internal, "test", "no-database-key"))
+				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New(context.Background(), errors.Internal, "test", "no-database-key"))
 				k := kms.TestKms(t, mockConn, wrapper)
-				r, err := server.NewRepository(testCtx, rw, rw, k)
+				r, err := server.NewRepository(rw, rw, k)
 				require.NoError(t, err)
 				return r
 			}(),
@@ -1221,7 +1222,7 @@ func TestRepository_UpdateWorker(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrapper)
 	require.NoError(t, kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
-	repo, err := server.NewRepository(ctx, rw, rw, kmsCache)
+	repo, err := server.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	pkiCases := []struct {

@@ -1,0 +1,116 @@
+---
+layout: docs
+page_title: AWS dynamic host catalogs
+description: |-
+  An overview of AWS host discovery in Boundary
+---
+# AWS dynamic host catalogs
+Boundary uses dynamic host catalogs to automatically discover AWS EC2 instances and add them as hosts.
+
+## Create a host catalog to connect with AWS
+Boundary uses plugins to integrate with a variety of providers. To use
+a dynamic host catalog to integrate with AWS, you create a host catalog of the `plugin` type 
+and set the `plugin-name` value to `aws`. You must also provide the specific
+fields needed for Boundary to authenticate with AWS.
+
+<Tabs>
+<Tab heading="CLI">
+
+```shell-session
+$ boundary host-catalogs create plugin \
+  -scope-id $BOUNDARY_PROJECT_ID \
+  -plugin-name aws \
+  -attr disable_credential_rotation=true \
+  -attr region=us-east-1 \
+  -secret access_key_id=env://AWS_ACCESS_KEY_ID \
+  -secret secret_access_key=env://AWS_SECRET_ACCESS_KEY
+```
+
+</Tab>
+<Tab heading="Terraform">
+
+  ```hcl
+  resource "boundary_host_catalog_plugin" "aws_host_catalog" {
+    name        = "AWS Catalog"
+    description = "AWS Host Catalog"
+    scope_id    = boundary_scope.project.id
+    plugin_name = "aws"
+
+    attributes_json = jsonencode({
+      "region" = "eu-west-2",
+      "disable_credential_rotation" = true })
+    secrets_json = jsonencode({
+      "access_key_id" = var.aws_access,
+      "secret_access_key" = var.aws_secret})
+  }
+  ```
+
+</Tab>
+</Tabs>
+
+The `scope-id` and `plugin-name` fields are required when you create a
+  dynamic host catalog.
+
+The fields following the `attr` and `secret` flags are specific to AWS and are required by
+  Boundary for authentication.
+
+- `disable_credential_rotation`: When set to `true`, Boundary will not rotate the credentials with AWS automatically.
+- `region`: The region to configure the host catalog for. All host sets in this
+  catalog will be configured for this region.
+- `access_key_id`: The access key ID for the IAM user to use with this host
+  catalog.
+- `secret_access_key`: The secret access key for the IAM user to use with this
+  host catalog.
+
+
+Refer to [the domain model documentation](/boundary/docs/concepts/domain-model/host-catalogs) for additional fields that you can use when you create host catalogs.
+
+## Create a host set to connect with AWS
+[Host sets](/boundary/docs/concepts/domain-model/host-sets) specify which AWS
+  filters should be used to identify the discovered hosts that should be added as members.
+
+Create a host set using the following command:
+
+<Tabs>
+<Tab heading="CLI" group="cli">
+
+```shell-session
+$ boundary host-sets create plugin \
+  -host-catalog-id $BOUNDARY_HOST_CATALOG_ID \
+  -attr filters=tag-key=foo,bar \
+  -attr filters=tag-key=baz
+```
+
+</Tab>
+<Tab heading="Terraform" group="terraform">
+
+```hcl
+resource "boundary_host_set_plugin" "aws_host_set" {
+  name        = "AWS Host Set"
+  description = "AWS Host Set"
+  host_catalog_id  = boundary_scope.aws_host_catalog.id
+  attributes_json = jsonencode({
+  "filters" = ["tag-key=foo,bar", "tag-key=baz"] })
+}
+```
+
+</Tab>
+</Tabs>
+
+The `host-catalog-id` value is a required field that specifies in which host catalog to
+  create this host set.
+
+Like with the host catalog, the fields passed in after the `attr` flag are
+ specific to AWS.
+
+The `filters` field contains string filters in the format key=val1,val2. The key corresponds to
+  a filter option, and the value(s) are a comma-separated list. For a list of
+  filter options, refer to the
+  [describe-instances in the AWS CLI reference](https://docs.aws.amazon.com/cli/latest/reference/ec2/describe-instances.html).
+  When the values in a single `filters` field are separated by a comma, either
+  can be true for the host to match.  When multiple filters fields are provided,
+  they must all match for a host to match. In the example above, an instance must
+  have either tags `foo` or `bar`, and must have the tag `baz`.
+
+For more fields that you can use when creating host sets, refer to
+  [the domain model documentation](/boundary/docs/concepts/domain-model/host-sets).

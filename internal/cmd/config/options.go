@@ -5,30 +5,19 @@ package config
 import (
 	"os"
 	"testing"
-
-	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
 // getOpts - iterate the inbound Options and return a struct
-func getOpts(opt ...Option) (options, error) {
-	opts, err := getDefaultOptions()
-	if err != nil {
-		return opts, err
-	}
+func getOpts(opt ...Option) options {
+	opts := getDefaultOptions()
 	for _, o := range opt {
-		if o == nil {
-			continue
-		}
-		err = o(&opts)
-		if err != nil {
-			return opts, err
-		}
+		o(&opts)
 	}
-	return opts, nil
+	return opts
 }
 
 // Option - how Options are passed as arguments
-type Option func(*options) error
+type Option func(*options)
 
 // options = how options are represented
 type options struct {
@@ -38,65 +27,50 @@ type options struct {
 	testWithErrorEventsEnabled bool
 }
 
-func getDefaultOptions() (options, error) {
+func getDefaultOptions() options {
 	opts := options{}
 
-	sysEvents, err := parseutil.ParseBool(os.Getenv("BOUNDARY_ENABLE_TEST_SYS_EVENTS"))
-	if err != nil {
-		return opts, err
+	if os.Getenv("BOUNDARY_ENABLE_TEST_SYS_EVENTS") != "" {
+		opts.withSysEventsEnabled = true
 	}
-	opts.withSysEventsEnabled = sysEvents
-
-	auditEvents, err := parseutil.ParseBool(os.Getenv("BOUNDARY_ENABLE_TEST_AUDIT_EVENTS"))
-	if err != nil {
-		return opts, err
+	if os.Getenv("BOUNDARY_ENABLE_TEST_AUDIT_EVENTS") != "" {
+		opts.withAuditEventsEnabled = true
 	}
-	opts.withAuditEventsEnabled = auditEvents
-
-	obs, err := parseutil.ParseBool(os.Getenv("BOUNDARY_ENABLE_TEST_OBSERVATIONS"))
-	if err != nil {
-		return opts, err
+	if os.Getenv("BOUNDARY_ENABLE_TEST_OBSERVATIONS") != "" {
+		opts.withObservationsEnabled = true
 	}
-	opts.withObservationsEnabled = obs
-
-	errEvents, err := parseutil.ParseBool(os.Getenv("BOUNDARY_ENABLE_TEST_ERROR_EVENTS"))
-	if err != nil {
-		return opts, err
+	if os.Getenv("BOUNDARY_ENABLE_TEST_ERROR_EVENTS") != "" {
+		opts.testWithErrorEventsEnabled = true
 	}
-	opts.testWithErrorEventsEnabled = errEvents
 
-	return opts, nil
+	return opts
 }
 
 // WithSysEventsEnabled provides an option for enabling system events
 func WithSysEventsEnabled(enable bool) Option {
-	return func(o *options) error {
+	return func(o *options) {
 		o.withSysEventsEnabled = enable
-		return nil
 	}
 }
 
 // WithAuditEventsEnabled provides an option for enabling audit events
 func WithAuditEventsEnabled(enable bool) Option {
-	return func(o *options) error {
+	return func(o *options) {
 		o.withAuditEventsEnabled = enable
-		return nil
 	}
 }
 
 // WithObservationsEnabled provides an option for enabling observation events
 func WithObservationsEnabled(enable bool) Option {
-	return func(o *options) error {
+	return func(o *options) {
 		o.withObservationsEnabled = enable
-		return nil
 	}
 }
 
 // TestWithErrorEventsEnabled provides an option for enabling error events
 // during tests.
 func TestWithErrorEventsEnabled(_ testing.TB, enable bool) Option {
-	return func(o *options) error {
+	return func(o *options) {
 		o.testWithErrorEventsEnabled = enable
-		return nil
 	}
 }

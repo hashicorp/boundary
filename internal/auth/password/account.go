@@ -4,8 +4,6 @@
 package password
 
 import (
-	"context"
-
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -30,12 +28,12 @@ func allocAccount() *Account {
 
 // NewAccount creates a new in memory Account. LoginName, name, and
 // description are the only valid options. All other options are ignored.
-func NewAccount(ctx context.Context, authMethodId string, opt ...Option) (*Account, error) {
+func NewAccount(authMethodId string, opt ...Option) (*Account, error) {
 	const op = "password.NewAccount"
 	// NOTE(mgaffney): The scopeId in the embedded *store.Account is
 	// populated by a trigger in the database.
 	if authMethodId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing auth method id")
 	}
 
 	opts := GetOpts(opt...)

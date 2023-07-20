@@ -206,7 +206,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 		}, nil
 	}
 
-	hostRepo, err := NewRepository(ctx, rw, rw, kmsCache, sche, plgm)
+	hostRepo, err := NewRepository(rw, rw, kmsCache, sche, plgm)
 	require.NoError(err)
 
 	hsa = &hostSetAgg{PublicId: set1.GetPublicId()}

@@ -178,8 +178,3 @@ variable "go_test_timeout" {
   type        = string
   default     = "10m"
 }
-
-variable "aws_region" {
-  description = "AWS region where the resources will be created"
-  type        = string
-}

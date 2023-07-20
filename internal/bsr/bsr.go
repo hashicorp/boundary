@@ -41,7 +41,6 @@ type Session struct {
 
 	Meta        *SessionRecordingMeta
 	SessionMeta *SessionMeta
-	Summary     SessionSummary
 }
 
 // NewSession creates a Session container for a given session id.
@@ -82,7 +81,7 @@ func NewSession(ctx context.Context, meta *SessionRecordingMeta, sessionMeta *Se
 		return nil, err
 	}
 
-	nc, err := newContainer(ctx, SessionContainer, c, keys)
+	nc, err := newContainer(ctx, sessionContainer, c, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +191,7 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 	keyPopFn := func(c *container) (*kms.Keys, error) {
 		return c.loadKeys(ctx, keyUnwrapFn)
 	}
-	cc, err := openContainer(ctx, SessionContainer, c, keyPopFn)
+	cc, err := openContainer(ctx, sessionContainer, c, keyPopFn)
 	if err != nil {
 		return nil, err
 	}
@@ -216,22 +215,10 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 		return nil, err
 	}
 
-	af, ok := summaryAllocFuncs.get(meta.Protocol, SessionContainer)
-	if !ok {
-		return nil, fmt.Errorf("%s: failed to get summary type", op)
-	}
-
-	summary := af(ctx)
-	if err := cc.decodeJsonFile(ctx, fmt.Sprintf(summaryFileNameTemplate, SessionContainer), summary); err != nil {
-		return nil, err
-	}
-	sessionSummary := summary.(SessionSummary)
-
 	session := &Session{
 		container:   cc,
 		Meta:        meta,
 		SessionMeta: sessionMeta,
-		Summary:     sessionSummary,
 	}
 
 	return session, nil
@@ -248,9 +235,7 @@ type Connection struct {
 	*container
 	multiplexed bool
 
-	Meta    *ConnectionRecordingMeta
-	session *Session
-	Summary ConnectionSummary
+	Meta *ConnectionRecordingMeta
 }
 
 // NewConnection creates a Connection container for a given connection id.
@@ -273,7 +258,7 @@ func (s *Session) NewConnection(ctx context.Context, meta *ConnectionRecordingMe
 		return nil, err
 	}
 
-	nc, err := newContainer(ctx, ConnectionContainer, sc, s.keys)
+	nc, err := newContainer(ctx, connectionContainer, sc, s.keys)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +269,6 @@ func (s *Session) NewConnection(ctx context.Context, meta *ConnectionRecordingMe
 		container:   nc,
 		multiplexed: s.multiplexed,
 		Meta:        meta,
-		session:     s,
 	}, nil
 }
 
@@ -311,7 +295,7 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connectio
 	keyPopFn := func(c *container) (*kms.Keys, error) {
 		return s.keys, nil
 	}
-	cc, err := openContainer(ctx, ConnectionContainer, c, keyPopFn)
+	cc, err := openContainer(ctx, connectionContainer, c, keyPopFn)
 	if err != nil {
 		return nil, err
 	}
@@ -330,22 +314,9 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connectio
 		return nil, err
 	}
 
-	af, ok := summaryAllocFuncs.get(s.Meta.Protocol, ConnectionContainer)
-	if !ok {
-		return nil, fmt.Errorf("%s: failed to get summary type", op)
-	}
-
-	summary := af(ctx)
-	if err := cc.decodeJsonFile(ctx, fmt.Sprintf(summaryFileNameTemplate, ConnectionContainer), summary); err != nil {
-		return nil, err
-	}
-	connectionSummary := summary.(ConnectionSummary)
-
 	connection := &Connection{
 		container: cc,
 		Meta:      sm,
-		session:   s,
-		Summary:   connectionSummary,
 	}
 
 	return connection, nil
@@ -374,7 +345,7 @@ func (c *Connection) NewChannel(ctx context.Context, meta *ChannelRecordingMeta)
 	if _, err := c.WriteMeta(ctx, "channel", name); err != nil {
 		return nil, err
 	}
-	nc, err := newContainer(ctx, ChannelContainer, sc, c.keys)
+	nc, err := newContainer(ctx, channelContainer, sc, c.keys)
 	if err != nil {
 		return nil, err
 	}
@@ -412,7 +383,7 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 	keyPopFn := func(cn *container) (*kms.Keys, error) {
 		return c.keys, nil
 	}
-	cc, err := openContainer(ctx, ChannelContainer, con, keyPopFn)
+	cc, err := openContainer(ctx, channelContainer, con, keyPopFn)
 	if err != nil {
 		return nil, err
 	}
@@ -431,21 +402,9 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 		return nil, err
 	}
 
-	af, ok := summaryAllocFuncs.get(c.session.Meta.Protocol, ChannelContainer)
-	if !ok {
-		return nil, fmt.Errorf("%s: failed to get summary type", op)
-	}
-
-	summary := af(ctx)
-	if err := cc.decodeJsonFile(ctx, fmt.Sprintf(summaryFileNameTemplate, ChannelContainer), summary); err != nil {
-		return nil, err
-	}
-	channelSummary := summary.(ChannelSummary)
-
 	channel := &Channel{
 		container: cc,
 		Meta:      sm,
-		Summary:   channelSummary,
 	}
 
 	return channel, nil
@@ -505,8 +464,7 @@ func (c *Connection) Close(ctx context.Context) error {
 type Channel struct {
 	*container
 
-	Meta    *ChannelRecordingMeta
-	Summary ChannelSummary
+	Meta *ChannelRecordingMeta
 }
 
 // Close closes the Channel container.

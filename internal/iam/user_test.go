@@ -19,7 +19,6 @@ import (
 
 func TestNewUser(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	org, _ := TestScopes(t, TestRepo(t, conn, wrapper))
@@ -66,7 +65,7 @@ func TestNewUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewUser(ctx, tt.args.orgPublicId, tt.args.opt...)
+			got, err := NewUser(tt.args.orgPublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -96,7 +95,6 @@ func Test_UserHardcoded(t *testing.T) {
 
 func Test_UserCreate(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	org, _ := TestScopes(t, TestRepo(t, conn, wrapper))
@@ -104,30 +102,30 @@ func Test_UserCreate(t *testing.T) {
 	t.Run("valid-user", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		user, err := NewUser(ctx, org.PublicId)
+		user, err := NewUser(org.PublicId)
 		require.NoError(err)
-		id, err := newUserId(ctx)
+		id, err := newUserId()
 		require.NoError(err)
 		user.PublicId = id
-		err = w.Create(ctx, user)
+		err = w.Create(context.Background(), user)
 		require.NoError(err)
 		require.NotEmpty(user.PublicId)
 
 		foundUser := AllocUser()
 		foundUser.PublicId = user.PublicId
-		err = w.LookupByPublicId(ctx, &foundUser)
+		err = w.LookupByPublicId(context.Background(), &foundUser)
 		require.NoError(err)
 		assert.Equal(user, &foundUser)
 	})
 	t.Run("bad-orgid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		user, err := NewUser(ctx, id)
+		user, err := NewUser(id)
 		require.NoError(err)
-		id, err := newUserId(ctx)
+		id, err := newUserId()
 		require.NoError(err)
 		user.PublicId = id
-		err = w.Create(ctx, user)
+		err = w.Create(context.Background(), user)
 		require.Error(err)
 		assert.Equal("db.Create: dbw.Create: error before write: iam.(User).VetForWrite: iam.validateScopeForWrite: scope is not found: search issue: error #1100", err.Error())
 	})
@@ -335,7 +333,6 @@ func Test_UserGetScope(t *testing.T) {
 
 func TestUser_Clone(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -351,20 +348,20 @@ func TestUser_Clone(t *testing.T) {
 		assert := assert.New(t)
 		w := db.New(conn)
 
-		user, err := NewUser(ctx, org.PublicId)
+		user, err := NewUser(org.PublicId)
 		assert.NoError(err)
-		id, err := newUserId(ctx)
+		id, err := newUserId()
 		assert.NoError(err)
 		user.PublicId = id
-		err = w.Create(ctx, user)
+		err = w.Create(context.Background(), user)
 		assert.NoError(err)
 
-		user2, err := NewUser(ctx, org.PublicId)
+		user2, err := NewUser(org.PublicId)
 		assert.NoError(err)
-		id, err = newUserId(ctx)
+		id, err = newUserId()
 		assert.NoError(err)
 		user2.PublicId = id
-		err = w.Create(ctx, user2)
+		err = w.Create(context.Background(), user2)
 		assert.NoError(err)
 
 		cp := user.Clone()

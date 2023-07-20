@@ -4,8 +4,6 @@
 package static
 
 import (
-	"context"
-
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -22,9 +20,9 @@ type HostCatalog struct {
 // NewHostCatalog creates a new in memory HostCatalog assigned to projectId.
 // Name and description are the only valid options. All other options are
 // ignored.
-func NewHostCatalog(ctx context.Context, projectId string, opt ...Option) (*HostCatalog, error) {
+func NewHostCatalog(projectId string, opt ...Option) (*HostCatalog, error) {
 	if projectId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, "static.NewHostCatalog", "no project id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, "static.NewHostCatalog", "no project id")
 	}
 
 	opts := getOpts(opt...)
