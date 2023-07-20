@@ -7,55 +7,48 @@ description: |-
 
 # connect postgres
 
-Command: `boundary connect postgres`
+Command: `boundary connect postgres` will authorize a session against a target
+and invoke an Postgres client to connect, filling in the local address and port.
 
-The Boundary connect postgres helper will automatically execute `psql` for you,
-filling in the local address and port.
+The `connect postgres` command </CodeBlockConfig>
 
-For example, adding the `-username` flag on execution of Boundary connect SSH
-helper will ensure that the username will be passed to the executed client with
-the right syntax.
+@include 'cmd-connect-env-vars.mdx'
 
-Another example includes usage of the `-style` flag in order to allow the command to
-format arguments in a different style expected by different SSH clients.
-
-The Boundary connect SSH helper is written as `boundary connect ssh`.
-You can run `boundary connect ssh -h` to see the available options, and arguments.
-
-<Note>
-
-You must still accept the host key upon first connect.
-
-An expected host ID is set to avoid warnings on future connections when a
-different port is allocated automatically.
-</Note>
 
 ## Examples
 
-Connect to a target with POSTGRES helper with `dbname`:
+Connect to a target with POSTGRES helper.
 
 ```shell-session
-$ boundary connect postgres -target-id ttcp_7SfC4jk3cJ \  
-   -dbname northwind
-```
-
-Connect to a target with additional flags and options:
-
-```shell-session
-$ boundary connect postgres -target-id ttcp_eTcZMueUYv \
-   -dbname -username=superuser \
+$ boundary connect postgres -target-id=ttcp_eTcZMueUYv \
+   -dbname=northwind \
+   -username=superuser \
    -format=table
 ```
 
+Enter the password for the user, "superuser" when prompted.
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Password for user superuser:
+psql (14.2, server 13.2 (Debian 13.2-1.pgdg100+1))
+Type "help" for help.
+
+postgres=#
+```
+
+</CodeBlockConfig>
+
 ## Usage
 
-```shell-session
-Usage: boundary connect postgres [options] [args]
+<CodeBlockConfig hideClipboard>
 
-  ...
-  This command performs a target authorization (or consumes an existing authorization token) and launches a proxied
-  postgres connection.
+```shell-session
+$ boundary connect postgres [options] [args]
 ```
+
+</CodeBlockConfig>
 
 @include 'cmd-connect-command-options.mdx'
 

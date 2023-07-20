@@ -6,3 +6,71 @@ description: |-
 ---
 
 # connect ssh
+
+Command: `boundary connect ssh`
+
+The `connect ssh` command will will authorize a session against a target and
+invoke an SSH client to connect, filling in the local address and port.
+
+@include 'cmd-connect-env-vars.mdx'
+
+
+## Examples
+
+The `connect ssh` command accepts host SSH key prompts and provide information
+to the client in the format that makes sense: respecting the syntax and the
+order of arguments.
+
+
+Connect to the `ubuntu-target` using Boundary.
+
+```shell-session
+$ boundary connect ssh -target-id=ttcp_Gymo7Vcq7Y \
+   -host-id=hst_FrdNPd9Zm9 -- -l ubuntu -i private_key.pem
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+The authenticity of host 'ec2-198-52-100-1.compute-1.amazonaws.com (198-51-100-1)' can't be established.
+ECDSA key fingerprint is l4UB/neBad9tvkgJf1QZWxheQmR59WgrgzEimCG6kZY.
+Are you sure you want to continue connecting (yes/no)? yes
+
+ubuntu@ip-172-32-88-177:~
+```
+
+</CodeBlockConfig>
+
+</CodeBlockConfig>
+### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh [options] [args]
+```
+
+</CodeBlockConfig>
+
+@include 'cmd-connect-command-options.mdx'
+
+### SSH Options:
+
+-  `style=<string>`
+   Specifies how the CLI will attempt to invoke an SSH client. This will
+   also set a suitable default for `-exec` if a value was not specified.
+   Currently-understood values are `ssh` and `putty`. The default is
+   ssh. This can also be specified via the `BOUNDARY_CONNECT_SSH_STYLE`
+   environment variable.
+
+-  `username=<string>`
+   Specifies the username to pass through to the client This can also be
+   specified via the `BOUNDARY_CONNECT_USERNAME` environment variable.
+
+
+
+
+
+

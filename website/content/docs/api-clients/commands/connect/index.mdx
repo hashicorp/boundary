@@ -29,10 +29,12 @@ port `8872`.
 $ boundary connect ssh \
     -listen-addr=127.0.0.1 \
     -listen-port=8872
-    -target_id=
+    -target_id=ttcp_INY0BCD2VF
 ```
 
 ## Usage
+
+<CodeBlockConfig hideClipboard>
 
 ```text
 Usage: boundary connect <subcommand> [options] [args]
@@ -44,6 +46,8 @@ Subcommands:
     rdp         Authorize a session against a target and invoke an RDP client to connect
     ssh         Authorize a session against a target and invoke an SSH client to connect
 ```
+
+</CodeBlockConfig>
 
 For more information, examples, and usage about a subcommand, click on the name
 of the subcommand in the sidebar or one of the links below:
@@ -90,3 +94,4 @@ of the subcommand in the sidebar or one of the links below:
       environment variable.
 
 
+@include 'cmd-connect-command-options.mdx'
