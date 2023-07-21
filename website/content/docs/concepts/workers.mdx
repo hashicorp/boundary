@@ -11,8 +11,9 @@ description: |-
 Boundary's architecture consists of 2 main components:
 1. **Control Plane** - made up of controllers
 2. **Data Plane** - made up of workers
+3. **Client** - installed on the user's device
 
-**Controllers** are where users authenticate to, and contain Boundary's resources and permissions. In addition, controllers also communicate with external components 
+**Controllers** are what users authenticate to through the client, and contain Boundary's resources and permissions. In addition, controllers also communicate with external components 
 such as the database, KMS, Vault, identity providers, and plugins. **Workers** are primarily used as network proxies for Boundary sessions, allowing users to access 
 private targets. Instead of exposing a private network to the public, or allowing users to have access to entire private networks, workers create a direct network 
 tunnel between users and targets. 
@@ -75,20 +76,11 @@ Once the persistent connection chain is established between the workers, when th
 
 ## Deployment
 Workers are services that can run on a container or virtual machine, and should be deployed strategically within networks to provide access to targets. In 
-all editions of Boundary, workers are fully self-managed and can be deployed anywhere. In HCP Boundary, 3 HCP-managed workers are automatically deployed with the cluster. 
+all editions of Boundary, workers are fully self-managed and can be deployed anywhere. In HCP Boundary, HCP-managed workers are automatically deployed with the cluster. 
 
 To learn more about workers and deployment, see:
 * [Worker configuration](/boundary/docs/configuration/worker)
 * [Recommended architecture](/boundary/docs/install-boundary/recommended-architecture)
 * [Worker system requirements](/boundary/docs/install-boundary/system-requirements)
 * [Worker management tutorials](/boundary/tutorials/worker-management)
-
-
-
-
-
-
-
-
-
 
