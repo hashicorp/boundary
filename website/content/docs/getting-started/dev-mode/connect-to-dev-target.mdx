@@ -56,7 +56,7 @@ for you. These are written as `boundary connect <subcommand>`.
 
 ### SSH connect helper
 
-In the following example, the helper will automatically execute `ssh` for you,
+In the following example, the helper automatically executes `ssh` for you,
 filling in the local address and port. An expected host ID is set to avoid
 warnings on future connections when a different port is allocated automatically.
 A host key must still be accepted upon first connect.
@@ -79,7 +79,7 @@ $ boundary connect ssh -target-id ttcp_1234567890
 </video>
 
 If you want to pass additional flags to the SSH client, add them to the command
-line separated by a double-dash; anything after the double dash will be passed
+line separated by a double-dash; anything after the double dash is passed
 to the executed client. For instance:
 
 ```shell-session
@@ -99,15 +99,15 @@ executed client, and you don't need to figure out the syntax yourself.
 
 ### RDP connect helper
 
-The RDP helper will attempt to determine which RDP client to use
-depending on your operating system. On Windows, it will use `mstsc.exe`. On
-Mac, it will use `open`. Other operating systems are not currently supported.
+The RDP helper attempts to decide which RDP client to use
+depending on your operating system. On Windows, it uses `mstsc.exe`. On
+Mac, it uses `open`. Other operating systems are not currently supported.
 
 ```shell-session
 $ boundary connect rdp -target-id ttcp_eTcZMueUYv
 ```
 
-This will execute the RDP client and proxy the connection through
+This command executes the RDP client and establishes the connection through
 Boundary.
 
 <video
@@ -128,7 +128,7 @@ default RDP client. Recognized styles are `mstsc` and `open`.
 
 ### PostgreSQL connect helper
 
-The PostgreSQL helper executes `psql`, passing information such as the username and
+The PostgreSQL helper executes `psql`, and passes information such as the username and
 database name from the command line.
 
 ```shell-session
@@ -148,7 +148,7 @@ $ boundary connect postgres -target-id ttcp_eTcZMueUYv -username admin -dbname p
   />
 </video>
 
-The PostgreSQL helper will automatically inject brokered credentials, allowing you
+The PostgreSQL helper automatically injects brokered credentials, allowing you
 to access the PostgreSQL instance without knowing the username and password.
 
 ```shell-session
@@ -174,7 +174,7 @@ default PostgreSQL client. The only recognized style is `psql`.
 ### HTTP connect helper
 
 The HTTP connect helper executes `curl`, passing information such as the HTTP path,
-method, verb and others. It can be useful to call API endpoints through the Boundary
+method, verb, and others. It can be useful to call API endpoints through the Boundary
 proxy. In the example below, we call a Weather API endpoint to get the rain forecast for
 New York for the next few days.
 
@@ -199,9 +199,9 @@ The HTTP helper supports several flags:
 
 - `host`: Specifies the host value to use, overriding the endpoint address from the session information.
 
-- `method`: Specifies the method to use. If not set, will use the client's default.
+- `method`: Specifies the method to use. If you do not set this value, the helper uses the client's default method.
 
-- `path`: Specifies a path that will be appended to the generated URL.
+- `path`: Specifies a path that is appended to the generated URL.
 
 - `scheme`: Specifies the scheme to use. The default is https.
 
