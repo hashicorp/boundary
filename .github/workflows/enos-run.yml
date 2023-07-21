@@ -88,14 +88,16 @@ jobs:
       ENOS_VAR_aws_region: us-east-1
       ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
       ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-      ENOS_VAR_local_boundary_dir: ./support/boundary
-      ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
+      ENOS_VAR_local_boundary_exe_dir: ./support/boundary
+      ENOS_VAR_local_boundary_dir: ${{ github.workspace }}
+      ENOS_VAR_local_boundary_ui_dir: ./support/src/boundary-ui
       ENOS_VAR_crt_bundle_path: ./support/boundary.zip
       ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
       ENOS_VAR_boundary_edition: ${{ inputs.edition }}
       ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
+      ENOS_VAR_go_version: ${{ inputs.go-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
@@ -227,14 +229,14 @@ jobs:
         if: matrix.filter == 'e2e_ui builder:crt'
         with:
           repository: hashicorp/boundary-ui
-          path: enos/support/boundary-ui
+          path: enos/support/src/boundary-ui
       - name: Install boundary-ui dependencies
         if: matrix.filter == 'e2e_ui builder:crt'
-        run: yarn --cwd enos/support/boundary-ui install
+        run: yarn --cwd enos/support/src/boundary-ui install
       - name: Install playwright dependencies (i.e. browsers)
         if: matrix.filter == 'e2e_ui builder:crt'
         run: npx playwright install --with-deps
-        working-directory: enos/support/boundary-ui
+        working-directory: enos/support/src/boundary-ui
       - name: Output Terraform version info
         run: |
           mkdir -p ./enos/terraform-plugin-cache
@@ -260,7 +262,7 @@ jobs:
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: test-e2e-ui-debug
-          path: enos/support/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
+          path: enos/support/src/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
           retention-days: 5
       - name: Retry Enos scenario
         id: run_retry

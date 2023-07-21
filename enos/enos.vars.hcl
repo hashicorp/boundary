@@ -27,7 +27,10 @@
 // The directory that contains the copy of boundary you want to local execution
 // from. `make install` should install it into the $GOBIN, which is usually
 // similar to what is listed below.
-// local_boundary_dir = "/Users/<user>/.go/bin"
+// local_boundary_exe_dir = "/Users/<user>/.go/bin"
+
+// The directory that contains the copy of boundary you want to use for e2e tests
+// local_boundary_dir = "/Users/<user>/Developer/boundary"
 
 // The directory that contains the copy of boundary-ui you want to use for UI tests
 // local_boundary_ui_dir = "/Users/<user>/Developer/boundary-ui"

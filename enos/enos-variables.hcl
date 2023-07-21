@@ -91,8 +91,13 @@ variable "target_count" {
   default     = 1
 }
 
-variable "local_boundary_dir" {
+variable "local_boundary_exe_dir" {
   description = "Path to local boundary executable"
+  type        = string
+}
+
+variable "local_boundary_dir" {
+  description = "Path to local boundary directory"
   type        = string
 }
 
@@ -150,7 +155,7 @@ variable "e2e_debug_no_run" {
 }
 
 variable "docker_mirror" {
-  description = ""
+  description = "URL to the docker repository"
   type        = string
   default     = "docker.mirror.hashicorp.services"
 }
@@ -182,4 +187,10 @@ variable "go_test_timeout" {
 variable "aws_region" {
   description = "AWS region where the resources will be created"
   type        = string
+}
+
+variable "go_version" {
+  description = "Version of Golang used by the application under test"
+  type        = string
+  default     = ""
 }

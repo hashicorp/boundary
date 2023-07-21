@@ -34,7 +34,7 @@ variable "auth_password" {
   type        = string
   default     = ""
 }
-variable "local_boundary_dir" {
+variable "local_boundary_exe_dir" {
   description = "Local Path to boundary executable"
   type        = string
 }
@@ -147,7 +147,7 @@ resource "enos_local_exec" "run_e2e_ui_test" {
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
   }
 
-  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" yarn --cwd ${var.local_boundary_ui_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]
+  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_exe_dir}:$PATH\" yarn --cwd ${var.local_boundary_ui_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]
 }
 
 output "test_results" {

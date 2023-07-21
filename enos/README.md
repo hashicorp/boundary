@@ -19,8 +19,8 @@ for further information regarding installation, execution or composing Enos scen
 * An SSH keypair in the AWS region you wish to run the scenario. You can use
   doormat to login to the AWS console to create or upload an existing keypair.
 * Boundary installed locally. `make install` will put it in `$GOPATH/bin`, which
-  you can use with the `local_boundary_dir` variable, e.g.
-  `local_boundary_dir = /Users/<user>/.go/bin`.
+  you can use with the `local_boundary_exe_dir` variable, e.g.
+  `local_boundary_exe_dir = /Users/<user>/.go/bin`.
 * For the Bats CLI UI scenarios, you'll need `bats`, `jq` and a valid keychain
   configured. Windows and macOS will use the system keychains by default. If
   you're using Linux it will default to [pass](https://www.passwordstore.org/).
@@ -37,7 +37,7 @@ Variables that are required:
 - `aws_ssh_private_key_path`
 - `aws_ssh_keypair_name`
 - `enos_user`
-- `local_boundary_dir`
+- `local_boundary_exe_dir`
 
 If you want to use the `builder:crt` variant to simulate execution in CI you'll
 also need to specify `crt_bundle_path` to a local boundary install bundle.
@@ -85,9 +85,9 @@ It support either a local build or the output of the `build` workflow (CRT). All
 test scenarios create a Boundary cluster consisting of an RDS database, 1 worker, and
 1 controller (behind an ALB). The count and instance type for  workers and
 controllers is configurable. All tests require that a local copy of `boundary`
-is availble in the `local_boundary_dir` to access the Boundary cluster API
+is available in the `local_boundary_exe_dir` to access the Boundary cluster API
 through the ALB. For example, if you install `boundary` locally via `make install`
-you could test that version against the cluster by setting `local_boundary_dir` to
+you could test that version against the cluster by setting `local_boundary_exe_dir` to
 `/Users/<user>/.go/bin`, or wherever you have configured `$GOPATH/bin`.
 
 ### Variants
@@ -151,7 +151,7 @@ Here are the steps to configure the GitHub Actions service user:
 
 1. **Create the Terraform Cloud Workspace** - The name of the workspace to be created depends on the
    repository for which it is being created, but the pattern is: `<repository>-ci-service-user-iam`,
-   e.g. `boundary-ci-service-user-iam`. It is important that the execution mode for the workspace be 
+   e.g. `boundary-ci-service-user-iam`. It is important that the execution mode for the workspace be
    set to `local`. For help on setting up the workspace, contact the QT team on Slack (#team-quality)
 
 
