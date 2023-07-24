@@ -62,8 +62,6 @@ The OIDC auth method has the following additional attributes:
 - `client_secret_hmac` (output read-only) The HMAC of the client secret that the Boundary controller
   returns. It is used for comparison to the value's initial setting.
 
-- `description` - (optional)
-
 - `disable_discovered_config_validation` (optional) Disables validation logic
   to ensure that the OIDC provider's information from its discovery endpoint
   matches the information here. The validation is only performed at create or
@@ -81,8 +79,6 @@ The OIDC auth method has the following additional attributes:
   user is challenged again. A value of `0` sets an immediate requirement for all
   users to reauthenticate, and an unset `maxAge` results in a Terraform value of
   -1 and the default TTL of the chosen OIDC is used.
-
-- `name` (optional) The auth-method name.
 
 - `signing-algorithm` (required) The allowed signing algorithm. You can specify this attribute
   multiple times for multiple values.
