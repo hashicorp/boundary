@@ -31,6 +31,59 @@ The password auth method has the following additional attributes:
 
 - `min_password_length` - (required) The default is 8.
 
+### OIDC auth method attributes
+
+The OIDC auth method has the following additional attributes:
+
+- `account_claim_maps` (optional list) These are a map from custom
+  claims to the standard claims of sub, name, and email. These maps are
+  represented as key=value where the key equals the provider from-claim and the
+  value equals the Boundary to-claim. For example "oid=sub". You can specify this attribute
+  multiple times for different to-claims.
+
+- `allowed_audiences` (optional list) Audiences for which provider
+  responses are allowed.
+
+- `api_url_prefix` (required) The API prefix to use when generating callback URLs
+  for the provider. You should set the value to an address that allows the provider to reach 
+  the controller.
+
+- `callback_url` (output read-only) The URL that should be provided to the IdP
+  for callbacks.
+
+- `claims_scopes` (optional list) The claims scope requested. You can specify this attribute
+  multiple times.
+
+- `client_id` (required) The OAuth 2.0 client identifier this auth method should
+  use with the provider.
+
+- `client-secret` (required) The corresponding client secret.
+  
+- `client_secret_hmac` (output read-only) The HMAC of the client secret that the Boundary controller
+  returns. It is used for comparison to the value's initial setting.
+
+- `disable_discovered_config_validation` (optional) Disables validation logic
+  to ensure that the OIDC provider's information from its discovery endpoint
+  matches the information here. The validation is only performed at create or
+  update time.
+
+- `idp_ca_certs` - (optional) PEM-encoded X.509 CA certificate that can be used
+  as trust anchors when you connect to an OIDC provider. You can specify this attribute
+  multiple times.
+
+- `issuer` - (required) The provider's issuer URL. This value must match the issuer
+  field in generated tokens.
+
+- `max_age` (optional) The max age to send to the provider. This value indicates how
+  much time is allowed to have passed since the last authentication before the
+  user is challenged again. A value of `0` sets an immediate requirement for all
+  users to reauthenticate, and an unset `maxAge` results in a Terraform value of
+  -1 and the default TTL of the chosen OIDC is used.
+
+- `signing-algorithm` (required) The allowed signing algorithm. You can specify this attribute
+  multiple times for multiple values.
+
+  
 ### LDAP auth method attributes <sup>Beta</sup>
 
 The ldap auth method has the following additional attributes:
