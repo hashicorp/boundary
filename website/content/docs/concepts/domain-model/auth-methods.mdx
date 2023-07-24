@@ -36,9 +36,9 @@ The password auth method has the following additional attributes:
 The OIDC auth method has the following additional attributes:
 
 - `account_claim_maps` (optional list) These are a map from custom
-  claims to the standard claims of sub, name and email. These maps are
-  represented as key=value where the key equals the Provider from-claim and the
-  value equals the Boundary to-claim. For example "oid=sub". May be specified
+  claims to the standard claims of sub, name, and email. These maps are
+  represented as key=value where the key equals the provider from-claim and the
+  value equals the Boundary to-claim. For example "oid=sub". You can specify this attribute
   multiple times for different to-claims.
 
 - `allowed_audiences` (optional list) Audiences for which the provider
