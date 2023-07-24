@@ -33,6 +33,30 @@ const (
 // ContainerType defines the type of container.
 type ContainerType string
 
+// FileChecksumValidation is a validation report on a file's checksum value
+type FileChecksumValidation struct {
+	Filename string
+	Passed   bool
+	Error    error
+}
+
+// ChecksumValidation is a map where the key is a file name
+// and the value contains a validation report on whether or
+// not the file matches its expected checksum
+type ChecksumValidation map[string]*FileChecksumValidation
+
+// GetFailedItems returns a filtered map of FileChecksumValidation that have failed
+func (cv ChecksumValidation) GetFailedItems() ChecksumValidation {
+	failedValidations := ChecksumValidation{}
+	for fileName, validation := range cv {
+		if validation.Passed {
+			continue
+		}
+		failedValidations[fileName] = validation
+	}
+	return failedValidations
+}
+
 // Valid container types.
 const (
 	SessionContainer    ContainerType = "session"
@@ -47,9 +71,9 @@ type container struct {
 
 	// Fields primarily used for writing
 	journal    *journal.Journal
-	sumName    string
 	meta       *checksum.File
 	sum        *checksum.File
+	sumName    string
 	sumEncoder *json.Encoder
 	checksums  *sign.File
 	sigs       storage.File
@@ -513,4 +537,43 @@ func (c *container) close(_ context.Context) error {
 	}
 
 	return closeError
+}
+
+// ValidateChecksums iterates over all files in the SHA256SUM
+// file and verifies that each file checksum is as expected.
+//
+// This function expects that the container's kms keys
+// are loaded into memory and the signature files are
+// verified.
+func (c *container) ValidateChecksums(ctx context.Context) (ChecksumValidation, error) {
+	const op = "bsr.(container).Validate"
+	if len(c.shaSums) == 0 {
+		return nil, fmt.Errorf("%s: missing checksums", op)
+	}
+	if c.keys == nil {
+		return nil, fmt.Errorf("%s: missing keys", op)
+	}
+	checksumValidation := make(ChecksumValidation, len(c.shaSums))
+	for fileName, expectedChecksum := range c.shaSums {
+		report := &FileChecksumValidation{
+			Filename: fileName,
+		}
+		checksumValidation[fileName] = report
+		f, err := c.container.OpenFile(ctx, fileName)
+		if err != nil {
+			report.Error = err
+			continue
+		}
+		actualChecksum, err := crypto.Sha256Sum(ctx, f, crypto.WithHexEncoding(true))
+		if err != nil {
+			report.Error = err
+			continue
+		}
+		if !bytes.Equal(expectedChecksum, actualChecksum) {
+			report.Error = fmt.Errorf("checksum mismatch")
+			continue
+		}
+		report.Passed = true
+	}
+	return checksumValidation, nil
 }
