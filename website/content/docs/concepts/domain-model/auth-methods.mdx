@@ -59,9 +59,8 @@ The OIDC auth method has the following additional attributes:
 
 - `client-secret` (required) The corresponding client secret.
   
-- `client_secret_hmac` (output read-only) The HMAC of the client secret returned
-  by the Boundary controller, which is used for comparison after initial setting
-  of the value.
+- `client_secret_hmac` (output read-only) The HMAC of the client secret that the Boundary controller
+  returns. It is used for comparison to the value's initial setting.
 
 - `description` - (optional)
 
