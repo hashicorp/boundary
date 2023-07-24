@@ -77,7 +77,7 @@ func (at *AuthToken) encrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	const op = "authtoken.(writableAuthToken).encrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.WrapStruct(ctx, cipher, at.AuthToken, nil); err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	keyId, err := cipher.KeyId(ctx)
 	if err != nil {
@@ -92,7 +92,7 @@ func (at *AuthToken) decrypt(ctx context.Context, cipher wrapping.Wrapper) error
 	const op = "authtoken.(AuthToken).decrypt"
 	// structwrapping doesn't support embedding, so we'll pass in the store.Entry directly
 	if err := structwrapping.UnwrapStruct(ctx, cipher, at.AuthToken, nil); err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithCode(errors.Decrypt))
+		return errors.WrapDeprecated(err, op, errors.WithCode(errors.Decrypt))
 	}
 	return nil
 }
@@ -104,22 +104,22 @@ const (
 )
 
 // NewAuthTokenId creates a new id for an auth token.
-func NewAuthTokenId(ctx context.Context) (string, error) {
+func NewAuthTokenId() (string, error) {
 	const op = "authtoken.newAuthTokenId"
-	id, err := db.NewPublicId(ctx, globals.AuthTokenPrefix)
+	id, err := db.NewPublicId(globals.AuthTokenPrefix)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op)
+		return "", errors.WrapDeprecated(err, op)
 	}
 	return id, nil
 }
 
 // newAuthToken generates a new in-memory token.  The WithStatus option is
 // support and all other options are ignored.
-func newAuthToken(ctx context.Context, opt ...Option) (*AuthToken, error) {
+func newAuthToken(opt ...Option) (*AuthToken, error) {
 	const op = "authtoken.newAuthToken"
 	token, err := base62.Random(tokenLength)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Io))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Io))
 	}
 	opts := getOpts(opt...)
 
@@ -145,22 +145,22 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 
 	marshaledS1Info, err := proto.Marshal(s1Info)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 
 	tokenWrapper, err := kmsCache.GetWrapper(ctx, scopeId, kms.KeyPurposeTokens)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to get wrapper"))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("unable to get wrapper"))
 	}
 
 	blobInfo, err := tokenWrapper.Encrypt(ctx, []byte(marshaledS1Info), wrapping.WithAad([]byte(publicId)))
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op, errors.WithMsg("marshaling token info"), errors.WithCode(errors.Encrypt))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling token info"), errors.WithCode(errors.Encrypt))
 	}
 
 	marshaledBlob, err := proto.Marshal(blobInfo)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
+		return "", errors.WrapDeprecated(err, op, errors.WithMsg("marshaling encrypted token"), errors.WithCode(errors.Encode))
 	}
 
 	encoded := base58.FastBase58Encoding(marshaledBlob)

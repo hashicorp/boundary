@@ -4,7 +4,6 @@
 package session
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -64,7 +63,7 @@ func TestClosedWith_validate(t *testing.T) {
 				BytesDown:    tt.fields.BytesDown,
 				ClosedReason: tt.fields.ClosedReason,
 			}
-			if err := c.validate(context.Background()); (err != nil) != tt.wantErr {
+			if err := c.validate(); (err != nil) != tt.wantErr {
 				t.Errorf("ClosedWith.validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

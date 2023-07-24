@@ -70,7 +70,7 @@ func TestSet(t testing.TB, conn *db.DB, kmsCache *kms.Kms, sched *scheduler.Sche
 	ctx := context.Background()
 	rw := db.New(conn)
 
-	repo, err := NewRepository(ctx, rw, rw, kmsCache, sched, plgm)
+	repo, err := NewRepository(rw, rw, kmsCache, sched, plgm)
 	require.NoError(err)
 
 	set, err := NewHostSet(ctx, hc.PublicId, opt...)

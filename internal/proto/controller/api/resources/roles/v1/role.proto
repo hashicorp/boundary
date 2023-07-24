@@ -25,11 +25,7 @@ message Principal {
 
 message GrantJson {
   // Output only. The ID, if set.
-  // Deprecated: use "ids" instead.
-  string id = 1 [deprecated = true]; // @gotags: `class:"public"`
-
-  // Output only. The IDs, if set.
-  repeated string ids = 4; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public"`
 
   // Output only. The type, if set.
   string type = 2; // @gotags: `class:"public"`

@@ -52,11 +52,11 @@ func TestRewrap_argon2ConfigRewrapFn(t *testing.T) {
 		wrapper, _ = kmsCache.GetWrapper(context.Background(), org.GetPublicId(), 1)
 
 		// actually store it
-		cred, err := newArgon2Credential(ctx, acct.PublicId, "this is a password", conf)
+		cred, err := newArgon2Credential(acct.PublicId, "this is a password", conf)
 		require.NoError(t, err)
 
-		require.NoError(t, cred.encrypt(ctx, wrapper))
-		assert.NoError(t, rw.Create(ctx, cred))
+		require.NoError(t, cred.encrypt(context.Background(), wrapper))
+		assert.NoError(t, rw.Create(context.Background(), cred))
 
 		// now things are stored in the db, we can rotate and rewrap
 		assert.NoError(t, kmsCache.RotateKeys(ctx, org.Scope.GetPublicId()))

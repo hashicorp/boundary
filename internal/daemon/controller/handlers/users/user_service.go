@@ -52,11 +52,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.User{}},
-		handlers.MaskSource{&pb.User{}},
-	); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.User{}}, handlers.MaskSource{&pb.User{}}); err != nil {
 		panic(err)
 	}
 }
@@ -71,17 +67,17 @@ type Service struct {
 var _ pbs.UserServiceServer = (*Service)(nil)
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(ctx context.Context, repo common.IamRepoFactory) (Service, error) {
+func NewService(repo common.IamRepoFactory) (Service, error) {
 	const op = "users.NewService"
 	if repo == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
 
 // ListUsers implements the interface pbs.UserServiceServer.
 func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs.ListUsersResponse, error) {
-	if err := validateListRequest(ctx, req); err != nil {
+	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -116,7 +112,7 @@ func (s Service) ListUsers(ctx context.Context, req *pbs.ListUsersRequest) (*pbs
 		return &pbs.ListUsersResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +420,7 @@ func (s Service) createInRepo(ctx context.Context, orgId string, item *pb.User) 
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := iam.NewUser(ctx, orgId, opts...)
+	u, err := iam.NewUser(orgId, opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for creation: %v.", err)
 	}
@@ -452,7 +448,7 @@ func (s Service) updateInRepo(ctx context.Context, orgId, id string, mask []stri
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
 	version := item.GetVersion()
-	u, err := iam.NewUser(ctx, orgId, opts...)
+	u, err := iam.NewUser(orgId, opts...)
 	if err != nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build user for update: %v.", err)
 	}
@@ -692,13 +688,13 @@ func validateDeleteRequest(req *pbs.DeleteUserRequest) error {
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.UserPrefix)
 }
 
-func validateListRequest(ctx context.Context, req *pbs.ListUsersRequest) error {
+func validateListRequest(req *pbs.ListUsersRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Must be 'global' or a valid org scope id when listing."
 	}
-	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

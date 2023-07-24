@@ -36,7 +36,6 @@ import (
 var testAuthorizedActions = []string{"no-op", "read", "read:self", "delete", "delete:self"}
 
 func TestGetSelf(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -46,13 +45,13 @@ func TestGetSelf(t *testing.T) {
 		return iam.TestRepo(t, conn, wrap), nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
-	a, err := authtokens.NewService(ctx, tokenRepoFn, iamRepoFn)
+	a, err := authtokens.NewService(tokenRepoFn, iamRepoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -101,7 +100,7 @@ func TestGetSelf(t *testing.T) {
 				Token:       tc.token.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(ctx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			ctx = context.WithValue(ctx, requests.ContextRequestInformationKey, &requests.RequestContext{})
 			got, err := a.GetAuthToken(ctx, &pbs.GetAuthTokenRequest{Id: tc.readId})
 			if tc.err != nil {
@@ -119,7 +118,6 @@ func TestGetSelf(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -128,10 +126,10 @@ func TestGet(t *testing.T) {
 		return iam.TestRepo(t, conn, wrap), nil
 	}
 	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 
-	s, err := authtokens.NewService(ctx, repoFn, iamRepoFn)
+	s, err := authtokens.NewService(repoFn, iamRepoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -195,7 +193,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestList_Self(t *testing.T) {
-	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -207,10 +204,10 @@ func TestList_Self(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(testCtx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(testCtx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	// This will result in the scope having default permissions, which now
@@ -236,7 +233,7 @@ func TestList_Self(t *testing.T) {
 		},
 	}
 
-	a, err := authtokens.NewService(testCtx, tokenRepoFn, iamRepoFn)
+	a, err := authtokens.NewService(tokenRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	for _, tc := range cases {
@@ -252,7 +249,7 @@ func TestList_Self(t *testing.T) {
 				Token:       tc.requester.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(testCtx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			got, err := a.ListAuthTokens(ctx, &pbs.ListAuthTokensRequest{ScopeId: o.GetPublicId()})
 			require.NoError(err)
 			require.Len(got.Items, 1)
@@ -272,7 +269,7 @@ func TestList(t *testing.T) {
 		return iam.TestRepo(t, conn, wrap), nil
 	}
 	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(context.Background(), rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
@@ -390,7 +387,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := authtokens.NewService(context.Background(), repoFn, iamRepoFn)
+			s, err := authtokens.NewService(repoFn, iamRepoFn)
 			assert, require := assert.New(t), require.New(t)
 			require.NoError(err, "Couldn't create new user service.")
 
@@ -420,7 +417,6 @@ func TestList(t *testing.T) {
 }
 
 func TestDeleteSelf(t *testing.T) {
-	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -432,13 +428,13 @@ func TestDeleteSelf(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(testCtx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(testCtx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
-	a, err := authtokens.NewService(testCtx, tokenRepoFn, iamRepoFn)
+	a, err := authtokens.NewService(tokenRepoFn, iamRepoFn)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -499,7 +495,7 @@ func TestDeleteSelf(t *testing.T) {
 				Token:       tc.token.GetToken(),
 			}
 
-			ctx := auth.NewVerifierContext(testCtx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+			ctx := auth.NewVerifierContext(context.Background(), iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			got, err := a.DeleteAuthToken(ctx, &pbs.DeleteAuthTokenRequest{Id: tc.deleteId})
 			if tc.err != nil {
 				require.EqualError(err, tc.err.Error())
@@ -512,7 +508,6 @@ func TestDeleteSelf(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -521,14 +516,14 @@ func TestDelete(t *testing.T) {
 		return iam.TestRepo(t, conn, wrap), nil
 	}
 	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
 	org, _ := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 
-	s, err := authtokens.NewService(ctx, repoFn, iamRepoFn)
+	s, err := authtokens.NewService(repoFn, iamRepoFn)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -577,7 +572,6 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -586,14 +580,14 @@ func TestDelete_twice(t *testing.T) {
 		return iam.TestRepo(t, conn, wrap), nil
 	}
 	repoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
 	org, _ := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 
-	s, err := authtokens.NewService(ctx, repoFn, iamRepoFn)
+	s, err := authtokens.NewService(repoFn, iamRepoFn)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteAuthTokenRequest{
 		Id: at.GetPublicId(),

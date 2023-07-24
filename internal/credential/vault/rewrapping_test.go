@@ -42,7 +42,7 @@ func TestRewrap_credVaultClientCertificateRewrapFn(t *testing.T) {
 
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		cs := TestCredentialStore(t, conn, wrapper, prj.PublicId, "https://vault.consul.service", "token", "accessor")
-		cert, err := NewClientCertificate(ctx, []byte(certPem), []byte(keyPem))
+		cert, err := NewClientCertificate([]byte(certPem), []byte(keyPem))
 		assert.NoError(t, err)
 
 		cert.StoreId = cs.PublicId

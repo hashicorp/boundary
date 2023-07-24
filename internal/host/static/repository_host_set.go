@@ -55,7 +55,7 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 		}
 		s.PublicId = opts.withPublicId
 	} else {
-		id, err := newHostSetId(ctx)
+		id, err := newHostSetId()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

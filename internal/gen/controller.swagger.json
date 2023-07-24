@@ -5248,15 +5248,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID, if set.\nDeprecated: use \"ids\" instead.",
-          "readOnly": true
-        },
-        "ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Output only. The IDs, if set.",
+          "description": "Output only. The ID, if set.",
           "readOnly": true
         },
         "type": {
@@ -5686,110 +5678,6 @@
       },
       "description": "ConnectionRecording contains the recording of a single Connection within a Session."
     },
-    "controller.api.resources.sessionrecordings.v1.Credential": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "The ID of the Credential."
-        },
-        "credential_store": {
-          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.CredentialStore",
-          "description": "The Credential Store of which this Credential is a part."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the credential."
-        },
-        "description": {
-          "type": "string",
-          "description": "Optional user-set description."
-        },
-        "purposes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "The purposes for which this Credential was attached to the sesssion."
-        },
-        "type": {
-          "type": "string",
-          "description": "The Credential type."
-        },
-        "attributes": {
-          "type": "object",
-          "description": "The attributes that are applicable for the specific Credential type."
-        }
-      },
-      "title": "Credential contains fields related to an Credential resource"
-    },
-    "controller.api.resources.sessionrecordings.v1.CredentialLibrary": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "The ID of the Credential Library."
-        },
-        "credential_store": {
-          "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.CredentialStore",
-          "description": "The credential store of which this library is a part."
-        },
-        "name": {
-          "type": "string",
-          "description": "Optional name of this Credential Library."
-        },
-        "description": {
-          "type": "string",
-          "description": "Optional user-set description of this Credential Library."
-        },
-        "purposes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "The purposes for which this CredentialLibrary was attached to the sesssion."
-        },
-        "type": {
-          "type": "string",
-          "description": "The Credential Library type."
-        },
-        "attributes": {
-          "type": "object",
-          "description": "The attributes that are applicable for the specific Credential Library type."
-        }
-      },
-      "title": "CredentialLibrary contains all fields related to an Credential Library resource"
-    },
-    "controller.api.resources.sessionrecordings.v1.CredentialStore": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "The ID of the Credential Store."
-        },
-        "scope_id": {
-          "type": "string",
-          "description": "The ID of the Scope of which this Credential Store is a part."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name for identification purposes if set."
-        },
-        "description": {
-          "type": "string",
-          "description": "The description for identification purposes if set."
-        },
-        "type": {
-          "type": "string",
-          "description": "The Credential Store type."
-        },
-        "attributes": {
-          "type": "object",
-          "description": "The attributes that are applicable for the specific Credential Store type."
-        }
-      },
-      "title": "CredentialStore contains all fields related to a Credential Store resource"
-    },
     "controller.api.resources.sessionrecordings.v1.Host": {
       "type": "object",
       "properties": {
@@ -6055,22 +5943,6 @@
         "host": {
           "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Host",
           "description": "Information about the Host chosen for the session."
-        },
-        "credentials": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.Credential"
-          },
-          "description": "Information about the Credentials used for this session."
-        },
-        "credential_libraries": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/controller.api.resources.sessionrecordings.v1.CredentialLibrary"
-          },
-          "description": "Information about the Credential Libraries used for this session."
         }
       },
       "description": "ValuesAtTime contain information about other Boundary resources as they\nwere at a certain time through the lifetime of the Session Recording."

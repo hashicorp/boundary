@@ -30,7 +30,6 @@ import (
 // behavior that used role permissions instead of the resource type under test
 // is fixed.
 func TestListingScopeIds(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
@@ -40,18 +39,19 @@ func TestListingScopeIds(t *testing.T) {
 		return iamRepo, nil
 	}
 	authTokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
-	s, err := groups.NewService(ctx, iamRepoFn)
+	s, err := groups.NewService(iamRepoFn)
 	require.NoError(t, err)
 
+	ctx := context.Background()
 	sessionsRepoFn := func(opt ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opt...)
 	}
-	sess, err := sessions.NewService(ctx, sessionsRepoFn, iamRepoFn)
+	sess, err := sessions.NewService(sessionsRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	tcs := []struct {

@@ -53,7 +53,6 @@ type templateInput struct {
 	CreateResponseTypes   []string
 	SkipListFiltering     bool
 	RecursiveListing      bool
-	Subtype               string
 }
 
 func fillTemplates() {
@@ -73,7 +72,6 @@ func fillTemplates() {
 			CreateResponseTypes: in.createResponseTypes,
 			SkipListFiltering:   in.skipListFiltering,
 			RecursiveListing:    in.recursiveListing,
-			Subtype:             in.subtype,
 		}
 		if in.packageOverride != "" {
 			input.Package = in.packageOverride
@@ -852,8 +850,8 @@ func AttributesMapTo{{ .Name }}(in map[string]interface{}) (*{{ .Name }}, error)
 }
 
 func (pt *{{ .ParentTypeName }}) Get{{ .Name }}() (*{{ .Name }}, error) {
-	if pt.Type != "{{ typeFromSubtype .Subtype .Name .ParentTypeName "Attributes"}}" {
-		return nil, fmt.Errorf("asked to fetch %s-type attributes but {{ kebabCase .ParentTypeName }} is of type %s", "{{ typeFromSubtype .Subtype .Name .ParentTypeName "Attributes"}}", pt.Type)
+	if pt.Type != "{{ typeFromSubtype .Name .ParentTypeName "Attributes"}}" {
+		return nil, fmt.Errorf("asked to fetch %s-type attributes but {{ kebabCase .ParentTypeName }} is of type %s", "{{ typeFromSubtype .Name .ParentTypeName "Attributes"}}", pt.Type)
 	}
 	return AttributesMapTo{{ .Name }}(pt.Attributes)
 }
@@ -897,9 +895,6 @@ func removeDups(in []string) []string {
 	return ret
 }
 
-func typeFromSubtype(subtype, in, parent, extraSuffix string) string {
-	if subtype != "" {
-		return subtype
-	}
+func typeFromSubtype(in, parent, extraSuffix string) string {
 	return strings.ToLower(strings.TrimSuffix(strings.TrimSuffix(in, extraSuffix), parent))
 }

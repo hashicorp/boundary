@@ -630,7 +630,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		opts.Config.Controller = new(config.Controller)
 	}
 	if opts.Config.Controller.Name == "" {
-		require.NoError(t, opts.Config.Controller.InitNameIfEmpty(ctxTest))
+		require.NoError(t, opts.Config.Controller.InitNameIfEmpty())
 	}
 	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
 
@@ -647,7 +647,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		t.Fatal(err)
 	}
 	serverName = fmt.Sprintf("%s/controller", serverName)
-	if err := tc.b.SetupEventing(ctxTest, tc.b.Logger, tc.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+	if err := tc.b.SetupEventing(tc.b.Logger, tc.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
 	}
 

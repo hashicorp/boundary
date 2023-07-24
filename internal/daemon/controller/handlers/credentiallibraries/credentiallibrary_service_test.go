@@ -40,7 +40,6 @@ import (
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
 func TestList(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -52,7 +51,7 @@ func TestList(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prjNoLibs := iam.TestScopes(t, iamRepo)
@@ -138,7 +137,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(ctx, repoFn, iamRepoFn)
+			s, err := NewService(repoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new host set service.")
 
 			// Test non-anonymous listing
@@ -172,7 +171,6 @@ func TestList(t *testing.T) {
 }
 
 func TestList_Attributes(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -184,7 +182,7 @@ func TestList_Attributes(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	_, prj := iam.TestScopes(t, iamRepo)
 
@@ -252,7 +250,7 @@ func TestList_Attributes(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(ctx, repoFn, iamRepoFn)
+			s, err := NewService(repoFn, iamRepoFn)
 			require.NoError(t, err, "Couldn't create new host set service.")
 
 			// Test non-anonymous listing
@@ -286,7 +284,6 @@ func TestList_Attributes(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -298,7 +295,7 @@ func TestCreate(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -850,7 +847,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(ctx, repoFn, iamRepoFn)
+			s, err := NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Error when getting new credential store service.")
 
 			got, gErr := s.CreateCredentialLibrary(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), tc.req)
@@ -886,7 +883,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -898,14 +894,14 @@ func TestGet(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	unspecifiedLib := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
-	s, err := NewService(ctx, repoFn, iamRepoFn)
+	s, err := NewService(repoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	repo, err := repoFn()
@@ -1091,7 +1087,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1103,7 +1098,7 @@ func TestDelete(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -1111,7 +1106,7 @@ func TestDelete(t *testing.T) {
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	vl := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
 	vl2 := vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
-	s, err := NewService(ctx, repoFn, iamRepoFn)
+	s, err := NewService(repoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -1157,7 +1152,6 @@ func TestDelete(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1169,13 +1163,13 @@ func TestUpdate(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(testCtx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(testCtx, repoFn, iamRepoFn)
+	s, err := NewService(repoFn, iamRepoFn)
 	require.NoError(t, err)
 	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
 	store, diffStore := cs[0], cs[1]
@@ -1928,7 +1922,6 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1940,7 +1933,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -2176,7 +2169,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(ctx, repoFn, iamRepoFn)
+			s, err := NewService(repoFn, iamRepoFn)
 			require.NoError(err, "Error when getting new credential store service.")
 
 			got, gErr := s.CreateCredentialLibrary(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), tc.req)
@@ -2212,7 +2205,6 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 }
 
 func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
-	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -2224,13 +2216,13 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 		return iamRepo, nil
 	}
 	repoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(testCtx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(testCtx, repoFn, iamRepoFn)
+	s, err := NewService(repoFn, iamRepoFn)
 	require.NoError(t, err)
 	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
 	store, diffStore := cs[0], cs[1]

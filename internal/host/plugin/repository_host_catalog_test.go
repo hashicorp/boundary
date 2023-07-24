@@ -189,7 +189,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					PluginId:  plg.GetPublicId(),
 					Attributes: func() []byte {
 						st, err := structpb.NewStruct(map[string]any{
-							"k1":                nil,
+							"k1":                "foo",
 							"nilkey":            nil,
 							normalizeToSliceKey: "normalizeme",
 						})
@@ -205,14 +205,9 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					ProjectId: prj.GetPublicId(),
 					PluginId:  plg.GetPublicId(),
 					Attributes: func() []byte {
-						b, err := proto.Marshal(&structpb.Struct{Fields: map[string]*structpb.Value{
-							normalizeToSliceKey: structpb.NewListValue(
-								&structpb.ListValue{
-									Values: []*structpb.Value{
-										structpb.NewStringValue("normalizeme"),
-									},
-								}),
-						}})
+						st, err := structpb.NewStruct(map[string]any{"k1": "foo"})
+						require.NoError(t, err)
+						b, err := proto.Marshal(st)
 						require.NoError(t, err)
 						return b
 					}(),
@@ -310,7 +305,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 					},
 				}},
 			}
-			repo, err := NewRepository(ctx, rw, rw, kmsCache, sched, plgm)
+			repo, err := NewRepository(rw, rw, kmsCache, sched, plgm)
 			assert.NoError(err)
 			assert.NotNil(repo)
 			got, _, err := repo.CreateCatalog(ctx, tt.in, tt.opts...)
@@ -328,7 +323,6 @@ func TestRepository_CreateCatalog(t *testing.T) {
 			assert.Equal(tt.want.Name, got.Name)
 			assert.Equal(tt.want.Description, got.Description)
 			assert.Equal(got.CreateTime, got.UpdateTime)
-			assert.Equal(tt.want.Attributes, got.Attributes)
 
 			if origPluginAttrs != nil {
 				if normalizeVal := origPluginAttrs.Fields[normalizeToSliceKey]; normalizeVal != nil {
@@ -388,7 +382,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				},
 			},
 		}
-		repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		assert.NoError(err)
 		assert.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -434,7 +428,7 @@ func TestRepository_CreateCatalog(t *testing.T) {
 				},
 			},
 		}
-		repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+		repo, err := NewRepository(rw, rw, kms, sched, plgm)
 		assert.NoError(err)
 		assert.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -1228,7 +1222,7 @@ func TestRepository_UpdateCatalog(t *testing.T) {
 			}
 			pluginError = tt.withPluginError
 			t.Cleanup(func() { pluginError = nil })
-			repo, err := NewRepository(ctx, dbRW, dbRW, dbKmsCache, sched, pluginMap)
+			repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, pluginMap)
 			require.NoError(err)
 			require.NotNil(repo)
 
@@ -1307,7 +1301,7 @@ func TestRepository_LookupCatalog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			assert.NotNil(repo)
 
@@ -1331,7 +1325,6 @@ func TestRepository_LookupCatalog(t *testing.T) {
 
 func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	rw := db.New(conn)
@@ -1341,7 +1334,7 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	plgm := map[string]plgpb.HostPluginServiceClient{
 		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
 	}
-	repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+	repo, err := NewRepository(rw, rw, kms, sched, plgm)
 	assert.NoError(t, err)
 	assert.NotNil(t, repo)
 
@@ -1382,7 +1375,7 @@ func TestRepository_DeleteCatalog(t *testing.T) {
 	assert.NotNil(t, badId)
 
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+	repo, err := NewRepository(rw, rw, kms, sched, plgm)
 	assert.NoError(t, err)
 	assert.NotNil(t, repo)
 
@@ -1494,7 +1487,7 @@ func TestRepository_DeleteCatalogX(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			assert.NoError(err)
 			assert.NotNil(repo)
 
@@ -1576,12 +1569,12 @@ func TestRepository_UpdateCatalog_SyncSets(t *testing.T) {
 	err = sched.RegisterJob(ctx, j, scheduler.WithNextRunIn(setSyncJobRunInterval))
 	require.NoError(t, err)
 
-	repo, err := NewRepository(ctx, dbRW, dbRW, dbKmsCache, sched, dummyPluginMap)
+	repo, err := NewRepository(dbRW, dbRW, dbKmsCache, sched, dummyPluginMap)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
 	// Load the job repository here so that we can validate run times.
-	jobRepo, err := job.NewRepository(ctx, dbRW, dbRW, dbKmsCache)
+	jobRepo, err := job.NewRepository(dbRW, dbRW, dbKmsCache)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 

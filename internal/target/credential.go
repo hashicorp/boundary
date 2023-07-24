@@ -4,7 +4,6 @@
 package target
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/credential"
@@ -23,13 +22,13 @@ type StaticCredential struct {
 
 // NewStaticCredential creates a new in memory StaticCredential
 // representing the relationship between targetId and credentialId.
-func NewStaticCredential(ctx context.Context, targetId, credentialId string, purpose credential.Purpose) (*StaticCredential, error) {
+func NewStaticCredential(targetId, credentialId string, purpose credential.Purpose) (*StaticCredential, error) {
 	const op = "target.StaticCredential"
 	if targetId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no target id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no target id")
 	}
 	if credentialId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no credential id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no credential id")
 	}
 
 	t := &StaticCredential{
