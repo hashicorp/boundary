@@ -142,28 +142,44 @@ func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.O
 		return nil, fmt.Errorf("cannot create file in read-only mode: %w", ErrReadOnly)
 	}
 
-	var f *MemFile
+	var src, dst *MemFile
 
 	if opts.WithCreateFile {
 		// create or truncate just like os.Create
-		f = &MemFile{
+		src = &MemFile{
 			Buf: bytes.NewBuffer([]byte{}),
+			src: []byte{},
 		}
+		dst = src
 	} else {
 		var ok bool
-		f, ok = m.Files[n]
+		src, ok = m.Files[n]
 		if !ok {
 			return nil, fmt.Errorf("file %s does not exist: %w", n, ErrDoesNotExist)
 		}
 	}
 
-	f.name = n
-	f.syncMode = opts.WithCloseSyncMode
-	f.accessMode = opts.WithFileAccessMode
-	f.mode = defaultFilePerm
-	f.Closed = false
-	m.Files[n] = f
-	return f, nil
+	src.Lock()
+	defer src.Unlock()
+
+	src.name = n
+	src.syncMode = opts.WithCloseSyncMode
+	src.accessMode = opts.WithFileAccessMode
+	src.mode = defaultFilePerm
+	src.Closed = false
+	m.Files[n] = src
+	if dst == nil {
+		dst = &MemFile{
+			Buf:        bytes.NewBuffer(append([]byte{}, src.src...)),
+			src:        src.src,
+			name:       src.name,
+			syncMode:   src.syncMode,
+			accessMode: src.accessMode,
+			mode:       src.mode,
+			Closed:     src.Closed,
+		}
+	}
+	return dst, nil
 }
 
 // SubContainer creates a new storage.Container in the container.
@@ -220,6 +236,7 @@ func (m *memFileInfo) Sys() any           { return nil }
 type MemFile struct {
 	name    string
 	Buf     *bytes.Buffer
+	src     []byte
 	mode    sfs.FileMode
 	modtime time.Time
 
@@ -245,6 +262,7 @@ func NewMemFile(n string, mode sfs.FileMode, options ...Option) *MemFile {
 	return &MemFile{
 		name:       n,
 		Buf:        bytes.NewBuffer([]byte{}),
+		src:        []byte{},
 		mode:       mode,
 		accessMode: storageOpts.WithFileAccessMode,
 		syncMode:   storageOpts.WithCloseSyncMode,
@@ -261,6 +279,7 @@ func NewWritableMemFile(n string, options ...Option) *MemFile {
 	return &MemFile{
 		name:       n,
 		Buf:        bytes.NewBuffer([]byte{}),
+		src:        []byte{},
 		mode:       0o664,
 		accessMode: storage.WriteOnly,
 		syncMode:   storage.Asynchronous,
@@ -283,7 +302,7 @@ func (m *MemFile) Stat() (sfs.FileInfo, error) {
 	}
 	return &memFileInfo{
 		name: m.name,
-		size: int64(m.Buf.Len()),
+		size: int64(len(m.src)),
 		mode: m.mode,
 		mod:  m.modtime,
 	}, nil
@@ -300,6 +319,7 @@ func (m *MemFile) Read(p []byte) (int, error) {
 	if m.Closed {
 		return 0, fmt.Errorf("read on closed file")
 	}
+
 	return m.Buf.Read(p)
 }
 
@@ -342,6 +362,7 @@ func (m *MemFile) Write(p []byte) (n int, err error) {
 	defer func() {
 		m.modtime = time.Now()
 	}()
+	m.src = append(m.src, p...)
 	return m.Buf.Write(p)
 }
 
