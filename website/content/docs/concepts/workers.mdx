@@ -6,15 +6,13 @@ description: |-
 ---
 
 # Workers
-
-## Overview
-Boundary's architecture consists of 2 main components:
-1. **Control Plane** - made up of controllers
-2. **Data Plane** - made up of workers
+Boundary's architecture consists of 3 main components:
+1. **Control plane** - made up of controllers
+2. **Data plane** - made up of workers
 3. **Client** - installed on the user's device
 
-**Controllers** are what users authenticate to through the client, and contain Boundary's resources and permissions. In addition, controllers also communicate with external components 
-such as the database, KMS, Vault, identity providers, and plugins. **Workers** are primarily used as network proxies for Boundary sessions, allowing users to access 
+**Controllers** are what users authenticate to using the client, they contain Boundary's resources and permissions. In addition, controllers also communicate with external components 
+such as the database, KMS, Vault, identity providers, and plugins. **Workers** are primarily used as network proxies for Boundary sessions, they allow you to access 
 private targets. Instead of exposing a private network to the public, or allowing users to have access to entire private networks, workers create a direct network 
 tunnel between users and targets. 
 
@@ -23,8 +21,8 @@ tunnel between users and targets.
 ## Use cases
 **Session proxying**
 
-Workers can be used to proxy sessions between clients and targets located in public or private networks. In addition, workers can perform 
-[multi-hop](#multi-hop-sessions-hcp-ent) sessions, where workers form a chain of proxies to reach deeper into protected networks.
+You can use workers to proxy sessions between clients and targets located in public or private networks. In addition, you can configure workers in
+[multi-hop](#multi-hop-sessions-hcp-ent) sessions and form a chain of proxies to reach deeper into protected networks.
 
 **Worker authentication**
 
@@ -39,12 +37,12 @@ environment.
 **Protocol decryption**
 
 Workers can perform SSH protocol decryption for [credential injection](/boundary/docs/concepts/credential-management#credential-injection-hcp-ent) and [session 
-recording](/boundary/docs/concepts/domain-model/session-recordings). For session recording, workers also write the session contents directly to the [storage 
-bucket](/boundary/docs/concepts/domain-model/storage-buckets) for the recording.
+recording](/boundary/docs/concepts/domain-model/session-recordings). For session recording, workers also write the recorded session contents directly to the [storage 
+bucket](/boundary/docs/concepts/domain-model/storage-buckets).
 
 ## Tags
-In the multi-datacenter and multi-cloud operating models, patterns of dividing up controllers, workers, and targets into appropriate regions or networks is often 
-desired to reduce latency or comply with security standards. Workers can be assigned [tags](/boundary/tutorials/worker-management/target-aware-workers) that Boundary 
+In multi-datacenter and multi-cloud operating models, patterns of dividing up controllers, workers, and targets into appropriate regions or networks is often 
+desired to reduce latency or comply with security standards. You can assign workers [tags](/boundary/tutorials/worker-management/target-aware-workers) that Boundary 
 can [filter](/boundary/docs/concepts/filtering/worker-tags) through, to find the appropriate worker to use for a session. For example, Boundary could filter to workers 
 with tag “A”, to connect to targets in “Network A”.
 
@@ -53,29 +51,29 @@ with tag “A”, to connect to targets in “Network A”.
 ## Multi-hop sessions <sup>HCP/ENT</sup>
 Most organizations want to provide access to infrastructure without exposing private networks. Many organizations also have complex network topologies requiring 
 inbound traffic to route through multiple network enclaves in order to reach the target system. 
-[Multi-hop](/boundary/docs/configuration/worker#multi-hop-worker-capabilities-hcp-ent) sessions allow two or more workers to be chained together 
+[Multi-hop](/boundary/docs/configuration/worker#multi-hop-worker-capabilities-hcp-ent) sessions allow you to chain together two or more workers
 across multiple networks to form reverse proxy connections between the user and the target, even in complex networks with strict outbound-only policies.
 
 In multi-hop scenarios, there are typically 3 types of workers:
-1. **Ingress worker** - An ingress worker is a worker that is accessible by the client. The client will initiate the connection to the ingress worker.
-2. **Intermediary worker** - An (optional) intermediary worker sits between ingress and egress workers as part of a multi-hop chain.
+1. **Ingress worker** - An ingress worker is a worker that is accessible by the client. The client initiates the connection to the ingress worker.
+2. **Intermediary worker** - An (optional) intermediary worker sits between ingress and egress workers as part of a multi-hop chain. There can be multiple intermediary workers as part of a multi-hop chain.
 3. **Egress worker** - An egress worker is a worker that can access the target. The egress worker initiates reverse proxy connections to intermediary or ingress workers.
 
 <Tip>
-“Ingress”, “intermediary”, and “egress” are general ways to describe how the respective worker interfaces with resources, and a worker can be more than 1 of those 
+“Ingress”, “intermediary”, and “egress” are general ways to describe how the respective worker interfaces with resources, and a worker can act as more than 1 of those 
 at a time. For example in the diagram below, the intermediary worker is also an egress worker since it can access a target. 
 </Tip>
 
 ![IAM Example Structure](/img/concepts-multihop.png)
 
-Once the persistent connection chain is established between the workers, when the user requests to connect to a target host, they are automatically proxied from:
+After the persistent connection chain is established between the workers, when you attempt to connect to a target host, you are automatically proxied from:
 1. Boundary client to ingress worker
 2. Ingress worker to intermediary worker (where applicable)
 3. Ingress worker to egress worker
 4. Egress worker to desired target
 
 ## Deployment
-Workers are services that can run on a container or virtual machine, and should be deployed strategically within networks to provide access to targets. In 
+Workers are services that can run on a container or virtual machine. You should deploy them strategically within networks to provide access to targets. In 
 all editions of Boundary, workers are fully self-managed and can be deployed anywhere. In HCP Boundary, HCP-managed workers are automatically deployed with the cluster. 
 
 To learn more about workers and deployment, see:
