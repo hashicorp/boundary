@@ -124,7 +124,12 @@ func (m *MemContainer) Create(ctx context.Context, n string) (storage.File, erro
 }
 
 // OpenFile creates a storage.File in the container using the provided options
-// It supports WithCloseSyncMode.
+// It supports WithCloseSyncMode, WithFileAccessMode, WithCreateFile.
+//
+// When opening a file with the WithCreateFile option, any existing file will be truncated.
+// When opening an existing file with ReadOnly option, a copy of the file is returned to allow concurrent reads of the same file.
+// Note, ReadOnly files will only contain the snapshot of a file from when it was opened, any mutations to the file after it was
+// opened will not be present in the Read call.
 func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.Option) (storage.File, error) {
 	m.Lock()
 	defer m.Unlock()
@@ -142,6 +147,10 @@ func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.O
 		return nil, fmt.Errorf("cannot create file in read-only mode: %w", ErrReadOnly)
 	}
 
+	// src is a MemFile reference that is stored in container's Files map, this is the source of truth for a file.
+	// dst is a MemFile reference that is stored in container's Files map when creating a file.
+	// when reading from an existing file stored in the container's Files map, dst becomes a deep copy of the
+	// MemFile referencing the src of truth for the file, thus allowing for multiple reads of the same file.
 	var src, dst *MemFile
 
 	if opts.WithCreateFile {
