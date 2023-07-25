@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package cache
+package daemon
 
 import (
 	"context"
@@ -37,16 +37,16 @@ type ServerCommand struct {
 }
 
 func (c *ServerCommand) Synopsis() string {
-	return "Start a Boundary cache server"
+	return "Start a Boundary daemon"
 }
 
 func (c *ServerCommand) Help() string {
 	helpText := `
-Usage: boundary cache server [options]
+Usage: boundary daemon start [options]
 
   Start a cache server:
 
-      $ boundary cache server
+      $ boundary daemon start
 
   For a full list of examples, please see the documentation.
 
@@ -80,7 +80,7 @@ func (c *ServerCommand) Flags() *base.FlagSets {
 	f.Int64Var(&base.Int64Var{
 		Name:    "refresh-interval-seconds",
 		Target:  &c.flagRefreshIntervalSeconds,
-		Usage:   `If set, specifies the number of seconds between cache refreshes`,
+		Usage:   `If set, specifies the number of seconds between cache refreshes. Default: 5 minutes`,
 		Aliases: []string{"r"},
 	})
 	f.UintVar(&base.UintVar{

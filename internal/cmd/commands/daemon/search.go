@@ -1,4 +1,7 @@
-package cache
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package daemon
 
 import (
 	"bytes"
@@ -28,16 +31,16 @@ type SearchTargetsCommand struct {
 }
 
 func (c *SearchTargetsCommand) Synopsis() string {
-	return "Start a Boundary cache server"
+	return "Start a Boundary daemon"
 }
 
 func (c *SearchTargetsCommand) Help() string {
 	helpText := `
-Usage: boundary cache search [options]
+Usage: boundary targets search  [options]
 
-  Search a boundary cache:
+  Search a boundary target:
 
-      $ boundary cache search
+      $ boundary targets search
 
   For a full list of examples, please see the documentation.
 
@@ -93,8 +96,13 @@ func (c *SearchTargetsCommand) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
-
+	client, err := c.Client()
+	if err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandUserError
+	}
 	tf := targetFilterBy{
+		boundaryAddr:       client.Addr(),
 		tokenName:          tokenName,
 		flagNameStartsWith: c.flagNameStartsWith,
 		flagQuery:          c.flagQuery,
@@ -140,6 +148,7 @@ func (c *SearchTargetsCommand) Run(args []string) int {
 	}
 	return base.CommandSuccess
 }
+
 func (c *SearchTargetsCommand) printListTable(items []*targets.Target) string {
 	if len(items) == 0 {
 		return "No targets found"
@@ -224,6 +233,7 @@ type targetFilterBy struct {
 	flagNameStartsWith string
 	flagQuery          string
 	tokenName          string
+	boundaryAddr       string
 }
 
 func searchTargets(ctx context.Context, filterBy targetFilterBy, flagPort uint, flagOutputCurl bool) (*api.Response, error) {
@@ -237,6 +247,7 @@ func searchTargets(ctx context.Context, filterBy targetFilterBy, flagPort uint, 
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error: %s", err.Error()))
 	}
 	req.Header.Add("token_name", filterBy.tokenName)
+	req.Header.Add("boundary_addr", filterBy.boundaryAddr)
 	q := url.Values{}
 	q.Add("name_starts_with", filterBy.flagNameStartsWith)
 	q.Add("query", filterBy.flagQuery)

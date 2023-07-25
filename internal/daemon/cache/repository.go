@@ -21,8 +21,10 @@ import (
 	"github.com/seldonio/goven/sql_adaptor"
 )
 
+const personaLimit = 50
+
 type Repository struct {
-	s *Store
+	rw *db.Db
 }
 
 func NewRepository(ctx context.Context, s *Store) (*Repository, error) {
@@ -31,12 +33,72 @@ func NewRepository(ctx context.Context, s *Store) (*Repository, error) {
 	case util.IsNil(s):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing store")
 	}
-	return &Repository{s: s}, nil
+	return &Repository{rw: db.New(s.conn)}, nil
+}
+
+// AddPersona adds a persona to the repository.  If the number of personas now
+// exceed a limit, the  persona retrieved least recently is deleted.
+func (r *Repository) AddPersona(ctx context.Context, p *Persona) error {
+	const op = "cache.(Repository).AddPersona"
+
+	onConflict := db.OnConflict{
+		Target: db.Columns{"boundary_addr", "token_name"},
+		Action: db.SetColumns([]string{"auth_token_id", "last_accessed_time"}),
+	}
+
+	if err := r.rw.Create(ctx, p, db.WithOnConflict(&onConflict)); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	var personas []*Persona
+	if err := r.rw.SearchWhere(ctx, &personas, "", []any{}, db.WithLimit(-1)); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if len(personas) <= personaLimit {
+		return nil
+	}
+
+	var oldestPersona *Persona
+	for _, p := range personas {
+		if oldestPersona == nil || oldestPersona.LastAccessedTime.After(p.LastAccessedTime) {
+			oldestPersona = p
+		}
+	}
+	if oldestPersona != nil {
+		if _, err := r.rw.Delete(ctx, oldestPersona); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	}
+
+	// TODO: Return an error with the persona that was removed from the cache
+	return nil
+}
+
+// LookupPersona returns the persona and updates its last accessed time
+func (r *Repository) LookupPersona(ctx context.Context, addr string, tokenName string) (*Persona, error) {
+	const op = "cache.(Repository).LookupPersona"
+
+	p := &Persona{
+		BoundaryAddr: addr,
+		TokenName:    tokenName,
+	}
+	if err := r.rw.LookupById(ctx, p); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	updatedP := &Persona{
+		BoundaryAddr:     p.BoundaryAddr,
+		TokenName:        p.TokenName,
+		LastAccessedTime: time.Now(),
+	}
+	if _, err := r.rw.Update(ctx, updatedP, []string{"LastAccessedTime"}, nil); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	return updatedP, nil
 }
 
 func (r *Repository) SaveError(ctx context.Context, resourceType string, err error) error {
 	const op = "cache.(Repository).StoreError"
-	rw := db.New(r.s.conn)
 	apiErr := &ApiError{
 		ResourceType: resourceType,
 		Error:        err.Error(),
@@ -45,37 +107,49 @@ func (r *Repository) SaveError(ctx context.Context, resourceType string, err err
 		Target: db.Columns{"token_name", "resource_type"},
 		Action: db.SetColumns([]string{"error", "create_time"}),
 	}
-	if err := rw.Create(ctx, apiErr, db.WithOnConflict(&onConflict)); err != nil {
+	if err := r.rw.Create(ctx, apiErr, db.WithOnConflict(&onConflict)); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
 }
 
-func (r *Repository) RefreshTargets(ctx context.Context, tokenName string, targets []*targets.Target) error {
+func (r *Repository) RefreshTargets(ctx context.Context, p *Persona, targets []*targets.Target) error {
 	const op = "cache.(Repository).RefreshTargets"
-	rw := db.New(r.s.conn)
-	_, err := rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		if _, err := rw.Exec(ctx, "delete from cache_target where token_name = @token_name", []any{sql.Named("token_name", tokenName)}); err != nil {
+	switch {
+	case p == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "persona is nil")
+	case p.TokenName == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
+	case p.BoundaryAddr == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
+	}
+
+	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		// TODO: Instead of deleting everything, use refresh tokens and apply the delta
+		if _, err := w.Exec(ctx, "delete from cache_target where boundary_addr = @boundary_addr and token_name = @token_name",
+			[]any{sql.Named("boundary_addr", p.BoundaryAddr), sql.Named("token_name", p.TokenName)}); err != nil {
 			return err
 		}
+
 		for _, t := range targets {
 			item, err := json.Marshal(t)
 			if err != nil {
 				return err
 			}
 			newTarget := Target{
-				TokenName:   tokenName,
-				Id:          t.Id,
-				Name:        t.Name,
-				Description: t.Description,
-				Address:     t.Address,
-				Item:        string(item),
+				BoundaryAddr: p.BoundaryAddr,
+				TokenName:    p.TokenName,
+				Id:           t.Id,
+				Name:         t.Name,
+				Description:  t.Description,
+				Address:      t.Address,
+				Item:         string(item),
 			}
 			onConflict := db.OnConflict{
-				Target: db.Columns{"token_name", "id"},
-				Action: db.SetColumns([]string{"name", "description", "address", "item"}),
+				Target: db.Columns{"boundary_addr", "token_name", "id"},
+				Action: db.UpdateAll(true),
 			}
-			if err := rw.Create(ctx, newTarget, db.WithOnConflict(&onConflict)); err != nil {
+			if err := w.Create(ctx, newTarget, db.WithOnConflict(&onConflict)); err != nil {
 				return err
 			}
 		}
@@ -90,15 +164,18 @@ func (r *Repository) RefreshTargets(ctx context.Context, tokenName string, targe
 	return nil
 }
 
-func (r *Repository) QueryTargets(ctx context.Context, tokenName string, query string) ([]*targets.Target, error) {
+func (r *Repository) QueryTargets(ctx context.Context, p *Persona, query string) ([]*targets.Target, error) {
 	const op = "cache.(Repository).QueryTargets"
 	switch {
-	case tokenName == "":
+	case p == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "persona is missing")
+	case p.TokenName == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
+	case p.BoundaryAddr == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
 	case query == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "query is missing")
 	}
-	rw := db.New(r.s.conn)
 	var cachedTargets []*Target
 
 	reflection := reflect.ValueOf(&Target{})
@@ -115,7 +192,7 @@ func (r *Repository) QueryTargets(ctx context.Context, tokenName string, query s
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if err := rw.SearchWhere(ctx, &cachedTargets, parsedQuery.Raw, sql_adaptor.StringSliceToInterfaceSlice(parsedQuery.Values), db.WithLimit(-1)); err != nil {
+	if err := r.rw.SearchWhere(ctx, &cachedTargets, parsedQuery.Raw, sql_adaptor.StringSliceToInterfaceSlice(parsedQuery.Values), db.WithLimit(-1)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	retTargets := make([]*targets.Target, 0, len(cachedTargets))
@@ -129,21 +206,24 @@ func (r *Repository) QueryTargets(ctx context.Context, tokenName string, query s
 	return retTargets, nil
 }
 
-func (r *Repository) FindTargets(ctx context.Context, tokenName string, opt ...Option) ([]*targets.Target, error) {
+func (r *Repository) FindTargets(ctx context.Context, p *Persona, opt ...Option) ([]*targets.Target, error) {
 	const op = "cache.(Repository).FindTargets"
 	switch {
-	case tokenName == "":
+	case p == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "persona is missing")
+	case p.TokenName == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
+	case p.BoundaryAddr == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
 	}
-	rw := db.New(r.s.conn)
 	var cachedTargets []*Target
 
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	whereClause := []string{"token_name = @token_name"}
-	whereParameters := []any{sql.Named("token_name", tokenName)}
+	whereClause := []string{"boundary_addr = @boundary_addr and token_name = @token_name"}
+	whereParameters := []any{sql.Named("boundary_addr", p.BoundaryAddr), sql.Named("token_name", p.TokenName)}
 
 	if opts.withIdContains != "" {
 		whereClause = append(whereClause, "id like @contains_id")
@@ -196,7 +276,7 @@ func (r *Repository) FindTargets(ctx context.Context, tokenName string, opt ...O
 		whereParameters = append(whereParameters, sql.Named("ends_with_address", "%"+opts.withAddressEndsWith))
 	}
 
-	if err := rw.SearchWhere(ctx, &cachedTargets, strings.Join(whereClause, " and "), whereParameters, db.WithLimit(-1)); err != nil {
+	if err := r.rw.SearchWhere(ctx, &cachedTargets, strings.Join(whereClause, " and "), whereParameters, db.WithLimit(-1)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	retTargets := make([]*targets.Target, 0, len(cachedTargets))
@@ -211,13 +291,13 @@ func (r *Repository) FindTargets(ctx context.Context, tokenName string, opt ...O
 }
 
 type Target struct {
-	TokenName   string `gorm:"primaryKey"`
-	Id          string `gorm:"primaryKey"`
-	Name        string
-	Description string
-	Address     string
-	Item        string
-	CreatedTime time.Time
+	BoundaryAddr string `gorm:"primaryKey"`
+	TokenName    string `gorm:"primaryKey"`
+	Id           string `gorm:"primaryKey"`
+	Name         string
+	Description  string
+	Address      string
+	Item         string
 }
 
 func (*Target) TableName() string {
@@ -233,4 +313,15 @@ type ApiError struct {
 
 func (*ApiError) TableName() string {
 	return "cache_api_error"
+}
+
+type Persona struct {
+	BoundaryAddr     string `gorm:"primaryKey"`
+	TokenName        string `gorm:"primaryKey"`
+	AuthTokenId      string
+	LastAccessedTime time.Time `gorm:"default:(strftime('%Y-%m-%d %H:%M:%f','now'))"`
+}
+
+func (*Persona) TableName() string {
+	return "cache_persona"
 }
