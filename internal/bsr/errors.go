@@ -41,4 +41,7 @@ var (
 
 	// ErrChecksum indicates that a checksum did not match.
 	ErrChecksum = errors.New("computed checksum did NOT match")
+
+	// ErrTimestampDecode indicates an error decoding a timestamp
+	ErrTimestampDecode = errors.New("error decoding timestamp")
 )
