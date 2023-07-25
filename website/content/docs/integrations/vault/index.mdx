@@ -37,7 +37,7 @@ This feature was added in Boundary 0.4 and facilitates Boundary as a credential 
 
 An example workflow and use case for this feature would be database access. Certain teams within an organisation, such as finance, need to access sensitive data residing in a database. Irrespective of the frequency that the database needs to be accessed, having long-lived credentials that could be purposely or accidentally leaked, can pose a huge risk to a company.
 
-If Boundary and Vault is added into this workflow, we would be mitigating against this potentially security risk. The Vault database secrets engine can be enabled, with the relevant database plugin configured, to then be able to issue dynamic and short-lived database credentials to the end-user. Organisations can set a limit on the amount of time these credentials are valid and once they have timed-out, access is revoked.
+If Boundary and Vault are added into this workflow, it mitigates this potential security risk. You can enable the Vault database secrets engine, with the relevant database plugin configured, to then be able to issue dynamic and short-lived database credentials to end-users. Organizations can set a limit on the amount of times these credentials are valid and once they have timed-out, access is automatically revoked.
 
 ![Brokered Credentials](/img/brokered-creds-ui.png)
 
