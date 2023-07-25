@@ -19,6 +19,8 @@ tunnel between users and targets.
 ![IAM Example Structure](/img/access-model.png)
 
 ## Use cases
+You can utilize workers in various ways depending on your needs. Consider the following use cases.
+
 **Session proxying**
 
 You can use workers to proxy sessions between clients and targets located in public or private networks. In addition, you can configure workers in
@@ -26,7 +28,7 @@ You can use workers to proxy sessions between clients and targets located in pub
 
 **Worker authentication**
 
-Workers that are not directly connected to controllers can communicate through intermediary workers to register to the control plane.
+Workers can [authenticate](/boundary/docs/concepts/security/connections-tls#pki-based-worker-authentication) directly to the control plane or through an upstream worker to the control plane. Authenticating through an upstream worker is also referred to as "multi-hop worker authentication".
 
 **Controller proxy**
 
