@@ -90,6 +90,11 @@ variable "target_port" {
   type        = string
   default     = ""
 }
+variable "vault_addr" {
+  description = "External network address of Vault. Will be converted to a URL below"
+  type        = string
+  default     = ""
+}
 variable "vault_addr_internal" {
   description = "Internal network address of Vault (i.e. within a docker network). Will be converted to a URL below"
   type        = string
@@ -169,7 +174,7 @@ locals {
   image_name = trimspace("${var.docker_mirror}/library/golang:${local.go_version}")
 
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
-  vault_addr               = "http://${var.vault_addr_internal}:${var.vault_port}"
+  vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:${var.vault_port}" : ""
   vault_addr_internal      = var.vault_addr_internal != "" ? "http://${var.vault_addr_internal}:8200" : local.vault_addr
   aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
   aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)
@@ -197,7 +202,8 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_SSH_USER                  = var.target_user,
     E2E_SSH_PORT                  = var.target_port,
     E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path,
-    VAULT_ADDR                    = local.vault_addr_internal,
+    VAULT_ADDR                    = local.vault_addr,
+    VAULT_ADDR_INTERNAL           = local.vault_addr_internal,
     VAULT_TOKEN                   = var.vault_root_token,
     E2E_VAULT_ADDR                = local.vault_addr_internal,
     E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id,
