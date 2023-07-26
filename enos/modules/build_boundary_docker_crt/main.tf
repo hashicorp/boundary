@@ -23,6 +23,6 @@ resource "enos_local_exec" "load_docker_image" {
   inline = ["docker load -i ${var.path}"]
 }
 
-output "cli_path" {
+output "cli_zip_path" {
   value = var.cli_build_path
 }

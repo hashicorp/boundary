@@ -91,18 +91,18 @@ variable "target_count" {
   default     = 1
 }
 
-variable "local_boundary_exe_dir" {
+variable "local_boundary_dir" {
   description = "Path to local boundary executable"
   type        = string
 }
 
-variable "local_boundary_dir" {
-  description = "Path to local boundary directory"
+variable "local_boundary_src_dir" {
+  description = "Path to local boundary source code directory"
   type        = string
 }
 
-variable "local_boundary_ui_dir" {
-  description = "Path to local boundary-ui directory"
+variable "local_boundary_ui_src_dir" {
+  description = "Path to local boundary-ui source code directory"
   type        = string
   default     = null
 }

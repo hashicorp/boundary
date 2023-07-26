@@ -14,11 +14,11 @@ scenario "e2e_ui" {
   }
 
   locals {
-    aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
-    boundary_install_dir     = abspath(var.boundary_install_dir)
-    license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
-    local_boundary_exe_dir   = abspath(var.local_boundary_exe_dir)
-    local_boundary_ui_dir    = abspath(var.local_boundary_ui_dir)
+    aws_ssh_private_key_path  = abspath(var.aws_ssh_private_key_path)
+    boundary_install_dir      = abspath(var.boundary_install_dir)
+    license_path              = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
+    local_boundary_dir        = abspath(var.local_boundary_dir)
+    local_boundary_ui_src_dir = abspath(var.local_boundary_ui_src_dir)
     build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
@@ -212,25 +212,25 @@ scenario "e2e_ui" {
     ]
 
     variables {
-      debug_no_run             = var.e2e_debug_no_run
-      alb_boundary_api_addr    = step.create_boundary_cluster.alb_boundary_api_addr
-      auth_method_id           = step.create_boundary_cluster.auth_method_id
-      auth_login_name          = step.create_boundary_cluster.auth_login_name
-      auth_password            = step.create_boundary_cluster.auth_password
-      local_boundary_exe_dir   = local.local_boundary_exe_dir
-      local_boundary_ui_dir    = local.local_boundary_ui_dir
-      aws_ssh_private_key_path = local.aws_ssh_private_key_path
-      target_ip                = step.create_targets_with_tag1.target_ips[0]
-      target_user              = "ubuntu"
-      target_port              = "22"
-      vault_addr               = step.create_vault_cluster.instance_public_ips[0]
-      vault_root_token         = step.create_vault_cluster.vault_root_token
-      aws_access_key_id        = step.iam_setup.access_key_id
-      aws_secret_access_key    = step.iam_setup.secret_access_key
-      aws_host_set_filter1     = step.create_tag1_inputs.tag_string
-      aws_host_set_ips1        = step.create_targets_with_tag1.target_ips
-      aws_host_set_filter2     = step.create_tag2_inputs.tag_string
-      aws_host_set_ips2        = step.create_targets_with_tag2.target_ips
+      debug_no_run              = var.e2e_debug_no_run
+      alb_boundary_api_addr     = step.create_boundary_cluster.alb_boundary_api_addr
+      auth_method_id            = step.create_boundary_cluster.auth_method_id
+      auth_login_name           = step.create_boundary_cluster.auth_login_name
+      auth_password             = step.create_boundary_cluster.auth_password
+      local_boundary_dir        = local.local_boundary_dir
+      local_boundary_ui_src_dir = local.local_boundary_ui_src_dir
+      aws_ssh_private_key_path  = local.aws_ssh_private_key_path
+      target_ip                 = step.create_targets_with_tag1.target_ips[0]
+      target_user               = "ubuntu"
+      target_port               = "22"
+      vault_addr                = step.create_vault_cluster.instance_public_ips[0]
+      vault_root_token          = step.create_vault_cluster.vault_root_token
+      aws_access_key_id         = step.iam_setup.access_key_id
+      aws_secret_access_key     = step.iam_setup.secret_access_key
+      aws_host_set_filter1      = step.create_tag1_inputs.tag_string
+      aws_host_set_ips1         = step.create_targets_with_tag1.target_ips
+      aws_host_set_filter2      = step.create_tag2_inputs.tag_string
+      aws_host_set_ips2         = step.create_targets_with_tag2.target_ips
     }
   }
 

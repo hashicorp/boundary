@@ -62,11 +62,11 @@ variable "auth_password" {
   type        = string
   default     = ""
 }
-variable "local_boundary_exe_dir" {
+variable "local_boundary_dir" {
   description = "Local Path to boundary executable"
   type        = string
 }
-variable "local_boundary_dir" {
+variable "local_boundary_src_dir" {
   description = "Local Path to boundary src code directory"
   type        = string
 }
@@ -209,8 +209,8 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_REGION                = var.aws_region,
     E2E_AWS_BUCKET_NAME           = var.aws_bucket_name,
     E2E_WORKER_TAG                = jsonencode(var.worker_tags),
-    BOUNDARY_DIR                  = abspath(var.local_boundary_dir),
-    BOUNDARY_EXE_DIR              = abspath(var.local_boundary_exe_dir),
+    BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir),
+    BOUNDARY_CLI_DIR              = abspath(var.local_boundary_dir),
     MODULE_DIR                    = abspath(path.module)
   }
 

@@ -88,9 +88,9 @@ jobs:
       ENOS_VAR_aws_region: us-east-1
       ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
       ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
-      ENOS_VAR_local_boundary_exe_dir: ./support/boundary
-      ENOS_VAR_local_boundary_dir: ${{ github.workspace }}
-      ENOS_VAR_local_boundary_ui_dir: ./support/src/boundary-ui
+      ENOS_VAR_local_boundary_dir: ./support/boundary
+      ENOS_VAR_local_boundary_src_dir: ${{ github.workspace }}
+      ENOS_VAR_local_boundary_ui_src_dir: ./support/src/boundary-ui
       ENOS_VAR_crt_bundle_path: ./support/boundary.zip
       ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}

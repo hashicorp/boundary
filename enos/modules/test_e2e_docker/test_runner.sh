@@ -2,17 +2,14 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
 
-
 # This script sets up a docker container to serve as a test runner for boundary
 # e2e tests
 
 set -eux -o pipefail
 
-TEST_CONTAINER_NAME=test-runner
-
 docker run \
     --rm \
-    --name $TEST_CONTAINER_NAME \
+    --name test-runner \
     -e "TEST_PACKAGE=$TEST_PACKAGE" \
     -e "TEST_TIMEOUT=$TEST_TIMEOUT" \
     -e "E2E_TESTS=$E2E_TESTS" \
@@ -40,9 +37,9 @@ docker run \
     --mount type=bind,src=$MODULE_DIR/../..,dst=/testlogs \
     --mount type=bind,src=$(go env GOCACHE),dst=/root/.cache/go-build \
     --mount type=bind,src=$(go env GOMODCACHE),dst=/go/pkg/mod \
-    -v "$MODULE_DIR:/scripts" \
+    -v "$MODULE_DIR/test.sh:/scripts/test.sh" \
     -v "$E2E_SSH_KEY_PATH:/keys/target.pem" \
-    -v "$BOUNDARY_EXE_DIR:/boundary.zip" \
+    -v "$BOUNDARY_CLI_DIR:/boundary.zip" \
     --network $TEST_NETWORK_NAME \
     --cap-add=CAP_IPC_LOCK \
     $TEST_RUNNER_IMAGE \

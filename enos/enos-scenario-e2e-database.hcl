@@ -11,7 +11,7 @@ scenario "e2e_database" {
 
   locals {
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
-    local_boundary_exe_dir   = abspath(var.local_boundary_exe_dir)
+    local_boundary_dir       = abspath(var.local_boundary_dir)
     tags = merge({
       "Project Name" : var.project_name
       "Project" : "Enos",
@@ -109,7 +109,7 @@ scenario "e2e_database" {
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/database"
       debug_no_run             = var.e2e_debug_no_run
-      local_boundary_exe_dir   = local.local_boundary_exe_dir
+      local_boundary_dir       = local.local_boundary_dir
       target_user              = "ubuntu"
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
       aws_access_key_id        = step.iam_setup.access_key_id

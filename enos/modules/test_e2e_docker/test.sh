@@ -11,10 +11,9 @@ set -eux -o pipefail
 # Install dependencies
 apt update
 # unzip is used to unzip boundary.zip
-# pass is used to store the auth token from boundary authenticate
+# pass is used to store the auth token from `boundary authenticate``
 # lsb-release is used for adding the hashicorp apt source
-# libcap2-bin installs setcap, which is used in vault.postinst
-apt install unzip pass lsb-release libcap2-bin -y
+apt install unzip pass lsb-release -y
 
 # Create a GPG key
 export KEY_PW=boundary

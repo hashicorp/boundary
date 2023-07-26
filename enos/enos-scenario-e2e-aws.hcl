@@ -17,7 +17,7 @@ scenario "e2e_aws" {
   locals {
     aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
     boundary_install_dir     = abspath(var.boundary_install_dir)
-    local_boundary_exe_dir   = abspath(var.local_boundary_exe_dir)
+    local_boundary_dir       = abspath(var.local_boundary_dir)
     license_path             = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
     build_path = {
       "local" = "/tmp",
@@ -236,7 +236,7 @@ scenario "e2e_aws" {
       auth_method_id           = step.create_boundary_cluster.auth_method_id
       auth_login_name          = step.create_boundary_cluster.auth_login_name
       auth_password            = step.create_boundary_cluster.auth_password
-      local_boundary_exe_dir   = local.local_boundary_exe_dir
+      local_boundary_dir       = local.local_boundary_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
       target_user              = "ubuntu"
       target_port              = "22"

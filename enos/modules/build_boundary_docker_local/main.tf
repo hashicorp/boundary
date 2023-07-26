@@ -40,6 +40,6 @@ output "image_name" {
   value = local.image_name
 }
 
-output "cli_path" {
+output "cli_zip_path" {
   value = "${var.cli_build_path}/boundary.zip"
 }
