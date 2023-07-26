@@ -186,11 +186,6 @@ jobs:
         if: matrix.filter == 'e2e_aws_base_with_vault builder:crt' || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui builder:crt' || matrix.filter == 'e2e_docker_base_with_vault builder:crt'
         run: |
           unzip /tmp/test-deps/vault.zip -d /usr/local/bin
-      - name: Add hosts to /etc/hosts
-        # This enables the use of `boundary connect` with docker containers
-        if: contains(matrix.filter, 'e2e_docker')
-        run: |
-          sudo echo "127.0.0.1 localhost boundary" | sudo tee -a /etc/hosts
       - name: GH fix for localhost resolution
         if: github.repository == 'hashicorp/boundary' && contains(matrix.filter, 'e2e_docker')
         run: |
