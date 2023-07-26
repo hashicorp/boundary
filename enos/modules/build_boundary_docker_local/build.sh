@@ -14,7 +14,6 @@ make build-ui docker-build-dev
 
 # make the cli to be used by the test runner
 export GOOS=linux
-export GOARCH=arm64
 make build
 zip -j ${ARTIFACT_PATH}/boundary.zip bin/boundary
 
