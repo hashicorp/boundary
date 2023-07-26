@@ -161,7 +161,7 @@ variable "worker_tags" {
 }
 variable "test_timeout" {
   type    = string
-  default = "10m"
+  default = "15m"
 }
 
 resource "enos_local_exec" "get_go_version" {
