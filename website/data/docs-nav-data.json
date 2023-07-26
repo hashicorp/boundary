@@ -454,7 +454,24 @@
       },
       {
         "title": "Session recordings",
-        "path": "operations/manage-recorded-sessions"
+        "routes": [
+          {
+            "title": "Overview",
+            "path": "operations/session-recordings"
+          },
+          {
+            "title": "Find and view recorded sessions",
+            "path": "operations/session-recordings/manage-recorded-sessions"
+          },
+          {
+            "title": "Validate recorded sessions",
+            "path": "operations/session-recordings/validate-session-recordings"
+          },
+          {
+            "title": "Validate external data store",
+            "path": "operations/session-recordings/validate-data-store"
+          }
+        ]
       }
     ]
   },
