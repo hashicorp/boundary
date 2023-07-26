@@ -133,4 +133,9 @@ module.exports = [
     destination: '/boundary/docs/concepts/host-discovery',
     permanent: true,
   },
+  {
+    source: '/boundary/docs/operations/manage-recorded-sessions',
+    destination: '/boundary/docs/operations/session-recordings',
+    permanent: true,
+  },
 ]
