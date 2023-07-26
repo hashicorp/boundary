@@ -339,6 +339,22 @@ func TestChunkEncoderEncodeError(t *testing.T) {
 			},
 			fmt.Errorf("write error"),
 		},
+		{
+			"chunk-length-exceeds-max",
+			func() io.Writer { var buf bytes.Buffer; return &buf }(),
+			bsr.NoCompression,
+			bsr.NoEncryption,
+			&testChunk{
+				BaseChunk: &bsr.BaseChunk{
+					Protocol:  "TEST",
+					Direction: bsr.Inbound,
+					Timestamp: bsr.NewTimestamp(ts),
+					Type:      "TEST",
+				},
+				Data: make([]byte, bsr.MaxChunkLength+1),
+			},
+			fmt.Errorf("bsr.(ChunkEncoder).Encode: chunk data length 262145 exceeds max chunk length of 262144: error encoding chunk"),
+		},
 	}
 
 	for _, tc := range cases {

@@ -72,7 +72,9 @@ func NewChunkEncoder(ctx context.Context, w io.Writer, c Compression, e Encrypti
 }
 
 // Encode serializes a Chunk and writes it with the encoder's writer.
+// Protocols that use Encode should ensure that their chunk lengths do not exceed MaxChunkLength
 func (e ChunkEncoder) Encode(ctx context.Context, c Chunk) (int, error) {
+	const op = "bsr.(ChunkEncoder).Encode"
 	encode := encodeCachePool.Get().(*encodeCache)
 	encode.Reset()
 	defer encodeCachePool.Put(encode)
@@ -80,6 +82,9 @@ func (e ChunkEncoder) Encode(ctx context.Context, c Chunk) (int, error) {
 	data, err := c.MarshalData(ctx)
 	if err != nil {
 		return 0, err
+	}
+	if len(data) > MaxChunkLength {
+		return 0, fmt.Errorf("%s: chunk data length %d exceeds max chunk length of %d: %w", op, len(data), MaxChunkLength, ErrChunkEncode)
 	}
 
 	var compressor io.WriteCloser
@@ -107,6 +112,9 @@ func (e ChunkEncoder) Encode(ctx context.Context, c Chunk) (int, error) {
 		return 0, err
 	}
 	length := encode.compress.Len()
+	if length > MaxChunkLength {
+		return 0, fmt.Errorf("%s: chunk length %d exceeds max chunk length of %d: %w", op, length, MaxChunkLength, ErrChunkEncode)
+	}
 
 	copy(encode.crced[0:], []byte(c.GetProtocol()))
 	copy(encode.crced[protocolSize:], []byte(c.GetType()))

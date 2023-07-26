@@ -18,6 +18,9 @@ const (
 	crcDataSize   = protocolSize + chunkTypeSize + directionSize + timestampSize
 	chunkBaseSize = lengthSize + crcDataSize
 	crcSize       = 4
+
+	// MaxChunkLength sets an upper bound on BSR chunk lengths
+	MaxChunkLength = 256 * 1024
 )
 
 // Chunk Types
