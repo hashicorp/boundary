@@ -99,7 +99,7 @@ func TestCliSessionCancelGroup(t *testing.T) {
 
 	// Create a role for a group
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
+	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newGroupId)
 
 	// Connect to target to create a session
@@ -207,7 +207,7 @@ func TestApiCreateGroup(t *testing.T) {
 	newRoleId := newRoleResult.Item.Id
 	t.Logf("Created Role: %s", newRoleId)
 
-	_, err = rClient.AddGrants(ctx, newRoleId, 0, []string{"ids=*;type=target;actions=authorize-session"},
+	_, err = rClient.AddGrants(ctx, newRoleId, 0, []string{"id=*;type=target;actions=authorize-session"},
 		roles.WithAutomaticVersioning(true),
 	)
 	require.NoError(t, err)

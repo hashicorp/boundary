@@ -10,6 +10,6 @@ jobs:
   triage:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-    - uses: actions/labeler@0967ca812e7fdc8f5f71402a1b486d5bd061fe20 # v4.2.0
+    - uses: actions/labeler@ba790c862c380240c6d5e7427be5ace9a05c754b # v4.0.3
       with:
         repo-token: "${{ secrets.GITHUB_TOKEN }}"
