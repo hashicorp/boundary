@@ -1233,7 +1233,7 @@ func TestCreate(t *testing.T) {
 				},
 			}},
 			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
-			errContains: "attributes.bind_password is missing required attributes.bind_dn field",
+			errContains: "missing dn",
 		},
 		{
 			name: "ldap-auth-method-missing-bind-password",
@@ -1248,7 +1248,7 @@ func TestCreate(t *testing.T) {
 				},
 			}},
 			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
-			errContains: "attributes.bind_dn is missing required attributes.bind_password field",
+			errContains: "missing password",
 		},
 		{
 			name: "ldap-auth-method-invalid-client-cert",

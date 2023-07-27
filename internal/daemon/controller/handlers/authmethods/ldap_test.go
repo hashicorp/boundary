@@ -81,14 +81,17 @@ func Test_UpdateLdap(t *testing.T) {
 		},
 	}
 
-	freshAuthMethod := func(t *testing.T) (*pb.AuthMethod, func()) {
+	freshAuthMethod := func(t *testing.T, attrs *pb.AuthMethod_LdapAuthMethodsAttributes) (*pb.AuthMethod, func()) {
+		if attrs == nil {
+			attrs = defaultAttributes
+		}
 		ctx := auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId())
 		am, err := tested.CreateAuthMethod(ctx, &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 			ScopeId:     o.GetPublicId(),
 			Name:        wrapperspb.String("default"),
 			Description: wrapperspb.String("default"),
 			Type:        ldap.Subtype.String(),
-			Attrs:       defaultAttributes,
+			Attrs:       attrs,
 		}})
 		require.NoError(t, err)
 
@@ -103,12 +106,13 @@ func Test_UpdateLdap(t *testing.T) {
 	_, testEncodedCert := ldap.TestGenerateCA(t, "localhost")
 
 	tests := []struct {
-		name        string
-		req         *pbs.UpdateAuthMethodRequest
-		res         *pbs.UpdateAuthMethodResponse
-		err         error
-		errContains string
-		wantErr     bool
+		name             string
+		newAttrsOverride *pb.AuthMethod_LdapAuthMethodsAttributes
+		req              *pbs.UpdateAuthMethodRequest
+		res              *pbs.UpdateAuthMethodResponse
+		err              error
+		errContains      string
+		wantErr          bool
 	}{
 		{
 			name: "update-an-existing-auth-method",
@@ -343,6 +347,94 @@ func Test_UpdateLdap(t *testing.T) {
 					Description:                 &wrapperspb.StringValue{Value: "notignored"},
 					Type:                        ldap.Subtype.String(),
 					Attrs:                       defaultReadAttributes,
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           ldapAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "update-only-bind-dn",
+			newAttrsOverride: &pb.AuthMethod_LdapAuthMethodsAttributes{
+				LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+					Urls:         []string{"ldaps://ldap1"},
+					State:        "active-private",
+					BindDn:       &wrapperspb.StringValue{Value: "bind-dn"},
+					BindPassword: &wrapperspb.StringValue{Value: "bind-password"},
+				},
+			},
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.bind_dn"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							BindDn: &wrapperspb.StringValue{Value: "updated"},
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Version:     2,
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        ldap.Subtype.String(),
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							Urls:   []string{"ldaps://ldap1"},
+							State:  "active-private",
+							BindDn: &wrapperspb.StringValue{Value: "updated"},
+							// note: BindPassword is never returned (an HMAC'd
+							// value is returned in a separate attribute)
+						},
+					},
+					Scope:                       defaultScopeInfo,
+					AuthorizedActions:           ldapAuthorizedActions,
+					AuthorizedCollectionActions: authorizedCollectionActions,
+				},
+			},
+		},
+		{
+			name: "update-only-bind-password",
+			newAttrsOverride: &pb.AuthMethod_LdapAuthMethodsAttributes{
+				LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+					Urls:         []string{"ldaps://ldap1"},
+					State:        "active-private",
+					BindDn:       &wrapperspb.StringValue{Value: "bind-dn"},
+					BindPassword: &wrapperspb.StringValue{Value: "bind-password"},
+				},
+			},
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.bind_password"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							BindPassword: &wrapperspb.StringValue{Value: "updated"},
+						},
+					},
+				},
+			},
+			res: &pbs.UpdateAuthMethodResponse{
+				Item: &pb.AuthMethod{
+					ScopeId:     o.GetPublicId(),
+					Version:     2,
+					Name:        &wrapperspb.StringValue{Value: "default"},
+					Description: &wrapperspb.StringValue{Value: "default"},
+					Type:        ldap.Subtype.String(),
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							Urls:   []string{"ldaps://ldap1"},
+							State:  "active-private",
+							BindDn: &wrapperspb.StringValue{Value: "bind-dn"},
+							// note: BindPassword is never returned (an HMAC'd
+							// value is returned in a separate attribute)
+						},
+					},
 					Scope:                       defaultScopeInfo,
 					AuthorizedActions:           ldapAuthorizedActions,
 					AuthorizedCollectionActions: authorizedCollectionActions,
@@ -689,7 +781,7 @@ func Test_UpdateLdap(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			am, cleanup := freshAuthMethod(t)
+			am, cleanup := freshAuthMethod(t, tc.newAttrsOverride)
 			defer cleanup()
 
 			tc.req.Item.Version = am.GetVersion()
