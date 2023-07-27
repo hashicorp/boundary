@@ -4,6 +4,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+
+* LDAP auth methods: allow bind-dn and bind-password to be updated independently. ([PR](https://github.com/hashicorp/boundary/pull/3511))
+
 ## 0.13.1 (2023/07/10)
 
 ### New and Improved

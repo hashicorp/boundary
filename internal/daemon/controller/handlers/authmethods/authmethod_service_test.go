@@ -1232,8 +1232,7 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
-			errContains: "attributes.bind_password is missing required attributes.bind_dn field",
+			errContains: "missing dn",
 		},
 		{
 			name: "ldap-auth-method-missing-bind-password",
@@ -1247,8 +1246,7 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
-			errContains: "attributes.bind_dn is missing required attributes.bind_password field",
+			errContains: "missing password",
 		},
 		{
 			name: "ldap-auth-method-invalid-client-cert",
@@ -1352,14 +1350,20 @@ func TestCreate(t *testing.T) {
 			require.NoError(err, "Error when getting new auth_method service.")
 
 			got, gErr := s.CreateAuthMethod(requestauth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
-			if tc.err != nil {
+			switch {
+			case tc.err != nil:
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 				if tc.errContains != "" {
 					assert.Contains(gErr.Error(), tc.errContains)
 				}
 				return
+			case tc.errContains != "":
+				require.Error(gErr)
+				assert.Contains(gErr.Error(), tc.errContains)
+				return
 			}
+
 			require.NoError(gErr)
 			if tc.res == nil {
 				require.Nil(got)
