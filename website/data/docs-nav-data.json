@@ -133,6 +133,10 @@
         "path": "concepts"
       },
       {
+        "title": "Workers",
+        "path": "concepts/workers"
+      },
+      {
         "title": "Identity and access management",
         "path": "concepts/iam"
       },
