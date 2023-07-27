@@ -31,13 +31,13 @@ const (
 )
 
 // ContainerType defines the type of container.
-type ContainerType string
+type containerType string
 
 // Valid container types.
 const (
-	SessionContainer    ContainerType = "session"
-	ConnectionContainer ContainerType = "connection"
-	ChannelContainer    ContainerType = "channel"
+	sessionContainer    containerType = "session"
+	connectionContainer containerType = "connection"
+	channelContainer    containerType = "channel"
 )
 
 // container contains a group of files in a BSR.
@@ -64,7 +64,7 @@ type container struct {
 }
 
 // newContainer creates a container for the given type backed by the provide storage.Container.
-func newContainer(ctx context.Context, t ContainerType, c storage.Container, keys *kms.Keys) (*container, error) {
+func newContainer(ctx context.Context, t containerType, c storage.Container, keys *kms.Keys) (*container, error) {
 	j, err := c.OpenFile(ctx, journalFileName,
 		storage.WithCreateFile(),
 		storage.WithFileAccessMode(storage.WriteOnly),
@@ -124,7 +124,7 @@ func newContainer(ctx context.Context, t ContainerType, c storage.Container, key
 type populateKeyFunc func(c *container) (*kms.Keys, error)
 
 // openContainer will set keys and load and verify the checksums for this container
-func openContainer(ctx context.Context, t ContainerType, c storage.Container, keyGetFunc populateKeyFunc) (*container, error) {
+func openContainer(ctx context.Context, t containerType, c storage.Container, keyGetFunc populateKeyFunc) (*container, error) {
 	const op = "bsr.openContainer"
 	switch {
 	case t == "":
@@ -161,7 +161,7 @@ func openContainer(ctx context.Context, t ContainerType, c storage.Container, ke
 	return cc, nil
 }
 
-func (c *container) loadChecksums(ctx context.Context) error {
+func (c *container) loadChecksums(ctx context.Context) (err error) {
 	const op = "bsr.(container).loadChecksums"
 
 	// Open and extract checksum signature
@@ -169,6 +169,12 @@ func (c *container) loadChecksums(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if closeErr := checksumsSigFile.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
+
 	checksumSigBytes := new(bytes.Buffer)
 	_, err = checksumSigBytes.ReadFrom(checksumsSigFile)
 	if err != nil {
@@ -186,6 +192,12 @@ func (c *container) loadChecksums(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if closeErr := checksumsFile.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
+
 	var checksumsBuffer bytes.Buffer
 	cTee := io.TeeReader(checksumsFile, &checksumsBuffer)
 
@@ -213,11 +225,16 @@ func (c *container) loadChecksums(ctx context.Context) error {
 	return nil
 }
 
-func (c *container) loadKey(ctx context.Context, keyFileName string) (*wrapping.KeyInfo, error) {
+func (c *container) loadKey(ctx context.Context, keyFileName string) (k *wrapping.KeyInfo, err error) {
 	keyFile, err := c.container.OpenFile(ctx, keyFileName)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if closeErr := keyFile.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	keyBytes := new(bytes.Buffer)
 	_, err = keyBytes.ReadFrom(keyFile)
@@ -234,11 +251,16 @@ func (c *container) loadKey(ctx context.Context, keyFileName string) (*wrapping.
 	return key, nil
 }
 
-func (c *container) loadSignature(ctx context.Context, sigFileName string) (*wrapping.SigInfo, error) {
+func (c *container) loadSignature(ctx context.Context, sigFileName string) (s *wrapping.SigInfo, err error) {
 	sigFile, err := c.container.OpenFile(ctx, sigFileName)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if closeErr := sigFile.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	sigBytes := new(bytes.Buffer)
 	_, err = sigBytes.ReadFrom(sigFile)
@@ -488,28 +510,40 @@ func (c *container) close(_ context.Context) error {
 
 	var closeError error
 
-	if err := c.meta.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.meta) {
+		if err := c.meta.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
-	if err := c.sum.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.sum) {
+		if err := c.sum.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
-	if err := c.checksums.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.checksums) {
+		if err := c.checksums.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
-	if err := c.sigs.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.sigs) {
+		if err := c.sigs.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
-	if err := c.journal.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.journal) {
+		if err := c.journal.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
-	if err := c.container.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.container) {
+		if err := c.container.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
 	return closeError

@@ -49,7 +49,6 @@ func WaitForSessionCli(t testing.TB, ctx context.Context, projectId string) *ses
 			}
 
 			session = sessionListResult.Items[0]
-			t.Logf("Created Session: %s", session.Id)
 			return nil
 		},
 		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),

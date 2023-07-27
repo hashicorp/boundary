@@ -1,11 +1,9 @@
 name: test
 
 on:
-  push:
-    paths-ignore:
-      - 'website/**'
-  workflow_call:
-  workflow_dispatch:
+  - workflow_dispatch
+  - push
+  - workflow_call
 
 permissions:
   contents: read
@@ -25,7 +23,7 @@ jobs:
       plugin-cache-key: ${{ steps.plugin-cache-key.outputs.key }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
         with:
           fetch-depth: '0'
       - name: Determine Go version
@@ -36,7 +34,7 @@ jobs:
           echo "Building with Go $(cat .go-version)"
           echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Go
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: "${{ steps.get-go-version.outputs.go-version }}"
           cache: false
@@ -93,9 +91,9 @@ jobs:
       matrix:
         module: ["api", "sdk"]
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
       - name: Set up go
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
           cache: false
@@ -125,9 +123,9 @@ jobs:
           ulimit -Sa
           echo "Hard limits"
           ulimit -Ha
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
       - name: Set up go
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: "${{ needs.setup.outputs.go-version }}"
           cache: false
@@ -164,7 +162,7 @@ jobs:
           until pg_isready -h 127.0.0.1; do docker container inspect boundary-sql-tests &> /dev/null || exit 255; sleep 1; done
 
       - name: Test
-        uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd # v2.8.3
+        uses: nick-fields/retry@943e742917ac94714d2f408a0e8320f2d1fcafcd   # TSCCR: no entry for repository "nick-fields/retry"
         env:
           TEST_PACKAGE: "./..."
           TESTARGS: -v
