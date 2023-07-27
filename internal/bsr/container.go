@@ -40,14 +40,14 @@ type FileChecksumValidation struct {
 	Error    error
 }
 
-// ChecksumValidation is a map where the key is a file name
+// ContainerChecksumValidation is a map where the key is a file name
 // and the value contains a validation report on whether or
 // not the file matches its expected checksum
-type ChecksumValidation map[string]*FileChecksumValidation
+type ContainerChecksumValidation map[string]*FileChecksumValidation
 
 // GetFailedItems returns a filtered map of FileChecksumValidation that have failed
-func (cv ChecksumValidation) GetFailedItems() ChecksumValidation {
-	failedValidations := ChecksumValidation{}
+func (cv ContainerChecksumValidation) GetFailedItems() ContainerChecksumValidation {
+	failedValidations := ContainerChecksumValidation{}
 	for fileName, validation := range cv {
 		if validation.Passed {
 			continue
@@ -545,7 +545,7 @@ func (c *container) close(_ context.Context) error {
 // This function expects that the container's kms keys
 // are loaded into memory and the signature files are
 // verified.
-func (c *container) ValidateChecksums(ctx context.Context) (ChecksumValidation, error) {
+func (c *container) ValidateChecksums(ctx context.Context) (ContainerChecksumValidation, error) {
 	const op = "bsr.(container).Validate"
 	if len(c.shaSums) == 0 {
 		return nil, fmt.Errorf("%s: missing checksums", op)
@@ -553,7 +553,7 @@ func (c *container) ValidateChecksums(ctx context.Context) (ChecksumValidation, 
 	if c.keys == nil {
 		return nil, fmt.Errorf("%s: missing keys", op)
 	}
-	checksumValidation := make(ChecksumValidation, len(c.shaSums))
+	checksumValidation := make(ContainerChecksumValidation, len(c.shaSums))
 	for fileName, expectedChecksum := range c.shaSums {
 		report := &FileChecksumValidation{
 			Filename: fileName,

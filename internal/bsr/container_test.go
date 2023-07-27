@@ -73,27 +73,27 @@ func TestGetFailedItems(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name               string
-		checksumValidation ChecksumValidation
-		expectedChecksums  ChecksumValidation
+		checksumValidation ContainerChecksumValidation
+		expectedChecksums  ContainerChecksumValidation
 	}{
 		{
 			name:               "empty",
-			checksumValidation: ChecksumValidation{},
-			expectedChecksums:  ChecksumValidation{},
+			checksumValidation: ContainerChecksumValidation{},
+			expectedChecksums:  ContainerChecksumValidation{},
 		},
 		{
 			name: "no failed items",
-			checksumValidation: ChecksumValidation{
+			checksumValidation: ContainerChecksumValidation{
 				"test": &FileChecksumValidation{
 					Filename: "test",
 					Passed:   true,
 				},
 			},
-			expectedChecksums: ChecksumValidation{},
+			expectedChecksums: ContainerChecksumValidation{},
 		},
 		{
 			name: "failed item",
-			checksumValidation: ChecksumValidation{
+			checksumValidation: ContainerChecksumValidation{
 				"test": &FileChecksumValidation{
 					Filename: "test",
 					Passed:   true,
@@ -102,7 +102,7 @@ func TestGetFailedItems(t *testing.T) {
 					Filename: "capture",
 				},
 			},
-			expectedChecksums: ChecksumValidation{
+			expectedChecksums: ContainerChecksumValidation{
 				"capture": &FileChecksumValidation{
 					Filename: "capture",
 				},
@@ -134,7 +134,7 @@ func TestSessionValidateChecksums(t *testing.T) {
 	cases := []struct {
 		name              string
 		c                 *container
-		expectedChecksums ChecksumValidation
+		expectedChecksums ContainerChecksumValidation
 		expectedErr       string
 	}{
 		{
@@ -177,7 +177,7 @@ func TestSessionValidateChecksums(t *testing.T) {
 
 				return c
 			}(),
-			expectedChecksums: ChecksumValidation{
+			expectedChecksums: ContainerChecksumValidation{
 				"test": &FileChecksumValidation{
 					Filename: "test",
 					Passed:   false,
@@ -215,7 +215,7 @@ func TestSessionValidateChecksums(t *testing.T) {
 
 				return s.container
 			}(),
-			expectedChecksums: ChecksumValidation{
+			expectedChecksums: ContainerChecksumValidation{
 				bsrPubKeyFileName: &FileChecksumValidation{
 					Filename: bsrPubKeyFileName,
 					Passed:   true,
@@ -318,7 +318,7 @@ func TestSessionValidateChecksums(t *testing.T) {
 
 				return c.container
 			}(),
-			expectedChecksums: ChecksumValidation{
+			expectedChecksums: ContainerChecksumValidation{
 				"requests-inbound.data": &FileChecksumValidation{
 					Filename: "requests-inbound.data",
 					Passed:   true,
@@ -436,7 +436,7 @@ func TestSessionValidateChecksums(t *testing.T) {
 
 				return chr.container
 			}(),
-			expectedChecksums: ChecksumValidation{
+			expectedChecksums: ContainerChecksumValidation{
 				"requests-inbound.data": &FileChecksumValidation{
 					Filename: "requests-inbound.data",
 					Passed:   true,
