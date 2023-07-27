@@ -398,6 +398,23 @@ func Test_UpdateLdap(t *testing.T) {
 			},
 		},
 		{
+			name: "err-update-only-bind-dn-with-no-orig-bind-password",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.bind_dn"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							BindDn: &wrapperspb.StringValue{Value: "updated"},
+						},
+					},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "missing password",
+		},
+		{
 			name: "update-only-bind-password",
 			newAttrsOverride: &pb.AuthMethod_LdapAuthMethodsAttributes{
 				LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
@@ -440,6 +457,23 @@ func Test_UpdateLdap(t *testing.T) {
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
+		},
+		{
+			name: "err-update-only-bind-password-with-no-orig-bind-dn",
+			req: &pbs.UpdateAuthMethodRequest{
+				UpdateMask: &field_mask.FieldMask{
+					Paths: []string{"attributes.bind_password"},
+				},
+				Item: &pb.AuthMethod{
+					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+							BindPassword: &wrapperspb.StringValue{Value: "updated"},
+						},
+					},
+				},
+			},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "missing dn",
 		},
 		{
 			name: "update-a-non-existent-auth-method",
