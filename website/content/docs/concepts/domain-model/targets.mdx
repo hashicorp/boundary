@@ -36,6 +36,9 @@ A target has the following configurable attributes:
 
 - `description` - (optional)
 
+- `type` - (required)
+  Defines the type of connection to a target. Options are `static`, `tcp` and `ssh`. Even if the type of connection to the targer is `ssh`, the `tcp` subcommand should be selected. Using the `ssh` command is reserved for [Credential injection](https://developer.hashicorp.com/boundary/tutorials/hcp-administration/hcp-ssh-cred-injection)
+
 - `address` - (optional)
   This value represents a network resource address and is used when establishing a session.
   It does not accept a port, only an IP address or DNS name.
@@ -97,6 +100,8 @@ SSH targets have the following additional attributes:
 - `storage_bucket_id` - (optional)
   Designates the storage bucket to be used for session recording.
   This attribute is required if you set `enable_session_recording` to `true`.
+
+  If using injected SSH credentials into a Boundary session, the `type` must be set to `ssh` and not `tcp`.
 
 ## Referenced by
 
