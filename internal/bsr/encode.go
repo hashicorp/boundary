@@ -111,6 +111,7 @@ func (e ChunkEncoder) Encode(ctx context.Context, c Chunk) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	length := encode.compress.Len()
 
 	copy(encode.crced[0:], []byte(c.GetProtocol()))
 	copy(encode.crced[protocolSize:], []byte(c.GetType()))
