@@ -111,10 +111,6 @@ func (e ChunkEncoder) Encode(ctx context.Context, c Chunk) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	length := encode.compress.Len()
-	if length > MaxChunkLength {
-		return 0, fmt.Errorf("%s: chunk length %d exceeds max chunk length of %d: %w", op, length, MaxChunkLength, ErrChunkEncode)
-	}
 
 	copy(encode.crced[0:], []byte(c.GetProtocol()))
 	copy(encode.crced[protocolSize:], []byte(c.GetType()))
