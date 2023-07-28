@@ -1,0 +1,164 @@
+---
+layout: docs
+page_title: Manage recorded sessions
+description: |-
+  How to download, view, and validate Boundary's recorded sessions
+---
+
+# Manage recorded sessions
+
+Boundary provides [auditing](/boundary/docs/concepts/auditing) capabilities via [session recording](/boundary/docs/configuration/session-recording).
+In Boundary, a session represents a set of connections between a user and a host from a target.
+The session begins when an authorized user requests access to a target, and it ends when that access is terminated.
+When you enable session recording on a target, any user session that connects to the target is automatically recorded.
+An administrator can later view the recordings to investigate security issues, review system activity, or perform regular assessments of security policies and procedures.
+
+Recorded sessions are stored in an external storage bucket that you create.
+Storing session recordings in a system external to Boundary means those recordings can be accessed, modified, deleted, and even restored independently of Boundary.
+You can view any sessions that Boundary recorded in your storage provider or via the CLI.
+
+You can view a list of all recorded sessions, or if you know the ID of a specific recorded session, you can find any channels associated with that recording.
+
+<Tabs>
+<Tab heading="CLI">
+
+## Find all recorded sessions
+
+Complete the following steps to find all recorded sessions using the CLI.
+
+1. Authenticate to Boundary in the CLI.
+1. Type the following command to view a list of all recorded sessions:
+
+   ```bash
+   boundary session-recordings list -recursive
+   ```
+
+   Boundary displays a list of all recorded sessions by scope.
+
+## Find a specific recorded session by ID
+
+If you have the ID of a recorded session, you can use the following command to list the connections and channels associated with a session recording.
+
+```bash
+boundary session-recordings read -id <id>
+```
+
+## Download recorded session channels
+
+You can download a recording of SSH shell or exec sessions for a channel from a recorded session.
+The channel ID is required for the download.
+
+If you have the ID of a recorded session, you can use the following command to list the connections and channels associated with a session recording.
+
+```bash
+boundary session-recordings read -id <id>
+```
+
+Complete the following steps to download a recorded session channel:
+
+1. Authenticate to Boundary in the CLI.
+1. Type the following command to download a recorded session channel.
+Substitute the ID of the channel for **chr_1234567890**:
+
+   ```bash
+   boundary session-recordings download -id chr_1234567890
+   ```
+
+</Tab>
+<Tab heading="Admin Console">
+
+## Find all recorded sessions
+
+You can find all recorded sessions in the UI from the global scope.
+
+1. Log in to Boundary.
+1. Select **Session Recordings** in the navigation pane.
+
+   The **Session Recordings** page displays the created time, user, project,
+   target, and duration of the recording.
+
+## View session recording details
+
+1. Select **View** next to the session recording you want to view.
+
+   The details page has information related to the session recording and
+   links to related inforation like user, target, and storage bucket.
+
+## Play back channel recording
+
+1. Select **Play** next to the channel recording you want to view.
+
+   The recorded session appears in the media player.
+   Click the **Play** button located at the bottom of the media player
+   to watch the recording.
+
+   If a recorded session channel does not support playback, a **View** button
+   is shown. The playback page displays a message stating that playback
+   is not supported, but still shows details specific to that channel.
+
+</Tab>
+</Tabs>
+
+## Validate the integrity of session recordings
+
+BSR directories are validated based on the contents in the directory.
+Boundary cryptographically verifies each individual Boundary Session Recording (BSR) file. The keys used for verifying all
+Boundary Session Recording files are written to storage and wrapped by the KMS you configured. Each session recording 
+has its own individual key. Boundary generates the following keys when a session recording is authorized:
+
+-  The BSR key is a plaintext AES-GCM key. It is not uploaded to the external object store.
+
+- The private and public key pair is a ed25519 key pair. The key pair is not uploaded to the external object store.
+
+The following files are stored in the BSR file structure to ensure the integrity of a session recording:
+
+- `bsrKey.pub` is the public ed25519 key.
+
+- `wrappedBsrKey` is the BSR key wrapped by the external KMS AES-GCM key that you configure.
+
+- `wrappedPrivKey` is the private ed25519 key wrapped by the external KMS AES-GCM key that you configure.
+
+- `pubKeySelfSignature.sign` is a self-signature of the plaintext public ed25519 key created with its private key.
+
+- `pubKeyBsrSignature.sign` is a signature of the plaintext public ed25519 key created with the BSR key.
+
+- `SHA256SUM.sig` is a signature of the plaintext `SHA256SUM` file created with the private key.
+
+Encrypting the BSR key with an external KMS means that Boundary is not responsible for the longevity of the keys.
+The Boundary admin can always use that external KMS to unwrap the `wrappedBsrKey` and `wrappedPrivKey`.
+A BSR’s key is encrypted using the `go-kms-wrapping` package, and therefore the encrypted BlobInfo includes the metadata required to identify the key-version used during encryption.
+So if the wrapper is reinitialized properly, you can unwrap the keys even if the key has been rotated.
+
+Each BSR directory contains a SHA256SUM and SHA256SUM.sig file that you can use to cryptographically verify the BSR directory's contents.
+The SHA256SUM file contains rows of file names paired with a checksum for the file contents.
+The SHA256SUM.sig is a copy of the SHA256SUM file, signed with the BSR's private key.
+Refer to the following example of a SHA256SUM file:
+
+   ```
+   dc8ce2c42553ce510197c99efe21d89d6229feb4b49170511f49965f2e3cf1a3  wrappedBsrKey
+   a5a91b1b52fb53c4bab661b2e5846bb2a836f050e3d745e436078871914a0bc2  wrappedPrivKey
+   1ca281852ec0d447b94708f28a51b562d47b84affdba25e13a97b0fbd9126424  pubKeyBsrSignature.sign
+   7b5e18e5930bb4cce12a3f203328d9065cae29f26aba3963bb5faece2cf97231  pubKeySelfSignature.sign
+   dc7c6b1316624c7c486a22bab157f947df92b9f2ce4a72469b1f335399a043d5  bsrKey.pub
+   4d3966c458f4e5d67f9ac70b804540b927c718965267c3f36526bf0b18c40ad9  session-meta.json
+   6fec2173d331828677fb5e77fc19168daad3c5f0e82517a82e5701e6c2bdcbe1  session-recording.meta
+   ad76483e7cf3e65391a3a1d0b86a3ad436333ee225bea042b13900abc188b226  session-recording-summary.json
+   ```
+
+Follow these steps to validate a session recording:
+
+1. Unwrap `wrappedBsrKey` using the external KMS you configured to retrieve the BSR key.
+2. Unwrap `wrappedPrivKey` using the external KMS you configured to retrieve the private key.
+3. Use the BSR key or the private key to verify the `bsrKey.pub` key using `go-kms-wrapping` HmacSha256(...)
+4. When the key is verified, use the `bsrKey.pub` key to verify the BSR SHA256SUM file using `go-kms-wrapping` ed25519.Sign(...)
+
+## Validate the data integrity in the external object store
+
+When a Boundary worker uploads a BSR file to AWS S3 through the Boundary AWS plugin, the plugin calculates the SHA256 checksum of the
+contents of the BSR file and attaches this information to the object that is uploaded to S3. The SHA256 checksum value attached to the
+S3 object is returned to the Boundary worker. The Boundary worker calculates the SHA256 checksum value of the BSR file's content from
+local disk and compares it to the plugin value. This process ensures that no tampering of BSR files occurs between the worker, plugin, and S3.
+The SHA256 checksum value generated by the plugin is not a part of the BSR file structure and should not be confused with how Boundary
+cryptographically verifies the BSR directory's contents.
+
+For more information, refer to the [overview of configuring session recording](/boundary/docs/configuration/session-recording).

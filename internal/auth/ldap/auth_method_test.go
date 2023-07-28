@@ -127,6 +127,16 @@ func TestNewAuthMethod(t *testing.T) {
 			wantErrCode:     errors.InvalidParameter,
 			wantErrContains: `https scheme in url "https://alice.com" is not either ldap or ldaps`,
 		},
+		{
+			name:            "opt-error",
+			ctx:             testCtx,
+			scopeId:         "global",
+			urls:            TestConvertToUrls(t, "ldaps://alice.com"),
+			opts:            []Option{WithBindCredential(testCtx, "dn", "")},
+			wantErr:         true,
+			wantErrCode:     errors.InvalidParameter,
+			wantErrContains: "ldap.WithBindCredential: missing password",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

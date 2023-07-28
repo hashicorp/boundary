@@ -297,7 +297,7 @@ func (r *Repository) UpdateAuthMethod(ctx context.Context, am *AuthMethod, versi
 				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 			if err := bc.encrypt(ctx, dbWrapper); err != nil {
-				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error wrapping updated bind credential"))
+				return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 			}
 			addBindCred = bc
 		}
