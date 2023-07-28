@@ -258,7 +258,7 @@ type ContainerValidation struct {
 	Name                    string
 	ContainerType           ContainerType
 	Error                   *multierror.Error
-	FileChecksumValidations ChecksumValidation
+	FileChecksumValidations ContainerChecksumValidation
 	SubContainers           []*ContainerValidation
 }
 

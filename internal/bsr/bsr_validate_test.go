@@ -57,9 +57,9 @@ func TestBSR_Validate_Valid(t *testing.T) {
 		storage                         storage.FS
 		sessionId                       string
 		sessionRecordingId              string
-		expectedSessionChecksums        ChecksumValidation
-		expectedConnectionChecksums     ChecksumValidation
-		expectedChannelChecksums        ChecksumValidation
+		expectedSessionChecksums        ContainerChecksumValidation
+		expectedConnectionChecksums     ContainerChecksumValidation
+		expectedChannelChecksums        ContainerChecksumValidation
 		expectedSessionContainerSize    int
 		expectedConnectionContainerSize int
 		expectedChannelContainerSize    int
@@ -178,7 +178,7 @@ func TestBSR_Validate_Valid(t *testing.T) {
 
 				return fs
 			}(),
-			expectedSessionChecksums: ChecksumValidation{
+			expectedSessionChecksums: ContainerChecksumValidation{
 				bsrPubKeyFileName: &FileChecksumValidation{
 					Filename: bsrPubKeyFileName,
 					Passed:   true,
@@ -212,7 +212,7 @@ func TestBSR_Validate_Valid(t *testing.T) {
 					Passed:   true,
 				},
 			},
-			expectedConnectionChecksums: ChecksumValidation{
+			expectedConnectionChecksums: ContainerChecksumValidation{
 				"connection-recording-summary.json": &FileChecksumValidation{
 					Filename: "connection-recording-summary.json",
 					Passed:   true,
@@ -222,7 +222,7 @@ func TestBSR_Validate_Valid(t *testing.T) {
 					Passed:   true,
 				},
 			},
-			expectedChannelChecksums: ChecksumValidation{
+			expectedChannelChecksums: ContainerChecksumValidation{
 				"channel-recording-summary.json": &FileChecksumValidation{
 					Filename: "channel-recording-summary.json",
 					Passed:   true,
@@ -284,7 +284,7 @@ func TestBSR_Validate_Valid(t *testing.T) {
 				return fs
 			}(),
 
-			expectedSessionChecksums: ChecksumValidation{
+			expectedSessionChecksums: ContainerChecksumValidation{
 				bsrPubKeyFileName: &FileChecksumValidation{
 					Filename: bsrPubKeyFileName,
 					Passed:   true,
@@ -323,7 +323,7 @@ func TestBSR_Validate_Valid(t *testing.T) {
 					Error:    errors.New("checksum mismatch"),
 				},
 			},
-			expectedConnectionChecksums: ChecksumValidation{
+			expectedConnectionChecksums: ContainerChecksumValidation{
 				"connection-recording-summary.json": &FileChecksumValidation{
 					Filename: "connection-recording-summary.json",
 					Passed:   true,
@@ -333,7 +333,7 @@ func TestBSR_Validate_Valid(t *testing.T) {
 					Passed:   true,
 				},
 			},
-			expectedChannelChecksums: ChecksumValidation{
+			expectedChannelChecksums: ContainerChecksumValidation{
 				"channel-recording-summary.json": &FileChecksumValidation{
 					Filename: "channel-recording-summary.json",
 					Passed:   true,
