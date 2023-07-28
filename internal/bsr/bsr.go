@@ -346,14 +346,13 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 				validation.Valid = false
 				continue
 			}
-
 		}
 	}
 
 	return validation, nil
 }
 
-// ValidateConnection validates the checksums of all files in a session container
+// ValidateSession validates the checksums of all files in a session container
 func (v *Validation) ValidateSession(ctx context.Context, s *Session) (*ContainerValidation, error) {
 	const op = "bsr.ValidateConnection"
 
