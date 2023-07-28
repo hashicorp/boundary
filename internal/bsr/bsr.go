@@ -364,6 +364,7 @@ func (v *Validation) ValidateContainer(ctx context.Context, ct ContainerType, c 
 	if err != nil {
 		v.Valid = false
 		containerValidation.Error = fmt.Errorf("%s: failed to validate %s: %w", op, name, err)
+		return containerValidation
 	}
 
 	containerValidation.FileChecksumValidations = containerChecksumValidation
