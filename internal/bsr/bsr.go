@@ -290,14 +290,14 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 		return nil, validationError
 	}
 
-	sessionContainerValidation, err := validation.ValidateContainer(ctx, session.container, session.Meta.Id, SessionContainer)
+	sessionContainerValidation, err := validation.ValidateContainer(ctx, SessionContainer, session.container, session.Meta.Id)
 	validation.SessionRecordingValidation = sessionContainerValidation
 	if err != nil {
 		validation.Valid = false
-		return validation, fmt.Errorf("%s: failed to valid session for %s: %w", op, sessionRecordingId, err)
+		return validation, fmt.Errorf("%s: failed to validate session for %s: %w", op, sessionRecordingId, err)
 	}
 
-	// Valid all connections under session
+	// Validate all connections under session
 	for connId := range session.Meta.connections {
 		// Get connection id
 		connKey := connId
@@ -315,14 +315,14 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 			return validation, fmt.Errorf("%s: failed to retrieve connection for %s: %w", op, connId, err)
 		}
 
-		connectionContainerValidation, err := validation.ValidateContainer(ctx, connection.container, connection.Meta.Id, ConnectionContainer)
+		connectionContainerValidation, err := validation.ValidateContainer(ctx, ConnectionContainer, connection.container, connection.Meta.Id)
 		sessionContainerValidation.SubContainers = append(sessionContainerValidation.SubContainers, connectionContainerValidation)
 		if err != nil {
 			validation.Valid = false
 			continue
 		}
 
-		// Valid all channels under current connection
+		// Validate all channels under current connection
 		for chId := range connection.Meta.channels {
 			// Get channel id
 			chKey := chId
@@ -340,7 +340,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 				return validation, fmt.Errorf("%s: failed to retrieve channel for %s: %w", op, chId, err)
 			}
 
-			channelContainerValidation, err := validation.ValidateContainer(ctx, channel.container, channel.Meta.Id, ChannelContainer)
+			channelContainerValidation, err := validation.ValidateContainer(ctx, ChannelContainer, channel.container, channel.Meta.Id)
 			connectionContainerValidation.SubContainers = append(connectionContainerValidation.SubContainers, channelContainerValidation)
 			if err != nil {
 				validation.Valid = false
@@ -353,7 +353,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 }
 
 // ValidateContainer validates the checksums of all files in a container
-func (v *Validation) ValidateContainer(ctx context.Context, c *container, name string, ct ContainerType) (*ContainerValidation, error) {
+func (v *Validation) ValidateContainer(ctx context.Context, ct ContainerType, c *container, name string) (*ContainerValidation, error) {
 	const op = "bsr.ValidateContainer"
 
 	containerValidation := &ContainerValidation{
