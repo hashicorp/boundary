@@ -284,7 +284,14 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 		return nil, fmt.Errorf("%s: missing key unwrap function: %w", op, ErrInvalidParameter)
 	}
 
-	session, sessionContainerValidation, err := validation.ValidateSession(ctx, sessionRecordingId, f, keyUnwrapFn)
+	session, err := OpenSession(ctx, sessionRecordingId, f, keyUnwrapFn)
+	if err != nil {
+		validationError := fmt.Errorf("%s: failed to retrieve session for %s: %w", op, sessionRecordingId, err)
+		return nil, validationError
+	}
+
+	sessionContainerValidation, err := validation.ValidateSession(ctx, session)
+	validation.SessionRecordingValidation = sessionContainerValidation
 	if err != nil {
 		validation.Valid = false
 		return validation, fmt.Errorf("%s: failed to valid session for %s: %w", op, sessionRecordingId, err)
@@ -292,7 +299,23 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 
 	// Valid all connections under session
 	for connId := range session.Meta.connections {
-		connection, connectionContainerValidation, err := validation.ValidateConnection(ctx, connId, session)
+		// Get connection id
+		connKey := connId
+		lastDotIndex := strings.LastIndex(connId, ".connection")
+		if lastDotIndex == -1 {
+			validation.Valid = false
+			return validation, fmt.Errorf("%s: malformed BSR for: %s", op, connId)
+		}
+		connKey = connId[:lastDotIndex]
+
+		// Open current connection
+		connection, err := session.OpenConnection(ctx, connKey)
+		if err != nil {
+			validation.Valid = false
+			return validation, fmt.Errorf("%s: failed to retrieve connection for %s: %w", op, connId, err)
+		}
+
+		connectionContainerValidation, err := validation.ValidateConnection(ctx, connection)
 		sessionContainerValidation.SubContainers = append(sessionContainerValidation.SubContainers, connectionContainerValidation)
 		if err != nil {
 			validation.Valid = false
@@ -301,7 +324,23 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 
 		// Valid all channels under current connection
 		for chId := range connection.Meta.channels {
-			_, channelContainerValidation, err := validation.ValidateChannel(ctx, chId, connection)
+			// Get channel id
+			chKey := chId
+			lastDotIndex := strings.LastIndex(chId, ".channel")
+			if lastDotIndex == -1 {
+				validation.Valid = false
+				return validation, fmt.Errorf("%s: malformed BSR for: %s", op, chId)
+			}
+			chKey = chId[:lastDotIndex]
+
+			// Open current connection
+			channel, err := connection.OpenChannel(ctx, chKey)
+			if err != nil {
+				validation.Valid = false
+				return validation, fmt.Errorf("%s: failed to retrieve channel for %s: %w", op, chId, err)
+			}
+
+			channelContainerValidation, err := validation.ValidateChannel(ctx, channel)
 			connectionContainerValidation.SubContainers = append(connectionContainerValidation.SubContainers, channelContainerValidation)
 			if err != nil {
 				validation.Valid = false
@@ -314,66 +353,36 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 	return validation, nil
 }
 
-// ValidateConnection opens session and validates the checksums of all files in the container
-func (v *Validation) ValidateSession(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*Session, *ContainerValidation, error) {
+// ValidateConnection validates the checksums of all files in a session container
+func (v *Validation) ValidateSession(ctx context.Context, s *Session) (*ContainerValidation, error) {
 	const op = "bsr.ValidateConnection"
 
 	sessionContainerValidation := &ContainerValidation{
-		Name:          sessionRecordingId,
+		Name:          s.Meta.Id,
 		ContainerType: SessionContainer,
 	}
 
-	v.SessionRecordingValidation = sessionContainerValidation
-
-	session, err := OpenSession(ctx, sessionRecordingId, f, keyUnwrapFn)
-	if err != nil {
-		v.Valid = false
-		validationError := fmt.Errorf("%s: failed to retrieve session for %s: %w", op, sessionRecordingId, err)
-		sessionContainerValidation.Error = multierror.Append(sessionContainerValidation.Error, validationError)
-		return nil, sessionContainerValidation, validationError
-	}
-
-	sessionChecksumValidation, err := session.container.ValidateChecksums(ctx)
+	sessionChecksumValidation, err := s.container.ValidateChecksums(ctx)
 	if err != nil {
 		v.Valid = false
 		sessionContainerValidation.Error = multierror.Append(
-			sessionContainerValidation.Error, fmt.Errorf("%s: failed to validate session for %s: %w", op, sessionRecordingId, err))
+			sessionContainerValidation.Error, fmt.Errorf("%s: failed to validate session for %s: %w", op, s.Meta.Id, err))
 	}
 
 	sessionContainerValidation.FileChecksumValidations = sessionChecksumValidation
 
 	v.updateValidationStatus(ctx, sessionContainerValidation)
 
-	return session, sessionContainerValidation, nil
+	return sessionContainerValidation, nil
 }
 
-// ValidateConnection opens a connection under a session and validates the checksums of all files in the container
-func (v *Validation) ValidateConnection(ctx context.Context, connId string, session *Session) (*Connection, *ContainerValidation, error) {
+// ValidateConnection validates the checksums of all files in a connection container
+func (v *Validation) ValidateConnection(ctx context.Context, conn *Connection) (*ContainerValidation, error) {
 	const op = "bsr.ValidateConnection"
 
 	connectionContainerValidation := &ContainerValidation{
-		Name:          connId,
+		Name:          conn.Meta.Id,
 		ContainerType: ConnectionContainer,
-	}
-
-	// Get connection id
-	connKey := connId
-	lastDotIndex := strings.LastIndex(connId, ".connection")
-	if lastDotIndex == -1 {
-		v.Valid = false
-		validationError := fmt.Errorf("%s: malformed BSR for: %s", op, connId)
-		connectionContainerValidation.Error = multierror.Append(connectionContainerValidation.Error, validationError)
-		return nil, connectionContainerValidation, validationError
-	}
-
-	connKey = connId[:lastDotIndex]
-
-	conn, err := session.OpenConnection(ctx, connKey)
-	if err != nil {
-		v.Valid = false
-		validationError := fmt.Errorf("%s: failed to retrieve connection for %s: %w", op, connId, err)
-		connectionContainerValidation.Error = multierror.Append(connectionContainerValidation.Error, validationError)
-		return nil, connectionContainerValidation, validationError
 	}
 
 	// Validate current connection
@@ -381,62 +390,42 @@ func (v *Validation) ValidateConnection(ctx context.Context, connId string, sess
 	if err != nil {
 		v.Valid = false
 		connectionContainerValidation.Error = multierror.Append(
-			connectionContainerValidation.Error, fmt.Errorf("%s: failed to validate connection for %s: %w", op, connId, err))
+			connectionContainerValidation.Error, fmt.Errorf("%s: failed to validate connection for %s: %w", op, conn.Meta.Id, err))
 
 		// Return nil error for any iteration to validation to continue with other connections and channels
-		return nil, connectionContainerValidation, nil
+		return connectionContainerValidation, nil
 	}
 
 	connectionContainerValidation.FileChecksumValidations = connectionChecksumValidation
 
 	v.updateValidationStatus(ctx, connectionContainerValidation)
 
-	return conn, connectionContainerValidation, nil
+	return connectionContainerValidation, nil
 }
 
-// ValidateChannel opens a channel under a connection and validates the checksums of all files in the container
-func (v *Validation) ValidateChannel(ctx context.Context, chId string, conn *Connection) (*Channel, *ContainerValidation, error) {
+// ValidateChannel validates the checksums of all files in a channel container
+func (v *Validation) ValidateChannel(ctx context.Context, ch *Channel) (*ContainerValidation, error) {
 	const op = "bsr.ValidateChannel"
 
 	channelContainerValidation := &ContainerValidation{
-		Name:          chId,
+		Name:          ch.Meta.Id,
 		ContainerType: ChannelContainer,
-	}
-
-	// Get channel id
-	chKey := chId
-	lastDotIndex := strings.LastIndex(chId, ".channel")
-	if lastDotIndex == -1 {
-		v.Valid = false
-		validationError := fmt.Errorf("%s: malformed BSR for: %s", op, chId)
-		channelContainerValidation.Error = multierror.Append(channelContainerValidation.Error, validationError)
-		return nil, channelContainerValidation, validationError
-	}
-
-	chKey = chId[:lastDotIndex]
-
-	ch, err := conn.OpenChannel(ctx, chKey)
-	if err != nil {
-		v.Valid = false
-		validationError := fmt.Errorf("%s: failed to retrieve channel for %s: %w", op, chId, err)
-		channelContainerValidation.Error = multierror.Append(channelContainerValidation.Error, validationError)
-		return nil, channelContainerValidation, validationError
 	}
 
 	channelChecksumValidation, err := ch.container.ValidateChecksums(ctx)
 	if err != nil {
 		v.Valid = false
-		channelContainerValidation.Error = multierror.Append(channelContainerValidation.Error, fmt.Errorf("%s: failed to validate channel for %s: %w", op, chId, err))
+		channelContainerValidation.Error = multierror.Append(channelContainerValidation.Error, fmt.Errorf("%s: failed to validate channel for %s: %w", op, ch.Meta.Id, err))
 
 		// Return nil error for any iteration for validation to continue on other connections and channels
-		return ch, channelContainerValidation, nil
+		return channelContainerValidation, nil
 	}
 
 	channelContainerValidation.FileChecksumValidations = channelChecksumValidation
 
 	v.updateValidationStatus(ctx, channelContainerValidation)
 
-	return ch, channelContainerValidation, nil
+	return channelContainerValidation, nil
 }
 
 // updateValidationSummary updates the value of "Valid" field in Validation struct based on if there are failed checksums
