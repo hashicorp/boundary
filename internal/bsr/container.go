@@ -559,12 +559,7 @@ func (c *container) ValidateChecksums(ctx context.Context) (ContainerChecksumVal
 			Filename: fileName,
 		}
 		checksumValidation[fileName] = report
-		f, err := c.container.OpenFile(ctx, fileName)
-		if err != nil {
-			report.Error = err
-			continue
-		}
-		actualChecksum, err := crypto.Sha256Sum(ctx, f, crypto.WithHexEncoding(true))
+		actualChecksum, err := c.computeFileChecksum(ctx, fileName, crypto.WithHexEncoding(true))
 		if err != nil {
 			report.Error = err
 			continue
@@ -576,4 +571,25 @@ func (c *container) ValidateChecksums(ctx context.Context) (ContainerChecksumVal
 		report.Passed = true
 	}
 	return checksumValidation, nil
+}
+
+// computeFileChecksum will open a file, read its contents, and computes SHA256 message digest
+func (c *container) computeFileChecksum(ctx context.Context, fileName string, opt ...wrapping.Option) (checksum []byte, err error) {
+	const op = "bsr.(container).computeFileChecksum"
+	var f storage.File
+	f, err = c.container.OpenFile(ctx, fileName)
+	if err != nil {
+		err = fmt.Errorf("%s: %w", op, err)
+		return
+	}
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
+	checksum, err = crypto.Sha256Sum(ctx, f, opt...)
+	if err != nil {
+		err = fmt.Errorf("%s: %w", op, err)
+	}
+	return
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr/internal/checksum"
 	"github.com/hashicorp/boundary/internal/bsr/internal/fstest"
 	"github.com/hashicorp/boundary/internal/bsr/kms"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -150,6 +151,34 @@ func TestSessionValidateChecksums(t *testing.T) {
 				},
 			},
 			expectedErr: "missing keys",
+		},
+		{
+			name: "file does not exist",
+			c: func() *container {
+				sessionId := "session_123456789"
+				keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), sessionId)
+				require.NoError(t, err)
+
+				fs := &fstest.MemFS{}
+				sc, err := fs.New(ctx, fmt.Sprintf(bsrFileNameTemplate, sessionId))
+				require.NoError(t, err)
+
+				c, err := newContainer(ctx, SessionContainer, sc, keys)
+				require.NoError(t, err)
+
+				c.shaSums = checksum.Sha256Sums{
+					"test": []byte("test"),
+				}
+
+				return c
+			}(),
+			expectedChecksums: ContainerChecksumValidation{
+				"test": &FileChecksumValidation{
+					Filename: "test",
+					Passed:   false,
+					Error:    fmt.Errorf("bsr.(container).computeFileChecksum: file test does not exist: does not exist"),
+				},
+			},
 		},
 		{
 			name: "failed checksum match",
@@ -479,8 +508,63 @@ func TestSessionValidateChecksums(t *testing.T) {
 			for fileName, expectedStatus := range tc.expectedChecksums {
 				actualStatus, ok := validatedChecksums[fileName]
 				require.True(t, ok, fmt.Sprintf("missing %s", fileName))
-				assert.Equal(t, expectedStatus, actualStatus, fileName)
+				assert.Equal(t, expectedStatus.Passed, actualStatus.Passed)
+				assert.Equal(t, expectedStatus.Filename, actualStatus.Filename)
+				if expectedStatus.Error == nil {
+					assert.NoError(t, actualStatus.Error)
+				} else {
+					require.Error(t, actualStatus.Error)
+					assert.Equal(t, expectedStatus.Error.Error(), actualStatus.Error.Error())
+				}
 			}
+		})
+	}
+}
+
+func TestComputeFileChecksum(t *testing.T) {
+	ctx := context.Background()
+
+	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
+	require.NoError(t, err)
+	f := &fstest.MemFS{}
+
+	fc, err := f.New(ctx, fmt.Sprintf(bsrFileNameTemplate, "session-id"))
+	require.NoError(t, err)
+
+	c, err := newContainer(ctx, SessionContainer, fc, keys)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	cases := []struct {
+		name        string
+		fileName    string
+		expectedErr string
+	}{
+		{
+			name:        "empty file name",
+			expectedErr: "file  does not exist",
+		},
+		{
+			name:        "file does not exist",
+			fileName:    "dne",
+			expectedErr: "file dne does not exist",
+		},
+		{
+			name:     "valid",
+			fileName: ".journal",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			checksum, err := c.computeFileChecksum(ctx, tc.fileName, crypto.WithHexEncoding(true))
+			if tc.expectedErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectedErr)
+				assert.Empty(t, checksum)
+				return
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, checksum)
 		})
 	}
 }
