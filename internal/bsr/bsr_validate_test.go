@@ -6,6 +6,7 @@ package bsr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/bsr/internal/checksum"
@@ -16,13 +17,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBSR_Validate_Valid(t *testing.T) {
+func TestBSR_Validate_ValidateBSR(t *testing.T) {
 	ctx := context.Background()
 
 	connectionId := "test_connection"
 	channelId := "test_channel"
 	sessionId := "s_01234567881"
-	protocol := Protocol("TEST_VALIDATE_PROTOCOL")
+	protocol := Protocol("TEST_VALIDATE_BSR_PROTOCOL")
 
 	err := RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
 		return &BaseChannelSummary{Id: "chr_123456789", ConnectionRecordingId: connectionId}
@@ -70,7 +71,6 @@ func TestBSR_Validate_Valid(t *testing.T) {
 			sessionId:          "s_01234567881",
 			sessionRecordingId: "sr_01234567881",
 			storage: func() storage.FS {
-				// sessionId := "s_01234567881"
 				sessionRecordingId := "sr_01234567881"
 				fs := &fstest.MemFS{}
 				// Set up session
@@ -385,6 +385,223 @@ func TestBSR_Validate_Valid(t *testing.T) {
 					assert.Equal(t, tc.expectedChannelChecksums, channel.FileChecksumValidations)
 				}
 			}
+		})
+	}
+}
+
+func TestBSR_Validate_ValidateContainer(t *testing.T) {
+	ctx := context.Background()
+
+	protocol := Protocol("TEST_VALIDATE_CONTAINER_PROTOCOL")
+	connectionId := "test_connection"
+	channelId := "chr_123456789"
+	sessionId := "s_01234567881"
+
+	err := RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
+		return &BaseChannelSummary{Id: channelId, ConnectionRecordingId: connectionId}
+	})
+	require.NoError(t, err)
+
+	err = RegisterSummaryAllocFunc(protocol, SessionContainer, func(ctx context.Context) Summary {
+		return &BaseSessionSummary{Id: sessionId, ConnectionCount: 1}
+	})
+	require.NoError(t, err)
+
+	err = RegisterSummaryAllocFunc(protocol, ConnectionContainer, func(ctx context.Context) Summary {
+		return &BaseConnectionSummary{Id: connectionId, ChannelCount: 1}
+	})
+	require.NoError(t, err)
+
+	cases := []struct {
+		name                        string
+		c                           *container
+		containerName               string
+		containerType               ContainerType
+		expectedValidation          *Validation
+		expectedContainerValidation *ContainerValidation
+		wantErr                     error
+	}{
+		{
+			name: "valid container",
+			c: func() *container {
+				fs := &fstest.MemFS{}
+
+				// Setup keys
+				keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), sessionId)
+				require.NoError(t, err)
+
+				keyFn := func(w kms.WrappedKeys) (kms.UnwrappedKeys, error) {
+					u := kms.UnwrappedKeys{
+						BsrKey:  keys.BsrKey,
+						PrivKey: keys.PrivKey,
+					}
+					return u, nil
+				}
+
+				// Set up session
+				srm := &SessionRecordingMeta{
+					Id:       sessionId,
+					Protocol: protocol,
+				}
+				sessionMeta := TestSessionMeta(sessionId)
+
+				session, err := NewSession(ctx, srm, sessionMeta, fs, keys, WithSupportsMultiplex(true))
+				require.NoError(t, err)
+				require.NotNil(t, session)
+
+				// Encode session summary
+				session.EncodeSummary(ctx, &BaseSessionSummary{
+					Id: channelId,
+				})
+
+				require.NoError(t, session.Close(ctx))
+
+				openSesh, err := OpenSession(ctx, srm.Id, fs, keyFn)
+				require.NoError(t, err)
+				require.NotNil(t, openSesh)
+
+				return openSesh.container
+			}(),
+			containerName: "sr_123456789",
+			containerType: SessionContainer,
+			expectedValidation: &Validation{
+				SessionRecordingId: "sr_123456789",
+				Valid:              true,
+			},
+			expectedContainerValidation: &ContainerValidation{
+				Name:          "sr_123456789",
+				ContainerType: SessionContainer,
+				FileChecksumValidations: ContainerChecksumValidation{
+					bsrPubKeyFileName: &FileChecksumValidation{
+						Filename: bsrPubKeyFileName,
+						Passed:   true,
+					},
+					pubKeyBsrSignatureFileName: &FileChecksumValidation{
+						Filename: pubKeyBsrSignatureFileName,
+						Passed:   true,
+					},
+					pubKeySelfSignatureFileName: &FileChecksumValidation{
+						Filename: pubKeySelfSignatureFileName,
+						Passed:   true,
+					},
+					wrappedBsrKeyFileName: &FileChecksumValidation{
+						Filename: wrappedBsrKeyFileName,
+						Passed:   true,
+					},
+					wrappedPrivKeyFileName: &FileChecksumValidation{
+						Filename: wrappedPrivKeyFileName,
+						Passed:   true,
+					},
+					sessionMetaFileName: &FileChecksumValidation{
+						Filename: sessionMetaFileName,
+						Passed:   true,
+					},
+					"session-recording.meta": &FileChecksumValidation{
+						Filename: "session-recording.meta",
+						Passed:   true,
+					},
+					"session-recording-summary.json": &FileChecksumValidation{
+						Filename: "session-recording-summary.json",
+						Passed:   true,
+					},
+				},
+			},
+		},
+		{
+			name: "invalid container",
+			c: func() *container {
+				sessionId := "session_123456789"
+				keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), sessionId)
+				require.NoError(t, err)
+
+				fs := &fstest.MemFS{}
+				sc, err := fs.New(ctx, fmt.Sprintf(bsrFileNameTemplate, sessionId))
+				require.NoError(t, err)
+
+				c, err := newContainer(ctx, SessionContainer, sc, keys)
+				require.NoError(t, err)
+
+				c.shaSums = checksum.Sha256Sums{
+					"test": []byte("test"),
+				}
+
+				f, err := c.create(ctx, "test")
+				require.NoError(t, err)
+				_, err = f.Write([]byte("hello world"))
+				require.NoError(t, err)
+				require.NoError(t, f.Close())
+
+				return c
+			}(),
+			containerName: "sr_123456789",
+			containerType: SessionContainer,
+			expectedValidation: &Validation{
+				SessionRecordingId: "sr_123456789",
+				Valid:              false,
+			},
+			expectedContainerValidation: &ContainerValidation{
+				Name:          "sr_123456789",
+				ContainerType: SessionContainer,
+				FileChecksumValidations: ContainerChecksumValidation{
+					"test": &FileChecksumValidation{
+						Filename: "test",
+						Passed:   false,
+						Error:    errors.New("checksum mismatch"),
+					},
+				},
+			},
+		},
+		{
+			name: "invalid container - without checksums",
+			c: func() *container {
+				sessionId := "session_123456789"
+				keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), sessionId)
+				require.NoError(t, err)
+
+				fs := &fstest.MemFS{}
+				sc, err := fs.New(ctx, fmt.Sprintf(bsrFileNameTemplate, sessionId))
+				require.NoError(t, err)
+
+				c, err := newContainer(ctx, SessionContainer, sc, keys)
+				require.NoError(t, err)
+
+				f, err := c.create(ctx, "test")
+				require.NoError(t, err)
+				_, err = f.Write([]byte("hello world"))
+				require.NoError(t, err)
+				require.NoError(t, f.Close())
+
+				return c
+			}(),
+			containerName: "sr_123456789",
+			containerType: SessionContainer,
+			expectedValidation: &Validation{
+				SessionRecordingId: "sr_123456789",
+				Valid:              false,
+			},
+			expectedContainerValidation: &ContainerValidation{
+				Name:          "sr_123456789",
+				ContainerType: SessionContainer,
+			},
+			wantErr: errors.New("bsr.(Validate).ValidateContainer: failed to validate sr_123456789: bsr.(container).Validate: missing checksums"),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			v := &Validation{
+				SessionRecordingId: tc.containerName,
+				Valid:              true,
+			}
+			containerValidation := v.ValidateContainer(ctx, tc.containerType, tc.c, tc.containerName)
+			if tc.wantErr != nil {
+				assert.EqualError(t, containerValidation.Error, tc.wantErr.Error())
+				return
+			}
+			require.NotNil(t, containerValidation)
+
+			assert.Equal(t, v, tc.expectedValidation)
+			assert.Equal(t, tc.expectedContainerValidation, containerValidation)
 		})
 	}
 }

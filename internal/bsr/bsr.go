@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr/kms"
 	"github.com/hashicorp/boundary/internal/storage"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/crypto"
-	"github.com/hashicorp/go-multierror"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -257,7 +256,7 @@ type Validation struct {
 type ContainerValidation struct {
 	Name                    string
 	ContainerType           ContainerType
-	Error                   *multierror.Error
+	Error                   error
 	FileChecksumValidations ContainerChecksumValidation
 	SubContainers           []*ContainerValidation
 }
@@ -290,7 +289,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 		return nil, validationError
 	}
 
-	sessionContainerValidation, err := validation.ValidateContainer(ctx, SessionContainer, session.container, session.Meta.Id)
+	sessionContainerValidation := validation.ValidateContainer(ctx, SessionContainer, session.container, session.Meta.Id)
 	validation.SessionRecordingValidation = sessionContainerValidation
 	if err != nil {
 		validation.Valid = false
@@ -315,7 +314,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 			return validation, fmt.Errorf("%s: failed to retrieve connection for %s: %w", op, connId, err)
 		}
 
-		connectionContainerValidation, err := validation.ValidateContainer(ctx, ConnectionContainer, connection.container, connection.Meta.Id)
+		connectionContainerValidation := validation.ValidateContainer(ctx, ConnectionContainer, connection.container, connection.Meta.Id)
 		sessionContainerValidation.SubContainers = append(sessionContainerValidation.SubContainers, connectionContainerValidation)
 		if err != nil {
 			validation.Valid = false
@@ -340,7 +339,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 				return validation, fmt.Errorf("%s: failed to retrieve channel for %s: %w", op, chId, err)
 			}
 
-			channelContainerValidation, err := validation.ValidateContainer(ctx, ChannelContainer, channel.container, channel.Meta.Id)
+			channelContainerValidation := validation.ValidateContainer(ctx, ChannelContainer, channel.container, channel.Meta.Id)
 			connectionContainerValidation.SubContainers = append(connectionContainerValidation.SubContainers, channelContainerValidation)
 			if err != nil {
 				validation.Valid = false
@@ -353,7 +352,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 }
 
 // ValidateContainer validates the checksums of all files in a container
-func (v *Validation) ValidateContainer(ctx context.Context, ct ContainerType, c *container, name string) (*ContainerValidation, error) {
+func (v *Validation) ValidateContainer(ctx context.Context, ct ContainerType, c *container, name string) *ContainerValidation {
 	const op = "bsr.(Validate).ValidateContainer"
 
 	containerValidation := &ContainerValidation{
@@ -364,15 +363,14 @@ func (v *Validation) ValidateContainer(ctx context.Context, ct ContainerType, c 
 	containerChecksumValidation, err := c.ValidateChecksums(ctx)
 	if err != nil {
 		v.Valid = false
-		containerValidation.Error = multierror.Append(
-			containerValidation.Error, fmt.Errorf("%s: failed to validate %s: %w", op, name, err))
+		containerValidation.Error = fmt.Errorf("%s: failed to validate %s: %w", op, name, err)
 	}
 
 	containerValidation.FileChecksumValidations = containerChecksumValidation
 
 	v.updateValidationStatus(ctx, containerValidation)
 
-	return containerValidation, nil
+	return containerValidation
 }
 
 // updateValidationSummary updates the value of "Valid" field in Validation struct based on if there are failed checksums
