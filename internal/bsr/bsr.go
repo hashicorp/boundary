@@ -269,10 +269,6 @@ type ContainerValidation struct {
 // The validation error will be added to the ContainerValidation struct "Error" field for that container.
 func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*Validation, error) {
 	const op = "bsr.Validate"
-	validation := &Validation{
-		SessionRecordingId: sessionRecordingId,
-		Valid:              true,
-	}
 
 	switch {
 	case sessionRecordingId == "":
@@ -285,8 +281,12 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 
 	session, err := OpenSession(ctx, sessionRecordingId, f, keyUnwrapFn)
 	if err != nil {
-		validationError := fmt.Errorf("%s: failed to retrieve session for %s: %w", op, sessionRecordingId, err)
-		return nil, validationError
+		return nil, fmt.Errorf("%s: failed to retrieve session for %s: %w", op, sessionRecordingId, err)
+	}
+
+	validation := &Validation{
+		SessionRecordingId: sessionRecordingId,
+		Valid:              true,
 	}
 
 	sessionContainerValidation := validateContainer(ctx, validation, SessionContainer, session.container, session.Meta.Id)
