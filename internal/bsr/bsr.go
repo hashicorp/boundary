@@ -290,7 +290,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 		return nil, validationError
 	}
 
-	sessionContainerValidation, err := validation.ValidateSession(ctx, session)
+	sessionContainerValidation, err := validation.ValidateContainer(ctx, session.container, session.Meta.Id, SessionContainer)
 	validation.SessionRecordingValidation = sessionContainerValidation
 	if err != nil {
 		validation.Valid = false
@@ -315,7 +315,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 			return validation, fmt.Errorf("%s: failed to retrieve connection for %s: %w", op, connId, err)
 		}
 
-		connectionContainerValidation, err := validation.ValidateConnection(ctx, connection)
+		connectionContainerValidation, err := validation.ValidateContainer(ctx, connection.container, connection.Meta.Id, ConnectionContainer)
 		sessionContainerValidation.SubContainers = append(sessionContainerValidation.SubContainers, connectionContainerValidation)
 		if err != nil {
 			validation.Valid = false
@@ -340,7 +340,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 				return validation, fmt.Errorf("%s: failed to retrieve channel for %s: %w", op, chId, err)
 			}
 
-			channelContainerValidation, err := validation.ValidateChannel(ctx, channel)
+			channelContainerValidation, err := validation.ValidateContainer(ctx, channel.container, channel.Meta.Id, ChannelContainer)
 			connectionContainerValidation.SubContainers = append(connectionContainerValidation.SubContainers, channelContainerValidation)
 			if err != nil {
 				validation.Valid = false
@@ -352,79 +352,27 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 	return validation, nil
 }
 
-// ValidateSession validates the checksums of all files in a session container
-func (v *Validation) ValidateSession(ctx context.Context, s *Session) (*ContainerValidation, error) {
-	const op = "bsr.ValidateConnection"
+// ValidateContainer validates the checksums of all files in a container
+func (v *Validation) ValidateContainer(ctx context.Context, c *container, name string, ct ContainerType) (*ContainerValidation, error) {
+	const op = "bsr.ValidateContainer"
 
-	sessionContainerValidation := &ContainerValidation{
-		Name:          s.Meta.Id,
-		ContainerType: SessionContainer,
+	containerValidation := &ContainerValidation{
+		Name:          name,
+		ContainerType: ct,
 	}
 
-	sessionChecksumValidation, err := s.container.ValidateChecksums(ctx)
+	containerChecksumValidation, err := c.ValidateChecksums(ctx)
 	if err != nil {
 		v.Valid = false
-		sessionContainerValidation.Error = multierror.Append(
-			sessionContainerValidation.Error, fmt.Errorf("%s: failed to validate session for %s: %w", op, s.Meta.Id, err))
+		containerValidation.Error = multierror.Append(
+			containerValidation.Error, fmt.Errorf("%s: failed to validate %s: %w", op, name, err))
 	}
 
-	sessionContainerValidation.FileChecksumValidations = sessionChecksumValidation
+	containerValidation.FileChecksumValidations = containerChecksumValidation
 
-	v.updateValidationStatus(ctx, sessionContainerValidation)
+	v.updateValidationStatus(ctx, containerValidation)
 
-	return sessionContainerValidation, nil
-}
-
-// ValidateConnection validates the checksums of all files in a connection container
-func (v *Validation) ValidateConnection(ctx context.Context, conn *Connection) (*ContainerValidation, error) {
-	const op = "bsr.ValidateConnection"
-
-	connectionContainerValidation := &ContainerValidation{
-		Name:          conn.Meta.Id,
-		ContainerType: ConnectionContainer,
-	}
-
-	// Validate current connection
-	connectionChecksumValidation, err := conn.container.ValidateChecksums(ctx)
-	if err != nil {
-		v.Valid = false
-		connectionContainerValidation.Error = multierror.Append(
-			connectionContainerValidation.Error, fmt.Errorf("%s: failed to validate connection for %s: %w", op, conn.Meta.Id, err))
-
-		// Return nil error for any iteration to validation to continue with other connections and channels
-		return connectionContainerValidation, nil
-	}
-
-	connectionContainerValidation.FileChecksumValidations = connectionChecksumValidation
-
-	v.updateValidationStatus(ctx, connectionContainerValidation)
-
-	return connectionContainerValidation, nil
-}
-
-// ValidateChannel validates the checksums of all files in a channel container
-func (v *Validation) ValidateChannel(ctx context.Context, ch *Channel) (*ContainerValidation, error) {
-	const op = "bsr.ValidateChannel"
-
-	channelContainerValidation := &ContainerValidation{
-		Name:          ch.Meta.Id,
-		ContainerType: ChannelContainer,
-	}
-
-	channelChecksumValidation, err := ch.container.ValidateChecksums(ctx)
-	if err != nil {
-		v.Valid = false
-		channelContainerValidation.Error = multierror.Append(channelContainerValidation.Error, fmt.Errorf("%s: failed to validate channel for %s: %w", op, ch.Meta.Id, err))
-
-		// Return nil error for any iteration for validation to continue on other connections and channels
-		return channelContainerValidation, nil
-	}
-
-	channelContainerValidation.FileChecksumValidations = channelChecksumValidation
-
-	v.updateValidationStatus(ctx, channelContainerValidation)
-
-	return channelContainerValidation, nil
+	return containerValidation, nil
 }
 
 // updateValidationSummary updates the value of "Valid" field in Validation struct based on if there are failed checksums
