@@ -74,6 +74,9 @@ worker {
   using env or file, their contents must formatted as a JSON array:
   `["127.0.0.1", "192.168.0.1", "10.0.0.1"]`
 
+  HCP Boundary workers require the `hcp_boundary_cluster_id` parameter instead of `initial upstreams`.
+  If you configure an HCP worker with `initial_upstreams`, the worker configuration fails.
+
 - `tags` - A map of key-value pairs where values are an array of strings. Most
   commonly used for [filtering](/boundary/docs/concepts/filtering) targets a
   worker can proxy via [worker
