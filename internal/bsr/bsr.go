@@ -354,7 +354,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 
 // ValidateContainer validates the checksums of all files in a container
 func (v *Validation) ValidateContainer(ctx context.Context, ct ContainerType, c *container, name string) (*ContainerValidation, error) {
-	const op = "bsr.ValidateContainer"
+	const op = "bsr.(Validate).ValidateContainer"
 
 	containerValidation := &ContainerValidation{
 		Name:          name,
