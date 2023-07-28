@@ -63,7 +63,6 @@ func TestBSR_Validate_Valid(t *testing.T) {
 		expectedSessionContainerSize    int
 		expectedConnectionContainerSize int
 		expectedChannelContainerSize    int
-		validationSummary               ValidationSummary
 		wantErr                         error
 	}{
 		{
@@ -236,10 +235,6 @@ func TestBSR_Validate_Valid(t *testing.T) {
 			expectedSessionContainerSize:    2,
 			expectedConnectionContainerSize: 2,
 			expectedChannelContainerSize:    0,
-			validationSummary: ValidationSummary{
-				SessionRecordingId: "sr_01234567881",
-				Valid:              true,
-			},
 		},
 		{
 			name:               "Failed checksum",
@@ -351,55 +346,43 @@ func TestBSR_Validate_Valid(t *testing.T) {
 			expectedSessionContainerSize:    2,
 			expectedConnectionContainerSize: 2,
 			expectedChannelContainerSize:    0,
-			validationSummary: ValidationSummary{
-				SessionRecordingId: "sr_21234567881",
-				Valid:              false,
-				FailedChecksums: map[ContainerType]map[string]ChecksumValidation{
-					SessionContainer: {
-						"sr_21234567881": ChecksumValidation{
-							"Test": &FileChecksumValidation{
-								Filename: "Test",
-								Passed:   false,
-								Error:    errors.New("checksum mismatch"),
-							},
-						},
-					},
-				},
-			},
+		},
+		{
+			name:    "missing session recording id parameter",
+			wantErr: errors.New("bsr.Validate: missing session recording id: invalid parameter"),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			validation, summary, err := Validate(ctx, tc.sessionRecordingId, tc.storage, keyFn)
+			validation, err := Validate(ctx, tc.sessionRecordingId, tc.storage, keyFn)
+			if tc.wantErr != nil {
+				assert.EqualError(t, err, tc.wantErr.Error())
+				return
+			}
 			require.NoError(t, err)
 			require.NotNil(t, validation)
-			require.NotNil(t, summary)
-
-			assert.Equal(t, tc.validationSummary.SessionRecordingId, summary.SessionRecordingId)
-			assert.Equal(t, tc.validationSummary.Valid, summary.Valid)
-			assert.Equal(t, tc.validationSummary.FailedChecksums, summary.FailedChecksums)
 
 			// Validate Session
-			assert.Equal(t, tc.sessionRecordingId, validation.Name)
-			assert.Equal(t, SessionContainer, validation.Type)
-			assert.Equal(t, len(tc.expectedSessionChecksums), len(validation.ChecksumValidation))
-			assert.Equal(t, tc.expectedSessionChecksums, validation.ChecksumValidation)
+			assert.Equal(t, tc.sessionRecordingId, validation.SessionRecordingId)
+			assert.Equal(t, SessionContainer, validation.SessionRecordingValidation.ContainerType)
+			assert.Equal(t, len(tc.expectedSessionChecksums), len(validation.SessionRecordingValidation.FileChecksumValidations))
+			assert.Equal(t, tc.expectedSessionChecksums, validation.SessionRecordingValidation.FileChecksumValidations)
 
 			// Validate Multiple Connections
-			for _, connection := range validation.SubContainer {
+			for _, connection := range validation.SessionRecordingValidation.SubContainers {
 				require.NotNil(t, connection)
-				assert.Equal(t, ConnectionContainer, connection.Type)
-				assert.Equal(t, tc.expectedConnectionContainerSize, len(connection.SubContainer))
-				assert.Equal(t, len(tc.expectedConnectionChecksums), len(connection.ChecksumValidation))
-				assert.Equal(t, tc.expectedConnectionChecksums, connection.ChecksumValidation)
+				assert.Equal(t, ConnectionContainer, connection.ContainerType)
+				assert.Equal(t, tc.expectedConnectionContainerSize, len(connection.SubContainers))
+				assert.Equal(t, len(tc.expectedConnectionChecksums), len(connection.FileChecksumValidations))
+				assert.Equal(t, tc.expectedConnectionChecksums, connection.FileChecksumValidations)
 
 				// Validate Multiple Channels
-				for _, channel := range connection.SubContainer {
+				for _, channel := range connection.SubContainers {
 					require.NotNil(t, channel)
-					assert.Equal(t, ChannelContainer, channel.Type)
-					assert.Equal(t, tc.expectedChannelContainerSize, len(channel.SubContainer))
-					assert.Equal(t, len(tc.expectedChannelChecksums), len(channel.ChecksumValidation))
-					assert.Equal(t, tc.expectedChannelChecksums, channel.ChecksumValidation)
+					assert.Equal(t, ChannelContainer, channel.ContainerType)
+					assert.Equal(t, tc.expectedChannelContainerSize, len(channel.SubContainers))
+					assert.Equal(t, len(tc.expectedChannelChecksums), len(channel.FileChecksumValidations))
+					assert.Equal(t, tc.expectedChannelChecksums, channel.FileChecksumValidations)
 				}
 			}
 		})

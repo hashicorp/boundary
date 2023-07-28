@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/bsr/kms"
 	"github.com/hashicorp/boundary/internal/storage"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/crypto"
+	"github.com/hashicorp/go-multierror"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -245,18 +246,20 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 	return session, nil
 }
 
+// Validation provides the results from validating a bsr.
 type Validation struct {
-	Name               string
-	Type               ContainerType
-	Error              error
-	ChecksumValidation ChecksumValidation
-	SubContainer       []Validation `json:"sub_container,omitempty"`
+	SessionRecordingId         string
+	Valid                      bool
+	SessionRecordingValidation *ContainerValidation
 }
 
-type ValidationSummary struct {
-	SessionRecordingId string
-	Valid              bool
-	FailedChecksums    map[ContainerType]map[string]ChecksumValidation
+// ContainerValidation contains the results from validating a container in a bsr.
+type ContainerValidation struct {
+	Name                    string
+	ContainerType           ContainerType
+	Error                   *multierror.Error
+	FileChecksumValidations ChecksumValidation
+	SubContainers           []*ContainerValidation
 }
 
 // Validate retrieves a BSR from storage using the sessionRecordingId and validates the BSR.
@@ -264,152 +267,186 @@ type ValidationSummary struct {
 // each file in SHA256SUM file.
 //
 // Validation will continue even if there's an error encountered during validation.
-// The validation error will be added to the Validation struct Error field.
-func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (Validation, ValidationSummary, error) {
+// The validation error will be added to the ContainerValidation struct "Error" field for that container.
+func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*Validation, error) {
 	const op = "bsr.Validate"
-	validation := Validation{
-		Name:         sessionRecordingId,
-		Type:         SessionContainer,
-		SubContainer: []Validation{},
-	}
-
-	validationSummary := ValidationSummary{
+	validation := &Validation{
 		SessionRecordingId: sessionRecordingId,
 		Valid:              true,
 	}
 
 	switch {
 	case sessionRecordingId == "":
-		validationSummary.Valid = false
-		return validation, validationSummary, fmt.Errorf("%s: missing session recording id: %w", op, ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: missing session recording id: %w", op, ErrInvalidParameter)
 	case f == nil:
-		validationSummary.Valid = false
-		return validation, validationSummary, fmt.Errorf("%s: missing storage: %w", op, ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: missing storage: %w", op, ErrInvalidParameter)
 	case keyUnwrapFn == nil:
-		validationSummary.Valid = false
-		return validation, validationSummary, fmt.Errorf("%s: missing key unwrap function: %w", op, ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: missing key unwrap function: %w", op, ErrInvalidParameter)
 	}
+
+	session, sessionContainerValidation, err := validation.ValidateSession(ctx, sessionRecordingId, f, keyUnwrapFn)
+	if err != nil {
+		validation.Valid = false
+		return validation, fmt.Errorf("%s: failed to valid session for %s: %w", op, sessionRecordingId, err)
+	}
+
+	// Valid all connections under session
+	for connId := range session.Meta.connections {
+		connection, connectionContainerValidation, err := validation.ValidateConnection(ctx, connId, session)
+		sessionContainerValidation.SubContainers = append(sessionContainerValidation.SubContainers, connectionContainerValidation)
+		if err != nil {
+			validation.Valid = false
+			continue
+		}
+
+		// Valid all channels under current connection
+		for chId := range connection.Meta.channels {
+			_, channelContainerValidation, err := validation.ValidateChannel(ctx, chId, connection)
+			connectionContainerValidation.SubContainers = append(connectionContainerValidation.SubContainers, channelContainerValidation)
+			if err != nil {
+				validation.Valid = false
+				continue
+			}
+
+		}
+	}
+
+	return validation, nil
+}
+
+// ValidateConnection opens session and validates the checksums of all files in the container
+func (v *Validation) ValidateSession(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*Session, *ContainerValidation, error) {
+	const op = "bsr.ValidateConnection"
+
+	sessionContainerValidation := &ContainerValidation{
+		Name:          sessionRecordingId,
+		ContainerType: SessionContainer,
+	}
+
+	v.SessionRecordingValidation = sessionContainerValidation
 
 	session, err := OpenSession(ctx, sessionRecordingId, f, keyUnwrapFn)
 	if err != nil {
-		validationSummary.Valid = false
+		v.Valid = false
 		validationError := fmt.Errorf("%s: failed to retrieve session for %s: %w", op, sessionRecordingId, err)
-		validation.Error = errors.Join(validation.Error, validationError)
-		return validation, validationSummary, validationError
+		sessionContainerValidation.Error = multierror.Append(sessionContainerValidation.Error, validationError)
+		return nil, sessionContainerValidation, validationError
 	}
 
-	// Validate session
 	sessionChecksumValidation, err := session.container.ValidateChecksums(ctx)
 	if err != nil {
-		validationSummary.Valid = false
-		validation.Error = errors.Join(validation.Error, fmt.Errorf("%s: failed to validate session for %s: %w", op, sessionRecordingId, err))
+		v.Valid = false
+		sessionContainerValidation.Error = multierror.Append(
+			sessionContainerValidation.Error, fmt.Errorf("%s: failed to validate session for %s: %w", op, sessionRecordingId, err))
 	}
 
-	validationSummary = updateValidationSummary(ctx, SessionContainer, sessionRecordingId, sessionChecksumValidation, validationSummary)
+	sessionContainerValidation.FileChecksumValidations = sessionChecksumValidation
 
-	validation.ChecksumValidation = sessionChecksumValidation
+	v.updateValidationStatus(ctx, sessionContainerValidation)
 
-	conns := session.Meta.connections
-
-	for connId := range conns {
-		// Get connection id
-		connKey := connId
-		lastDotIndex := strings.LastIndex(connId, ".")
-		if lastDotIndex != -1 {
-			connKey = connId[:lastDotIndex]
-		}
-
-		connectionValidation := Validation{
-			Name:         connId,
-			Type:         ConnectionContainer,
-			SubContainer: []Validation{},
-		}
-
-		conn, err := session.OpenConnection(ctx, connKey)
-		if err != nil {
-			validationSummary.Valid = false
-			connectionValidation.Error = errors.Join(connectionValidation.Error, fmt.Errorf("%s: failed to retrieve connection for %s: %w", op, connId, err))
-			continue
-		}
-
-		// Validate current connection
-		connectionChecksumValidation, err := conn.container.ValidateChecksums(ctx)
-		if err != nil {
-			validationSummary.Valid = false
-			connectionValidation.Error = errors.Join(connectionValidation.Error, fmt.Errorf("%s: failed to validate connection for %s: %w", op, connId, err))
-			continue
-		}
-
-		validationSummary = updateValidationSummary(ctx, ConnectionContainer, connId, connectionChecksumValidation, validationSummary)
-
-		connectionValidation.ChecksumValidation = connectionChecksumValidation
-
-		chs := conn.Meta.channels
-
-		for chId := range chs {
-			// Get channel id
-			chsKey := chId
-			lastDotIndex := strings.LastIndex(chId, ".")
-			if lastDotIndex != -1 {
-				chsKey = chId[:lastDotIndex]
-			}
-
-			channelValidation := Validation{
-				Name:         chId,
-				Type:         ChannelContainer,
-				SubContainer: []Validation{},
-			}
-
-			ch, err := conn.OpenChannel(ctx, chsKey)
-			if err != nil {
-				validationSummary.Valid = false
-				channelValidation.Error = errors.Join(channelValidation.Error, fmt.Errorf("%s: failed to retrieve channel for %s: %w", op, chId, err))
-				continue
-			}
-
-			// Validate current channel
-			channelChecksumValidation, err := ch.container.ValidateChecksums(ctx)
-			if err != nil {
-				validationSummary.Valid = false
-				channelValidation.Error = errors.Join(channelValidation.Error, fmt.Errorf("%s: failed to validate channel for %s: %w", op, chId, err))
-				continue
-			}
-
-			validationSummary = updateValidationSummary(ctx, ChannelContainer, chId, channelChecksumValidation, validationSummary)
-			channelValidation.ChecksumValidation = channelChecksumValidation
-
-			connectionValidation.SubContainer = append(connectionValidation.SubContainer, channelValidation)
-		}
-
-		validation.SubContainer = append(validation.SubContainer, connectionValidation)
-	}
-
-	return validation, validationSummary, nil
+	return session, sessionContainerValidation, nil
 }
 
-// updateValidationSummary updates the ValidationSummary based on the failed checksums.
-// The updated ValidationSummary is then returned
-func updateValidationSummary(ctx context.Context, c ContainerType, id string, cv ChecksumValidation, vs ValidationSummary) ValidationSummary {
-	failedChecksums := cv.GetFailedItems()
+// ValidateConnection opens a connection under a session and validates the checksums of all files in the container
+func (v *Validation) ValidateConnection(ctx context.Context, connId string, session *Session) (*Connection, *ContainerValidation, error) {
+	const op = "bsr.ValidateConnection"
 
-	// Update validation summary only if there are failed tests
-	if len(failedChecksums) > 0 {
-		if vs.FailedChecksums == nil {
-			vs.FailedChecksums = make(map[ContainerType]map[string]ChecksumValidation)
-		}
-
-		containerType, ok := vs.FailedChecksums[c]
-		if !ok {
-			containerType = make(map[string]ChecksumValidation)
-		}
-
-		vs.Valid = false
-
-		containerType[id] = failedChecksums
-		vs.FailedChecksums[c] = containerType
+	connectionContainerValidation := &ContainerValidation{
+		Name:          connId,
+		ContainerType: ConnectionContainer,
 	}
 
-	return vs
+	// Get connection id
+	connKey := connId
+	lastDotIndex := strings.LastIndex(connId, ".connection")
+	if lastDotIndex == -1 {
+		v.Valid = false
+		validationError := fmt.Errorf("%s: malformed BSR for: %s", op, connId)
+		connectionContainerValidation.Error = multierror.Append(connectionContainerValidation.Error, validationError)
+		return nil, connectionContainerValidation, validationError
+	}
+
+	connKey = connId[:lastDotIndex]
+
+	conn, err := session.OpenConnection(ctx, connKey)
+	if err != nil {
+		v.Valid = false
+		validationError := fmt.Errorf("%s: failed to retrieve connection for %s: %w", op, connId, err)
+		connectionContainerValidation.Error = multierror.Append(connectionContainerValidation.Error, validationError)
+		return nil, connectionContainerValidation, validationError
+	}
+
+	// Validate current connection
+	connectionChecksumValidation, err := conn.container.ValidateChecksums(ctx)
+	if err != nil {
+		v.Valid = false
+		connectionContainerValidation.Error = multierror.Append(
+			connectionContainerValidation.Error, fmt.Errorf("%s: failed to validate connection for %s: %w", op, connId, err))
+
+		// Return nil error for any iteration to validation to continue with other connections and channels
+		return nil, connectionContainerValidation, nil
+	}
+
+	connectionContainerValidation.FileChecksumValidations = connectionChecksumValidation
+
+	v.updateValidationStatus(ctx, connectionContainerValidation)
+
+	return conn, connectionContainerValidation, nil
+}
+
+// ValidateChannel opens a channel under a connection and validates the checksums of all files in the container
+func (v *Validation) ValidateChannel(ctx context.Context, chId string, conn *Connection) (*Channel, *ContainerValidation, error) {
+	const op = "bsr.ValidateChannel"
+
+	channelContainerValidation := &ContainerValidation{
+		Name:          chId,
+		ContainerType: ChannelContainer,
+	}
+
+	// Get channel id
+	chKey := chId
+	lastDotIndex := strings.LastIndex(chId, ".channel")
+	if lastDotIndex == -1 {
+		v.Valid = false
+		validationError := fmt.Errorf("%s: malformed BSR for: %s", op, chId)
+		channelContainerValidation.Error = multierror.Append(channelContainerValidation.Error, validationError)
+		return nil, channelContainerValidation, validationError
+	}
+
+	chKey = chId[:lastDotIndex]
+
+	ch, err := conn.OpenChannel(ctx, chKey)
+	if err != nil {
+		v.Valid = false
+		validationError := fmt.Errorf("%s: failed to retrieve channel for %s: %w", op, chId, err)
+		channelContainerValidation.Error = multierror.Append(channelContainerValidation.Error, validationError)
+		return nil, channelContainerValidation, validationError
+	}
+
+	channelChecksumValidation, err := ch.container.ValidateChecksums(ctx)
+	if err != nil {
+		v.Valid = false
+		channelContainerValidation.Error = multierror.Append(channelContainerValidation.Error, fmt.Errorf("%s: failed to validate channel for %s: %w", op, chId, err))
+
+		// Return nil error for any iteration for validation to continue on other connections and channels
+		return ch, channelContainerValidation, nil
+	}
+
+	channelContainerValidation.FileChecksumValidations = channelChecksumValidation
+
+	v.updateValidationStatus(ctx, channelContainerValidation)
+
+	return ch, channelContainerValidation, nil
+}
+
+// updateValidationSummary updates the value of "Valid" field in Validation struct based on if there are failed checksums
+func (v *Validation) updateValidationStatus(ctx context.Context, cv *ContainerValidation) {
+	failedChecksums := cv.FileChecksumValidations.GetFailedItems()
+
+	// Update validation filed only if there are failed checksums
+	if len(failedChecksums) > 0 {
+		v.Valid = false
+	}
 }
 
 // Close closes the Session container.
