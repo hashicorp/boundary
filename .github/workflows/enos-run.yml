@@ -245,7 +245,7 @@ jobs:
         run: |
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+          enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Upload e2e tests output
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
@@ -264,7 +264,7 @@ jobs:
         if: steps.run.outcome == 'failure'
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
-          enos scenario run --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+          enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
       - name: Upload Debug Data
         if: ${{ always() && steps.run_retry.outcome == 'failure' }}
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
@@ -274,7 +274,14 @@ jobs:
           path: ${{ env.ENOS_DEBUG_DATA_ROOT_DIR }}
           retention-days: 30
       - name: Destroy Enos scenario
-        if: ${{ always() && steps.run_retry.outcome == 'failure' }}
+        id: destroy
+        continue-on-error: true
+        if: ${{ always() }}
+        run: |
+          export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
+          enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Destroy Enos scenario (Retry)
+        if: ${{ always() && steps.destroy.outcome == 'failure' }}
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
