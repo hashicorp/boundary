@@ -593,7 +593,7 @@ func TestBSR_Validate_ValidateContainer(t *testing.T) {
 				SessionRecordingId: tc.containerName,
 				Valid:              true,
 			}
-			containerValidation := v.ValidateContainer(ctx, tc.containerType, tc.c, tc.containerName)
+			containerValidation := validateContainer(ctx, v, tc.containerType, tc.c, tc.containerName)
 			if tc.wantErr != nil {
 				assert.EqualError(t, containerValidation.Error, tc.wantErr.Error())
 				return

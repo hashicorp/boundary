@@ -289,7 +289,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 		return nil, validationError
 	}
 
-	sessionContainerValidation := validation.ValidateContainer(ctx, SessionContainer, session.container, session.Meta.Id)
+	sessionContainerValidation := validateContainer(ctx, validation, SessionContainer, session.container, session.Meta.Id)
 	validation.SessionRecordingValidation = sessionContainerValidation
 	if err != nil {
 		validation.Valid = false
@@ -314,7 +314,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 			return validation, fmt.Errorf("%s: failed to retrieve connection for %s: %w", op, connId, err)
 		}
 
-		connectionContainerValidation := validation.ValidateContainer(ctx, ConnectionContainer, connection.container, connection.Meta.Id)
+		connectionContainerValidation := validateContainer(ctx, validation, ConnectionContainer, connection.container, connection.Meta.Id)
 		sessionContainerValidation.SubContainers = append(sessionContainerValidation.SubContainers, connectionContainerValidation)
 		if err != nil {
 			validation.Valid = false
@@ -339,7 +339,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 				return validation, fmt.Errorf("%s: failed to retrieve channel for %s: %w", op, chId, err)
 			}
 
-			channelContainerValidation := validation.ValidateContainer(ctx, ChannelContainer, channel.container, channel.Meta.Id)
+			channelContainerValidation := validateContainer(ctx, validation, ChannelContainer, channel.container, channel.Meta.Id)
 			connectionContainerValidation.SubContainers = append(connectionContainerValidation.SubContainers, channelContainerValidation)
 			if err != nil {
 				validation.Valid = false
@@ -352,7 +352,7 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 }
 
 // ValidateContainer validates the checksums of all files in a container
-func (v *Validation) ValidateContainer(ctx context.Context, ct ContainerType, c *container, name string) *ContainerValidation {
+func validateContainer(ctx context.Context, v *Validation, ct ContainerType, c *container, name string) *ContainerValidation {
 	const op = "bsr.(Validate).ValidateContainer"
 
 	containerValidation := &ContainerValidation{
@@ -369,19 +369,14 @@ func (v *Validation) ValidateContainer(ctx context.Context, ct ContainerType, c 
 
 	containerValidation.FileChecksumValidations = containerChecksumValidation
 
-	v.updateValidationStatus(ctx, containerValidation)
+	failedChecksums := containerValidation.FileChecksumValidations.GetFailedItems()
 
-	return containerValidation
-}
-
-// updateValidationSummary updates the value of "Valid" field in Validation struct based on if there are failed checksums
-func (v *Validation) updateValidationStatus(ctx context.Context, cv *ContainerValidation) {
-	failedChecksums := cv.FileChecksumValidations.GetFailedItems()
-
-	// Update validation filed only if there are failed checksums
+	// Update validation field only if there are failed checksums
 	if len(failedChecksums) > 0 {
 		v.Valid = false
 	}
+
+	return containerValidation
 }
 
 // Close closes the Session container.
