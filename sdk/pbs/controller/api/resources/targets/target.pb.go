@@ -35,9 +35,9 @@ type HostSource struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Host Set.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Host Catalog to which this Host Source belongs.
-	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostCatalogId string `protobuf:"bytes,20,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *HostSource) Reset() {
@@ -313,9 +313,9 @@ type Target struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the resource.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The Scope of of this resource. This must be defined for creation of this resource, but is otherwise output only.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Required name for identification purposes.
@@ -323,16 +323,16 @@ type Target struct {
 	// Optional user-set description for identification purposes.
 	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The type of the Target.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The IDs of the Host Sources associated with this Target.
-	HostSourceIds []string `protobuf:"bytes,420,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostSourceIds []string `protobuf:"bytes,420,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Host Sources associated with this Target.
 	HostSources []*HostSource `protobuf:"bytes,430,rep,name=host_sources,proto3" json:"host_sources,omitempty"`
 	// Maximum total lifetime of a created Session, in seconds.
@@ -705,7 +705,7 @@ type SshTargetAttributes struct {
 	// PublicId of the storage bucket associated with the target
 	StorageBucketId *wrapperspb.StringValue `protobuf:"bytes,30,opt,name=storage_bucket_id,proto3" json:"storage_bucket_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// A boolean indicating if session recording has been enabled
-	EnableSessionRecording *wrapperspb.BoolValue `protobuf:"bytes,40,opt,name=enable_session_recording,proto3" json:"enable_session_recording,omitempty" class:"public"` // @gotags: `class:"public"`
+	EnableSessionRecording *wrapperspb.BoolValue `protobuf:"bytes,40,opt,name=enable_session_recording,proto3" json:"enable_session_recording,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *SshTargetAttributes) Reset() {
@@ -824,15 +824,15 @@ type SessionAuthorizationData struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the session.
-	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The ID of the Target authorizing this session.
-	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this the Target that authorized this session.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Type of the session (e.g. tcp, ssh, etc.).
-	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
 	ConnectionLimit int32 `protobuf:"varint,90,opt,name=connection_limit,proto3" json:"connection_limit,omitempty"`
 	// Output only. The certificate to use when connecting. Raw DER bytes.
@@ -840,7 +840,7 @@ type SessionAuthorizationData struct {
 	// Output only. The private key to use when connecting. We are using Ed25519, so this is purely raw bytes, no marshaling.
 	PrivateKey []byte `protobuf:"bytes,130,opt,name=private_key,proto3" json:"private_key,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The host ID...not used for security purposes, but for some special command handling (e.g. ssh host key aliasing).
-	HostId string `protobuf:"bytes,140,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostId string `protobuf:"bytes,140,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The endpoint, for some special command handling.
 	Endpoint string `protobuf:"bytes,141,opt,name=endpoint,proto3" json:"endpoint,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Worker information. The first worker in the array should be prioritized.
@@ -972,21 +972,21 @@ type SessionAuthorization struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Session.
-	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	SessionId string `protobuf:"bytes,10,opt,name=session_id,proto3" json:"session_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The ID of the Target authorizing this Session.
-	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	TargetId string `protobuf:"bytes,20,opt,name=target_id,proto3" json:"target_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,40,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The User for which this Session was authorized.
-	UserId string `protobuf:"bytes,50,opt,name=user_id,proto3" json:"user_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	UserId string `protobuf:"bytes,50,opt,name=user_id,proto3" json:"user_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Host Set containing the Host being used for this Session.
-	HostSetId string `protobuf:"bytes,60,opt,name=host_set_id,proto3" json:"host_set_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostSetId string `protobuf:"bytes,60,opt,name=host_set_id,proto3" json:"host_set_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Host whose address is being used as the endpoint for this Session.
-	HostId string `protobuf:"bytes,70,opt,name=host_id,proto3" json:"host_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostId string `protobuf:"bytes,70,opt,name=host_id,proto3" json:"host_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Type of the Session (e.g. tcp, ssh, etc.).
-	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The marshaled SessionAuthorizationData message containing all information that the proxy needs.
 	AuthorizationToken string `protobuf:"bytes,90,opt,name=authorization_token,proto3" json:"authorization_token,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	// Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
