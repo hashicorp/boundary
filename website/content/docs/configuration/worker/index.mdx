@@ -77,17 +77,17 @@ worker {
   HCP Boundary workers require the [`hcp_boundary_cluster_id`](/boundary/docs/configuration/worker/#hcp_boundary_cluster_id) parameter instead of `initial upstreams`.
   If you configure an HCP worker with `initial_upstreams`, the worker configuration fails.
 
+- `hcp_boundary_cluster_id` - A string that you must use to configure PKI workers
+  to connect to your HCP Boundary cluster rather than specifying
+  `initial_upstreams`. This parameter is currently only valid for workers using the PKI
+  registration method and for workers directly connected to HCP Boundary.
+
 - `tags` - A map of key-value pairs where values are an array of strings. Most
   commonly used for [filtering](/boundary/docs/concepts/filtering) targets a
   worker can proxy via [worker
   tags](/boundary/docs/concepts/filtering/worker-tags). On `SIGHUP`, the tags
   set here will be re-parsed and new values used. It can also be a string
   referring to a file on disk (`file://`) or an env var (`env://`).
-
-- `hcp_boundary_cluster_id` - A string that can be used to configure PKI workers
-  to connect to your HCP Boundary cluster rather than specifying
-  `initial_upstreams`. This is currently only valid for workers using the PKI
-  registration method and for workers directly connected to HCP Boundary.
 
 ## Signals
 
