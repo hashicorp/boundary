@@ -4356,7 +4356,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Output only. The ID of the Account.",
+          "description": "Output only. The ID of the Account.\n\n@gotags: `class:\"public\" eventstream:\"observation\"`",
           "readOnly": true
         },
         "scope": {
@@ -4375,27 +4375,27 @@
         "created_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was created.",
+          "description": "Output only. The time this resource was created.\n\n@gotags: `class:\"public\" eventstream:\"observation\"`",
           "readOnly": true
         },
         "updated_time": {
           "type": "string",
           "format": "date-time",
-          "description": "Output only. The time this resource was last updated.",
+          "description": "Output only. The time this resource was last updated.\n\n@gotags: `class:\"public\" eventstream:\"observation\"`",
           "readOnly": true
         },
         "version": {
           "type": "integer",
           "format": "int64",
-          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version."
+          "description": "Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.\nThe mutation will fail if the version does not match the latest known good version.\n\n@gotags: `class:\"public\" eventstream:\"observation\"`"
         },
         "type": {
           "type": "string",
-          "description": "The type of this Account."
+          "description": "The type of this Account.\n\n@gotags: `class:\"public\" eventstream:\"observation\"`"
         },
         "auth_method_id": {
           "type": "string",
-          "description": "The ID of the Auth Method that is associated with this Account."
+          "description": "The ID of the Auth Method that is associated with this Account.\n\n@gotags: `class:\"public\" eventstream:\"observation\"`"
         },
         "attributes": {
           "type": "object",
@@ -4406,7 +4406,7 @@
           "items": {
             "type": "string"
           },
-          "description": "",
+          "description": "@gotags: `class:\"public\" eventstream:\"observation\"`",
           "title": "Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account",
           "readOnly": true
         },
@@ -4415,7 +4415,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Output only. The available actions on this resource for this user.",
+          "description": "Output only. The available actions on this resource for this user.\n\n@gotags: `class:\"public\" eventstream:\"observation\"`",
           "readOnly": true
         }
       },
