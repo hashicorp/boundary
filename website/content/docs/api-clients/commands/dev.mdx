@@ -1,0 +1,265 @@
+---
+layout: docs
+page_title: dev - Command
+description: |-
+  The `dev` command starts a Boundary instance in a dev mode. The dev mode provides admin credentials for password authentication.
+---
+
+# dev
+
+Command: `boundary dev`
+
+The `dev` command starts a Boundary instance in a dev mode. The dev mode
+provides admin credentials for password authentication.
+
+Dev mode brings up a fully functioning instance of Boundary which includes:
+
+- A controller server
+- A worker server
+- A Postgres database
+
+These components are ephemeral; therefore, data is not persisted and convenient
+for quick testing.
+
+## Examples
+
+Start a Boundary instance in a dev mode.
+
+```shell-session
+$ boundary dev
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+==> Boundary server configuration:
+
+                        [Bsr] AEAD Key Bytes: McoUxn6XMdaYdS8lb2bqjgvrZIaLWML0
+                 [Controller] AEAD Key Bytes: SA+ccZA42hj/7XRwYeq4c7OEeSoYT4Ds
+                   [Recovery] AEAD Key Bytes: 9KJyjHcC35MPcz6VsfGczZn4KLCNXhz5
+                [Worker-Auth] AEAD Key Bytes: Pgr4AbL+S6hThU6B0cyVOI7cqtoyCVrS
+                             [Bsr] AEAD Type: aes-gcm
+                        [Recovery] AEAD Type: aes-gcm
+                            [Root] AEAD Type: aes-gcm
+             [Worker-Auth-Storage] AEAD Type: aes-gcm
+                     [Worker-Auth] AEAD Type: aes-gcm
+                                         Cgo: disabled
+              Controller Public Cluster Addr: 127.0.0.1:9201
+                      Dev Database Container: infallible_mahavira
+                            Dev Database Url: postgres://postgres:password@localhost:32769/boundary?sslmode=disable
+                  Generated Admin Login Name: admin
+                    Generated Admin Password: password
+                   Generated Host Catalog Id: hcst_1234567890
+                           Generated Host Id: hst_1234567890
+                       Generated Host Set Id: hsst_1234567890
+  Generated Ldap Auth Method Base Search DNs: users="ou=people,dc=example,dc=org" groups="ou=groups,dc=example,dc=org"
+        Generated Ldap Auth Method Host:Port: 127.0.0.1:64160 (does not have a root DSE; use simple bind)
+               Generated Ldap Auth Method Id: amldap_1234567890
+               Generated Oidc Auth Method Id: amoidc_1234567890
+                      Generated Org Scope Id: o_1234567890
+           Generated Password Auth Method Id: ampw_1234567890
+                  Generated Project Scope Id: p_1234567890
+            Generated Target With Address Id: ttcp_1234567890
+        Generated Target With Host Source Id: ttcp_0987654321
+           Generated Unprivileged Login Name: user
+             Generated Unprivileged Password: password
+                                  Listener 1: tcp (addr: "127.0.0.1:9200", cors_allowed_headers: "[]", cors_allowed_origins: "[*]", cors_enabled: "true", max_request_duration: "1m30s", purpose: "api")
+                                  Listener 2: tcp (addr: "127.0.0.1:9201", max_request_duration: "1m30s", purpose: "cluster")
+                                  Listener 3: tcp (addr: "127.0.0.1:9203", max_request_duration: "1m30s", purpose: "ops")
+                                  Listener 4: tcp (addr: "127.0.0.1:9202", max_request_duration: "1m30s", purpose: "proxy")
+                                   Log Level: info
+                                       Mlock: supported: false, enabled: false
+                                     Version: Boundary v0.13.1
+                                 Version Sha: db01791662a7126fbf4ea0a27b23b70acd20b17b
+                  Worker Auth Current Key Id: september-viewing-rubdown-wrench-sliceable-valid-chute-retrace
+                    Worker Auth Storage Path: (in-memory)
+                    Worker Public Proxy Addr: 127.0.0.1:9202
+
+==> Boundary server started! Log data will stream in below:
+...
+```
+
+</CodeBlockConfig>
+
+The generated admin username is `admin` and the password is `password`.
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary dev [options]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+
+- `-api-listen-address` `(string: "")` - Address to bind to for controller "api"
+   purpose. If this begins with a forward slash, it will be assumed to be a Unix
+   domain socket path. This can also be specified via the
+   **BOUNDARY_DEV_CONTROLLER_API_LISTEN_ADDRESS** environment variable.
+
+- `-audit-events` `(string: "")` - Emit audit events. Supported values are
+  "true" and "false".
+
+- `-bsr-key` `(string: "")` - If set, a valid base64-encoded AES key to be used
+   for bsr purposes This can also be specified via the **BOUNDARY_DEV_BSR_KEY**
+   environment variable.
+
+- `-cluster-listen-address` `(string: "")` - Address to bind to for controller
+   "cluster" purpose. If this begins with a forward slash, it will be assumed to
+   be a Unix domain socket path. This can also be specified via the
+   **BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS** environment variable.
+
+- `-combine-logs` `(bool: false)` - If set, both startup information and logs
+   will be sent to stdout. If not set (the default), startup information will go
+   to stdout and logs will be sent to stderr. The default is false.
+
+- `-container-image` `(string: "")` - Specifies a container image to be
+   utilized. Must be in `<repo>:<tag>` format
+
+- `-controller-only` `(bool: false)` - If set, only a dev controller will be
+   started instead of both a dev controller and dev worker The default is false.
+
+- `-controller-public-cluster-address` `(string: "")` - Public address at which
+   the controller is reachable for cluster tasks (like worker connections). This
+   can also be specified via the
+   **BOUNDARY_DEV_CONTROLLER_PUBLIC_CLUSTER_ADDRESS** environment variable.
+
+- `-database-url` `(string: "")` - If set, specifies the URL used to connect to
+   the database for initialization (otherwise a Docker container will be
+   started). This can refer to a file on disk (`file://`) from which a URL will
+   be read; an env var (`env://`) from which the URL will be read; or a direct
+   database URL.
+
+- `-disable-database-destruction` `(bool: false)` - If set, if a database is
+   created automatically in Docker, it will not be removed when the dev server
+   is shut down. The default is false.
+
+- `-event-allow-filter` `(string: "")` - The optional every event allow filter.
+  May be specified multiple times.
+
+- `-event-deny-filter` `(string: "")` - The optional every event deny filter.
+  May be specified multiple times.
+
+- `-event-format` `(string: "")` - Event format. Supported values are
+   "cloudevents-json", "cloudevents-text", "hclog-json", and "hclog-text".
+
+- `-host-address` `(string: "")` - Address to use for the default host that is
+   created. Must be a bare host or IP address, no port. The default is
+   localhost. This can also be specified via the **BOUNDARY_DEV_HOST_ADDRESS**
+   environment variable.
+
+- `-id-suffix` `(string: "")` - If set, auto-created resources will use this
+   value for their identifier (along with their resource-specific prefix). Must
+   be 10 alphanumeric characters. As an example, if this is set to "1234567890",
+   the generated password auth method ID will be "ampw_1234567890", the
+   generated TCP target ID will be "ttcp_1234567890", and so on. Must be
+   different from -secondary-id-suffix (**BOUNDARY_DEV_SECONDARY_ID_SUFFIX**).
+   The default is 1234567890. This can also be specified via the
+   **BOUNDARY_DEV_ID_SUFFIX** environment variable.
+
+- `-log-format` `(string: "")` - Log format. Supported values are "standard" and
+  "json".
+
+- `-log-level` `(string: "")` - Log verbosity level. Supported values (in order
+   of more detail to less) are "trace", "debug", "info", "warn", and "err". This
+   can also be specified via the **BOUNDARY_LOG_LEVEL** environment variable.
+
+- `-login-name` `(string: "")` - Initial admin login name. If set to the empty
+   string, one will be autogenerated. The default is admin. This can also be
+   specified via the **BOUNDARY_DEV_LOGIN_NAME** environment variable.
+
+- `-observation-events` `(string: "")` - Emit observation events. Supported
+  values are "true" and "false".
+
+- `-ops-listen-address` `(string: "")` - Address to bind to for "ops" purpose.
+   If this begins with a forward slash, it will be assumed to be a Unix domain
+   socket path. This can also be specified via the
+   **BOUNDARY_DEV_OPS_LISTEN_ADDRESS** environment variable.
+
+- `-password` `(string: "")` - Initial admin login password. If set to the empty
+   string, one will be auto-generated. The default is password. This can also be
+   specified via the **BOUNDARY_DEV_PASSWORD** environment variable.
+
+- `-plugin-execution-dir` `(string: "")` - Specifies where Boundary should write
+   plugins that it is executing; if not set defaults to system temp directory.
+   This can also be specified via the **BOUNDARY_DEV_PLUGIN_EXECUTION_DIR**
+   environment variable.
+
+- `-proxy-listen-address` `(string: "")` - Address to bind to for worker "proxy"
+   purpose. This can also be specified via the
+   **BOUNDARY_DEV_WORKER_PROXY_LISTEN_ADDRESS** environment variable.
+
+- `-recovery-key` `(string: "")` - Specifies the base64'd 256-bit AES key to use
+   for recovery operations This can also be specified via the
+   **BOUNDARY_DEV_RECOVERY_KEY** environment variable.
+
+- `-secondary-id-suffix` `(string: "")` - If set, secondary auto-created
+   resources will use this value for their identifier (along with their
+   resource-specific prefix). Must be 10 alphanumeric characters. Currently only
+   used for the target resource. Must be different from -id-suffix
+   (**BOUNDARY_DEV_ID_SUFFIX**). The default is 0987654321. This can also be
+   specified via the **BOUNDARY_DEV_SECONDARY_ID_SUFFIX** environment variable.
+
+- `-system-events` `(string: "")` - Emit system events. Supported values are
+  "true" and "false".
+
+- `-target-default-port` `(int: 0)` - Default port to use for the default target
+   that is created. The default is 22. This can also be specified via the
+   **BOUNDARY_DEV_TARGET_DEFAULT_PORT** environment variable.
+
+- `-target-session-connection-limit` `(int: 0)` - Maximum number of connections
+   per session to set on the default target. -1 means unlimited. The default is
+   -1. This can also be specified via the
+   **BOUNDARY_DEV_TARGET_SESSION_CONNECTION_LIMIT** environment variable.
+
+- `-target-session-max-seconds` `(int: 0)` - Max seconds to use for sessions on
+   the default target. This can also be specified via the
+   **BOUNDARY_DEV_TARGET_SESSION_MAX_SECONDS** environment variable.
+
+- `-ui-passthrough-dir` `(string: "")` - Enables a passthrough directory in the
+   webserver at / This can also be specified via the
+   **BOUNDARY_DEV_UI_PASSTHROUGH_DIR** environment variable.
+
+- `-unprivileged-login-name` `(string: "")` - Initial unprivileged user name. If
+   set to the empty string, one will be auto-generated. The default is user.
+   This can also be specified via the **BOUNDARY_DEV_UNPRIVILEGED_LOGIN_NAME**
+   environment variable.
+
+- `-unprivileged-password` `(string: "")` - Initial unprivileged user login
+   password. If set to the empty string, one will be auto-generated. The default
+   is password. This can also be specified via the
+   **BOUNDARY_DEV_UNPRIVILEGED_PASSWORD** environment variable.
+
+- `-worker-auth-enable-debugging` `(bool: false)` - Turn on debug logging of the
+   worker authentication process. The default is false.
+
+- `-worker-auth-key` `(string: "")` - If set, a valid base64-encoded AES key to
+   be used for worker-auth purposes This can also be specified via the
+   **BOUNDARY_DEV_WORKER_AUTH_KEY** environment variable.
+
+- `-worker-auth-method` `(string: "")` - Allows specifying how the generated
+   worker will authenticate to the controller. The default is random.
+
+- `-worker-auth-storage-dir` `(string: "")` - Specifies the directory to store
+   worker authentication credentials in dev mode. Setting this will make use of
+   file storage at the specified location; otherwise in-memory storage or a
+   temporary directory will be used.
+
+- `-worker-auth-storage-skip-cleanup` `(bool: false)` - Prevents deletion of
+   worker credential storage directory if set. Has no effect unless
+   worker-auth-storage-dir is specified. The default is false.
+
+- `-worker-public-address` `(string: "")` - Public address at which the worker
+   is reachable for session proxying. This can also be specified via the
+   **BOUNDARY_DEV_WORKER_PUBLIC_ADDRESS** environment variable.
+
+- `-worker-recording-storage-dir` `(string: "")` - Specifies the directory to
+   store worker session recordings in dev mode. If not provided a temp directory
+   will be created. Session recording is an Enterprise-only feature.

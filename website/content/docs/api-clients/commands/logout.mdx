@@ -1,0 +1,49 @@
+---
+layout: docs
+page_title: logout - Command
+description: |-
+  The `logout` command deletes the current token within Boundary and forget it from the local store.
+---
+
+# logout
+
+Command: `boundary logout`
+
+The `logout` command deletes the current token (as selected by `-token-name`)
+within Boundary and forget it from the local store.
+
+## Examples
+
+Log out the current user.
+
+```shell-session
+$ boundary logout
+The token was successfully deleted within the Boundary controller.
+The token was successfully removed from the local credential store.
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary logout [options]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-keyring-type` `(string: "")` - The type of keyring to use. Defaults to
+   "auto" which will use the Windows credential manager, OSX keychain, or
+   cross-platform password store depending on platform. Set to "none" to disable
+   keyring functionality. Available types, depending on platform, are:
+   "wincred", "keychain", "pass", and "secret-service". The default is auto.
+   This can also be specified via the BOUNDARY_KEYRING_TYPE environment
+   variable.
+
+- `-token-name` `(string: "")` - If specified, the given value will be used as
+   the name when loading the token from the system credential store. This must
+   correspond to a name used when authenticating. This can also be specified via
+   the BOUNDARY_TOKEN_NAME environment variable.

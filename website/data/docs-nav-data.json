@@ -608,6 +608,18 @@
                 "path": "api-clients/commands/connect/ssh"
               }
             ]
+          },
+          {
+            "title": "dev",
+            "path": "api-clients/commands/dev"
+          },
+          {
+            "title": "logout",
+            "path": "api-clients/commands/logout"
+          },
+          {
+            "title": "server",
+            "path": "api-clients/commands/server"
           }
         ]
       },
