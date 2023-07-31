@@ -185,7 +185,7 @@ func openContainer(ctx context.Context, t ContainerType, c storage.Container, ke
 	return cc, nil
 }
 
-func (c *container) loadChecksums(ctx context.Context) error {
+func (c *container) loadChecksums(ctx context.Context) (err error) {
 	const op = "bsr.(container).loadChecksums"
 
 	// Open and extract checksum signature
@@ -193,6 +193,12 @@ func (c *container) loadChecksums(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if closeErr := checksumsSigFile.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
+
 	checksumSigBytes := new(bytes.Buffer)
 	_, err = checksumSigBytes.ReadFrom(checksumsSigFile)
 	if err != nil {
@@ -210,6 +216,12 @@ func (c *container) loadChecksums(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if closeErr := checksumsFile.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
+
 	var checksumsBuffer bytes.Buffer
 	cTee := io.TeeReader(checksumsFile, &checksumsBuffer)
 
@@ -237,11 +249,16 @@ func (c *container) loadChecksums(ctx context.Context) error {
 	return nil
 }
 
-func (c *container) loadKey(ctx context.Context, keyFileName string) (*wrapping.KeyInfo, error) {
+func (c *container) loadKey(ctx context.Context, keyFileName string) (k *wrapping.KeyInfo, err error) {
 	keyFile, err := c.container.OpenFile(ctx, keyFileName)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if closeErr := keyFile.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	keyBytes := new(bytes.Buffer)
 	_, err = keyBytes.ReadFrom(keyFile)
@@ -258,11 +275,16 @@ func (c *container) loadKey(ctx context.Context, keyFileName string) (*wrapping.
 	return key, nil
 }
 
-func (c *container) loadSignature(ctx context.Context, sigFileName string) (*wrapping.SigInfo, error) {
+func (c *container) loadSignature(ctx context.Context, sigFileName string) (s *wrapping.SigInfo, err error) {
 	sigFile, err := c.container.OpenFile(ctx, sigFileName)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if closeErr := sigFile.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	sigBytes := new(bytes.Buffer)
 	_, err = sigBytes.ReadFrom(sigFile)

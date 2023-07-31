@@ -469,3 +469,131 @@ func TestOpenBSRMethods_WithoutSummaryAllocFunc(t *testing.T) {
 		})
 	}
 }
+
+func TestCloseBSRMethods(t *testing.T) {
+	ctx := context.Background()
+
+	protocol := Protocol("TEST_CLOSED_FILE")
+	sessionRecordingId := "sr_012344567890"
+	sessionId := "s_012344567890"
+	connectionId := "connection"
+	channelId := "channel"
+
+	keys, err := kms.CreateKeys(ctx, kms.TestWrapper(t), "session")
+	require.NoError(t, err)
+
+	err = RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
+		return &BaseChannelSummary{Id: channelId, ConnectionRecordingId: connectionId}
+	})
+	require.NoError(t, err)
+
+	err = RegisterSummaryAllocFunc(protocol, SessionContainer, func(ctx context.Context) Summary {
+		return &BaseSessionSummary{Id: sessionId, ConnectionCount: 1}
+	})
+	require.NoError(t, err)
+
+	err = RegisterSummaryAllocFunc(protocol, ConnectionContainer, func(ctx context.Context) Summary {
+		return &BaseConnectionSummary{Id: connectionId, ChannelCount: 1}
+	})
+	require.NoError(t, err)
+
+	f := fstest.NewMemFS(fstest.WithOriginalFile())
+
+	srm := &SessionRecordingMeta{
+		Id:       sessionRecordingId,
+		Protocol: protocol,
+	}
+	sessionMeta := TestSessionMeta(sessionId)
+
+	sesh, err := NewSession(ctx, srm, sessionMeta, f, keys, WithSupportsMultiplex(true))
+	require.NoError(t, err)
+	require.NotNil(t, sesh)
+
+	sesh.EncodeSummary(ctx, &BaseChannelSummary{
+		Id:                    "TEST_CHANNEL_ID",
+		ConnectionRecordingId: "TEST_CONNECTION_RECORDING_ID",
+	})
+
+	connMeta := &ConnectionRecordingMeta{Id: connectionId}
+	conn, err := sesh.NewConnection(ctx, connMeta)
+	require.NoError(t, err)
+	require.NotNil(t, conn)
+
+	conn.EncodeSummary(ctx, &BaseConnectionSummary{
+		Id:           "TEST_CONNECTION_ID",
+		ChannelCount: 1,
+	})
+
+	chanMeta := &ChannelRecordingMeta{
+		Id:   channelId,
+		Type: "chan",
+	}
+	ch, err := conn.NewChannel(ctx, chanMeta)
+	require.NoError(t, err)
+	require.NotNil(t, ch)
+
+	ch.EncodeSummary(ctx, &BaseSessionSummary{
+		Id:              "TEST_SESSION_ID",
+		ConnectionCount: 1,
+	})
+
+	ch.Close(ctx)
+	conn.Close(ctx)
+	sesh.Close(ctx)
+
+	keyFn := func(w kms.WrappedKeys) (kms.UnwrappedKeys, error) {
+		u := kms.UnwrappedKeys{
+			BsrKey:  keys.BsrKey,
+			PrivKey: keys.PrivKey,
+		}
+		return u, nil
+	}
+
+	opSesh, err := OpenSession(ctx, srm.Id, f, keyFn)
+	require.NoError(t, err)
+	require.NotNil(t, opSesh)
+
+	opConn, err := opSesh.OpenConnection(ctx, connectionId)
+	require.NoError(t, err)
+	require.NotNil(t, opConn)
+
+	opChan, err := opConn.OpenChannel(ctx, channelId)
+	require.NoError(t, err)
+	require.NotNil(t, opChan)
+
+	// Close all opened containers
+	require.NoError(t, opChan.Close(ctx))
+	require.NoError(t, opConn.Close(ctx))
+	require.NoError(t, opSesh.Close(ctx))
+
+	// Get session container
+	sessionContainer := f.Containers[fmt.Sprintf(bsrFileNameTemplate, sessionRecordingId)]
+	require.NotNil(t, sessionContainer)
+	assert.True(t, sessionContainer.Closed)
+
+	// Ensure all session files are closed
+	for _, file := range sessionContainer.Files {
+		assert.True(t, file.Closed)
+	}
+
+	// Get connection container
+	connectionContainer := sessionContainer.Sub[fmt.Sprintf(connectionFileNameTemplate, connectionId)]
+	require.NotNil(t, connectionContainer)
+	assert.True(t, connectionContainer.Closed)
+
+	// Ensure all connection files are closed
+	for _, file := range connectionContainer.Files {
+		assert.True(t, file.Closed)
+	}
+
+	// Get channel container
+	channelContainer := connectionContainer.Sub[fmt.Sprintf(channelFileNameTemplate, channelId)]
+	require.NotNil(t, channelContainer)
+	assert.True(t, channelContainer.Closed)
+
+	// Ensure all channel files are closed
+	for _, file := range channelContainer.Files {
+		assert.True(t, file.Closed, file)
+	}
+
+}

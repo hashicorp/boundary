@@ -35,8 +35,9 @@ const (
 type MemFS struct {
 	Containers map[string]*MemContainer
 
-	newFunc  NewFunc
-	readOnly bool
+	newFunc      NewFunc
+	readOnly     bool
+	originalFile bool
 }
 
 // NewMemFS creates a MemFS. It supports WithNewFunc, WithReadOnly.
@@ -44,9 +45,10 @@ func NewMemFS(options ...Option) *MemFS {
 	opts := getOpts(options...)
 
 	return &MemFS{
-		Containers: make(map[string]*MemContainer),
-		newFunc:    opts.withNewFunc,
-		readOnly:   opts.withReadOnly,
+		Containers:   make(map[string]*MemContainer),
+		newFunc:      opts.withNewFunc,
+		readOnly:     opts.withReadOnly,
+		originalFile: opts.withOriginalFile,
 	}
 }
 
@@ -68,11 +70,12 @@ func (m *MemFS) New(ctx context.Context, n string) (storage.Container, error) {
 	}
 
 	c := &MemContainer{
-		Name:       n,
-		Sub:        make(map[string]*MemContainer),
-		Files:      make(map[string]*MemFile),
-		mode:       defaultContainerPerm,
-		accessMode: storage.ReadWrite,
+		Name:         n,
+		Sub:          make(map[string]*MemContainer),
+		Files:        make(map[string]*MemFile),
+		mode:         defaultContainerPerm,
+		accessMode:   storage.ReadWrite,
+		originalFile: m.originalFile,
 	}
 	m.Containers[n] = c
 	return c, nil
@@ -96,8 +99,9 @@ func (m *MemFS) Open(_ context.Context, n string) (storage.Container, error) {
 type MemContainer struct {
 	Name string
 
-	Sub   map[string]*MemContainer
-	Files map[string]*MemFile
+	Sub          map[string]*MemContainer
+	Files        map[string]*MemFile
+	originalFile bool
 
 	Closed bool
 
@@ -188,6 +192,11 @@ func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.O
 			Closed:     src.Closed,
 		}
 	}
+
+	if m.originalFile {
+		return src, nil
+	}
+
 	return dst, nil
 }
 
@@ -211,9 +220,10 @@ func (m *MemContainer) SubContainer(_ context.Context, n string, option ...stora
 			return nil, fmt.Errorf("container %s already exists: %w", n, ErrAlreadyExists)
 		}
 		c = &MemContainer{
-			Name:  n,
-			Sub:   make(map[string]*MemContainer),
-			Files: make(map[string]*MemFile),
+			Name:         n,
+			Sub:          make(map[string]*MemContainer),
+			Files:        make(map[string]*MemFile),
+			originalFile: m.originalFile,
 		}
 	} else {
 		if !exists {

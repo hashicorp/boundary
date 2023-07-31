@@ -173,7 +173,7 @@ func persistBsrSessionKeys(ctx context.Context, keys *kms.Keys, c *container) er
 // Signature and checksum files will then be verified.
 // Fields on the underlying container will be populated so that the returned Session can be used for BSR
 // playback and conversion to formats such as asciinema
-func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*Session, error) {
+func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (s *Session, err error) {
 	const op = "bsr.OpenSession"
 	switch {
 	case sessionRecordingId == "":
@@ -203,7 +203,11 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	defer sha256Reader.Close()
+	defer func() {
+		if closeErr := sha256Reader.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
 
 	meta, err := decodeSessionRecordingMeta(ctx, sha256Reader)
 	if err != nil {
@@ -292,7 +296,7 @@ func (s *Session) NewConnection(ctx context.Context, meta *ConnectionRecordingMe
 }
 
 // OpenConnection will open and validate a BSR connection
-func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connection, error) {
+func (s *Session) OpenConnection(ctx context.Context, connId string) (conn *Connection, err error) {
 	const op = "bsr.(Session).OpenConnection"
 	switch {
 	case connId == "":
@@ -325,7 +329,11 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connectio
 		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	defer sha256Reader.Close()
+	defer func() {
+		if closeErr := sha256Reader.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
 
 	sm, err := decodeConnectionRecordingMeta(ctx, sha256Reader)
 	if err != nil {
@@ -397,7 +405,7 @@ func (c *Connection) NewChannel(ctx context.Context, meta *ChannelRecordingMeta)
 }
 
 // OpenChannel will open and validate a BSR channel
-func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, error) {
+func (c *Connection) OpenChannel(ctx context.Context, chanId string) (ch *Channel, err error) {
 	const op = "bsr.OpenChannel"
 	switch {
 	case chanId == "":
@@ -429,7 +437,11 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	defer sha256Reader.Close()
+	defer func() {
+		if closeErr := sha256Reader.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
 
 	sm, err := decodeChannelRecordingMeta(ctx, sha256Reader)
 	if err != nil {
