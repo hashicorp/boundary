@@ -130,7 +130,7 @@ resource "enos_local_exec" "check_health" {
 }
 
 output "address" {
-  value = "http://0.0.0.0:9200"
+  value = "http://${var.container_name}:9200"
 }
 
 output "auth_method_id" {

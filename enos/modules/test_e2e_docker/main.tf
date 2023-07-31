@@ -1,14 +1,38 @@
+
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
 
 terraform {
   required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "3.0.1"
+    }
+
     enos = {
       source = "app.terraform.io/hashicorp-qti/enos"
     }
   }
 }
 
+variable "docker_mirror" {
+  description = "URL to the docker repository"
+  type        = string
+}
+variable "network_name" {
+  description = "Name of Docker Network"
+  type        = string
+}
+variable "container_name" {
+  description = "Name of Docker Container"
+  type        = string
+  default     = "test_runner"
+}
+variable "go_version" {
+  description = "Version of Golang used by the application under test"
+  type        = string
+  default     = ""
+}
 variable "debug_no_run" {
   description = "If set, this module will not execute the tests so that you can still access environment variables"
   type        = bool
@@ -40,6 +64,10 @@ variable "auth_password" {
 }
 variable "local_boundary_dir" {
   description = "Local Path to boundary executable"
+  type        = string
+}
+variable "local_boundary_src_dir" {
+  description = "Local Path to boundary src code directory"
   type        = string
 }
 variable "target_user" {
@@ -136,7 +164,15 @@ variable "test_timeout" {
   default = "15m"
 }
 
+resource "enos_local_exec" "get_go_version" {
+  count  = var.go_version == "" ? 1 : 0
+  inline = ["cat $(echo $(git rev-parse --show-toplevel))/.go-version | xargs"]
+}
+
 locals {
+  go_version = var.go_version == "" ? enos_local_exec.get_go_version[0].stdout : var.go_version
+  image_name = trimspace("${var.docker_mirror}/library/golang:${local.go_version}")
+
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
   vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:${var.vault_port}" : ""
   vault_addr_internal      = var.vault_addr_internal != "" ? "http://${var.vault_addr_internal}:8200" : local.vault_addr
@@ -145,8 +181,18 @@ locals {
   package_name             = reverse(split("/", var.test_package))[0]
 }
 
+resource "docker_image" "go" {
+  name         = local.image_name
+  keep_locally = true
+}
+
 resource "enos_local_exec" "run_e2e_test" {
+  depends_on = [docker_image.go]
   environment = {
+    TEST_PACKAGE                  = var.test_package,
+    TEST_TIMEOUT                  = var.test_timeout,
+    TEST_RUNNER_IMAGE             = docker_image.go.image_id,
+    TEST_NETWORK_NAME             = var.network_name,
     E2E_TESTS                     = "true",
     BOUNDARY_ADDR                 = var.alb_boundary_api_addr,
     E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id,
@@ -157,6 +203,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_SSH_PORT                  = var.target_port,
     E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path,
     VAULT_ADDR                    = local.vault_addr,
+    VAULT_ADDR_INTERNAL           = local.vault_addr_internal,
     VAULT_TOKEN                   = var.vault_root_token,
     E2E_VAULT_ADDR                = local.vault_addr_internal,
     E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id,
@@ -168,13 +215,12 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_REGION                = var.aws_region,
     E2E_AWS_BUCKET_NAME           = var.aws_bucket_name,
     E2E_WORKER_TAG                = jsonencode(var.worker_tags),
+    BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir),
+    BOUNDARY_CLI_DIR              = abspath(var.local_boundary_dir),
+    MODULE_DIR                    = abspath(path.module)
   }
 
   inline = var.debug_no_run ? [""] : [
-    "set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" go test -v ${var.test_package} -count=1 -json -timeout ${var.test_timeout}| tparse -follow -format plain 2>&1 | tee ${path.module}/../../test-e2e-${local.package_name}.log"
+    "bash ./${path.module}/test_runner.sh"
   ]
-}
-
-output "test_results" {
-  value = enos_local_exec.run_e2e_test.stdout
 }
