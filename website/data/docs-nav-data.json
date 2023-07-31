@@ -548,6 +548,39 @@
             ]
           },
           {
+            "title": "auth-methods",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/auth-methods"
+              },
+              {
+                "title": "change-state",
+                "path": "api-clients/commands/auth-methods/change-state"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/auth-methods/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/auth-methods/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/auth-methods/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/auth-methods/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/auth-methods/update"
+              }
+            ]
+          },
+          {
             "title": "connect",
             "routes": [
               {
