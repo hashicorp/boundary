@@ -10,36 +10,18 @@ description: |-
 Command: `boundary connect ssh`
 
 The `connect ssh` command will will authorize a session against a target and
-invoke an SSH client to connect, filling in the local address and port.
+invoke an SSH client to connect, filling in the local address and port. You can
+specify your SSH client of choice using the -style option.
 
 @include 'cmd-connect-env-vars.mdx'
 
 
-## Examples
+The ssh helper command sets the host key `Alias`. This means that ssh will not use `localhost:<port>` for 
+host key validation, but instead use the alias we provide.
 
-The `connect ssh` command accepts host SSH key prompts and provide information
-to the client in the format that makes sense: respecting the syntax and the
-order of arguments.
-
-
-Connect to the `ubuntu-target` using Boundary.
-
-```shell-session
-$ boundary connect ssh -target-id=ttcp_Gymo7Vcq7Y \
-   -host-id=hst_FrdNPd9Zm9 -- -l ubuntu -i private_key.pem
-```
-
-**Example output:**
-
-<CodeBlockConfig hideClipboard>
-
-```plaintext
-The authenticity of host 'ec2-198-52-100-1.compute-1.amazonaws.com (198-51-100-1)' can't be established.
-ECDSA key fingerprint is l4UB/neBad9tvkgJf1QZWxheQmR59WgrgzEimCG6kZY.
-Are you sure you want to continue connecting (yes/no)? yes
-
-ubuntu@ip-172-32-88-177:~
-```
+* For connections to a Target that has a host-set attached, the ssh helper command sets the `HostID` as the alias.
+* For connections directly to a host, the ssh helper command sets the `HostID` as the alias.
+* For connections to a Target that has its address field configured, the ssh helper command sets the `TargetID` as the alias.
 
 </CodeBlockConfig>
 
@@ -53,6 +35,52 @@ $ boundary connect ssh [options] [args]
 
 </CodeBlockConfig>
 
+## Examples
+
+### SSH to a Target without any additional options:
+
+Authorize a session to a target with ID “ttcp_eTcZMueUYv” and invoke default ssh client
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_eTcZMueUYv
+```
+
+</CodeBlockConfig>
+
+### SSH to a Target with additional options set
+Authorize a session to a target with ID “ttcp_eTcZMueUYv”, and pipe arguments directly to the invoked ssh binary. 
+Any SSH arguments after the double hyphen will be sent directly to the binary. 
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh -target-id ttcp_eTcZMueUYv --  -A 
+```
+
+</CodeBlockConfig>
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh -target-scope-name Helpdesk -target-name ubuntu-server --  -A 
+```
+
+</CodeBlockConfig>
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary connect ssh -target-id=ttcp_Gymo7Vcq7Y \
+   -host-id=hst_FrdNPd9Zm9 -- -l ubuntu -i private_key.pem
+```
+
+</CodeBlockConfig>
+
+
+
+### Connect command options 
 @include 'cmd-connect-command-options.mdx'
 
 ### SSH options:
