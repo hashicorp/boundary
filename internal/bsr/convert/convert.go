@@ -49,11 +49,13 @@ func ToAsciicast(ctx context.Context, session *bsr.Session, tmp storage.TempFile
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+		defer conn.Close(ctx)
 
 		ch, err := conn.OpenChannel(ctx, chanId)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+		defer ch.Close(ctx)
 
 		switch chs := ch.Summary.(type) {
 		case *ssh.ChannelSummary:
@@ -61,13 +63,21 @@ func ToAsciicast(ctx context.Context, session *bsr.Session, tmp storage.TempFile
 			case ssh.Shell, ssh.Exec:
 				reqScanner, err := ch.OpenRequestScanner(ctx, bsr.Inbound)
 				if err != nil {
+					if !is.Nil(reqScanner) {
+						reqScanner.Close()
+					}
 					return nil, fmt.Errorf("%s: %w", op, err)
 				}
+				defer reqScanner.Close()
 
 				msgScanner, err := ch.OpenMessageScanner(ctx, bsr.Outbound)
 				if err != nil {
+					if !is.Nil(msgScanner) {
+						msgScanner.Close()
+					}
 					return nil, fmt.Errorf("%s: %w", op, err)
 				}
+				defer msgScanner.Close()
 				return sshChannelToAsciicast(ctx, reqScanner, msgScanner, tmp, options...)
 			case "":
 				return nil, fmt.Errorf("%s: session program not set for asciicast conversion", op)

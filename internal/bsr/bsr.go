@@ -200,8 +200,11 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 	// Load and verify recording metadata
 	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
 	if err != nil {
+		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+	defer sha256Reader.Close()
+
 	meta, err := decodeSessionRecordingMeta(ctx, sha256Reader)
 	if err != nil {
 		return nil, err
@@ -319,8 +322,11 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connectio
 	// Load and verify connection metadata
 	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
 	if err != nil {
+		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+	defer sha256Reader.Close()
+
 	sm, err := decodeConnectionRecordingMeta(ctx, sha256Reader)
 	if err != nil {
 		return nil, err
@@ -420,8 +426,11 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 	// Load and verify channel metadata
 	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
 	if err != nil {
+		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+	defer sha256Reader.Close()
+
 	sm, err := decodeChannelRecordingMeta(ctx, sha256Reader)
 	if err != nil {
 		return nil, err

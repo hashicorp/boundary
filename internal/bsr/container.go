@@ -512,28 +512,40 @@ func (c *container) close(_ context.Context) error {
 
 	var closeError error
 
-	if err := c.meta.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.meta) {
+		if err := c.meta.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
-	if err := c.sum.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.sum) {
+		if err := c.sum.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
-	if err := c.checksums.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.checksums) {
+		if err := c.checksums.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
-	if err := c.sigs.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.sigs) {
+		if err := c.sigs.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
-	if err := c.journal.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.journal) {
+		if err := c.journal.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
-	if err := c.container.Close(); err != nil {
-		closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+	if !is.Nil(c.container) {
+		if err := c.container.Close(); err != nil {
+			closeError = errors.Join(closeError, fmt.Errorf("%s: %w", op, err))
+		}
 	}
 
 	return closeError
