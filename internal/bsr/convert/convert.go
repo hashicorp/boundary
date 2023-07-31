@@ -49,11 +49,13 @@ func ToAsciicast(ctx context.Context, session *bsr.Session, tmp storage.TempFile
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+		defer conn.Close(ctx)
 
 		ch, err := conn.OpenChannel(ctx, chanId)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+		defer ch.Close(ctx)
 
 		// TODO sanity checks before getting the data files:
 		// - check connection summary to see if there was an exec or shell request
@@ -62,11 +64,13 @@ func ToAsciicast(ctx context.Context, session *bsr.Session, tmp storage.TempFile
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+		defer reqScanner.Close()
 
 		msgScanner, err := ch.OpenMessageScanner(ctx, bsr.Outbound)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
+		defer msgScanner.Close()
 
 		return sshChannelToAsciicast(ctx, reqScanner, msgScanner, tmp, options...)
 	default:
