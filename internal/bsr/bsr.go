@@ -291,10 +291,6 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 
 	sessionContainerValidation := validateContainer(ctx, validation, SessionContainer, session.container, session.Meta.Id)
 	validation.SessionRecordingValidation = sessionContainerValidation
-	if err != nil {
-		validation.Valid = false
-		return validation, fmt.Errorf("%s: failed to validate session for %s: %w", op, sessionRecordingId, err)
-	}
 
 	// Validate all connections under session
 	for connId := range session.Meta.connections {
@@ -303,23 +299,30 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 		lastDotIndex := strings.LastIndex(connId, ".connection")
 		if lastDotIndex == -1 {
 			validation.Valid = false
-			return validation, fmt.Errorf("%s: malformed BSR for: %s", op, connId)
+			sessionContainerValidation.SubContainers = append(sessionContainerValidation.SubContainers, &ContainerValidation{
+				Name:          connId,
+				ContainerType: ConnectionContainer,
+				Error:         fmt.Errorf("%s: malformed BSR for: %s", op, connId),
+			})
+			continue
 		}
+
 		connKey = connId[:lastDotIndex]
 
 		// Open current connection
 		connection, err := session.OpenConnection(ctx, connKey)
 		if err != nil {
 			validation.Valid = false
-			return validation, fmt.Errorf("%s: failed to retrieve connection for %s: %w", op, connId, err)
+			sessionContainerValidation.SubContainers = append(sessionContainerValidation.SubContainers, &ContainerValidation{
+				Name:          connId,
+				ContainerType: ConnectionContainer,
+				Error:         fmt.Errorf("%s: failed to retrieve connection for %s: %w", op, connId, err),
+			})
+			continue
 		}
 
 		connectionContainerValidation := validateContainer(ctx, validation, ConnectionContainer, connection.container, connection.Meta.Id)
 		sessionContainerValidation.SubContainers = append(sessionContainerValidation.SubContainers, connectionContainerValidation)
-		if err != nil {
-			validation.Valid = false
-			continue
-		}
 
 		// Validate all channels under current connection
 		for chId := range connection.Meta.channels {
@@ -328,23 +331,30 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 			lastDotIndex := strings.LastIndex(chId, ".channel")
 			if lastDotIndex == -1 {
 				validation.Valid = false
-				return validation, fmt.Errorf("%s: malformed BSR for: %s", op, chId)
+				sessionContainerValidation.SubContainers = append(connectionContainerValidation.SubContainers, &ContainerValidation{
+					Name:          chId,
+					ContainerType: ChannelContainer,
+					Error:         fmt.Errorf("%s: malformed BSR for: %s", op, chId),
+				})
+				continue
 			}
+
 			chKey = chId[:lastDotIndex]
 
 			// Open current connection
 			channel, err := connection.OpenChannel(ctx, chKey)
 			if err != nil {
 				validation.Valid = false
-				return validation, fmt.Errorf("%s: failed to retrieve channel for %s: %w", op, chId, err)
+				sessionContainerValidation.SubContainers = append(connectionContainerValidation.SubContainers, &ContainerValidation{
+					Name:          chId,
+					ContainerType: ChannelContainer,
+					Error:         fmt.Errorf("%s: failed to retrieve channel for %s: %w", op, chId, err),
+				})
+				continue
 			}
 
 			channelContainerValidation := validateContainer(ctx, validation, ChannelContainer, channel.container, channel.Meta.Id)
 			connectionContainerValidation.SubContainers = append(connectionContainerValidation.SubContainers, channelContainerValidation)
-			if err != nil {
-				validation.Valid = false
-				continue
-			}
 		}
 	}
 
