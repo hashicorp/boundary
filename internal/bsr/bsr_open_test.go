@@ -593,7 +593,6 @@ func TestCloseBSRMethods(t *testing.T) {
 
 	// Ensure all channel files are closed
 	for _, file := range channelContainer.Files {
-		assert.True(t, file.Closed, file)
+		assert.True(t, file.Closed)
 	}
-
 }
