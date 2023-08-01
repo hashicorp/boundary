@@ -172,7 +172,7 @@ func persistBsrSessionKeys(ctx context.Context, keys *kms.Keys, c *container) er
 // Signature and checksum files will then be verified.
 // Fields on the underlying container will be populated so that the returned Session can be used for BSR
 // playback and conversion to formats such as asciinema
-func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*Session, error) {
+func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (s *Session, err error) {
 	const op = "bsr.OpenSession"
 	switch {
 	case sessionRecordingId == "":
@@ -199,8 +199,15 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 	// Load and verify recording metadata
 	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
 	if err != nil {
+		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+	defer func() {
+		if closeErr := sha256Reader.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
+
 	meta, err := decodeSessionRecordingMeta(ctx, sha256Reader)
 	if err != nil {
 		return nil, err
@@ -226,7 +233,10 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 
 // Close closes the Session container.
 func (s *Session) Close(ctx context.Context) error {
-	return s.container.close(ctx)
+	if !is.Nil(s.container) {
+		return s.container.close(ctx)
+	}
+	return nil
 }
 
 // Connection is a container in a bsr for a specific connection in a session
@@ -273,7 +283,7 @@ func (s *Session) NewConnection(ctx context.Context, meta *ConnectionRecordingMe
 }
 
 // OpenConnection will open and validate a BSR connection
-func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connection, error) {
+func (s *Session) OpenConnection(ctx context.Context, connId string) (conn *Connection, err error) {
 	const op = "bsr.(Session).OpenConnection"
 	switch {
 	case connId == "":
@@ -303,8 +313,15 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connectio
 	// Load and verify connection metadata
 	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
 	if err != nil {
+		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+	defer func() {
+		if closeErr := sha256Reader.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
+
 	sm, err := decodeConnectionRecordingMeta(ctx, sha256Reader)
 	if err != nil {
 		return nil, err
@@ -362,7 +379,7 @@ func (c *Connection) NewChannel(ctx context.Context, meta *ChannelRecordingMeta)
 }
 
 // OpenChannel will open and validate a BSR channel
-func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, error) {
+func (c *Connection) OpenChannel(ctx context.Context, chanId string) (ch *Channel, err error) {
 	const op = "bsr.OpenChannel"
 	switch {
 	case chanId == "":
@@ -391,8 +408,15 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, 
 	// Load and verify channel metadata
 	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
 	if err != nil {
+		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
+	defer func() {
+		if closeErr := sha256Reader.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
+
 	sm, err := decodeChannelRecordingMeta(ctx, sha256Reader)
 	if err != nil {
 		return nil, err
@@ -456,7 +480,10 @@ func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (io.W
 
 // Close closes the Connection container.
 func (c *Connection) Close(ctx context.Context) error {
-	return c.container.close(ctx)
+	if !is.Nil(c.container) {
+		return c.container.close(ctx)
+	}
+	return nil
 }
 
 // Channel is a container in a bsr for a specific channel in a session
@@ -469,7 +496,10 @@ type Channel struct {
 
 // Close closes the Channel container.
 func (c *Channel) Close(ctx context.Context) error {
-	return c.container.close(ctx)
+	if !is.Nil(c.container) {
+		return c.container.close(ctx)
+	}
+	return nil
 }
 
 // NewMessagesWriter creates a writer for recording channel messages.
