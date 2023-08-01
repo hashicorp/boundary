@@ -156,6 +156,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_SSH_USER                  = var.target_user,
     E2E_SSH_PORT                  = var.target_port,
     E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path,
+    E2E_SSH_CA_KEY                = "",
     VAULT_ADDR                    = local.vault_addr,
     VAULT_TOKEN                   = var.vault_root_token,
     E2E_VAULT_ADDR                = local.vault_addr_internal,

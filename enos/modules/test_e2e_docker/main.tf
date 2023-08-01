@@ -90,6 +90,11 @@ variable "target_port" {
   type        = string
   default     = ""
 }
+variable "target_ca_key" {
+  description = "CA Private Key (base64 encoded)"
+  type        = string
+  default     = ""
+}
 variable "vault_addr" {
   description = "External network address of Vault. Will be converted to a URL below"
   type        = string
@@ -202,6 +207,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_SSH_USER                  = var.target_user,
     E2E_SSH_PORT                  = var.target_port,
     E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path,
+    E2E_SSH_CA_KEY                = var.target_ca_key,
     VAULT_ADDR                    = local.vault_addr,
     VAULT_ADDR_INTERNAL           = local.vault_addr_internal,
     VAULT_TOKEN                   = var.vault_root_token,

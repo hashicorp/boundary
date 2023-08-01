@@ -20,6 +20,7 @@ docker run \
     -e "E2E_TARGET_IP=$E2E_TARGET_IP" \
     -e "E2E_SSH_USER=$E2E_SSH_USER" \
     -e "E2E_SSH_PORT=$E2E_SSH_PORT" \
+    -e "E2E_SSH_CA_KEY=$E2E_SSH_CA_KEY" \
     -e "E2E_SSH_KEY_PATH=/keys/target.pem" \
     -e "VAULT_ADDR=$VAULT_ADDR_INTERNAL" \
     -e "VAULT_TOKEN=$VAULT_TOKEN" \
