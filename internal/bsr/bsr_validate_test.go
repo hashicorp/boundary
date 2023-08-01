@@ -24,6 +24,7 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 	channelId := "test_channel"
 	sessionId := "s_01234567881"
 	protocol := Protocol("TEST_VALIDATE_BSR_PROTOCOL")
+	fs := &fstest.MemFS{}
 
 	err := RegisterSummaryAllocFunc(protocol, ChannelContainer, func(ctx context.Context) Summary {
 		return &BaseChannelSummary{Id: "chr_123456789", ConnectionRecordingId: connectionId}
@@ -72,7 +73,6 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 			sessionRecordingId: "sr_01234567881",
 			storage: func() storage.FS {
 				sessionRecordingId := "sr_01234567881"
-				fs := &fstest.MemFS{}
 				// Set up session
 				srm := &SessionRecordingMeta{
 					Id:       sessionRecordingId,
@@ -240,7 +240,6 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 			name:               "Failed checksum",
 			sessionRecordingId: "sr_21234567881",
 			storage: func() storage.FS {
-				fs := &fstest.MemFS{}
 				tmpFileName := "Test"
 				// Set up session
 				srm := &SessionRecordingMeta{
@@ -368,6 +367,11 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 			assert.Equal(t, len(tc.expectedSessionChecksums), len(validation.SessionRecordingValidation.FileChecksumValidations))
 			assert.Equal(t, tc.expectedSessionChecksums, validation.SessionRecordingValidation.FileChecksumValidations)
 
+			// Ensure session container is closed
+			sessionContainer := fs.Containers[fmt.Sprintf(bsrFileNameTemplate, validation.SessionRecordingId)]
+			require.NotNil(t, sessionContainer)
+			assert.True(t, sessionContainer.Closed)
+
 			// Validate Multiple Connections
 			for _, connection := range validation.SessionRecordingValidation.SubContainers {
 				require.NotNil(t, connection)
@@ -376,6 +380,11 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 				assert.Equal(t, len(tc.expectedConnectionChecksums), len(connection.FileChecksumValidations))
 				assert.Equal(t, tc.expectedConnectionChecksums, connection.FileChecksumValidations)
 
+				// Ensure connection container is closed
+				connectionContainer := sessionContainer.Sub[fmt.Sprintf(connectionFileNameTemplate, connection.Name)]
+				require.NotNil(t, connectionContainer)
+				assert.True(t, connectionContainer.Closed)
+
 				// Validate Multiple Channels
 				for _, channel := range connection.SubContainers {
 					require.NotNil(t, channel)
@@ -383,6 +392,11 @@ func TestBSR_Validate_ValidateBSR(t *testing.T) {
 					assert.Equal(t, tc.expectedChannelContainerSize, len(channel.SubContainers))
 					assert.Equal(t, len(tc.expectedChannelChecksums), len(channel.FileChecksumValidations))
 					assert.Equal(t, tc.expectedChannelChecksums, channel.FileChecksumValidations)
+
+					// Ensure channel container is closed
+					channelContainer := connectionContainer.Sub[fmt.Sprintf(channelFileNameTemplate, channel.Name)]
+					require.NotNil(t, channelContainer)
+					assert.True(t, channelContainer.Closed)
 				}
 			}
 		})

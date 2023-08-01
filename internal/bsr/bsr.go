@@ -267,7 +267,7 @@ type ContainerValidation struct {
 //
 // Validation will continue even if there's an error encountered during validation.
 // The validation error will be added to the ContainerValidation struct "Error" field for that container.
-func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*Validation, error) {
+func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (v *Validation, err error) {
 	const op = "bsr.Validate"
 
 	switch {
@@ -283,6 +283,11 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to retrieve session for %s: %w", op, sessionRecordingId, err)
 	}
+	defer func() {
+		if closeErr := session.Close(ctx); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
+		}
+	}()
 
 	validation := &Validation{
 		SessionRecordingId: sessionRecordingId,
@@ -354,7 +359,16 @@ func Validate(ctx context.Context, sessionRecordingId string, f storage.FS, keyU
 			}
 
 			channelContainerValidation := validateContainer(ctx, validation, ChannelContainer, channel.container, channel.Meta.Id)
+			err = channel.Close(ctx)
+			if err != nil {
+				channelContainerValidation.Error = errors.Join(channelContainerValidation.Error, fmt.Errorf("%s: failed to close channel for %s: %w", op, chId, err))
+			}
 			connectionContainerValidation.SubContainers = append(connectionContainerValidation.SubContainers, channelContainerValidation)
+		}
+
+		err = connection.Close(ctx)
+		if err != nil {
+			connectionContainerValidation.Error = errors.Join(connectionContainerValidation.Error, fmt.Errorf("%s: failed to close connection for %s: %w", op, connId, err))
 		}
 	}
 
