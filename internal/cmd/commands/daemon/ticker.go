@@ -127,6 +127,9 @@ func refreshCache(ctx context.Context, client *api.Client, addr string, tokenNam
 		BoundaryAddr: addr,
 		TokenName:    tokenName,
 	}
+	if err := r.AddPersona(ctx, p); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 	if err := r.RefreshTargets(ctx, p, l.Items); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
