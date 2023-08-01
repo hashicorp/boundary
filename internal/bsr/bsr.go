@@ -246,7 +246,10 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 
 // Close closes the Session container.
 func (s *Session) Close(ctx context.Context) error {
-	return s.container.close(ctx)
+	if !is.Nil(s.container) {
+		return s.container.close(ctx)
+	}
+	return nil
 }
 
 // Connection is a container in a bsr for a specific connection in a session
@@ -518,7 +521,10 @@ func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (io.W
 
 // Close closes the Connection container.
 func (c *Connection) Close(ctx context.Context) error {
-	return c.container.close(ctx)
+	if !is.Nil(c.container) {
+		return c.container.close(ctx)
+	}
+	return nil
 }
 
 // Channel is a container in a bsr for a specific channel in a session
@@ -532,7 +538,10 @@ type Channel struct {
 
 // Close closes the Channel container.
 func (c *Channel) Close(ctx context.Context) error {
-	return c.container.close(ctx)
+	if !is.Nil(c.container) {
+		return c.container.close(ctx)
+	}
+	return nil
 }
 
 // NewMessagesWriter creates a writer for recording channel messages.
