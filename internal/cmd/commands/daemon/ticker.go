@@ -26,7 +26,7 @@ type refreshTicker struct {
 }
 
 func newRefreshTicker(ctx context.Context, refreshIntervalSeconds int64, cmd commander, store *cache.Store, tokenName string) (*refreshTicker, error) {
-	const op = "cache.newRefreshTicker"
+	const op = "daemon.newRefreshTicker"
 	switch {
 	case refreshIntervalSeconds == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "refresh interval seconds is missing")
@@ -57,7 +57,7 @@ func newRefreshTicker(ctx context.Context, refreshIntervalSeconds int64, cmd com
 }
 
 func (rt *refreshTicker) start(ctx context.Context) {
-	const op = "cache.(refreshTicker).start"
+	const op = "daemon.(refreshTicker).start"
 	timer := time.NewTimer(0)
 	for {
 		select {
@@ -96,7 +96,7 @@ func (rt *refreshTicker) start(ctx context.Context) {
 }
 
 func refreshCache(ctx context.Context, client *api.Client, addr string, tokenName string, store *cache.Store) error {
-	const op = "cache.(Repository).refreshCache"
+	const op = "daemon.(Repository).refreshCache"
 	switch {
 	case util.IsNil(client):
 		return errors.New(ctx, errors.InvalidParameter, op, "api client is missing")

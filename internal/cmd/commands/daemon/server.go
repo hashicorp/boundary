@@ -91,7 +91,7 @@ func (sc *serverConfig) validate() error {
 
 // can be called before eventing is setup
 func newServer(ctx context.Context, conf serverConfig) (*server, error) {
-	const op = "cache.(server).newServer"
+	const op = "daemon.(server).newServer"
 	if err := conf.validate(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -107,7 +107,7 @@ func newServer(ctx context.Context, conf serverConfig) (*server, error) {
 }
 
 func (s *server) shutdown() error {
-	const op = "cache.(server).Shutdown"
+	const op = "daemon.(server).Shutdown"
 
 	var shutdownErr error
 	s.shutdownOnce.Do(func() {
@@ -141,7 +141,7 @@ func (s *server) shutdown() error {
 // daemon.  The daemon bits are included so it's easy for CLI cmds to start the
 // a cache server
 func (s *server) start(ctx context.Context, port uint) error {
-	const op = "cache.(server).start"
+	const op = "daemon.(server).start"
 	switch {
 	case util.IsNil(ctx):
 		return errors.New(ctx, errors.InvalidParameter, op, "context is missing")
@@ -319,7 +319,7 @@ const (
 )
 
 func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenName string) (http.HandlerFunc, error) {
-	const op = "cache.newSearchTargetsHandlerFunc"
+	const op = "daemon.newSearchTargetsHandlerFunc"
 	switch {
 	case util.IsNil(store):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "store is missing")

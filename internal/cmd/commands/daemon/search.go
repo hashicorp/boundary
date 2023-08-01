@@ -83,7 +83,7 @@ func (c *SearchTargetsCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *SearchTargetsCommand) Run(args []string) int {
-	const op = "cache.(SearchTargetsCommand).Run"
+	const op = "daemon.(SearchTargetsCommand).Run"
 	ctx := c.Context
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
@@ -213,7 +213,7 @@ func (c *SearchTargetsCommand) printListTable(items []*targets.Target) string {
 }
 
 func SearchClient(ctx context.Context, addr string, flagOutputCurl bool) (*api.Client, error) {
-	const op = "cache.SearchClient"
+	const op = "daemon.SearchClient"
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -237,7 +237,7 @@ type targetFilterBy struct {
 }
 
 func searchTargets(ctx context.Context, filterBy targetFilterBy, flagPort uint, flagOutputCurl bool) (*api.Response, error) {
-	const op = "cache.searchTargets"
+	const op = "daemon.searchTargets"
 	client, err := SearchClient(ctx, fmt.Sprintf("http://localhost:%d", flagPort), flagOutputCurl)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

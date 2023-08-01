@@ -118,7 +118,7 @@ func (c *ServerCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *ServerCommand) Run(args []string) int {
-	const op = "cache.(ServerCommand).Run"
+	const op = "daemon.(ServerCommand).Run"
 	ctx, cancel := context.WithCancel(c.Context)
 	c.Context = ctx
 	c.ContextCancel = cancel
@@ -162,7 +162,7 @@ func (c *ServerCommand) Run(args []string) int {
 const DefaultRefreshIntervalSeconds = 5 * 60
 
 func StartCacheInBackground(ctx context.Context, tokenName string, cmd commander, ui cli.Ui, flagPort uint) error {
-	const op = "cache.StartCacheInBackground"
+	const op = "daemon.StartCacheInBackground"
 
 	cancelCtx, cancelFunc := context.WithCancel(ctx)
 
