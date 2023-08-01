@@ -140,13 +140,11 @@ func (s *server) shutdown() error {
 // start will fire up the refresh goroutine and the caching API http server as a
 // daemon.  The daemon bits are included so it's easy for CLI cmds to start the
 // a cache server
-func (s *server) start(ctx context.Context, port uint) error {
+func (s *server) start(ctx context.Context) error {
 	const op = "daemon.(server).start"
 	switch {
 	case util.IsNil(ctx):
 		return errors.New(ctx, errors.InvalidParameter, op, "context is missing")
-	case port == 0:
-		return errors.New(ctx, errors.InvalidParameter, op, "port is missing")
 	}
 
 	homeDir, err := homedir.Dir()
@@ -213,8 +211,8 @@ func (s *server) start(ctx context.Context, port uint) error {
 	// background bits
 	var tic *refreshTicker
 	{
-		s.info["Listening port"] = strconv.FormatUint(uint64(port), 10)
-		s.infoKeys = append(s.infoKeys, "Listening port")
+		s.info["Listening address"] = daemonAddress()
+		s.infoKeys = append(s.infoKeys, "Listening address")
 		s.info["Store debug"] = strconv.FormatBool(s.conf.flagStoreDebug)
 		s.infoKeys = append(s.infoKeys, "Store debug")
 
@@ -250,10 +248,8 @@ func (s *server) start(ctx context.Context, port uint) error {
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		// TODO (jimlambrt 6/2023) - add mTLS here here and write client private key
-		// and client cert in the key chain.
 
-		s.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
+		s.listener, err = listen(ctx)
 		if err != nil {
 			log.Fatal("Listener error:", err)
 		}
