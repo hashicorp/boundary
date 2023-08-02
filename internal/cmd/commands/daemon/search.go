@@ -235,13 +235,14 @@ func searchTargets(ctx context.Context, filterBy targetFilterBy, flagOutputCurl 
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	req, err := client.NewRequest(ctx, "GET", "/search/targets", nil)
+	req, err := client.NewRequest(ctx, "GET", "/search", nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error: %s", err.Error()))
 	}
 	req.Header.Add("token_name", filterBy.tokenName)
 	req.Header.Add("boundary_addr", filterBy.boundaryAddr)
 	q := url.Values{}
+	q.Add("resource", "targets")
 	q.Add("name_starts_with", filterBy.flagNameStartsWith)
 	q.Add("query", filterBy.flagQuery)
 	req.URL.RawQuery = q.Encode()

@@ -23,7 +23,7 @@ func TestSearchTargetsRequest(t *testing.T) {
 
 	require.NoError(t, err)
 	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/search/targets", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/v1/search", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.Header.Get("token_name"), "default")
 		assert.Equal(t, r.Header.Get("boundary_addr"), "default")
 		b, err := json.Marshal(map[string]interface{}{"Items": []*targets.Target{

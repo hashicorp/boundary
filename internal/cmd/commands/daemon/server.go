@@ -239,7 +239,7 @@ func (s *server) start(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		mux.HandleFunc("/v1/search/targets", searchTargetsFn)
+		mux.HandleFunc("/v1/search", searchTargetsFn)
 		s.httpSrv = &http.Server{
 			Handler: mux,
 		}
@@ -295,8 +295,9 @@ func (s *server) start(ctx context.Context) error {
 }
 
 const (
-	filterKey = "filter"
-	queryKey  = "query"
+	filterKey   = "filter"
+	queryKey    = "query"
+	resourceKey = "resource"
 
 	idContainsKey          = "id_contains"
 	nameContainsKey        = "name_contains"
@@ -328,6 +329,12 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenN
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
+		}
+
+		switch resource := r.URL.Query().Get(resourceKey); resource {
+		case "targets":
+		default:
+			http.Error(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
 		}
 
 		reqTokenName := r.Header.Get("token_name")
