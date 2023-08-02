@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package cache
+package daemon
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/internal/cache"
+	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -26,7 +26,7 @@ type refreshTicker struct {
 }
 
 func newRefreshTicker(ctx context.Context, refreshIntervalSeconds int64, cmd commander, store *cache.Store, tokenName string) (*refreshTicker, error) {
-	const op = "cache.newRefreshTicker"
+	const op = "daemon.newRefreshTicker"
 	switch {
 	case refreshIntervalSeconds == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "refresh interval seconds is missing")
@@ -57,7 +57,7 @@ func newRefreshTicker(ctx context.Context, refreshIntervalSeconds int64, cmd com
 }
 
 func (rt *refreshTicker) start(ctx context.Context) {
-	const op = "cache.(refreshTicker).start"
+	const op = "daemon.(refreshTicker).start"
 	timer := time.NewTimer(0)
 	for {
 		select {
@@ -71,13 +71,21 @@ func (rt *refreshTicker) start(ctx context.Context) {
 				timer.Reset(rt.refreshInterval)
 				continue
 			}
+			if client.Addr() == "" {
+				// emit event, reset, and continue
+				errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
+				timer.Reset(rt.refreshInterval)
+				continue
+			}
 			if client.Token() == "" {
 				// emit event, reset, and continue
 				errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("token name %q is missing", rt.tokenName))
 				timer.Reset(rt.refreshInterval)
 				continue
 			}
-			if err := refreshCache(ctx, client, rt.tokenName, rt.store); err != nil {
+			// TODO: Iterate over personas and use their address and token information instead of what
+			//  was available at the time the ticker was started.
+			if err := refreshCache(ctx, client, client.Addr(), rt.tokenName, rt.store); err != nil {
 				// event was already emitted, so reset and continue
 				timer.Reset(rt.refreshInterval)
 				continue
@@ -87,13 +95,15 @@ func (rt *refreshTicker) start(ctx context.Context) {
 	}
 }
 
-func refreshCache(ctx context.Context, client *api.Client, tokenName string, store *cache.Store) error {
-	const op = "cache.(Repository).refreshCache"
+func refreshCache(ctx context.Context, client *api.Client, addr string, tokenName string, store *cache.Store) error {
+	const op = "daemon.(Repository).refreshCache"
 	switch {
 	case util.IsNil(client):
 		return errors.New(ctx, errors.InvalidParameter, op, "api client is missing")
 	case tokenName == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
+	case addr == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
 	case util.IsNil(store):
 		return errors.New(ctx, errors.InvalidParameter, op, "store is missing")
 	}
@@ -112,7 +122,15 @@ func refreshCache(ctx context.Context, client *api.Client, tokenName string, sto
 	}
 
 	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets", len(l.Items)))
-	if err := r.RefreshTargets(ctx, tokenName, l.Items); err != nil {
+
+	p := &cache.Persona{
+		BoundaryAddr: addr,
+		TokenName:    tokenName,
+	}
+	if err := r.AddPersona(ctx, p); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if err := r.RefreshTargets(ctx, p, l.Items); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil

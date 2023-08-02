@@ -1,4 +1,7 @@
-package cache
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package daemon
 
 import (
 	"bytes"
@@ -28,16 +31,16 @@ type SearchTargetsCommand struct {
 }
 
 func (c *SearchTargetsCommand) Synopsis() string {
-	return "Start a Boundary cache server"
+	return "Start a Boundary daemon"
 }
 
 func (c *SearchTargetsCommand) Help() string {
 	helpText := `
-Usage: boundary cache search [options]
+Usage: boundary targets search  [options]
 
-  Search a boundary cache:
+  Search a boundary target:
 
-      $ boundary cache search
+      $ boundary targets search
 
   For a full list of examples, please see the documentation.
 
@@ -80,7 +83,7 @@ func (c *SearchTargetsCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *SearchTargetsCommand) Run(args []string) int {
-	const op = "cache.(SearchTargetsCommand).Run"
+	const op = "daemon.(SearchTargetsCommand).Run"
 	ctx := c.Context
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
@@ -93,8 +96,13 @@ func (c *SearchTargetsCommand) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
-
+	client, err := c.Client()
+	if err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandUserError
+	}
 	tf := targetFilterBy{
+		boundaryAddr:       client.Addr(),
 		tokenName:          tokenName,
 		flagNameStartsWith: c.flagNameStartsWith,
 		flagQuery:          c.flagQuery,
@@ -140,6 +148,7 @@ func (c *SearchTargetsCommand) Run(args []string) int {
 	}
 	return base.CommandSuccess
 }
+
 func (c *SearchTargetsCommand) printListTable(items []*targets.Target) string {
 	if len(items) == 0 {
 		return "No targets found"
@@ -204,7 +213,7 @@ func (c *SearchTargetsCommand) printListTable(items []*targets.Target) string {
 }
 
 func SearchClient(ctx context.Context, addr string, flagOutputCurl bool) (*api.Client, error) {
-	const op = "cache.SearchClient"
+	const op = "daemon.SearchClient"
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -224,10 +233,11 @@ type targetFilterBy struct {
 	flagNameStartsWith string
 	flagQuery          string
 	tokenName          string
+	boundaryAddr       string
 }
 
 func searchTargets(ctx context.Context, filterBy targetFilterBy, flagPort uint, flagOutputCurl bool) (*api.Response, error) {
-	const op = "cache.searchTargets"
+	const op = "daemon.searchTargets"
 	client, err := SearchClient(ctx, fmt.Sprintf("http://localhost:%d", flagPort), flagOutputCurl)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -237,6 +247,7 @@ func searchTargets(ctx context.Context, filterBy targetFilterBy, flagPort uint, 
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error: %s", err.Error()))
 	}
 	req.Header.Add("token_name", filterBy.tokenName)
+	req.Header.Add("boundary_addr", filterBy.boundaryAddr)
 	q := url.Values{}
 	q.Add("name_starts_with", filterBy.flagNameStartsWith)
 	q.Add("query", filterBy.flagQuery)

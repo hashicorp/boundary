@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/go-dbw"
 )
 
-// DefaultStoreUrl uses a temp in-memory sqlite database (shared) see: https://www.sqlite.org/inmemorydb.html
-const DefaultStoreUrl = "file::memory:?cache=shared"
+// DefaultStoreUrl uses a temp in-memory sqlite database see: https://www.sqlite.org/inmemorydb.html
+const DefaultStoreUrl = "file::memory:?_pragma=foreign_keys(1)"
 
 type Store struct {
 	conn *db.DB
@@ -64,15 +64,27 @@ const (
 	createTables = `	
 begin;
 
+create table if not exists cache_persona (
+  boundary_addr text not null,
+  token_name text not null,
+  auth_token_id text not null, -- Expected token id stored in the token name
+  -- the timestamp has this default in order for the db to store fractional seconds. 
+  last_accessed_time timestamp not null default (strftime('%Y-%m-%d %H:%M:%f','now')),
+  primary key (boundary_addr, token_name)
+);
+
 create table if not exists cache_target (
+  boundary_addr text not null,
   token_name text not null,
   id text not null,
   name text,
   description text,
   address text,
   item text,
-  created_time timestamp default current_timestamp,
-  primary key (token_name, id)
+  foreign key (boundary_addr, token_name)
+	references cache_persona(boundary_addr, token_name)
+	on delete cascade,
+  primary key (boundary_addr, token_name, id)
 );
 
 create table if not exists cache_api_error (
