@@ -16,7 +16,7 @@ import (
 
 func TestRepository_AddPersona(t *testing.T) {
 	ctx := context.Background()
-	s, err := Open(ctx, WithDebug(true))
+	s, err := Open(ctx)
 	require.NoError(t, err)
 
 	r, err := NewRepository(ctx, s)
@@ -37,7 +37,7 @@ func TestRepository_AddPersona(t *testing.T) {
 	// Lookup the first persona added. It should have been evicted for being
 	// used the least recently.
 	gotP, err := r.LookupPersona(ctx, addr, p.TokenName)
-	assert.ErrorContains(t, err, "not found")
+	assert.NoError(t, err)
 	assert.Nil(t, gotP)
 
 	p, err = r.LookupPersona(ctx, addr+"0", p.TokenName)
@@ -46,9 +46,47 @@ func TestRepository_AddPersona(t *testing.T) {
 	t.Logf("got %#v", p)
 }
 
+func TestRepository_LookupPersona(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+
+	r, err := NewRepository(ctx, s)
+	require.NoError(t, err)
+
+	t.Run("empty address", func(t *testing.T) {
+		p, err := r.LookupPersona(ctx, "", "token")
+		assert.ErrorContains(t, err, "address is empty")
+		assert.Nil(t, p)
+	})
+	t.Run("empty token name", func(t *testing.T) {
+		p, err := r.LookupPersona(ctx, "address", "")
+		assert.ErrorContains(t, err, "token name is empty")
+		assert.Nil(t, p)
+	})
+	t.Run("not found", func(t *testing.T) {
+		p, err := r.LookupPersona(ctx, "address", "token")
+		assert.NoError(t, err)
+		assert.Nil(t, p)
+	})
+	t.Run("found", func(t *testing.T) {
+		addr := "address"
+		p := &Persona{
+			BoundaryAddr: addr,
+			TokenName:    "default",
+			AuthTokenId:  "at_1234567890",
+		}
+		assert.NoError(t, r.AddPersona(ctx, p))
+		p, err := r.LookupPersona(ctx, p.BoundaryAddr, p.TokenName)
+		assert.NoError(t, err)
+		assert.NotNil(t, p)
+	})
+
+}
+
 func TestRepository_RefreshTargets(t *testing.T) {
 	ctx := context.Background()
-	s, err := Open(ctx, WithDebug(true))
+	s, err := Open(ctx)
 	require.NoError(t, err)
 
 	r, err := NewRepository(ctx, s)
@@ -145,4 +183,28 @@ func TestRepository_RefreshTargets(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_SaveError(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx, WithDebug(true))
+	require.NoError(t, err)
+
+	r, err := NewRepository(ctx, s)
+	require.NoError(t, err)
+
+	testResource := "test_resource_type"
+	testErr := fmt.Errorf("test error for %q", testResource)
+
+	t.Run("empty resource type", func(t *testing.T) {
+		assert.ErrorContains(t, r.SaveError(ctx, "", testErr), "resource type is empty")
+	})
+	t.Run("nil error", func(t *testing.T) {
+		assert.ErrorContains(t, r.SaveError(ctx, testResource, nil), "error is nil")
+	})
+	t.Run("success", func(t *testing.T) {
+		assert.NoError(t, r.SaveError(ctx, testResource, testErr))
+	})
+
+	assert.NoError(t, r.SaveError(ctx, testResource, testErr))
 }

@@ -40,49 +40,70 @@ func NewRepository(ctx context.Context, s *Store) (*Repository, error) {
 // exceed a limit, the  persona retrieved least recently is deleted.
 func (r *Repository) AddPersona(ctx context.Context, p *Persona) error {
 	const op = "cache.(Repository).AddPersona"
+	switch {
+	case p == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "persona is nil")
+	case p.TokenName == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "persona's token name is empty")
+	case p.BoundaryAddr == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "persona's boundary address is empty")
+	}
 
 	onConflict := db.OnConflict{
 		Target: db.Columns{"boundary_addr", "token_name"},
 		Action: db.SetColumns([]string{"auth_token_id", "last_accessed_time"}),
 	}
-
-	if err := r.rw.Create(ctx, p, db.WithOnConflict(&onConflict)); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-
-	var personas []*Persona
-	if err := r.rw.SearchWhere(ctx, &personas, "", []any{}, db.WithLimit(-1)); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	if len(personas) <= personaLimit {
-		return nil
-	}
-
-	var oldestPersona *Persona
-	for _, p := range personas {
-		if oldestPersona == nil || oldestPersona.LastAccessedTime.After(p.LastAccessedTime) {
-			oldestPersona = p
-		}
-	}
-	if oldestPersona != nil {
-		if _, err := r.rw.Delete(ctx, oldestPersona); err != nil {
+	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
+		if err := writer.Create(ctx, p, db.WithOnConflict(&onConflict)); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
+
+		var personas []*Persona
+		if err := reader.SearchWhere(ctx, &personas, "", []any{}, db.WithLimit(-1)); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		if len(personas) <= personaLimit {
+			return nil
+		}
+
+		var oldestPersona *Persona
+		for _, p := range personas {
+			if oldestPersona == nil || oldestPersona.LastAccessedTime.After(p.LastAccessedTime) {
+				oldestPersona = p
+			}
+		}
+		if oldestPersona != nil {
+			if _, err := writer.Delete(ctx, oldestPersona); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
-	// TODO: Return an error with the persona that was removed from the cache
 	return nil
 }
 
 // LookupPersona returns the persona and updates its last accessed time
 func (r *Repository) LookupPersona(ctx context.Context, addr string, tokenName string) (*Persona, error) {
 	const op = "cache.(Repository).LookupPersona"
+	switch {
+	case addr == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "address is empty")
+	case tokenName == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is empty")
+	}
 
 	p := &Persona{
 		BoundaryAddr: addr,
 		TokenName:    tokenName,
 	}
 	if err := r.rw.LookupById(ctx, p); err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	updatedP := &Persona{
@@ -99,6 +120,12 @@ func (r *Repository) LookupPersona(ctx context.Context, addr string, tokenName s
 
 func (r *Repository) SaveError(ctx context.Context, resourceType string, err error) error {
 	const op = "cache.(Repository).StoreError"
+	switch {
+	case resourceType == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "resource type is empty")
+	case err == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "error is nil")
+	}
 	apiErr := &ApiError{
 		ResourceType: resourceType,
 		Error:        err.Error(),
