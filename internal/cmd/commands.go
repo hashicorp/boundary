@@ -9,12 +9,12 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authmethodscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authtokenscmd"
-	"github.com/hashicorp/boundary/internal/cmd/commands/cache"
 	"github.com/hashicorp/boundary/internal/cmd/commands/config"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentiallibrariescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentialscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentialstorescmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groupscmd"
@@ -364,13 +364,8 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"cache server": func() (cli.Command, error) {
-			return &cache.ServerCommand{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-		"cache search targets": func() (cli.Command, error) {
-			return &cache.SearchTargetsCommand{
+		"daemon start": func() (cli.Command, error) {
+			return &daemon.ServerCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
@@ -1195,6 +1190,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-credential-sources",
+			}, nil
+		},
+		"targets search": func() (cli.Command, error) {
+			return &daemon.SearchTargetsCommand{
+				Command: base.NewCommand(ui),
 			}, nil
 		},
 
