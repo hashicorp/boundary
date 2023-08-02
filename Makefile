@@ -381,7 +381,10 @@ docker-build-dev: build
 .PHONY: version
 # This is used for release builds by .github/workflows/build.yml
 version:
-	@go run ./cmd/boundary version | awk '/Version Number:/ { print $$3 }'
+	@go run \
+		-ldflags "-X 'github.com/hashicorp/boundary/version.Version=$(shell cat version/VERSION)'" \
+		./cmd/boundary version \
+		| awk '/Version Number:/ { print $$3 }'
 
 EDITION?=
 .PHONY: edition
