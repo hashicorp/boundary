@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package cache
+package daemon
 
 import (
 	"context"
@@ -21,12 +21,12 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/internal/cache"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/base/logging"
+	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
@@ -91,7 +91,7 @@ func (sc *serverConfig) validate() error {
 
 // can be called before eventing is setup
 func newServer(ctx context.Context, conf serverConfig) (*server, error) {
-	const op = "cache.(server).newServer"
+	const op = "daemon.(server).newServer"
 	if err := conf.validate(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -107,7 +107,7 @@ func newServer(ctx context.Context, conf serverConfig) (*server, error) {
 }
 
 func (s *server) shutdown() error {
-	const op = "cache.(server).Shutdown"
+	const op = "daemon.(server).Shutdown"
 
 	var shutdownErr error
 	s.shutdownOnce.Do(func() {
@@ -141,7 +141,7 @@ func (s *server) shutdown() error {
 // daemon.  The daemon bits are included so it's easy for CLI cmds to start the
 // a cache server
 func (s *server) start(ctx context.Context, port uint) error {
-	const op = "cache.(server).start"
+	const op = "daemon.(server).start"
 	switch {
 	case util.IsNil(ctx):
 		return errors.New(ctx, errors.InvalidParameter, op, "context is missing")
@@ -174,11 +174,11 @@ func (s *server) start(ctx context.Context, port uint) error {
 		}
 		daemonCtx = &daemon.Context{
 			PidFileName: fmt.Sprintf(pidFileNameTemplate, homeDir),
-			PidFilePerm: 0644,
+			PidFilePerm: 0o644,
 			LogFileName: fmt.Sprintf(logFileNameTemplate, homeDir),
-			LogFilePerm: 0640,
+			LogFilePerm: 0o640,
 			WorkDir:     homeDir,
-			Umask:       027,
+			Umask:       0o27,
 		}
 
 		termHandler := func(sig os.Signal) error {
@@ -319,7 +319,7 @@ const (
 )
 
 func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenName string) (http.HandlerFunc, error) {
-	const op = "cache.newSearchTargetsHandlerFunc"
+	const op = "daemon.newSearchTargetsHandlerFunc"
 	switch {
 	case util.IsNil(store):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "store is missing")
@@ -339,6 +339,13 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenN
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
+		boundaryAddr := r.Header.Get("boundary_addr")
+
+		// TODO: Look up the persona from fields passed in.  For now just hard code the addr and token.
+		p := &cache.Persona{
+			BoundaryAddr: boundaryAddr,
+			TokenName:    reqTokenName,
+		}
 
 		repo, err := cache.NewRepository(ctx, store)
 		if err != nil {
@@ -349,25 +356,25 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenN
 		var found []*targets.Target
 		switch {
 		case r.URL.Query().Get(queryKey) != "":
-			found, err = repo.QueryTargets(r.Context(), tokenName, r.URL.Query().Get(queryKey))
+			found, err = repo.QueryTargets(r.Context(), p, r.URL.Query().Get(queryKey))
 		default:
 			found, err = repo.FindTargets(
 				r.Context(),
-				tokenName,
-				cache.WithIdContains(ctx, r.URL.Query().Get(idContainsKey)),
-				cache.WithNameContains(ctx, r.URL.Query().Get(nameContainsKey)),
-				cache.WithDescriptionContains(ctx, r.URL.Query().Get(descriptionContainsKey)),
-				cache.WithAddressContains(ctx, r.URL.Query().Get(addressContainsKey)),
+				p,
+				cache.WithIdContains(r.URL.Query().Get(idContainsKey)),
+				cache.WithNameContains(r.URL.Query().Get(nameContainsKey)),
+				cache.WithDescriptionContains(r.URL.Query().Get(descriptionContainsKey)),
+				cache.WithAddressContains(r.URL.Query().Get(addressContainsKey)),
 
-				cache.WithIdStartsWith(ctx, r.URL.Query().Get(idStartsWithKey)),
-				cache.WithNameStartsWith(ctx, r.URL.Query().Get(nameStartsWithKey)),
-				cache.WithDescriptionStartsWith(ctx, r.URL.Query().Get(descriptionStartsWithKey)),
-				cache.WithAddressStartsWith(ctx, r.URL.Query().Get(addressStartsWithKey)),
+				cache.WithIdStartsWith(r.URL.Query().Get(idStartsWithKey)),
+				cache.WithNameStartsWith(r.URL.Query().Get(nameStartsWithKey)),
+				cache.WithDescriptionStartsWith(r.URL.Query().Get(descriptionStartsWithKey)),
+				cache.WithAddressStartsWith(r.URL.Query().Get(addressStartsWithKey)),
 
-				cache.WithIdEndsWith(ctx, r.URL.Query().Get(idEndsWithKey)),
-				cache.WithNameEndsWith(ctx, r.URL.Query().Get(nameEndsWithKey)),
-				cache.WithDescriptionEndsWith(ctx, r.URL.Query().Get(descriptionEndsWithKey)),
-				cache.WithAddressEndsWith(ctx, r.URL.Query().Get(addressEndsWithKey)),
+				cache.WithIdEndsWith(r.URL.Query().Get(idEndsWithKey)),
+				cache.WithNameEndsWith(r.URL.Query().Get(nameEndsWithKey)),
+				cache.WithDescriptionEndsWith(r.URL.Query().Get(descriptionEndsWithKey)),
+				cache.WithAddressEndsWith(r.URL.Query().Get(addressEndsWithKey)),
 			)
 		}
 		if err != nil {
@@ -394,7 +401,6 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenN
 			return
 		}
 		w.Write(j)
-
 	}, nil
 }
 
@@ -438,7 +444,7 @@ func (s *server) printInfo(ui cli.Ui) {
 }
 
 func (s *server) setupLogging(flagLogLevel, flagLogFormat string) (logging.LogFormat, hclog.Level, error) {
-	const op = "cache.(Command).setupLogging"
+	const op = "daemon.(Command).setupLogging"
 	// flagLogLevel and flagLogFormat are still valid when empty
 
 	s.logOutput = os.Stderr
@@ -491,7 +497,7 @@ func (s *server) setupLogging(flagLogLevel, flagLogFormat string) (logging.LogFo
 }
 
 func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *sync.Mutex, logFormat logging.LogFormat) (*event.Eventer, error) {
-	const op = "cache.setupEventing"
+	const op = "daemon.setupEventing"
 	switch {
 	case util.IsNil(logger):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "logger is missing")
@@ -541,7 +547,7 @@ func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *
 }
 
 func openStore(ctx context.Context, url string, flagDebugStore bool) (*cache.Store, string, error) {
-	const op = "cache.openStore"
+	const op = "daemon.openStore"
 	var err error
 	switch {
 	case url != "":
@@ -552,7 +558,7 @@ func openStore(ctx context.Context, url string, flagDebugStore bool) (*cache.Sto
 	default:
 		url = cache.DefaultStoreUrl
 	}
-	store, err := cache.Open(ctx, cache.WithUrl(ctx, url), cache.WithDebug(ctx, flagDebugStore))
+	store, err := cache.Open(ctx, cache.WithUrl(url), cache.WithDebug(flagDebugStore))
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op)
 	}
