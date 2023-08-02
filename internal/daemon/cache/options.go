@@ -4,8 +4,6 @@
 package cache
 
 import (
-	"context"
-
 	"github.com/hashicorp/go-dbw"
 )
 
@@ -48,7 +46,7 @@ func getOpts(opt ...Option) (options, error) {
 }
 
 // WithUrls provides optional url
-func WithUrl(ctx context.Context, url string) Option {
+func WithUrl(url string) Option {
 	const op = "cache.WithUrl"
 	return func(o *options) error {
 		o.withUrl = url
@@ -57,7 +55,7 @@ func WithUrl(ctx context.Context, url string) Option {
 }
 
 // WithNameContains provides an optional name contains value.
-func WithNameContains(_ context.Context, value string) Option {
+func WithNameContains(value string) Option {
 	return func(o *options) error {
 		o.withNameContains = value
 		return nil
@@ -65,7 +63,7 @@ func WithNameContains(_ context.Context, value string) Option {
 }
 
 // WithNameStartsWith provides an optional name starts with value.
-func WithNameStartsWith(_ context.Context, value string) Option {
+func WithNameStartsWith(value string) Option {
 	return func(o *options) error {
 		o.withNameStartsWith = value
 		return nil
@@ -73,7 +71,7 @@ func WithNameStartsWith(_ context.Context, value string) Option {
 }
 
 // WithNameEndsWith provides an optional name ends with value.
-func WithNameEndsWith(_ context.Context, value string) Option {
+func WithNameEndsWith(value string) Option {
 	return func(o *options) error {
 		o.withNameEndsWith = value
 		return nil
@@ -81,7 +79,7 @@ func WithNameEndsWith(_ context.Context, value string) Option {
 }
 
 // WithDescriptionContains provides an optional description contains value.
-func WithDescriptionContains(_ context.Context, value string) Option {
+func WithDescriptionContains(value string) Option {
 	return func(o *options) error {
 		o.withDescriptionContains = value
 		return nil
@@ -89,7 +87,7 @@ func WithDescriptionContains(_ context.Context, value string) Option {
 }
 
 // WithDescriptionStartsWith provides an optional description starts with value.
-func WithDescriptionStartsWith(_ context.Context, value string) Option {
+func WithDescriptionStartsWith(value string) Option {
 	return func(o *options) error {
 		o.withDescriptionStartsWith = value
 		return nil
@@ -97,7 +95,7 @@ func WithDescriptionStartsWith(_ context.Context, value string) Option {
 }
 
 // WithDescriptionEndsWith provides an optional description ends with value.
-func WithDescriptionEndsWith(_ context.Context, value string) Option {
+func WithDescriptionEndsWith(value string) Option {
 	return func(o *options) error {
 		o.withDescriptionEndsWith = value
 		return nil
@@ -105,7 +103,7 @@ func WithDescriptionEndsWith(_ context.Context, value string) Option {
 }
 
 // WithIdContains provides an optional id contains value.
-func WithIdContains(_ context.Context, value string) Option {
+func WithIdContains(value string) Option {
 	return func(o *options) error {
 		o.withIdContains = value
 		return nil
@@ -113,7 +111,7 @@ func WithIdContains(_ context.Context, value string) Option {
 }
 
 // WithIdStartsWith provides an optional id starts with value.
-func WithIdStartsWith(_ context.Context, value string) Option {
+func WithIdStartsWith(value string) Option {
 	return func(o *options) error {
 		o.withIdStartsWith = value
 		return nil
@@ -121,7 +119,7 @@ func WithIdStartsWith(_ context.Context, value string) Option {
 }
 
 // WithIdEndsWith provides an optional id ends with value.
-func WithIdEndsWith(_ context.Context, value string) Option {
+func WithIdEndsWith(value string) Option {
 	return func(o *options) error {
 		o.withIdEndsWith = value
 		return nil
@@ -129,7 +127,7 @@ func WithIdEndsWith(_ context.Context, value string) Option {
 }
 
 // WithAddressContains provides an optional address contains value.
-func WithAddressContains(_ context.Context, value string) Option {
+func WithAddressContains(value string) Option {
 	return func(o *options) error {
 		o.withAddressContains = value
 		return nil
@@ -137,7 +135,7 @@ func WithAddressContains(_ context.Context, value string) Option {
 }
 
 // WithAddressStartsWith provides an optional address starts with value.
-func WithAddressStartsWith(_ context.Context, value string) Option {
+func WithAddressStartsWith(value string) Option {
 	return func(o *options) error {
 		o.withAddressStartsWith = value
 		return nil
@@ -145,7 +143,7 @@ func WithAddressStartsWith(_ context.Context, value string) Option {
 }
 
 // WithAddressEndsWith provides an optional address ends with value.
-func WithAddressEndsWith(_ context.Context, value string) Option {
+func WithAddressEndsWith(value string) Option {
 	return func(o *options) error {
 		o.withAddressEndsWith = value
 		return nil
@@ -153,7 +151,7 @@ func WithAddressEndsWith(_ context.Context, value string) Option {
 }
 
 // WithDbType provides an optional db type.
-func WithDbType(_ context.Context, dbType dbw.DbType) Option {
+func WithDbType(dbType dbw.DbType) Option {
 	return func(o *options) error {
 		o.withDbType = dbType
 		return nil
@@ -161,7 +159,7 @@ func WithDbType(_ context.Context, dbType dbw.DbType) Option {
 }
 
 // WithDebug provides an optional debug flag.
-func WithDebug(_ context.Context, debug bool) Option {
+func WithDebug(debug bool) Option {
 	return func(o *options) error {
 		o.withDebug = debug
 		return nil
