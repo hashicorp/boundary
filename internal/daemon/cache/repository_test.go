@@ -81,7 +81,6 @@ func TestRepository_LookupPersona(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, p)
 	})
-
 }
 
 func TestRepository_RefreshTargets(t *testing.T) {
