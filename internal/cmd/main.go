@@ -18,7 +18,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/commands/cache"
+	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
 )
@@ -220,14 +220,14 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 			l = append(l, strings.ToLower(arg))
 		}
 		currentCmd := strings.Join(l, "-")
-		if currentCmd != "" && !strings.HasPrefix(currentCmd, "cache-server") {
-			c, err := cli.Commands["cache server"]()
+		if currentCmd != "" && !strings.HasPrefix(currentCmd, "daemon") {
+			c, err := cli.Commands["daemon start"]()
 			if err != nil {
 				fmt.Fprintf(runOpts.Stderr, "Error creating command: %s\n", err.Error())
 				return
 			}
 
-			serverCmd, ok := c.(*cache.ServerCommand)
+			serverCmd, ok := c.(*daemon.ServerCommand)
 			if !ok {
 				fmt.Fprintf(runOpts.Stderr, "Error base command: %s\n", err.Error())
 				return
@@ -240,7 +240,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 				return
 			}
 
-			err = cache.StartCacheInBackground(context.Background(), tokenName, serverCmd, serverCmd.UI, 9203)
+			err = daemon.StartCacheInBackground(context.Background(), tokenName, serverCmd, serverCmd.UI, 9203)
 			if err != nil && !strings.Contains(err.Error(), "already running") {
 				return
 			}
