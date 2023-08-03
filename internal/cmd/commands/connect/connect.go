@@ -14,7 +14,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -98,8 +97,8 @@ type Command struct {
 
 	connWg             *sync.WaitGroup
 	listenerCloseOnce  sync.Once
-	listener           *net.TCPListener
-	listenerAddr       *net.TCPAddr
+	listener           net.Listener
+	listenerAddr       net.Addr
 	connsLeftCh        chan int32
 	connectionsLeft    *atomic.Int32
 	expiration         time.Time
@@ -465,10 +464,8 @@ func (c *Command) Run(args []string) (retCode int) {
 		return dialer.DialContext(ctx, network, addr)
 	}
 
-	c.listener, err = net.ListenTCP("tcp", &net.TCPAddr{
-		IP:   listenAddr,
-		Port: c.flagListenPort,
-	})
+	// we're just using a dummy socket for now
+	c.listener, err = net.Listen("unix", "/tmp/this-is-a-test.sock")
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Error starting listening port: %w", err))
 		return base.CommandCliError
@@ -488,7 +485,7 @@ func (c *Command) Run(args []string) (retCode int) {
 		c.listenerCloseOnce.Do(listenerCloseFunc)
 	}()
 
-	c.listenerAddr = c.listener.Addr().(*net.TCPAddr)
+	c.listenerAddr = c.listener.Addr() // TODO: yeah this is terrible and probably doesn't even store the data we need but hey its a test
 
 	if c.Func == "connect" {
 		// "connect" indicates there is no subcommand to the connect function.
@@ -500,10 +497,12 @@ func (c *Command) Run(args []string) (retCode int) {
 			creds = c.sessionAuthz.Credentials
 		}
 
+		// this is the data that gets reported to the user on how to connect. eventually, we'll need
+		// to add a socket field here and later decide which to report to the user on session init
 		sessInfo := SessionInfo{
 			Protocol:        c.sessionAuthzData.GetType(),
-			Address:         c.listenerAddr.IP.String(),
-			Port:            c.listenerAddr.Port,
+			Address:         "127.0.0.1",
+			Port:            11111,
 			Expiration:      c.expiration,
 			ConnectionLimit: c.sessionAuthzData.GetConnectionLimit(),
 			SessionId:       c.sessionAuthzData.GetSessionId(),
@@ -528,7 +527,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	go func() {
 		defer c.connWg.Done()
 		for {
-			listeningConn, err := c.listener.AcceptTCP()
+			listeningConn, err := c.listener.Accept()
 			if err != nil {
 				select {
 				case <-c.proxyCtx.Done():
@@ -738,7 +737,7 @@ func (c *Command) sendSessionTeardown(
 
 func (c *Command) runTcpProxyV1(
 	wsConn *websocket.Conn,
-	listeningConn *net.TCPConn,
+	listeningConn net.Conn, // this doesn't appear to need any other modifications besides this. though, the name should probably change
 	tofuToken string,
 ) error {
 	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
@@ -816,8 +815,9 @@ func (c *Command) handleExec(passthroughArgs []string) {
 	defer c.connWg.Done()
 	defer c.proxyCancel()
 
-	port := strconv.Itoa(c.listenerAddr.Port)
-	ip := c.listenerAddr.IP.String()
+	// I didn't look too far into this function, but we should definitely make sure there are no breaking changes here
+	port := "11111"   // strconv.Itoa(c.listenerAddr.Port)
+	ip := "127.0.0.1" // c.listenerAddr.IP.String()
 	addr := c.listenerAddr.String()
 
 	var args []string
