@@ -43,9 +43,9 @@ func (c *cleanupJob) Run(ctx context.Context) error {
 	const op = "cleanup.(cleanupJob).Run"
 	if _, err := c.w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, w db.Writer) error {
-			_, err := w.Exec(ctx, `delete from target_deleted where delete_time < now() - interval '30 days'`, nil)
+			_, err := w.Exec(ctx, `select * from cleanup_deleted_tables()`, nil)
 			if err != nil {
-				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete from target_deleted table"))
+				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to run sql function cleanup_deleted_tables()"))
 			}
 			return nil
 		},
