@@ -31,21 +31,6 @@ func TestPrototypeInsertDeleteAndClear(t *testing.T) {
 		t.Errorf("error getting db connection %s", err)
 	}
 
-	_, err = db.Exec(`create table target_deleted (public_id wt_public_id primary key, delete_time wt_timestamp);`)
-	if err != nil {
-		t.Errorf("error creating target_deleted %s", err)
-	}
-
-	_, err = db.Exec(`create or replace function insert_deleted_target() returns trigger as $$ begin insert into target_deleted (public_id, delete_time) values (old.public_id, now()); return old; end; $$ language plpgsql;`)
-	if err != nil {
-		t.Errorf("error creating function insert_deleted_target() %s", err)
-	}
-
-	_, err = db.Exec(`create trigger trigger_insert_deleted_target before delete on target for each row execute function insert_deleted_target();`)
-	if err != nil {
-		t.Errorf("error creating trigger trigger_insert_deleted_target %s", err)
-	}
-
 	_, err = db.Exec(fmt.Sprintf(`delete from target where public_id = '%s'`, session.TargetId))
 	if err != nil {
 		t.Errorf("error deleting from target %s", err)
