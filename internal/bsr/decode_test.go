@@ -352,7 +352,7 @@ func TestChunkDecoderDecodeErrors(t *testing.T) {
 					"\x00" + // encryption method
 					"",
 			)),
-			errors.New("bsr.(ChunkDecoder).Decode: chunk length 4294967295 exceeds max chunk length of 262144: error decoding chunk"),
+			errors.New("bsr.(ChunkDecoder).Decode: chunk length 4294967295 exceeds max chunk length of 6400000: error decoding chunk"),
 		},
 		{
 			"chuck-missing-data",

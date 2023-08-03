@@ -33,9 +33,6 @@ var (
 	// ErrEndChunkNotEmpty indicates a malformed END chunk.
 	ErrEndChunkNotEmpty = errors.New("end chunk not empty")
 
-	// ErrChunkEncode indicates an error when encoding a chunk.
-	ErrChunkEncode = errors.New("error encoding chunk")
-
 	// ErrChunkDecode indicates an error when decoding a chunk.
 	ErrChunkDecode = errors.New("error decoding chunk")
 

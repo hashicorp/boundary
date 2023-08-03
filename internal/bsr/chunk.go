@@ -20,7 +20,9 @@ const (
 	crcSize       = 4
 
 	// MaxChunkLength sets an upper bound on BSR chunk lengths
-	MaxChunkLength = 256 * 1024
+	// Default to 64MB, as this is the limit for protobufs, which back our chunks
+	// TODO: Should this be configurable as an option?
+	MaxChunkLength = 64 * 100 * 1000
 )
 
 // Chunk Types
