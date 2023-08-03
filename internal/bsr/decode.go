@@ -126,8 +126,8 @@ func (d *ChunkDecoder) Decode(ctx context.Context) (Chunk, error) {
 	crc := crc32.NewIEEE()
 
 	length, buf = binary.BigEndian.Uint32(buf[:lengthSize]), buf[lengthSize:]
-	if length > MaxChunkLength {
-		return nil, fmt.Errorf("%s: chunk length %d exceeds max chunk length of %d: %w", op, length, MaxChunkLength, ErrChunkDecode)
+	if length > MaxChunkDataLength {
+		return nil, fmt.Errorf("%s: chunk length %d exceeds max chunk length of %d: %w", op, length, MaxChunkDataLength, ErrChunkDecode)
 	}
 	databuf := make([]byte, length)
 	_, err = io.ReadAtLeast(d.r, databuf, int(length))
@@ -187,8 +187,8 @@ func (d *ChunkDecoder) Decode(ctx context.Context) (Chunk, error) {
 		}
 	}
 
-	// Decompressed chunk data should not go beyond MaxChunkLength/ prevent allocations beyond this limit
-	limitedDecompressionReader := io.LimitReader(decompressor, MaxChunkLength)
+	// Decompressed chunk data should not go beyond MaxChunkDataLength/ prevent allocations beyond this limit
+	limitedDecompressionReader := io.LimitReader(decompressor, MaxChunkDataLength)
 	decompressed, err := io.ReadAll(limitedDecompressionReader)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w: %w", op, err, ErrChunkDecode)
