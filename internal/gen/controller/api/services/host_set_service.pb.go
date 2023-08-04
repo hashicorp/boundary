@@ -33,7 +33,7 @@ type GetHostSetRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *GetHostSetRequest) Reset() {
@@ -127,7 +127,7 @@ type ListHostSetsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	HostCatalogId string `protobuf:"bytes,1,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostCatalogId string `protobuf:"bytes,1,opt,name=host_catalog_id,proto3" json:"host_catalog_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Filter        string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`                  // @gotags: `class:"public"`
 }
 
@@ -276,7 +276,7 @@ type CreateHostSetResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string            `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
+	Uri  string            `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item *hostsets.HostSet `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
@@ -331,7 +331,7 @@ type UpdateHostSetRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item       *hostsets.HostSet      `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -441,7 +441,7 @@ type DeleteHostSetRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *DeleteHostSetRequest) Reset() {
@@ -526,12 +526,12 @@ type AddHostSetHostsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// A list of Host IDs which will be added to this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child.
-	HostIds []string `protobuf:"bytes,3,rep,name=host_ids,proto3" json:"host_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostIds []string `protobuf:"bytes,3,rep,name=host_ids,proto3" json:"host_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *AddHostSetHostsRequest) Reset() {
@@ -639,12 +639,12 @@ type SetHostSetHostsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// A list of Host IDs which will be set on this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child.
-	HostIds []string `protobuf:"bytes,3,rep,name=host_ids,proto3" json:"host_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostIds []string `protobuf:"bytes,3,rep,name=host_ids,proto3" json:"host_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *SetHostSetHostsRequest) Reset() {
@@ -752,12 +752,12 @@ type RemoveHostSetHostsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// A list of Host IDs which will be removed from this Host Set.
-	HostIds []string `protobuf:"bytes,3,rep,name=host_ids,proto3" json:"host_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostIds []string `protobuf:"bytes,3,rep,name=host_ids,proto3" json:"host_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *RemoveHostSetHostsRequest) Reset() {

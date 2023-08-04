@@ -120,7 +120,7 @@ service HostSetService {
 }
 
 message GetHostSetRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetHostSetResponse {
@@ -128,7 +128,7 @@ message GetHostSetResponse {
 }
 
 message ListHostSetsRequest {
-  string host_catalog_id = 1 [json_name = "host_catalog_id"]; // @gotags: `class:"public"`
+  string host_catalog_id = 1 [json_name = "host_catalog_id"]; // @gotags: `class:"public" eventstream:"observation"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 
@@ -141,12 +141,12 @@ message CreateHostSetRequest {
 }
 
 message CreateHostSetResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   api.resources.hostsets.v1.HostSet item = 2;
 }
 
 message UpdateHostSetRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   api.resources.hostsets.v1.HostSet item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -156,19 +156,19 @@ message UpdateHostSetResponse {
 }
 
 message DeleteHostSetRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteHostSetResponse {}
 
 message AddHostSetHostsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
 
   // A list of Host IDs which will be added to this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child.
-  repeated string host_ids = 3 [json_name = "host_ids"]; // @gotags: `class:"public"`
+  repeated string host_ids = 3 [json_name = "host_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message AddHostSetHostsResponse {
@@ -176,13 +176,13 @@ message AddHostSetHostsResponse {
 }
 
 message SetHostSetHostsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
 
   // A list of Host IDs which will be set on this Host Set. Each Host referenced here must be a child of the same Host Catalog of which this Host Set is a child.
-  repeated string host_ids = 3 [json_name = "host_ids"]; // @gotags: `class:"public"`
+  repeated string host_ids = 3 [json_name = "host_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message SetHostSetHostsResponse {
@@ -190,13 +190,13 @@ message SetHostSetHostsResponse {
 }
 
 message RemoveHostSetHostsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
 
   // A list of Host IDs which will be removed from this Host Set.
-  repeated string host_ids = 3 [json_name = "host_ids"]; // @gotags: `class:"public"`
+  repeated string host_ids = 3 [json_name = "host_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message RemoveHostSetHostsResponse {
