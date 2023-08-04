@@ -17,10 +17,10 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 // HostSet is a collection of Hosts created and managed by a Host Catalog
 message HostSet {
   // Output only. The ID of the Host Set.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The Host Catalog of which this Host Set is a part.
-  string host_catalog_id = 20 [json_name = "host_catalog_id"]; // @gotags: `class:"public"`
+  string host_catalog_id = 20 [json_name = "host_catalog_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -47,20 +47,20 @@ message HostSet {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // The type of the Host Set.
-  string type = 90; // @gotags: `class:"public"`
+  string type = 90; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. A list of Hosts in this Host Set.
-  repeated string host_ids = 100 [json_name = "host_ids"]; // @gotags: `class:"public"`
+  repeated string host_ids = 100 [json_name = "host_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // multiple possible endpoints for a host. Preferences are specified by
   // "cidr:<valid IPv4/6 CIDR>" or "dns:<globbed name>", specifying which IP
@@ -101,5 +101,5 @@ message HostSet {
   }
 
   // Output only. The available actions on this resource for this user.
-  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public" eventstream:"observation"`
 }
