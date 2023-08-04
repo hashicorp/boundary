@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
 )
@@ -220,7 +221,8 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 			l = append(l, strings.ToLower(arg))
 		}
 		currentCmd := strings.Join(l, "-")
-		if currentCmd != "" && !strings.HasPrefix(currentCmd, "daemon") {
+
+		if currentCmd != "" && !strutil.StrListContains([]string{"daemon", "version", "dev", "server"}, l[0]) {
 			c, err := cli.Commands["daemon start"]()
 			if err != nil {
 				fmt.Fprintf(runOpts.Stderr, "Error creating command: %s\n", err.Error())
@@ -234,13 +236,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 			}
 			serverCmd.Flags()
 
-			_, tokenName, err := serverCmd.DiscoverKeyringTokenInfo()
-			if err != nil {
-				fmt.Fprintf(runOpts.Stderr, "Error getting token name: %s\n", err.Error())
-				return
-			}
-
-			err = daemon.StartCacheInBackground(context.Background(), tokenName, serverCmd, serverCmd.UI, 9203)
+			err = daemon.StartCacheInBackground(context.Background(), serverCmd, serverCmd.UI)
 			if err != nil && !strings.Contains(err.Error(), "already running") {
 				return
 			}

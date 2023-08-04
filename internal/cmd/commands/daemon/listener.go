@@ -58,9 +58,9 @@ func listener(ctx context.Context) (net.Listener, error) {
 	return l, nil
 }
 
-// socketAddress returns the unix socket filename with a 'unix://' prefix.
+// SocketAddress returns the unix socket filename with a 'unix://' prefix.
 // The returned value can be passed directly into the api.Client
-func socketAddress() (string, error) {
+func SocketAddress() (string, error) {
 	homeDir, err := homedir.Dir()
 	if err != nil {
 		return "", fmt.Errorf("unable to get home directory: %w", err)
