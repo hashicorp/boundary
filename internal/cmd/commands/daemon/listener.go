@@ -5,16 +5,18 @@ package daemon
 
 import (
 	"context"
+	stderror "errors"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/mitchellh/go-homedir"
 )
 
 const (
-	sockAddr = "boundary_socket/boundary_daemon.sock"
+	sockAddr = ".boundary/boundary_daemon.sock"
 
 	// Currently we only allow the same user that started the boundary daemon
 	// to connect to the socket to make requests to it.
@@ -26,10 +28,16 @@ const (
 	socketPerms = 0o600
 )
 
-func listen(ctx context.Context) (net.Listener, error) {
+// listener provides a listener on the daemon unix socket.
+func listener(ctx context.Context) (net.Listener, error) {
 	const op = "daemon.listener"
-	tmpDir := os.TempDir()
-	socketName := filepath.Join(tmpDir, sockAddr)
+
+	homeDir, err := homedir.Dir()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	socketName := filepath.Join(homeDir, sockAddr)
 	socketPath := filepath.Dir(socketName)
 
 	if err := os.RemoveAll(socketPath); err != nil {
@@ -46,10 +54,28 @@ func listen(ctx context.Context) (net.Listener, error) {
 	if err := os.Chmod(socketName, socketPerms); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("changing socket permissiosn"))
 	}
-	return l, nil
+	return &socketCleanListener{l}, nil
 }
 
-func daemonAddress() string {
-	tmpDir := os.TempDir()
-	return fmt.Sprintf("unix://%s", filepath.Join(tmpDir, sockAddr))
+// socketAddress returns the unix socket filename with a 'unix://'
+func socketAddress() (string, error) {
+	const op = "daemon.socketAddress"
+	homeDir, err := homedir.Dir()
+	if err != nil {
+		return "", fmt.Errorf("unable to get home directory: %w", err)
+	}
+	return fmt.Sprintf("unix://%s", filepath.Join(homeDir, sockAddr)), nil
+}
+
+type socketCleanListener struct {
+	net.Listener
+}
+
+func (l *socketCleanListener) Close() error {
+	err := l.Listener.Close()
+	filename := l.Listener.Addr().String()
+	if removeErr := os.RemoveAll(filepath.Dir(filename)); removeErr != nil {
+		err = stderror.Join(err, removeErr)
+	}
+	return err
 }

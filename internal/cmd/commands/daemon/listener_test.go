@@ -1,36 +1,59 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-//go:build linux || darwin
-// +build linux darwin
-
 package daemon
 
 import (
 	"context"
-	"io/fs"
-	"os"
-	"path/filepath"
+	"fmt"
+	"io"
+	"net/http"
+	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Write a test for this that can run on windows.
-func TestListenerSocketPermissions(t *testing.T) {
+func TestListenDialCommunication(t *testing.T) {
 	ctx := context.Background()
-	l, err := listen(ctx)
-	require.NoError(t, err)
-	socketFile := l.Addr().String()
-	fi, err := os.Stat(socketFile)
-	require.NoError(t, err)
-	assert.Equal(t, fi.Mode().Type(), os.ModeSocket)
-	assert.Equal(t, fs.FileMode(0o600), fi.Mode().Perm(), "permissions were ", fi.Mode().Perm().String())
 
-	socketDirName := filepath.Dir(socketFile)
-	di, err := os.Stat(socketDirName)
+	payload := "Hello test"
+
+	socketListener, err := listener(ctx)
+
 	require.NoError(t, err)
-	assert.Equal(t, di.Mode().Type(), os.ModeDir)
-	assert.Equal(t, fs.FileMode(0o700), di.Mode().Perm(), "permissions were ", fi.Mode().Perm().String())
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/test", func(w http.ResponseWriter, r *http.Request) {
+		_, err = fmt.Fprint(w, payload)
+		require.NoError(t, err)
+	})
+	srv := &http.Server{
+		Handler: mux,
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		assert.ErrorIs(t, srv.Serve(socketListener), http.ErrServerClosed)
+	}()
+
+	client, err := api.NewClient(nil)
+	require.NoError(t, err)
+	addr, err := socketAddress()
+	require.NoError(t, err)
+	require.NoError(t, client.SetAddr(addr))
+	client.SetToken("")
+	req, err := client.NewRequest(ctx, "GET", "/test", nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	got, err := io.ReadAll(resp.HttpResponse().Body)
+	require.NoError(t, err)
+	assert.Equal(t, string(got), payload)
+
+	require.NoError(t, srv.Close())
+	wg.Wait()
 }

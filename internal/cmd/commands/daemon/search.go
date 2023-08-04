@@ -209,7 +209,11 @@ func SearchClient(ctx context.Context, flagOutputCurl bool) (*api.Client, error)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if err := client.SetAddr(daemonAddress()); err != nil {
+	addr, err := socketAddress()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if err := client.SetAddr(addr); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	// Because this is using the real lib it can pick up from stored locations

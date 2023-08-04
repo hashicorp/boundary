@@ -211,7 +211,11 @@ func (s *server) start(ctx context.Context) error {
 	// background bits
 	var tic *refreshTicker
 	{
-		s.info["Listening address"] = daemonAddress()
+		addr, err := socketAddress()
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		s.info["Listening address"] = addr
 		s.infoKeys = append(s.infoKeys, "Listening address")
 		s.info["Store debug"] = strconv.FormatBool(s.conf.flagStoreDebug)
 		s.infoKeys = append(s.infoKeys, "Store debug")
@@ -249,7 +253,7 @@ func (s *server) start(ctx context.Context) error {
 			return errors.Wrap(ctx, err, op)
 		}
 
-		s.listener, err = listen(ctx)
+		s.listener, err = listener(ctx)
 		if err != nil {
 			log.Fatal("Listener error:", err)
 		}
