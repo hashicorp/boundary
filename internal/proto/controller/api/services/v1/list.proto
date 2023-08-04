@@ -1,0 +1,34 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+
+message ListRefreshToken {
+  // When the refresh token was created
+  google.protobuf.Timestamp created_time = 10;
+  // the resource type listed
+  ResourceType resource_type = 20;
+  // A hash of the users permissions
+  // at the time of the refresh token issuing.
+  bytes permissions_hash = 30;
+  // The ID of the last item in returned on the
+  // previous page.
+  string last_item_id = 40;
+  // The update_time of the last item returned on
+  // the previous page.
+  google.protobuf.Timestamp last_item_update_time = 50;
+}
+
+enum ResourceType {
+  RESOURCE_TYPE_UNSPECIFIED = 0;
+  RESOURCE_TYPE_TARGET = 1;
+  RESOURCE_TYPE_HOST = 2;
+  RESOURCE_TYPE_SESSION = 3;
+  RESOURCE_TYPE_SESSION_RECORDING = 4;
+}
