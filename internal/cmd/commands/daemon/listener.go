@@ -55,7 +55,6 @@ func listener(ctx context.Context) (net.Listener, error) {
 // socketAddress returns the unix socket filename with a 'unix://' prefix.
 // The returned value can be passed directly into the api.Client
 func socketAddress() (string, error) {
-	const op = "daemon.socketAddress"
 	homeDir, err := homedir.Dir()
 	if err != nil {
 		return "", fmt.Errorf("unable to get home directory: %w", err)
