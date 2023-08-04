@@ -18,13 +18,13 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 // Host contains all fields related to a Host resource
 message Host {
   // Output only. The ID of the Host.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The Host Catalog of which this Host is a part.
   string host_catalog_id = 20 [
     json_name = "host_catalog_id",
     (custom_options.v1.subtype_source_id) = true
-  ]; // @gotags: `class:"public"`
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -51,20 +51,20 @@ message Host {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // The type of the resource.
-  string type = 90; // @gotags: `class:"public"`
+  string type = 90; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. A list of Host Sets containing this Host.
-  repeated string host_set_ids = 100 [json_name = "host_set_ids"]; // @gotags: `class:"public"`
+  repeated string host_set_ids = 100 [json_name = "host_set_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 
   oneof attrs {
     // The attributes that are applicable to the specific Host type.
