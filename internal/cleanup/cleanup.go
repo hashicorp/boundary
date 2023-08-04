@@ -36,25 +36,3 @@ func RegisterJob(ctx context.Context, s *scheduler.Scheduler, r db.Reader, w db.
 
 	return nil
 }
-
-//-- function
-//create or replace function insert_deleted_target() returns trigger
-//as $$
-//begin
-//insert into target_deleted (public_id, delete_time)
-//values (old.public_id, now());
-//
-//return old;
-//end;
-//$$ language plpgsql;
-//comment on function insert_deleted_target is
-//'insert_deleted_target will automatically insert any deleted target id from X
-//into the table target_deleted';
-//
-//-- trigger
-//create trigger trigger_insert_deleted_target before delete on target
-//for each row execute function insert_deleted_target();
-
-// create table target_deleted (public_id wt_public_id primary key, delete_time wt_timestamp);
-// create or replace function insert_deleted_target() returns trigger as $$ begin insert into target_deleted (public_id, delete_time) values (old.public_id, now()); return old; end; $$ language plpgsql;
-// create trigger trigger_insert_deleted_target before delete on target for each row execute function insert_deleted_target();
