@@ -52,7 +52,8 @@ func listener(ctx context.Context) (net.Listener, error) {
 	return l, nil
 }
 
-// socketAddress returns the unix socket filename with a 'unix://'
+// socketAddress returns the unix socket filename with a 'unix://' prefix.
+// The returned value can be passed directly into the api.Client
 func socketAddress() (string, error) {
 	const op = "daemon.socketAddress"
 	homeDir, err := homedir.Dir()
