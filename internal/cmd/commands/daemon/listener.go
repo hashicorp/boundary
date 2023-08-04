@@ -5,7 +5,6 @@ package daemon
 
 import (
 	"context"
-	stderror "errors"
 	"fmt"
 	"net"
 	"os"
@@ -39,12 +38,8 @@ func listener(ctx context.Context) (net.Listener, error) {
 
 	socketName := filepath.Join(homeDir, sockAddr)
 	socketPath := filepath.Dir(socketName)
-
-	if err := os.RemoveAll(socketPath); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to remove sock socketName"))
-	}
-	if err := os.Mkdir(socketPath, socketDirPerms); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to create socket directory"))
+	if err := os.MkdirAll(socketPath, socketDirPerms); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to create boundary directory"))
 	}
 
 	l, err := net.Listen("unix", socketName)
@@ -54,7 +49,7 @@ func listener(ctx context.Context) (net.Listener, error) {
 	if err := os.Chmod(socketName, socketPerms); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("changing socket permissiosn"))
 	}
-	return &socketCleanListener{l}, nil
+	return l, nil
 }
 
 // socketAddress returns the unix socket filename with a 'unix://'
@@ -65,17 +60,4 @@ func socketAddress() (string, error) {
 		return "", fmt.Errorf("unable to get home directory: %w", err)
 	}
 	return fmt.Sprintf("unix://%s", filepath.Join(homeDir, sockAddr)), nil
-}
-
-type socketCleanListener struct {
-	net.Listener
-}
-
-func (l *socketCleanListener) Close() error {
-	err := l.Listener.Close()
-	filename := l.Listener.Addr().String()
-	if removeErr := os.RemoveAll(filepath.Dir(filename)); removeErr != nil {
-		err = stderror.Join(err, removeErr)
-	}
-	return err
 }
