@@ -168,9 +168,9 @@ jobs:
         env:
           TEST_PACKAGE: "./..."
           TESTARGS: -v
-          TEST_TIMEOUT: 120m
+          TEST_TIMEOUT: 40m
         with:
-          max_attempts: 3
+          max_attempts: 1
           timeout_minutes: 120
           retry_on: error
           command: make test
