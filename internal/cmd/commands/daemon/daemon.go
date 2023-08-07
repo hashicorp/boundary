@@ -27,7 +27,6 @@ type ServerCommand struct {
 	*base.Command
 	srv *server
 
-	flagPort                   uint
 	flagRefreshIntervalSeconds int64
 	flagDatabaseUrl            string
 	flagLogLevel               string
@@ -82,14 +81,7 @@ func (c *ServerCommand) Flags() *base.FlagSets {
 		Target:  &c.flagRefreshIntervalSeconds,
 		Usage:   `If set, specifies the number of seconds between cache refreshes. Default: 5 minutes`,
 		Aliases: []string{"r"},
-	})
-	f.UintVar(&base.UintVar{
-		Name:       "port",
-		Target:     &c.flagPort,
-		Completion: complete.PredictSet("port"),
-		Default:    9203,
-		Usage:      `Listener port. Default: 9203`,
-		Aliases:    []string{"p"},
+		Default: DefaultRefreshIntervalSeconds,
 	})
 	f.BoolVar(&base.BoolVar{
 		Name:    "store-debug",
@@ -151,7 +143,7 @@ func (c *ServerCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if err := c.srv.start(c.Context, c.flagPort); err != nil {
+	if err := c.srv.start(c.Context); err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
 	}
@@ -177,7 +169,7 @@ func StartCacheInBackground(ctx context.Context, tokenName string, cmd commander
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := srv.start(cancelCtx, flagPort); err != nil {
+	if err := srv.start(cancelCtx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
