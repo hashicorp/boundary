@@ -140,13 +140,11 @@ func (s *server) shutdown() error {
 // start will fire up the refresh goroutine and the caching API http server as a
 // daemon.  The daemon bits are included so it's easy for CLI cmds to start the
 // a cache server
-func (s *server) start(ctx context.Context, port uint) error {
+func (s *server) start(ctx context.Context) error {
 	const op = "daemon.(server).start"
 	switch {
 	case util.IsNil(ctx):
 		return errors.New(ctx, errors.InvalidParameter, op, "context is missing")
-	case port == 0:
-		return errors.New(ctx, errors.InvalidParameter, op, "port is missing")
 	}
 
 	homeDir, err := homedir.Dir()
@@ -213,8 +211,12 @@ func (s *server) start(ctx context.Context, port uint) error {
 	// background bits
 	var tic *refreshTicker
 	{
-		s.info["Listening port"] = strconv.FormatUint(uint64(port), 10)
-		s.infoKeys = append(s.infoKeys, "Listening port")
+		addr, err := socketAddress()
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		s.info["Listening address"] = addr
+		s.infoKeys = append(s.infoKeys, "Listening address")
 		s.info["Store debug"] = strconv.FormatBool(s.conf.flagStoreDebug)
 		s.infoKeys = append(s.infoKeys, "Store debug")
 
@@ -241,7 +243,7 @@ func (s *server) start(ctx context.Context, port uint) error {
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		mux.HandleFunc("/v1/search/targets", searchTargetsFn)
+		mux.HandleFunc("/v1/search", searchTargetsFn)
 		s.httpSrv = &http.Server{
 			Handler: mux,
 		}
@@ -250,10 +252,8 @@ func (s *server) start(ctx context.Context, port uint) error {
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
-		// TODO (jimlambrt 6/2023) - add mTLS here here and write client private key
-		// and client cert in the key chain.
 
-		s.listener, err = net.Listen("tcp", fmt.Sprintf(":%d", port))
+		s.listener, err = listener(ctx)
 		if err != nil {
 			log.Fatal("Listener error:", err)
 		}
@@ -299,8 +299,9 @@ func (s *server) start(ctx context.Context, port uint) error {
 }
 
 const (
-	filterKey = "filter"
-	queryKey  = "query"
+	filterKey   = "filter"
+	queryKey    = "query"
+	resourceKey = "resource"
 
 	idContainsKey          = "id_contains"
 	nameContainsKey        = "name_contains"
@@ -332,6 +333,12 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenN
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
+		}
+
+		switch resource := r.URL.Query().Get(resourceKey); resource {
+		case "targets":
+		default:
+			http.Error(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
 		}
 
 		reqTokenName := r.Header.Get("token_name")
