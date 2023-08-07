@@ -128,6 +128,9 @@ func (b *BaseSessionSummary) GetConnectionCount() uint64 {
 
 // GetErrors returns errors.
 func (b *BaseSessionSummary) GetErrors() error {
+	if len(b.Errors.Message) == 0 {
+		return nil
+	}
 	return errors.New(b.Errors.Message)
 }
 
