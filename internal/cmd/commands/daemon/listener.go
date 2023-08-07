@@ -35,8 +35,14 @@ func listener(ctx context.Context) (net.Listener, error) {
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-
 	socketName := filepath.Join(homeDir, sockAddr)
+	if err := os.Remove(socketName); err != nil {
+		// If the socket existed before and wasn't cleaned up delete it now.
+		if !os.IsNotExist(err) {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
 	socketPath := filepath.Dir(socketName)
 	if err := os.MkdirAll(socketPath, socketDirPerms); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to create boundary directory"))
