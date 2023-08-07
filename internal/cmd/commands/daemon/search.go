@@ -25,7 +25,6 @@ var (
 
 type SearchTargetsCommand struct {
 	*base.Command
-	flagPort           uint
 	flagNameStartsWith string
 	flagQuery          string
 }
@@ -52,14 +51,6 @@ func (c *SearchTargetsCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
-	f.UintVar(&base.UintVar{
-		Name:       "port",
-		Target:     &c.flagPort,
-		Completion: complete.PredictSet("port"),
-		Default:    9203,
-		Usage:      `Listener port. Default: 9203`,
-		Aliases:    []string{"p"},
-	})
 	f.StringVar(&base.StringVar{
 		Name:   "name-starts-with",
 		Target: &c.flagNameStartsWith,
@@ -107,7 +98,7 @@ func (c *SearchTargetsCommand) Run(args []string) int {
 		flagNameStartsWith: c.flagNameStartsWith,
 		flagQuery:          c.flagQuery,
 	}
-	resp, err := searchTargets(ctx, tf, c.flagPort, c.FlagOutputCurlString)
+	resp, err := searchTargets(ctx, tf, c.FlagOutputCurlString)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
@@ -212,13 +203,19 @@ func (c *SearchTargetsCommand) printListTable(items []*targets.Target) string {
 	return base.WrapForHelpText(output)
 }
 
-func SearchClient(ctx context.Context, addr string, flagOutputCurl bool) (*api.Client, error) {
+func SearchClient(ctx context.Context, flagOutputCurl bool) (*api.Client, error) {
 	const op = "daemon.SearchClient"
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	client.SetAddr(addr)
+	addr, err := socketAddress()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if err := client.SetAddr(addr); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	// Because this is using the real lib it can pick up from stored locations
 	// like the system keychain. Explicitly clear the token for now
 	client.SetToken("")
@@ -236,19 +233,20 @@ type targetFilterBy struct {
 	boundaryAddr       string
 }
 
-func searchTargets(ctx context.Context, filterBy targetFilterBy, flagPort uint, flagOutputCurl bool) (*api.Response, error) {
+func searchTargets(ctx context.Context, filterBy targetFilterBy, flagOutputCurl bool) (*api.Response, error) {
 	const op = "daemon.searchTargets"
-	client, err := SearchClient(ctx, fmt.Sprintf("http://localhost:%d", flagPort), flagOutputCurl)
+	client, err := SearchClient(ctx, flagOutputCurl)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	req, err := client.NewRequest(ctx, "GET", "/search/targets", nil)
+	req, err := client.NewRequest(ctx, "GET", "/search", nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error: %s", err.Error()))
 	}
 	req.Header.Add("token_name", filterBy.tokenName)
 	req.Header.Add("boundary_addr", filterBy.boundaryAddr)
 	q := url.Values{}
+	q.Add("resource", "targets")
 	q.Add("name_starts_with", filterBy.flagNameStartsWith)
 	q.Add("query", filterBy.flagQuery)
 	req.URL.RawQuery = q.Encode()
