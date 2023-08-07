@@ -22,8 +22,10 @@ import (
 	"github.com/seldonio/goven/sql_adaptor"
 )
 
-const personaLimit = 50
-const personaStalenessLimit = 36 * time.Hour
+const (
+	personaLimit          = 50
+	personaStalenessLimit = 36 * time.Hour
+)
 
 type Repository struct {
 	rw *db.Db
