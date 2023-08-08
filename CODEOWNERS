@@ -6,5 +6,4 @@
 
 /.release/                              @hashicorp/release-engineering @hashicorp/github-secure-boundary
 /.github/workflows/build.yml            @hashicorp/release-engineering @hashicorp/github-secure-boundary
-
 /website/content/                       @hashicorp/boundary-education-approvers
