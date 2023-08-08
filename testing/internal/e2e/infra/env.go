@@ -6,7 +6,8 @@ package infra
 import "github.com/kelseyhightower/envconfig"
 
 type Config struct {
-	DockerMirror string `envconfig:"DOCKER_MIRROR" default:"docker.mirror.hashicorp.services"`
+	DockerMirror    string `envconfig:"DOCKER_MIRROR" default:"docker.mirror.hashicorp.services"`
+	BoundaryLicense string `envconfig:"BOUNDARY_LICENSE" default:""`
 }
 
 func LoadConfig() (*Config, error) {

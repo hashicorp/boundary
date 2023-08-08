@@ -53,12 +53,16 @@ func TestDatabaseMigration(t *testing.T) {
 	err = te.Pool.Client.StopContainer(te.Boundary.Resource.Container.ID, 10)
 	require.NoError(t, err)
 
-	bonfigFilePath, err := filepath.Abs("testdata/boundary-config.hcl")
+	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("version"))
+	require.NoError(t, err)
+	t.Logf("Upgrading to version: %s", output.Stdout)
+
+	bConfigFilePath, err := filepath.Abs("testdata/boundary-config.hcl")
 	require.NoError(t, err)
 
 	t.Log("Starting database migration...")
-	output := e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("database", "migrate", "-config", bonfigFilePath),
+	output = e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("database", "migrate", "-config", bConfigFilePath),
 		e2e.WithEnv("BOUNDARY_POSTGRES_URL", te.Database.UriLocalhost),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
