@@ -33,7 +33,7 @@ type GetTargetRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *GetTargetRequest) Reset() {
@@ -127,8 +127,8 @@ type ListTargetsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
-	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public"`          // @gotags: `class:"public"`
+	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"`          // @gotags: `class:"public" eventstream:"observation"`
 	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`                 // @gotags: `class:"public"`
 }
 
@@ -284,7 +284,7 @@ type CreateTargetResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string          `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
+	Uri  string          `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item *targets.Target `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
@@ -339,7 +339,7 @@ type UpdateTargetRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item       *targets.Target        `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -449,7 +449,7 @@ type DeleteTargetRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *DeleteTargetRequest) Reset() {
@@ -534,11 +534,11 @@ type AddTargetHostSourcesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                // @gotags: `class:"public"`
-	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *AddTargetHostSourcesRequest) Reset() {
@@ -646,11 +646,11 @@ type SetTargetHostSourcesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                // @gotags: `class:"public"`
-	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *SetTargetHostSourcesRequest) Reset() {
@@ -758,11 +758,11 @@ type RemoveTargetHostSourcesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version       uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                // @gotags: `class:"public"`
-	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostSourceIds []string `protobuf:"bytes,3,rep,name=host_source_ids,proto3" json:"host_source_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *RemoveTargetHostSourcesRequest) Reset() {
@@ -1281,15 +1281,15 @@ type AuthorizeSessionRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The ID of the target. Required unless some combination of scope_id/scope_name and name are set.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The name of the target. When using this, scope_id or scope_name must be set.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The scope ID containing the target, if specifying the target by name.
-	ScopeId string `protobuf:"bytes,4,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId string `protobuf:"bytes,4,opt,name=scope_id,json=scopeId,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The scope name containing the target, if specifying the target by name.
 	ScopeName string `protobuf:"bytes,5,opt,name=scope_name,json=scopeName,proto3" json:"scope_name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// An optional parameter allowing specification of the particular Host within the Target's configured Host Sets to connect to during this Session.
-	HostId string `protobuf:"bytes,2,opt,name=host_id,proto3" json:"host_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	HostId string `protobuf:"bytes,2,opt,name=host_id,proto3" json:"host_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *AuthorizeSessionRequest) Reset() {
