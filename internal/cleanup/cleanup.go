@@ -14,19 +14,16 @@ import (
 )
 
 // RegisterJob registers the cleanup job with the provided scheduler.
-func RegisterJob(ctx context.Context, s *scheduler.Scheduler, r db.Reader, w db.Writer) error {
+func RegisterJob(ctx context.Context, s *scheduler.Scheduler, w db.Writer) error {
 	const op = "cleanup.RegisterJob"
 	if s == nil {
 		return errors.New(ctx, errors.InvalidParameter, "nil scheduler", op, errors.WithoutEvent())
-	}
-	if util.IsNil(r) {
-		return errors.New(ctx, errors.Internal, "nil DB reader", op, errors.WithoutEvent())
 	}
 	if util.IsNil(w) {
 		return errors.New(ctx, errors.Internal, "nil DB writer", op, errors.WithoutEvent())
 	}
 
-	cleanupJob, err := newCleanupJob(ctx, r, w)
+	cleanupJob, err := newCleanupJob(ctx, w)
 	if err != nil {
 		return fmt.Errorf("error creating cleanup job: %w", err)
 	}
