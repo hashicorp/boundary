@@ -33,15 +33,15 @@ type ScopeInfo struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Scope.
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The type of the Scope.
-	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The name of the Scope, if any.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The description of the Scope, if any.
 	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The ID of the parent Scope, if any. This field will be empty if this is the "global" scope.
-	ParentScopeId string `protobuf:"bytes,5,opt,name=parent_scope_id,proto3" json:"parent_scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ParentScopeId string `protobuf:"bytes,5,opt,name=parent_scope_id,proto3" json:"parent_scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *ScopeInfo) Reset() {
@@ -118,9 +118,9 @@ type Scope struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Scope.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the Scope this resource is in. If this is the "global" Scope this field will be empty.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this resource.
 	Scope *ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
@@ -128,17 +128,17 @@ type Scope struct {
 	// Optional user-set descripton for identification purposes.
 	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The type of the resource.
-	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,90,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the primary auth method for this scope.  A primary auth method
 	// is allowed to vivify users when new accounts are created and is the source for the users account info
-	PrimaryAuthMethodId *wrapperspb.StringValue `protobuf:"bytes,100,opt,name=primary_auth_method_id,proto3" json:"primary_auth_method_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	PrimaryAuthMethodId *wrapperspb.StringValue `protobuf:"bytes,100,opt,name=primary_auth_method_id,proto3" json:"primary_auth_method_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The available actions on this resource for this user.
 	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The authorized actions for the scope's collections.
