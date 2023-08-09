@@ -1,0 +1,25 @@
+---
+layout: docs
+page_title: Start a session
+description: |-
+  How to start a session in Boundary
+---
+
+# Start a session
+
+Sessions are Boundary resources that are created when you connect to a target.
+A target lets you define an endpoint with a protocol and default port.
+Boundary chooses a host from the target's host sets and connects to it at random.
+
+## Prerequisites
+
+- You must have configured at least one target
+- You must have configured scopes
+
+## Connect to a target
+
+1. Log in to the Desktop app, and enter your cluster URL.
+1. Sign in to the Global scope using your administrator credentials.
+1. Click **Targets** in the navigation pane.
+1. Click **Connect** next to the target you want to connect to.
+1. Copy the **Proxy URL** value.
