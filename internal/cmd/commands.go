@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/managedgroupscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/search"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionrecordingscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionscmd"
@@ -1007,6 +1008,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
+		"search": func() (cli.Command, error) {
+			return &search.SearchCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
 
 		"sessions": func() (cli.Command, error) {
 			return &sessionscmd.Command{
@@ -1190,11 +1196,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			return &targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-credential-sources",
-			}, nil
-		},
-		"targets search": func() (cli.Command, error) {
-			return &daemon.SearchTargetsCommand{
-				Command: base.NewCommand(ui),
 			}, nil
 		},
 

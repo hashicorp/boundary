@@ -8,21 +8,22 @@ import (
 )
 
 type options struct {
-	withIdContains            string
-	withNameContains          string
-	withDescriptionContains   string
-	withAddressContains       string
-	withIdStartsWith          string
-	withNameStartsWith        string
-	withDescriptionStartsWith string
-	withAddressStartsWith     string
-	withIdEndsWith            string
-	withNameEndsWith          string
-	withDescriptionEndsWith   string
-	withAddressEndsWith       string
-	withDebug                 bool
-	withUrl                   string
-	withDbType                dbw.DbType
+	withIdContains             string
+	withNameContains           string
+	withDescriptionContains    string
+	withAddressContains        string
+	withIdStartsWith           string
+	withNameStartsWith         string
+	withDescriptionStartsWith  string
+	withAddressStartsWith      string
+	withIdEndsWith             string
+	withNameEndsWith           string
+	withDescriptionEndsWith    string
+	withAddressEndsWith        string
+	withDebug                  bool
+	withUrl                    string
+	withUpdateLastAccessedTime bool
+	withDbType                 dbw.DbType
 }
 
 // Option - how options are passed as args
@@ -47,7 +48,6 @@ func getOpts(opt ...Option) (options, error) {
 
 // WithUrls provides optional url
 func WithUrl(url string) Option {
-	const op = "cache.WithUrl"
 	return func(o *options) error {
 		o.withUrl = url
 		return nil
@@ -150,18 +150,18 @@ func WithAddressEndsWith(value string) Option {
 	}
 }
 
-// WithDbType provides an optional db type.
-func WithDbType(dbType dbw.DbType) Option {
-	return func(o *options) error {
-		o.withDbType = dbType
-		return nil
-	}
-}
-
 // WithDebug provides an optional debug flag.
 func WithDebug(debug bool) Option {
 	return func(o *options) error {
 		o.withDebug = debug
+		return nil
+	}
+}
+
+// WithUpdateLastAccessedTime provides an option for updating the last access time
+func WithUpdateLastAccessedTime(b bool) Option {
+	return func(o *options) error {
+		o.withUpdateLastAccessedTime = b
 		return nil
 	}
 }

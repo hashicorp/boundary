@@ -42,7 +42,7 @@ func TestListenDialCommunication(t *testing.T) {
 
 	client, err := api.NewClient(nil)
 	require.NoError(t, err)
-	addr, err := socketAddress()
+	addr, err := SocketAddress()
 	require.NoError(t, err)
 	require.NoError(t, client.SetAddr(addr))
 	client.SetToken("")
