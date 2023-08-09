@@ -22,6 +22,7 @@ func TestPersona(t *testing.T) {
 
 	p := Persona{
 		BoundaryAddr: "boundary",
+		KeyringType:  "keyring",
 		TokenName:    "default",
 		AuthTokenId:  "at_1234567890",
 	}
@@ -50,6 +51,7 @@ func TestTarget(t *testing.T) {
 
 	p := &Persona{
 		BoundaryAddr: "boundary",
+		KeyringType:  "keyring",
 		TokenName:    "default",
 		AuthTokenId:  "at_1234567890",
 	}
@@ -71,6 +73,7 @@ func TestTarget(t *testing.T) {
 	t.Run("target actions", func(t *testing.T) {
 		target := &Target{
 			BoundaryAddr: p.BoundaryAddr,
+			KeyringType:  p.KeyringType,
 			TokenName:    p.TokenName,
 			Id:           "tssh_1234567890",
 			Name:         "target",
@@ -96,6 +99,7 @@ func TestTarget(t *testing.T) {
 	target := &Target{
 		BoundaryAddr: p.BoundaryAddr,
 		TokenName:    p.TokenName,
+		KeyringType:  p.KeyringType,
 		Id:           "tssh_1234567890",
 		Name:         "target",
 		Description:  "target desc",
@@ -108,6 +112,7 @@ func TestTarget(t *testing.T) {
 		lookTar := &Target{
 			BoundaryAddr: target.BoundaryAddr,
 			TokenName:    target.TokenName,
+			KeyringType:  target.KeyringType,
 			Id:           target.Id,
 		}
 		assert.NoError(t, rw.LookupById(ctx, lookTar))
@@ -122,6 +127,7 @@ func TestTarget(t *testing.T) {
 		lookTar := &Target{
 			BoundaryAddr: target.BoundaryAddr,
 			TokenName:    target.TokenName,
+			KeyringType:  target.KeyringType,
 			Id:           target.Id,
 		}
 		assert.ErrorContains(t, rw.LookupById(ctx, lookTar), "not found")

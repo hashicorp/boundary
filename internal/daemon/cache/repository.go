@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -21,7 +22,10 @@ import (
 	"github.com/seldonio/goven/sql_adaptor"
 )
 
-const personaLimit = 50
+const (
+	personaLimit          = 50
+	personaStalenessLimit = 36 * time.Hour
+)
 
 type Repository struct {
 	rw *db.Db
@@ -45,12 +49,16 @@ func (r *Repository) AddPersona(ctx context.Context, p *Persona) error {
 		return errors.New(ctx, errors.InvalidParameter, op, "persona is nil")
 	case p.TokenName == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "persona's token name is empty")
+	case p.KeyringType == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "persona's keyring type is empty")
 	case p.BoundaryAddr == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "persona's boundary address is empty")
 	}
 
+	p.LastAccessedTime = time.Now()
+
 	onConflict := db.OnConflict{
-		Target: db.Columns{"boundary_addr", "token_name"},
+		Target: db.Columns{"boundary_addr", "keyring_type", "token_name"},
 		Action: db.SetColumns([]string{"auth_token_id", "last_accessed_time"}),
 	}
 	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
@@ -86,18 +94,26 @@ func (r *Repository) AddPersona(ctx context.Context, p *Persona) error {
 	return nil
 }
 
-// LookupPersona returns the persona and updates its last accessed time
-func (r *Repository) LookupPersona(ctx context.Context, addr string, tokenName string) (*Persona, error) {
+// LookupPersona returns the persona.
+// Accepts withUpdateLastAccessedTime option.
+func (r *Repository) LookupPersona(ctx context.Context, addr, keyringType, tokenName string, opt ...Option) (*Persona, error) {
 	const op = "cache.(Repository).LookupPersona"
 	switch {
 	case addr == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "address is empty")
+	case keyringType == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "keyring type is empty")
 	case tokenName == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is empty")
+	}
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	p := &Persona{
 		BoundaryAddr: addr,
+		KeyringType:  keyringType,
 		TokenName:    tokenName,
 	}
 	if err := r.rw.LookupById(ctx, p); err != nil {
@@ -106,16 +122,67 @@ func (r *Repository) LookupPersona(ctx context.Context, addr string, tokenName s
 		}
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	updatedP := &Persona{
-		BoundaryAddr:     p.BoundaryAddr,
-		TokenName:        p.TokenName,
-		LastAccessedTime: time.Now(),
-	}
-	if _, err := r.rw.Update(ctx, updatedP, []string{"LastAccessedTime"}, nil); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+
+	if opts.withUpdateLastAccessedTime {
+		updatedP := &Persona{
+			BoundaryAddr:     p.BoundaryAddr,
+			TokenName:        p.TokenName,
+			KeyringType:      p.KeyringType,
+			LastAccessedTime: time.Now(),
+		}
+		if _, err := r.rw.Update(ctx, updatedP, []string{"LastAccessedTime"}, nil); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
-	return updatedP, nil
+	return p, nil
+}
+
+func (r *Repository) DeletePersona(ctx context.Context, p *Persona) error {
+	const op = "cache.(Repository).DeletePersona"
+	switch {
+	case p == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "missing persona")
+	case p.BoundaryAddr == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "missing boundary address")
+	case p.TokenName == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "missing token name")
+	case p.KeyringType == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "missing keyring type")
+	}
+
+	n, err := r.rw.Delete(ctx, p)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	switch n {
+	case 1:
+		return nil
+	case 0:
+		return errors.New(ctx, errors.RecordNotFound, op, "persona not found when attempting deletion")
+	default:
+		return errors.New(ctx, errors.MultipleRecords, op, "multiple personas deleted when one was requested")
+	}
+}
+
+// RemoveStalePersonas removes all personas which are older than the staleness
+func (r *Repository) RemoveStalePersonas(ctx context.Context, opt ...Option) error {
+	const op = "cache.(Repository).RemoveStalePersonas"
+	if _, err := r.rw.Exec(ctx, "delete from cache_persona where last_accessed_time < @last_accessed_time",
+		[]any{sql.Named("last_accessed_time", time.Now().Add(-personaStalenessLimit))}); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	return nil
+}
+
+// ListPersonas returns all known personas in the cache
+func (r *Repository) ListPersonas(ctx context.Context) ([]*Persona, error) {
+	const op = "cache.(Repository).ListPersonas"
+	var ret []*Persona
+	if err := r.rw.SearchWhere(ctx, &ret, "true", nil); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return ret, nil
 }
 
 func (r *Repository) SaveError(ctx context.Context, resourceType string, err error) error {
@@ -147,14 +214,22 @@ func (r *Repository) RefreshTargets(ctx context.Context, p *Persona, targets []*
 		return errors.New(ctx, errors.InvalidParameter, op, "persona is nil")
 	case p.TokenName == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
+	case p.KeyringType == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "keyring type is missing")
 	case p.BoundaryAddr == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
 	}
 
+	foundP := p.clone()
+	if err := r.rw.LookupById(ctx, foundP); err != nil {
+		// if this persona isn't known about, error out.
+		return errors.Wrap(ctx, err, op)
+	}
+
 	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		// TODO: Instead of deleting everything, use refresh tokens and apply the delta
-		if _, err := w.Exec(ctx, "delete from cache_target where boundary_addr = @boundary_addr and token_name = @token_name",
-			[]any{sql.Named("boundary_addr", p.BoundaryAddr), sql.Named("token_name", p.TokenName)}); err != nil {
+		if _, err := w.Exec(ctx, "delete from cache_target where boundary_addr = @boundary_addr and token_name = @token_name and keyring_type = @keyring_type",
+			[]any{sql.Named("boundary_addr", p.BoundaryAddr), sql.Named("keyring_type", p.KeyringType), sql.Named("token_name", p.TokenName)}); err != nil {
 			return err
 		}
 
@@ -165,6 +240,7 @@ func (r *Repository) RefreshTargets(ctx context.Context, p *Persona, targets []*
 			}
 			newTarget := Target{
 				BoundaryAddr: p.BoundaryAddr,
+				KeyringType:  p.KeyringType,
 				TokenName:    p.TokenName,
 				Id:           t.Id,
 				Name:         t.Name,
@@ -173,7 +249,7 @@ func (r *Repository) RefreshTargets(ctx context.Context, p *Persona, targets []*
 				Item:         string(item),
 			}
 			onConflict := db.OnConflict{
-				Target: db.Columns{"boundary_addr", "token_name", "id"},
+				Target: db.Columns{"boundary_addr", "token_name", "keyring_type", "id"},
 				Action: db.UpdateAll(true),
 			}
 			if err := w.Create(ctx, newTarget, db.WithOnConflict(&onConflict)); err != nil {
@@ -319,6 +395,7 @@ func (r *Repository) FindTargets(ctx context.Context, p *Persona, opt ...Option)
 
 type Target struct {
 	BoundaryAddr string `gorm:"primaryKey"`
+	KeyringType  string `gorm:"primaryKey"`
 	TokenName    string `gorm:"primaryKey"`
 	Id           string `gorm:"primaryKey"`
 	Name         string
@@ -344,6 +421,7 @@ func (*ApiError) TableName() string {
 
 type Persona struct {
 	BoundaryAddr     string `gorm:"primaryKey"`
+	KeyringType      string `gorm:"primaryKey"`
 	TokenName        string `gorm:"primaryKey"`
 	AuthTokenId      string
 	LastAccessedTime time.Time `gorm:"default:(strftime('%Y-%m-%d %H:%M:%f','now'))"`
@@ -351,4 +429,24 @@ type Persona struct {
 
 func (*Persona) TableName() string {
 	return "cache_persona"
+}
+
+// tokenLookupFn takes a token name and returns the token
+type tokenLookupFn func(keyring string, tokenName string) *authtokens.AuthToken
+
+func (p *Persona) Token(tfn tokenLookupFn) *authtokens.AuthToken {
+	if at := tfn(p.KeyringType, p.TokenName); at != nil && at.Id == p.AuthTokenId {
+		return at
+	}
+	return nil
+}
+
+func (p *Persona) clone() *Persona {
+	return &Persona{
+		BoundaryAddr:     p.BoundaryAddr,
+		KeyringType:      p.KeyringType,
+		TokenName:        p.TokenName,
+		AuthTokenId:      p.AuthTokenId,
+		LastAccessedTime: p.LastAccessedTime,
+	}
 }

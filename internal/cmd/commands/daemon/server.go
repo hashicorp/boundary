@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/base/logging"
@@ -45,14 +46,13 @@ const (
 )
 
 type commander interface {
-	DiscoverKeyringTokenInfo() (string, string, error)
 	Client(opt ...base.Option) (*api.Client, error)
+	DiscoverKeyringTokenInfo() (string, string, error)
+	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
 }
 
 type server struct {
 	conf *serverConfig
-
-	repository *cache.Repository
 
 	infoKeys    []string
 	info        map[string]string
@@ -75,8 +75,6 @@ type server struct {
 type serverConfig struct {
 	contextCancel          context.CancelFunc
 	refreshIntervalSeconds int64
-	cmd                    commander
-	tokenName              string
 	flagDatabaseUrl        string
 	flagStoreDebug         bool
 	flagLogLevel           string
@@ -140,7 +138,7 @@ func (s *server) shutdown() error {
 // start will fire up the refresh goroutine and the caching API http server as a
 // daemon.  The daemon bits are included so it's easy for CLI cmds to start the
 // a cache server
-func (s *server) start(ctx context.Context) error {
+func (s *server) start(ctx context.Context, cmd commander) error {
 	const op = "daemon.(server).start"
 	switch {
 	case util.IsNil(ctx):
@@ -198,20 +196,12 @@ func (s *server) start(ctx context.Context) error {
 			return nil
 		}
 	}
-	// before we go too far, do we even have a token?
-	client, err := s.conf.cmd.Client()
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	if client.Token() == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing token")
-	}
 
 	// let's take care of things that might error, before we start
 	// background bits
 	var tic *refreshTicker
 	{
-		addr, err := socketAddress()
+		addr, err := SocketAddress()
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -239,7 +229,7 @@ func (s *server) start(ctx context.Context) error {
 		s.infoKeys = append(s.infoKeys, "Database URL")
 
 		mux := http.NewServeMux()
-		searchTargetsFn, err := newSearchTargetsHandlerFunc(ctx, s.store, s.conf.tokenName)
+		searchTargetsFn, err := newSearchTargetsHandlerFunc(ctx, s.store)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -248,7 +238,36 @@ func (s *server) start(ctx context.Context) error {
 			Handler: mux,
 		}
 
-		tic, err = newRefreshTicker(ctx, s.conf.refreshIntervalSeconds, s.conf.cmd, s.store, s.conf.tokenName)
+		{
+			// If we have a persona information already, add it to the repository immediately so it can start
+			// get updated.
+			client, err := cmd.Client()
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			repo, err := cache.NewRepository(ctx, s.store)
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			krType, tokName, err := cmd.DiscoverKeyringTokenInfo()
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			at := cmd.ReadTokenFromKeyring(krType, tokName)
+			if at != nil {
+				err := repo.AddPersona(ctx, &cache.Persona{
+					KeyringType:  krType,
+					TokenName:    tokName,
+					BoundaryAddr: client.Addr(),
+					AuthTokenId:  at.Id,
+				})
+				if err != nil {
+					return errors.Wrap(ctx, err, op)
+				}
+			}
+		}
+
+		tic, err = newRefreshTicker(ctx, s.conf.refreshIntervalSeconds, s.store, cmd.ReadTokenFromKeyring)
 		if err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
@@ -303,6 +322,10 @@ const (
 	queryKey    = "query"
 	resourceKey = "resource"
 
+	tokenNameKey    = "token_name"
+	boundaryAddrKey = "boundary_addr"
+	keyringTypeKey  = "keyring_type"
+
 	idContainsKey          = "id_contains"
 	nameContainsKey        = "name_contains"
 	descriptionContainsKey = "description_contains"
@@ -319,13 +342,11 @@ const (
 	addressEndsWithKey     = "address_ends_with"
 )
 
-func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenName string) (http.HandlerFunc, error) {
+func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.HandlerFunc, error) {
 	const op = "daemon.newSearchTargetsHandlerFunc"
 	switch {
 	case util.IsNil(store):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "store is missing")
-	case tokenName == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -335,28 +356,35 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store, tokenN
 			return
 		}
 
-		switch resource := r.URL.Query().Get(resourceKey); resource {
-		case "targets":
-		default:
+		resource := r.URL.Query().Get(resourceKey)
+		tokenName := r.URL.Query().Get(tokenNameKey)
+		keyringType := r.URL.Query().Get(keyringTypeKey)
+		boundaryAddr := r.URL.Query().Get(boundaryAddrKey)
+
+		switch {
+		case resource != "targets":
 			http.Error(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
-		}
-
-		reqTokenName := r.Header.Get("token_name")
-		if tokenName != reqTokenName {
-			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
-		}
-		boundaryAddr := r.Header.Get("boundary_addr")
-
-		// TODO: Look up the persona from fields passed in.  For now just hard code the addr and token.
-		p := &cache.Persona{
-			BoundaryAddr: boundaryAddr,
-			TokenName:    reqTokenName,
+		case tokenName == "":
+			http.Error(w, fmt.Sprintf("%s is a required field but was empty", tokenNameKey), http.StatusBadRequest)
+			return
+		case keyringType == "":
+			http.Error(w, fmt.Sprintf("%s is a required field but was empty", keyringTypeKey), http.StatusBadRequest)
+			return
+		case boundaryAddr == "":
+			http.Error(w, fmt.Sprintf("%s is a required field but was empty", boundaryAddrKey), http.StatusBadRequest)
+			return
 		}
 
 		repo, err := cache.NewRepository(ctx, store)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		p, err := repo.LookupPersona(ctx, boundaryAddr, keyringType, tokenName, cache.WithUpdateLastAccessedTime(true))
+		if err != nil || p == nil {
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 

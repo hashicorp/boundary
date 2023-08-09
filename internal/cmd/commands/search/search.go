@@ -1,11 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package daemon
+package search
 
 import (
 	"bytes"
 	"context"
+	stderrors "errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -13,33 +14,40 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
+	"golang.org/x/exp/slices"
 )
 
 var (
-	_ cli.Command             = (*SearchTargetsCommand)(nil)
-	_ cli.CommandAutocomplete = (*SearchTargetsCommand)(nil)
+	_ cli.Command             = (*SearchCommand)(nil)
+	_ cli.CommandAutocomplete = (*SearchCommand)(nil)
+
+	supportedResourceTypes = []string{
+		"targets",
+	}
 )
 
-type SearchTargetsCommand struct {
+type SearchCommand struct {
 	*base.Command
 	flagNameStartsWith string
 	flagQuery          string
+	flagResource       string
 }
 
-func (c *SearchTargetsCommand) Synopsis() string {
-	return "Start a Boundary daemon"
+func (c *SearchCommand) Synopsis() string {
+	return "Search resources in boundary"
 }
 
-func (c *SearchTargetsCommand) Help() string {
+func (c *SearchCommand) Help() string {
 	helpText := `
-Usage: boundary targets search  [options]
+Usage: boundary search [options]
 
-  Search a boundary target:
+  Search a boundary resource:
 
-      $ boundary targets search
+      $ boundary search -resource targets
 
   For a full list of examples, please see the documentation.
 
@@ -47,7 +55,7 @@ Usage: boundary targets search  [options]
 	return strings.TrimSpace(helpText)
 }
 
-func (c *SearchTargetsCommand) Flags() *base.FlagSets {
+func (c *SearchCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetClient | base.FlagSetOutputFormat)
 
 	f := set.NewFlagSet("Command Options")
@@ -61,20 +69,26 @@ func (c *SearchTargetsCommand) Flags() *base.FlagSets {
 		Target: &c.flagQuery,
 		Usage:  `If set, specifies the target search query`,
 	})
+	f.StringVar(&base.StringVar{
+		Name:       "resource",
+		Target:     &c.flagResource,
+		Usage:      `Specifies the resource type to search over`,
+		Completion: complete.PredictSet(supportedResourceTypes...),
+	})
 
 	return set
 }
 
-func (c *SearchTargetsCommand) AutocompleteArgs() complete.Predictor {
+func (c *SearchCommand) AutocompleteArgs() complete.Predictor {
 	return complete.PredictNothing
 }
 
-func (c *SearchTargetsCommand) AutocompleteFlags() complete.Flags {
+func (c *SearchCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *SearchTargetsCommand) Run(args []string) int {
-	const op = "daemon.(SearchTargetsCommand).Run"
+func (c *SearchCommand) Run(args []string) int {
+	const op = "search.(SearchCommand).Run"
 	ctx := c.Context
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
@@ -82,7 +96,17 @@ func (c *SearchTargetsCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	_, tokenName, err := c.DiscoverKeyringTokenInfo()
+	switch {
+	case slices.Contains(supportedResourceTypes, c.flagResource):
+	case c.flagResource == "":
+		c.PrintCliError(stderrors.New("Resource is required but not passed in via -resource"))
+		return base.CommandUserError
+	default:
+		c.PrintCliError(stderrors.New("The value passed in with -resource is not currently supported in search"))
+		return base.CommandUserError
+	}
+
+	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
@@ -92,13 +116,16 @@ func (c *SearchTargetsCommand) Run(args []string) int {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
-	tf := targetFilterBy{
+
+	tf := filterBy{
 		boundaryAddr:       client.Addr(),
 		tokenName:          tokenName,
+		keyringType:        keyringType,
 		flagNameStartsWith: c.flagNameStartsWith,
 		flagQuery:          c.flagQuery,
+		resource:           c.flagResource,
 	}
-	resp, err := searchTargets(ctx, tf, c.FlagOutputCurlString)
+	resp, err := search(ctx, tf, c.FlagOutputCurlString)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
@@ -140,7 +167,7 @@ func (c *SearchTargetsCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *SearchTargetsCommand) printListTable(items []*targets.Target) string {
+func (c *SearchCommand) printListTable(items []*targets.Target) string {
 	if len(items) == 0 {
 		return "No targets found"
 	}
@@ -204,12 +231,12 @@ func (c *SearchTargetsCommand) printListTable(items []*targets.Target) string {
 }
 
 func SearchClient(ctx context.Context, flagOutputCurl bool) (*api.Client, error) {
-	const op = "daemon.SearchClient"
+	const op = "search.SearchClient"
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	addr, err := socketAddress()
+	addr, err := daemon.SocketAddress()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -226,15 +253,17 @@ func SearchClient(ctx context.Context, flagOutputCurl bool) (*api.Client, error)
 	return client, nil
 }
 
-type targetFilterBy struct {
+type filterBy struct {
 	flagNameStartsWith string
 	flagQuery          string
 	tokenName          string
+	keyringType        string
 	boundaryAddr       string
+	resource           string
 }
 
-func searchTargets(ctx context.Context, filterBy targetFilterBy, flagOutputCurl bool) (*api.Response, error) {
-	const op = "daemon.searchTargets"
+func search(ctx context.Context, filterBy filterBy, flagOutputCurl bool) (*api.Response, error) {
+	const op = "search.search"
 	client, err := SearchClient(ctx, flagOutputCurl)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -243,10 +272,11 @@ func searchTargets(ctx context.Context, filterBy targetFilterBy, flagOutputCurl 
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error: %s", err.Error()))
 	}
-	req.Header.Add("token_name", filterBy.tokenName)
-	req.Header.Add("boundary_addr", filterBy.boundaryAddr)
 	q := url.Values{}
-	q.Add("resource", "targets")
+	q.Add("token_name", filterBy.tokenName)
+	q.Add("keyring_type", filterBy.keyringType)
+	q.Add("boundary_addr", filterBy.boundaryAddr)
+	q.Add("resource", filterBy.resource)
 	q.Add("name_starts_with", filterBy.flagNameStartsWith)
 	q.Add("query", filterBy.flagQuery)
 	req.URL.RawQuery = q.Encode()
