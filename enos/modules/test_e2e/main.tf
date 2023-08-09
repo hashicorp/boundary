@@ -135,6 +135,10 @@ variable "test_timeout" {
   type    = string
   default = "15m"
 }
+variable "boundary_license" {
+  type    = string
+  default = ""
+}
 
 locals {
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
@@ -149,6 +153,7 @@ resource "enos_local_exec" "run_e2e_test" {
   environment = {
     E2E_TESTS                     = "true",
     BOUNDARY_ADDR                 = var.alb_boundary_api_addr,
+    BOUNDARY_LICENSE              = var.boundary_license,
     E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id,
     E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name,
     E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password,
