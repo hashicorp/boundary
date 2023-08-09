@@ -406,7 +406,7 @@
           },
           {
             "title": "Start a session",
-            "path": "configuraiton/session-recording/start-a-session"
+            "path": "configuration/session-recording/start-a-session"
           }
         ]
       },
