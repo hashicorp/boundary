@@ -121,16 +121,10 @@ func (c *ServerCommand) Run(args []string) int {
 		c.PrintCliError(err)
 		return base.CommandUserError
 	}
-	_, tokenName, err := c.DiscoverKeyringTokenInfo()
-	if err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandUserError
-	}
+
 	cfg := serverConfig{
 		contextCancel:          c.ContextCancel,
 		refreshIntervalSeconds: c.flagRefreshIntervalSeconds,
-		cmd:                    c,
-		tokenName:              tokenName,
 		flagDatabaseUrl:        c.flagDatabaseUrl,
 		flagStoreDebug:         c.flagStoreDebug,
 		flagLogLevel:           c.flagLogLevel,
@@ -143,7 +137,7 @@ func (c *ServerCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	if err := c.srv.start(c.Context); err != nil {
+	if err := c.srv.start(c.Context, c); err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
 	}
@@ -153,7 +147,7 @@ func (c *ServerCommand) Run(args []string) int {
 
 const DefaultRefreshIntervalSeconds = 5 * 60
 
-func StartCacheInBackground(ctx context.Context, tokenName string, cmd commander, ui cli.Ui, flagPort uint) error {
+func StartCacheInBackground(ctx context.Context, cmd commander, ui cli.Ui) error {
 	const op = "daemon.StartCacheInBackground"
 
 	cancelCtx, cancelFunc := context.WithCancel(ctx)
@@ -161,15 +155,13 @@ func StartCacheInBackground(ctx context.Context, tokenName string, cmd commander
 	cfg := serverConfig{
 		contextCancel:          cancelFunc,
 		refreshIntervalSeconds: DefaultRefreshIntervalSeconds,
-		cmd:                    cmd,
-		tokenName:              tokenName,
 		ui:                     ui,
 	}
 	srv, err := newServer(ctx, cfg)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := srv.start(cancelCtx); err != nil {
+	if err := srv.start(cancelCtx, cmd); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
