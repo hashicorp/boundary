@@ -72,7 +72,6 @@ func TestCleanupJob(t *testing.T) {
 		t.Errorf("error checking target_deleted table %s", err)
 	}
 	require.Equal(t, 0, count)
-
 }
 
 func TestNewCleanupJob(t *testing.T) {
