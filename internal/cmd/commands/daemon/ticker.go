@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -20,26 +21,23 @@ import (
 
 type refreshTicker struct {
 	refreshInterval time.Duration
-	store           *cache.Store
-	cmd             commander
-	tokenName       string
+	repo            *cache.Repository
+	tokenFn         func(keyring string, tokenName string) *authtokens.AuthToken
 }
 
-func newRefreshTicker(ctx context.Context, refreshIntervalSeconds int64, cmd commander, store *cache.Store, tokenName string) (*refreshTicker, error) {
+// tokenLookupFn takes a token name and returns the token
+type tokenLookupFn func(keyring string, tokenName string) *authtokens.AuthToken
+
+func newRefreshTicker(ctx context.Context, refreshIntervalSeconds int64, store *cache.Store, tokenFn tokenLookupFn) (*refreshTicker, error) {
 	const op = "daemon.newRefreshTicker"
 	switch {
 	case refreshIntervalSeconds == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "refresh interval seconds is missing")
-	case util.IsNil(cmd):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "cmd is missing")
 	case util.IsNil(store):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "store is missing")
-	case tokenName == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is missing")
 	}
 
-	// need to know if we can get a client
-	_, err := cmd.Client()
+	repo, err := cache.NewRepository(ctx, store)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -49,10 +47,9 @@ func newRefreshTicker(ctx context.Context, refreshIntervalSeconds int64, cmd com
 		refreshInterval = time.Duration(refreshIntervalSeconds) * time.Second
 	}
 	return &refreshTicker{
-		cmd:             cmd,
 		refreshInterval: refreshInterval,
-		store:           store,
-		tokenName:       tokenName,
+		repo:            repo,
+		tokenFn:         tokenFn,
 	}, nil
 }
 
@@ -64,52 +61,57 @@ func (rt *refreshTicker) start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			client, err := rt.cmd.Client()
+			if err := rt.repo.RemoveStalePersonas(ctx); err != nil {
+				event.WriteError(ctx, op, err)
+				timer.Reset(rt.refreshInterval)
+				continue
+			}
+			personas, err := rt.repo.ListPersonas(ctx)
 			if err != nil {
-				// emit event, reset, and continue
-				errors.Wrap(ctx, err, op)
+				event.WriteError(ctx, op, err)
 				timer.Reset(rt.refreshInterval)
 				continue
 			}
-			if client.Addr() == "" {
-				// emit event, reset, and continue
-				errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
-				timer.Reset(rt.refreshInterval)
-				continue
-			}
-			if client.Token() == "" {
-				// emit event, reset, and continue
-				errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("token name %q is missing", rt.tokenName))
-				timer.Reset(rt.refreshInterval)
-				continue
-			}
-			// TODO: Iterate over personas and use their address and token information instead of what
-			//  was available at the time the ticker was started.
-			if err := refreshCache(ctx, client, client.Addr(), rt.tokenName, rt.store); err != nil {
-				// event was already emitted, so reset and continue
-				timer.Reset(rt.refreshInterval)
-				continue
+
+			for _, p := range personas {
+				at := p.Token(rt.tokenFn)
+				if at == nil {
+					if err := rt.repo.DeletePersona(ctx, p); err != nil {
+						event.WriteError(ctx, op, err)
+						continue
+					}
+				}
+
+				client, err := api.NewClient(&api.Config{
+					Addr:  p.BoundaryAddr,
+					Token: at.Token,
+				})
+				if err != nil {
+					event.WriteError(ctx, op, err)
+					continue
+				}
+				if err := refreshCache(ctx, client, p, rt.repo); err != nil {
+					continue
+				}
 			}
 			timer.Reset(rt.refreshInterval)
 		}
 	}
 }
 
-func refreshCache(ctx context.Context, client *api.Client, addr string, tokenName string, store *cache.Store) error {
+func refreshCache(ctx context.Context, client *api.Client, p *cache.Persona, r *cache.Repository) error {
 	const op = "daemon.(Repository).refreshCache"
 	switch {
 	case util.IsNil(client):
-		return errors.New(ctx, errors.InvalidParameter, op, "api client is missing")
-	case tokenName == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "client is missing")
+	case util.IsNil(p):
+		return errors.New(ctx, errors.InvalidParameter, op, "persona is missing")
+	case p.TokenName == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
-	case addr == "":
+	case p.BoundaryAddr == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
-	case util.IsNil(store):
-		return errors.New(ctx, errors.InvalidParameter, op, "store is missing")
-	}
-	r, err := cache.NewRepository(ctx, store)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
+	case util.IsNil(r):
+		return errors.New(ctx, errors.InvalidParameter, op, "repository is missing")
 	}
 
 	tarClient := targets.NewClient(client)
@@ -121,15 +123,7 @@ func refreshCache(ctx context.Context, client *api.Client, addr string, tokenNam
 		return errors.Wrap(ctx, err, op)
 	}
 
-	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets", len(l.Items)))
-
-	p := &cache.Persona{
-		BoundaryAddr: addr,
-		TokenName:    tokenName,
-	}
-	if err := r.AddPersona(ctx, p); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
+	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for persona %v", len(l.Items), p))
 	if err := r.RefreshTargets(ctx, p, l.Items); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
