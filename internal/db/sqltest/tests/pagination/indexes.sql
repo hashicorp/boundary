@@ -5,7 +5,7 @@ begin;
   select plan(1);
 
   select has_index('target_deleted',
-                   'target_deleted_time_idx',
+                   'target_deleted_delete_time_idx',
                    'delete_time',
                    'index for cleanup table target_deleted missing');
 
