@@ -4,136 +4,136 @@
 begin;
   create table target_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index target_deleted_time_idx on target_deleted (delete_time);
+  create index target_deleted_delete_time_idx on target_deleted (delete_time);
 
   create table session_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index session_deleted_time_idx on session_deleted (delete_time);
+  create index session_deleted_delete_time_idx on session_deleted (delete_time);
 
   create table auth_method_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index auth_method_deleted_time_idx on auth_method_deleted (delete_time);
+  create index auth_method_deleted_delete_time_idx on auth_method_deleted (delete_time);
 
   create table auth_token_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index auth_token_deleted_time_idx on auth_token_deleted (delete_time);
+  create index auth_token_deleted_delete_time_idx on auth_token_deleted (delete_time);
 
   create table credential_library_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index credential_library_deleted_time_idx on credential_library_deleted (delete_time);
+  create index credential_library_deleted_delete_time_idx on credential_library_deleted (delete_time);
 
   create table credential_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index credential_deleted_time_idx on credential_deleted (delete_time);
+  create index credential_deleted_delete_time_idx on credential_deleted (delete_time);
 
   create table credential_store_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index credential_store_deleted_time_idx on credential_store_deleted (delete_time);
+  create index credential_store_deleted_delete_time_idx on credential_store_deleted (delete_time);
 
   create table iam_group_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index iam_group_deleted_time_idx on iam_group_deleted (delete_time);
+  create index iam_group_deleted_delete_time_idx on iam_group_deleted (delete_time);
 
   create table host_catalog_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index host_catalog_deleted_time_idx on host_catalog_deleted (delete_time);
+  create index host_catalog_deleted_delete_time_idx on host_catalog_deleted (delete_time);
 
   create table host_set_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index host_set_deleted_time_idx on host_set_deleted (delete_time);
+  create index host_set_deleted_delete_time_idx on host_set_deleted (delete_time);
 
   create table host_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index host_deleted_time_idx on host_deleted (delete_time);
+  create index host_deleted_delete_time_idx on host_deleted (delete_time);
 
   create table iam_role_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index iam_role_deleted_time_idx on iam_role_deleted (delete_time);
+  create index iam_role_deleted_delete_time_idx on iam_role_deleted (delete_time);
 
   create table iam_scope_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index iam_scope_deleted_time_idx on iam_scope_deleted (delete_time);
+  create index iam_scope_deleted_delete_time_idx on iam_scope_deleted (delete_time);
 
   create table storage_plugin_storage_bucket_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index storage_plugin_storage_bucket_deleted_time_idx on storage_plugin_storage_bucket_deleted (delete_time);
+  create index storage_plugin_storage_bucket_deleted_delete_time_idx on storage_plugin_storage_bucket_deleted (delete_time);
 
   create table iam_user_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index iam_user_deleted_time_idx on iam_user_deleted (delete_time);
+  create index iam_user_deleted_delete_time_idx on iam_user_deleted (delete_time);
 
   create table recording_session_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index recording_session_deleted_time_idx on recording_session_deleted (delete_time);
+  create index recording_session_deleted_delete_time_idx on recording_session_deleted (delete_time);
 
   create table auth_managed_group_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index auth_managed_group_deleted_time_idx on auth_managed_group_deleted (delete_time);
+  create index auth_managed_group_deleted_delete_time_idx on auth_managed_group_deleted (delete_time);
 
   create table server_worker_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index server_worker_deleted_time_idx on server_worker_deleted (delete_time);
+  create index server_worker_deleted_delete_time_idx on server_worker_deleted (delete_time);
 
   create table auth_account_deleted (
     public_id wt_public_id primary key,
-    delete_time wt_timestamp
+    delete_time wt_timestamp not null
   );
 
-  create index auth_account_deleted_time_idx on auth_account_deleted (delete_time);
+  create index auth_account_deleted_delete_time_idx on auth_account_deleted (delete_time);
 
   create table deletion_tables_enm (
     table_name text primary key
@@ -190,7 +190,7 @@ begin;
   create or replace function insert_deleted_id() returns trigger
   as $$
   begin
-    execute format('INSERT INTO %I (public_id, delete_time) values ($1, now())', tg_argv[0]) using old.public_id;
+    execute format('insert into %I (public_id, delete_time) values ($1, now())', tg_argv[0]) using old.public_id;
     return old;
   end;
   $$ language plpgsql;

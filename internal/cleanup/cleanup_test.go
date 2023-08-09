@@ -7,17 +7,17 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestPrototypeInsertDeleteAndClear(t *testing.T) {
+func TestCleanupJob(t *testing.T) {
 	ctx := context.Background()
 
 	conn, _ := db.TestSetup(t, "postgres")
@@ -36,45 +36,29 @@ func TestPrototypeInsertDeleteAndClear(t *testing.T) {
 		t.Errorf("error deleting from target %s", err)
 	}
 
-	// make sure that the trigger works
-	rows, err := db.Query("select count(public_id) from target_deleted")
+	// ensure that the trigger works
+	var count int
+	err = db.QueryRowContext(ctx, "select count(public_id) from target_deleted").Scan(&count)
 	if err != nil {
 		t.Errorf("error checking target_deleted table %s", err)
-	}
-	defer rows.Close()
-	var count int
-	for rows.Next() {
-		err = rw.ScanRows(ctx, rows, &count)
-		if err != nil {
-			t.Error("unable to scan rows for census sessions pending count")
-		}
 	}
 	require.Equal(t, 1, count)
 
 	sJob := cleanupJob{
-		r: rw,
 		w: rw,
 	}
 
 	err = sJob.Run(ctx)
 	require.NoError(t, err)
 
-	// make sure that the job doesn't clean up
-	rows, err = db.Query("select count(public_id) from target_deleted")
+	// ensure that the job doesn't clean up
+	err = db.QueryRowContext(ctx, "select count(public_id) from target_deleted").Scan(&count)
 	if err != nil {
 		t.Errorf("error checking target_deleted table %s", err)
 	}
-	defer rows.Close()
-	count = 0
-	for rows.Next() {
-		err = rw.ScanRows(ctx, rows, &count)
-		if err != nil {
-			t.Error("unable to scan rows for census sessions pending count")
-		}
-	}
 	require.Equal(t, 1, count)
 
-	_, err = db.Exec(`update target_deleted set delete_time = '2023-05-18';`)
+	_, err = db.Exec("update target_deleted set delete_time = $1", time.Now().AddDate(0, -2, 0))
 	if err != nil {
 		t.Errorf("error updating target_deleted %s", err)
 	}
@@ -82,18 +66,10 @@ func TestPrototypeInsertDeleteAndClear(t *testing.T) {
 	err = sJob.Run(ctx)
 	require.NoError(t, err)
 
-	// make sure that the job did clean up
-	rows, err = db.Query("select count(public_id) from target_deleted")
+	// ensure that the job did clean up
+	err = db.QueryRowContext(ctx, "select count(public_id) from target_deleted").Scan(&count)
 	if err != nil {
 		t.Errorf("error checking target_deleted table %s", err)
-	}
-	defer rows.Close()
-	count = 0
-	for rows.Next() {
-		err = rw.ScanRows(ctx, rows, &count)
-		if err != nil {
-			t.Error("unable to scan rows for census sessions pending count")
-		}
 	}
 	require.Equal(t, 0, count)
 
@@ -106,7 +82,6 @@ func TestNewCleanupJob(t *testing.T) {
 	rw := db.New(conn)
 
 	type args struct {
-		r db.Reader
 		w db.Writer
 	}
 
@@ -119,23 +94,12 @@ func TestNewCleanupJob(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				r: rw,
 				w: rw,
 			},
-		},
-		{
-			name: "nil-reader",
-			args: args{
-				r: nil,
-				w: rw,
-			},
-			wantIsErr:  errors.InvalidParameter,
-			wantErrMsg: "cleanupJob.newCleanupJob: missing db.Reader: parameter violation: error #100",
 		},
 		{
 			name: "nil-writer",
 			args: args{
-				r: rw,
 				w: nil,
 			},
 			wantIsErr:  errors.InvalidParameter,
@@ -146,7 +110,7 @@ func TestNewCleanupJob(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := newCleanupJob(ctx, tt.args.r, tt.args.w)
+			got, err := newCleanupJob(ctx, tt.args.w)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
@@ -156,28 +120,4 @@ func TestNewCleanupJob(t *testing.T) {
 			require.NotNil(got)
 		})
 	}
-}
-
-func TestRegisterJob(t *testing.T) {
-	conn, _ := db.TestSetup(t, "postgres")
-	rw := db.New(conn)
-	wrapper := db.TestWrapper(t)
-	s := scheduler.TestScheduler(t, conn, wrapper)
-
-	t.Run("succeeds", func(t *testing.T) {
-		err := RegisterJob(context.Background(), s, rw, rw)
-		require.NoError(t, err)
-	})
-	t.Run("fails-on-nil-scheduler", func(t *testing.T) {
-		err := RegisterJob(context.Background(), nil, rw, rw)
-		require.Error(t, err)
-	})
-	t.Run("fails-on-nil-db-writer", func(t *testing.T) {
-		err := RegisterJob(context.Background(), s, rw, nil)
-		require.Error(t, err)
-	})
-	t.Run("fails-on-nil-db-reader", func(t *testing.T) {
-		err := RegisterJob(context.Background(), s, nil, rw)
-		require.Error(t, err)
-	})
 }
