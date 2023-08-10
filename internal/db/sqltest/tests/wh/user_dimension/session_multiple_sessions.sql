@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: MPL-2.0
+-- SPDX-License-Identifier: BUSL-1.1
 
 -- session_multiple_sessions tests the wh_user_dimesion when
 -- multiple sessions are created using the same user and auth method.
