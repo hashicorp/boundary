@@ -39,12 +39,11 @@ func TestPruneTables(t *testing.T) {
 	for rows.Next() {
 		rowCount++
 		var table string
-		err = rw.ScanRows(ctx, rows, &table)
+		err = rows.Scan(&table)
 		if err != nil {
 			t.Errorf("unable to scan rows for deletion tables %s", err)
 		}
 		tables = append(tables, table)
-		t.Log(tables)
 	}
 
 	for _, table := range tables {
