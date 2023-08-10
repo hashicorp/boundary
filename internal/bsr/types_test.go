@@ -6,10 +6,11 @@ package bsr_test
 import (
 	"encoding/json"
 	"errors"
+	"testing"
+
 	"github.com/hashicorp/boundary/internal/bsr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestSummaryError_MarshalJSON(t *testing.T) {
