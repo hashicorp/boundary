@@ -229,14 +229,15 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 				return
 			}
 
-			serverCmd, ok := c.(*daemon.ServerCommand)
+			daemonCmd, ok := c.(*daemon.StartCommand)
 			if !ok {
 				fmt.Fprintf(runOpts.Stderr, "Error base command: %s\n", err.Error())
 				return
 			}
-			serverCmd.Flags()
+			daemonCmd.Flags()
+			daemonCmd.UI = &silentUi{}
 
-			err = daemon.StartCacheInBackground(context.Background(), serverCmd, serverCmd.UI)
+			err = daemonCmd.StartCacheInBackground(context.Background())
 			if err != nil && !strings.Contains(err.Error(), "already running") {
 				return
 			}

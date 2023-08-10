@@ -366,7 +366,13 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 		},
 
 		"daemon start": func() (cli.Command, error) {
-			return &daemon.ServerCommand{
+			return &daemon.StartCommand{
+				Command: base.NewCommand(ui),
+			}, nil
+		},
+
+		"daemon stop": func() (cli.Command, error) {
+			return &daemon.StopCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		},

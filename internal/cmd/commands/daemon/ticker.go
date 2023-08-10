@@ -19,7 +19,10 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
+const defaultRefreshInterval = DefaultRefreshIntervalSeconds * time.Second
+
 type refreshTicker struct {
+	tickerCtx       context.Context
 	refreshInterval time.Duration
 	repo            *cache.Repository
 	tokenFn         func(keyring string, tokenName string) *authtokens.AuthToken
@@ -62,13 +65,13 @@ func (rt *refreshTicker) start(ctx context.Context) {
 			return
 		case <-timer.C:
 			if err := rt.repo.RemoveStalePersonas(ctx); err != nil {
-				event.WriteError(ctx, op, err)
+				event.WriteError(rt.tickerCtx, op, err)
 				timer.Reset(rt.refreshInterval)
 				continue
 			}
 			personas, err := rt.repo.ListPersonas(ctx)
 			if err != nil {
-				event.WriteError(ctx, op, err)
+				event.WriteError(rt.tickerCtx, op, err)
 				timer.Reset(rt.refreshInterval)
 				continue
 			}
@@ -77,9 +80,9 @@ func (rt *refreshTicker) start(ctx context.Context) {
 				at := p.Token(rt.tokenFn)
 				if at == nil {
 					if err := rt.repo.DeletePersona(ctx, p); err != nil {
-						event.WriteError(ctx, op, err)
-						continue
+						event.WriteError(rt.tickerCtx, op, err)
 					}
+					continue
 				}
 
 				client, err := api.NewClient(&api.Config{
@@ -87,7 +90,7 @@ func (rt *refreshTicker) start(ctx context.Context) {
 					Token: at.Token,
 				})
 				if err != nil {
-					event.WriteError(ctx, op, err)
+					event.WriteError(rt.tickerCtx, op, err)
 					continue
 				}
 				if err := refreshCache(ctx, client, p, rt.repo); err != nil {

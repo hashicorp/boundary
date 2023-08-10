@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sync"
 	"testing"
 
@@ -18,13 +19,15 @@ import (
 
 func TestListenDialCommunication(t *testing.T) {
 	ctx := context.Background()
+	path, err := os.MkdirTemp("", "*")
+	require.NoError(t, err)
 
-	payload := "Hello test"
-
-	socketListener, err := listener(ctx)
+	socketListener, err := listener(ctx, path)
 
 	require.NoError(t, err)
 	mux := http.NewServeMux()
+
+	payload := "Hello test"
 	mux.HandleFunc("/v1/test", func(w http.ResponseWriter, r *http.Request) {
 		_, err = fmt.Fprint(w, payload)
 		require.NoError(t, err)
@@ -42,9 +45,7 @@ func TestListenDialCommunication(t *testing.T) {
 
 	client, err := api.NewClient(nil)
 	require.NoError(t, err)
-	addr, err := SocketAddress()
-	require.NoError(t, err)
-	require.NoError(t, client.SetAddr(addr))
+	require.NoError(t, client.SetAddr(SocketAddress(path)))
 	client.SetToken("")
 	req, err := client.NewRequest(ctx, "GET", "/test", nil)
 	require.NoError(t, err)

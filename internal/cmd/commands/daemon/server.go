@@ -5,10 +5,8 @@ package daemon
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -16,16 +14,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
-	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/base/logging"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/util"
@@ -34,15 +29,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/mitchellh/cli"
-	"github.com/mitchellh/go-homedir"
-	"github.com/mitchellh/go-ps"
-	"github.com/sevlyar/go-daemon"
-)
-
-const (
-	dotDirectoryNameTemplate = "%s/.boundary"
-	pidFileNameTemplate      = "%s/.boundary/cache.pid"
-	logFileNameTemplate      = "%s/.boundary/cache.log"
 )
 
 type commander interface {
@@ -54,20 +40,16 @@ type commander interface {
 type server struct {
 	conf *serverConfig
 
-	infoKeys    []string
-	info        map[string]string
-	logger      hclog.Logger
-	stderrLock  *sync.Mutex
-	eventer     *event.Eventer
-	logOutput   io.Writer
-	gatedWriter *gatedwriter.Writer
+	infoKeys []string
+	info     map[string]string
+	logger   hclog.Logger
+	eventer  *event.Eventer
 
 	storeUrl string
 	store    *cache.Store
 
 	tickerWg *sync.WaitGroup
 	httpSrv  *http.Server
-	listener net.Listener
 
 	shutdownOnce *sync.Once
 }
@@ -79,7 +61,6 @@ type serverConfig struct {
 	flagStoreDebug         bool
 	flagLogLevel           string
 	flagLogFormat          string
-	flagSignal             string
 	ui                     cli.Ui
 }
 
@@ -95,7 +76,6 @@ func newServer(ctx context.Context, conf serverConfig) (*server, error) {
 	}
 	s := &server{
 		conf:         &conf,
-		stderrLock:   new(sync.Mutex),
 		info:         make(map[string]string),
 		infoKeys:     make([]string, 0, 20),
 		tickerWg:     new(sync.WaitGroup),
@@ -111,10 +91,6 @@ func (s *server) shutdown() error {
 	s.shutdownOnce.Do(func() {
 		if s.conf.contextCancel != nil {
 			s.conf.contextCancel()
-		}
-		if err := s.listener.Close(); err != nil {
-			shutdownErr = fmt.Errorf("error stopping listeners: %w", err)
-			return
 		}
 		srvCtx, srvCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer srvCancel()
@@ -138,305 +114,87 @@ func (s *server) shutdown() error {
 // start will fire up the refresh goroutine and the caching API http server as a
 // daemon.  The daemon bits are included so it's easy for CLI cmds to start the
 // a cache server
-func (s *server) start(ctx context.Context, cmd commander) error {
+func (s *server) serve(ctx context.Context, cmd commander, l net.Listener) error {
 	const op = "daemon.(server).start"
 	switch {
 	case util.IsNil(ctx):
 		return errors.New(ctx, errors.InvalidParameter, op, "context is missing")
 	}
 
-	homeDir, err := homedir.Dir()
+	s.info["Listening address"] = l.Addr().String()
+	s.infoKeys = append(s.infoKeys, "Listening address")
+	s.info["Store debug"] = strconv.FormatBool(s.conf.flagStoreDebug)
+	s.infoKeys = append(s.infoKeys, "Store debug")
+
+	var err error
+	if s.store, s.storeUrl, err = openStore(ctx, s.conf.flagDatabaseUrl, s.conf.flagStoreDebug); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	s.info["Database URL"] = s.storeUrl
+	s.infoKeys = append(s.infoKeys, "Database URL")
+
+	s.printInfo(s.conf.ui)
+
+	{
+		// If we have a persona information already, add it to the repository immediately so it can start
+		// get updated.
+		client, err := cmd.Client()
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		repo, err := cache.NewRepository(ctx, s.store)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		krType, tokName, err := cmd.DiscoverKeyringTokenInfo()
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		at := cmd.ReadTokenFromKeyring(krType, tokName)
+		if at != nil {
+			err := repo.AddPersona(ctx, &cache.Persona{
+				KeyringType:  krType,
+				TokenName:    tokName,
+				BoundaryAddr: client.Addr(),
+				AuthTokenId:  at.Id,
+			})
+			if err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+		}
+	}
+
+	tic, err := newRefreshTicker(ctx, s.conf.refreshIntervalSeconds, s.store, cmd.ReadTokenFromKeyring)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	pid, err := daemon.ReadPidFile(fmt.Sprintf(pidFileNameTemplate, homeDir))
-	if err == nil {
-		// we found a pid file
-		proc, err := ps.FindProcess(pid)
-		switch {
-		case err != nil:
-			return errors.Wrap(ctx, err, op)
-		case proc != nil && s.conf.flagSignal == "":
-			return errors.New(ctx, errors.Internal, op, fmt.Sprintf("cache daemon (pid %d) is already running.", proc.Pid()))
-		}
+
+	tickingCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var tickerWg sync.WaitGroup
+	tickerWg.Add(1)
+	go func() {
+		defer tickerWg.Done()
+		tic.start(tickingCtx)
+	}()
+
+	mux := http.NewServeMux()
+	searchTargetsFn, err := newSearchTargetsHandlerFunc(ctx, s.store)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
 	}
+	mux.HandleFunc("/v1/search", searchTargetsFn)
 
-	// we need to do some daemon stuff right away in start-up
-	done := make(chan struct{})
-	var daemonCtx *daemon.Context
-	{
-		if err := os.MkdirAll(fmt.Sprintf(dotDirectoryNameTemplate, homeDir), os.ModePerm); err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		daemonCtx = &daemon.Context{
-			PidFileName: fmt.Sprintf(pidFileNameTemplate, homeDir),
-			PidFilePerm: 0o644,
-			LogFileName: fmt.Sprintf(logFileNameTemplate, homeDir),
-			LogFilePerm: 0o640,
-			WorkDir:     homeDir,
-			Umask:       0o27,
-		}
-
-		termHandler := func(sig os.Signal) error {
-			_ = s.shutdown()
-			if sig == syscall.SIGQUIT {
-				// we'll wait for a graceful shutdown to finish
-				<-done
-			}
-			return daemon.ErrStop
-		}
-		daemon.AddCommand(daemon.StringFlag(&s.conf.flagSignal, "quit"), syscall.SIGQUIT, termHandler)
-		daemon.AddCommand(daemon.StringFlag(&s.conf.flagSignal, "stop"), syscall.SIGTERM, termHandler)
-		if len(daemon.ActiveFlags()) > 0 {
-			d, err := daemonCtx.Search()
-			if err != nil {
-				log.Fatalf("Unable send signal to the daemon: %s", err.Error())
-			}
-			daemon.SendCommands(d)
-			return nil
-		}
+	s.httpSrv = &http.Server{
+		Handler: mux,
 	}
-
-	// let's take care of things that might error, before we start
-	// background bits
-	var tic *refreshTicker
-	{
-		addr, err := SocketAddress()
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		s.info["Listening address"] = addr
-		s.infoKeys = append(s.infoKeys, "Listening address")
-		s.info["Store debug"] = strconv.FormatBool(s.conf.flagStoreDebug)
-		s.infoKeys = append(s.infoKeys, "Store debug")
-
-		logFormat, logLevel, err := s.setupLogging(s.conf.flagLogLevel, s.conf.flagLogFormat)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		s.info["log level"] = logLevel.String()
-		s.infoKeys = append(s.infoKeys, "log level")
-		s.info["log format"] = logFormat.String()
-		s.infoKeys = append(s.infoKeys, "log format")
-
-		if s.eventer, err = setupEventing(ctx, s.logger, s.stderrLock, logFormat); err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		if s.store, s.storeUrl, err = openStore(ctx, s.conf.flagDatabaseUrl, s.conf.flagStoreDebug); err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		s.info["Database URL"] = s.storeUrl
-		s.infoKeys = append(s.infoKeys, "Database URL")
-
-		mux := http.NewServeMux()
-		searchTargetsFn, err := newSearchTargetsHandlerFunc(ctx, s.store)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		mux.HandleFunc("/v1/search", searchTargetsFn)
-		s.httpSrv = &http.Server{
-			Handler: mux,
-		}
-
-		{
-			// If we have a persona information already, add it to the repository immediately so it can start
-			// get updated.
-			client, err := cmd.Client()
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			repo, err := cache.NewRepository(ctx, s.store)
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			krType, tokName, err := cmd.DiscoverKeyringTokenInfo()
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
-			}
-			at := cmd.ReadTokenFromKeyring(krType, tokName)
-			if at != nil {
-				err := repo.AddPersona(ctx, &cache.Persona{
-					KeyringType:  krType,
-					TokenName:    tokName,
-					BoundaryAddr: client.Addr(),
-					AuthTokenId:  at.Id,
-				})
-				if err != nil {
-					return errors.Wrap(ctx, err, op)
-				}
-			}
-		}
-
-		tic, err = newRefreshTicker(ctx, s.conf.refreshIntervalSeconds, s.store, cmd.ReadTokenFromKeyring)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-
-		s.listener, err = listener(ctx)
-		if err != nil {
-			log.Fatal("Listener error:", err)
-		}
+	if err = s.httpSrv.Serve(l); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
+		event.WriteSysEvent(ctx, op, "error closing server", "err", err.Error())
 	}
+	cancel()
+	tickerWg.Wait()
 
-	{
-		// okay, we're ready to make this thing into a daemon
-		d, err := daemonCtx.Reborn()
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		if d != nil {
-			return nil
-		}
-		defer daemonCtx.Release()
-
-		s.printInfo(s.conf.ui)
-
-		s.tickerWg.Add(1)
-		go func() {
-			go func() {
-				defer s.tickerWg.Done()
-				tic.start(ctx)
-			}()
-
-			err = s.httpSrv.Serve(s.listener)
-			if err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
-				event.WriteSysEvent(ctx, op, "error closing server", "err", err.Error())
-			}
-			done <- struct{}{}
-		}()
-
-		err = daemon.ServeSignals()
-		if err != nil {
-			log.Printf("Error: %s", err.Error())
-		}
-
-		event.WriteSysEvent(ctx, op, "daemon terminated")
-
-		_ = s.shutdown()
-	}
 	return nil
-}
-
-const (
-	filterKey   = "filter"
-	queryKey    = "query"
-	resourceKey = "resource"
-
-	tokenNameKey    = "token_name"
-	boundaryAddrKey = "boundary_addr"
-	keyringTypeKey  = "keyring_type"
-
-	idContainsKey          = "id_contains"
-	nameContainsKey        = "name_contains"
-	descriptionContainsKey = "description_contains"
-	addressContainsKey     = "address_contains"
-
-	idStartsWithKey          = "id_starts_with"
-	nameStartsWithKey        = "name_starts_with"
-	descriptionStartsWithKey = "description_starts_with"
-	addressStartsWithKey     = "address_starts_with"
-
-	idEndsWithKey          = "id_ends_with"
-	nameEndsWithKey        = "name_ends_with"
-	descriptionEndsWithKey = "description_ends_with"
-	addressEndsWithKey     = "address_ends_with"
-)
-
-func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.HandlerFunc, error) {
-	const op = "daemon.newSearchTargetsHandlerFunc"
-	switch {
-	case util.IsNil(store):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "store is missing")
-	}
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		filter, err := handlers.NewFilter(ctx, r.URL.Query().Get(filterKey))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		resource := r.URL.Query().Get(resourceKey)
-		tokenName := r.URL.Query().Get(tokenNameKey)
-		keyringType := r.URL.Query().Get(keyringTypeKey)
-		boundaryAddr := r.URL.Query().Get(boundaryAddrKey)
-
-		switch {
-		case resource != "targets":
-			http.Error(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
-			return
-		case tokenName == "":
-			http.Error(w, fmt.Sprintf("%s is a required field but was empty", tokenNameKey), http.StatusBadRequest)
-			return
-		case keyringType == "":
-			http.Error(w, fmt.Sprintf("%s is a required field but was empty", keyringTypeKey), http.StatusBadRequest)
-			return
-		case boundaryAddr == "":
-			http.Error(w, fmt.Sprintf("%s is a required field but was empty", boundaryAddrKey), http.StatusBadRequest)
-			return
-		}
-
-		repo, err := cache.NewRepository(ctx, store)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		p, err := repo.LookupPersona(ctx, boundaryAddr, keyringType, tokenName, cache.WithUpdateLastAccessedTime(true))
-		if err != nil || p == nil {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-
-		var found []*targets.Target
-		switch {
-		case r.URL.Query().Get(queryKey) != "":
-			found, err = repo.QueryTargets(r.Context(), p, r.URL.Query().Get(queryKey))
-		default:
-			found, err = repo.FindTargets(
-				r.Context(),
-				p,
-				cache.WithIdContains(r.URL.Query().Get(idContainsKey)),
-				cache.WithNameContains(r.URL.Query().Get(nameContainsKey)),
-				cache.WithDescriptionContains(r.URL.Query().Get(descriptionContainsKey)),
-				cache.WithAddressContains(r.URL.Query().Get(addressContainsKey)),
-
-				cache.WithIdStartsWith(r.URL.Query().Get(idStartsWithKey)),
-				cache.WithNameStartsWith(r.URL.Query().Get(nameStartsWithKey)),
-				cache.WithDescriptionStartsWith(r.URL.Query().Get(descriptionStartsWithKey)),
-				cache.WithAddressStartsWith(r.URL.Query().Get(addressStartsWithKey)),
-
-				cache.WithIdEndsWith(r.URL.Query().Get(idEndsWithKey)),
-				cache.WithNameEndsWith(r.URL.Query().Get(nameEndsWithKey)),
-				cache.WithDescriptionEndsWith(r.URL.Query().Get(descriptionEndsWithKey)),
-				cache.WithAddressEndsWith(r.URL.Query().Get(addressEndsWithKey)),
-			)
-		}
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-
-		finalItems := make([]*targets.Target, 0, len(found))
-		for _, item := range found {
-			if filter.Match(item) {
-				finalItems = append(finalItems, item)
-			}
-		}
-
-		items := struct {
-			Items []*targets.Target `json:"items"`
-		}{
-			Items: finalItems,
-		}
-		j, err := json.Marshal(items)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Write(j)
-	}, nil
 }
 
 func (s *server) printInfo(ui cli.Ui) {
@@ -478,15 +236,14 @@ func (s *server) printInfo(ui cli.Ui) {
 	ui.Output("==> cache started! Log data will stream in below:\n")
 }
 
-func (s *server) setupLogging(flagLogLevel, flagLogFormat string) (logging.LogFormat, hclog.Level, error) {
+func (s *server) setupLogging(ctx context.Context, w io.Writer) error {
 	const op = "daemon.(Command).setupLogging"
-	// flagLogLevel and flagLogFormat are still valid when empty
+	switch {
+	case util.IsNil(w):
+		return errors.New(ctx, errors.InvalidParameter, op, "log writer is nil")
+	}
 
-	s.logOutput = os.Stderr
-	// s.logOutput = os.Stdout
-	s.gatedWriter = gatedwriter.NewWriter(s.logOutput)
-
-	logLevel := strings.ToLower(strings.TrimSpace(flagLogLevel))
+	logLevel := strings.ToLower(strings.TrimSpace(s.conf.flagLogLevel))
 	if logLevel == "" {
 		logLevel = "info"
 	}
@@ -506,29 +263,40 @@ func (s *server) setupLogging(flagLogLevel, flagLogFormat string) (logging.LogFo
 	case "err", "error":
 		level = hclog.Error
 	default:
-		return logging.UnspecifiedFormat, hclog.NoLevel, fmt.Errorf("%s: unknown log level: %s", op, logLevel)
+		return fmt.Errorf("%s: unknown log level: %s", op, logLevel)
 	}
 
 	logFormat := logging.StandardFormat
-	if flagLogFormat != "" {
+	if s.conf.flagLogFormat != "" {
 		var err error
-		logFormat, err = logging.ParseLogFormat(flagLogFormat)
+		logFormat, err = logging.ParseLogFormat(s.conf.flagLogFormat)
 		if err != nil {
-			return logging.UnspecifiedFormat, hclog.NoLevel, fmt.Errorf("%s: %w", op, err)
+			return fmt.Errorf("%s: %w", op, err)
 		}
 	}
 
+	var logLock sync.Mutex
 	s.logger = hclog.New(&hclog.LoggerOptions{
-		Output:     s.gatedWriter,
+		Output:     gatedwriter.NewWriter(w),
 		Level:      level,
 		JSONFormat: logFormat == logging.JSONFormat,
-		Mutex:      s.stderrLock,
+		Mutex:      &logLock,
 	})
 	if err := event.InitFallbackLogger(s.logger); err != nil {
-		return logging.UnspecifiedFormat, hclog.NoLevel, fmt.Errorf("%s: %w", op, err)
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	return logFormat, level, nil
+	s.info["log level"] = level.String()
+	s.infoKeys = append(s.infoKeys, "log level")
+	s.info["log format"] = logFormat.String()
+	s.infoKeys = append(s.infoKeys, "log format")
+
+	var err error
+	if s.eventer, err = setupEventing(ctx, s.logger, &logLock, logFormat); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	return nil
 }
 
 func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *sync.Mutex, logFormat logging.LogFormat) (*event.Eventer, error) {
