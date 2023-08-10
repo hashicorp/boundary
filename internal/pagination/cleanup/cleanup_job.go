@@ -5,6 +5,7 @@ package cleanup
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -13,10 +14,11 @@ import (
 )
 
 type cleanupJob struct {
-	w db.Writer
+	w     db.Writer
+	table string
 }
 
-func newCleanupJob(ctx context.Context, w db.Writer) (*cleanupJob, error) {
+func newCleanupJob(ctx context.Context, w db.Writer, table string) (*cleanupJob, error) {
 	const op = "cleanupJob.newCleanupJob"
 	switch {
 	case w == nil:
@@ -24,7 +26,8 @@ func newCleanupJob(ctx context.Context, w db.Writer) (*cleanupJob, error) {
 	}
 
 	return &cleanupJob{
-		w: w,
+		w:     w,
+		table: table,
 	}, nil
 }
 
@@ -37,9 +40,9 @@ func (c *cleanupJob) Status() scheduler.JobStatus {
 // The context is used to notify the job that it should exit early.
 func (c *cleanupJob) Run(ctx context.Context) error {
 	const op = "cleanup.(cleanupJob).Run"
-	_, err := c.w.Exec(ctx, `select cleanup_deleted_tables()`, nil)
+	_, err := c.w.Exec(ctx, fmt.Sprintf(pruneExpiredRows, c.table), nil)
 	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to run sql function cleanup_deleted_tables()"))
+		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to prune table %s", c.table)))
 	}
 	return nil
 }

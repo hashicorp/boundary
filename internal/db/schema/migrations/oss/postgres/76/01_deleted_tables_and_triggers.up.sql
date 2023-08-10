@@ -135,58 +135,6 @@ begin;
 
   create index auth_account_deleted_delete_time_idx on auth_account_deleted (delete_time);
 
-  create table deletion_tables_enm (
-    table_name text primary key
-      constraint only_predefined_deletion_tables_allowed
-      check (
-        table_name in (
-          'target_deleted',
-          'session_deleted',
-          'auth_method_deleted',
-          'auth_token_deleted',
-          'credential_library_deleted',
-          'credential_deleted',
-          'credential_store_deleted',
-          'iam_group_deleted',
-          'host_catalog_deleted',
-          'host_set_deleted',
-          'host_deleted',
-          'iam_role_deleted',
-          'iam_scope_deleted',
-          'storage_plugin_storage_bucket_deleted',
-          'iam_user_deleted',
-          'recording_session_deleted',
-          'auth_managed_group_deleted',
-          'server_worker_deleted',
-          'auth_account_deleted'
-        )
-      )
-  );
-  comment on table deletion_tables_enm is
-    'deletion_tables_enm is an enumeration table for the names of tables that contain deleted entries.';
-
-  insert into deletion_tables_enm (table_name)
-  values
-    ('target_deleted'),
-    ('session_deleted'),
-    ('auth_method_deleted'),
-    ('auth_token_deleted'),
-    ('credential_library_deleted'),
-    ('credential_deleted'),
-    ('credential_store_deleted'),
-    ('iam_group_deleted'),
-    ('host_catalog_deleted'),
-    ('host_set_deleted'),
-    ('host_deleted'),
-    ('iam_role_deleted'),
-    ('iam_scope_deleted'),
-    ('storage_plugin_storage_bucket_deleted'),
-    ('iam_user_deleted'),
-    ('recording_session_deleted'),
-    ('auth_managed_group_deleted'),
-    ('server_worker_deleted'),
-    ('auth_account_deleted');
-
   create or replace function insert_deleted_id() returns trigger
   as $$
   begin
@@ -195,52 +143,23 @@ begin;
   end;
   $$ language plpgsql;
 
-  create trigger trigger_insert_deleted_target before delete on target
-    for each row execute function insert_deleted_id('target_deleted');
-  create trigger trigger_insert_deleted_session before delete on session
-    for each row execute function insert_deleted_id('session_deleted');
-  create trigger trigger_insert_deleted_auth_method before delete on auth_method
-    for each row execute function insert_deleted_id('auth_method_deleted');
-  create trigger trigger_insert_deleted_auth_token before delete on auth_token
-    for each row execute function insert_deleted_id('auth_token_deleted');
-  create trigger trigger_insert_deleted_credential_library before delete on credential_library
-    for each row execute function insert_deleted_id('credential_library_deleted');
-  create trigger trigger_insert_deleted_credential before delete on credential
-    for each row execute function insert_deleted_id('credential_deleted');
-  create trigger trigger_insert_deleted_credential_store before delete on credential_store
-    for each row execute function insert_deleted_id('credential_store_deleted');
-  create trigger trigger_insert_deleted_iam_group before delete on iam_group
-    for each row execute function insert_deleted_id('iam_group_deleted');
-  create trigger trigger_insert_deleted_host_catalog before delete on host_catalog
-    for each row execute function insert_deleted_id('host_catalog_deleted');
-  create trigger trigger_insert_deleted_host_set before delete on host_set
-    for each row execute function insert_deleted_id('host_set_deleted');
-  create trigger trigger_insert_deleted_host before delete on host
-    for each row execute function insert_deleted_id('host_deleted');
-  create trigger trigger_insert_deleted_iam_role before delete on iam_role
-    for each row execute function insert_deleted_id('iam_role_deleted');
-  create trigger trigger_insert_deleted_iam_scope before delete on iam_scope
-    for each row execute function insert_deleted_id('iam_scope_deleted');
-  create trigger trigger_insert_deleted_storage_plugin_storage_bucket before delete on storage_plugin_storage_bucket
-    for each row execute function insert_deleted_id('storage_plugin_storage_bucket_deleted');
-  create trigger trigger_insert_deleted_iam_user before delete on iam_user
-    for each row execute function insert_deleted_id('iam_user_deleted');
-  create trigger trigger_insert_deleted_recording_session before delete on recording_session
-    for each row execute function insert_deleted_id('recording_session_deleted');
-  create trigger trigger_insert_deleted_auth_managed_group before delete on auth_managed_group
-    for each row execute function insert_deleted_id('auth_managed_group_deleted');
-  create trigger trigger_insert_deleted_server_worker before delete on server_worker
-    for each row execute function insert_deleted_id('server_worker_deleted');
-  create trigger trigger_insert_deleted_auth_account before delete on auth_account
-    for each row execute function insert_deleted_id('auth_account_deleted');
-  
-  create or replace function cleanup_deleted_tables() returns void
+  create function get_deletion_tables() returns setof name
   as $$
+    select c.relname
+      from pg_catalog.pg_class c
+     where c.relkind in ('r')
+       and c.relname operator(pg_catalog.~) '^(.*_deleted)$' collate pg_catalog.default
+       and pg_catalog.pg_table_is_visible(c.oid);
+  $$ language sql;
+
+  do $$
   declare
-    deletion_table_name TEXT;
+    deletion_table_name text;
+    table_name          text;
   begin
-    for deletion_table_name in select table_name from deletion_tables_enm loop
-      execute 'delete from ' || quote_ident(deletion_table_name) || ' where delete_time < now() - interval ''30 days''';
+    for deletion_table_name in select get_deletion_tables() loop
+      table_name := split_part(deletion_table_name, '_deleted', 1);
+      execute format('create trigger trigger_insert_on_deletion before delete on %I for each row execute function insert_deleted_id(''%I'')', table_name, deletion_table_name);
     end loop;
   end;
   $$ language plpgsql;

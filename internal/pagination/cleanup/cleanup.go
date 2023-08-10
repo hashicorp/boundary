@@ -13,9 +13,9 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// RegisterJob registers the cleanup job with the provided scheduler.
-func RegisterJob(ctx context.Context, s *scheduler.Scheduler, w db.Writer) error {
-	const op = "cleanup.RegisterJob"
+// RegisterJobs registers the cleanup job for each deletion table with the provided scheduler.
+func RegisterJobs(ctx context.Context, s *scheduler.Scheduler, r db.Writer, w db.Writer) error {
+	const op = "cleanup.RegisterJobs"
 	if s == nil {
 		return errors.New(ctx, errors.InvalidParameter, "nil scheduler", op, errors.WithoutEvent())
 	}
@@ -23,13 +23,30 @@ func RegisterJob(ctx context.Context, s *scheduler.Scheduler, w db.Writer) error
 		return errors.New(ctx, errors.Internal, "nil DB writer", op, errors.WithoutEvent())
 	}
 
-	cleanupJob, err := newCleanupJob(ctx, w)
+	rows, err := w.Query(ctx, selectDeletionTables, nil)
 	if err != nil {
-		return fmt.Errorf("error creating cleanup job: %w", err)
+		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to query for deletion tables"))
 	}
-	if err := s.RegisterJob(ctx, cleanupJob); err != nil {
-		return errors.Wrap(ctx, err, op)
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var table string
+		err = r.ScanRows(ctx, rows, &table)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for deletion tables"))
+		}
+		tables = append(tables, table)
 	}
 
+	for _, table := range tables {
+		cleanupJob, err := newCleanupJob(ctx, w, table)
+		if err != nil {
+			return fmt.Errorf("error creating cleanup job: %w", err)
+		}
+		if err := s.RegisterJob(ctx, cleanupJob); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+	}
 	return nil
 }
