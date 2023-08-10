@@ -5,6 +5,7 @@ package bsr_test
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/bsr"
@@ -101,6 +102,34 @@ func TestSummaryError_UnmarshalJSON(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.want, summaryErr.Message)
+		})
+	}
+}
+
+func TestBaseSessionSummary_GetErrors(t *testing.T) {
+	cases := []struct {
+		name string
+		in   error
+		want error
+	}{
+		{
+			name: "error string",
+			in:   errors.New("error"),
+			want: errors.New("error"),
+		},
+		{
+			name: "empty string should return nil error",
+			in:   errors.New(""),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			summary := bsr.BaseSessionSummary{}
+			summary.SetErrors(tc.in)
+
+			got := summary.GetErrors()
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
