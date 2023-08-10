@@ -32,7 +32,7 @@ func RegisterJobs(ctx context.Context, s *scheduler.Scheduler, r db.Writer, w db
 	var tables []string
 	for rows.Next() {
 		var table string
-		err = r.ScanRows(ctx, rows, &table)
+		err = rows.Scan(&table)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for deletion tables"))
 		}
