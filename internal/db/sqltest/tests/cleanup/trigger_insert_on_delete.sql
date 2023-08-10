@@ -9,7 +9,7 @@ begin;
   select has_function('insert_deleted_id');
   select volatility_is('insert_deleted_id', 'volatile');
   select isnt_strict('insert_deleted_id');
-  select has_trigger('auth_token', 'trigger_insert_deleted_auth_token');
+  select has_trigger('auth_token', 'trigger_insert_on_deletion');
 
   -- To test the trigger that moves deleted rows into their appropriate tables, we'll use auth_token
   -- Ensure session state table is populated, and session_deleted and auth_token_deleted tables are empty

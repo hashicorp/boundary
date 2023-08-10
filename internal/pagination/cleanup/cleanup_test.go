@@ -17,6 +17,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPruneTables(t *testing.T) {
+	ctx := context.Background()
+
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+
+	db, err := conn.SqlDB(ctx)
+	if err != nil {
+		t.Errorf("error getting db connection %s", err)
+	}
+
+	rows, err := db.Query(selectDeletionTables)
+	if err != nil {
+		t.Errorf("unable to query for deletion tables %s", err)
+	}
+	defer rows.Close()
+
+	var tables []string
+	rowCount := 0
+	for rows.Next() {
+		rowCount++
+		var table string
+		err = rw.ScanRows(ctx, rows, &table)
+		if err != nil {
+			t.Errorf("unable to scan rows for deletion tables %s", err)
+		}
+		tables = append(tables, table)
+		t.Log(tables)
+	}
+
+	for _, table := range tables {
+		_, err = db.Exec(fmt.Sprintf("insert into %s (public_id, delete_time) values ('p1234567890', $1)", table), time.Now())
+		if err != nil {
+			t.Errorf("error updating %s %s", table, err)
+		}
+		_, err = db.Exec(fmt.Sprintf("insert into %s (public_id, delete_time) values ('p9876543210', $1)", table), time.Now().AddDate(0, -2, 0))
+		if err != nil {
+			t.Errorf("error updating %s %s", table, err)
+		}
+
+		sJob := cleanupJob{
+			w:     rw,
+			table: table,
+		}
+
+		err = sJob.Run(ctx)
+		require.NoError(t, err)
+
+		var count int
+		err = db.QueryRowContext(ctx, fmt.Sprintf("select count(public_id) from %s", table)).Scan(&count)
+		if err != nil {
+			t.Errorf("error checking %s table %s", table, err)
+		}
+		require.Equal(t, 1, count)
+	}
+	// create job
+	// read all tables
+	// insert two records, one now, one 2 months ago
+	// run job
+	// select count, ensure 1
+}
+
 func TestCleanupJob(t *testing.T) {
 	ctx := context.Background()
 
@@ -81,7 +143,8 @@ func TestNewCleanupJob(t *testing.T) {
 	rw := db.New(conn)
 
 	type args struct {
-		w db.Writer
+		w     db.Writer
+		table string
 	}
 
 	tests := []struct {
@@ -93,13 +156,15 @@ func TestNewCleanupJob(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
-				w: rw,
+				w:     rw,
+				table: "valid-table",
 			},
 		},
 		{
 			name: "nil-writer",
 			args: args{
-				w: nil,
+				w:     nil,
+				table: "valid-table",
 			},
 			wantIsErr:  errors.InvalidParameter,
 			wantErrMsg: "cleanupJob.newCleanupJob: missing db.Writer: parameter violation: error #100",
@@ -109,7 +174,7 @@ func TestNewCleanupJob(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := newCleanupJob(ctx, tt.args.w)
+			got, err := newCleanupJob(ctx, tt.args.w, tt.args.table)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "Unexpected error %s", err)
 				assert.Equal(tt.wantErrMsg, err.Error())
