@@ -266,6 +266,9 @@ func (b *BaseConnectionSummary) GetBytesDown() uint64 {
 
 // GetErrors returns errors.
 func (b *BaseConnectionSummary) GetErrors() error {
+	if len(b.Errors.Message) == 0 {
+		return nil
+	}
 	return &b.Errors
 }
 
