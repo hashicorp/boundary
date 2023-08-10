@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package cleanup
+package purge
 
 import (
 	"context"
@@ -13,9 +13,9 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// RegisterJobs registers the cleanup job for each deletion table with the provided scheduler.
-func RegisterJobs(ctx context.Context, s *scheduler.Scheduler, r db.Writer, w db.Writer) error {
-	const op = "cleanup.RegisterJobs"
+// RegisterJobs registers the purge job for each deletion table with the provided scheduler.
+func RegisterJobs(ctx context.Context, s *scheduler.Scheduler, w db.Writer) error {
+	const op = "purge.RegisterJobs"
 	if s == nil {
 		return errors.New(ctx, errors.InvalidParameter, "nil scheduler", op, errors.WithoutEvent())
 	}
@@ -40,11 +40,11 @@ func RegisterJobs(ctx context.Context, s *scheduler.Scheduler, r db.Writer, w db
 	}
 
 	for _, table := range tables {
-		cleanupJob, err := newCleanupJob(ctx, w, table)
+		purgeJob, err := newPurgeJob(ctx, w, table)
 		if err != nil {
-			return fmt.Errorf("error creating cleanup job: %w", err)
+			return fmt.Errorf("error creating purge job: %w", err)
 		}
-		if err := s.RegisterJob(ctx, cleanupJob); err != nil {
+		if err := s.RegisterJob(ctx, purgeJob); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 	}
