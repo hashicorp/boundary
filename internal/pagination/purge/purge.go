@@ -14,32 +14,31 @@ import (
 )
 
 // RegisterJobs registers the purge job for each deletion table with the provided scheduler.
-func RegisterJobs(ctx context.Context, s *scheduler.Scheduler, w db.Writer) error {
+func RegisterJobs(ctx context.Context, s *scheduler.Scheduler, r db.Reader, w db.Writer) error {
 	const op = "purge.RegisterJobs"
 	if s == nil {
 		return errors.New(ctx, errors.InvalidParameter, "nil scheduler", op, errors.WithoutEvent())
+	}
+	if util.IsNil(r) {
+		return errors.New(ctx, errors.Internal, "nil DB reader", op, errors.WithoutEvent())
 	}
 	if util.IsNil(w) {
 		return errors.New(ctx, errors.Internal, "nil DB writer", op, errors.WithoutEvent())
 	}
 
-	rows, err := w.Query(ctx, selectDeletionTables, nil)
+	rows, err := r.Query(ctx, "select get_deletion_tables()", nil)
 	if err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("unable to query for deletion tables"))
 	}
 	defer rows.Close()
 
-	var tables []string
 	for rows.Next() {
 		var table string
 		err = rows.Scan(&table)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("unable to scan rows for deletion tables"))
 		}
-		tables = append(tables, table)
-	}
 
-	for _, table := range tables {
 		purgeJob, err := newPurgeJob(ctx, w, table)
 		if err != nil {
 			return fmt.Errorf("error creating purge job: %w", err)

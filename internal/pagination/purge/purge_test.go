@@ -26,25 +26,18 @@ func TestPurgeTables(t *testing.T) {
 		t.Errorf("error getting db connection %s", err)
 	}
 
-	rows, err := db.Query(selectDeletionTables)
+	rows, err := db.Query("select get_deletion_tables()")
 	if err != nil {
 		t.Errorf("unable to query for deletion tables %s", err)
 	}
 	defer rows.Close()
 
-	var tables []string
-	rowCount := 0
 	for rows.Next() {
-		rowCount++
 		var table string
 		err = rows.Scan(&table)
 		if err != nil {
 			t.Errorf("unable to scan rows for deletion tables %s", err)
 		}
-		tables = append(tables, table)
-	}
-
-	for _, table := range tables {
 		_, err = db.Exec(fmt.Sprintf("insert into %s (public_id, delete_time) values ('p1234567890', $1)", table), time.Now())
 		if err != nil {
 			t.Errorf("error updating %s %s", table, err)
@@ -54,9 +47,11 @@ func TestPurgeTables(t *testing.T) {
 			t.Errorf("error updating %s %s", table, err)
 		}
 
+		query := fmt.Sprintf("delete from %s where delete_time < now() - interval '30 days'", table)
 		sJob := purgeJob{
 			w:     rw,
 			table: table,
+			query: query,
 		}
 
 		err = sJob.Run(ctx)

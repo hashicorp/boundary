@@ -16,6 +16,7 @@ import (
 type purgeJob struct {
 	w     db.Writer
 	table string
+	query string
 }
 
 func newPurgeJob(ctx context.Context, w db.Writer, table string) (*purgeJob, error) {
@@ -27,9 +28,11 @@ func newPurgeJob(ctx context.Context, w db.Writer, table string) (*purgeJob, err
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing table")
 	}
 
+	query := fmt.Sprintf("delete from %s where delete_time < now() - interval '30 days'", table)
 	return &purgeJob{
 		w:     w,
 		table: table,
+		query: query,
 	}, nil
 }
 
@@ -42,9 +45,9 @@ func (c *purgeJob) Status() scheduler.JobStatus {
 // The context is used to notify the job that it should exit early.
 func (c *purgeJob) Run(ctx context.Context) error {
 	const op = "purge.(purgeJob).Run"
-	_, err := c.w.Exec(ctx, fmt.Sprintf(purgeExpiredRows, c.table), nil)
+	_, err := c.w.Exec(ctx, c.query, nil)
 	if err != nil {
-		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to prune table %s", c.table)))
+		return errors.Wrap(ctx, err, op, errors.WithMsg(fmt.Sprintf("unable to prune table %s", c.query)))
 	}
 	return nil
 }
@@ -57,7 +60,7 @@ func (c *purgeJob) NextRunIn(_ context.Context) (time.Duration, error) {
 
 // Name is the unique name of the job.
 func (c *purgeJob) Name() string {
-	return "deleted_items_table_purge"
+	return fmt.Sprintf("%s_items_table_purge", c.table)
 }
 
 // Description is the human-readable description of the job.
