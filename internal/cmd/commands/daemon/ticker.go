@@ -26,6 +26,7 @@ type refreshTicker struct {
 	refreshInterval time.Duration
 	repo            *cache.Repository
 	tokenFn         func(keyring string, tokenName string) *authtokens.AuthToken
+	refreshChan     chan struct{}
 }
 
 // tokenLookupFn takes a token name and returns the token
@@ -53,7 +54,21 @@ func newRefreshTicker(ctx context.Context, refreshIntervalSeconds int64, store *
 		refreshInterval: refreshInterval,
 		repo:            repo,
 		tokenFn:         tokenFn,
+
+		// We make this channel size 1 so if something happens midway through the refresh
+		// we can immediately refresh again immediately to pick up something that might have been
+		// missed the first time through.
+		refreshChan: make(chan struct{}, 1),
 	}, nil
+}
+
+// refresh starts the refresh logic if it is currently waiting. If refresh is currently happening
+// then this is a noop.
+func (rt *refreshTicker) refresh() {
+	select {
+	case rt.refreshChan <- struct{}{}:
+	default:
+	}
 }
 
 func (rt *refreshTicker) start(ctx context.Context) {
@@ -64,46 +79,48 @@ func (rt *refreshTicker) start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			if err := rt.repo.RemoveStalePersonas(ctx); err != nil {
-				event.WriteError(rt.tickerCtx, op, err)
-				timer.Reset(rt.refreshInterval)
+		case <-rt.refreshChan:
+		}
+
+		if err := rt.repo.RemoveStalePersonas(ctx); err != nil {
+			event.WriteError(rt.tickerCtx, op, err)
+			timer.Reset(rt.refreshInterval)
+			continue
+		}
+		personas, err := rt.repo.ListPersonas(ctx)
+		if err != nil {
+			event.WriteError(rt.tickerCtx, op, err)
+			timer.Reset(rt.refreshInterval)
+			continue
+		}
+
+		for _, p := range personas {
+			at := p.Token(rt.tokenFn)
+			if at == nil {
+				if err := rt.repo.DeletePersona(ctx, p); err != nil {
+					event.WriteError(rt.tickerCtx, op, err)
+				}
 				continue
 			}
-			personas, err := rt.repo.ListPersonas(ctx)
+
+			client, err := api.NewClient(&api.Config{
+				Addr:  p.BoundaryAddr,
+				Token: at.Token,
+			})
 			if err != nil {
 				event.WriteError(rt.tickerCtx, op, err)
-				timer.Reset(rt.refreshInterval)
 				continue
 			}
-
-			for _, p := range personas {
-				at := p.Token(rt.tokenFn)
-				if at == nil {
-					if err := rt.repo.DeletePersona(ctx, p); err != nil {
-						event.WriteError(rt.tickerCtx, op, err)
-					}
-					continue
-				}
-
-				client, err := api.NewClient(&api.Config{
-					Addr:  p.BoundaryAddr,
-					Token: at.Token,
-				})
-				if err != nil {
-					event.WriteError(rt.tickerCtx, op, err)
-					continue
-				}
-				if err := refreshCache(ctx, client, p, rt.repo); err != nil {
-					continue
-				}
+			if err := refreshCache(ctx, client, p, rt.repo); err != nil {
+				continue
 			}
-			timer.Reset(rt.refreshInterval)
 		}
+		timer.Reset(rt.refreshInterval)
 	}
 }
 
 func refreshCache(ctx context.Context, client *api.Client, p *cache.Persona, r *cache.Repository) error {
-	const op = "daemon.(Repository).refreshCache"
+	const op = "daemon.refreshCache"
 	switch {
 	case util.IsNil(client):
 		return errors.New(ctx, errors.InvalidParameter, op, "client is missing")

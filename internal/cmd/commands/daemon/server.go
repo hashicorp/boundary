@@ -185,6 +185,12 @@ func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) 
 	}
 	mux.HandleFunc("/v1/search", searchTargetsFn)
 
+	personaFn, err := newPersonaHandlerFunc(ctx, s.store, cmd, tic)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	mux.HandleFunc("/v1/personas", personaFn)
+
 	s.httpSrv = &http.Server{
 		Handler: mux,
 	}
