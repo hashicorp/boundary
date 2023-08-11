@@ -215,3 +215,18 @@ tuned for information about new features and capabilities!
 
 Thank you for your interest in contributing! Please refer to
 [CONTRIBUTING.md](https://github.com/hashicorp/boundary/blob/main/CONTRIBUTING.md) for guidance.
+
+## License
+
+The files in this repository are covered by multiple licenses. The majority of the files
+are governed by the LICENSE file at the root of the repository. The following directories
+and the files contained therein are subject to the LICENSE file in those directories:
+
+- api
+- internal/gen/controller/api
+- internal/proto/controller/api
+- internal/proto/controller/custom_options
+- internal/proto/plugin
+- sdk
+- testing/dbtest/pgtap-docker/
+- website
