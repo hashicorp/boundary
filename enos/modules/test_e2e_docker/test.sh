@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 # This script is used for setting up and executing boundary e2e tests. It sets
 # up `pass` as a password store (linux) so that boundary can use it to store

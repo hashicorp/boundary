@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 int_val = {{decrypt(Ch7a69AX8R5w_cCZJUqLTQkWesuSHMrHxrRMMZnq53QqAA)}}
 bool_val = {{decrypt(CiDURLrWUXLhEfkOemqqiQlcD_gsGsIx-kxVTIlVncN6-yoA)}}

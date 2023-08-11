@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 // Package oplog is a package for writing operational log (oplog) entries for
 // the purpose of replication and verification of the data stored in the
