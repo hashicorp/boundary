@@ -113,22 +113,19 @@ However, this means setting `output_fields=none` is functionally equivalent!)
 ### Anonymous user restrictions
 
 Starting in Boundary 0.9.0, there are severe limits placed on the actions
-allowed to be assigned to the anonymous user `u_anon`. This is meant to avoid
+allowed to be assigned to the anonymous user `u_anon`. The limitations are meant to prevent
 situations where an operator accidentally or mistakenly adds the anonymous user
 to a role that provides more privileges than might be intended for
 unauthenticated users.
 
-The set of actions is currently restricted to listing scopes and auth methods
-and authentication to auth methods (plus `no-op` actions for listing
-visibility). If further use cases arise from user feedback, this list can be
-expanded.
+The set of actions permitted for anonymous users is currently restricted to listing scopes and auth methods
+and authenticating to auth methods (plus `no-op` actions for listing
+visibility). If further use cases arise from user feedback, we can expand the list of permitted actions.
 
 When an anonymous user is denied access, there is no special error message that is returned.
 It is still possible to assign grants to
 a role on which the anonymous user is a principal that can never match the
-anonymous user. In the future this may change, but trying to limit this
-introduces other restrictions on reasonable administrative workflows, so an
-acceptable set of tradeoffs would need to be figured out.
+anonymous user.
 
 ## Wildcard
 
@@ -147,7 +144,7 @@ You can use a wildcard for the `type` for any non-top-level resources with pinne
 
 `ids=hcst_1234567890;type=*;actions=create,read,update`
 
-This grant format would allow `create`, `read`, and `update` actions for all types of
+This grant format allows `create`, `read`, and `update` actions for all types of
 subordinate resources (in this case host sets and hosts) underneath the host
 catalog with ID `hcst_1234567890`.
 
