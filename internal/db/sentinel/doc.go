@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 // Package sentinel allows for the use of Unicode non-characters to distinguish between
 // Boundary defined sentinels and values provided by external systems.

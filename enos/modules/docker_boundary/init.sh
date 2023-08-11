@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: BUSL-1.1
 
 # This script initializes a postgres database to work with Boundary by spinning up a temporary
 # Boundary docker container pointed to the specified database and invoking `boundary database init`.
