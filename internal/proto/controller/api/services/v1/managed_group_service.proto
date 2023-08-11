@@ -76,7 +76,7 @@ service ManagedGroupService {
 }
 
 message GetManagedGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetManagedGroupResponse {
@@ -84,7 +84,7 @@ message GetManagedGroupResponse {
 }
 
 message ListManagedGroupsRequest {
-  string auth_method_id = 1 [json_name = "auth_method_id"]; // @gotags: `class:"public"`
+  string auth_method_id = 1 [json_name = "auth_method_id"]; // @gotags: `class:"public" eventstream:"observation"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 
@@ -102,7 +102,7 @@ message CreateManagedGroupResponse {
 }
 
 message UpdateManagedGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.managedgroups.v1.ManagedGroup item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -112,7 +112,7 @@ message UpdateManagedGroupResponse {
 }
 
 message DeleteManagedGroupRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteManagedGroupResponse {}
