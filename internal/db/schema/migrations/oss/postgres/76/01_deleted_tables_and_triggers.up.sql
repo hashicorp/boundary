@@ -100,7 +100,7 @@ begin;
   create or replace function insert_deleted_id() returns trigger
   as $$
   begin
-    execute format('insert into %I (public_id, delete_time) values ($1, now())', tg_argv[0]) using old.public_id;
+    execute format('insert into %I (public_id, delete_time) values ($1, now()) on conflict (public_id) do update set delete_time = excluded.delete_time', tg_argv[0]) using old.public_id;
     return old;
   end;
   $$ language plpgsql;
