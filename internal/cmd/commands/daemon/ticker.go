@@ -62,8 +62,10 @@ func newRefreshTicker(ctx context.Context, refreshIntervalSeconds int64, store *
 	}, nil
 }
 
-// refresh starts the refresh logic if it is currently waiting. If refresh is currently happening
-// then this is a noop.
+// refresh starts the refresh logic if it is currently waiting. If refresh is
+// currently happening then this queues a refresh for when the current refresh
+// iteration is done, unless there is already a refresh queued in which case
+// this is a noop.
 func (rt *refreshTicker) refresh() {
 	select {
 	case rt.refreshChan <- struct{}{}:
