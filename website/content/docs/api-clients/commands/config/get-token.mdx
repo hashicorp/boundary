@@ -1,0 +1,88 @@
+---
+layout: docs
+page_title: config get-token - Command
+description: |-
+  The "config get-token" command fetches a token stored by the Boundary CLI.
+---
+
+# config get-token
+
+Command: `boundary config get-token`
+
+The `config get-token` command fetches a token stored by the Boundary CLI.
+
+## Examples
+
+Get the token stored by the Boundary CLI.
+
+```shell-session
+$ boundary config get-token
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+at_yczA5UPS7Y_s13B5PWh7KENvtKQKgDxaEvP682FMfq5eXrpzKNTpmaHgLS2ucRexrTQ7ueMhDFY5MdFvNuzuTWzUzYgacitnSBaPo75b3XZU4Zp6wmdsXqmkPNY3U
+```
+
+</CodeBlockConfig>
+
+This can be useful in various situations. For example, a line such as the
+following could be in a shell script shared by developers, such that each
+developer on their own machine executing the script ends up using their own
+Boundary token:
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ curl --header "Authorization: Bearer $(boundary config get-token)" \
+   --header "Content-Type: application/json" \
+   http://127.0.0.1:9200/v1/roles/r_1234567890
+```
+
+</CodeBlockConfig>
+
+This command keeps parity with the behavior of other Boundary commands; if the
+`BOUNDARY_TOKEN` environment variable it set, it will override the value loaded
+from the system store. Not only does this keep parity, but it also allows
+examples such as the one above to work even if there is no stored token but if
+an environment variable is specified.
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary config get-token [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-account-id` `(bool: false)` - If specified, print out the account ID
+      associated with the token instead of the token itself. The default is
+      false.
+
+- `-auth-method-id` `(bool: false)` - If specified, print out the auth method ID
+   associated with the token instead of the token itself. The default is false.
+
+- `-keyring-type` `(string: "")` - The type of keyring to use. Defaults to
+   "auto" which will use the Windows credential manager, OSX keychain, or
+   cross-platform password store depending on platform. Set to "none" to disable
+   keyring functionality. Available types, depending on platform, are:
+   "wincred", "keychain", "pass", and "secret-service". The default is auto.
+   This can also be specified via the BOUNDARY_KEYRING_TYPE environment
+   variable.
+
+- `-token-name` `(string: "")` - If specified, the given value will be used as
+   the name when loading the token from the system credential store. This must
+   correspond to a name used when authenticating. This can also be specified via
+   the BOUNDARY_TOKEN_NAME environment variable.
+
+- `-user-id` `(bool: false)` - If specified, print out the user ID associated
+   with the token instead of the token itself. The default is false.
+
+@include 'cmd-option-note.mdx'
