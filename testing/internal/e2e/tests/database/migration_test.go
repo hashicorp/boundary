@@ -45,8 +45,12 @@ func TestDatabaseMigration(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	te := setupEnvironment(t, ctx, c)
-	populateBoundaryDatabase(t, ctx, c, te)
+
+	boundaryRepo := "hashicorp/boundary"
+	boundaryTag := "latest"
+
+	te := setupEnvironment(t, ctx, c, boundaryRepo, boundaryTag)
+	populateBoundaryDatabase(t, ctx, c, te, boundaryRepo, boundaryTag)
 
 	// Migrate database
 	t.Log("Stopping boundary before migrating...")
@@ -70,24 +74,12 @@ func TestDatabaseMigration(t *testing.T) {
 	t.Logf("Migration Output: %s", output.Stderr)
 }
 
-func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironment {
+func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo, boundaryTag string) TestEnvironment {
 	pool, err := dockertest.NewPool("")
 	require.NoError(t, err)
 	err = pool.Client.Ping()
 	require.NoError(t, err)
 	pool.MaxWait = 10 * time.Second
-
-	// This ensures that the latest images are used
-	err = pool.Client.PullImage(docker.PullImageOptions{
-		Repository: "hashicorp/boundary",
-		Tag:        "latest",
-	}, docker.AuthConfiguration{})
-	require.NoError(t, err)
-	err = pool.Client.PullImage(docker.PullImageOptions{
-		Repository: "hashicorp/vault",
-		Tag:        "latest",
-	}, docker.AuthConfiguration{})
-	require.NoError(t, err)
 
 	// Set up docker network
 	network, err := pool.CreateNetwork(t.Name())
@@ -97,7 +89,7 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 	})
 
 	// Start Vault
-	v, vaultToken := infra.StartVault(t, pool, network)
+	v, vaultToken := infra.StartVault(t, pool, network, "hashicorp/vault", "latest")
 	t.Cleanup(func() {
 		pool.Purge(v.Resource)
 	})
@@ -120,7 +112,7 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 	require.NoError(t, err)
 
 	// Start a Boundary database and wait until it's ready
-	db := infra.StartBoundaryDatabase(t, pool, network)
+	db := infra.StartBoundaryDatabase(t, pool, network, "library/postgres", "latest")
 	t.Cleanup(func() {
 		pool.Purge(db.Resource)
 	})
@@ -135,20 +127,35 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 	require.NoError(t, err)
 
 	// Create a target
-	target := infra.StartOpenSshServer(t, pool, network, c.TargetSshUser, c.TargetSshKeyPath)
+	target := infra.StartOpenSshServer(
+		t,
+		pool,
+		network,
+		"linuxserver/openssh-server",
+		"latest",
+		c.TargetSshUser,
+		c.TargetSshKeyPath,
+	)
 	t.Cleanup(func() {
 		pool.Purge(target.Resource)
 	})
 
 	// Initialize the database and extract resulting information
-	dbInit := infra.InitBoundaryDatabase(t, pool, network, db.UriNetwork)
+	dbInit := infra.InitBoundaryDatabase(
+		t,
+		pool,
+		network,
+		boundaryRepo,
+		boundaryTag,
+		db.UriNetwork,
+	)
 	t.Cleanup(func() {
 		pool.Purge(dbInit.Resource)
 	})
 	dbInitInfo := infra.GetDbInitInfoFromContainer(t, pool, dbInit)
 
 	// Start a Boundary server and wait until Boundary has finished loading
-	b := infra.StartBoundary(t, pool, network, db.UriNetwork)
+	b := infra.StartBoundary(t, pool, network, boundaryRepo, boundaryTag, db.UriNetwork)
 	t.Cleanup(func() {
 		pool.Purge(b.Resource)
 	})
@@ -191,7 +198,7 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironm
 	}
 }
 
-func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te TestEnvironment) {
+func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te TestEnvironment, boundaryRepo, boundaryTag string) {
 	// Create resources for target. Uses the local CLI so that these methods can be reused.
 	// While the CLI version used won't necessarily match the controller version, it should be (and is
 	// supposed to be) backwards ompatible
@@ -323,7 +330,16 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	auth_token, ok := authenticationResult.Item.Attributes["token"].(string)
 	require.True(t, ok)
 
-	connectTarget := infra.ConnectToTarget(t, te.Pool, te.Network, te.Boundary.UriNetwork, auth_token, newTargetId)
+	connectTarget := infra.ConnectToTarget(
+		t,
+		te.Pool,
+		te.Network,
+		boundaryRepo,
+		boundaryTag,
+		te.Boundary.UriNetwork,
+		auth_token,
+		newTargetId,
+	)
 	t.Cleanup(func() {
 		te.Pool.Purge(connectTarget.Resource)
 	})
