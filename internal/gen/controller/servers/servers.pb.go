@@ -86,7 +86,7 @@ type ServerWorkerStatus struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Id of the worker.
-	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	PublicId string `protobuf:"bytes,10,opt,name=public_id,json=publicId,proto3" json:"public_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Name of the resource (optional)
 	Name string `protobuf:"bytes,20,opt,name=name,proto3" json:"name,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Description of the resource (optional)
@@ -98,9 +98,9 @@ type ServerWorkerStatus struct {
 	// The key id for this worker, if applicable (optional)
 	KeyId string `protobuf:"bytes,50,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The version of Boundary the worker binary is running
-	ReleaseVersion string `protobuf:"bytes,60,opt,name=release_version,proto3" json:"release_version,omitempty" class:"public"` // @gotags: `class:"public"`
+	ReleaseVersion string `protobuf:"bytes,60,opt,name=release_version,proto3" json:"release_version,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The state of the worker, to indicate if the worker is active or in shutdown.
-	OperationalState string `protobuf:"bytes,70,opt,name=operational_state,json=operationalState,proto3" json:"operational_state,omitempty" class:"public"` // @gotags: `class:"public"`
+	OperationalState string `protobuf:"bytes,70,opt,name=operational_state,json=operationalState,proto3" json:"operational_state,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *ServerWorkerStatus) Reset() {
