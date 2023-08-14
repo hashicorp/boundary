@@ -5,6 +5,8 @@ package daemon
 
 import (
 	"context"
+	"io"
+	"net"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -19,6 +21,12 @@ var (
 	_ cli.Command             = (*StartCommand)(nil)
 	_ cli.CommandAutocomplete = (*StartCommand)(nil)
 )
+
+type server interface {
+	setupLogging(context.Context, io.Writer) error
+	serve(context.Context, commander, net.Listener) error
+	shutdown() error
+}
 
 type StartCommand struct {
 	*base.Command

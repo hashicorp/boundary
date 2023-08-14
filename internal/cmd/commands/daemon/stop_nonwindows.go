@@ -8,7 +8,9 @@ package daemon
 
 import (
 	"context"
+	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
@@ -32,10 +34,14 @@ func (s *StopCommand) stop(ctx context.Context) error {
 		PidFileName: filepath.Join(dotPath, pidFileName),
 	}).Search()
 	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.Wrap(ctx, err, op, errors.WithCode(errors.NotFound))
+		}
 		return errors.Wrap(ctx, err, op, errors.WithMsg("Unable to stop the daemon"))
 	}
 	if d == nil {
 		return errors.New(ctx, errors.NotFound, op, "daemon process was not found")
 	}
+	d.Signal(syscall.SIGTERM)
 	return nil
 }

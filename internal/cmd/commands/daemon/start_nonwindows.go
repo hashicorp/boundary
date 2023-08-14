@@ -39,7 +39,7 @@ func DefaultDotDirectory(ctx context.Context) (string, error) {
 }
 
 // start will ensure this is the only daemon running and spin off a seperate process.
-func (s *StartCommand) start(ctx context.Context, cmd commander, srv *server) error {
+func (s *StartCommand) start(ctx context.Context, cmd commander, srv server) error {
 	const op = "daemon.(StartCommand).start"
 	switch {
 	case util.IsNil(ctx):

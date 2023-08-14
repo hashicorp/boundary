@@ -37,7 +37,7 @@ type commander interface {
 	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
 }
 
-type server struct {
+type cacheServer struct {
 	conf *serverConfig
 
 	infoKeys []string
@@ -69,12 +69,12 @@ func (sc *serverConfig) validate() error {
 }
 
 // can be called before eventing is setup
-func newServer(ctx context.Context, conf serverConfig) (*server, error) {
-	const op = "daemon.(server).newServer"
+func newServer(ctx context.Context, conf serverConfig) (*cacheServer, error) {
+	const op = "daemon.newServer"
 	if err := conf.validate(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	s := &server{
+	s := &cacheServer{
 		conf:         &conf,
 		info:         make(map[string]string),
 		infoKeys:     make([]string, 0, 20),
@@ -84,8 +84,8 @@ func newServer(ctx context.Context, conf serverConfig) (*server, error) {
 	return s, nil
 }
 
-func (s *server) shutdown() error {
-	const op = "daemon.(server).Shutdown"
+func (s *cacheServer) shutdown() error {
+	const op = "daemon.(cacheServer).Shutdown"
 
 	var shutdownErr error
 	s.shutdownOnce.Do(func() {
@@ -114,8 +114,8 @@ func (s *server) shutdown() error {
 // start will fire up the refresh goroutine and the caching API http server as a
 // daemon.  The daemon bits are included so it's easy for CLI cmds to start the
 // a cache server
-func (s *server) serve(ctx context.Context, cmd commander, l net.Listener) error {
-	const op = "daemon.(server).start"
+func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) error {
+	const op = "daemon.(cacheServer).start"
 	switch {
 	case util.IsNil(ctx):
 		return errors.New(ctx, errors.InvalidParameter, op, "context is missing")
@@ -197,7 +197,7 @@ func (s *server) serve(ctx context.Context, cmd commander, l net.Listener) error
 	return nil
 }
 
-func (s *server) printInfo(ui cli.Ui) {
+func (s *cacheServer) printInfo(ui cli.Ui) {
 	verInfo := version.Get()
 	if verInfo.Version != "" {
 		s.infoKeys = append(s.infoKeys, "version")
@@ -236,7 +236,7 @@ func (s *server) printInfo(ui cli.Ui) {
 	ui.Output("==> cache started! Log data will stream in below:\n")
 }
 
-func (s *server) setupLogging(ctx context.Context, w io.Writer) error {
+func (s *cacheServer) setupLogging(ctx context.Context, w io.Writer) error {
 	const op = "daemon.(Command).setupLogging"
 	switch {
 	case util.IsNil(w):
