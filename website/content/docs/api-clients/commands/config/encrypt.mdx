@@ -1,0 +1,69 @@
+---
+layout: docs
+page_title: config encrypt - Command
+description: |-
+  The "config encrypt" command encrypts sensitive values in a Boundary's configuration file. These values must be marked with {{encrypt()}} as appropriate.
+---
+
+# config encrypt
+
+Command: `boundary config encrypt`
+
+The `config encrypt` command encrypts sensitive values in a Boundary's
+configuration file. These values must be marked with `{{encrypt()}}` as
+appropriate. For example, `key = {{encrypt(key_value)}}`.
+
+
+## Examples
+
+Overwrite into the existing config file use the `-overwrite` flag.
+
+```shell-session
+$ boundary config encrypt -overwrite config.hcl
+```
+
+In order for this command to perform its task, a "kms" block must be defined
+within a configuration file. 
+
+```hcl
+kms "aead" {
+   purpose = "config"
+   aead_type = "aes-gcm"
+   key = "7xtkEoS5EXPbgynwd+dDLHopaCqK8cq0Rpep4eooaTs="
+}
+```
+
+The "kms" block can be defined in the configuration file or via the -config
+flag. If defined in the configuration file, only string parameters are
+supported, and the markers must be inside the quote marks delimiting the string.
+Additionally, if the block is defined inline, do not use an "aead" block with
+the key defined in the configuration file as it provides no protection.
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary config encrypt [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-config` `(string: "")` - The configuration file upon which to perform
+  encryption or encryption
+
+- `-config-kms` `(string: "")` - If specified, the given file will be parsed for
+   a "kms" block with purpose "config" and will use it to perform the command.
+   If not set, the command will expect a block inline with the configuration
+   file, and will only be able to support quoted string parameters.
+
+- `-overwrite` `(bool: false)` - Overwrite the existing file. The default is
+  false.
+
+- `-strip` `(bool: false)` - Strip the declarations from the file afterwards.
+  The default is false.
+
+@include 'cmd-option-note.mdx'

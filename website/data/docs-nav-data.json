@@ -623,6 +623,31 @@
             ]
           },
           {
+            "title": "config",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/config"
+              },
+              {
+                "title": "autocomplete",
+                "path": "api-clients/commands/config/autocomplete"
+              },
+              {
+                "title": "decrypt",
+                "path": "api-clients/commands/config/decrypt"
+              },
+              {
+                "title": "encrypt",
+                "path": "api-clients/commands/config/encrypt"
+              },
+              {
+                "title": "get-token",
+                "path": "api-clients/commands/config/get-token"
+              }
+            ]
+          },
+          {
             "title": "connect",
             "routes": [
               {
