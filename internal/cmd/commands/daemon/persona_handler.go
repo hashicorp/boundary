@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-type readTokenFromKeyringer interface {
+type tokenReader interface {
 	ReadTokenFromKeyring(string, string) *authtokens.AuthToken
 }
 
@@ -44,69 +44,73 @@ func (p *personaToAdd) toPersona() *cache.Persona {
 	}
 }
 
-func newPersonaHandlerFunc(ctx context.Context, store *cache.Store, atReader readTokenFromKeyringer, refresher refresher) (http.HandlerFunc, error) {
+func newPersonaHandlerFunc(ctx context.Context, store *cache.Store, atReader tokenReader, refresher refresher) (http.HandlerFunc, error) {
 	const op = "daemon.newPersonaHandlerFunc"
 	switch {
 	case util.IsNil(store):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "store is missing")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "store is nil")
+	case util.IsNil(atReader):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "tokenReader is nil")
+	case util.IsNil(refresher):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "refresher is nil")
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			writeError(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		var perReq personaToAdd
 
 		data, err := io.ReadAll(r.Body)
 		if err != nil {
-			http.Error(w, "unable to read request body", http.StatusBadRequest)
+			writeError(w, "unable to read request body", http.StatusBadRequest)
 			return
 		}
 		if err := json.Unmarshal(data, &perReq); err != nil {
-			http.Error(w, "unable to parse request body", http.StatusBadRequest)
+			writeError(w, "unable to parse request body", http.StatusBadRequest)
 			return
 		}
 
 		switch {
 		case perReq.TokenName == "":
-			http.Error(w, "Token name is a required field but was empty", http.StatusBadRequest)
+			writeError(w, "TokenName is a required field but was empty", http.StatusBadRequest)
 			return
 		case perReq.KeyringType == "":
-			http.Error(w, "Keyring Type is a required field but was empty", http.StatusBadRequest)
+			writeError(w, "KeyringType is a required field but was empty", http.StatusBadRequest)
 			return
 		case perReq.BoundaryAddr == "":
-			http.Error(w, "Boundary Address is a required field but was empty", http.StatusBadRequest)
+			writeError(w, "BoundaryAddr is a required field but was empty", http.StatusBadRequest)
 			return
 		case perReq.AuthTokenId == "":
-			http.Error(w, "AuthTokenId is a required field but was empty", http.StatusBadRequest)
+			writeError(w, "AuthTokenId is a required field but was empty", http.StatusBadRequest)
 			return
 		case perReq.KeyringType == base.NoneKeyring:
 			// TODO: Support personas that have tokens not stored in a keyring
-			http.Error(w, fmt.Sprintf("keyring type is set to %s but a keyring which is not supported", perReq.KeyringType), http.StatusBadRequest)
+			writeError(w, fmt.Sprintf("KeyringType is set to %s which is not supported", perReq.KeyringType), http.StatusBadRequest)
 			return
 		}
 
 		at := atReader.ReadTokenFromKeyring(perReq.KeyringType, perReq.TokenName)
 		if at == nil || at.Id != perReq.AuthTokenId {
-			http.Error(w, "stored auth token's id doesn't match the one provided", http.StatusBadRequest)
+			writeError(w, "stored auth token's id doesn't match the one provided", http.StatusBadRequest)
 			return
 		}
 
 		repo, err := cache.NewRepository(ctx, store)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		foundP, err := repo.LookupPersona(ctx, perReq.BoundaryAddr, perReq.KeyringType, perReq.TokenName)
 		if err != nil {
-			http.Error(w, "error performign persona lookup", http.StatusInternalServerError)
+			writeError(w, "error performing persona lookup", http.StatusInternalServerError)
 			return
 		}
 
 		if err = repo.AddPersona(ctx, perReq.toPersona()); err != nil {
-			http.Error(w, "Failed to add a persona", http.StatusInternalServerError)
+			writeError(w, "Failed to add a persona", http.StatusInternalServerError)
 			return
 		}
 

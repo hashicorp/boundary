@@ -62,28 +62,28 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.
 
 		switch {
 		case resource != "targets":
-			http.Error(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
+			writeError(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
 			return
 		case tokenName == "":
-			http.Error(w, fmt.Sprintf("%s is a required field but was empty", tokenNameKey), http.StatusBadRequest)
+			writeError(w, fmt.Sprintf("%s is a required field but was empty", tokenNameKey), http.StatusBadRequest)
 			return
 		case keyringType == "":
-			http.Error(w, fmt.Sprintf("%s is a required field but was empty", keyringTypeKey), http.StatusBadRequest)
+			writeError(w, fmt.Sprintf("%s is a required field but was empty", keyringTypeKey), http.StatusBadRequest)
 			return
 		case boundaryAddr == "":
-			http.Error(w, fmt.Sprintf("%s is a required field but was empty", boundaryAddrKey), http.StatusBadRequest)
+			writeError(w, fmt.Sprintf("%s is a required field but was empty", boundaryAddrKey), http.StatusBadRequest)
 			return
 		}
 
 		repo, err := cache.NewRepository(ctx, store)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		p, err := repo.LookupPersona(ctx, boundaryAddr, keyringType, tokenName, cache.WithUpdateLastAccessedTime(true))
 		if err != nil || p == nil {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			writeError(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
@@ -131,7 +131,7 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.
 		}
 		j, err := json.Marshal(items)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Write(j)

@@ -71,7 +71,7 @@ func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
 	cmd.Env = os.Environ()
 	// We use Run here instead of Start because the command spawns off a subprocess and returns.
 	// We do not want to send the request to add a persona to the cache until we know the daemon
-	// has starte dup.
+	// has started up.
 	err = cmd.Run()
 	return err == nil || strings.Contains(stdErr.String(), "already running")
 }
