@@ -581,6 +581,48 @@
             ]
           },
           {
+            "title": "auth-tokens",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/auth-tokens"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/auth-tokens/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/auth-tokens/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/auth-tokens/read"
+              }
+            ]
+          },
+          {
+            "title": "authenticate",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/authenticate"
+              },
+              {
+                "title": "ldap",
+                "path": "api-clients/commands/authenticate/ldap"
+              },
+              {
+                "title": "oidc",
+                "path": "api-clients/commands/authenticate/oidc"
+              },
+              {
+                "title": "password",
+                "path": "api-clients/commands/authenticate/password"
+              }
+            ]
+          },
+          {
             "title": "connect",
             "routes": [
               {
