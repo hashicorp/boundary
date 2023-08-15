@@ -102,7 +102,8 @@ func InitBoundaryDatabase(t testing.TB, pool *dockertest.Pool, network *dockerte
 		Tag:        tag,
 		Cmd:        []string{"boundary", "database", "init", "-config", "/boundary/boundary-config.hcl", "-format", "json"},
 		Env: []string{
-			"BOUNDARY_POSTGRES_URL=" + postgresURI,
+			fmt.Sprintf("BOUNDARY_LICENSE=%s", c.BoundaryLicense),
+			fmt.Sprintf("BOUNDARY_POSTGRES_URL=%s", postgresURI),
 			"SKIP_CHOWN=true",
 		},
 		Mounts:   []string{path.Dir(boundaryConfigFilePath) + ":/boundary/"},
