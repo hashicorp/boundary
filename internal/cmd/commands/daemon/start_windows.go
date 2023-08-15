@@ -31,7 +31,7 @@ func DefaultDotDirectory(ctx context.Context) (string, error) {
 	return fmt.Sprintf(dotDirectoryNameTemplate, homeDir), nil
 }
 
-// start will ensure this is the only daemon running and spin off a seperate process.
+// start will ensure this is the only daemon running and spin off a separate process.
 func (s *StartCommand) start(ctx context.Context, cmd commander, srv *server) error {
 	const op = "daemon.(StartCommand).start"
 	switch {
