@@ -9,6 +9,7 @@ root_dir="$(git rev-parse --show-toplevel)"
 pushd "${root_dir}" > /dev/null
 
 # make docker image
+export DEV_DOCKER_GOARCH=$(uname -m)
 export IMAGE_TAG_DEV="${IMAGE_NAME}"
 make build-ui docker-build-dev
 
