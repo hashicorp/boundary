@@ -74,7 +74,7 @@ disable_mlock = true
 
 # listener denoting this is a worker proxy
 listener "tcp" {
-  address = "0.0.0.0:9201"
+  address = "0.0.0.0:9202"
   purpose = "proxy"
 }
 
@@ -143,7 +143,7 @@ disable_mlock = true
 
 # listener denoting this is a worker proxy
 listener "tcp" {
-  address = "0.0.0.0:9201"
+  address = "0.0.0.0:9202"
   purpose = "proxy"
 }
 
@@ -151,7 +151,7 @@ listener "tcp" {
 # worker service
 worker {
   public_addr = "<worker_public_addr>"
-  initial_upstreams = ["<ingress_worker_address>:9201"]
+  initial_upstreams = ["<ingress_worker_address>:9202"]
   auth_storage_path = "/etc/boundary.d/auth_storage/"
   tags {
     type = ["worker2", "intermediate"]
@@ -212,7 +212,7 @@ disable_mlock = true
 
 # listener denoting this is a worker proxy
 listener "tcp" {
-  address = "0.0.0.0:9201"
+  address = "0.0.0.0:9202"
   purpose = "proxy"
 }
 
@@ -220,7 +220,7 @@ listener "tcp" {
 # worker service
 worker {
   public_addr = "<worker_public_addr>"
-  initial_upstreams = ["<intermediate_worker_address>:9201"]
+  initial_upstreams = ["<intermediate_worker_address>:9202"]
   auth_storage_path = "/etc/boundary.d/auth_storage/"
   tags {
     type = ["worker3", "egress"]
