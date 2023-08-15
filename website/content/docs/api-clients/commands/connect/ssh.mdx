@@ -9,35 +9,21 @@ description: |-
 
 Command: `boundary connect ssh`
 
-The `connect ssh` command will will authorize a session against a target and
-invoke an SSH client to connect, filling in the local address and port. You can
-specify your SSH client of choice using the -style option.
+The `connect ssh` command authorizes a session against a target and
+invokes an SSH client to connect, filling in the local address and port. You can
+specify your SSH client of choice using the `-style` option.
 
 @include 'cmd-connect-env-vars.mdx'
 
+The ssh helper command sets the host key `Alias`. When an `Alias` is set, ssh does not use `localhost:<port>` for host key validation, but instead uses one of the following:
 
-The ssh helper command sets the host key `Alias`. This means that ssh will not use `localhost:<port>` for
-host key validation, but instead use the alias we provide.
-
-* For connections to a Target that has a host-set attached, the ssh helper command sets the `HostID` as the alias.
+* For connections to a target that has an attached host-set, the ssh helper command sets the `HostID` as the alias.
 * For connections directly to a host, the ssh helper command sets the `HostID` as the alias.
-* For connections to a Target that has its address field configured, the ssh helper command sets the `TargetID` as the alias.
-
-### Usage
-
-<CodeBlockConfig hideClipboard>
-
-```shell-session
-$ boundary connect ssh [options] [args]
-```
-
-</CodeBlockConfig>
+* For connections to a target that has an address field configured, the ssh helper command sets the `TargetID` as the alias.
 
 ## Examples
 
-### SSH to a Target without any additional options:
-
-Authorize a session to a target with ID “ttcp_eTcZMueUYv” and invoke default ssh client
+Authorize a session to a target with ID “ttcp_eTcZMueUYv” and invoke the default ssh client without any additional options:
 
 <CodeBlockConfig hideClipboard>
 
@@ -47,9 +33,8 @@ $ boundary connect ssh -target-id ttcp_eTcZMueUYv
 
 </CodeBlockConfig>
 
-### SSH to a Target with additional options set
 Authorize a session to a target with ID “ttcp_eTcZMueUYv”, and pipe arguments directly to the invoked ssh binary.
-Any SSH arguments after the double hyphen will be sent directly to the binary.
+Any SSH arguments after the double hyphen are sent directly to the binary:
 
 <CodeBlockConfig hideClipboard>
 
@@ -76,19 +61,28 @@ $ boundary connect ssh -target-id=ttcp_Gymo7Vcq7Y \
 
 </CodeBlockConfig>
 
+## Usage
 
+<CodeBlockConfig hideClipboard>
 
-### Connect command options
+```shell-session
+$ boundary connect ssh [options] [args]
+```
+
+</CodeBlockConfig>
+
+This command performs a target authorization (or consumes an existing authorization token) and launches a proxied ssh connection.
+
 @include 'cmd-connect-command-options.mdx'
 
 ### SSH options:
 
--  `style` `(string: "")` - Specifies how the CLI will attempt to invoke an SSH
-   client. This will also set a suitable default for `-exec` if a value was not
-   specified. Currently-understood values are `ssh` and `putty`. The default is
-   ssh. This can also be specified via the `BOUNDARY_CONNECT_SSH_STYLE`
+-  `style` `(string: "")` - Specifies how the CLI attempts to invoke an SSH
+   client. This option also sets a suitable default for `-exec`, if a value was not
+   specified. Currently understood values are `ssh` and `putty`. The default is
+   `ssh`. You can also specify this option using the `BOUNDARY_CONNECT_SSH_STYLE`
    environment variable.
 
 -  `username` `(string: "")` - Specifies the username to pass through to the
-   client This can also be specified via the `BOUNDARY_CONNECT_USERNAME`
+   client. You can also specify this option using the `BOUNDARY_CONNECT_USERNAME`
    environment variable.
