@@ -53,6 +53,8 @@ func (r *Repository) AddPersona(ctx context.Context, p *Persona) error {
 		return errors.New(ctx, errors.InvalidParameter, op, "persona's keyring type is empty")
 	case p.BoundaryAddr == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "persona's boundary address is empty")
+	case p.AuthTokenId == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "persona's auth token id is empty")
 	}
 
 	p.LastAccessedTime = time.Now()

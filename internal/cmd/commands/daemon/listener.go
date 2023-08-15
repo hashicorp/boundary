@@ -11,11 +11,10 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/mitchellh/go-homedir"
 )
 
 const (
-	sockAddr = ".boundary/boundary_daemon.sock"
+	sockAddr = "socket/daemon.sock"
 
 	// Currently we only allow the same user that started the boundary daemon
 	// to connect to the socket to make requests to it.
@@ -28,14 +27,9 @@ const (
 )
 
 // listener provides a listener on the daemon unix socket.
-func listener(ctx context.Context) (net.Listener, error) {
+func listener(ctx context.Context, path string) (net.Listener, error) {
 	const op = "daemon.listener"
-
-	homeDir, err := homedir.Dir()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	socketName := filepath.Join(homeDir, sockAddr)
+	socketName := filepath.Join(path, sockAddr)
 	if err := os.Remove(socketName); err != nil {
 		// If the socket existed before and wasn't cleaned up delete it now.
 		if !os.IsNotExist(err) {
@@ -60,10 +54,6 @@ func listener(ctx context.Context) (net.Listener, error) {
 
 // SocketAddress returns the unix socket filename with a 'unix://' prefix.
 // The returned value can be passed directly into the api.Client
-func SocketAddress() (string, error) {
-	homeDir, err := homedir.Dir()
-	if err != nil {
-		return "", fmt.Errorf("unable to get home directory: %w", err)
-	}
-	return fmt.Sprintf("unix://%s", filepath.Join(homeDir, sockAddr)), nil
+func SocketAddress(path string) string {
+	return fmt.Sprintf("unix://%s", filepath.Join(path, sockAddr))
 }
