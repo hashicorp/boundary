@@ -9,12 +9,19 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
 )
+
+// SearchResult is the struct returned to search requests.
+type SearchResult struct {
+	Targets  []*targets.Target   `json:",omitempty"`
+	Sessions []*sessions.Session `json:",omitempty"`
+}
 
 const (
 	filterKey   = "filter"
@@ -24,21 +31,6 @@ const (
 	tokenNameKey    = "token_name"
 	boundaryAddrKey = "boundary_addr"
 	keyringTypeKey  = "keyring_type"
-
-	idContainsKey          = "id_contains"
-	nameContainsKey        = "name_contains"
-	descriptionContainsKey = "description_contains"
-	addressContainsKey     = "address_contains"
-
-	idStartsWithKey          = "id_starts_with"
-	nameStartsWithKey        = "name_starts_with"
-	descriptionStartsWithKey = "description_starts_with"
-	addressStartsWithKey     = "address_starts_with"
-
-	idEndsWithKey          = "id_ends_with"
-	nameEndsWithKey        = "name_ends_with"
-	descriptionEndsWithKey = "description_ends_with"
-	addressEndsWithKey     = "address_ends_with"
 )
 
 func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.HandlerFunc, error) {
@@ -51,7 +43,7 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.
 		ctx := r.Context()
 		filter, err := handlers.NewFilter(ctx, r.URL.Query().Get(filterKey))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
@@ -87,34 +79,25 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.
 			return
 		}
 
+		query := r.URL.Query().Get(queryKey)
 		var found []*targets.Target
-		switch {
-		case r.URL.Query().Get(queryKey) != "":
-			found, err = repo.QueryTargets(r.Context(), p, r.URL.Query().Get(queryKey))
+		switch query {
+		case "":
+			found, err = repo.ListTargets(r.Context(), p)
 		default:
-			found, err = repo.FindTargets(
-				r.Context(),
-				p,
-				cache.WithIdContains(r.URL.Query().Get(idContainsKey)),
-				cache.WithNameContains(r.URL.Query().Get(nameContainsKey)),
-				cache.WithDescriptionContains(r.URL.Query().Get(descriptionContainsKey)),
-				cache.WithAddressContains(r.URL.Query().Get(addressContainsKey)),
-
-				cache.WithIdStartsWith(r.URL.Query().Get(idStartsWithKey)),
-				cache.WithNameStartsWith(r.URL.Query().Get(nameStartsWithKey)),
-				cache.WithDescriptionStartsWith(r.URL.Query().Get(descriptionStartsWithKey)),
-				cache.WithAddressStartsWith(r.URL.Query().Get(addressStartsWithKey)),
-
-				cache.WithIdEndsWith(r.URL.Query().Get(idEndsWithKey)),
-				cache.WithNameEndsWith(r.URL.Query().Get(nameEndsWithKey)),
-				cache.WithDescriptionEndsWith(r.URL.Query().Get(descriptionEndsWithKey)),
-				cache.WithAddressEndsWith(r.URL.Query().Get(addressEndsWithKey)),
-			)
+			found, err = repo.QueryTargets(r.Context(), p, query)
 		}
+
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			switch {
+			case errors.Match(errors.T(errors.InvalidParameter), err):
+				writeError(w, err.Error(), http.StatusBadRequest)
+			default:
+				writeError(w, err.Error(), http.StatusInternalServerError)
+			}
 			return
 		}
+
 		w.Header().Set("Content-Type", "application/json")
 
 		finalItems := make([]*targets.Target, 0, len(found))
@@ -124,12 +107,10 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.
 			}
 		}
 
-		items := struct {
-			Items []*targets.Target `json:"items"`
-		}{
-			Items: finalItems,
+		res := SearchResult{
+			Targets: finalItems,
 		}
-		j, err := json.Marshal(items)
+		j, err := json.Marshal(res)
 		if err != nil {
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return

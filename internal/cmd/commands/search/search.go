@@ -4,11 +4,11 @@
 package search
 
 import (
-	"bytes"
 	"context"
 	stderrors "errors"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/hashicorp/boundary/api"
@@ -88,7 +88,6 @@ func (c *SearchCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *SearchCommand) Run(args []string) int {
-	const op = "search.(SearchCommand).Run"
 	ctx := c.Context
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
@@ -106,80 +105,91 @@ func (c *SearchCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
-	if err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandUserError
-	}
-	client, err := c.Client()
-	if err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandUserError
-	}
-
-	tf := filterBy{
-		boundaryAddr:       client.Addr(),
-		tokenName:          tokenName,
-		keyringType:        keyringType,
-		flagNameStartsWith: c.flagNameStartsWith,
-		flagQuery:          c.flagQuery,
-		resource:           c.flagResource,
-	}
-
-	dotPath, err := daemon.DefaultDotDirectory(ctx)
+	resp, err := c.Search(ctx)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
 	}
-	searchClient, err := SearchClient(ctx, c.FlagOutputCurlString, dotPath)
+	res := &daemon.SearchResult{}
+	apiErr, err := resp.Decode(res)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
 	}
-
-	resp, err := search(ctx, tf, searchClient)
-	if err != nil {
-		c.PrintCliError(err)
-		return base.CommandUserError
-	}
-	marshaledResp := struct {
-		Items []*targets.Target `json:"items"`
-	}{}
-
-	if resp.StatusCode() >= 400 {
-		resp.Body = new(bytes.Buffer)
-		if _, err := resp.Body.ReadFrom(resp.HttpResponse().Body); err != nil {
-			c.PrintCliError(err)
-			return base.CommandUserError
-		}
-		if resp.Body.Len() > 0 {
-			c.PrintCliError(fmt.Errorf(resp.Body.String()))
-			return base.CommandUserError
-		}
-		c.PrintCliError(fmt.Errorf("error reading response body: status was %d", resp.StatusCode()))
-		return base.CommandUserError
-	}
-	apiError, err := resp.Decode(&marshaledResp)
-	switch {
-	case err != nil:
-		c.PrintCliError(err)
-		return base.CommandUserError
-	case apiError != nil:
-		c.PrintCliError(fmt.Errorf(apiError.Error()))
-		return base.CommandUserError
+	if apiErr != nil {
+		c.PrintApiError(apiErr, "Error from daemon when performing search")
+		return base.CommandApiError
 	}
 	switch base.Format(c.UI) {
 	case "json":
-		if ok := c.PrintJsonItems(resp); !ok {
-			return base.CommandCliError
-		}
+		c.UI.Output(string(resp.Body.Bytes()))
 	default:
-		c.UI.Output(c.printListTable(marshaledResp.Items))
+		c.UI.Output(printTargetListTable(res.Targets))
 	}
 	return base.CommandSuccess
 }
 
-func (c *SearchCommand) printListTable(items []*targets.Target) string {
+func (c *SearchCommand) Search(ctx context.Context) (*api.Response, error) {
+	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
+	if err != nil {
+		return nil, err
+	}
+	client, err := c.Client()
+	if err != nil {
+		return nil, err
+	}
+
+	tf := filterBy{
+		boundaryAddr: client.Addr(),
+		tokenName:    tokenName,
+		keyringType:  keyringType,
+		flagQuery:    c.flagQuery,
+		resource:     c.flagResource,
+	}
+
+	dotPath, err := daemon.DefaultDotDirectory(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return search(ctx, dotPath, tf)
+}
+
+func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response, error) {
+	const op = "search.search"
+	client, err := api.NewClient(nil)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	addr := daemon.SocketAddress(daemonPath)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if _, err := os.Stat(strings.TrimPrefix(addr, "unix://")); strings.HasPrefix(addr, "unix://") && err == os.ErrNotExist {
+		return nil, errors.New(ctx, errors.Internal, op, "daemon unix socket is not setup")
+	}
+	if err := client.SetAddr(addr); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	req, err := client.NewRequest(ctx, "GET", "/search", nil)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error"))
+	}
+	q := url.Values{}
+	q.Add("token_name", fb.tokenName)
+	q.Add("keyring_type", fb.keyringType)
+	q.Add("boundary_addr", fb.boundaryAddr)
+	q.Add("resource", fb.resource)
+	q.Add("query", fb.flagQuery)
+	req.URL.RawQuery = q.Encode()
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
+	}
+	return resp, err
+}
+
+func printTargetListTable(items []*targets.Target) string {
 	if len(items) == 0 {
 		return "No targets found"
 	}
@@ -201,7 +211,7 @@ func (c *SearchCommand) printListTable(items []*targets.Target) string {
 				fmt.Sprintf("  ID:                    %s", "(not available)"),
 			)
 		}
-		if c.FlagRecursive && item.ScopeId != "" {
+		if item.ScopeId != "" {
 			output = append(output,
 				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
 			)
@@ -242,55 +252,10 @@ func (c *SearchCommand) printListTable(items []*targets.Target) string {
 	return base.WrapForHelpText(output)
 }
 
-func SearchClient(ctx context.Context, flagOutputCurl bool, daemonPath string) (*api.Client, error) {
-	const op = "search.SearchClient"
-	client, err := api.NewClient(nil)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	addr := daemon.SocketAddress(daemonPath)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if err := client.SetAddr(addr); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	// Because this is using the real lib it can pick up from stored locations
-	// like the system keychain. Explicitly clear the token for now
-	client.SetToken("")
-	if flagOutputCurl {
-		client.SetOutputCurlString(true)
-	}
-
-	return client, nil
-}
-
 type filterBy struct {
-	flagNameStartsWith string
-	flagQuery          string
-	tokenName          string
-	keyringType        string
-	boundaryAddr       string
-	resource           string
-}
-
-func search(ctx context.Context, filterBy filterBy, client *api.Client) (*api.Response, error) {
-	const op = "search.search"
-	req, err := client.NewRequest(ctx, "GET", "/search", nil)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error"))
-	}
-	q := url.Values{}
-	q.Add("token_name", filterBy.tokenName)
-	q.Add("keyring_type", filterBy.keyringType)
-	q.Add("boundary_addr", filterBy.boundaryAddr)
-	q.Add("resource", filterBy.resource)
-	q.Add("name_starts_with", filterBy.flagNameStartsWith)
-	q.Add("query", filterBy.flagQuery)
-	req.URL.RawQuery = q.Encode()
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
-	}
-	return resp, nil
+	flagQuery    string
+	tokenName    string
+	keyringType  string
+	boundaryAddr string
+	resource     string
 }
