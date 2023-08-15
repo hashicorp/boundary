@@ -1,8 +1,8 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-//go:build linux || darwin
-// +build linux darwin
+//go:build !windows
+// +build !windows
 
 package daemon
 
@@ -20,7 +20,10 @@ import (
 // TODO: Write a test for this that can run on windows.
 func TestListenerSocketPermissions(t *testing.T) {
 	ctx := context.Background()
-	l, err := listener(ctx)
+
+	path, err := os.MkdirTemp("", "*")
+	require.NoError(t, err)
+	l, err := listener(ctx, path)
 	require.NoError(t, err)
 	socketFile := l.Addr().String()
 	fi, err := os.Stat(socketFile)

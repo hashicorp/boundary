@@ -6,7 +6,6 @@ package cmd
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,8 +17,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
 )
@@ -100,7 +97,7 @@ func Run(args []string) int {
 
 // RunCustom allows passing in a base command template to pass to other
 // commands. Currently, this is only used for setting a custom token helper.
-func RunCustom(args []string, runOpts *RunOptions) int {
+func RunCustom(args []string, runOpts *RunOptions) (exitCode int) {
 	if runOpts == nil {
 		runOpts = &RunOptions{}
 	}
@@ -189,7 +186,8 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 		AutocompleteNoDefaultFlags: true,
 	}
 
-	exitCode, err := cli.Run()
+	var err error
+	exitCode, err = cli.Run()
 	if outputCurlString {
 		if exitCode == 0 {
 			fmt.Fprint(runOpts.Stderr, "Could not generate cURL command\n")
@@ -215,45 +213,8 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 		return 1
 	}
 
-	defer func() {
-		l := make([]string, 0, len(cli.Args))
-		for _, arg := range cli.Args {
-			l = append(l, strings.ToLower(arg))
-		}
-		currentCmd := strings.Join(l, "-")
-
-		if currentCmd != "" && !strutil.StrListContains([]string{"daemon", "version", "dev", "server"}, l[0]) {
-			c, err := cli.Commands["daemon start"]()
-			if err != nil {
-				fmt.Fprintf(runOpts.Stderr, "Error creating command: %s\n", err.Error())
-				return
-			}
-
-			serverCmd, ok := c.(*daemon.ServerCommand)
-			if !ok {
-				fmt.Fprintf(runOpts.Stderr, "Error base command: %s\n", err.Error())
-				return
-			}
-			serverCmd.Flags()
-
-			err = daemon.StartCacheInBackground(context.Background(), serverCmd, serverCmd.UI)
-			if err != nil && !strings.Contains(err.Error(), "already running") {
-				return
-			}
-		}
-	}()
-
 	return exitCode
 }
-
-type silentUi struct{}
-
-func (*silentUi) Ask(string) (string, error)       { return "", nil }
-func (*silentUi) AskSecret(string) (string, error) { return "", nil }
-func (*silentUi) Output(string)                    {}
-func (*silentUi) Info(string)                      {}
-func (*silentUi) Error(string)                     {}
-func (*silentUi) Warn(string)                      {}
 
 func groupedHelpFunc(f cli.HelpFunc) cli.HelpFunc {
 	return func(commands map[string]cli.CommandFactory) string {

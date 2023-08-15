@@ -125,7 +125,19 @@ func (c *SearchCommand) Run(args []string) int {
 		flagQuery:          c.flagQuery,
 		resource:           c.flagResource,
 	}
-	resp, err := search(ctx, tf, c.FlagOutputCurlString)
+
+	dotPath, err := daemon.DefaultDotDirectory(ctx)
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+	searchClient, err := SearchClient(ctx, c.FlagOutputCurlString, dotPath)
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+
+	resp, err := search(ctx, tf, searchClient)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
@@ -230,13 +242,13 @@ func (c *SearchCommand) printListTable(items []*targets.Target) string {
 	return base.WrapForHelpText(output)
 }
 
-func SearchClient(ctx context.Context, flagOutputCurl bool) (*api.Client, error) {
+func SearchClient(ctx context.Context, flagOutputCurl bool, daemonPath string) (*api.Client, error) {
 	const op = "search.SearchClient"
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	addr, err := daemon.SocketAddress()
+	addr := daemon.SocketAddress(daemonPath)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -262,15 +274,11 @@ type filterBy struct {
 	resource           string
 }
 
-func search(ctx context.Context, filterBy filterBy, flagOutputCurl bool) (*api.Response, error) {
+func search(ctx context.Context, filterBy filterBy, client *api.Client) (*api.Response, error) {
 	const op = "search.search"
-	client, err := SearchClient(ctx, flagOutputCurl)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
 	req, err := client.NewRequest(ctx, "GET", "/search", nil)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error: %s", err.Error()))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error"))
 	}
 	q := url.Values{}
 	q.Add("token_name", filterBy.tokenName)
@@ -282,7 +290,7 @@ func search(ctx context.Context, filterBy filterBy, flagOutputCurl bool) (*api.R
 	req.URL.RawQuery = q.Encode()
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed: %w", err))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("client do failed"))
 	}
 	return resp, nil
 }

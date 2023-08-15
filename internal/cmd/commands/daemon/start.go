@@ -5,8 +5,9 @@ package daemon
 
 import (
 	"context"
+	"io"
+	"net"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -14,36 +15,38 @@ import (
 	"github.com/posener/complete"
 )
 
-const defaultRefreshInterval = 15 * time.Minute
+const DefaultRefreshIntervalSeconds = 5 * 60
 
 var (
-	_ cli.Command             = (*ServerCommand)(nil)
-	_ cli.CommandAutocomplete = (*ServerCommand)(nil)
+	_ cli.Command             = (*StartCommand)(nil)
+	_ cli.CommandAutocomplete = (*StartCommand)(nil)
 )
 
-var extraSelfTerminationConditionFuncs []func(*ServerCommand, chan struct{})
+type server interface {
+	setupLogging(context.Context, io.Writer) error
+	serve(context.Context, commander, net.Listener) error
+	shutdown() error
+}
 
-type ServerCommand struct {
+type StartCommand struct {
 	*base.Command
-	srv *server
 
 	flagRefreshIntervalSeconds int64
 	flagDatabaseUrl            string
 	flagLogLevel               string
 	flagLogFormat              string
 	flagStoreDebug             bool
-	flagSignal                 string
 }
 
-func (c *ServerCommand) Synopsis() string {
+func (c *StartCommand) Synopsis() string {
 	return "Start a Boundary daemon"
 }
 
-func (c *ServerCommand) Help() string {
+func (c *StartCommand) Help() string {
 	helpText := `
 Usage: boundary daemon start [options]
 
-  Start a cache server:
+  Start a daemon:
 
       $ boundary daemon start
 
@@ -53,7 +56,7 @@ Usage: boundary daemon start [options]
 	return strings.TrimSpace(helpText)
 }
 
-func (c *ServerCommand) Flags() *base.FlagSets {
+func (c *StartCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetHTTP | base.FlagSetClient)
 
 	f := set.NewFlagSet("Command Options")
@@ -90,27 +93,20 @@ func (c *ServerCommand) Flags() *base.FlagSets {
 		Usage:   `Turn on store debugging`,
 		Aliases: []string{"d"},
 	})
-	f.StringVar(&base.StringVar{
-		Name:       "signal",
-		Target:     &c.flagSignal,
-		Completion: complete.PredictSet("quit", "stop"),
-		Usage:      `Send signal to the daemon: quit (graceful shutdown) or stop (fast shutdown)`,
-		Aliases:    []string{"s"},
-	})
 
 	return set
 }
 
-func (c *ServerCommand) AutocompleteArgs() complete.Predictor {
+func (c *StartCommand) AutocompleteArgs() complete.Predictor {
 	return complete.PredictNothing
 }
 
-func (c *ServerCommand) AutocompleteFlags() complete.Flags {
+func (c *StartCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *ServerCommand) Run(args []string) int {
-	const op = "daemon.(ServerCommand).Run"
+func (c *StartCommand) Run(args []string) int {
+	const op = "daemon.(StartCommand).Run"
 	ctx, cancel := context.WithCancel(c.Context)
 	c.Context = ctx
 	c.ContextCancel = cancel
@@ -130,14 +126,14 @@ func (c *ServerCommand) Run(args []string) int {
 		flagLogLevel:           c.flagLogLevel,
 		flagLogFormat:          c.flagLogFormat,
 		ui:                     c.UI,
-		flagSignal:             c.flagSignal,
 	}
-	if c.srv, err = newServer(c.Context, cfg); err != nil {
+	srv, err := newServer(c.Context, cfg)
+	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
 
-	if err := c.srv.start(c.Context, c); err != nil {
+	if err := c.start(c.Context, c, srv); err != nil {
 		c.PrintCliError(err)
 		return base.CommandUserError
 	}
@@ -145,23 +141,21 @@ func (c *ServerCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-const DefaultRefreshIntervalSeconds = 5 * 60
-
-func StartCacheInBackground(ctx context.Context, cmd commander, ui cli.Ui) error {
-	const op = "daemon.StartCacheInBackground"
+func (c *StartCommand) StartCacheInBackground(ctx context.Context) error {
+	const op = "daemon.(StartCommand).StartCacheInBackground"
 
 	cancelCtx, cancelFunc := context.WithCancel(ctx)
 
 	cfg := serverConfig{
 		contextCancel:          cancelFunc,
 		refreshIntervalSeconds: DefaultRefreshIntervalSeconds,
-		ui:                     ui,
+		ui:                     c.UI,
 	}
 	srv, err := newServer(ctx, cfg)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if err := srv.start(cancelCtx, cmd); err != nil {
+	if err := c.start(cancelCtx, c, srv); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil
