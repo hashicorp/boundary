@@ -623,6 +623,10 @@
         "path": "enterprise"
       },
       {
+        "title": "Configure multi-hop workers",
+        "path": "enterprise/configure-multi-hop-workers"
+      },
+      {
         "title": "Licensing",
         "path": "enterprise/licensing"
       },

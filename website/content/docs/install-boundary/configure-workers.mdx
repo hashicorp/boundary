@@ -7,8 +7,6 @@ description: |-
 
 # Configure workers
 
-In this topic, we present an opinionated deployment model to show Boundary Enterprise features such as multi-hop sessions.
-
 Before you configure workers, you should have completed the following steps:
 
 - Installed Boundary on at least three [controller nodes](/boundary/docs/install-boundary/configure-controllers).
@@ -20,7 +18,8 @@ Before you configure workers, you should have completed the following steps:
 
 In the following configuration files, there are common configuration components as well as some unique components depending on the role the Boundary worker performs.
 There are three files, one for each worker in a unique network boundary.
-In a multi-hop configuration, the Boundary workers can serve one of three purposes: an ingress worker, an ingress/egress worker, or an egress worker.
+
+Note that in a multi-hop configuration, the Boundary workers can serve one of three purposes: an ingress worker, an ingress/egress worker, or an egress worker.
 
 ## Prepare the environment files
 
@@ -57,150 +56,13 @@ Refer to your cloud provider's documentation, for more information.
 
 ## Create the worker configurations
 
-After you create the requisite key or keys in the cloud provider of your choice, you can begin configuring the workers.
+After you create the requisite key or keys in the cloud provider of your choice, you can begin configuring workers.
 
-The following configuration examples all employ the PKI method of authentication with a worker-led authorization flow.
+The following configuration example employs the PKI method of authentication with a worker-led authorization flow.
 For more information on configuring KMS authentication for Boundary workers, refer to the [KMS worker configuration documenation](/boundary/docs/configuration/worker/kms-worker).
 
-### Ingress worker configuration
-
-Create the `ingress-worker.hcl` file with the relevant configuration information:
-
-<CodeBlockConfig lineNumbers filename="/etc/boundary.d/ingress-worker.hcl">
-
-```hcl
-# disable memory from being swapped to disk
-disable_mlock = true
-
-# listener denoting this is a worker proxy
-listener "tcp" {
-  address = "0.0.0.0:9202"
-  purpose = "proxy"
-}
-
-# worker block for configuring the specifics of the
-# worker service
-worker {
-  public_addr = "<worker_public_addr>"
-  initial_upstreams = ["<controller_lb_address>:9201"]
-  auth_storage_path = "/etc/boundary.d/auth_storage/"
-  tags {
-    type = ["worker1", "upstream"]
-  }
-}
-
-# Events (logging) configuration. This
-# configures logging for ALL events to both
-# stderr and a file at /var/log/boundary/<boundary_use>.log
-events {
-  audit_enabled       = true
-  sysevents_enabled   = true
-  observations_enable = true
-  sink "stderr" {
-    name = "all-events"
-    description = "All events sent to stderr"
-    event_types = ["*"]
-    format = "cloudevents-json"
-  }
-  sink {
-    name = "file-sink"
-    description = "All events sent to a file"
-    event_types = ["*"]
-    format = "cloudevents-json"
-    file {
-      path = "/var/log/boundary"
-      file_name = "ingress-worker.log"
-    }
-    audit_config {
-      audit_filter_overrides {
-        sensitive = "redact"
-        secret    = "redact"
-      }
-    }
-  }
-}
-
-# kms block for encrypting the authentication PKI material
-kms "awskms" {
-  purpose    = "worker-auth-storage"
-  region     = "us-east-1"
-  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey3"
-  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
-}
-```
-
-</CodeBlockConfig>
-
-### Intermediate worker configuration
-
-Create the `intermediate-worker.hcl` file with the relevant configuration information:
-
-<CodeBlockConfig lineNumbers filename="/etc/boundary.d/intermediate-worker.hcl">
-
-```hcl
-# disable memory from being swapped to disk
-disable_mlock = true
-
-# listener denoting this is a worker proxy
-listener "tcp" {
-  address = "0.0.0.0:9202"
-  purpose = "proxy"
-}
-
-# worker block for configuring the specifics of the
-# worker service
-worker {
-  public_addr = "<worker_public_addr>"
-  initial_upstreams = ["<ingress_worker_address>:9202"]
-  auth_storage_path = "/etc/boundary.d/auth_storage/"
-  tags {
-    type = ["worker2", "intermediate"]
-  }
-}
-
-# Events (logging) configuration. This
-# configures logging for ALL events to both
-# stderr and a file at /var/log/boundary/<boundary_use>.log
-events {
-  audit_enabled       = true
-  sysevents_enabled   = true
-  observations_enable = true
-  sink "stderr" {
-    name = "all-events"
-    description = "All events sent to stderr"
-    event_types = ["*"]
-    format = "cloudevents-json"
-  }
-  sink {
-    name = "file-sink"
-    description = "All events sent to a file"
-    event_types = ["*"]
-    format = "cloudevents-json"
-    file {
-      path = "/var/log/boundary"
-      file_name = "intermediate-worker.log"
-    }
-    audit_config {
-      audit_filter_overrides {
-        sensitive = "redact"
-        secret    = "redact"
-      }
-    }
-  }
-}
-
-# kms block for encrypting the authentication PKI material
-kms "awskms" {
-  purpose    = "worker-auth-storage"
-  region     = "us-east-1"
-  kms_key_id = "19ec80b0-dfdd-4d97-8164-c6examplekey4"
-  endpoint   = "https://vpce-0e1bb1852241f8cc6-pzi0do8n.kms.us-east-1.vpce.amazonaws.com"
-}
-```
-
-</CodeBlockConfig>
-
-### Egress worker configuration
+Note that in a multi-hop session <sup>(HCP/ENT)</sup>, the Boundary workers can serve one of three purposes: an ingress worker, an intermediary worker, or an egress worker.
+For more information, refer to [Configure workers for multi-hop sessions](/boundary/docs/enterprise/configure-multi-hop-workers).
 
 Create the `egress-worker.hcl` file with the relevant configuration information:
 
