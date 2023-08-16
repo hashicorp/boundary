@@ -62,23 +62,29 @@ func (c *AddPersonaCommand) Run(args []string) int {
 		c.PrintCliError(err)
 		return base.CommandUserError
 	}
-	err := c.AddPersona(ctx)
+
+	apiErr, err := c.AddPersona(ctx)
 	if err != nil {
 		c.PrintCliError(err)
-		return base.CommandUserError
+		return base.CommandCliError
+	}
+	if apiErr != nil {
+		c.PrintApiError(apiErr, "Error from daemon when adding a persona")
+		return base.CommandApiError
+
 	}
 	return base.CommandSuccess
 }
 
-func (c *AddPersonaCommand) AddPersona(ctx context.Context) error {
+func (c *AddPersonaCommand) AddPersona(ctx context.Context) (*api.Error, error) {
 	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	at := c.ReadTokenFromKeyring(keyringType, tokenName)
 	client, err := c.Client()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	pa := personaToAdd{
@@ -90,21 +96,14 @@ func (c *AddPersonaCommand) AddPersona(ctx context.Context) error {
 
 	dotPath, err := DefaultDotDirectory(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	apiErr, err := addPersona(ctx, dotPath, &pa)
-	switch {
-	case err != nil:
-		return err
-	case apiErr != nil:
-		return apiErr
-	}
-	return nil
+	return addPersona(ctx, dotPath, &pa)
 }
 
 func addPersona(ctx context.Context, daemonPath string, p *personaToAdd) (*api.Error, error) {
-	const op = "daemon.personaClient"
+	const op = "daemon.addPersona"
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

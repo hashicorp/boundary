@@ -338,6 +338,236 @@ func TestRepository_RefreshTargets(t *testing.T) {
 	}
 }
 
+func TestRepository_ListTargets(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+
+	r, err := NewRepository(ctx, s)
+	require.NoError(t, err)
+
+	errorCases := []struct {
+		name        string
+		p           *Persona
+		errContains string
+	}{
+		{
+			name:        "nil persona",
+			p:           nil,
+			errContains: "persona is missing",
+		},
+		{
+			name: "boundary address is missing",
+			p: &Persona{
+				KeyringType: "keyring type",
+				TokenName:   "token name",
+			},
+			errContains: "boundary address is missing",
+		},
+		{
+			name: "token name is missing",
+			p: &Persona{
+				BoundaryAddr: "boundary address",
+				KeyringType:  "keyring type",
+			},
+			errContains: "token name is missing",
+		},
+		{
+			name: "keyring type is missing",
+			p: &Persona{
+				BoundaryAddr: "boundary address",
+				TokenName:    "token name",
+			},
+			errContains: "keyring type is missing",
+		},
+	}
+
+	for _, tc := range errorCases {
+		t.Run(tc.name, func(t *testing.T) {
+			l, err := r.ListTargets(ctx, tc.p)
+			assert.Nil(t, l)
+			assert.ErrorContains(t, err, tc.errContains)
+		})
+	}
+
+	addr := "address"
+	p := &Persona{
+		BoundaryAddr: addr,
+		TokenName:    "default",
+		KeyringType:  "keyring",
+		AuthTokenId:  "at_1234567890",
+	}
+	require.NoError(t, r.AddPersona(ctx, p))
+
+	p2 := &Persona{
+		BoundaryAddr: addr + "2",
+		TokenName:    "default2",
+		KeyringType:  "keyring2",
+		AuthTokenId:  "at_0987654321",
+	}
+	require.NoError(t, r.AddPersona(ctx, p2))
+
+	ts := []*targets.Target{
+		{
+			Id:                "ttcp_1",
+			Name:              "name1",
+			Address:           "address1",
+			Type:              "tcp",
+			SessionMaxSeconds: 111,
+		},
+		{
+			Id:                "ttcp_2",
+			Name:              "name2",
+			Address:           "address2",
+			Type:              "tcp",
+			SessionMaxSeconds: 222,
+		},
+		{
+			Id:                "ttcp_3",
+			Name:              "name3",
+			Address:           "address3",
+			Type:              "tcp",
+			SessionMaxSeconds: 333,
+		},
+	}
+	require.NoError(t, r.RefreshTargets(ctx, p, ts))
+
+	t.Run("wrong persona gets no targets", func(t *testing.T) {
+		l, err := r.ListTargets(ctx, p2)
+		assert.NoError(t, err)
+		assert.Empty(t, l)
+	})
+	t.Run("correct persona gets targets", func(t *testing.T) {
+		l, err := r.ListTargets(ctx, p)
+		assert.NoError(t, err)
+		assert.Len(t, l, len(ts))
+		assert.ElementsMatch(t, l, ts)
+	})
+}
+
+func TestRepository_QueryTargets(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+
+	r, err := NewRepository(ctx, s)
+	require.NoError(t, err)
+
+	query := "name % name1 or name % name2"
+
+	errorCases := []struct {
+		name        string
+		p           *Persona
+		query       string
+		errContains string
+	}{
+		{
+			name:        "nil persona",
+			p:           nil,
+			query:       query,
+			errContains: "persona is missing",
+		},
+		{
+			name: "boundary address is missing",
+			p: &Persona{
+				KeyringType: "keyring type",
+				TokenName:   "token name",
+			},
+			query:       query,
+			errContains: "boundary address is missing",
+		},
+		{
+			name: "token name is missing",
+			p: &Persona{
+				BoundaryAddr: "boundary address",
+				KeyringType:  "keyring type",
+			},
+			query:       query,
+			errContains: "token name is missing",
+		},
+		{
+			name: "keyring type is missing",
+			p: &Persona{
+				BoundaryAddr: "boundary address",
+				TokenName:    "token name",
+			},
+			query:       query,
+			errContains: "keyring type is missing",
+		},
+		{
+			name: "query is missing",
+			p: &Persona{
+				BoundaryAddr: "boundary address",
+				TokenName:    "token name",
+				KeyringType:  "keyring type",
+			},
+			errContains: "query is missing",
+		},
+	}
+
+	for _, tc := range errorCases {
+		t.Run(tc.name, func(t *testing.T) {
+			l, err := r.QueryTargets(ctx, tc.p, tc.query)
+			assert.Nil(t, l)
+			assert.ErrorContains(t, err, tc.errContains)
+		})
+	}
+
+	addr := "address"
+	p := &Persona{
+		BoundaryAddr: addr,
+		TokenName:    "default",
+		KeyringType:  "keyring",
+		AuthTokenId:  "at_1234567890",
+	}
+	require.NoError(t, r.AddPersona(ctx, p))
+
+	p2 := &Persona{
+		BoundaryAddr: addr + "2",
+		TokenName:    "default2",
+		KeyringType:  "keyring2",
+		AuthTokenId:  "at_0987654321",
+	}
+	require.NoError(t, r.AddPersona(ctx, p2))
+
+	ts := []*targets.Target{
+		{
+			Id:                "ttcp_1",
+			Name:              "name1",
+			Address:           "address1",
+			Type:              "tcp",
+			SessionMaxSeconds: 111,
+		},
+		{
+			Id:                "ttcp_2",
+			Name:              "name2",
+			Address:           "address2",
+			Type:              "tcp",
+			SessionMaxSeconds: 222,
+		},
+		{
+			Id:                "ttcp_3",
+			Name:              "name3",
+			Address:           "address3",
+			Type:              "tcp",
+			SessionMaxSeconds: 333,
+		},
+	}
+	require.NoError(t, r.RefreshTargets(ctx, p, ts))
+
+	t.Run("wrong persona gets no targets", func(t *testing.T) {
+		l, err := r.QueryTargets(ctx, p2, query)
+		assert.NoError(t, err)
+		assert.Empty(t, l)
+	})
+	t.Run("correct persona gets targets", func(t *testing.T) {
+		l, err := r.QueryTargets(ctx, p, query)
+		assert.NoError(t, err)
+		assert.Len(t, l, 2)
+		assert.ElementsMatch(t, l, ts[0:2])
+	})
+}
+
 func TestRepository_SaveError(t *testing.T) {
 	ctx := context.Background()
 	s, err := Open(ctx, WithDebug(true))
