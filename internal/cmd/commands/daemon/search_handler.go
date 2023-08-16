@@ -53,6 +53,9 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.
 		boundaryAddr := r.URL.Query().Get(boundaryAddrKey)
 
 		switch {
+		case resource == "":
+			writeError(w, "resource is a required field but was empty", http.StatusBadRequest)
+			return
 		case resource != "targets":
 			writeError(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
 			return
