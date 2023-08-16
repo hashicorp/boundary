@@ -689,6 +689,31 @@
             "path": "api-clients/commands/server"
           },
           {
+            "title": "users",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/users"
+              },
+              {
+                "title": "add-accounts",
+                "path": "api-clients/commands/users/add-accounts"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/users/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/users/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/users/list"
+              }
+            ]
+          },
+          {
             "title": "workers",
             "routes": [
               {
