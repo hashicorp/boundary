@@ -15,7 +15,7 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/go-ps"
