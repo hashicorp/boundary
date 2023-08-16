@@ -18,7 +18,7 @@ docker run \
     -e "BOUNDARY_LICENSE=$TEST_BOUNDARY_LICENSE" \
     -e "SKIP_CHOWN=true" \
     --cap-add IPC_LOCK \
-    --mount type=bind,src=$SOURCE,dst=/boundary/ \
-    --network $TEST_NETWORK_NAME \
+    -v "$CONFIG:/boundary/boundary-config.hcl" \
+    --network $TEST_DATABASE_NETWORK \
     $TEST_BOUNDARY_IMAGE \
     boundary database init -config /boundary/boundary-config.hcl -format json

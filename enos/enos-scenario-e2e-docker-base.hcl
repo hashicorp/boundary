@@ -22,6 +22,8 @@ scenario "e2e_docker_base" {
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
 
+    network_cluster = "e2e_cluster"
+
     build_path = {
       "local" = "/tmp",
       "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
@@ -44,6 +46,9 @@ scenario "e2e_docker_base" {
 
   step "create_docker_network" {
     module = module.docker_network
+    variables {
+      network_name = local.network_cluster
+    }
   }
 
   step "create_boundary_database" {
@@ -52,7 +57,7 @@ scenario "e2e_docker_base" {
     ]
     variables {
       image_name   = "${var.docker_mirror}/library/postgres:latest"
-      network_name = step.create_docker_network.network_name
+      network_name = [local.network_cluster]
     }
     module = module.docker_postgres
   }
@@ -75,7 +80,8 @@ scenario "e2e_docker_base" {
     ]
     variables {
       image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
-      network_name     = step.create_docker_network.network_name
+      network_name     = [local.network_cluster]
+      database_network = local.network_cluster
       postgres_address = step.create_boundary_database.address
       boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
     }
@@ -88,7 +94,7 @@ scenario "e2e_docker_base" {
     ]
     variables {
       image_name            = "${var.docker_mirror}/linuxserver/openssh-server:latest"
-      network_name          = step.create_docker_network.network_name
+      network_name          = [local.network_cluster]
       private_key_file_path = local.aws_ssh_private_key_path
     }
   }
