@@ -687,6 +687,51 @@
           {
             "title": "server",
             "path": "api-clients/commands/server"
+          },
+          {
+            "title": "workers",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/workers"
+              },
+              {
+                "title": "add-worker-tags",
+                "path": "api-clients/commands/workers/add-worker-tags"
+              },
+              {
+                "title": "certificate-authority",
+                "path": "api-clients/commands/workers/certificate-authority"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/workers/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/workers/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/workers/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/workers/read"
+              },
+              {
+                "title": "remove-worker-tags",
+                "path": "api-clients/commands/workers/remove-worker-tags"
+              },
+              {
+                "title": "set-worker-tags",
+                "path": "api-clients/commands/workers/set-worker-tags"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/workers/update"
+              }
+            ]
           }
         ]
       },
