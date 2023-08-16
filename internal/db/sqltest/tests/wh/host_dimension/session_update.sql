@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: BUSL-1.1
+-- SPDX-License-Identifier: MPL-2.0
 
 -- session_update tests the wh_host_dimesion when
 -- a session is inserted and then updated.

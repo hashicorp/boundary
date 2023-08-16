@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: BUSL-1.1
+-- SPDX-License-Identifier: MPL-2.0
 
 -- recording_channel_ssh tests the following triggers:
 --    insert_recording_channel_subtype

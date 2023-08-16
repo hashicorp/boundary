@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 # For this scenario to work, add the following line to /etc/hosts
 # 127.0.0.1 localhost boundary
@@ -18,14 +18,9 @@ scenario "e2e_docker_base" {
   locals {
     aws_ssh_private_key_path   = abspath(var.aws_ssh_private_key_path)
     local_boundary_dir         = abspath(var.local_boundary_dir)
-    local_boundary_src_dir     = abspath(var.local_boundary_src_dir)
     boundary_docker_image_file = abspath(var.boundary_docker_image_file)
     license_path               = abspath(var.boundary_license_path != null ? var.boundary_license_path : joinpath(path.root, "./support/boundary.hclic"))
 
-    build_path = {
-      "local" = "/tmp",
-      "crt"   = var.crt_bundle_path == null ? null : abspath(var.crt_bundle_path)
-    }
     tags = merge({
       "Project Name" : var.project_name
       "Project" : "Enos",
@@ -37,8 +32,7 @@ scenario "e2e_docker_base" {
     module = matrix.builder == "crt" ? module.build_boundary_docker_crt : module.build_boundary_docker_local
 
     variables {
-      path           = matrix.builder == "crt" ? local.boundary_docker_image_file : ""
-      cli_build_path = local.build_path[matrix.builder]
+      path = matrix.builder == "crt" ? local.boundary_docker_image_file : "/tmp/boundary_docker_image.tar"
     }
   }
 
@@ -94,27 +88,29 @@ scenario "e2e_docker_base" {
   }
 
   step "run_e2e_test" {
-    module = module.test_e2e_docker
+    module = module.test_e2e
     depends_on = [
       step.create_boundary,
       step.create_host,
+      step.create_boundary_database
     ]
+
     variables {
       test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base"
-      docker_mirror            = var.docker_mirror
-      network_name             = step.create_docker_network.network_name
-      go_version               = var.go_version
       debug_no_run             = var.e2e_debug_no_run
       alb_boundary_api_addr    = step.create_boundary.address
       auth_method_id           = step.create_boundary.auth_method_id
       auth_login_name          = step.create_boundary.login_name
       auth_password            = step.create_boundary.password
-      local_boundary_dir       = step.build_boundary_docker_image.cli_zip_path
-      local_boundary_src_dir   = local.local_boundary_src_dir
+      local_boundary_dir       = local.local_boundary_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
       target_ip                = step.create_host.address
       target_port              = step.create_host.port
       target_user              = "ubuntu"
     }
+  }
+
+  output "test_results" {
+    value = step.run_e2e_test.test_results
   }
 }

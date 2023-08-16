@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 terraform {
   required_providers {
@@ -133,11 +133,7 @@ variable "worker_tags" {
 }
 variable "test_timeout" {
   type    = string
-  default = "15m"
-}
-variable "boundary_license" {
-  type    = string
-  default = ""
+  default = "10m"
 }
 
 locals {
@@ -153,7 +149,6 @@ resource "enos_local_exec" "run_e2e_test" {
   environment = {
     E2E_TESTS                     = "true",
     BOUNDARY_ADDR                 = var.alb_boundary_api_addr,
-    BOUNDARY_LICENSE              = var.boundary_license,
     E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id,
     E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name,
     E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password,
@@ -161,7 +156,6 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_SSH_USER                  = var.target_user,
     E2E_SSH_PORT                  = var.target_port,
     E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path,
-    E2E_SSH_CA_KEY                = "",
     VAULT_ADDR                    = local.vault_addr,
     VAULT_TOKEN                   = var.vault_root_token,
     E2E_VAULT_ADDR                = local.vault_addr_internal,

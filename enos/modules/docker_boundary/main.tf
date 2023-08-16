@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 terraform {
   required_providers {
@@ -130,7 +130,7 @@ resource "enos_local_exec" "check_health" {
 }
 
 output "address" {
-  value = "http://${var.container_name}:9200"
+  value = "http://0.0.0.0:9200"
 }
 
 output "auth_method_id" {

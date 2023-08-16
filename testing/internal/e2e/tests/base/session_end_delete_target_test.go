@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package base_test
 
@@ -59,7 +59,7 @@ func TestCliSessionEndWhenTargetIsDeleted(t *testing.T) {
 	})
 	boundary.SetAccountToUserCli(t, ctx, newUserId, newAccountId)
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
+	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newUserId)
 
 	// Connect to target to create a session

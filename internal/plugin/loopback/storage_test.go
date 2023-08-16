@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package loopback
 
@@ -63,7 +63,7 @@ func TestLoopbackOnCreateStorageBucket(t *testing.T) {
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing attributes",
+			name: "missing secrets",
 			request: &plgpb.OnCreateStorageBucketRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
@@ -77,11 +77,6 @@ func TestLoopbackOnCreateStorageBucket(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "bucket_dne",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.NotFound,
@@ -92,39 +87,16 @@ func TestLoopbackOnCreateStorageBucket(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_err",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.PermissionDenied,
 		},
 		{
-			name: "valid without credentials",
-			request: &plgpb.OnCreateStorageBucketRequest{
-				Bucket: &storagebuckets.StorageBucket{
-					BucketName: "aws_s3_mock",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "valid with credentials",
+			name: "valid credentials",
 			request: &plgpb.OnCreateStorageBucketRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 		},
@@ -192,10 +164,11 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing attributes",
+			name: "missing secrets",
 			request: &plgpb.OnUpdateStorageBucketRequest{
 				NewBucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
 				},
 			},
 			expectedErr: codes.InvalidArgument,
@@ -206,11 +179,6 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 				NewBucket: &storagebuckets.StorageBucket{
 					BucketName: "bucket_dne",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 				Persisted: persisted,
 			},
@@ -222,40 +190,17 @@ func TestLoopbackOnUpdateStorageBucket(t *testing.T) {
 				NewBucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_err",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 				Persisted: persisted,
 			},
 			expectedErr: codes.PermissionDenied,
 		},
 		{
-			name: "valid without credentials",
-			request: &plgpb.OnUpdateStorageBucketRequest{
-				NewBucket: &storagebuckets.StorageBucket{
-					BucketName: "aws_s3_mock",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "valid with credentials",
+			name: "valid credentials",
 			request: &plgpb.OnUpdateStorageBucketRequest{
 				NewBucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 				Persisted: persisted,
 			},
@@ -314,38 +259,21 @@ func TestLoopbackOnDeleteStorageBucket(t *testing.T) {
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing attributes",
+			name: "missing secrets",
 			request: &plgpb.OnDeleteStorageBucketRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
+					Secrets:    secrets,
 				},
 			},
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "valid without credentials",
-			request: &plgpb.OnDeleteStorageBucketRequest{
-				Bucket: &storagebuckets.StorageBucket{
-					BucketName: "aws_s3_mock",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "valid with credentials",
+			name: "valid credentials",
 			request: &plgpb.OnDeleteStorageBucketRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 				Persisted: persisted,
 			},
@@ -408,7 +336,7 @@ func TestLoopbackValidatePermissions(t *testing.T) {
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing attributes",
+			name: "missing secrets",
 			request: &plgpb.ValidatePermissionsRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
@@ -422,11 +350,6 @@ func TestLoopbackValidatePermissions(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "bucket_dne",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.NotFound,
@@ -437,39 +360,16 @@ func TestLoopbackValidatePermissions(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_err",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.PermissionDenied,
 		},
 		{
-			name: "valid without credentials",
-			request: &plgpb.ValidatePermissionsRequest{
-				Bucket: &storagebuckets.StorageBucket{
-					BucketName: "aws_s3_mock",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "valid with credentials",
+			name: "valid credentials",
 			request: &plgpb.ValidatePermissionsRequest{
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 		},
@@ -543,9 +443,8 @@ func TestLoopbackHeadObject(t *testing.T) {
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing attributes",
+			name: "missing secrets",
 			request: &plgpb.HeadObjectRequest{
-				Key: "mock_object",
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 				},
@@ -558,11 +457,6 @@ func TestLoopbackHeadObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.InvalidArgument,
@@ -574,11 +468,6 @@ func TestLoopbackHeadObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "invalid_bucket",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.NotFound,
@@ -590,11 +479,6 @@ func TestLoopbackHeadObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.NotFound,
@@ -606,29 +490,9 @@ func TestLoopbackHeadObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_err",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.PermissionDenied,
-		},
-		{
-			name: "head retrieved without secrets",
-			request: &plgpb.HeadObjectRequest{
-				Key: "mock_object",
-				Bucket: &storagebuckets.StorageBucket{
-					BucketName: "aws_s3_mock",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
-				},
-			},
-			expectedObj: mockStorageMapData["aws_s3_mock"]["mock_object"],
 		},
 		{
 			name: "head retrieved",
@@ -637,11 +501,6 @@ func TestLoopbackHeadObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedObj: mockStorageMapData["aws_s3_mock"]["mock_object"],
@@ -719,9 +578,8 @@ func TestLoopbackGetObject(t *testing.T) {
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing attributes",
+			name: "missing secrets",
 			request: &plgpb.GetObjectRequest{
-				Key: "mock_object",
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 				},
@@ -734,11 +592,6 @@ func TestLoopbackGetObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.InvalidArgument,
@@ -750,11 +603,6 @@ func TestLoopbackGetObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "invalid_bucket",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.NotFound,
@@ -766,11 +614,6 @@ func TestLoopbackGetObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.NotFound,
@@ -782,11 +625,6 @@ func TestLoopbackGetObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_err",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.PermissionDenied,
@@ -798,28 +636,8 @@ func TestLoopbackGetObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 				ChunkSize: 3,
-			},
-			expectedObj: mockStorageMapData["aws_s3_mock"]["mock_object"],
-		},
-		{
-			name: "object retrieved without secrets",
-			request: &plgpb.GetObjectRequest{
-				Key: "mock_object",
-				Bucket: &storagebuckets.StorageBucket{
-					BucketName: "aws_s3_mock",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
-				},
 			},
 			expectedObj: mockStorageMapData["aws_s3_mock"]["mock_object"],
 		},
@@ -830,11 +648,6 @@ func TestLoopbackGetObject(t *testing.T) {
 				Bucket: &storagebuckets.StorageBucket{
 					BucketName: "aws_s3_mock",
 					Secrets:    secrets,
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedObj: mockStorageMapData["aws_s3_mock"]["mock_object"],
@@ -920,19 +733,17 @@ func TestLoopbackPutObject(t *testing.T) {
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing attributes",
-
+			name: "missing-bucket-name",
+			request: &plgpb.PutObjectRequest{
+				Bucket: &storagebuckets.StorageBucket{},
+			},
 			expectedErr: codes.InvalidArgument,
 		},
 		{
-			name: "missing-bucket-name",
+			name: "missing-secrets",
 			request: &plgpb.PutObjectRequest{
 				Bucket: &storagebuckets.StorageBucket{
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
+					BucketName: "object_store",
 				},
 			},
 			expectedErr: codes.InvalidArgument,
@@ -947,11 +758,6 @@ func TestLoopbackPutObject(t *testing.T) {
 							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
 					},
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 			},
 			expectedErr: codes.InvalidArgument,
@@ -964,11 +770,6 @@ func TestLoopbackPutObject(t *testing.T) {
 					Secrets: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
-						},
-					},
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
 						},
 					},
 				},
@@ -986,11 +787,6 @@ func TestLoopbackPutObject(t *testing.T) {
 							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
 					},
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 				Key:  "test-file",
 				Path: path.Join(td, "test-file"),
@@ -1005,11 +801,6 @@ func TestLoopbackPutObject(t *testing.T) {
 					Secrets: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
-						},
-					},
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
 						},
 					},
 				},
@@ -1033,11 +824,6 @@ func TestLoopbackPutObject(t *testing.T) {
 							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
 					},
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 				Key:  "test-bucket-not-found",
 				Path: path.Join(td, "test-bucket-not-found"),
@@ -1059,11 +845,6 @@ func TestLoopbackPutObject(t *testing.T) {
 							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
 					},
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 				Key:  "mock_object",
 				Path: path.Join(td, "test-bucket-not-found"),
@@ -1083,11 +864,6 @@ func TestLoopbackPutObject(t *testing.T) {
 					Secrets: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
-						},
-					},
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
 						},
 					},
 				},
@@ -1112,11 +888,6 @@ func TestLoopbackPutObject(t *testing.T) {
 							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
 						},
 					},
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
 				},
 				Key:  "foo/bar/zoo/mocked_object",
 				Path: path.Join(td, "test-valid-object-dir-in-key"),
@@ -1133,32 +904,6 @@ func TestLoopbackPutObject(t *testing.T) {
 			expectedContent: "TEST OBJ WITH DIR IN KEY!",
 		},
 		{
-			name: "valid object without credentials",
-			request: &plgpb.PutObjectRequest{
-				Bucket: &storagebuckets.StorageBucket{
-					BucketName:   "object_store",
-					BucketPrefix: "/filtered/",
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
-						},
-					},
-				},
-				Key:  "mocked_object_no_credentials",
-				Path: path.Join(td, "test-valid-without-credentials"),
-			},
-			file: func() *os.File {
-				file, err := os.Create(path.Join(td, "test-valid-without-credentials"))
-				require.NoError(err)
-				n, err := file.WriteString("TEST OBJ WITH NO CREDENTIALS!")
-				require.NoError(err)
-				require.Equal(len("TEST OBJ WITH NO CREDENTIALS!"), n)
-				require.NoError(file.Close())
-				return file
-			}(),
-			expectedContent: "TEST OBJ WITH NO CREDENTIALS!",
-		},
-		{
 			name: "valid object w/ prefix",
 			request: &plgpb.PutObjectRequest{
 				Bucket: &storagebuckets.StorageBucket{
@@ -1167,11 +912,6 @@ func TestLoopbackPutObject(t *testing.T) {
 					Secrets: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
 							"SECRET_KEY_ID": structpb.NewStringValue("secret_key_id"),
-						},
-					},
-					Attributes: &structpb.Struct{
-						Fields: map[string]*structpb.Value{
-							"endpoint": structpb.NewStringValue("0.0.0.0"),
 						},
 					},
 				},
@@ -1244,18 +984,12 @@ func TestLoopbackStoragePlugin(t *testing.T) {
 			"SECRET_ACCESS_KEY": structpb.NewStringValue("secret_access_key"),
 		},
 	}
-	attributes := &structpb.Struct{
-		Fields: map[string]*structpb.Value{
-			"endpoint": structpb.NewStringValue("0.0.0.0"),
-		},
-	}
 
 	objectData := "THIS IS A MOCKED OBJECT"
 	bucket := &storagebuckets.StorageBucket{
 		BucketName:   "aws_s3_mock",
 		BucketPrefix: "/filtered/path/",
 		Secrets:      secrets,
-		Attributes:   attributes,
 	}
 
 	file, err := os.Create(path.Join(td, "test-put-object"))

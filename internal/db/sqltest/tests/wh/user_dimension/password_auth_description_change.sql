@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: BUSL-1.1
+-- SPDX-License-Identifier: MPL-2.0
 
 -- password_auth_description_change tests the wh_user_dimesion when
 -- sessions are created using the password auth method

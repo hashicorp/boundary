@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: BUSL-1.1
+-- SPDX-License-Identifier: MPL-2.0
 
 -- test the upsert network address dimension function
 begin;
