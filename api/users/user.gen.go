@@ -413,8 +413,8 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*User
 	}
 	// Finally, sort the results again since in-place updates and deletes
 	// may have shuffled items.
-	slices.SortFunc(target.Items, func(i, j *User) bool {
-		return i.UpdatedTime.Before(j.UpdatedTime)
+	slices.SortFunc(target.Items, func(i, j *User) int {
+		return i.UpdatedTime.Compare(j.UpdatedTime)
 	})
 	return target, nil
 }

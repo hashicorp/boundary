@@ -251,8 +251,8 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Sess
 	}
 	// Finally, sort the results again since in-place updates and deletes
 	// may have shuffled items.
-	slices.SortFunc(target.Items, func(i, j *SessionRecording) bool {
-		return i.UpdatedTime.Before(j.UpdatedTime)
+	slices.SortFunc(target.Items, func(i, j *SessionRecording) int {
+		return i.UpdatedTime.Compare(j.UpdatedTime)
 	})
 	return target, nil
 }

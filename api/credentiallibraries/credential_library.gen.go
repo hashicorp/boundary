@@ -416,8 +416,8 @@ func (c *Client) List(ctx context.Context, credentialStoreId string, opt ...Opti
 	}
 	// Finally, sort the results again since in-place updates and deletes
 	// may have shuffled items.
-	slices.SortFunc(target.Items, func(i, j *CredentialLibrary) bool {
-		return i.UpdatedTime.Before(j.UpdatedTime)
+	slices.SortFunc(target.Items, func(i, j *CredentialLibrary) int {
+		return i.UpdatedTime.Compare(j.UpdatedTime)
 	})
 	return target, nil
 }

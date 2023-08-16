@@ -301,8 +301,8 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Auth
 	}
 	// Finally, sort the results again since in-place updates and deletes
 	// may have shuffled items.
-	slices.SortFunc(target.Items, func(i, j *AuthToken) bool {
-		return i.UpdatedTime.Before(j.UpdatedTime)
+	slices.SortFunc(target.Items, func(i, j *AuthToken) int {
+		return i.UpdatedTime.Compare(j.UpdatedTime)
 	})
 	return target, nil
 }
