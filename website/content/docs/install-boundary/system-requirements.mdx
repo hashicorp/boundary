@@ -108,15 +108,15 @@ If any of the default port mappings below do not meet your organization's requir
 
 \* In this scenario, the client connects directly to one worker, which then proxies the connection to the Boundary target.
 
-** Multi-hop session proxying occurs in three steps:
+** Multi-hop sessions use reverse proxy tunnels initiated by downstream workers connecting to upstream workers when the downstream worker starts.  The connection flow when a client requests to connect to a target that requires a multi-hop path can be broken down into four steps:
 
-  1. The client connects to an ingress worker.
-  1. The ingress worker connects to a downstream or egress worker using a reverse-proxied tunnel.
+1. The client connects to an ingress worker
+2. The ingress worker connects with the next-downstream or egress worker through that worker's established reverse-proxy tunnel
+    * This may repeat multiple times if there are multiple worker connections in the middle of the tunnel chain
+3. The final downstream egress worker connects to the Boundary target
+4. The client can now send data through the tunnel chain
 
-    When you proxy sessions through multiple workers, the upstream or client-side workers always connect to the downstream or target-side workers using reverse-proxied connections.
-    The downstream workers initiate the connections.
-
-  1. The final downstream egress worker connects to the Boundary target.
+A multi-hop worker acting as a downstream can initiate a tunnel to one or multiple upstream workers, specified in the `initial_upstreams` list in the worker configuration.
 
 ## Network traffic encryption
 
