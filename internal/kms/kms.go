@@ -500,8 +500,8 @@ keyLoop:
 		return false, errors.New(ctx, errors.KeyNotFound, op, "key version was not found in the scope")
 	}
 	// Sort versions just in case they aren't already sorted
-	slices.SortFunc(foundKey.Versions, func(i, j wrappingKms.KeyVersion) bool {
-		return i.Version < j.Version
+	slices.SortFunc(foundKey.Versions, func(i, j wrappingKms.KeyVersion) int {
+		return int(i.Version - j.Version)
 	})
 	if foundKey.Versions[len(foundKey.Versions)-1].Id == keyVersionId {
 		// Attempted to destroy currently active key
