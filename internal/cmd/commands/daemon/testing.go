@@ -85,8 +85,3 @@ func (s *TestServer) AddTargets(t *testing.T, p *cache.Persona, tars []*targets.
 	require.NoError(t, err)
 	require.NoError(t, r.RefreshTargets(ctx, p, tars))
 }
-
-// Shutdown shuts down the underlying cache server
-func (s *TestServer) Shutdown() {
-	s.shutdown()
-}

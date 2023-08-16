@@ -241,7 +241,4 @@ func TestSearch(t *testing.T) {
 		assert.NotNil(t, r)
 		assert.Len(t, r.Targets, 1)
 	})
-
-	srv.Shutdown()
-	wg.Wait()
 }
