@@ -29,8 +29,51 @@ $ boundary workers certificate-authority [options]
  # ...
 
 Subcommands:
-    read    Read the certificate authority used to authorize Boundary workers.
-    create  Reinitialize the certificate authority used to authorize Boundary workers.
+    read          Read the certificate authority used to authorize Boundary workers.
+    reinitialize  Reinitialize the certificate authority used to authorize Boundary workers.
 ```
 
 </CodeBlockConfig>
+
+### Usages by type
+
+You can read or reinitialize certificate authorities.
+
+<Tabs>
+<Tab heading="read">
+
+The `boundary workers certificate-authority read` command lets you read the certificate authority that is used to authorize Boundary workers.
+
+#### Usage
+
+```shell-session
+$ boundary workers certificate-authority read [options] [args]
+```
+
+#### Worker certificate authority options
+
+- `-scope-id=<string>` - Scope in which to read the certificate authority.
+The default scope is `global`.
+You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+
+</Tab>
+<Tab heading="reinitialize">
+
+The `boundary workers certificate-authority reinitialize` command lets you reinitialize the certificate authority that is used to authorize Boundary workers.
+
+#### Usage
+
+```shell-session
+$ boundary workers certificate-authority reinitialize [options] [args]
+```
+
+#### Worker certificate authority options
+
+- `-scope-id=<string>` - Scope in which to reinitialize the certificate authority.
+The default scope is `global`.
+You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+
+</Tab>
+</Tabs>
+
+@include 'cmd-option-note.mdx'
