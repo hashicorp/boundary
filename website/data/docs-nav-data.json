@@ -710,6 +710,22 @@
               {
                 "title": "list",
                 "path": "api-clients/commands/users/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/users/read"
+              },
+              {
+                "title": "remove-accounts",
+                "path": "api-clients/commands/users/remove-accounts"
+              },
+              {
+                "title": "set-accounts",
+                "path": "api-clients/commands/users/set-accounts"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/users/update"
               }
             ]
           },
