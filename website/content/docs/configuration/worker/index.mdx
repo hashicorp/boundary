@@ -39,6 +39,9 @@ Regardless of registration mechanism, the following fields are supported.
 worker {
   public_addr = "5.1.23.198"
 
+  # Local storage path required if session recording is enabled
+  recording_storage_path = "tmp/boundary/"
+
   # Mutually exclusive with hcp_boundary_cluster_id
   initial_upstreams = [
     "10.0.0.1",
@@ -81,6 +84,10 @@ worker {
   to connect to your HCP Boundary cluster rather than specifying
   `initial_upstreams`. This parameter is currently only valid for workers using the PKI
   registration method and for workers directly connected to HCP Boundary.
+
+- `recording_storage_path` - A path to the local storage for recorded sessions.
+   Session recordings are stored in the local storage while they are in progress.
+   When the session is complete, Boundary moves the local session recording to remote storage and deletes the local copy.
 
 - `tags` - A map of key-value pairs where values are an array of strings. Most
   commonly used for [filtering](/boundary/docs/concepts/filtering) targets a
@@ -160,6 +167,9 @@ worker {
   # Path for worker storage, assuming PKI registration. Must be unique across workers
   auth_storage_path="/boundary/demo-worker-1"
 
+  # Local storage path required if session recording is enabled
+  recording_storage_path = "tmp/boundary/"
+
   # Workers typically need to reach upstreams on :9201
   initial_upstreams = [
     "10.0.0.1",
@@ -197,3 +207,4 @@ Refer to the [Manage Multi-Hop Sessions with HCP Boundary](/boundary/tutorials/h
 [pki workers]: /boundary/docs/configuration/worker/pki-worker
 [target]: /boundary/docs/concepts/domain-model/targets
 [target worker filters]: /boundary/docs/concepts/filtering/worker-tags#target-worker-filtering
+[session recording]: /boundary/docs/configuration/session-recording
