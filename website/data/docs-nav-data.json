@@ -689,6 +689,47 @@
             "path": "api-clients/commands/server"
           },
           {
+            "title": "users",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/users"
+              },
+              {
+                "title": "add-accounts",
+                "path": "api-clients/commands/users/add-accounts"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/users/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/users/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/users/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/users/read"
+              },
+              {
+                "title": "remove-accounts",
+                "path": "api-clients/commands/users/remove-accounts"
+              },
+              {
+                "title": "set-accounts",
+                "path": "api-clients/commands/users/set-accounts"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/users/update"
+              }
+            ]
+          },
+          {
             "title": "workers",
             "routes": [
               {

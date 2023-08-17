@@ -1,0 +1,40 @@
+---
+layout: docs
+page_title: users set-accounts - Command
+description: |-
+  The "users set-accounts" command sets the complete set of associated acounts on a user.
+---
+
+# users set-accounts
+
+Command: `users set-accounts`
+
+The `users set-accounts` command lets you set a complete set of associated accounts on a user.
+
+## Example
+
+This example sets the accounts `a_0987654321` and `a_1234567890` on a user `u_1234567890`:
+
+```shell-session
+$ boundary users set-accounts -id u_1234567890 -account a_0987654321 -account a_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary users set-accounts [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `-account=<string>` - The accounts to add, remove, or set.
+You can specify an `-account=<string>` value multiple times.
+- `-id=<string>` - The ID of the user you want to set accounts for.
+- `-version=<int>` - The version of the user against which to perform an update operation.
+If you do not specify a version, the command automatically performs a check-and-set.
+
+@include 'cmd-option-note.mdx'
