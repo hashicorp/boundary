@@ -36,10 +36,12 @@ kms "aead" {
   key_id    = "global_root"
 }
 
+# This key_id needs to match the corresponding downstream worker's
+# "worker-auth" kms
 kms "aead" {
   purpose   = "worker-auth"
   aead_type = "aes-gcm"
-  key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+  key       = "OLFhJNbEb3umRjdhY15QKNEmNXokY1Iq"
   key_id    = "global_worker-auth"
 }
 
@@ -54,5 +56,5 @@ kms "aead" {
   purpose   = "bsr"
   aead_type = "aes-gcm"
   key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
-  key_id    = "global_recovery"
+  key_id    = "bsr_key"
 }

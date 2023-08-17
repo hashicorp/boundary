@@ -25,10 +25,12 @@ worker {
   recording_storage_path = "${recording_storage_path}"
 }
 
+# This key_id needs to match the corresponding upstream worker's
+# "downstream-worker-auth" kms
 kms "aead" {
   purpose   = "worker-auth"
   aead_type = "aes-gcm"
-  key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+  key       = "X+IJMVT6OnsrIR6G/9OTcJSX+lM9FSPN"
   key_id    = "downstream_worker-auth"
 }
 
