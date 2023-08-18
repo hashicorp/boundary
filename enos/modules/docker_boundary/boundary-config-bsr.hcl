@@ -11,12 +11,6 @@ controller {
   }
 }
 
-worker {
-  name        = "boundary-colocated-worker"
-  description = "A worker that runs alongside the controller in the same process"
-  address     = "boundary:9202"
-}
-
 listener "tcp" {
   address     = "boundary:9200"
   purpose     = "api"
@@ -26,12 +20,6 @@ listener "tcp" {
 listener "tcp" {
   address     = "boundary:9201"
   purpose     = "cluster"
-  tls_disable = true
-}
-
-listener "tcp" {
-  address     = "boundary:9202"
-  purpose     = "proxy"
   tls_disable = true
 }
 
@@ -64,20 +52,9 @@ kms "aead" {
   key_id    = "global_recovery"
 }
 
-events {
-  audit_enabled        = true
-  observations_enabled = true
-  sysevents_enabled    = true
-
-  sink "stderr" {
-    name        = "all-events"
-    description = "All events sent to stderr"
-    event_types = ["*"]
-    format      = "cloudevents-json"
-
-    deny_filters = [
-      "\"/data/request_info/method\" contains \"Status\"",
-      "\"/data/request_info/path\" contains \"/health\"",
-    ]
-  }
+kms "aead" {
+  purpose   = "bsr"
+  aead_type = "aes-gcm"
+  key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
+  key_id    = "bsr_key"
 }
