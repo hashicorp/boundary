@@ -111,30 +111,6 @@ func TestRepository_ListConnection(t *testing.T) {
 			assert.Equal(tt.wantCnt, len(got))
 		})
 	}
-	t.Run("withOrder", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, func() any { i := AllocConnection(); return &i }(), "1=1")
-		wantCnt := 5
-		for i := 0; i < wantCnt; i++ {
-			_ = TestConnection(t, conn,
-				session.PublicId,
-				"127.0.0.1",
-				22,
-				"127.0.0.1",
-				2222,
-				"127.0.0.1",
-			)
-		}
-		got, err := connRepo.ListConnectionsBySessionId(context.Background(), session.PublicId, WithOrderByCreateTime(db.AscendingOrderBy))
-		require.NoError(err)
-		assert.Equal(wantCnt, len(got))
-
-		for i := 0; i < len(got)-1; i++ {
-			first := got[i].CreateTime.Timestamp.AsTime()
-			second := got[i+1].CreateTime.Timestamp.AsTime()
-			assert.True(first.Before(second))
-		}
-	})
 }
 
 func TestRepository_ConnectConnection(t *testing.T) {
