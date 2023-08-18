@@ -158,6 +158,10 @@ module "docker_openssh_server_ca_key" {
   source = "./modules/docker_openssh_server_ca_key"
 }
 
+module "docker_worker" {
+  source = "./modules/docker_worker"
+}
+
 module "docker_network" {
   source = "./modules/docker_network"
 }

@@ -20,8 +20,8 @@ variable "image_name" {
   default     = "docker.mirror.hashicorp.services/library/postgres:latest"
 }
 variable "network_name" {
-  description = "Name of Docker Network"
-  type        = string
+  description = "Name of Docker Networks to join"
+  type        = list(string)
 }
 variable "container_name" {
   description = "Name of Docker Container"
@@ -74,8 +74,11 @@ resource "docker_container" "postgres" {
   }
   wait     = true
   must_run = true
-  networks_advanced {
-    name = var.network_name
+  dynamic "networks_advanced" {
+    for_each = var.network_name
+    content {
+      name = networks_advanced.value
+    }
   }
 }
 
