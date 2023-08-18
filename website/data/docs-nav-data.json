@@ -689,6 +689,63 @@
             "path": "api-clients/commands/server"
           },
           {
+            "title": "targets",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/targets"
+              },
+              {
+                "title": "add-credential-sources",
+                "path": "api-clients/commands/targets/add-credential-sources"
+              },
+              {
+                "title": "add-host-sources",
+                "path": "api-clients/commands/targets/add-host-sources"
+              },
+              {
+                "title": "authorize-session",
+                "path": "api-clients/commands/targets/authorize-session"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/targets/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/targets/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/targets/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/targets/read"
+              },
+              {
+                "title": "remove-credential-source",
+                "path": "api-clients/commands/targets/remove-credential-sources"
+              },
+              {
+                "title": "remove-host-sources",
+                "path": "api-clients/commands/targets/remove-host-sources"
+              },
+              {
+                "title": "set-credential-sources",
+                "path": "api-clients/commands/targets/set-credential-sources"
+              },
+              {
+                "title": "set-host-sources",
+                "path": "api-clients/commands/targets/set-host-sources"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/targets/update"
+              }
+            ]
+          },
+          {
             "title": "users",
             "routes": [
               {

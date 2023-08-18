@@ -1,22 +1,23 @@
 ---
 layout: docs
-page_title: workers list - Command
+page_title: targets list - Command
 description: |-
-  The "workers list" command lets you list Boundary workers in a scope or resource.
+  The "targets list" command lists the targets within a given scope or resource.
 ---
 
-# workers list
+# targets list
 
-Command: `boundary workers list`
+Command: `targets list`
 
-The `boundary workers list` command lets you list the Boundary workers in a scope or resource.
+The `targets list` command lets you list the targets within a given scope or resource.
 
 ## Example
 
-This example lists workers:
+This example lists all targets within the scope `s_1234567890`.
+The `recursive` option means Boundary runs the operation recursively on any child scopes, if applicable:
 
 ```shell-session
-$ boundary workers list
+$ boundary targets list -scope-id s_1234567890 -recursive
 ```
 
 ## Usage
@@ -24,7 +25,7 @@ $ boundary workers list
 <CodeBlockConfig hideClipboard>
 
 ```shell-session
-$ boundary workers list [options] [args]
+$ boundary targets list [options] [args]
 ```
 
 </CodeBlockConfig>
@@ -37,7 +38,7 @@ We recommend that you use single quotes, because the filters contain double quot
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
 - `recursive` - If you set this value, Boundary runs the list operation recursively on any child scopes, if the type supports it.
 The default value is `false`.
-- `scope-id=<string>` - The scope from which to list the workers.
+- `scope-id=<string>` - The scope from which to list the targets.
 The default value is `global`.
 You can also specify this value using the BOUNDARY_SCOPE_ID environment variable.
 
