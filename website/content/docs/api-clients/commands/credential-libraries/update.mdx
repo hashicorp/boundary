@@ -1,0 +1,206 @@
+---
+layout: doc
+page_title: credential-libraries update - Command
+description: |-
+  The "credential-libraries update" command allows Boundary admin to update a credential library resource.
+---
+
+# credential-libraries update
+
+Command: `boundary credential-libraries update`
+
+The `credential-libraries update` command updates operations on Boundary
+credential library resources. update operations on Boundary credential library
+resources.
+
+## Examples
+
+Update an existing Vault credential library to point to a new Vault secrets
+engine path.
+
+```shell-session
+$ boundary credential-libraries update vault-generic \
+    -id csvlt_5fvkRjCjou \
+    -vault-path "database/creds/db-mysql"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Credential Library information:
+  Created Time:          Fri, 18 Aug 2023 16:22:29 PDT
+  Credential Store ID:   csvlt_5fvkRjCjou
+  ID:                    clvlt_QYnQPAjA24
+  Name:                  northwind dba
+  Type:                  vault-generic
+  Updated Time:          Fri, 18 Aug 2023 20:04:27 PDT
+  Version:               2
+
+  Scope:
+    ID:                  p_tnqESc86qE
+    Name:                db-project
+    Parent Scope ID:     o_4VUR6ZATqW
+    Type:                project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Attributes:
+    HTTP Method:         GET
+    Path:                database/creds/db-mysql
+```
+
+</CodeBlockConfig>
+
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-libraries update vault [options] [args]
+```
+
+</CodeBlockConfig>
+
+The available types are `vault-generic` and `vault-ssh-certificate`.
+
+<Note>
+
+A credential library type, `vault` is deprecated, so use `vault-generic` type
+instead.
+
+</Note>
+
+### Command options
+
+- `-description` `(string: "")` - Description to set on the credential library.
+
+- `-id` `(string: "")` - ID of the credential library on which to operate.
+
+- `-name` `(string: "")` - Name to set on the credential library.
+
+- `-version` `(int: 0)` - The version of the credential library against which to
+   perform an update operation. If not specified, the command will perform a
+   check-and-set automatically.
+
+#### Usages by type
+
+<Tabs>
+<Tab heading="Vault">
+
+Update a credential library of `vault-generic` type.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-libraries create vault-generic [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Vault credential library options
+
+The following are Vault credential library specific options in addition to the
+command options.
+
+- `-credential-mapping-override` `(bool: false)` - The credential mapping
+  override.
+
+- `-vault-http-method` `(string: "")` - The http method the library should use
+  when communicating with Vault.
+
+- `-vault-http-request-body` `(strinboundary credential-libraries update vault-ssh-certificate -id clvsclt_1234567890 -name devops -description "For DevOps usage": "")` - The http request body the library
+   uses to communicate with vault. This can be the value itself, refer to a file
+   on disk (`file://`) from which the value will be read, or an env var
+   (`env://`) from which the value will be read.
+
+- `-vault-path` `(string: "")` - The path in vault to request credentials from.
+
+
+#### Example
+
+```shell-session
+$ boundary credential-libraries update vault-generic \
+   -id clvlt_1234567890 \
+   -name devops \
+   -description "For DevOps usage"
+```
+
+</Tab>
+<Tab heading="Vault SSH certificate">
+
+Update a credential library of `vault-ssh-certificate` type.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-libraries update vault-ssh-certificate [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Vault SSH certificate credential library options
+
+The following are Vault SSH certificate credential library specific options in
+addition to the command options.
+
+- `-critical-option` `(bool: false)` - A key=value pair to add to the request's
+   critical-options map. This can also be a key value only which will set a JSON
+   null as the value. If a value is provided, the type is automatically
+   inferred. Use `-string-critical-option`, `-bool-critical-option`, or
+   `-num-critical-option` if the type needs to be overridden. Can be specified
+   multiple times. Supports sourcing values from files via "file://" and env
+   vars via "env://".
+
+- `-critical-options` `(string: "")` - A JSON map value to use as the entirety
+   of the request's critical-options map. Usually this will be sourced from a
+   file via "file://" syntax. Is exclusive with the other critical-option flags.
+
+- `-extension` `(bool: false)` - A key=value pair to add to the request's
+   extensions map. This can also be a key value only which will set a JSON null
+   as the value. If a value is provided, the type is automatically inferred. Use
+   `-string-extension`, `-bool-extension`, or `-num-extension` if the type needs to be
+   overridden. Can be specified multiple times. Supports sourcing values from
+   files via "file://" and env vars via "env://".
+
+- `-extensions` `(string: "")` - A JSON map value to use as the entirety of
+   the request's extensions map. Usually this will be sourced from a file via
+   "file://" syntax. Is exclusive with the other extension flags.
+
+- `-key-bits` `(string: "")` - The number of bits when generating the ssh
+   private key. Depends on key_type. If ed25519 this should not be set, or set
+   to 0, if ecdsa one of 256, 384, 521, if rsa one of 2048, 3072, 4096.
+
+- `-key-id` `(string: "")` - The key id that the created certificate should
+  have.
+
+- `-key-type` `(string: "")` - The key type for the generated ssh private key.
+   One of: ed25519, ecdsa, rsa.
+
+- `-ttl` `(string: "")` - The time-to-live for the generated certificate.
+
+- `-username` `(string: "")` - The username to use with the ssh certificate.
+
+- `-vault-path` `(string: "")` - The path in vault to request credentials from.
+
+
+#### Example
+
+```shell-session
+$ boundary credential-libraries update vault-ssh-certificate \
+   -id clvsclt_1234567890 \
+   -name devops \
+   -description "For DevOps usage"
+```
+
+</Tab>
+</Tabs>
+
+
+@include 'cmd-option-note.mdx'
