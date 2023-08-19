@@ -677,6 +677,35 @@
             ]
           },
           {
+            "title": "credential-libraries",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/credential-libraries"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/credential-libraries/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/credential-libraries/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/credential-libraries/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/credential-libraries/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/credential-libraries/update"
+              }
+            ]
+          },
+          {
             "title": "dev",
             "path": "api-clients/commands/dev"
           },
