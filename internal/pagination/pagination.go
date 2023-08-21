@@ -61,6 +61,10 @@ func ValidateRefreshToken(ctx context.Context, token *pbs.ListRefreshToken, gran
 	if token.GetCreatedTime().AsTime().After(time.Now()) {
 		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was created in the future")
 	}
+	// Tokens older than 30 days have expired
+	if token.GetCreatedTime().AsTime().Before(time.Now().AddDate(0, 0, -30)) {
+		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was expired")
+	}
 	if token.GetResourceType() != resourceType {
 		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was not created for this resource type")
 	}
