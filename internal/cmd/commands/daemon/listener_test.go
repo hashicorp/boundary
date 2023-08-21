@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"sync"
 	"testing"
 
@@ -19,9 +18,7 @@ import (
 
 func TestListenDialCommunication(t *testing.T) {
 	ctx := context.Background()
-	path, err := os.MkdirTemp("", "*")
-	require.NoError(t, err)
-
+	path := t.TempDir()
 	socketListener, err := listener(ctx, path)
 
 	require.NoError(t, err)

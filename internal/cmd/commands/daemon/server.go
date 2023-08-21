@@ -28,7 +28,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/mitchellh/cli"
 )
 
 type commander interface {
@@ -42,8 +41,6 @@ type cacheServer struct {
 
 	infoKeys []string
 	info     map[string]string
-	logger   hclog.Logger
-	eventer  *event.Eventer
 
 	storeUrl string
 	store    *cache.Store
@@ -61,7 +58,6 @@ type serverConfig struct {
 	flagStoreDebug         bool
 	flagLogLevel           string
 	flagLogFormat          string
-	ui                     cli.Ui
 }
 
 func (sc *serverConfig) validate() error {
@@ -84,7 +80,7 @@ func newServer(ctx context.Context, conf serverConfig) (*cacheServer, error) {
 	return s, nil
 }
 
-func (s *cacheServer) shutdown() error {
+func (s *cacheServer) shutdown(ctx context.Context) error {
 	const op = "daemon.(cacheServer).Shutdown"
 
 	var shutdownErr error
@@ -100,11 +96,9 @@ func (s *cacheServer) shutdown() error {
 			return
 		}
 		s.tickerWg.Wait()
-		if s.eventer != nil {
-			if err := s.eventer.FlushNodes(context.Background()); err != nil {
-				shutdownErr = fmt.Errorf("error flushing eventer nodes: %w", err)
-				return
-			}
+		if err := event.SysEventer().FlushNodes(context.Background()); err != nil {
+			shutdownErr = fmt.Errorf("error flushing eventer nodes: %w", err)
+			return
 		}
 		return
 	})
@@ -133,7 +127,7 @@ func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) 
 	s.info["Database URL"] = s.storeUrl
 	s.infoKeys = append(s.infoKeys, "Database URL")
 
-	s.printInfo(s.conf.ui)
+	//s.printInfo(ctx)
 
 	{
 		// If we have a persona information already, add it to the repository immediately so it can start
@@ -191,8 +185,16 @@ func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) 
 	}
 	mux.HandleFunc("/v1/personas", personaFn)
 
+	// logger, err := event.SysEventer().StandardLogger(ctx, "daemon.serve: ", event.ErrorType)
+	// if err != nil {
+	// 	return errors.Wrap(ctx, err, op)
+	// }
 	s.httpSrv = &http.Server{
 		Handler: mux,
+		// ErrorLog: logger,
+		// BaseContext: func(net.Listener) context.Context {
+		// 	return ctx
+		// },
 	}
 	if err = s.httpSrv.Serve(l); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 		event.WriteSysEvent(ctx, op, "error closing server", "err", err.Error())
@@ -203,7 +205,8 @@ func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) 
 	return nil
 }
 
-func (s *cacheServer) printInfo(ui cli.Ui) {
+func (s *cacheServer) printInfo(ctx context.Context) {
+	const op = "daemon.(cacheServer).printInfo"
 	verInfo := version.Get()
 	if verInfo.Version != "" {
 		s.infoKeys = append(s.infoKeys, "version")
@@ -228,18 +231,21 @@ func (s *cacheServer) printInfo(ui cli.Ui) {
 		}
 	}
 	sort.Strings(s.infoKeys)
-	ui.Output("==> cache configuration:\n")
+
+	output := []string{}
+	output = append(output, "==> cache configuration:\n")
 	for _, k := range s.infoKeys {
-		ui.Output(fmt.Sprintf(
+		output = append(output, fmt.Sprintf(
 			"%s%s: %s",
 			strings.Repeat(" ", padding-len(k)),
 			strings.Title(k),
 			s.info[k]))
 	}
-	ui.Output("")
+	output = append(output, "")
 
 	// Output the header that the server has started
-	ui.Output("==> cache started! Log data will stream in below:\n")
+	output = append(output, "==> cache started! Log data will stream in below:\n")
+	event.WriteSysEvent(ctx, op, strings.Join(output, "\n"))
 }
 
 func (s *cacheServer) setupLogging(ctx context.Context, w io.Writer) error {
@@ -247,6 +253,16 @@ func (s *cacheServer) setupLogging(ctx context.Context, w io.Writer) error {
 	switch {
 	case util.IsNil(w):
 		return errors.New(ctx, errors.InvalidParameter, op, "log writer is nil")
+	}
+	w = gatedwriter.NewWriter(w)
+
+	logFormat := logging.StandardFormat
+	if s.conf.flagLogFormat != "" {
+		var err error
+		logFormat, err = logging.ParseLogFormat(s.conf.flagLogFormat)
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
 	}
 
 	logLevel := strings.ToLower(strings.TrimSpace(s.conf.flagLogLevel))
@@ -271,24 +287,14 @@ func (s *cacheServer) setupLogging(ctx context.Context, w io.Writer) error {
 	default:
 		return fmt.Errorf("%s: unknown log level: %s", op, logLevel)
 	}
-
-	logFormat := logging.StandardFormat
-	if s.conf.flagLogFormat != "" {
-		var err error
-		logFormat, err = logging.ParseLogFormat(s.conf.flagLogFormat)
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-	}
-
 	var logLock sync.Mutex
-	s.logger = hclog.New(&hclog.LoggerOptions{
-		Output:     gatedwriter.NewWriter(w),
+	logger := hclog.New(&hclog.LoggerOptions{
+		Output:     w,
 		Level:      level,
 		JSONFormat: logFormat == logging.JSONFormat,
 		Mutex:      &logLock,
 	})
-	if err := event.InitFallbackLogger(s.logger); err != nil {
+	if err := event.InitFallbackLogger(logger); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -298,24 +304,24 @@ func (s *cacheServer) setupLogging(ctx context.Context, w io.Writer) error {
 	s.infoKeys = append(s.infoKeys, "log format")
 
 	var err error
-	if s.eventer, err = setupEventing(ctx, s.logger, &logLock, logFormat); err != nil {
+	if err = setupEventing(ctx, logger, &logLock, logFormat, w); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
 	return nil
 }
 
-func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *sync.Mutex, logFormat logging.LogFormat) (*event.Eventer, error) {
+func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *sync.Mutex, logFormat logging.LogFormat, w io.Writer) error {
 	const op = "daemon.setupEventing"
 	switch {
 	case util.IsNil(logger):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "logger is missing")
+		return errors.New(ctx, errors.InvalidParameter, op, "logger is missing")
 	case util.IsNil(serializationLock):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "serialization lock is missing")
+		return errors.New(ctx, errors.InvalidParameter, op, "serialization lock is missing")
 	}
 	serverName, err := os.Hostname()
 	if err != nil {
-		return nil, fmt.Errorf("%s: unable to determine hostname: %w", op, err)
+		return fmt.Errorf("%s: unable to determine hostname: %w", op, err)
 	}
 	serverName = fmt.Sprintf("%s/%s", serverName, "cache")
 
@@ -327,7 +333,7 @@ func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *
 		sinkFormat = event.TextHclogSinkFormat
 	}
 
-	cfg := &event.EventerConfig{
+	cfg := event.EventerConfig{
 		AuditEnabled:        false,
 		ObservationsEnabled: true,
 		SysEventsEnabled:    true,
@@ -336,23 +342,17 @@ func setupEventing(ctx context.Context, logger hclog.Logger, serializationLock *
 				Name:       "default",
 				EventTypes: []event.Type{event.EveryType},
 				Format:     sinkFormat,
-				Type:       event.StderrSink,
+				Type:       event.WriterSink,
+				WriterConfig: &event.WriterSinkTypeConfig{
+					Writer: w,
+				},
 			},
 		},
 	}
-
-	e, err := event.NewEventer(
-		logger,
-		serializationLock,
-		serverName,
-		*cfg)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create eventer"))
+	if err := event.InitSysEventer(logger, serializationLock, serverName, event.WithEventerConfig(&cfg)); err != nil {
+		return fmt.Errorf("%s: unable to initialize system eventer: %w", op, err)
 	}
-	if err := event.InitSysEventer(logger, serializationLock, serverName, event.WithEventer(e)); err != nil {
-		return nil, fmt.Errorf("%s: unable to initialize system eventer: %w", op, err)
-	}
-	return e, nil
+	return nil
 }
 
 func openStore(ctx context.Context, url string, flagDebugStore bool) (*cache.Store, string, error) {

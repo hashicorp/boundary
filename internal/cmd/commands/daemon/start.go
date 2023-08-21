@@ -5,17 +5,33 @@ package daemon
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/mitchellh/cli"
+	"github.com/mitchellh/go-homedir"
 	"github.com/posener/complete"
 )
 
 const DefaultRefreshIntervalSeconds = 5 * 60
+
+const (
+	dotDirname  = ".boundary"
+	pidFileName = "cache.pid"
+	logFileName = "cache.log"
+
+	// Mark of process as having been started in the background
+	backgroundEnvName = "_BOUNDARY_DAEMON_BACKGROUND"
+	backgroundEnvVal  = "1"
+)
 
 var (
 	_ cli.Command             = (*StartCommand)(nil)
@@ -36,6 +52,7 @@ type StartCommand struct {
 	flagLogLevel               string
 	flagLogFormat              string
 	flagStoreDebug             bool
+	flagBackground             bool
 }
 
 func (c *StartCommand) Synopsis() string {
@@ -93,6 +110,12 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Usage:   `Turn on store debugging`,
 		Aliases: []string{"d"},
 	})
+	f.BoolVar(&base.BoolVar{
+		Name:    "background",
+		Target:  &c.flagBackground,
+		Default: false,
+		Usage:   `Turn on store debugging`,
+	})
 
 	return set
 }
@@ -107,9 +130,7 @@ func (c *StartCommand) AutocompleteFlags() complete.Flags {
 
 func (c *StartCommand) Run(args []string) int {
 	const op = "daemon.(StartCommand).Run"
-	ctx, cancel := context.WithCancel(c.Context)
-	c.Context = ctx
-	c.ContextCancel = cancel
+	ctx := c.Context
 
 	var err error
 	f := c.Flags()
@@ -118,6 +139,28 @@ func (c *StartCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
+	dotDir, err := DefaultDotDirectory(ctx)
+	if err != nil {
+		return base.CommandCliError
+	}
+
+	continueRun, cleanup, err := makeBackground(ctx, dotDir, c.flagBackground)
+	defer func() {
+		if cleanup != nil {
+			cleanup()
+		}
+	}()
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+	if !continueRun {
+		return base.CommandSuccess
+	}
+
+	// TODO: print something out for the spawner to consume in case they can easily
+	// report if the daemon started or not.
+
 	cfg := serverConfig{
 		contextCancel:          c.ContextCancel,
 		refreshIntervalSeconds: c.flagRefreshIntervalSeconds,
@@ -125,38 +168,107 @@ func (c *StartCommand) Run(args []string) int {
 		flagStoreDebug:         c.flagStoreDebug,
 		flagLogLevel:           c.flagLogLevel,
 		flagLogFormat:          c.flagLogFormat,
-		ui:                     c.UI,
 	}
+
 	srv, err := newServer(c.Context, cfg)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
 	}
-
-	if err := c.start(c.Context, c, srv); err != nil {
+	l, err := listener(ctx, dotDir)
+	if err != nil {
 		c.PrintCliError(err)
-		return base.CommandUserError
+		return base.CommandCliError
+	}
+
+	logFilePath := filepath.Join(dotDir, logFileName)
+	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+	defer logFile.Close()
+	if _, err := logFile.Seek(0, io.SeekEnd); err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+	if err := srv.setupLogging(ctx, io.MultiWriter(os.Stderr, logFile)); err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+
+	var srvErr error
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		srvErr = srv.serve(ctx, c, l)
+	}()
+
+	// This is a blocking call. We rely on the c.ShutdownCh to cancel this
+	// context when sigterm or sigint is received.
+	<-ctx.Done()
+	if err := srv.shutdown(ctx); err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+	wg.Wait()
+	if srvErr != nil {
+		c.PrintCliError(srvErr)
+		return base.CommandCliError
 	}
 
 	return base.CommandSuccess
 }
 
-func (c *StartCommand) StartCacheInBackground(ctx context.Context) error {
-	const op = "daemon.(StartCommand).StartCacheInBackground"
-
-	cancelCtx, cancelFunc := context.WithCancel(ctx)
-
-	cfg := serverConfig{
-		contextCancel:          cancelFunc,
-		refreshIntervalSeconds: DefaultRefreshIntervalSeconds,
-		ui:                     c.UI,
-	}
-	srv, err := newServer(ctx, cfg)
+// DefaultDotDirectory returns the default path to the boundary dot directory.
+func DefaultDotDirectory(ctx context.Context) (string, error) {
+	const op = "daemon.DefaultDotDirectory"
+	homeDir, err := homedir.Dir()
 	if err != nil {
-		return errors.Wrap(ctx, err, op)
+		return "", errors.Wrap(ctx, err, op)
 	}
-	if err := c.start(cancelCtx, c, srv); err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	return nil
+	return filepath.Join(homeDir, dotDirname), nil
 }
+
+func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) (bool, pidCleanup, error) {
+	const op = "daemon.makeBackground"
+
+	pidPath := filepath.Join(dotDir, pidFileName)
+	if running, err := pidFileInUse(ctx, pidPath); running {
+		return false, noopPidCleanup, errors.New(ctx, errors.Conflict, op, "daemon already running")
+	} else if err != nil {
+		return false, noopPidCleanup, errors.Wrap(ctx, err, op)
+	}
+
+	if !runBackgroundFlag || os.Getenv(backgroundEnvName) == backgroundEnvVal {
+		// We are either already running in the background or background was
+		// not requested. Write the pid file and continue.
+		cleanup, err := writePidFile(ctx, pidPath)
+		if err != nil {
+			return false, noopPidCleanup, errors.Wrap(ctx, err, op)
+		}
+		return true, cleanup, nil
+	}
+
+	absPath, err := os.Executable()
+	if err != nil {
+		return false, noopPidCleanup, errors.Wrap(ctx, err, op)
+	}
+
+	env := os.Environ()
+	env = append(env, fmt.Sprintf("%s=%s", backgroundEnvName, backgroundEnvVal))
+	cmd := exec.Command(absPath, "daemon", "start")
+	cmd.Env = env
+	if err = cmd.Start(); err != nil {
+		return false, noopPidCleanup, errors.Wrap(ctx, err, op)
+	}
+
+	// TODO: Read the output from the child process for a brief time
+	// to see if we can identify any errors that might arise.
+	return false, noopPidCleanup, nil
+}
+
+type pidCleanup func() error
+
+var noopPidCleanup pidCleanup = func() error { return nil }

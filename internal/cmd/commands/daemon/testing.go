@@ -4,21 +4,19 @@
 package daemon
 
 import (
-	"bufio"
-	"bytes"
 	"context"
+	"io"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
-	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 )
 
 type TestServer struct {
 	*cacheServer
-	socketDir string
+	socketDir          string
+	setupLoggingCalled bool
 }
 
 // NewTestServer creates a test cache server using reasonable defaults for
@@ -26,19 +24,6 @@ type TestServer struct {
 func NewTestServer(t *testing.T, opt ...Option) *TestServer {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
-	buf := bytes.NewBuffer(nil)
-
-	ui := &base.BoundaryUI{
-		Ui: &cli.ColoredUi{
-			ErrorColor: cli.UiColorRed,
-			WarnColor:  cli.UiColorYellow,
-			Ui: &cli.BasicUi{
-				Reader: bufio.NewReader(buf),
-				Writer: buf,
-			},
-		},
-		Format: "table",
-	}
 
 	opts, err := getOpts(opt...)
 	require.NoError(t, err)
@@ -46,7 +31,6 @@ func NewTestServer(t *testing.T, opt ...Option) *TestServer {
 	cfg := serverConfig{
 		contextCancel:          cancel,
 		refreshIntervalSeconds: DefaultRefreshIntervalSeconds,
-		ui:                     ui,
 		flagStoreDebug:         opts.withDebug,
 	}
 
@@ -70,8 +54,13 @@ func (s *TestServer) Serve(t *testing.T, cmd commander) error {
 	l, err := listener(ctx, s.socketDir)
 	require.NoError(t, err)
 
+	if !s.setupLoggingCalled {
+		// logging wasn't called so discard all output from the server.
+		require.NoError(t, s.cacheServer.setupLogging(ctx, io.Discard))
+	}
+
 	t.Cleanup(func() {
-		s.shutdown()
+		s.shutdown(ctx)
 	})
 	return s.cacheServer.serve(ctx, cmd, l)
 }
@@ -84,4 +73,13 @@ func (s *TestServer) AddTargets(t *testing.T, p *cache.Persona, tars []*targets.
 	r, err := cache.NewRepository(ctx, s.cacheServer.store)
 	require.NoError(t, err)
 	require.NoError(t, r.RefreshTargets(ctx, p, tars))
+}
+
+func (s *TestServer) setupLogging(ctx context.Context, w io.Writer) error {
+	s.setupLoggingCalled = true
+	return s.cacheServer.setupLogging(ctx, w)
+}
+
+func (s *TestServer) SetupLogging(ctx context.Context, w io.Writer) error {
+	return s.setupLogging(ctx, w)
 }

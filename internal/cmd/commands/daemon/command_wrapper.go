@@ -53,22 +53,17 @@ func (w *CommandWrapper) Run(args []string) int {
 // startDaemon attempts to start a daemon and returns true if we have attempted to start
 // the daemon and either it was successful or it was already running.
 func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
-	args := os.Args
-
-	binary, err := exec.LookPath(args[0])
-	if binary == "" && err != nil {
-		binary, err = exec.LookPath("." + string(os.PathSeparator) + args[0])
-		if err != nil {
-			w.ui.Error(fmt.Sprintf("unable to find boundary binary for daemon startup: %s", err.Error()))
-			return false
-		}
+	cmdName, err := os.Executable()
+	if err != nil {
+		w.ui.Error(fmt.Sprintf("unable to find boundary binary for daemon startup: %s", err.Error()))
+		return false
 	}
-	args[0] = binary
 
 	var stdErr bytes.Buffer
-	cmd := exec.Command(args[0], "daemon", "start")
+	cmd := exec.Command(cmdName, "daemon", "start", "-background")
 	cmd.Stderr = &stdErr
 	cmd.Env = os.Environ()
+
 	// We use Run here instead of Start because the command spawns off a subprocess and returns.
 	// We do not want to send the request to add a persona to the cache until we know the daemon
 	// has started up.
