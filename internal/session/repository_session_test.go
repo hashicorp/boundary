@@ -190,27 +190,6 @@ func TestRepository_ListSession(t *testing.T) {
 			}
 		})
 	}
-	t.Run("withOrder", func(t *testing.T) {
-		assert, require := assert.New(t), require.New(t)
-		db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
-		wantCnt := 5
-		for i := 0; i < wantCnt; i++ {
-			_ = TestSession(t, conn, wrapper, composedOf)
-		}
-
-		repo, err := NewRepository(ctx, rw, rw, kms, WithLimit(testLimit), WithPermissions(listPerms))
-		require.NoError(err)
-
-		got, err := repo.ListSessions(context.Background(), WithOrderByCreateTime(db.AscendingOrderBy))
-		require.NoError(err)
-		assert.Equal(wantCnt, len(got))
-
-		for i := 0; i < len(got)-1; i++ {
-			first := got[i].CreateTime.Timestamp.AsTime()
-			second := got[i+1].CreateTime.Timestamp.AsTime()
-			assert.True(first.Before(second))
-		}
-	})
 	t.Run("onlySelf", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
@@ -237,6 +216,44 @@ func TestRepository_ListSession(t *testing.T) {
 		require.NoError(err)
 		assert.Equal(1, len(got))
 		assert.Equal(s.UserId, got[0].UserId)
+	})
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		db.TestDeleteWhere(t, conn, func() any { i := AllocSession(); return &i }(), "1=1")
+		wantCnt := 5
+		for i := 0; i < wantCnt; i++ {
+			_ = TestSession(t, conn, wrapper, composedOf)
+		}
+
+		repo, err := NewRepository(ctx, rw, rw, kms, WithPermissions(listPerms))
+		require.NoError(err)
+		page1, err := repo.ListSessions(context.Background(), WithLimit(2))
+		require.NoError(err)
+		require.Len(page1, 2)
+		page2, err := repo.ListSessions(context.Background(), WithLimit(2), WithStartPageAfterItem(page1[1]))
+		require.NoError(err)
+		require.Len(page2, 2)
+		for _, item := range page1 {
+			assert.NotEqual(item.PublicId, page2[0].PublicId)
+			assert.NotEqual(item.PublicId, page2[1].PublicId)
+		}
+		page3, err := repo.ListSessions(context.Background(), WithLimit(2), WithStartPageAfterItem(page2[1]))
+		require.NoError(err)
+		require.Len(page3, 1)
+		for _, item := range append(page1, page2...) {
+			assert.NotEqual(item.PublicId, page3[0].PublicId)
+		}
+		page4, err := repo.ListSessions(context.Background(), WithLimit(2), WithStartPageAfterItem(page3[0]))
+		require.NoError(err)
+		require.Empty(page4)
+
+		// Update the first session and check that it gets listed subsequently
+		page1[0], err = repo.CancelSession(ctx, page1[0].PublicId, page1[0].Version)
+		require.NoError(err)
+		page5, err := repo.ListSessions(context.Background(), WithLimit(2), WithStartPageAfterItem(page3[0]))
+		require.NoError(err)
+		require.Len(page5, 1)
+		require.Equal(page5[0].PublicId, page1[0].PublicId)
 	})
 }
 
@@ -1853,4 +1870,66 @@ func TestRepository_CheckIfNoLongerActive(t *testing.T) {
 		gotIds = append(gotIds, g.SessionId)
 	}
 	assert.ElementsMatch(t, gotIds, []string{unrecognizedSessionId, terminatedSession.PublicId, cancelingSess.PublicId})
+}
+
+func TestListDeletedIds(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsRepo := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kmsRepo)
+	require.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+
+	// Delete a session
+	s := TestDefaultSession(t, conn, wrapper, iamRepo)
+	_, err = repo.DeleteSession(ctx, s.PublicId)
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, err = repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{s.PublicId}, deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+}
+
+func TestGetTotalItems(t *testing.T) {
+	t.Parallel()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kmsRepo := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	ctx := context.Background()
+	repo, err := NewRepository(ctx, rw, rw, kmsRepo)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.GetTotalItems(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create a session, expect 1 entries
+	s := TestDefaultSession(t, conn, wrapper, iamRepo)
+	numItems, err = repo.GetTotalItems(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the session, expect 0 again
+	_, err = repo.DeleteSession(ctx, s.PublicId)
+	require.NoError(t, err)
+	numItems, err = repo.GetTotalItems(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }
