@@ -689,6 +689,19 @@
             "path": "api-clients/commands/server"
           },
           {
+            "title": "storage-buckets",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/storage-buckets"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/storage-buckets/create"
+              }
+            ]
+          },
+          {
             "title": "users",
             "routes": [
               {
