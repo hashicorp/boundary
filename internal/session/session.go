@@ -571,3 +571,13 @@ type sessionListView struct {
 func (s *sessionListView) TableName() string {
 	return "session_list"
 }
+
+type deletedSession struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedSession) TableName() string {
+	return "session_deleted"
+}
