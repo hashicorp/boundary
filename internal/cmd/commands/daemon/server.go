@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
@@ -96,11 +95,11 @@ func (s *cacheServer) shutdown(ctx context.Context) error {
 			return
 		}
 		s.tickerWg.Wait()
+		event.WriteSysEvent(context.Background(), op, "daemon server shutdown")
 		if err := event.SysEventer().FlushNodes(context.Background()); err != nil {
 			shutdownErr = fmt.Errorf("error flushing eventer nodes: %w", err)
 			return
 		}
-		return
 	})
 	return shutdownErr
 }
@@ -127,7 +126,7 @@ func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) 
 	s.info["Database URL"] = s.storeUrl
 	s.infoKeys = append(s.infoKeys, "Database URL")
 
-	//s.printInfo(ctx)
+	s.printInfo(ctx)
 
 	{
 		// If we have a persona information already, add it to the repository immediately so it can start
@@ -185,16 +184,16 @@ func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) 
 	}
 	mux.HandleFunc("/v1/personas", personaFn)
 
-	// logger, err := event.SysEventer().StandardLogger(ctx, "daemon.serve: ", event.ErrorType)
-	// if err != nil {
-	// 	return errors.Wrap(ctx, err, op)
-	// }
+	logger, err := event.SysEventer().StandardLogger(ctx, "daemon.serve: ", event.ErrorType)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 	s.httpSrv = &http.Server{
-		Handler: mux,
-		// ErrorLog: logger,
-		// BaseContext: func(net.Listener) context.Context {
-		// 	return ctx
-		// },
+		Handler:  mux,
+		ErrorLog: logger,
+		BaseContext: func(net.Listener) context.Context {
+			return ctx
+		},
 	}
 	if err = s.httpSrv.Serve(l); err != nil && err != http.ErrServerClosed && !errors.Is(err, net.ErrClosed) {
 		event.WriteSysEvent(ctx, op, "error closing server", "err", err.Error())
@@ -254,7 +253,6 @@ func (s *cacheServer) setupLogging(ctx context.Context, w io.Writer) error {
 	case util.IsNil(w):
 		return errors.New(ctx, errors.InvalidParameter, op, "log writer is nil")
 	}
-	w = gatedwriter.NewWriter(w)
 
 	logFormat := logging.StandardFormat
 	if s.conf.flagLogFormat != "" {

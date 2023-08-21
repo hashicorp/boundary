@@ -144,7 +144,7 @@ func (c *StartCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	continueRun, cleanup, err := makeBackground(ctx, dotDir, c.flagBackground)
+	continueRun, writers, cleanup, err := makeBackground(ctx, dotDir, c.flagBackground)
 	defer func() {
 		if cleanup != nil {
 			cleanup()
@@ -192,7 +192,9 @@ func (c *StartCommand) Run(args []string) int {
 		c.PrintCliError(err)
 		return base.CommandCliError
 	}
-	if err := srv.setupLogging(ctx, io.MultiWriter(os.Stderr, logFile)); err != nil {
+	writers = append(writers, logFile)
+
+	if err := srv.setupLogging(ctx, io.MultiWriter(writers...)); err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
 	}
@@ -231,14 +233,19 @@ func DefaultDotDirectory(ctx context.Context) (string, error) {
 	return filepath.Join(homeDir, dotDirname), nil
 }
 
-func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) (bool, pidCleanup, error) {
+func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) (bool, []io.Writer, pidCleanup, error) {
 	const op = "daemon.makeBackground"
 
+	writers := []io.Writer{}
 	pidPath := filepath.Join(dotDir, pidFileName)
 	if running, err := pidFileInUse(ctx, pidPath); running {
-		return false, noopPidCleanup, errors.New(ctx, errors.Conflict, op, "daemon already running")
+		return false, writers, noopPidCleanup, errors.New(ctx, errors.Conflict, op, "daemon already running")
 	} else if err != nil {
-		return false, noopPidCleanup, errors.Wrap(ctx, err, op)
+		return false, writers, noopPidCleanup, errors.Wrap(ctx, err, op)
+	}
+
+	if !runBackgroundFlag && os.Getenv(backgroundEnvName) != backgroundEnvVal {
+		writers = append(writers, os.Stderr)
 	}
 
 	if !runBackgroundFlag || os.Getenv(backgroundEnvName) == backgroundEnvVal {
@@ -246,14 +253,14 @@ func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) 
 		// not requested. Write the pid file and continue.
 		cleanup, err := writePidFile(ctx, pidPath)
 		if err != nil {
-			return false, noopPidCleanup, errors.Wrap(ctx, err, op)
+			return false, writers, noopPidCleanup, errors.Wrap(ctx, err, op)
 		}
-		return true, cleanup, nil
+		return true, writers, cleanup, nil
 	}
 
 	absPath, err := os.Executable()
 	if err != nil {
-		return false, noopPidCleanup, errors.Wrap(ctx, err, op)
+		return false, writers, noopPidCleanup, errors.Wrap(ctx, err, op)
 	}
 
 	env := os.Environ()
@@ -261,12 +268,12 @@ func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) 
 	cmd := exec.Command(absPath, "daemon", "start")
 	cmd.Env = env
 	if err = cmd.Start(); err != nil {
-		return false, noopPidCleanup, errors.Wrap(ctx, err, op)
+		return false, writers, noopPidCleanup, errors.Wrap(ctx, err, op)
 	}
 
 	// TODO: Read the output from the child process for a brief time
 	// to see if we can identify any errors that might arise.
-	return false, noopPidCleanup, nil
+	return false, writers, noopPidCleanup, nil
 }
 
 type pidCleanup func() error
