@@ -28,7 +28,6 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withLimit                    int
-	withOrderByCreateTime        db.OrderBy
 	withProjectIds               []string
 	withUserId                   string
 	withExpirationTime           *timestamp.Timestamp
@@ -40,6 +39,7 @@ type options struct {
 	withPermissions              *perms.UserPermissions
 	withIgnoreDecryptionFailures bool
 	withRandomReader             io.Reader
+	withStartPageAfterItem       *Session
 }
 
 func getDefaultOptions() options {
@@ -55,14 +55,6 @@ func getDefaultOptions() options {
 func WithLimit(limit int) Option {
 	return func(o *options) {
 		o.withLimit = limit
-	}
-}
-
-// WithOrderByCreateTime provides an option to specify ordering by the
-// CreateTime field.
-func WithOrderByCreateTime(orderBy db.OrderBy) Option {
-	return func(o *options) {
-		o.withOrderByCreateTime = orderBy
 	}
 }
 
@@ -147,5 +139,14 @@ func WithIgnoreDecryptionFailures(ignoreFailures bool) Option {
 func WithRandomReader(rand io.Reader) Option {
 	return func(o *options) {
 		o.withRandomReader = rand
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item. Only
+// PublicId and UpdateTime must be set in the item.
+func WithStartPageAfterItem(item *Session) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }
