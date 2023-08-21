@@ -290,12 +290,31 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	if len(where) > 0 {
 		whereClause = " where (" + strings.Join(where, " or ") + ")"
 		if !opts.withTerminated {
-			whereClause += "and termination_reason is null"
+			whereClause += " and termination_reason is null"
 		}
 	} else {
 		if !opts.withTerminated {
 			whereClause = "where termination_reason is null"
 		}
+	}
+
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "order by update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use public_id as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.UpdateTime),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.PublicId),
+		)
+		whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
 	}
 
 	var limit string
@@ -306,15 +325,6 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	default:
 		// non-zero signals an override of the default limit for the repo.
 		limit = fmt.Sprintf("limit %d", opts.withLimit)
-	}
-	var withOrder string
-	switch opts.withOrderByCreateTime {
-	case db.AscendingOrderBy:
-		withOrder = "order by create_time asc"
-	case db.DescendingOrderBy:
-		fallthrough
-	default:
-		withOrder = "order by create_time"
 	}
 
 	q := sessionList
@@ -339,6 +349,36 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return sessions, nil
+}
+
+// ListDeletedIds lists the public IDs of any sessions deleted since the timestamp provided.
+func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
+	const op = "session.(Repository).ListDeletedIds"
+	var deletedSessions []*deletedSession
+	if err := r.reader.SearchWhere(ctx, &deletedSessions, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted sessions"))
+	}
+	var sessionIds []string
+	for _, sess := range deletedSessions {
+		sessionIds = append(sessionIds, sess.PublicId)
+	}
+	return sessionIds, nil
+}
+
+// GetTotalItems returns the total number of items in the session table.
+func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
+	const op = "session.(Repository).GetTotalItems"
+	rows, err := r.reader.Query(ctx, "select count(*) from session", nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
+		}
+	}
+	return count, nil
 }
 
 // DeleteSession will delete a session from the repository.
