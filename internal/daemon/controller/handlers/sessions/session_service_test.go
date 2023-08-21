@@ -138,7 +138,7 @@ func TestGetSession(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn)
+			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn, 1000)
 			require.NoError(err, "Couldn't create new session service.")
 
 			requestInfo := authpb.RequestInfo{
@@ -225,7 +225,7 @@ func TestList_Self(t *testing.T) {
 		Endpoint:    "tcp://127.0.0.1:22",
 	})
 
-	s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn)
+	s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new session service.")
 
 	cases := []struct {
@@ -266,6 +266,31 @@ func TestList_Self(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.count, len(got.GetItems()), got.GetItems())
 		})
+	}
+}
+
+func sessionToProto(sess *session.Session, scope *iam.Scope, at *authtoken.AuthToken) *pb.Session {
+	status, states := convertStates(sess.States)
+	return &pb.Session{
+		Id:                sess.GetPublicId(),
+		ScopeId:           scope.GetPublicId(),
+		AuthTokenId:       at.GetPublicId(),
+		UserId:            at.GetIamUserId(),
+		TargetId:          sess.TargetId,
+		Endpoint:          sess.Endpoint,
+		HostSetId:         sess.HostSetId,
+		HostId:            sess.HostId,
+		Version:           sess.Version,
+		UpdatedTime:       sess.UpdateTime.GetTimestamp(),
+		CreatedTime:       sess.CreateTime.GetTimestamp(),
+		ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
+		Scope:             &scopes.ScopeInfo{Id: scope.GetPublicId(), Type: scope.Type, ParentScopeId: scope.GetParentId()},
+		Status:            status,
+		States:            states,
+		Certificate:       sess.Certificate,
+		Type:              tcp.Subtype.String(),
+		AuthorizedActions: testAuthorizedActions,
+		TerminationReason: sess.TerminationReason,
 	}
 }
 
@@ -333,29 +358,7 @@ func TestList(t *testing.T) {
 
 		session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
 
-		status, states := convertStates(sess.States)
-
-		firstOrgSession := &pb.Session{
-			Id:                sess.GetPublicId(),
-			ScopeId:           pWithSessions.GetPublicId(),
-			AuthTokenId:       at.GetPublicId(),
-			UserId:            at.GetIamUserId(),
-			TargetId:          sess.TargetId,
-			Endpoint:          sess.Endpoint,
-			HostSetId:         sess.HostSetId,
-			HostId:            sess.HostId,
-			Version:           sess.Version,
-			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
-			CreatedTime:       sess.CreateTime.GetTimestamp(),
-			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-			Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
-			Status:            status,
-			States:            states,
-			Certificate:       sess.Certificate,
-			Type:              tcp.Subtype.String(),
-			AuthorizedActions: testAuthorizedActions,
-			Connections:       []*pb.Connection{}, // connections should not be returned for list
-		}
+		firstOrgSession := sessionToProto(sess, pWithSessions, at)
 		wantSession = append(wantSession, firstOrgSession)
 		wantAllSessions = append(wantAllSessions, firstOrgSession)
 
@@ -373,29 +376,7 @@ func TestList(t *testing.T) {
 
 		session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
 
-		status, states = convertStates(sess.States)
-
-		otherOrgSession := &pb.Session{
-			Id:                sess.GetPublicId(),
-			ScopeId:           pWithSessions.GetPublicId(),
-			AuthTokenId:       at.GetPublicId(),
-			UserId:            at.GetIamUserId(),
-			TargetId:          sess.TargetId,
-			Endpoint:          sess.Endpoint,
-			HostSetId:         sess.HostSetId,
-			HostId:            sess.HostId,
-			Version:           sess.Version,
-			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
-			CreatedTime:       sess.CreateTime.GetTimestamp(),
-			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-			Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
-			Status:            status,
-			States:            states,
-			Certificate:       sess.Certificate,
-			Type:              tcp.Subtype.String(),
-			AuthorizedActions: testAuthorizedActions,
-			Connections:       []*pb.Connection{}, // connections should not be returned for list
-		}
+		otherOrgSession := sessionToProto(sess, pWithSessions, at)
 		wantOtherSession = append(wantOtherSession, otherOrgSession)
 
 		wantAllSessions = append(wantAllSessions, otherOrgSession)
@@ -420,30 +401,8 @@ func TestList(t *testing.T) {
 
 		sess, _, err = sessRepo.LookupSession(ctx, sess.PublicId)
 		require.NoError(t, err)
-		status, states := convertStates(sess.States)
 
-		expected := &pb.Session{
-			Id:                sess.GetPublicId(),
-			ScopeId:           pWithSessions.GetPublicId(),
-			AuthTokenId:       at.GetPublicId(),
-			UserId:            at.GetIamUserId(),
-			TargetId:          sess.TargetId,
-			Endpoint:          sess.Endpoint,
-			HostSetId:         sess.HostSetId,
-			HostId:            sess.HostId,
-			Version:           sess.Version,
-			UpdatedTime:       sess.UpdateTime.GetTimestamp(),
-			CreatedTime:       sess.CreateTime.GetTimestamp(),
-			ExpirationTime:    sess.ExpirationTime.GetTimestamp(),
-			Scope:             &scopes.ScopeInfo{Id: pWithSessions.GetPublicId(), Type: scope.Project.String(), ParentScopeId: o.GetPublicId()},
-			Status:            status,
-			States:            states,
-			Certificate:       sess.Certificate,
-			TerminationReason: sess.TerminationReason,
-			Type:              tcp.Subtype.String(),
-			AuthorizedActions: testAuthorizedActions,
-			Connections:       []*pb.Connection{}, // connections should not be returned for list
-		}
+		expected := sessionToProto(sess, pWithSessions, at)
 
 		wantIncludeTerminatedSessions = append(wantIncludeTerminatedSessions, expected)
 	}
@@ -457,37 +416,66 @@ func TestList(t *testing.T) {
 		err           error
 	}{
 		{
-			name:          "List Many Sessions",
-			req:           &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
-			res:           &pbs.ListSessionsResponse{Items: wantSession},
+			name: "List Many Sessions",
+			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
+			res: &pbs.ListSessionsResponse{
+				Items:        wantSession,
+				EstItemCount: 21,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
 			allSessionRes: &pbs.ListSessionsResponse{Items: wantSession},
 		},
 		{
-			name:          "List Many Include Terminated",
-			req:           &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), IncludeTerminated: true},
-			res:           &pbs.ListSessionsResponse{Items: wantIncludeTerminatedSessions},
+			name: "List Many Include Terminated",
+			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), IncludeTerminated: true},
+			res: &pbs.ListSessionsResponse{
+				Items:        wantIncludeTerminatedSessions,
+				EstItemCount: 21,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
 			allSessionRes: &pbs.ListSessionsResponse{Items: wantIncludeTerminatedSessions},
 		},
 		{
-			name:          "List No Sessions",
-			req:           &pbs.ListSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
-			res:           &pbs.ListSessionsResponse{},
+			name: "List No Sessions",
+			req:  &pbs.ListSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
+			res: &pbs.ListSessionsResponse{
+				EstItemCount: 21,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
 			allSessionRes: &pbs.ListSessionsResponse{},
 		},
 		{
-			name:          "List Sessions Recursively",
-			req:           &pbs.ListSessionsRequest{ScopeId: scope.Global.String(), Recursive: true},
-			res:           &pbs.ListSessionsResponse{Items: wantSession},
+			name: "List Sessions Recursively",
+			req:  &pbs.ListSessionsRequest{ScopeId: scope.Global.String(), Recursive: true},
+			res: &pbs.ListSessionsResponse{
+				Items:        wantSession,
+				EstItemCount: 21,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			otherRes:      &pbs.ListSessionsResponse{Items: wantOtherSession},
 			allSessionRes: &pbs.ListSessionsResponse{Items: wantAllSessions},
 		},
 		{
-			name:          "Filter To Single Sessions",
-			req:           &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantSession[4].Id)},
-			res:           &pbs.ListSessionsResponse{Items: wantSession[4:5]},
+			name: "Filter To Single Sessions",
+			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantSession[4].Id)},
+			res: &pbs.ListSessionsResponse{
+				Items:        wantSession[4:5],
+				EstItemCount: 21,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
 			allSessionRes: &pbs.ListSessionsResponse{Items: wantSession[4:5]},
 		},
@@ -497,14 +485,25 @@ func TestList(t *testing.T) {
 				ScopeId: scope.Global.String(), Recursive: true,
 				Filter: fmt.Sprintf(`"/item/scope/id" matches "^%s"`, pWithSessions.GetPublicId()[:8]),
 			},
-			res:           &pbs.ListSessionsResponse{Items: wantSession},
+			res: &pbs.ListSessionsResponse{
+				Items:        wantSession,
+				EstItemCount: 21,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
 			allSessionRes: &pbs.ListSessionsResponse{Items: wantSession},
 		},
 		{
-			name:          "Filter To Nothing",
-			req:           &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: `"/item/id" == ""`},
-			res:           &pbs.ListSessionsResponse{},
+			name: "Filter To Nothing",
+			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: `"/item/id" == ""`},
+			res: &pbs.ListSessionsResponse{
+				EstItemCount: 21,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			otherRes:      &pbs.ListSessionsResponse{Items: []*pb.Session{}},
 			allSessionRes: &pbs.ListSessionsResponse{},
 		},
@@ -514,11 +513,23 @@ func TestList(t *testing.T) {
 			err:      handlers.InvalidArgumentErrorf("bad format", nil),
 			otherRes: &pbs.ListSessionsResponse{Items: []*pb.Session{}},
 		},
+		{
+			name: "Only first page",
+			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), PageSize: 5},
+			res: &pbs.ListSessionsResponse{
+				Items:        wantSession[0:5],
+				EstItemCount: 21,
+				ResponseType: "delta",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
+			otherRes: &pbs.ListSessionsResponse{Items: []*pb.Session{}},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			require, assert := require.New(t), assert.New(t)
-			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn)
+			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn, 1000)
 			require.NoError(err, "Couldn't create new session service.")
 
 			// Test without anon user
@@ -544,7 +555,15 @@ func TestList(t *testing.T) {
 					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
 				}
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			// Compare without comparing the refresh token
+			assert.Empty(
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "refresh_token"),
+				),
+			)
 
 			// Test with other user
 			otherRequestInfo := authpb.RequestInfo{
@@ -588,6 +607,242 @@ func TestList(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestListPagination(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
+	ctx := context.Background()
+
+	iamRepo := iam.TestRepo(t, conn, wrap)
+
+	rw := db.New(conn)
+
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	sessRepoFn := func(opt ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms, opt...)
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+
+	sessRepo, err := sessRepoFn()
+	require.NoError(err)
+
+	o, pWithSessions := iam.TestScopes(t, iamRepo)
+
+	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	uId := at.GetIamUserId()
+
+	hc := static.TestCatalogs(t, conn, pWithSessions.GetPublicId(), 1)[0]
+	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
+	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
+	static.TestSetMembers(t, conn, hs.GetPublicId(), []*static.Host{h})
+	tar := tcp.TestTarget(ctx, t, conn, pWithSessions.GetPublicId(), "test", target.WithHostSources([]string{hs.GetPublicId()}))
+
+	var allSessions []*pb.Session
+	for i := 0; i < 10; i++ {
+		sess := session.TestSession(t, conn, wrap, session.ComposedOf{
+			UserId:      uId,
+			HostId:      h.GetPublicId(),
+			TargetId:    tar.GetPublicId(),
+			HostSetId:   hs.GetPublicId(),
+			AuthTokenId: at.GetPublicId(),
+			ProjectId:   pWithSessions.GetPublicId(),
+			Endpoint:    "tcp://127.0.0.1:22",
+		})
+
+		session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
+		session := sessionToProto(sess, pWithSessions, at)
+		allSessions = append(allSessions, session)
+	}
+
+	s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn, 1000)
+	require.NoError(err, "Couldn't create new session service.")
+
+	// Test without anon user
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	// Start paginating, recursively
+	req := &pbs.ListSessionsRequest{
+		ScopeId:           "global",
+		Recursive:         true,
+		Filter:            "",
+		IncludeTerminated: false,
+		RefreshToken:      "",
+		PageSize:          2,
+	}
+	got, err := s.ListSessions(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListSessionsResponse{
+				Items:        allSessions[0:2],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request second page
+	req.RefreshToken = got.RefreshToken
+	got, err = s.ListSessions(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListSessionsResponse{
+				Items:        allSessions[2:4],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request rest of results
+	req.RefreshToken = got.RefreshToken
+	req.PageSize = 10
+	got, err = s.ListSessions(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 6)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListSessionsResponse{
+				Items:        allSessions[4:],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "refresh_token"),
+		),
+	)
+
+	// Create another session
+	sess := session.TestSession(t, conn, wrap, session.ComposedOf{
+		UserId:      uId,
+		HostId:      h.GetPublicId(),
+		TargetId:    tar.GetPublicId(),
+		HostSetId:   hs.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ProjectId:   pWithSessions.GetPublicId(),
+		Endpoint:    "tcp://127.0.0.1:22",
+	})
+	session.TestConnection(t, conn, sess.PublicId, "127.0.0.1", 22, "127.0.0.2", 23, "127.0.0.1")
+	newSession := sessionToProto(sess, pWithSessions, at)
+	allSessions = append(allSessions, newSession)
+
+	// Delete one of the other sessions
+	_, err = sessRepo.DeleteSession(ctx, allSessions[0].Id)
+	require.NoError(err)
+	deletedSession := allSessions[0]
+	allSessions = allSessions[1:]
+
+	// Request updated results
+	req.RefreshToken = got.RefreshToken
+	got, err = s.ListSessions(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListSessionsResponse{
+				Items:        []*pb.Session{newSession},
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should contain the deleted session
+				RemovedIds:   []string{deletedSession.Id},
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.RefreshToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, allSessions[len(allSessions)-2].Id, allSessions[len(allSessions)-1].Id)
+	got, err = s.ListSessions(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListSessionsResponse{
+				Items:        []*pb.Session{allSessions[len(allSessions)-2]},
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "refresh_token"),
+		),
+	)
+	req.RefreshToken = got.RefreshToken
+	// Get the second page
+	got, err = s.ListSessions(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListSessionsResponse{
+				Items:        []*pb.Session{allSessions[len(allSessions)-1]},
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListSessionsResponse{}, "refresh_token"),
+		),
+	)
 }
 
 func convertStates(in []*session.State) (string, []*pb.SessionState) {
@@ -712,7 +967,7 @@ func TestCancel(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn)
+			s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn, 1000)
 			require.NoError(err, "Couldn't create new session service.")
 
 			tc.req.Version = version
