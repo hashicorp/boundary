@@ -114,7 +114,7 @@ func TestMarshalRefreshToken(t *testing.T) {
 }
 
 func TestValidateRefreshToken(t *testing.T) {
-	oldTime := timestamppb.New(time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC))
+	fiveDaysAgo := timestamppb.New(time.Now().AddDate(0, 0, -5))
 	tests := []struct {
 		name          string
 		token         *pbs.ListRefreshToken
@@ -126,11 +126,11 @@ func TestValidateRefreshToken(t *testing.T) {
 		{
 			name: "valid token",
 			token: &pbs.ListRefreshToken{
-				CreatedTime:         oldTime,
+				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
 				PermissionsHash:     []byte("some hash"),
 				LastItemId:          "s_1234567890",
-				LastItemUpdatedTime: oldTime,
+				LastItemUpdatedTime: fiveDaysAgo,
 			},
 			grantsHash:   []byte("some hash"),
 			resourceType: pbs.ResourceType_RESOURCE_TYPE_SESSION,
@@ -146,11 +146,11 @@ func TestValidateRefreshToken(t *testing.T) {
 		{
 			name: "no permissions hash",
 			token: &pbs.ListRefreshToken{
-				CreatedTime:         oldTime,
+				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
 				PermissionsHash:     nil,
 				LastItemId:          "s_1234567890",
-				LastItemUpdatedTime: oldTime,
+				LastItemUpdatedTime: fiveDaysAgo,
 			},
 			grantsHash:    []byte("some hash"),
 			resourceType:  pbs.ResourceType_RESOURCE_TYPE_SESSION,
@@ -160,11 +160,11 @@ func TestValidateRefreshToken(t *testing.T) {
 		{
 			name: "changed permissions hash",
 			token: &pbs.ListRefreshToken{
-				CreatedTime:         oldTime,
+				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
 				PermissionsHash:     []byte("some hash"),
 				LastItemId:          "s_1234567890",
-				LastItemUpdatedTime: oldTime,
+				LastItemUpdatedTime: fiveDaysAgo,
 			},
 			grantsHash:    []byte("some other hash"),
 			resourceType:  pbs.ResourceType_RESOURCE_TYPE_SESSION,
@@ -178,7 +178,7 @@ func TestValidateRefreshToken(t *testing.T) {
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
 				PermissionsHash:     []byte("some hash"),
 				LastItemId:          "s_1234567890",
-				LastItemUpdatedTime: oldTime,
+				LastItemUpdatedTime: fiveDaysAgo,
 			},
 			grantsHash:    []byte("some hash"),
 			resourceType:  pbs.ResourceType_RESOURCE_TYPE_SESSION,
@@ -192,7 +192,7 @@ func TestValidateRefreshToken(t *testing.T) {
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
 				PermissionsHash:     []byte("some hash"),
 				LastItemId:          "s_1234567890",
-				LastItemUpdatedTime: oldTime,
+				LastItemUpdatedTime: fiveDaysAgo,
 			},
 			grantsHash:    []byte("some hash"),
 			resourceType:  pbs.ResourceType_RESOURCE_TYPE_SESSION,
@@ -200,13 +200,27 @@ func TestValidateRefreshToken(t *testing.T) {
 			wantErrCode:   errors.InvalidParameter,
 		},
 		{
-			name: "resource type mismatch",
+			name: "expired",
 			token: &pbs.ListRefreshToken{
-				CreatedTime:         oldTime,
+				CreatedTime:         timestamppb.New(time.Now().AddDate(0, 0, -31)),
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
 				PermissionsHash:     []byte("some hash"),
 				LastItemId:          "s_1234567890",
-				LastItemUpdatedTime: oldTime,
+				LastItemUpdatedTime: fiveDaysAgo,
+			},
+			grantsHash:    []byte("some hash"),
+			resourceType:  pbs.ResourceType_RESOURCE_TYPE_SESSION,
+			wantErrString: "refresh token was expired",
+			wantErrCode:   errors.InvalidParameter,
+		},
+		{
+			name: "resource type mismatch",
+			token: &pbs.ListRefreshToken{
+				CreatedTime:         fiveDaysAgo,
+				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
+				PermissionsHash:     []byte("some hash"),
+				LastItemId:          "s_1234567890",
+				LastItemUpdatedTime: fiveDaysAgo,
 			},
 			grantsHash:    []byte("some hash"),
 			resourceType:  pbs.ResourceType_RESOURCE_TYPE_SESSION_RECORDING,
@@ -216,11 +230,11 @@ func TestValidateRefreshToken(t *testing.T) {
 		{
 			name: "last item ID unset",
 			token: &pbs.ListRefreshToken{
-				CreatedTime:         oldTime,
+				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
 				PermissionsHash:     []byte("some hash"),
 				LastItemId:          "",
-				LastItemUpdatedTime: oldTime,
+				LastItemUpdatedTime: fiveDaysAgo,
 			},
 			grantsHash:    []byte("some hash"),
 			resourceType:  pbs.ResourceType_RESOURCE_TYPE_SESSION,
@@ -230,11 +244,11 @@ func TestValidateRefreshToken(t *testing.T) {
 		{
 			name: "last item ID unset",
 			token: &pbs.ListRefreshToken{
-				CreatedTime:         oldTime,
+				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
 				PermissionsHash:     []byte("some hash"),
 				LastItemId:          "",
-				LastItemUpdatedTime: oldTime,
+				LastItemUpdatedTime: fiveDaysAgo,
 			},
 			grantsHash:    []byte("some hash"),
 			resourceType:  pbs.ResourceType_RESOURCE_TYPE_SESSION,
@@ -244,7 +258,7 @@ func TestValidateRefreshToken(t *testing.T) {
 		{
 			name: "invalid update time",
 			token: &pbs.ListRefreshToken{
-				CreatedTime:         oldTime,
+				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
 				PermissionsHash:     []byte("some hash"),
 				LastItemId:          "s_1234567890",
@@ -258,7 +272,7 @@ func TestValidateRefreshToken(t *testing.T) {
 		{
 			name: "updated in the future",
 			token: &pbs.ListRefreshToken{
-				CreatedTime:         oldTime,
+				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
 				PermissionsHash:     []byte("some hash"),
 				LastItemId:          "s_1234567890",
