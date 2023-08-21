@@ -706,6 +706,35 @@
             ]
           },
           {
+            "title": "credential-stores",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/credential-stores"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/credential-stores/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/credential-stores/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/credential-stores/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/credential-stores/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/credential-stores/update"
+              }
+            ]
+          },
+          {
             "title": "dev",
             "path": "api-clients/commands/dev"
           },

@@ -1,0 +1,167 @@
+---
+layout: docs
+page_title: credential-stores create - Command
+description: |-
+  The "credential-stores create" command create operations on Boundary credential store resources.
+---
+
+# credential-stores create
+
+Command: `boundary credential-stores create`
+
+The `credential-stores create` command creates a credential store resource
+in Boundary.
+
+## Examples
+
+Create a credential store resource in a project scope. 
+
+```shell-session
+$ boundary credential-stores create vault -scope-id p_tnqESc86qE \
+  -vault-address $VAULT_ADDR \
+  -vault-token $VAULT_TOKEN \
+  -vault-namespace $VAULT_NAMESPACE
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Credential Store information:
+  Created Time:        Thu, 28 Jul 2022 15:08:12 MDT
+  ID:                  csvlt_ytzGHsfp3r
+  Type:                vault
+  Updated Time:        Thu, 28 Jul 2022 15:08:12 MDT
+  Version:             1
+
+  Scope:
+    ID:                p_jd7lspegXk
+    Name:              ssh-project
+    Parent Scope ID:   o_SN2K0DAGpi
+    Type:              project
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+
+  Authorized Actions on Credential Store's Collections:
+    credential-libraries:
+      create
+      list
+
+  Attributes:
+    Address:           https://vault-cluster-boundary.vault.11eb3a47-8920-4714-ba99-0242ac11000e.aws.hashicorp.cloud:8200
+    Token HMAC:        NZJWT74Jyq09gLQfP4RiK5eDWfY7NWXYHoKL4nKQFDY
+```
+
+</CodeBlockConfig>
+
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-stores create [type] [sub command] [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-description` `(string: "")` - Description to set on the credential store.
+
+- `-name` `(string: "")` - Name to set on the credential store.
+
+- `-scope-id` `(string: "")` - Scope in which to make the request. The default
+  is global. This can also be specified via the `BOUNDARY_SCOPE_ID` environment
+  variable.
+
+#### Usages by type
+
+<Tabs>
+<Tab heading="Static">
+
+Create a static-type credential store.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-stores create static [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### Example
+
+```shell-session
+$ boundary credential-stores create static -scope-id p_1234567890
+```
+
+</Tab>
+<Tab heading="Vault">
+
+Create a credential stores of `vault` type.
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary credential-stores create vault [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Vault credential stores options
+
+The following are Vault credential stores specific options in addition to the
+command options.
+
+- `-vault-address` `(string: "")` - The address of the Vault server. This should
+  be a complete URL such as https://127.0.0.1:8200
+
+- `-vault-ca-cert` `(string: "")` - The CA Cert to use when connecting to vault.
+  This can be the value itself, refer to a file on disk (`file://`) from which the
+   value will be read, or an env var (env://) from which the value will be read.
+
+- `-vault-client-certificate` `(string: "")` - The client certificate to use
+  when boundary connects to vault for this store. This can be the value itself,
+  refer to a file on disk (`file://`) from which the value will be read, or an env
+  var (`env://`) from which the value will be read.
+
+- `-vault-client-certificate-key` `(string: "")` - The client certificate's
+  private key to use when boundary connects to vault for this store. This can be
+  the value itself, refer to a file on disk (`file://`) from which the value will
+  be read, or an env var (`env://`) from which the value will be read.
+
+- `-vault-namespace` `(string: "")` - The vault namespace the store should use.
+
+- `-vault-tls-server-name` `(string: "")` - Name to use as the SNI host when
+  connecting via TLS.
+
+- `-vault-tls-skip-verify` `(bool: false)` - Whether to skip tls verification.
+The default is false.
+
+- `-vault-token` `(string: "")` - The vault token to use when boundary connects
+  to vault for this store.
+
+- `-worker-filter` `(string: "")` - A boolean expression to filter which workers
+  can handle Vault commands for this credential store.
+
+
+#### Example
+
+```shell-session
+$ boundary credential-stores create vault \
+   -vault-address "http://127.0.0.1:8200" \
+   -vault-token "hvs.tFEYXtEJbJ0tOpt1V38JrbbH"
+```
+
+</Tab>
+</Tabs>
+
+
+@include 'cmd-option-note.mdx'
