@@ -71,13 +71,7 @@ func (r *ConnectionRepository) list(ctx context.Context, resources any, where st
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
-	dbOpts = append(dbOpts, db.WithLimit(limit))
-	switch opts.withOrderByCreateTime {
-	case db.AscendingOrderBy:
-		dbOpts = append(dbOpts, db.WithOrder("create_time asc"))
-	case db.DescendingOrderBy:
-		dbOpts = append(dbOpts, db.WithOrder("create_time"))
-	}
+	dbOpts = append(dbOpts, db.WithLimit(limit), db.WithOrder("create_time"))
 	if err := r.reader.SearchWhere(ctx, resources, where, args, dbOpts...); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
