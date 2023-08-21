@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -39,13 +38,6 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithProjectIds([]string{"o_1234"}))
 		testOpts := getDefaultOptions()
 		testOpts.withProjectIds = []string{"o_1234"}
-		assert.Equal(opts, testOpts)
-	})
-	t.Run("WithOrderByCreateTime", func(t *testing.T) {
-		assert := assert.New(t)
-		opts := getOpts(WithOrderByCreateTime(db.AscendingOrderBy))
-		testOpts := getDefaultOptions()
-		testOpts.withOrderByCreateTime = db.AscendingOrderBy
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithUserId", func(t *testing.T) {
@@ -92,6 +84,16 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithRandomReader(reader))
 		testOpts := getDefaultOptions()
 		testOpts.withRandomReader = reader
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		s := &Session{
+			PublicId: "s_1",
+		}
+		opts := getOpts(WithStartPageAfterItem(s))
+		testOpts := getDefaultOptions()
+		testOpts.withStartPageAfterItem = s
 		assert.Equal(opts, testOpts)
 	})
 }
