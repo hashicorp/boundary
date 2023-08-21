@@ -37,6 +37,8 @@ description will be read.
     your connection string, such as `url = "postgresql://postgres:boundary@192.168.1.1:5432/boundary?sslmode=disable"`
     This value can refer to a file on disk (file://) from which a URL will be read; an env
     var (env://) from which the URL will be read; or a direct database URL (postgres://).
+    Since 0.10.5, this value is re-read on `SIGHUP` to support rotation of the database
+    credential.
   - `migration_url` - Can be used to specify a different URL for migrations, as that
     usually requires higher privileges.
     This value can refer to a file on disk (file://) from which a URL will be read; an env
