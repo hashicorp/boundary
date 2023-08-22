@@ -108,6 +108,10 @@ description will be read.
   are anything specified by Go's [ParseDuration()](https://golang.org/pkg/time/#ParseDuration) method. Only
   used when an `ops` listener is set and the Controller is present. Default is 0 seconds.
 
+- `max_page_size` - The max allowed page size when paginating. If a user specifies a page size greater than
+  this number, it will be truncated to this number. This is also used as the default page size for any request
+  that don't explicitly specify a page size. Default is 1000.
+
 ## Signals
 
 The `SIGHUP` signal causes a controller to reload its configuration file to pick up any updates to the `database url` value. Any other updated values are ignored.
