@@ -39,6 +39,39 @@ import (
 
 var testAuthorizedActions = []string{"read:self", "cancel:self"}
 
+func TestNewService(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrap := db.TestWrapper(t)
+	rw := db.New(conn)
+	kms := kms.TestKms(t, conn, wrap)
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	sessRepoFn := func(opt ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms, opt...)
+	}
+
+	t.Run("rejects-nil-session-repo", func(t *testing.T) {
+		t.Parallel()
+		_, err := sessions.NewService(context.Background(), nil, iamRepoFn, 1000)
+		assert.Error(t, err)
+	})
+	t.Run("rejects-nil-iam-repo", func(t *testing.T) {
+		t.Parallel()
+		_, err := sessions.NewService(context.Background(), sessRepoFn, nil, 1000)
+		assert.Error(t, err)
+	})
+	t.Run("allows-unset-page-size", func(t *testing.T) {
+		t.Parallel()
+		s, err := sessions.NewService(context.Background(), sessRepoFn, iamRepoFn, 0)
+		assert.NoError(t, err)
+		assert.NotNil(t, s)
+	})
+}
+
 func TestGetSession(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
