@@ -747,6 +747,27 @@
             "path": "api-clients/commands/server"
           },
           {
+            "title": "sessions",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/sessions"
+              },
+              {
+                "title": "cancel",
+                "path": "api-clients/commands/sessions/cancel"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/sessions/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/sessions/read"
+              }
+            ]
+          },
+          {
             "title": "storage-buckets",
             "routes": [
               {
