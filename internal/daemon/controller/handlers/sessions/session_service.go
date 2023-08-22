@@ -29,6 +29,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// The default max page size is used when one is not
+// provided to NewService.
+const defaultMaxPageSize = 1000
+
 var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
@@ -66,6 +70,9 @@ func NewService(ctx context.Context, repoFn session.RepositoryFactory, iamRepoFn
 	}
 	if iamRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+	}
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
 	}
 	return Service{
 		repoFn:      repoFn,
