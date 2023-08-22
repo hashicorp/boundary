@@ -22,6 +22,8 @@ type observation struct {
 	Flush       bool           `json:"-"`
 	Header      map[string]any `json:"header,omitempty"`
 	Detail      map[string]any `json:"detail,omitempty"`
+	Request     *Request       `json:"request,omitempty"`
+	Response    *Response      `json:"response,omitempty"`
 }
 
 func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
@@ -49,6 +51,8 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 		Flush:       opts.withFlush,
 		Op:          fromOperation,
 		RequestInfo: opts.withRequestInfo,
+		Request:     opts.withRequest,
+		Response:    opts.withResponse,
 		Version:     observationVersion,
 	}
 	if err := i.validate(); err != nil {
@@ -101,6 +105,47 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 				CreatedAt: v.CreatedAt.String(),
 				Payload:   g.Detail,
 			})
+		}
+		if g.Request != nil {
+			msgReq := &Request{}
+			if v, ok := payload["request"]; ok {
+				msgReq, ok = v.(*Request)
+				if !ok {
+					return "", nil, fmt.Errorf("%s: request %d is not an observation request: %w", op, i, eventlogger.ErrInvalidParameter)
+				}
+			}
+			if g.Request.Details != nil {
+				msgReq.Details = g.Request.Details
+			}
+			if g.Request.Operation != "" {
+				msgReq.Operation = g.Request.Operation
+			}
+			if g.Request.Endpoint != "" {
+				msgReq.Endpoint = g.Request.Endpoint
+			}
+			if g.Request.DetailsUpstreamMessage != nil {
+				msgReq.DetailsUpstreamMessage = g.Request.DetailsUpstreamMessage
+			}
+			payload["request"] = msgReq
+		}
+		if g.Response != nil {
+			msgRes := &Response{}
+			if v, ok := payload["response"]; ok {
+				msgRes, ok = v.(*Response)
+				if !ok {
+					return "", nil, fmt.Errorf("%s: response %d is not an observation response: %w", op, i, eventlogger.ErrInvalidParameter)
+				}
+			}
+			if g.Response.StatusCode != 0 {
+				msgRes.StatusCode = g.Response.StatusCode
+			}
+			if g.Response.Details != nil {
+				msgRes.Details = g.Response.Details
+			}
+			if g.Response.DetailsUpstreamMessage != nil {
+				msgRes.DetailsUpstreamMessage = g.Response.DetailsUpstreamMessage
+			}
+			payload["response"] = msgRes
 		}
 	}
 	return events[0].Type, payload, nil
