@@ -238,7 +238,7 @@ func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) 
 
 	writers := []io.Writer{}
 	pidPath := filepath.Join(dotDir, pidFileName)
-	if running, err := pidFileInUse(ctx, pidPath); running {
+	if running, err := pidFileInUse(ctx, pidPath); running != nil {
 		return false, writers, noopPidCleanup, errors.New(ctx, errors.Conflict, op, "daemon already running")
 	} else if err != nil {
 		return false, writers, noopPidCleanup, errors.Wrap(ctx, err, op)
