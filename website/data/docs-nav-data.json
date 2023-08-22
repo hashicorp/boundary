@@ -747,6 +747,27 @@
             "path": "api-clients/commands/server"
           },
           {
+            "title": "session-recordings",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/session-recordings"
+              },
+              {
+                "title": "download",
+                "path": "api-clients/commands/session-recordings/download"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/session-recordings/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/session-recordings/read"
+              }
+            ]
+          },
+          {
             "title": "sessions",
             "routes": [
               {
