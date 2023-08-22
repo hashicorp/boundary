@@ -4,9 +4,12 @@
 package event
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/gen/controller/servers"
+	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,4 +141,50 @@ func Test_observationEventType(t *testing.T) {
 	t.Parallel()
 	e := &observation{}
 	assert.Equal(t, string(ObservationType), e.EventType())
+}
+
+func Test_iterateProto(t *testing.T) {
+	assert, _ := assert.New(t), require.New(t)
+	input := Request{
+		Operation: "",
+		Endpoint:  "",
+		Details: &services.StatusRequest{
+			Jobs: []*services.JobStatus{
+				{Job: &services.Job{
+					Type:    1,
+					JobInfo: nil,
+				}},
+			},
+			UpdateTags: false,
+			WorkerStatus: &servers.ServerWorkerStatus{
+				PublicId:    "testID",
+				Name:        "w_1234567890",
+				Description: "A default worker created in",
+				Address:     "127.0.0.1:9202",
+				Tags: []*servers.TagPair{
+					{
+						Key:   "type",
+						Value: "dev",
+					},
+				},
+				KeyId:            "ovary-valid-curler-scrambled-glutinous-alias-rework-debit",
+				ReleaseVersion:   "Boundary v0.13.1",
+				OperationalState: "active",
+			},
+			ConnectedWorkerKeyIdentifiers:         nil,
+			ConnectedUnmappedWorkerKeyIdentifiers: nil,
+			ConnectedWorkerPublicIds:              nil,
+		},
+		DetailsUpstreamMessage: nil,
+	}
+
+	res := recurseStructureWithTagFilter(
+		input.Details,
+		map[string]string{
+			"eventstream": "observation",
+		},
+		false,
+	)
+	data, _ := json.Marshal(res)
+	assert.NotNil(data)
 }
