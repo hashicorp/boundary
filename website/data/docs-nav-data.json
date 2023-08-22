@@ -747,6 +747,35 @@
             "path": "api-clients/commands/server"
           },
           {
+            "title": "storage-buckets",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/storage-buckets"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/storage-buckets/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/storage-buckets/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/storage-buckets/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/storage-buckets/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/storage-buckets/update"
+              }
+            ]
+          },
+          {
             "title": "targets",
             "routes": [
               {
