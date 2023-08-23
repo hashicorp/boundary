@@ -772,6 +772,59 @@
             "path": "api-clients/commands/logout"
           },
           {
+            "title": "roles",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/roles"
+              },
+              {
+                "title": "add-grants",
+                "path": "api-clients/commands/roles/add-grants"
+              },
+              {
+                "title": "add-principals",
+                "path": "api-clients/commands/roles/add-principals"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/roles/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/roles/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/roles/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/roles/read"
+              },
+              {
+                "title": "remove-grants",
+                "path": "api-clients/commands/roles/remove-grants"
+              },
+              {
+                "title": "remove-principals",
+                "path": "api-clients/commands/roles/remove-principals"
+              },
+              {
+                "title": "set-grants",
+                "path": "api-clients/commands/roles/set-grants"
+              },
+              {
+                "title": "set-principals",
+                "path": "api-clients/commands/roles/set-principals"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/roles/update"
+              }
+            ]
+          },
+          {
             "title": "scopes",
             "routes": [
               {
