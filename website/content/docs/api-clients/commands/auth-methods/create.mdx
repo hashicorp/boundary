@@ -115,7 +115,7 @@ $ boundary auth-methods create ldap [options] [args]
 The following are LDAP specific options in addition to the command
 options.
 
-- `-anon-group-search` `(bool: false)` - Use anon bind when performing LDAP
+- `-anon-group-search`  - Use anon bind when performing LDAP
    group searches (optional). The default is false.
 
 - `-bind-dn` `(string: "")` - The distinguished name of entry to bind when
@@ -136,10 +136,10 @@ options.
    certificate key in PKCS #8, ASN.1 DER form used with the client certificate
    (optional).
 
-- `-discover-dn` `(bool: false)` - Use anon bind to discover the bind DN of a
+- `-discover-dn`  - Use anon bind to discover the bind DN of a
    user (optional). The default is false.
 
-- `-enable-groups` `(bool: false)` - Find the authenticated user's groups during
+- `-enable-groups`  - Find the authenticated user's groups during
    authentication (optional). The default is false.
 
 - `-group-attr` `(string: "")` - The attribute that enumerates a user's group
@@ -150,10 +150,10 @@ options.
 - `-group-filter` `(string: "")` - A go template used to construct a LDAP group
    search filter (optional).
 
-- `-insecure-tls` `(bool: false)` - Skip the LDAP server SSL certificate
+- `-insecure-tls`  - Skip the LDAP server SSL certificate
    validation (optional) - insecure and use with caution. The default is false.
 
-- `-start-tls` `(bool: false)` - Issue StartTLS command after connecting
+- `-start-tls`  - Issue StartTLS command after connecting
    (optional). The default is false.
 
 - `-state` `(string: "")` - The desired operational state of the auth method.
@@ -164,7 +164,7 @@ options.
 - `-urls` `(string: "")` - The LDAP URLs that specify LDAP servers to connect to
    (required). May be specified multiple times.
 
-- `-use-token-groups` `(bool: false)` - Use the Active Directory tokenGroups
+- `-use-token-groups`  - Use the Active Directory tokenGroups
    constructed attribute of the user to find the group memberships (optional).
    The default is false.
 

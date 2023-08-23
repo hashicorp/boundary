@@ -764,6 +764,23 @@
             ]
           },
           {
+            "title": "database",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/database"
+              },
+              {
+                "title": "init",
+                "path": "api-clients/commands/database/init"
+              },
+              {
+                "title": "migrate",
+                "path": "api-clients/commands/database/migrate"
+              }
+            ]
+          },
+          {
             "title": "dev",
             "path": "api-clients/commands/dev"
           },
