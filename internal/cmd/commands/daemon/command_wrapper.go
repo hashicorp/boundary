@@ -62,7 +62,6 @@ func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
 	var stdErr bytes.Buffer
 	cmd := exec.Command(cmdName, "daemon", "start", "-background")
 	cmd.Stderr = &stdErr
-	cmd.Env = os.Environ()
 
 	// We use Run here instead of Start because the command spawns off a subprocess and returns.
 	// We do not want to send the request to add a persona to the cache until we know the daemon
