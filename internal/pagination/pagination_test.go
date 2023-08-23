@@ -5,6 +5,7 @@ package pagination_test
 
 import (
 	"context"
+	stderrors "errors"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/mr-tron/base58"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -295,4 +297,274 @@ func TestValidateRefreshToken(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+type (
+	testType struct {
+		I int
+	}
+	testPbType struct {
+		I int
+	}
+	testTypeIface interface {
+		testType() *testType
+	}
+)
+
+func (t *testType) testType() *testType {
+	return t
+}
+
+func TestFillPage(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("fill-on-init-with-remaining", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			if prevPageLast != nil {
+				t.Fatal("Should not have called listItemsFn with non-empty parameter")
+			}
+			return []*testType{{1}, {2}, {3}}, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return &testPbType{item.I}, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(items, []*testPbType{{1}, {2}}))
+		assert.False(t, complete)
+	})
+	t.Run("completely-fill-on-init", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			if prevPageLast != nil {
+				t.Fatal("Should not have called listItemsFn with non-empty parameter")
+			}
+			return []*testType{{1}, {2}}, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return &testPbType{item.I}, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(items, []*testPbType{{1}, {2}}))
+		assert.True(t, complete)
+	})
+	t.Run("fill-on-subsequent-with-remaining", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, 2, prevPageLast.I)
+				return []*testType{{3}, {4}, {5}}, nil
+			}
+			return []*testType{{1}, {2}, {3}}, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			if item.I%2 == 0 {
+				// Filter every other item
+				return nil, nil
+			}
+			return &testPbType{item.I}, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(items, []*testPbType{{1}, {3}}))
+		assert.False(t, complete)
+	})
+	t.Run("fill-on-last-page-with-remaining", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, 2, prevPageLast.I)
+				return []*testType{{3}, {4}}, nil
+			}
+			return []*testType{{1}, {2}, {3}}, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			if item.I%2 == 0 {
+				// Filter every other item
+				return nil, nil
+			}
+			return &testPbType{item.I}, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(items, []*testPbType{{1}, {3}}))
+		assert.False(t, complete)
+	})
+	t.Run("completely-fill-on-subsequent", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, 2, prevPageLast.I)
+				return []*testType{{3}}, nil
+			}
+			return []*testType{{1}, {2}, {3}}, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			if item.I%2 == 0 {
+				// Filter every other item
+				return nil, nil
+			}
+			return &testPbType{item.I}, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(items, []*testPbType{{1}, {3}}))
+		assert.True(t, complete)
+	})
+	t.Run("dont-fill", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, 2, prevPageLast.I)
+				return []*testType{{3}}, nil
+			}
+			return []*testType{{1}, {2}, {3}}, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			if item.I != 1 {
+				// Filter every item except the first
+				return nil, nil
+			}
+			return &testPbType{item.I}, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(items, []*testPbType{{1}}))
+		assert.True(t, complete)
+	})
+	t.Run("dont-fill-with-full-last-page", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			switch {
+			case prevPageLast == nil:
+				return []*testType{{1}, {2}, {3}}, nil
+			case prevPageLast.I == 2:
+				return []*testType{{3}, {4}, {5}}, nil
+			case prevPageLast.I == 4:
+				return nil, nil
+			default:
+				t.Fatalf("unexpected call to listItemsFn with %#v", prevPageLast)
+				return nil, nil
+			}
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			if item.I != 1 {
+				// Filter every item except the first
+				return nil, nil
+			}
+			return &testPbType{item.I}, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(items, []*testPbType{{1}}))
+		assert.True(t, complete)
+	})
+	t.Run("filter-everything", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			if prevPageLast != nil {
+				assert.Equal(t, 2, prevPageLast.I)
+				return []*testType{{3}}, nil
+			}
+			return []*testType{{1}, {2}, {3}}, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			// Filter every item
+			return nil, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.NoError(t, err)
+		assert.Len(t, items, 0)
+		assert.True(t, complete)
+	})
+	t.Run("use-with-interface", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast testTypeIface) ([]testTypeIface, error) {
+			if prevPageLast != nil {
+				t.Fatal("Should not have called listItemsFn with non-empty parameter")
+			}
+			return []testTypeIface{&testType{1}, &testType{2}, &testType{3}}, nil
+		}
+		convertAndFilterFn := func(item testTypeIface) (*testPbType, error) {
+			return &testPbType{item.testType().I}, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.NoError(t, err)
+		assert.Empty(t, cmp.Diff(items, []*testPbType{{1}, {2}}))
+		assert.False(t, complete)
+	})
+	t.Run("errors-when-list-errors-immediately", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			return nil, stderrors.New("failed to list")
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			t.Fatal("Unexpected call to convert function")
+			return nil, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.ErrorContains(t, err, "failed to list")
+		assert.Empty(t, items)
+		assert.False(t, complete)
+	})
+	t.Run("errors-when-list-errors-subsequently", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			if prevPageLast != nil {
+				return nil, stderrors.New("failed to list subsequently")
+			}
+			return []*testType{{1}, {2}, {3}}, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			if item.I != 1 {
+				// Filter every item except the first
+				return nil, nil
+			}
+			return &testPbType{item.I}, nil
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.ErrorContains(t, err, "failed to list subsequently")
+		assert.Empty(t, items)
+		assert.False(t, complete)
+	})
+	t.Run("errors-when-convert-errors", func(t *testing.T) {
+		t.Parallel()
+		limit := 3
+		pageSize := 2
+		listItemsFn := func(prevPageLast *testType) ([]*testType, error) {
+			return []*testType{{1}}, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return nil, stderrors.New("failed to convert")
+		}
+		items, complete, err := pagination.FillPage(ctx, limit, pageSize, listItemsFn, convertAndFilterFn)
+		require.ErrorContains(t, err, "failed to convert")
+		assert.Empty(t, items)
+		assert.False(t, complete)
+	})
 }

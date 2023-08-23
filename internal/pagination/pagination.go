@@ -79,3 +79,71 @@ func ValidateRefreshToken(ctx context.Context, token *pbs.ListRefreshToken, gran
 	}
 	return nil
 }
+
+// FillPage repeatedly calls listItemsFn until it has gathered pageSize number of items,
+// subject to the convertAndFilterFunc, or until there are no more results.
+// It reports whether it reached the end of iteration.
+func FillPage[T any | *any, PbT any](
+	ctx context.Context,
+	limit int,
+	pageSize int,
+	listItemsFn func(prevPageLast T) ([]T, error),
+	convertAndFilterFn func(item T) (*PbT, error),
+) ([]*PbT, bool, error) {
+	const op = "pagination.FillPage"
+
+	// Empty will be a nil pointer for pointer types of
+	// T, and a nil interface for interface types.
+	var empty T
+	page, err := listItemsFn(empty)
+	if err != nil {
+		return nil, false, errors.Wrap(ctx, err, op)
+	}
+	finalItems := make([]*PbT, 0, pageSize)
+	// If we got fewer results than requested, we're at the end.
+	completeListing := len(page) < limit
+	if len(page) > pageSize {
+		// Don't loop over the extra item
+		// we requested to see if we were at the end
+		page = page[:pageSize]
+	}
+	// Loop until we've filled the page
+dbLoop:
+	for {
+		for i, item := range page {
+			pbItem, err := convertAndFilterFn(item)
+			if err != nil {
+				return nil, false, errors.Wrap(ctx, err, op)
+			}
+			if pbItem != nil {
+				finalItems = append(finalItems, pbItem)
+				if len(finalItems) == pageSize {
+					if completeListing && i != len(page)-1 {
+						completeListing = false
+					}
+					break dbLoop
+				}
+			}
+		}
+		if completeListing {
+			// No need to make more requests
+			break dbLoop
+		}
+
+		lastItem := page[len(page)-1]
+		// Request another result set from the DB until we fill the page
+		page, err = listItemsFn(lastItem)
+		if err != nil {
+			return nil, false, errors.Wrap(ctx, err, op)
+		}
+		// If we got fewer results than requested, we're at the end.
+		completeListing = len(page) < limit
+		if len(page) > pageSize {
+			// Don't loop over the extra item
+			// we requested to see if we were at the end
+			page = page[:pageSize]
+		}
+	}
+
+	return finalItems, completeListing, nil
+}
