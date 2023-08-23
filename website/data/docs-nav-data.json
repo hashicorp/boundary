@@ -735,6 +735,35 @@
             ]
           },
           {
+            "title": "credentials",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/credentials"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/credentials/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/credentials/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/credentials/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/credentials/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/credentials/update"
+              }
+            ]
+          },
+          {
             "title": "dev",
             "path": "api-clients/commands/dev"
           },
