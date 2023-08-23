@@ -772,6 +772,23 @@
             "path": "api-clients/commands/logout"
           },
           {
+            "title": "roles",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/roles"
+              },
+              {
+                "title": "add-grants",
+                "path": "api-clients/commands/roles/add-grants"
+              },
+              {
+                "title": "add-principals",
+                "path": "api-clients/commands/roles/add-principals"
+              }
+            ]
+          },
+          {
             "title": "scopes",
             "routes": [
               {
