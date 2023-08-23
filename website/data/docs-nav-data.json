@@ -772,6 +772,51 @@
             "path": "api-clients/commands/logout"
           },
           {
+            "title": "scopes",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/scopes"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/scopes/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/scopes/delete"
+              },
+              {
+                "title": "destroy-key-version",
+                "path": "api-clients/commands/scopes/destroy-key-version"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/scopes/list"
+              },
+              {
+                "title": "list-key-version-destruction-jobs",
+                "path": "api-clients/commands/scopes/list-key-version-destruction-jobs"
+              },
+              {
+                "title": "list-keys",
+                "path": "api-clients/commands/scopes/list-keys"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/scopes/read"
+              },
+              {
+                "title": "rotate-keys",
+                "path": "api-clients/commands/scopes/rotate-keys"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/scopes/update"
+              }
+            ]
+          },
+          {
             "title": "server",
             "path": "api-clients/commands/server"
           },
