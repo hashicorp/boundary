@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package version
 
@@ -21,7 +21,6 @@ const (
 	UseTargetIdForHostId
 	RequireVersionInWorkerInfo
 	SshSessionRecording
-	SupportIdInGrants
 )
 
 var featureMap map[Feature]MetadataConstraint
@@ -72,12 +71,6 @@ func init() {
 	}
 	featureMap[SshSessionRecording] = MetadataConstraint{
 		Constraints: mustNewConstraints(">= 0.13.0"),
-	}
-
-	// Warn until 0.15 about using the now-deprecated id field in grants; after
-	// that disallow it
-	featureMap[SupportIdInGrants] = MetadataConstraint{
-		Constraints: mustNewConstraints("< 0.15.0"),
 	}
 }
 

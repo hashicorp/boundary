@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package credentialstores
 
@@ -79,11 +79,8 @@ func vaultWorkerFilterUnsupported(string) error {
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.CredentialStore{}, &store.Token{}, &store.ClientCertificate{}},
-		handlers.MaskSource{&pb.CredentialStore{}, &pb.VaultCredentialStoreAttributes{}},
-	); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.CredentialStore{}, &store.Token{}, &store.ClientCertificate{}},
+		handlers.MaskSource{&pb.CredentialStore{}, &pb.VaultCredentialStoreAttributes{}}); err != nil {
 		panic(err)
 	}
 }
@@ -121,7 +118,7 @@ func NewService(
 
 // ListCredentialStores implements the interface pbs.CredentialStoreServiceServer
 func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredentialStoresRequest) (*pbs.ListCredentialStoresResponse, error) {
-	if err := validateListRequest(ctx, req); err != nil {
+	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -156,7 +153,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 		return &pbs.ListCredentialStoresResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -761,7 +758,7 @@ func toStorageVaultStore(ctx context.Context, scopeId string, in *pb.CredentialS
 		if pemPk != nil {
 			pk = pem.EncodeToMemory(pemPk)
 		}
-		cc, err := vault.NewClientCertificate(ctx, cert, pk)
+		cc, err := vault.NewClientCertificate(cert, pk)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -885,13 +882,13 @@ func validateDeleteRequest(req *pbs.DeleteCredentialStoreRequest) error {
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.VaultCredentialStorePrefix, globals.StaticCredentialStorePrefix, globals.StaticCredentialStorePreviousPrefix)
 }
 
-func validateListRequest(ctx context.Context, req *pbs.ListCredentialStoresRequest) error {
+func validateListRequest(req *pbs.ListCredentialStoresRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields[globals.ScopeIdField] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
-	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

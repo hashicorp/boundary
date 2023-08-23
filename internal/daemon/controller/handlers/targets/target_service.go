@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package targets
 
@@ -191,7 +191,7 @@ func NewService(
 func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (*pbs.ListTargetsResponse, error) {
 	const op = "targets.(Service).ListSessions"
 
-	if err := validateListRequest(ctx, req); err != nil {
+	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -233,7 +233,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		return &pbs.ListTargetsResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -754,6 +754,9 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 		return nil, err
 	}
 	t, err = repo.LookupTarget(ctx, t.GetPublicId())
+	hostSources := t.GetHostSources()
+	credSources := t.GetCredentialSources()
+
 	if err != nil {
 		if errors.IsNotFoundError(err) {
 			return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
@@ -763,8 +766,6 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if t == nil {
 		return nil, handlers.NotFoundErrorf("Target %q not found.", t.GetPublicId())
 	}
-	hostSources := t.GetHostSources()
-	credSources := t.GetCredentialSources()
 	if len(credSources) > 0 {
 		if err := validateCredentialSourcesFn(ctx, t.GetType(), credSources); err != nil {
 			return nil, err
@@ -946,7 +947,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	if protoWorker != nil {
 		sessionComposition.ProtocolWorkerId = protoWorker.GetPublicId()
 	}
-	sess, err := session.New(ctx, sessionComposition)
+	sess, err := session.New(sessionComposition)
 	if err != nil {
 		return nil, err
 	}
@@ -1818,13 +1819,13 @@ func validateDeleteRequest(req *pbs.DeleteTargetRequest) error {
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, target.Prefixes()...)
 }
 
-func validateListRequest(ctx context.Context, req *pbs.ListTargetsRequest) error {
+func validateListRequest(req *pbs.ListTargetsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields[globals.ScopeIdField] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
-	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

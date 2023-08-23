@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package tcp_test
 
@@ -108,10 +108,10 @@ func TestRepository_AddTargetHostSets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			ctx := context.Background()
 			db.TestDeleteWhere(t, conn, func() any { i := allocTargetHostSet(); return &i }(), "1 = 1")
-			db.TestDeleteWhere(t, conn, tcp.NewTestTarget(ctx, ""), "1 = 1")
+			db.TestDeleteWhere(t, conn, tcp.NewTestTarget(""), "1 = 1")
 
+			ctx := context.Background()
 			projTarget := tcp.TestTarget(ctx, t, conn, staticProj.PublicId, "static-proj")
 
 			var address *target.Address

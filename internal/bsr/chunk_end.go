@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package bsr
 
@@ -31,7 +31,7 @@ func (c *EndChunk) MarshalData(_ context.Context) ([]byte, error) {
 
 // NewEnd creates an EndChunk.
 func NewEnd(ctx context.Context, p Protocol, d Direction, t *Timestamp) (*EndChunk, error) {
-	const op = "bsr.NewEnd"
+	const op = "bsr.NewHeader"
 
 	bc, err := NewBaseChunk(ctx, p, d, t, ChunkEnd)
 	if err != nil {

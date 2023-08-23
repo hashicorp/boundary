@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package authtoken
 
@@ -34,15 +34,15 @@ type Repository struct {
 
 // NewRepository creates a new Repository. The returned repository is not safe for concurrent go
 // routines to access it.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "authtoken.NewRepository"
 	switch {
 	case r == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil db reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil db reader")
 	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil db writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil db writer")
 	case kms == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
 
 	opts := getOpts(opt...)
@@ -74,14 +74,14 @@ func (r *Repository) CreateAuthToken(ctx context.Context, withIamUser *iam.User,
 	if withAuthAccountId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth account id")
 	}
-	at, err := newAuthToken(ctx)
+	at, err := newAuthToken()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	at.AuthAccountId = withAuthAccountId
 	opts := getOpts(opt...)
 	if opts.withPublicId == "" {
-		id, err := NewAuthTokenId(ctx)
+		id, err := NewAuthTokenId()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

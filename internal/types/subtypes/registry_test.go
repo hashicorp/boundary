@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package subtypes_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/types/subtypes"
@@ -14,7 +13,7 @@ import (
 func TestSubtypeFromId(t *testing.T) {
 	testSubtype := subtypes.Subtype("test")
 	r := subtypes.NewRegistry()
-	r.Register(context.Background(), testSubtype, "tttst")
+	r.Register(testSubtype, "tttst")
 	tests := []struct {
 		name  string
 		given string
@@ -43,7 +42,7 @@ func TestSubtypeFromId(t *testing.T) {
 func TestSubtypeFromType(t *testing.T) {
 	testSubtype := subtypes.Subtype("test")
 	r := subtypes.NewRegistry()
-	r.Register(context.Background(), testSubtype, "tttst")
+	r.Register(testSubtype, "tttst")
 	tests := []struct {
 		name  string
 		given string
@@ -68,12 +67,11 @@ func TestSubtypeFromType(t *testing.T) {
 
 func TestRegister(t *testing.T) {
 	r := subtypes.NewRegistry()
-	ctx := context.Background()
-	assert.NoError(t, r.Register(ctx, "test", "testprefix"))
+	assert.NoError(t, r.Register("test", "testprefix"))
 	// registering multiple subtypes should be fine.
-	assert.NoError(t, r.Register(ctx, "second", "secondprefix"))
+	assert.NoError(t, r.Register("second", "secondprefix"))
 	// registering another prefix with a different subtype errors.
-	assert.Error(t, r.Register(ctx, "third", "testprefix"))
+	assert.Error(t, r.Register("third", "testprefix"))
 	// Registering the same subtype twice errors.
-	assert.Error(t, r.Register(ctx, "test", "repeatedprefix"))
+	assert.Error(t, r.Register("test", "repeatedprefix"))
 }

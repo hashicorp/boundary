@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package oidc
 
@@ -43,13 +43,13 @@ func Test_Callback(t *testing.T) {
 	// some standard factories for unit tests which
 	// are used in the Callback(...) call
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(ctx, rw, rw, kmsCache)
+		return iam.NewRepository(rw, rw, kmsCache)
 	}
 	repoFn := func() (*Repository, error) {
 		return NewRepository(ctx, rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+		return authtoken.NewRepository(rw, rw, kmsCache)
 	}
 	atRepo, err := atRepoFn()
 	require.NoError(t, err)
@@ -92,7 +92,7 @@ func Test_Callback(t *testing.T) {
 	require.NoError(t, err)
 
 	// a reusable token request id for the tests.
-	testTokenRequestId, err := authtoken.NewAuthTokenId(ctx)
+	testTokenRequestId, err := authtoken.NewAuthTokenId()
 	require.NoError(t, err)
 
 	// usuable nonce for the unit tests
@@ -515,13 +515,13 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 
 		// func pointers for the test controller.
 		iamRepoFn := func() (*iam.Repository, error) {
-			return iam.NewRepository(ctx, rw, rw, kmsCache)
+			return iam.NewRepository(rw, rw, kmsCache)
 		}
 		repoFn := func() (*Repository, error) {
 			return NewRepository(ctx, rw, rw, kmsCache)
 		}
 		atRepoFn := func() (*authtoken.Repository, error) {
-			return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+			return authtoken.NewRepository(rw, rw, kmsCache)
 		}
 		atRepo, err := atRepoFn()
 		require.NoError(err)
@@ -619,13 +619,13 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 	// some standard factories for unit tests which
 	// are used in the Callback(...) call
 	iamRepoFn := func() (*iam.Repository, error) {
-		return iam.NewRepository(ctx, rw, rw, kmsCache)
+		return iam.NewRepository(rw, rw, kmsCache)
 	}
 	repoFn := func() (*Repository, error) {
 		return NewRepository(ctx, rw, rw, kmsCache)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+		return authtoken.NewRepository(rw, rw, kmsCache)
 	}
 
 	iamRepo := iam.TestRepo(t, conn, rootWrapper)
@@ -753,7 +753,7 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			// A unique token ID for each test
-			testTokenRequestId, err := authtoken.NewAuthTokenId(ctx)
+			testTokenRequestId, err := authtoken.NewAuthTokenId()
 			require.NoError(err)
 
 			// the test provider is stateful, so we need to configure

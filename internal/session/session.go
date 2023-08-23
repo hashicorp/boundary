@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package session
 
@@ -159,7 +159,7 @@ var (
 )
 
 // New creates a new in memory session.
-func New(ctx context.Context, c ComposedOf, _ ...Option) (*Session, error) {
+func New(c ComposedOf, _ ...Option) (*Session, error) {
 	const op = "session.New"
 	s := Session{
 		UserId:              c.UserId,
@@ -178,8 +178,8 @@ func New(ctx context.Context, c ComposedOf, _ ...Option) (*Session, error) {
 		StaticCredentials:   c.StaticCredentials,
 		ProtocolWorkerId:    c.ProtocolWorkerId,
 	}
-	if err := s.validateNewSession(ctx); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	if err := s.validateNewSession(); err != nil {
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return &s, nil
 }
@@ -287,7 +287,7 @@ func (s *Session) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType
 	}
 	switch opType {
 	case db.CreateOp:
-		if err := s.validateNewSession(ctx); err != nil {
+		if err := s.validateNewSession(); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 		if len(s.Certificate) == 0 {
@@ -332,7 +332,7 @@ func (s *Session) VetForWrite(ctx context.Context, _ db.Reader, opType db.OpType
 		case contains(opts.WithFieldMaskPaths, "ProtocolWorkerId"):
 			return errors.New(ctx, errors.InvalidParameter, op, "protocol worker id is immutable")
 		case contains(opts.WithFieldMaskPaths, "TerminationReason"):
-			if _, err := convertToReason(ctx, s.TerminationReason); err != nil {
+			if _, err := convertToReason(s.TerminationReason); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		}
@@ -356,34 +356,34 @@ func (s *Session) SetTableName(n string) {
 }
 
 // validateNewSession checks everything but the session's PublicId
-func (s *Session) validateNewSession(ctx context.Context) error {
+func (s *Session) validateNewSession() error {
 	const op = "session.(Session).validateNewSession"
 	if s.UserId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
 	}
 	if s.TargetId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing target id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	if s.AuthTokenId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing auth token id")
 	}
 	if s.ProjectId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing project id")
 	}
 	if s.Endpoint == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing endpoint")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing endpoint")
 	}
 	if s.ExpirationTime.GetTimestamp().AsTime().IsZero() {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing expiration time")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing expiration time")
 	}
 	if s.TerminationReason != "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "termination reason must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "termination reason must be empty")
 	}
 	if s.TofuToken != nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "tofu token must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "tofu token must be empty")
 	}
 	if s.CtTofuToken != nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "ct must be empty")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "ct must be empty")
 	}
 	// It is okay for the worker filter and protocol worker ID to be empty, so
 	// they are not checked here.

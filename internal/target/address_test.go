@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package target_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -57,7 +56,7 @@ func TestAddress_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := target.NewAddress(context.Background(), tt.args.targetId, tt.args.address)
+			got, err := target.NewAddress(tt.args.targetId, tt.args.address)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				assert.Nil(got)

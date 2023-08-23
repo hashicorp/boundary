@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package static
 
@@ -230,7 +230,6 @@ func (c *HostSet) testCloneHostSet() *HostSet {
 
 func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -240,9 +239,9 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 	sets := TestSets(t, conn, cat.GetPublicId(), 1)
 	hosts := TestHosts(t, conn, cat.GetPublicId(), 1)
 
-	new, err := NewHostSetMember(ctx, sets[0].PublicId, hosts[0].PublicId)
+	new, err := NewHostSetMember(sets[0].PublicId, hosts[0].PublicId)
 	require.NoError(t, err)
-	err = w.Create(ctx, new)
+	err = w.Create(context.Background(), new)
 	assert.NoError(t, err)
 
 	tests := []struct {
@@ -277,12 +276,12 @@ func TestStaticHostSetMember_ImmutableFields(t *testing.T) {
 			err = w.LookupWhere(context.Background(), orig, "host_id = ? and set_id = ?", []any{orig.HostId, orig.SetId})
 			require.NoError(err)
 
-			rowsUpdated, err := w.Update(ctx, tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
+			rowsUpdated, err := w.Update(context.Background(), tt.update, tt.fieldMask, nil, db.WithSkipVetForWrite(true))
 			require.Error(err)
 			assert.Equal(0, rowsUpdated)
 
 			after := new.testCloneHostSetMember()
-			err = w.LookupWhere(ctx, after, "host_id = ? and set_id = ?", []any{after.HostId, after.SetId})
+			err = w.LookupWhere(context.Background(), after, "host_id = ? and set_id = ?", []any{after.HostId, after.SetId})
 			require.NoError(err)
 
 			assert.True(proto.Equal(orig, after))

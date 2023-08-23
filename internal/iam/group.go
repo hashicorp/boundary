@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -34,10 +34,10 @@ var (
 
 // NewGroup creates a new in memory group with a scope (project/org)
 // and allowed options include: withDescripion, WithName.
-func NewGroup(ctx context.Context, scopeId string, opt ...Option) (*Group, error) {
+func NewGroup(scopeId string, opt ...Option) (*Group, error) {
 	const op = "iam.NewGroup"
 	if scopeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing scope id")
 	}
 	opts := getOpts(opt...)
 	g := &Group{

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package common
 
@@ -264,7 +264,7 @@ func Test_WrapWithEventsHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := WrapWithEventsHandler(context.Background(), tt.h, tt.e, tt.kms, testListenerCfg)
+			got, err := WrapWithEventsHandler(tt.h, tt.e, tt.kms, testListenerCfg)
 			if tt.wantErrMatch != nil {
 				require.Error(err)
 				assert.Nil(got)

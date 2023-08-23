@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 module "az_finder" {
   source = "./modules/az_finder"
@@ -38,10 +38,6 @@ module "worker" {
   }
 
   ssh_aws_keypair = var.aws_ssh_keypair_name
-}
-
-module "bucket" {
-  source = "./modules/bucket"
 }
 
 module "build_crt" {
@@ -130,10 +126,6 @@ module "test_e2e_ui" {
   source = "./modules/test_e2e_ui"
 }
 
-module "test_e2e_docker" {
-  source = "./modules/test_e2e_docker"
-}
-
 module "test_smoke" {
   source = "./modules/test_smoke"
 }
@@ -152,14 +144,6 @@ module "docker_boundary" {
 
 module "docker_openssh_server" {
   source = "./modules/docker_openssh_server"
-}
-
-module "docker_openssh_server_ca_key" {
-  source = "./modules/docker_openssh_server_ca_key"
-}
-
-module "docker_worker" {
-  source = "./modules/docker_worker"
 }
 
 module "docker_network" {

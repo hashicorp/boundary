@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package db_test
 
@@ -26,7 +26,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 
 	createInitialUser := func() *db_test.TestUser {
 		// create initial user for on conflict tests
-		id, err := db.NewPublicId(ctx, "test-user")
+		id, err := db.NewPublicId("test-user")
 		require.NoError(t, err)
 		initialUser, err := db_test.NewTestUser()
 		require.NoError(t, err)
@@ -163,7 +163,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 			initialUser := createInitialUser()
 			conflictUser, err := db_test.NewTestUser()
 			require.NoError(err)
-			userNameId, err := db.NewPublicId(ctx, "test-user-name")
+			userNameId, err := db.NewPublicId("test-user-name")
 			require.NoError(err)
 			conflictUser.PublicId = initialUser.PublicId
 			conflictUser.Name = userNameId
@@ -207,7 +207,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 		initialUser := createInitialUser()
 		conflictUser, err := db_test.NewTestUser()
 		require.NoError(err)
-		userNameId, err := db.NewPublicId(ctx, "test-user-name")
+		userNameId, err := db.NewPublicId("test-user-name")
 		require.NoError(err)
 		conflictUser.PublicId = initialUser.PublicId
 		conflictUser.Name = userNameId

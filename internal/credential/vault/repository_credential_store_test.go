@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package vault
 
@@ -40,7 +40,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(ctx, rw, rw, kms, sche)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -74,7 +74,7 @@ func TestRepository_CreateCredentialStoreResource(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(ctx, rw, rw, kms, sche)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		require.NoError(err)
 		require.NotNil(repo)
 		org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -177,7 +177,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(ctx, rw, rw, kms, sche)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -193,7 +193,7 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 			}
 			if tt.tls == TestClientTLS {
 				opts = append(opts, WithCACert(v.CaCert))
-				clientCert, err := NewClientCertificate(ctx, v.ClientCert, v.ClientKey)
+				clientCert, err := NewClientCertificate(v.ClientCert, v.ClientKey)
 				require.NoError(err)
 				opts = append(opts, WithClientCert(clientCert))
 			}
@@ -233,7 +233,6 @@ func TestRepository_CreateCredentialStoreNonResource(t *testing.T) {
 
 func TestRepository_LookupCredentialStore(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -247,17 +246,17 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 
 	ccert := allocClientCertificate()
 	ccert.StoreId = csWithoutClientCert.GetPublicId()
-	rows, err := rw.Delete(ctx, ccert, db.WithWhere("store_id = ?", csWithoutClientCert.GetPublicId()))
+	rows, err := rw.Delete(context.Background(), ccert, db.WithWhere("store_id = ?", csWithoutClientCert.GetPublicId()))
 	require.NoError(t, err)
 	require.Equal(t, 1, rows)
 
-	rows, err = rw.Exec(ctx,
+	rows, err = rw.Exec(context.Background(),
 		"update credential_vault_token set status = ? where token_hmac = ?",
 		[]any{ExpiredToken, csWithExpiredToken.Token().TokenHmac})
 	require.NoError(t, err)
 	require.Equal(t, 1, rows)
 
-	badId, err := newCredentialStoreId(ctx)
+	badId, err := newCredentialStoreId()
 	assert.NoError(t, err)
 	require.NotNil(t, badId)
 
@@ -301,8 +300,9 @@ func TestRepository_LookupCredentialStore(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(ctx, rw, rw, kms, sche)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			assert.NoError(err)
 			require.NotNil(repo)
 			err = RegisterJobs(ctx, sche, rw, rw, kms)
@@ -742,7 +742,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(ctx, rw, rw, kms, sche)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			assert.NoError(err)
 			require.NotNil(repo)
 			err = RegisterJobs(ctx, sche, rw, rw, kms)
@@ -823,7 +823,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(ctx, rw, rw, kms, sche)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		err = RegisterJobs(ctx, sche, rw, rw, kms)
@@ -875,7 +875,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(ctx, rw, rw, kms, sche)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		err = RegisterJobs(ctx, sche, rw, rw, kms)
@@ -925,7 +925,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(ctx, rw, rw, kms, sche)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		err = RegisterJobs(ctx, sche, rw, rw, kms)
@@ -956,7 +956,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(ctx, rw, rw, kms, sche)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		err = RegisterJobs(ctx, sche, rw, rw, kms)
@@ -1007,7 +1007,7 @@ func TestRepository_UpdateCredentialStore_Attributes(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
 		kms := kms.TestKms(t, conn, wrapper)
-		repo, err := NewRepository(ctx, rw, rw, kms, sche)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		assert.NoError(err)
 		require.NotNil(repo)
 		err = RegisterJobs(ctx, sche, rw, rw, kms)
@@ -1090,7 +1090,7 @@ func TestRepository_UpdateCredentialStore_VaultToken(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(ctx, rw, rw, kms, sche)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -1154,7 +1154,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 
 	existingClientCert := func(t *testing.T, v *TestVaultServer) *ClientCertificate {
-		clientCert, err := NewClientCertificate(context.Background(), v.ClientCert, v.ClientKey)
+		clientCert, err := NewClientCertificate(v.ClientCert, v.ClientKey)
 		require.NoError(t, err)
 		return clientCert
 	}
@@ -1228,7 +1228,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
 			kms := kms.TestKms(t, conn, wrapper)
-			repo, err := NewRepository(ctx, rw, rw, kms, sche)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -1243,7 +1243,7 @@ func TestRepository_UpdateCredentialStore_ClientCert(t *testing.T) {
 			}
 			if tt.tls == TestClientTLS {
 				opts = append(opts, WithCACert(v.CaCert))
-				clientCert, err := NewClientCertificate(ctx, v.ClientCert, v.ClientKey)
+				clientCert, err := NewClientCertificate(v.ClientCert, v.ClientKey)
 				require.NoError(err)
 				opts = append(opts, WithClientCert(clientCert))
 			}
@@ -1294,7 +1294,7 @@ func TestRepository_ListCredentialStores_Multiple_Scopes(t *testing.T) {
 
 	assert, require := assert.New(t), require.New(t)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
-	repo, err := NewRepository(context.Background(), rw, rw, kms, sche)
+	repo, err := NewRepository(rw, rw, kms, sche)
 	assert.NoError(err)
 	require.NotNil(repo)
 	err = RegisterJobs(context.Background(), sche, rw, rw, kms)
@@ -1345,7 +1345,7 @@ func TestRepository_DeleteCredentialStore(t *testing.T) {
 		kms := kms.TestKms(t, conn, wrapper)
 		sche := scheduler.TestScheduler(t, conn, wrapper)
 		rw := db.New(conn)
-		repo, err := NewRepository(context.Background(), rw, rw, kms, sche)
+		repo, err := NewRepository(rw, rw, kms, sche)
 		require.NoError(t, err)
 		require.NotNil(t, repo)
 		err = RegisterJobs(context.Background(), sche, rw, rw, kms)

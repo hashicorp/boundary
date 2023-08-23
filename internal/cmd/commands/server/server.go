@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package server
 
@@ -182,8 +182,7 @@ func (c *Command) Run(args []string) int {
 	}
 	serverName = fmt.Sprintf("%s/%s", serverName, strings.Join(serverTypes, "+"))
 
-	if err := c.SetupEventing(c.Context,
-		c.Logger,
+	if err := c.SetupEventing(c.Logger,
 		c.StderrLock,
 		serverName,
 		base.WithEventerConfig(c.Config.Eventing),
@@ -522,7 +521,7 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	opsServer, err := ops.NewServer(c.Context, c.Logger, c.controller, c.worker, c.Listeners...)
+	opsServer, err := ops.NewServer(c.Logger, c.controller, c.worker, c.Listeners...)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError

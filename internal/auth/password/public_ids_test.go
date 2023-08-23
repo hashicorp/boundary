@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package password
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -14,14 +13,13 @@ import (
 )
 
 func Test_PublicIds(t *testing.T) {
-	ctx := context.Background()
 	t.Run("authMethod", func(t *testing.T) {
-		id, err := newAuthMethodId(ctx)
+		id, err := newAuthMethodId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.PasswordAuthMethodPrefix+"_"))
 	})
 	t.Run("account", func(t *testing.T) {
-		id, err := newAccountId(ctx)
+		id, err := newAccountId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.PasswordAccountPrefix+"_"))
 	})

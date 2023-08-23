@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 variable "vpc_name" {
   description = "The name of the existing VPC to be used for this module"
@@ -128,16 +128,4 @@ variable "controller_addresses" {
 variable "controller_sg_id" {
   description = "The controllers' security group ID for adding rules allowing this worker to communicate with them"
   type        = string
-}
-
-variable "config_file_path" {
-  description = "Path to a config file (relative to module directory)"
-  type        = string
-  default     = "templates/worker.hcl"
-}
-
-variable "recording_storage_path" {
-  description = "Path on instance to store recordings"
-  type        = string
-  default     = ""
 }

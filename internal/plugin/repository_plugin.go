@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
@@ -46,7 +46,7 @@ func (r *Repository) CreatePlugin(ctx context.Context, p *Plugin, opt ...Option)
 	p.PublicId = opts.withPublicId
 	if p.PublicId == "" {
 		var err error
-		p.PublicId, err = newPluginId(ctx)
+		p.PublicId, err = newPluginId()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

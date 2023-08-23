@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package session
 
@@ -125,7 +125,7 @@ func TestRepository_convertToSessions(t *testing.T) {
 	repo, err := NewRepository(ctx, rw, rw, kmsCache)
 	require.NoError(t, err)
 	composedOf := TestSessionParams(t, conn, rootWrapper, iamRepo)
-	sess, err := New(ctx, composedOf)
+	sess, err := New(composedOf)
 	require.NoError(t, err)
 	sessionWrapper, err := kmsCache.GetWrapper(ctx, sess.ProjectId, kms.KeyPurposeSessions)
 	require.NoError(t, err)

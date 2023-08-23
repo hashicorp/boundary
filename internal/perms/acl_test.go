@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package perms
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -26,8 +25,6 @@ type scopeGrant struct {
 func Test_ACLAllowed(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-
 	type actionAuthorized struct {
 		action       action.Type
 		authorized   bool
@@ -47,8 +44,8 @@ func Test_ACLAllowed(t *testing.T) {
 		{
 			scope: "o_a",
 			grants: []string{
-				"ids=ampw_bar,ampw_baz;actions=read,update",
-				"id=ampw_bop;actions=read:self,update",
+				"id=ampw_bar;actions=read,update",
+				"id=ampw_baz;actions=read:self,update",
 				"type=host-catalog;actions=create",
 				"type=target;actions=list",
 				"id=*;type=host-set;actions=list,create",
@@ -58,7 +55,7 @@ func Test_ACLAllowed(t *testing.T) {
 			scope: "o_b",
 			grants: []string{
 				"id=*;type=host-set;actions=list,create",
-				"ids=hcst_mypin;type=host;actions=*;output_fields=name,description",
+				"id=hcst_mypin;type=host;actions=*;output_fields=name,description",
 				"id=*;type=*;actions=authenticate",
 				"id=*;type=*;output_fields=id",
 			},
@@ -121,18 +118,8 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			name:        "matching scope and id and matching action first id",
+			name:        "matching scope and id and matching action",
 			resource:    Resource{ScopeId: "o_a", Id: "ampw_bar"},
-			scopeGrants: commonGrants,
-			actionsAuthorized: []actionAuthorized{
-				{action: action.Read, authorized: true},
-				{action: action.Update, authorized: true},
-				{action: action.Delete},
-			},
-		},
-		{
-			name:        "matching scope and id and matching action second id",
-			resource:    Resource{ScopeId: "o_a", Id: "ampw_baz"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read, authorized: true},
@@ -200,18 +187,8 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			name:        "matching scope, type, action, random id and bad pin first id",
+			name:        "matching scope, type, action, random id and bad pin",
 			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "ampw_bar"},
-			scopeGrants: commonGrants,
-			actionsAuthorized: []actionAuthorized{
-				{action: action.Update},
-				{action: action.Delete},
-				{action: action.Read},
-			},
-		},
-		{
-			name:        "matching scope, type, action, random id and bad pin second id",
-			resource:    Resource{ScopeId: "o_a", Id: "anything", Type: resource.HostCatalog, Pin: "ampw_baz"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Update},
@@ -329,7 +306,7 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			name:        "read self with top level read first id",
+			name:        "read self with top level read",
 			resource:    Resource{ScopeId: "o_a", Id: "ampw_bar"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
@@ -338,17 +315,8 @@ func Test_ACLAllowed(t *testing.T) {
 			},
 		},
 		{
-			name:        "read self with top level read second id",
-			resource:    Resource{ScopeId: "o_a", Id: "ampw_baz"},
-			scopeGrants: commonGrants,
-			actionsAuthorized: []actionAuthorized{
-				{action: action.Read, authorized: true},
-				{action: action.ReadSelf, authorized: true},
-			},
-		},
-		{
 			name:        "read self only",
-			resource:    Resource{ScopeId: "o_a", Id: "ampw_bop"},
+			resource:    Resource{ScopeId: "o_a", Id: "ampw_baz"},
 			scopeGrants: commonGrants,
 			actionsAuthorized: []actionAuthorized{
 				{action: action.Read},
@@ -392,7 +360,7 @@ func Test_ACLAllowed(t *testing.T) {
 			var grants []Grant
 			for _, sg := range test.scopeGrants {
 				for _, g := range sg.grants {
-					grant, err := Parse(ctx, sg.scope, g, WithAccountId(test.accountId), WithUserId(test.userId))
+					grant, err := Parse(sg.scope, g, WithAccountId(test.accountId), WithUserId(test.userId))
 					require.NoError(t, err)
 					grants = append(grants, grant)
 				}
@@ -413,10 +381,6 @@ func Test_ACLAllowed(t *testing.T) {
 }
 
 func TestACL_ListPermissions(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-
 	tests := []struct {
 		name                        string
 		userId                      string
@@ -534,7 +498,8 @@ func TestACL_ListPermissions(t *testing.T) {
 					scope: "o_1",
 					grants: []string{
 						"id=s_1;type=session;actions=list,read",
-						"ids=s_2,s_3;type=session;actions=list,read",
+						"id=s_2;type=session;actions=list,read",
+						"id=s_3;type=session;actions=list,read",
 					},
 				},
 			},
@@ -616,7 +581,8 @@ func TestACL_ListPermissions(t *testing.T) {
 					scope: "o_1",
 					grants: []string{
 						"id=s_1;type=session;actions=list,no-op",
-						"ids=s_2,s_3;type=session;actions=list,no-op",
+						"id=s_2;type=session;actions=list,no-op",
+						"id=s_3;type=session;actions=list,no-op",
 					},
 				},
 			},
@@ -732,7 +698,8 @@ func TestACL_ListPermissions(t *testing.T) {
 					scope: "o_1",
 					grants: []string{
 						"id=s_1;type=session;actions=list,read",
-						"ids=s_2,s_3;type=session;actions=list,read",
+						"id=s_2;type=session;actions=list,read",
+						"id=s_3;type=session;actions=list,read",
 					},
 				},
 				{
@@ -848,7 +815,7 @@ func TestACL_ListPermissions(t *testing.T) {
 			var grants []Grant
 			for _, sg := range tt.aclGrants {
 				for _, g := range sg.grants {
-					grant, err := Parse(ctx, sg.scope, g, WithSkipFinalValidation(tt.skipGrantValidationChecking))
+					grant, err := Parse(sg.scope, g, WithSkipFinalValidation(tt.skipGrantValidationChecking))
 					require.NoError(t, err)
 					grants = append(grants, grant)
 				}
@@ -880,8 +847,6 @@ func TestJsonMarshal(t *testing.T) {
 func Test_AnonRestrictions(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-
 	type input struct {
 		name              string
 		grant             string
@@ -894,28 +859,14 @@ func Test_AnonRestrictions(t *testing.T) {
 			grant: "id=foobar;actions=%s",
 		},
 		{
-			name:  "ids-specific",
-			grant: "ids=foobar;actions=%s",
-		},
-		{
 			name:              "wildcard-id",
 			grant:             "id=*;type=%s;actions=%s",
 			templatedType:     true,
 			shouldHaveSuccess: true,
 		},
 		{
-			name:              "wildcard-ids",
-			grant:             "ids=*;type=%s;actions=%s",
-			templatedType:     true,
-			shouldHaveSuccess: true,
-		},
-		{
 			name:  "wildcard-id-and-type",
 			grant: "id=*;type=*;actions=%s",
-		},
-		{
-			name:  "wildcard-ids-and-type",
-			grant: "ids=*;type=*;actions=%s",
 		},
 		{
 			name:              "no-id",
@@ -932,19 +883,10 @@ func Test_AnonRestrictions(t *testing.T) {
 				if i == resource.Controller || i == resource.Worker {
 					continue
 				}
-				for j := action.Type(1); j <= action.Download; j++ {
-					id := "foobar"
-					prefixes := globals.ResourcePrefixesFromType(resource.Type(i))
-					if len(prefixes) > 0 {
-						id = fmt.Sprintf("%s_%s", prefixes[0], id)
-						// If it's global scope, correct it
-						if id == "global_foobar" {
-							id = "global"
-						}
-					}
+				for j := action.Type(1); j <= action.ReadCertificateAuthority; j++ {
 					res := Resource{
 						ScopeId: scope.Global.String(),
-						Id:      id,
+						Id:      "foobar",
 						Type:    resource.Type(i),
 					}
 					grant := test.grant
@@ -954,7 +896,7 @@ func Test_AnonRestrictions(t *testing.T) {
 						grant = fmt.Sprintf(grant, action.Type(j).String())
 					}
 
-					parsedGrant, err := Parse(ctx, scope.Global.String(), grant, WithSkipFinalValidation(true))
+					parsedGrant, err := Parse(scope.Global.String(), grant, WithSkipFinalValidation(true))
 					require.NoError(err)
 
 					acl := NewACL(parsedGrant)

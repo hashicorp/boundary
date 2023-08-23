@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package static
 
@@ -78,7 +78,7 @@ func (r *Repository) newMembers(ctx context.Context, setId string, hostIds []str
 	var members []any
 	for _, id := range hostIds {
 		var m *HostSetMember
-		m, err := NewHostSetMember(ctx, setId, id)
+		m, err := NewHostSetMember(setId, id)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, "static.newMembers")
 		}
@@ -263,7 +263,7 @@ func (r *Repository) SetSetMembers(ctx context.Context, projectId string, setId 
 	}
 	var deletions, additions []any
 	for _, c := range changes {
-		m, err := NewHostSetMember(ctx, setId, c.HostId)
+		m, err := NewHostSetMember(setId, c.HostId)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op)
 		}

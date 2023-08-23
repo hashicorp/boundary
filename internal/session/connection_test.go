@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package session
 
@@ -16,7 +16,6 @@ import (
 
 func TestConnection_Create(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -136,7 +135,6 @@ func TestConnection_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			got, err := NewConnection(
-				ctx,
 				tt.args.sessionId,
 				tt.args.clientTcpAddress,
 				tt.args.clientTcpPort,
@@ -152,10 +150,10 @@ func TestConnection_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := db.NewPublicId(ctx, ConnectionPrefix)
+				id, err := db.NewPublicId(ConnectionPrefix)
 				require.NoError(err)
 				got.PublicId = id
-				err = db.New(conn).Create(ctx, got)
+				err = db.New(conn).Create(context.Background(), got)
 				if tt.wantCreateErr {
 					assert.Error(err)
 					return
@@ -169,7 +167,6 @@ func TestConnection_Create(t *testing.T) {
 
 func TestConnection_Delete(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -193,7 +190,7 @@ func TestConnection_Delete(t *testing.T) {
 			name: "bad-id",
 			connection: func() *Connection {
 				c := AllocConnection()
-				id, err := db.NewPublicId(ctx, ConnectionPrefix)
+				id, err := db.NewPublicId(ConnectionPrefix)
 				require.NoError(t, err)
 				c.PublicId = id
 				return &c

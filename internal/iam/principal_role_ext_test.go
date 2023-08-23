@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam_test
 
@@ -26,7 +26,6 @@ import (
 
 func TestNewManagedGroupRole(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := iam.TestRepo(t, conn, wrapper)
@@ -83,7 +82,7 @@ func TestNewManagedGroupRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := iam.NewManagedGroupRole(ctx, tt.args.roleId, tt.args.ManagedGroupId, tt.args.opt...)
+			got, err := iam.NewManagedGroupRole(tt.args.roleId, tt.args.ManagedGroupId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -136,7 +135,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 			args: args{
 				role: func() *iam.ManagedGroupRole {
 					role := iam.TestRole(t, conn, org.PublicId)
-					principalRole, err := iam.NewManagedGroupRole(ctx, role.PublicId, mg.PublicId)
+					principalRole, err := iam.NewManagedGroupRole(role.PublicId, mg.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -148,7 +147,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 			args: args{
 				role: func() *iam.ManagedGroupRole {
 					role := iam.TestRole(t, conn, org2.PublicId)
-					principalRole, err := iam.NewManagedGroupRole(ctx, role.PublicId, mg.PublicId)
+					principalRole, err := iam.NewManagedGroupRole(role.PublicId, mg.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -159,7 +158,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 			args: args{
 				role: func() *iam.ManagedGroupRole {
 					id := testId(t)
-					principalRole, err := iam.NewManagedGroupRole(ctx, id, mg.PublicId)
+					principalRole, err := iam.NewManagedGroupRole(id, mg.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -173,7 +172,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 				role: func() *iam.ManagedGroupRole {
 					id := testId(t)
 					role := iam.TestRole(t, conn, org.PublicId)
-					principalRole, err := iam.NewManagedGroupRole(ctx, role.PublicId, id)
+					principalRole, err := iam.NewManagedGroupRole(role.PublicId, id)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -219,7 +218,7 @@ func TestManagedGroupRole_Create(t *testing.T) {
 			args: args{
 				role: func() *iam.ManagedGroupRole {
 					role := iam.TestRole(t, conn, org.PublicId)
-					principalRole, err := iam.NewManagedGroupRole(ctx, role.PublicId, mg.PublicId)
+					principalRole, err := iam.NewManagedGroupRole(role.PublicId, mg.PublicId)
 					require.NoError(t, err)
 					return principalRole
 				}(),
@@ -373,19 +372,18 @@ func TestManagedGroupRole_Delete(t *testing.T) {
 
 func TestManagedGroupRole_Clone(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		mgr, err := iam.NewManagedGroupRole(ctx, "r_abc", "mgoidc_abc")
+		mgr, err := iam.NewManagedGroupRole("r_abc", "mgoidc_abc")
 		require.NoError(err)
 		cp := mgr.Clone()
 		assert.True(proto.Equal(cp.(*iam.ManagedGroupRole).ManagedGroupRole, mgr.ManagedGroupRole))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		mgr, err := iam.NewManagedGroupRole(ctx, "r_abc", "mgoidc_abc")
+		mgr, err := iam.NewManagedGroupRole("r_abc", "mgoidc_abc")
 		require.NoError(err)
-		mgr2, err := iam.NewManagedGroupRole(ctx, "r_xyz", "mgoidc_xyz")
+		mgr2, err := iam.NewManagedGroupRole("r_xyz", "mgoidc_xyz")
 		require.NoError(err)
 		cp := mgr.Clone()
 

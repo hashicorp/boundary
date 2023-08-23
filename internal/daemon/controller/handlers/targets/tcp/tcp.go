@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package tcp
 
@@ -122,7 +122,6 @@ func init() {
 	var err error
 
 	if maskManager, err = handlers.NewMaskManager(
-		context.Background(),
 		handlers.MaskDestination{&tcpStore.Target{}, &store.TargetAddress{}},
 		handlers.MaskSource{&pb.Target{}, &pb.TcpTargetAttributes{}},
 	); err != nil {

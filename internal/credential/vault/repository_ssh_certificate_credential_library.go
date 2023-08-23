@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package vault
 
@@ -66,7 +66,7 @@ func (r *Repository) CreateSSHCertificateCredentialLibrary(ctx context.Context, 
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid credential type")
 	}
 
-	id, err := newSSHCertificateCredentialLibraryId(ctx)
+	id, err := newSSHCertificateCredentialLibraryId()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

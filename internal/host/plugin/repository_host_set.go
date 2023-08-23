@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
@@ -130,9 +130,6 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 
 	if plgHs.GetAttributes() != nil {
 		if err := normalizeSetAttributes(ctx, plgClient, plgHs); err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op)
-		}
-		if s.Attributes, err = proto.Marshal(plgHs.GetAttributes()); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 	}

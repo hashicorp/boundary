@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
@@ -90,9 +90,8 @@ func WithStorageFlag(flag bool) TestOption {
 func TestPlugin(t testing.TB, conn *db.DB, name string, opt ...TestOption) *Plugin {
 	opts := getTestOpts(opt...)
 	t.Helper()
-	ctx := context.Background()
 	p := NewPlugin(WithName(name))
-	id, err := newPluginId(ctx)
+	id, err := newPluginId()
 	require.NoError(t, err)
 	p.PublicId = id
 
@@ -100,6 +99,7 @@ func TestPlugin(t testing.TB, conn *db.DB, name string, opt ...TestOption) *Plug
 	require.NoError(t, w.Create(context.Background(), p))
 	wrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrapper)
+	ctx := context.Background()
 	repo, err := NewRepository(ctx, w, w, kmsCache)
 	require.NoError(t, err)
 

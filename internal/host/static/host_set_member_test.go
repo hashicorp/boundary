@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package static
 
@@ -15,7 +15,6 @@ import (
 )
 
 func TestHostSetMember_Insert(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 
@@ -51,11 +50,11 @@ func TestHostSetMember_Insert(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewHostSetMember(ctx, tt.set.PublicId, tt.host.PublicId)
+			got, err := NewHostSetMember(tt.set.PublicId, tt.host.PublicId)
 			require.NoError(err)
 			require.NotNil(got)
 			w := db.New(conn)
-			err2 := w.Create(ctx, got)
+			err2 := w.Create(context.Background(), got)
 			if tt.wantErr {
 				assert.Error(err2)
 				return

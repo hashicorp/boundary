@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
@@ -121,7 +121,7 @@ func (r *SetSyncJob) NextRunIn(ctx context.Context) (time.Duration, error) {
 	const op = "plugin.(SetSyncJob).NextRunIn"
 	next, err := nextSync(ctx, r)
 	if err != nil {
-		return setSyncJobRunInterval, errors.Wrap(ctx, err, op)
+		return setSyncJobRunInterval, errors.WrapDeprecated(err, op)
 	}
 	return next, nil
 }
@@ -145,12 +145,12 @@ func nextSync(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 		query = setSyncNextRunInQuery
 		r = job.reader
 	default:
-		return 0, errors.New(ctx, errors.Unknown, op, "unknown job")
+		return 0, errors.NewDeprecated(errors.Unknown, op, "unknown job")
 	}
 
 	rows, err := r.Query(context.Background(), query, []any{setSyncJobRunInterval})
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, op)
+		return 0, errors.WrapDeprecated(err, op)
 	}
 	defer rows.Close()
 
@@ -166,7 +166,7 @@ func nextSync(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 	var n NextResync
 	err = r.ScanRows(ctx, rows, &n)
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, op)
+		return 0, errors.WrapDeprecated(err, op)
 	}
 	switch {
 	case n.SyncNow:

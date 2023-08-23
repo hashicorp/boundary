@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package static
 
@@ -52,7 +52,7 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, opt ...O
 		}
 		c.PublicId = opts.withPublicId
 	} else {
-		id, err := newHostCatalogId(ctx)
+		id, err := newHostCatalogId()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

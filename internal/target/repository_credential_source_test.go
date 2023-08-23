@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package target_test
 
@@ -24,8 +24,8 @@ import (
 
 type hooks struct{}
 
-func (h hooks) NewTarget(ctx context.Context, projectId string, opt ...target.Option) (target.Target, error) {
-	return targettest.New(ctx, projectId, opt...)
+func (h hooks) NewTarget(projectId string, opt ...target.Option) (target.Target, error) {
+	return targettest.New(projectId, opt...)
 }
 
 func (h hooks) AllocTarget() target.Target {
@@ -45,7 +45,6 @@ func (h hooks) VetCredentialSources(ctx context.Context, cls []*target.Credentia
 }
 
 func TestRepository_SetTargetCredentialSources(t *testing.T) {
-	ctx := context.Background()
 	target.Register(targettest.Subtype, hooks{}, globals.TcpTargetPrefix)
 
 	t.Parallel()
@@ -80,7 +79,7 @@ func TestRepository_SetTargetCredentialSources(t *testing.T) {
 			ids.BrokeredCredentialIds = append(ids.BrokeredCredentialIds, cred.GetPublicId())
 		}
 
-		target, err := repo.AddTargetCredentialSources(ctx, tar.GetPublicId(), 1, ids)
+		target, err := repo.AddTargetCredentialSources(context.Background(), tar.GetPublicId(), 1, ids)
 		require.NoError(t, err)
 
 		credentialSources := target.GetCredentialSources()

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package db
 
@@ -59,7 +59,7 @@ func TestDb_Update(t *testing.T) {
 	conn, _ := TestSetup(t, "postgres")
 	TestCreateTables(t, conn)
 	now := &timestamp.Timestamp{Timestamp: timestamppb.Now()}
-	publicId, err := NewPublicId(testCtx, "testuser")
+	publicId, err := NewPublicId("testuser")
 	require.NoError(t, err)
 	id := testId(t)
 	wrapper := TestDBWrapper(t, conn, "oplog")

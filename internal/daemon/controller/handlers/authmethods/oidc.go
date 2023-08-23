@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package authmethods
 
@@ -52,7 +52,7 @@ var oidcMaskManager handlers.MaskManager
 
 func init() {
 	var err error
-	if oidcMaskManager, err = handlers.NewMaskManager(context.Background(), handlers.MaskDestination{&oidcstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.OidcAuthMethodAttributes{}}); err != nil {
+	if oidcMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&oidcstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.OidcAuthMethodAttributes{}}); err != nil {
 		panic(err)
 	}
 
@@ -398,7 +398,7 @@ func validateAuthenticateOidcRequest(req *pbs.AuthenticateRequest) error {
 func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMethod) (out *oidc.AuthMethod, dryRun, forced bool, err error) {
 	const op = "authmethod_service.toStorageOidcAuthMethod"
 	if in == nil {
-		return nil, false, false, errors.New(ctx, errors.InvalidParameter, op, "nil auth method.")
+		return nil, false, false, errors.NewDeprecated(errors.InvalidParameter, op, "nil auth method.")
 	}
 	attrs := in.GetOidcAuthMethodsAttributes()
 	clientId := attrs.GetClientId().GetValue()
@@ -418,14 +418,14 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 		iss = strings.SplitN(iss, ".well-known/", 2)[0]
 		issuer, err := url.Parse(iss)
 		if err != nil {
-			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
+			return nil, false, false, errors.WrapDeprecated(err, op, errors.WithMsg("cannot parse issuer"), errors.WithCode(errors.InvalidParameter))
 		}
 		opts = append(opts, oidc.WithIssuer(issuer))
 	}
 	if apiUrl := strings.TrimSpace(attrs.GetApiUrlPrefix().GetValue()); apiUrl != "" {
 		apiU, err := url.Parse(apiUrl)
 		if err != nil {
-			return nil, false, false, errors.Wrap(ctx, err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))
+			return nil, false, false, errors.WrapDeprecated(err, op, errors.WithMsg("cannot parse api_url_prefix"), errors.WithCode(errors.InvalidParameter))
 		}
 		opts = append(opts, oidc.WithApiUrl(apiU))
 	}
@@ -466,17 +466,17 @@ func toStorageOidcAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 		for _, v := range attrs.GetAccountClaimMaps() {
 			acm, err := oidc.ParseAccountClaimMaps(ctx, v)
 			if err != nil {
-				return nil, false, false, errors.Wrap(ctx, err, op)
+				return nil, false, false, errors.WrapDeprecated(err, op)
 			}
 			if len(acm) > 1 {
-				return nil, false, false, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", v))
+				return nil, false, false, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("unable to parse account claim map %s", v))
 			}
 			var m oidc.ClaimMap
 			for _, m = range acm {
 			}
 			to, err := oidc.ConvertToAccountToClaim(ctx, m.To)
 			if err != nil {
-				return nil, false, false, errors.Wrap(ctx, err, op)
+				return nil, false, false, errors.WrapDeprecated(err, op)
 			}
 			claimsMap[m.From] = to
 		}

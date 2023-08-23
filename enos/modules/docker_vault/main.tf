@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 terraform {
   required_providers {
@@ -24,8 +24,8 @@ variable "image_name" {
   type        = string
 }
 variable "network_name" {
-  description = "Name of Docker Networks to join"
-  type        = list(string)
+  description = "Name of Docker Network"
+  type        = string
 }
 variable "container_name" {
   description = "Name of Docker Container"
@@ -36,11 +36,6 @@ variable "vault_token" {
   description = "Vault Root Token"
   type        = string
   default     = "boundarytok"
-}
-variable "vault_port" {
-  description = "External Port to use"
-  type        = string
-  default     = "8300"
 }
 
 resource "docker_image" "vault" {
@@ -56,16 +51,13 @@ resource "docker_container" "vault" {
   ]
   ports {
     internal = 8200
-    external = var.vault_port
+    external = 8200
   }
   capabilities {
     add = ["IPC_LOCK"]
   }
-  dynamic "networks_advanced" {
-    for_each = var.network_name
-    content {
-      name = networks_advanced.value
-    }
+  networks_advanced {
+    name = var.network_name
   }
 }
 
@@ -74,7 +66,7 @@ resource "enos_local_exec" "check_address" {
     docker_container.vault
   ]
 
-  inline = ["timeout 10s bash -c 'until curl http://0.0.0.0:${var.vault_port}; do sleep 2; done'"]
+  inline = ["timeout 10s bash -c 'until curl http://0.0.0.0:8200; do sleep 2; done'"]
 }
 
 resource "enos_local_exec" "check_health" {
@@ -83,7 +75,7 @@ resource "enos_local_exec" "check_health" {
   ]
 
   environment = {
-    VAULT_ADDR  = "http://0.0.0.0:${var.vault_port}"
+    VAULT_ADDR  = "http://0.0.0.0:8200"
     VAULT_TOKEN = var.vault_token
   }
 
@@ -100,8 +92,4 @@ output "address_internal" {
 
 output "token" {
   value = var.vault_token
-}
-
-output "port" {
-  value = var.vault_port
 }

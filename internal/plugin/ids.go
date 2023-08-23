@@ -1,11 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
 import (
-	"context"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 )
@@ -15,10 +13,10 @@ const (
 	PluginPrefix = "pl"
 )
 
-func newPluginId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(ctx, PluginPrefix)
+func newPluginId() (string, error) {
+	id, err := db.NewPublicId(PluginPrefix)
 	if err != nil {
-		return "", errors.Wrap(ctx, err, "plugin.newPluginId")
+		return "", errors.WrapDeprecated(err, "plugin.newPluginId")
 	}
 	return id, nil
 }

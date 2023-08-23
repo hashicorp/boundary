@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package host_catalogs
 
@@ -75,18 +75,10 @@ const domain = "host"
 
 func init() {
 	var err error
-	if staticMaskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.HostCatalog{}},
-		handlers.MaskSource{&pb.HostCatalog{}},
-	); err != nil {
+	if staticMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.HostCatalog{}}, handlers.MaskSource{&pb.HostCatalog{}}); err != nil {
 		panic(err)
 	}
-	if pluginMaskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&pluginstore.HostCatalog{}},
-		handlers.MaskSource{&pb.HostCatalog{}},
-	); err != nil {
+	if pluginMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&pluginstore.HostCatalog{}}, handlers.MaskSource{&pb.HostCatalog{}}); err != nil {
 		panic(err)
 	}
 }
@@ -104,25 +96,25 @@ var _ pbs.HostCatalogServiceServer = (*Service)(nil)
 
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
-func NewService(ctx context.Context, repoFn common.StaticRepoFactory, pluginHostRepoFn common.PluginHostRepoFactory, hostPluginRepoFn common.PluginRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(repoFn common.StaticRepoFactory, pluginHostRepoFn common.PluginHostRepoFactory, hostPluginRepoFn common.PluginRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "host_catalogs.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static repository")
 	}
 	if pluginHostRepoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing plugin host repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing plugin host repository")
 	}
 	if hostPluginRepoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing host plugin repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing host plugin repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{staticRepoFn: repoFn, pluginHostRepoFn: pluginHostRepoFn, pluginRepoFn: hostPluginRepoFn, iamRepoFn: iamRepoFn}, nil
 }
 
 func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogsRequest) (*pbs.ListHostCatalogsResponse, error) {
-	if err := validateListRequest(ctx, req); err != nil {
+	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -157,7 +149,7 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 		return &pbs.ListHostCatalogsResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -794,7 +786,7 @@ func toStorageStaticCatalog(ctx context.Context, projectId string, item *pb.Host
 	if desc := item.GetDescription(); desc != nil {
 		opts = append(opts, static.WithDescription(desc.GetValue()))
 	}
-	hc, err := static.NewHostCatalog(ctx, projectId, opts...)
+	hc, err := static.NewHostCatalog(projectId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build host catalog"))
 	}
@@ -894,13 +886,13 @@ func validateDeleteRequest(req *pbs.DeleteHostCatalogRequest) error {
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.StaticHostCatalogPrefix, globals.PluginHostCatalogPrefix, globals.PluginHostCatalogPreviousPrefix)
 }
 
-func validateListRequest(ctx context.Context, req *pbs.ListHostCatalogsRequest) error {
+func validateListRequest(req *pbs.ListHostCatalogsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields[globals.ScopeIdField] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
-	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields[globals.FilterField] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

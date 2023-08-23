@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
@@ -224,7 +224,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 				),
 			)
 
-			repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+			repo, err := NewRepository(rw, rw, kms, sched, plgm)
 			require.NoError(err)
 			require.NotNil(repo)
 

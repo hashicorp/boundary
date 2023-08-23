@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package oidc
 
@@ -38,11 +38,11 @@ func Test_TokenRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	atRepoFn := func() (*authtoken.Repository, error) {
-		r, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+		r, err := authtoken.NewRepository(rw, rw, kmsCache)
 		require.NoError(t, err)
 		return r, nil
 	}
-	testAtRepo, err := authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	testAtRepo, err := authtoken.NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
 
 	// a reusable test authmethod for the unit tests
@@ -111,7 +111,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: "",
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
+				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
@@ -141,7 +141,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
+				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
@@ -155,7 +155,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
+				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 0, tokenPublicId)
@@ -171,7 +171,7 @@ func Test_TokenRequest(t *testing.T) {
 			},
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
+				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
@@ -210,7 +210,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
+				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
 				reqTk := request.Token{
 					RequestId: tokenPublicId,
@@ -304,7 +304,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: "not-a-match",
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
+				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)
@@ -318,7 +318,7 @@ func Test_TokenRequest(t *testing.T) {
 			atRepoFn:     atRepoFn,
 			authMethodId: testAuthMethod.PublicId,
 			tokenRequest: func() string {
-				tokenPublicId, err := authtoken.NewAuthTokenId(ctx)
+				tokenPublicId, err := authtoken.NewAuthTokenId()
 				require.NoError(t, err)
 				TestPendingToken(t, testAtRepo, testUser, testAcct, tokenPublicId)
 				return TestTokenRequestId(t, testAuthMethod, kmsCache, 200*time.Second, tokenPublicId)

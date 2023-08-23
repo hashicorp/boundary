@@ -1,11 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package static
 
 import (
-	"context"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -26,15 +24,15 @@ type Repository struct {
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it. WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "static.NewRepository"
 	switch {
 	case r == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "db.Reader")
 	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "db.Writer")
 	case kms == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "kms")
 	}
 
 	opts := getOpts(opt...)

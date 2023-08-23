@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package session
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -15,24 +14,23 @@ import (
 
 func Test_Ids(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	t.Run("s", func(t *testing.T) {
-		id, err := newId(ctx)
+		id, err := newId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.SessionPrefix+"_"))
 	})
 	t.Run("ss", func(t *testing.T) {
-		id, err := newStateId(ctx)
+		id, err := newStateId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, StatePrefix+"_"))
 	})
 	t.Run("sc", func(t *testing.T) {
-		id, err := newConnectionId(ctx)
+		id, err := newConnectionId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, ConnectionPrefix+"_"))
 	})
 	t.Run("scs", func(t *testing.T) {
-		id, err := newConnectionStateId(ctx)
+		id, err := newConnectionStateId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, ConnectionStatePrefix+"_"))
 	})

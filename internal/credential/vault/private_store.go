@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package vault
 
@@ -156,7 +156,7 @@ func (ps *clientStore) client(ctx context.Context) (vaultClient, error) {
 
 	client, err := vaultClientFactoryFn(ctx, clientConfig, WithWorkerFilter(ps.WorkerFilter))
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create vault client"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to create vault client"))
 	}
 	return client, nil
 }

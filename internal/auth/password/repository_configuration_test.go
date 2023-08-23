@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package password
 
@@ -23,7 +23,7 @@ func TestRepository_GetSetConfiguration(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(context.Background(), rw, rw, kms)
+	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
@@ -129,7 +129,7 @@ func TestRepository_GetConfiguration(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(context.Background(), rw, rw, kms)
+	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 
@@ -191,8 +191,8 @@ func TestRepository_GetConfiguration(t *testing.T) {
 
 type tconf int
 
-func (t tconf) AuthMethodId() string           { return "abcdefghijk" }
-func (t tconf) validate(context.Context) error { return nil }
+func (t tconf) AuthMethodId() string { return "abcdefghijk" }
+func (t tconf) validate() error      { return nil }
 
 var _ Configuration = tconf(0)
 
@@ -201,7 +201,7 @@ func TestRepository_SetConfiguration(t *testing.T) {
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(context.Background(), rw, rw, kms)
+	repo, err := NewRepository(rw, rw, kms)
 	assert.NoError(t, err)
 	require.NotNil(t, repo)
 

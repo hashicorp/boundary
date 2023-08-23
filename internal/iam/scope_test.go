@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -20,22 +20,21 @@ import (
 
 func TestScope_New(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid-org-with-project", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, err := NewOrg(ctx)
+		s, err := NewOrg()
 		require.NoError(err)
 		require.NotNil(s.Scope)
-		s.PublicId, err = newScopeId(ctx, scope.Org)
+		s.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
-		err = w.Create(ctx, s)
+		err = w.Create(context.Background(), s)
 		require.NoError(err)
 		require.NotEmpty(s.PublicId)
 
 		id := testId(t)
-		projScope, err := NewProject(ctx, s.PublicId, WithDescription(id))
+		projScope, err := NewProject(s.PublicId, WithDescription(id))
 		require.NoError(err)
 		require.NotNil(projScope.Scope)
 		assert.Equal(projScope.GetParentId(), s.PublicId)
@@ -43,14 +42,14 @@ func TestScope_New(t *testing.T) {
 	})
 	t.Run("unknown-scope", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		s, err := newScope(ctx, nil)
+		s, err := newScope(nil)
 		require.Error(err)
 		require.Nil(s)
 		assert.Contains(err.Error(), "iam.newScope: child scope is missing its parent: parameter violation: error #100")
 	})
 	t.Run("proj-scope-with-no-org", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		s, err := NewProject(ctx, "")
+		s, err := NewProject("")
 		require.Error(err)
 		require.Nil(s)
 		assert.Contains(err.Error(), "iam.NewProject: iam.newScope: child scope is missing its parent: parameter violation: error #100")
@@ -59,42 +58,41 @@ func TestScope_New(t *testing.T) {
 
 func TestScope_Create(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, err := NewOrg(ctx)
+		s, err := NewOrg()
 		require.NoError(err)
 		require.NotNil(s.Scope)
-		s.PublicId, err = newScopeId(ctx, scope.Org)
+		s.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
-		err = w.Create(ctx, s)
+		err = w.Create(context.Background(), s)
 		require.NoError(err)
 		assert.NotEmpty(s.PublicId)
 	})
 	t.Run("valid-with-parent", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		w := db.New(conn)
-		s, err := NewOrg(ctx)
+		s, err := NewOrg()
 		require.NoError(err)
 		require.NotNil(s.Scope)
-		s.PublicId, err = newScopeId(ctx, scope.Org)
+		s.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
-		err = w.Create(ctx, s)
+		err = w.Create(context.Background(), s)
 		require.NoError(err)
 		require.NotEmpty(s.PublicId)
 
 		id := testId(t)
-		project, err := NewProject(ctx, s.PublicId, WithDescription(id))
+		project, err := NewProject(s.PublicId, WithDescription(id))
 		require.NoError(err)
 		require.NotNil(project.Scope)
 		assert.Equal(project.Scope.ParentId, s.PublicId)
 		assert.Equal(project.GetDescription(), id)
-		project.PublicId, err = newScopeId(ctx, scope.Org)
+		project.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
 
-		err = w.Create(ctx, project)
+		err = w.Create(context.Background(), project)
 		require.NoError(err)
 		assert.Equal(project.ParentId, s.PublicId)
 	})
@@ -173,7 +171,7 @@ func TestScope_Actions(t *testing.T) {
 }
 
 func TestScope_ResourceType(t *testing.T) {
-	o, err := NewOrg(context.Background())
+	o, err := NewOrg()
 	require.NoError(t, err)
 	assert.Equal(t, o.ResourceType(), resource.Scope)
 	assert.Equal(t, o.GetParentId(), scope.Global.String())
@@ -204,16 +202,15 @@ func TestScope_Clone(t *testing.T) {
 // DB itself
 func TestScope_GlobalErrors(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	w := db.New(conn)
 	t.Run("newScope errors", func(t *testing.T) {
 		// Not allowed
-		_, err := newScope(ctx, &Scope{Scope: &store.Scope{PublicId: "blahblah"}})
+		_, err := newScope(&Scope{Scope: &store.Scope{PublicId: "blahblah"}})
 		require.Error(t, err)
 
 		// Should fail as there's no scope
-		_, err = newScope(ctx, nil)
+		_, err = newScope(nil)
 		require.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "missing its parent"))
 	})
@@ -222,7 +219,7 @@ func TestScope_GlobalErrors(t *testing.T) {
 		s := AllocScope()
 		s.Type = scope.Global.String()
 		s.PublicId = "global"
-		err := s.VetForWrite(ctx, nil, db.CreateOp)
+		err := s.VetForWrite(context.Background(), nil, db.CreateOp)
 		require.Error(t, err)
 		assert.True(t, strings.Contains(err.Error(), "iam.(Scope).VetForWrite: you cannot create a global scope: parameter violation: error #100"))
 	})
@@ -232,10 +229,10 @@ func TestScope_GlobalErrors(t *testing.T) {
 		s.Type = scope.Org.String()
 		s.PublicId = "o_1234"
 		s.ParentId = "global"
-		err := s.VetForWrite(ctx, nil, db.CreateOp)
+		err := s.VetForWrite(context.Background(), nil, db.CreateOp)
 		require.NoError(t, err)
 		s.ParentId = "o_2345"
-		err = s.VetForWrite(ctx, nil, db.CreateOp)
+		err = s.VetForWrite(context.Background(), nil, db.CreateOp)
 		require.Error(t, err)
 	})
 	t.Run("not deletable in db", func(t *testing.T) {
@@ -243,10 +240,10 @@ func TestScope_GlobalErrors(t *testing.T) {
 		s := AllocScope()
 		s.PublicId = "global"
 		// Add this to validate that we did in fact delete
-		err := w.LookupById(ctx, &s)
+		err := w.LookupById(context.Background(), &s)
 		require.NoError(t, err)
 		require.Equal(t, s.Type, scope.Global.String())
-		rows, err := w.Delete(ctx, &s)
+		rows, err := w.Delete(context.Background(), &s)
 		require.Error(t, err)
 		assert.Equal(t, 0, rows)
 	})

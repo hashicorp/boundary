@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package password
 
@@ -18,24 +18,24 @@ import (
 // auth methods, the test will fail.
 func TestAuthMethod(t testing.TB, conn *db.DB, scopeId string, opt ...Option) *AuthMethod {
 	t.Helper()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	w := db.New(conn)
-	cat, err := NewAuthMethod(ctx, scopeId, opt...)
+	cat, err := NewAuthMethod(scopeId, opt...)
 	assert.NoError(err)
 	require.NotNil(cat)
-	id, err := newAuthMethodId(ctx)
+	id, err := newAuthMethodId()
 	assert.NoError(err)
 	require.NotEmpty(id)
 	cat.PublicId = id
 
 	conf := NewArgon2Configuration()
 	require.NotNil(conf)
-	conf.PrivateId, err = newArgon2ConfigurationId(ctx)
+	conf.PrivateId, err = newArgon2ConfigurationId()
 	require.NoError(err)
 	conf.PasswordMethodId = cat.PublicId
 	cat.PasswordConfId = conf.PrivateId
 
+	ctx := context.Background()
 	_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, iw db.Writer) error {
 			require.NoError(iw.Create(ctx, conf))
@@ -77,19 +77,19 @@ func TestMultipleAccounts(t testing.TB, conn *db.DB, authMethodId string, count 
 // If any errors are encountered during the creation of the account, the test will fail.
 func TestAccount(t testing.TB, conn *db.DB, authMethodId, loginName string, opt ...Option) *Account {
 	t.Helper()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	require.NotEmpty(loginName)
 	w := db.New(conn)
 	opt = append(opt, WithLoginName(loginName))
-	cat, err := NewAccount(context.Background(), authMethodId, opt...)
+	cat, err := NewAccount(authMethodId, opt...)
 	assert.NoError(err)
 	require.NotNil(cat)
-	id, err := newAccountId(ctx)
+	id, err := newAccountId()
 	assert.NoError(err)
 	require.NotEmpty(id)
 	cat.PublicId = id
 
+	ctx := context.Background()
 	_, err2 := w.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},
 		func(_ db.Reader, iw db.Writer) error {
 			return iw.Create(ctx, cat)

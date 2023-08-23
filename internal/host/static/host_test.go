@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package static
 
@@ -15,7 +15,6 @@ import (
 )
 
 func TestHost_New(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres", db.WithTestLogLevel(t, db.SilentTestLogLevel))
 	wrapper := db.TestWrapper(t)
 	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
@@ -132,7 +131,7 @@ func TestHost_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			got, err := NewHost(ctx, tt.args.catalogId, tt.args.opts...)
+			got, err := NewHost(tt.args.catalogId, tt.args.opts...)
 			if tt.wantCreateErr {
 				assert.Error(err)
 				assert.Nil(got)
@@ -142,14 +141,14 @@ func TestHost_New(t *testing.T) {
 					assert.Emptyf(got.PublicId, "PublicId set")
 					assert.Equal(tt.want, got)
 
-					id, err := newHostId(ctx)
+					id, err := newHostId()
 					assert.NoError(err)
 
 					tt.want.PublicId = id
 					got.PublicId = id
 
 					w := db.New(conn)
-					err2 := w.Create(ctx, got)
+					err2 := w.Create(context.Background(), got)
 					if tt.wantWriteErr {
 						assert.Error(err2)
 					}

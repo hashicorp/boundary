@@ -1,13 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package session
 
-import (
-	"context"
-
-	"github.com/hashicorp/boundary/internal/errors"
-)
+import "github.com/hashicorp/boundary/internal/errors"
 
 const (
 	defaultSessionTargetAddressTableName = "session_target_address"
@@ -24,13 +20,13 @@ type SessionTargetAddress struct {
 }
 
 // NewSessionTargetAddress creates a new in memory session target address.
-func NewSessionTargetAddress(ctx context.Context, sessionId, targetId string) (*SessionTargetAddress, error) {
+func NewSessionTargetAddress(sessionId, targetId string) (*SessionTargetAddress, error) {
 	const op = "sesssion.NewSessionTargetAddress"
 	if sessionId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing session id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing session id")
 	}
 	if targetId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing target id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing target id")
 	}
 	sta := &SessionTargetAddress{
 		SessionId: sessionId,

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package ldap
 
@@ -250,6 +250,10 @@ func WithBindCredential(ctx context.Context, dn, password string) Option {
 		switch {
 		case dn == "" && password == "":
 			return errors.New(ctx, errors.InvalidParameter, op, "missing both dn and password")
+		case dn != "" && password == "":
+			return errors.New(ctx, errors.InvalidParameter, op, "missing password")
+		case dn == "" && password != "":
+			return errors.New(ctx, errors.InvalidParameter, op, "missing dn")
 		}
 		o.withBindDn = dn
 		o.withBindPassword = password

@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -16,19 +15,18 @@ import (
 )
 
 func Test_PublicIds(t *testing.T) {
-	ctx := context.Background()
 	t.Run("role", func(t *testing.T) {
-		id, err := newRoleId(ctx)
+		id, err := newRoleId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.RolePrefix+"_"))
 	})
 	t.Run("user", func(t *testing.T) {
-		id, err := newUserId(ctx)
+		id, err := newUserId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.UserPrefix+"_"))
 	})
 	t.Run("group", func(t *testing.T) {
-		id, err := newGroupId(ctx)
+		id, err := newGroupId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, globals.GroupPrefix+"_"))
 	})
@@ -36,15 +34,15 @@ func Test_PublicIds(t *testing.T) {
 		assert.True(t, strings.HasPrefix("mgoidc_1234567890", globals.OidcManagedGroupPrefix+"_"))
 	})
 	t.Run("scopes", func(t *testing.T) {
-		id, err := newScopeId(ctx, scope.Org)
+		id, err := newScopeId(scope.Org)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, scope.Org.Prefix()))
 
-		id, err = newScopeId(ctx, scope.Project)
+		id, err = newScopeId(scope.Project)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, scope.Project.Prefix()))
 
-		id, err = newScopeId(ctx, scope.Unknown)
+		id, err = newScopeId(scope.Unknown)
 		require.Error(t, err)
 		assert.Empty(t, id)
 		assert.True(t, errors.Match(errors.T(errors.InvalidParameter), err))

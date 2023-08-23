@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package session
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -29,7 +28,7 @@ func (r TerminationReason) String() string {
 	return string(r)
 }
 
-func convertToReason(ctx context.Context, s string) (TerminationReason, error) {
+func convertToReason(s string) (TerminationReason, error) {
 	const op = "session.convertToReason"
 	switch s {
 	case UnknownTermination.String():
@@ -47,6 +46,6 @@ func convertToReason(ctx context.Context, s string) (TerminationReason, error) {
 	case ConnectionLimit.String():
 		return ConnectionLimit, nil
 	default:
-		return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
 	}
 }

@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -27,13 +26,13 @@ type (
 // the first proto from all subsequent protos assuming they are both using the
 // mask_mapping custom option.  Error is returned if no mappings are
 // found or if one of the passed protos has a mapping that doesn't reciprocate.
-func NewMaskManager(ctx context.Context, dest MaskDestination, src MaskSource) (MaskManager, error) {
+func NewMaskManager(dest MaskDestination, src MaskSource) (MaskManager, error) {
 	const op = "handlers.NewMaskManager"
-	srcToDest, err := mapFromProto(ctx, src)
+	srcToDest, err := mapFromProto(src)
 	if err != nil {
 		return nil, err
 	}
-	destToSrc, err := mapFromProto(ctx, dest)
+	destToSrc, err := mapFromProto(dest)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +41,7 @@ func NewMaskManager(ctx context.Context, dest MaskDestination, src MaskSource) (
 	for k, v := range srcToDest {
 		ov, ok := destToSrc[v]
 		if !ok || ov != k {
-			return nil, errors.New(ctx, errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
+			return nil, errors.NewDeprecated(errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
 		}
 		result[k] = v
 	}
@@ -50,18 +49,18 @@ func NewMaskManager(ctx context.Context, dest MaskDestination, src MaskSource) (
 	// Now check to make sure there aren't any dangling dest mappings.
 	for k, v := range destToSrc {
 		if ov, ok := srcToDest[v]; !ok || ov != k {
-			return nil, errors.New(ctx, errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
+			return nil, errors.NewDeprecated(errors.Encode, op, fmt.Sprintf("mapping src field %q maps to %q, dest %q maps to %q", k, v, v, ov))
 		}
 	}
 
 	if len(result) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "mask mapping generated is zero")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "mask mapping generated is zero")
 	}
 
 	return result, nil
 }
 
-func mapFromProto(ctx context.Context, ps []protoreflect.ProtoMessage) (map[string]string, error) {
+func mapFromProto(ps []protoreflect.ProtoMessage) (map[string]string, error) {
 	const op = "handlers.mapFromProto"
 	mapping := make(map[string]string)
 	for _, p := range ps {
@@ -72,7 +71,7 @@ func mapFromProto(ctx context.Context, ps []protoreflect.ProtoMessage) (map[stri
 			opts := f.Options().(*descriptorpb.FieldOptions)
 			if nameMap := proto.GetExtension(opts, pb.E_MaskMapping).(*pb.MaskMapping); !proto.Equal(nameMap, &pb.MaskMapping{}) && nameMap != nil {
 				if _, ok := mapping[nameMap.GetThis()]; ok {
-					return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("duplicate mapping from field %q with the mapping key %q", f.Name(), nameMap.GetThis()))
+					return nil, errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("duplicate mapping from field %q with the mapping key %q", f.Name(), nameMap.GetThis()))
 				}
 				mapping[nameMap.GetThis()] = nameMap.GetThat()
 			}

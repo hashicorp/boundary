@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
-var ErrMetadataScopeNotFound = errors.New(context.Background(), errors.RecordNotFound, "iam", "scope not found for metadata", errors.WithoutEvent())
+var ErrMetadataScopeNotFound = errors.NewDeprecated(errors.RecordNotFound, "iam", "scope not found for metadata", errors.WithoutEvent())
 
 // Repository is the iam database repository
 type Repository struct {
@@ -29,16 +29,16 @@ type Repository struct {
 
 // NewRepository creates a new iam Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*Repository, error) {
 	const op = "iam.NewRepository"
 	if r == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil reader")
 	}
 	if w == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil writer")
 	}
 	if kms == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "nil kms")
 	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {

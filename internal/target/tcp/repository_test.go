@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package tcp_test
 
@@ -143,7 +143,6 @@ func TestRepository_LookupTarget(t *testing.T) {
 
 func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
@@ -152,8 +151,9 @@ func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
 	_, proj1 := iam.TestScopes(t, iamRepo)
 	_, proj2 := iam.TestScopes(t, iamRepo)
 
-	db.TestDeleteWhere(t, conn, tcp.NewTestTarget(ctx, ""), "1=1")
+	db.TestDeleteWhere(t, conn, tcp.NewTestTarget(""), "1=1")
 
+	ctx := context.Background()
 	const numPerScope = 10
 	var total int
 	for i := 0; i < numPerScope; i++ {
@@ -235,7 +235,7 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			name: "not-found",
 			args: args{
 				target: func() target.Target {
-					id, err := db.NewPublicId(ctx, globals.TcpTargetPrefix)
+					id, err := db.NewPublicId(globals.TcpTargetPrefix)
 					require.NoError(t, err)
 					tar, _ := target.New(ctx, tcp.Subtype, proj.PublicId)
 					tar.SetPublicId(ctx, id)

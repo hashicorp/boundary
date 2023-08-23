@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -38,19 +38,19 @@ var (
 	_ Cloneable       = (*Scope)(nil)
 )
 
-func NewOrg(ctx context.Context, opt ...Option) (*Scope, error) {
+func NewOrg(opt ...Option) (*Scope, error) {
 	global := AllocScope()
 	global.PublicId = scope.Global.String()
-	return newScope(ctx, &global, opt...)
+	return newScope(&global, opt...)
 }
 
-func NewProject(ctx context.Context, orgPublicId string, opt ...Option) (*Scope, error) {
+func NewProject(orgPublicId string, opt ...Option) (*Scope, error) {
 	const op = "iam.NewProject"
 	org := AllocScope()
 	org.PublicId = orgPublicId
-	p, err := newScope(ctx, &org, opt...)
+	p, err := newScope(&org, opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	return p, nil
 }
@@ -60,10 +60,10 @@ func NewProject(ctx context.Context, orgPublicId string, opt ...Option) (*Scope,
 // specifies the Scope's parent and must be filled in. The type of the parent is
 // used to determine the type of the child. WithPrimaryAuthMethodId specifies
 // the primary auth method for the scope
-func newScope(ctx context.Context, parent *Scope, opt ...Option) (*Scope, error) {
+func newScope(parent *Scope, opt ...Option) (*Scope, error) {
 	const op = "iam.newScope"
 	if parent == nil || parent.PublicId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "child scope is missing its parent")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "child scope is missing its parent")
 	}
 	var typ scope.Type
 	switch {
@@ -73,7 +73,7 @@ func newScope(ctx context.Context, parent *Scope, opt ...Option) (*Scope, error)
 		typ = scope.Project
 	}
 	if typ == scope.Unknown {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "unknown scope type")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "unknown scope type")
 	}
 
 	opts := getOpts(opt...)

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -19,7 +19,6 @@ import (
 
 func Test_NewGroupMember(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -105,7 +104,7 @@ func Test_NewGroupMember(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := NewGroupMemberUser(ctx, tt.args.groupId, tt.args.userId, tt.args.opt...)
+			got, err := NewGroupMemberUser(tt.args.groupId, tt.args.userId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -119,7 +118,6 @@ func Test_NewGroupMember(t *testing.T) {
 
 func Test_GroupMemberCreate(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -141,7 +139,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, org.PublicId)
 					u := TestUser(t, repo, org.PublicId)
-					gm, err := NewGroupMemberUser(ctx, g.PublicId, u.PublicId)
+					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -154,7 +152,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, proj.PublicId)
 					u := TestUser(t, repo, org.PublicId)
-					gm, err := NewGroupMemberUser(ctx, g.PublicId, u.PublicId)
+					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -167,7 +165,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				gm: func() *GroupMemberUser {
 					id := testId(t)
 					u := TestUser(t, repo, org.PublicId)
-					gm, err := NewGroupMemberUser(ctx, id, u.PublicId)
+					gm, err := NewGroupMemberUser(id, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -181,7 +179,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				gm: func() *GroupMemberUser {
 					id := testId(t)
 					g := TestGroup(t, conn, proj.PublicId)
-					gm, err := NewGroupMemberUser(ctx, g.PublicId, id)
+					gm, err := NewGroupMemberUser(g.PublicId, id)
 					require.NoError(t, err)
 					return gm
 				}(),
@@ -227,7 +225,7 @@ func Test_GroupMemberCreate(t *testing.T) {
 				gm: func() *GroupMemberUser {
 					g := TestGroup(t, conn, org.PublicId)
 					u := TestUser(t, repo, org.PublicId)
-					gm, err := NewGroupMemberUser(ctx, g.PublicId, u.PublicId)
+					gm, err := NewGroupMemberUser(g.PublicId, u.PublicId)
 					require.NoError(t, err)
 					return gm
 				}(),

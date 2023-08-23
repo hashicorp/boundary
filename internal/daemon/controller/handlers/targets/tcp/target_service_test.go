@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package tcp_test
 
@@ -96,19 +96,19 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	vaultCredRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticCredRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(context.Background(), rw, rw, kms)
@@ -118,7 +118,6 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 
 func TestGet(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -130,10 +129,10 @@ func TestGet(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	o, proj := iam.TestScopes(t, iamRepo)
@@ -145,6 +144,7 @@ func TestGet(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 2)
 
+	ctx := context.Background()
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test", target.WithHostSources([]string{hs[0].GetPublicId(), hs[1].GetPublicId()}))
 
 	tarAddr := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test address", target.WithAddress("8.8.8.8"))
@@ -222,7 +222,7 @@ func TestGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := testService(t, ctx, conn, kms, wrapper)
+			s, err := testService(t, context.Background(), conn, kms, wrapper)
 			require.NoError(err, "Couldn't create a new host set service.")
 
 			requestInfo := authpb.RequestInfo{
@@ -247,7 +247,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -259,10 +258,10 @@ func TestList(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	_, projNoTar := iam.TestScopes(t, iamRepo)
@@ -284,6 +283,7 @@ func TestList(t *testing.T) {
 	otherHc := static.TestCatalogs(t, conn, otherProj.GetPublicId(), 1)[0]
 	hss := static.TestSets(t, conn, hc.GetPublicId(), 2)
 	otherHss := static.TestSets(t, conn, otherHc.GetPublicId(), 2)
+	ctx := context.Background()
 
 	var wantTars []*pb.Target
 	var totalTars []*pb.Target
@@ -414,7 +414,6 @@ func TestList(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -426,12 +425,13 @@ func TestDelete(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
+	ctx := context.Background()
 	org, proj := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 	r := iam.TestRole(t, conn, proj.GetPublicId())
@@ -440,7 +440,7 @@ func TestDelete(t *testing.T) {
 
 	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test")
 
-	s, err := testService(t, ctx, conn, kms, wrapper)
+	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Couldn't create a new target service.")
 
 	cases := []struct {
@@ -482,7 +482,7 @@ func TestDelete(t *testing.T) {
 				PublicId:    at.GetPublicId(),
 				Token:       at.GetToken(),
 			}
-			requestContext := context.WithValue(ctx, requests.ContextRequestInformationKey, &requests.RequestContext{})
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
 			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			got, gErr := s.DeleteTarget(ctx, tc.req)
 			if tc.err != nil {
@@ -509,10 +509,10 @@ func TestDelete_twice(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -544,7 +544,6 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -556,10 +555,10 @@ func TestCreate(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -780,7 +779,6 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -791,10 +789,10 @@ func TestUpdate(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -803,6 +801,7 @@ func TestUpdate(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
+	ctx := context.Background()
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, rw, rw, kms)
 	}
@@ -1275,7 +1274,6 @@ func TestUpdate(t *testing.T) {
 
 func TestUpdate_BadVersion(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1287,10 +1285,10 @@ func TestUpdate_BadVersion(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -1299,6 +1297,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
+	ctx := context.Background()
 	repoFn := func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, rw, rw, kms)
 	}
@@ -1337,7 +1336,6 @@ func TestUpdate_BadVersion(t *testing.T) {
 }
 
 func TestAddTargetHostSources(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1350,10 +1348,10 @@ func TestAddTargetHostSources(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -1374,6 +1372,7 @@ func TestAddTargetHostSources(t *testing.T) {
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
+	ctx := context.Background()
 	addCases := []struct {
 		name              string
 		tar               target.Target
@@ -1499,7 +1498,6 @@ func TestAddTargetHostSources(t *testing.T) {
 }
 
 func TestSetTargetHostSources(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1512,10 +1510,10 @@ func TestSetTargetHostSources(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -1536,6 +1534,7 @@ func TestSetTargetHostSources(t *testing.T) {
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
+	ctx := context.Background()
 	setCases := []struct {
 		name              string
 		tar               target.Target
@@ -1649,7 +1648,6 @@ func TestSetTargetHostSources(t *testing.T) {
 }
 
 func TestRemoveTargetHostSources(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1662,10 +1660,10 @@ func TestRemoveTargetHostSources(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -1686,6 +1684,7 @@ func TestRemoveTargetHostSources(t *testing.T) {
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	})
 
+	ctx := context.Background()
 	removeCases := []struct {
 		name              string
 		tar               target.Target
@@ -1817,7 +1816,6 @@ func TestRemoveTargetHostSources(t *testing.T) {
 }
 
 func TestAddTargetCredentialSources(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1829,10 +1827,10 @@ func TestAddTargetCredentialSources(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -1850,6 +1848,7 @@ func TestAddTargetCredentialSources(t *testing.T) {
 	storeStatic := credstatic.TestCredentialStore(t, conn, wrapper, proj.GetPublicId())
 	creds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", storeStatic.GetPublicId(), proj.GetPublicId(), 2)
 
+	ctx := context.Background()
 	addCases := []struct {
 		name            string
 		tar             target.Target
@@ -1999,7 +1998,6 @@ func TestAddTargetCredentialSources(t *testing.T) {
 }
 
 func TestSetTargetCredentialSources(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -2011,10 +2009,10 @@ func TestSetTargetCredentialSources(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -2023,7 +2021,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
-	s, err := testService(t, ctx, conn, kms, wrapper)
+	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
 
 	storeVault := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
@@ -2032,6 +2030,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 	storeStatic := credstatic.TestCredentialStore(t, conn, wrapper, proj.GetPublicId())
 	creds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "user", "pass", storeStatic.GetPublicId(), proj.GetPublicId(), 2)
 
+	ctx := context.Background()
 	setCases := []struct {
 		name                      string
 		tar                       target.Target
@@ -2108,7 +2107,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 				PublicId:    at.GetPublicId(),
 				Token:       at.GetToken(),
 			}
-			requestContext := context.WithValue(ctx, requests.ContextRequestInformationKey, &requests.RequestContext{})
+			requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
 			ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 			got, err := s.SetTargetCredentialSources(ctx, req)
 			require.NoError(t, err, "Got error: %v", s)
@@ -2175,7 +2174,6 @@ func TestSetTargetCredentialSources(t *testing.T) {
 }
 
 func TestRemoveTargetCredentialSources(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -2187,10 +2185,10 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 		return iamRepo, nil
 	}
 	tokenRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -2199,7 +2197,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
 	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
 
-	s, err := testService(t, ctx, conn, kms, wrapper)
+	s, err := testService(t, context.Background(), conn, kms, wrapper)
 	require.NoError(t, err, "Error when getting new target service.")
 
 	csVault := vault.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
@@ -2208,6 +2206,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 	csStatic := credstatic.TestCredentialStores(t, conn, wrapper, proj.GetPublicId(), 1)[0]
 	creds := credstatic.TestUsernamePasswordCredentials(t, conn, wrapper, "u", "p", csStatic.GetPublicId(), proj.GetPublicId(), 2)
 
+	ctx := context.Background()
 	removeCases := []struct {
 		name                      string
 		tar                       target.Target
@@ -2427,27 +2426,27 @@ func TestAuthorizeSession(t *testing.T) {
 		return iamRepo, nil
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
-	staticRepo, err := static.NewRepository(ctx, rw, rw, kms)
+	staticRepo, err := static.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 	staticHostRepoFn := func() (*static.Repository, error) {
 		return staticRepo, nil
 	}
 	vaultCredRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticCredRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	passwordAuthRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
+		return password.NewRepository(rw, rw, kms)
 	}
 	oidcAuthRepoFn := func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, rw, rw, kms)
@@ -2482,7 +2481,7 @@ func TestAuthorizeSession(t *testing.T) {
 		}),
 	}
 	pluginHostRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, plgm)
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 
 	loginName := "foo@bar.com"
@@ -2539,7 +2538,7 @@ func TestAuthorizeSession(t *testing.T) {
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "pki"}))
 
 	vaultStore := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
-	credService, err := credentiallibraries.NewService(ctx, vaultCredRepoFn, iamRepoFn)
+	credService, err := credentiallibraries.NewService(vaultCredRepoFn, iamRepoFn)
 	require.NoError(t, err)
 	clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 		CredentialStoreId: vaultStore.GetPublicId(),
@@ -2724,25 +2723,25 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 		return iamRepo, nil
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	vaultCredRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticCredRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -2777,7 +2776,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "secret"}))
 
 	vaultStore := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
-	credLibService, err := credentiallibraries.NewService(ctx, vaultCredRepoFn, iamRepoFn)
+	credLibService, err := credentiallibraries.NewService(vaultCredRepoFn, iamRepoFn)
 	require.NoError(t, err)
 
 	// Create secret in vault with default username and password fields
@@ -2837,7 +2836,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	require.NoError(t, err)
 
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, proj.GetPublicId())
-	credService, err := credentials.NewService(ctx, staticCredRepoFn, iamRepoFn)
+	credService, err := credentials.NewService(staticCredRepoFn, iamRepoFn)
 	require.NoError(t, err)
 	upCredResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
 		CredentialStoreId: staticStore.GetPublicId(),
@@ -3313,25 +3312,25 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		return iamRepo, nil
 	}
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 	sessionRepoFn := func(opts ...session.Option) (*session.Repository, error) {
 		return session.NewRepository(ctx, rw, rw, kms, opts...)
 	}
 	staticHostRepoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	vaultCredRepoFn := func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, rw, rw, kms, sche)
+		return vault.NewRepository(rw, rw, kms, sche)
 	}
 	staticCredRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	org, proj := iam.TestScopes(t, iamRepo)
 
@@ -3424,7 +3423,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	libraryExists := func(tar target.Target) (version uint32) {
-		credService, err := credentiallibraries.NewService(ctx, vaultCredRepoFn, iamRepoFn)
+		credService, err := credentiallibraries.NewService(vaultCredRepoFn, iamRepoFn)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: store.GetPublicId(),
@@ -3449,7 +3448,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	misConfiguredlibraryExists := func(tar target.Target) (version uint32) {
-		credService, err := credentiallibraries.NewService(ctx, vaultCredRepoFn, iamRepoFn)
+		credService, err := credentiallibraries.NewService(vaultCredRepoFn, iamRepoFn)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: store.GetPublicId(),
@@ -3474,7 +3473,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	expiredTokenLibrary := func(tar target.Target) (version uint32) {
-		credService, err := credentiallibraries.NewService(ctx, vaultCredRepoFn, iamRepoFn)
+		credService, err := credentiallibraries.NewService(vaultCredRepoFn, iamRepoFn)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: expiredStore.GetPublicId(),
@@ -3499,57 +3498,38 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	cases := []struct {
-		name            string
-		setup           []func(target.Target) uint32
-		useTargetId     bool
-		wantErr         bool
-		wantErrContains string
+		name  string
+		setup []func(target.Target) uint32
+		err   bool
 	}{
 		{
 			// This one must be run first since it relies on the DB not having any worker details
-			name:            "no worker",
-			setup:           []func(tcpTarget target.Target) uint32{hostExists, libraryExists},
-			useTargetId:     true,
-			wantErr:         true,
-			wantErrContains: "No workers are available to handle this session",
+			name:  "no worker",
+			setup: []func(tcpTarget target.Target) uint32{hostExists, libraryExists},
+			err:   true,
 		},
 		{
-			name:        "success",
-			setup:       []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
-			useTargetId: true,
+			name:  "success",
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
 		},
 		{
-			name:            "no target",
-			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, libraryExists},
-			useTargetId:     false,
-			wantErr:         true,
-			wantErrContains: "Resource not found",
+			name:  "no host port",
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostWithoutPort, libraryExists},
 		},
 		{
-			name:        "no host port",
-			setup:       []func(tcpTarget target.Target) uint32{workerExists, hostWithoutPort, libraryExists},
-			useTargetId: true,
+			name:  "no hosts",
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
+			err:   true,
 		},
 		{
-			name:            "no hosts",
-			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostSetNoHostExists, libraryExists},
-			useTargetId:     true,
-			wantErr:         true,
-			wantErrContains: "No host sources or address found for given target",
+			name:  "bad library configuration",
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
+			err:   true,
 		},
 		{
-			name:            "bad library configuration",
-			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, misConfiguredlibraryExists},
-			useTargetId:     true,
-			wantErr:         true,
-			wantErrContains: "external system issue: error #3014: Error making API request",
-		},
-		{
-			name:            "expired token library",
-			setup:           []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
-			useTargetId:     true,
-			wantErr:         true,
-			wantErrContains: "vault.newClient: invalid configuration",
+			name:  "expired token library",
+			setup: []func(tcpTarget target.Target) uint32{workerExists, hostExists, expiredTokenLibrary},
+			err:   true,
 		},
 	}
 	for i, tc := range cases {
@@ -3561,18 +3541,12 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 				tar.SetVersion(ver)
 			}
 
-			id := tar.GetPublicId()
-			if !tc.useTargetId {
-				id = "ttcp_bogusid"
-			}
-
 			res, err := s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
-				Id: id,
+				Id: tar.GetPublicId(),
 			})
-			if tc.wantErr {
+			if tc.err {
 				require.Error(t, err)
 				require.Nil(t, res)
-				require.ErrorContains(t, err, tc.wantErrContains)
 				return
 			}
 			require.NoError(t, err)

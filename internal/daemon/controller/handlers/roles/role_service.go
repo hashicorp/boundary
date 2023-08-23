@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package roles
 
@@ -22,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/roles"
-	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -56,11 +55,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.Role{}},
-		handlers.MaskSource{&pb.Role{}},
-	); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Role{}}, handlers.MaskSource{&pb.Role{}}); err != nil {
 		panic(err)
 	}
 }
@@ -75,17 +70,17 @@ type Service struct {
 var _ pbs.RoleServiceServer = (*Service)(nil)
 
 // NewService returns a role service which handles role related requests to boundary.
-func NewService(ctx context.Context, repo common.IamRepoFactory) (Service, error) {
+func NewService(repo common.IamRepoFactory) (Service, error) {
 	const op = "roles.NewService"
 	if repo == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
 
 // ListRoles implements the interface pbs.RoleServiceServer.
 func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs.ListRolesResponse, error) {
-	if err := validateListRequest(ctx, req); err != nil {
+	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -120,7 +115,7 @@ func (s Service) ListRoles(ctx context.Context, req *pbs.ListRolesRequest) (*pbs
 		return &pbs.ListRolesResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +401,7 @@ func (s Service) RemoveRolePrincipals(ctx context.Context, req *pbs.RemoveRolePr
 func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsRequest) (*pbs.AddRoleGrantsResponse, error) {
 	const op = "roles.(Service).AddRoleGrants"
 
-	if err := validateAddRoleGrantsRequest(ctx, req); err != nil {
+	if err := validateAddRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.AddGrants)
@@ -444,7 +439,7 @@ func (s Service) AddRoleGrants(ctx context.Context, req *pbs.AddRoleGrantsReques
 func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsRequest) (*pbs.SetRoleGrantsResponse, error) {
 	const op = "roles.(Service).SetRoleGrants"
 
-	if err := validateSetRoleGrantsRequest(ctx, req); err != nil {
+	if err := validateSetRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.SetGrants)
@@ -482,7 +477,7 @@ func (s Service) SetRoleGrants(ctx context.Context, req *pbs.SetRoleGrantsReques
 func (s Service) RemoveRoleGrants(ctx context.Context, req *pbs.RemoveRoleGrantsRequest) (*pbs.RemoveRoleGrantsResponse, error) {
 	const op = "roles.(Service).RemoveRoleGrants"
 
-	if err := validateRemoveRoleGrantsRequest(ctx, req); err != nil {
+	if err := validateRemoveRoleGrantsRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetId(), action.RemoveGrants)
@@ -546,7 +541,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Role
 	if item.GetGrantScopeId() != nil {
 		opts = append(opts, iam.WithGrantScopeId(item.GetGrantScopeId().GetValue()))
 	}
-	u, err := iam.NewRole(ctx, scopeId, opts...)
+	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build role for creation: %v.", err)
 	}
@@ -578,7 +573,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 	}
 	version := item.GetVersion()
 
-	u, err := iam.NewRole(ctx, scopeId, opts...)
+	u, err := iam.NewRole(scopeId, opts...)
 	if err != nil {
 		return nil, nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build role for update: %v.", err)
 	}
@@ -858,7 +853,7 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 	}
 	if outputFields.Has(globals.GrantsField) {
 		for _, g := range grants {
-			parsed, err := perms.Parse(ctx, in.GetGrantScopeId(), g.GetRawGrant())
+			parsed, err := perms.Parse(in.GetGrantScopeId(), g.GetRawGrant())
 			if err != nil {
 				// This should never happen as we validate on the way in, but let's
 				// return what we can since we are still returning the raw grant
@@ -874,7 +869,6 @@ func toProto(ctx context.Context, in *iam.Role, principals []*iam.PrincipalRole,
 					Canonical: g.GetCanonicalGrant(),
 					Json: &pb.GrantJson{
 						Id:      parsed.Id(),
-						Ids:     parsed.Ids(),
 						Type:    parsed.Type().String(),
 						Actions: actions,
 					},
@@ -949,14 +943,14 @@ func validateDeleteRequest(req *pbs.DeleteRoleRequest) error {
 	}, req, globals.RolePrefix)
 }
 
-func validateListRequest(ctx context.Context, req *pbs.ListRolesRequest) error {
+func validateListRequest(req *pbs.ListRolesRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		!handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Improperly formatted field."
 	}
-	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {
@@ -979,8 +973,7 @@ func validateAddRolePrincipalsRequest(req *pbs.AddRolePrincipalsRequest) error {
 	for _, id := range req.GetPrincipalIds() {
 		if !handlers.ValidId(handlers.Id(id), globals.GroupPrefix) &&
 			!handlers.ValidId(handlers.Id(id), globals.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) &&
-			!handlers.ValidId(handlers.Id(id), globals.LdapManagedGroupPrefix) {
+			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
@@ -1006,8 +999,7 @@ func validateSetRolePrincipalsRequest(req *pbs.SetRolePrincipalsRequest) error {
 	for _, id := range req.GetPrincipalIds() {
 		if !handlers.ValidId(handlers.Id(id), globals.GroupPrefix) &&
 			!handlers.ValidId(handlers.Id(id), globals.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) &&
-			!handlers.ValidId(handlers.Id(id), globals.LdapManagedGroupPrefix) {
+			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
@@ -1036,8 +1028,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 	for _, id := range req.GetPrincipalIds() {
 		if !handlers.ValidId(handlers.Id(id), globals.GroupPrefix) &&
 			!handlers.ValidId(handlers.Id(id), globals.UserPrefix) &&
-			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) &&
-			!handlers.ValidId(handlers.Id(id), globals.LdapManagedGroupPrefix) {
+			!handlers.ValidId(handlers.Id(id), globals.OidcManagedGroupPrefix) {
 			badFields["principal_ids"] = "Must only have valid user, group, and/or managed group ids."
 			break
 		}
@@ -1048,7 +1039,7 @@ func validateRemoveRolePrincipalsRequest(req *pbs.RemoveRolePrincipalsRequest) e
 	return nil
 }
 
-func validateAddRoleGrantsRequest(ctx context.Context, req *pbs.AddRoleGrantsRequest) error {
+func validateAddRoleGrantsRequest(req *pbs.AddRoleGrantsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -1064,7 +1055,7 @@ func validateAddRoleGrantsRequest(ctx context.Context, req *pbs.AddRoleGrantsReq
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		grant, err := perms.Parse(ctx, "p_anything", v)
+		grant, err := perms.Parse("p_anything", v)
 		if err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
@@ -1075,14 +1066,6 @@ func validateAddRoleGrantsRequest(ctx context.Context, req *pbs.AddRoleGrantsReq
 				badFields["grant_strings"] = fmt.Sprintf("Action %q has been deprecated and is not allowed to be set in grants. Use %q instead.", actStr, depAct.String())
 			}
 		}
-		switch {
-		case grant.Id() == "":
-			// Nothing
-		case version.SupportsFeature(version.Binary, version.SupportIdInGrants):
-			// This will warn on the CLI
-		default:
-			badFields["grant_strings"] = fmt.Sprintf("Grant %q uses the %q field which is no longer supported. Please use %q instead.", v, "id", "ids")
-		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -1090,7 +1073,7 @@ func validateAddRoleGrantsRequest(ctx context.Context, req *pbs.AddRoleGrantsReq
 	return nil
 }
 
-func validateSetRoleGrantsRequest(ctx context.Context, req *pbs.SetRoleGrantsRequest) error {
+func validateSetRoleGrantsRequest(req *pbs.SetRoleGrantsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -1103,7 +1086,7 @@ func validateSetRoleGrantsRequest(ctx context.Context, req *pbs.SetRoleGrantsReq
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		grant, err := perms.Parse(ctx, "p_anything", v)
+		grant, err := perms.Parse("p_anything", v)
 		if err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
@@ -1114,14 +1097,6 @@ func validateSetRoleGrantsRequest(ctx context.Context, req *pbs.SetRoleGrantsReq
 				badFields["grant_strings"] = fmt.Sprintf("Action %q has been deprecated and is not allowed to be set in grants. Use %q instead.", actStr, depAct.String())
 			}
 		}
-		switch {
-		case grant.Id() == "":
-			// Nothing
-		case version.SupportsFeature(version.Binary, version.SupportIdInGrants):
-			// This will warn on the CLI
-		default:
-			badFields["grant_strings"] = fmt.Sprintf("Grant %q uses the %q field which is no longer supported. Please use %q instead.", v, "id", "ids")
-		}
 	}
 	if len(badFields) > 0 {
 		return handlers.InvalidArgumentErrorf("Errors in provided fields.", badFields)
@@ -1129,7 +1104,7 @@ func validateSetRoleGrantsRequest(ctx context.Context, req *pbs.SetRoleGrantsReq
 	return nil
 }
 
-func validateRemoveRoleGrantsRequest(ctx context.Context, req *pbs.RemoveRoleGrantsRequest) error {
+func validateRemoveRoleGrantsRequest(req *pbs.RemoveRoleGrantsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetId()), globals.RolePrefix) {
 		badFields["id"] = "Incorrectly formatted identifier."
@@ -1145,7 +1120,7 @@ func validateRemoveRoleGrantsRequest(ctx context.Context, req *pbs.RemoveRoleGra
 			badFields["grant_strings"] = "Grant strings must not be empty."
 			break
 		}
-		if _, err := perms.Parse(ctx, "p_anything", v); err != nil {
+		if _, err := perms.Parse("p_anything", v); err != nil {
 			badFields["grant_strings"] = fmt.Sprintf("Improperly formatted grant %q.", v)
 			break
 		}

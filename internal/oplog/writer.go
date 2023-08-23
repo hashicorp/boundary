@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package oplog
 
@@ -40,10 +40,10 @@ func (w *Writer) hasTable(ctx context.Context, tableName string) (bool, error) {
 func (w *Writer) createTableLike(ctx context.Context, existingTableName string, newTableName string) error {
 	const op = "oplog.(Writer).createTableLike"
 	if existingTableName == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing existing table name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing existing table name")
 	}
 	if newTableName == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing new table name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing new table name")
 	}
 
 	sql := fmt.Sprintf(

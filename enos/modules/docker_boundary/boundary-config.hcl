@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 disable_mlock = true
 
@@ -48,12 +48,10 @@ kms "aead" {
   key_id    = "global_root"
 }
 
-# This key_id needs to match the corresponding downstream worker's
-# "worker-auth" kms
 kms "aead" {
   purpose   = "worker-auth"
   aead_type = "aes-gcm"
-  key       = "OLFhJNbEb3umRjdhY15QKNEmNXokY1Iq"
+  key       = "8fZBjCUfN0TzjEGLQldGY4+iE9AkOvCfjh7+p0GtRBQ="
   key_id    = "global_worker-auth"
 }
 

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -29,7 +29,7 @@ func (r *Repository) CreateRole(ctx context.Context, role *Role, _ ...Option) (*
 	if role.ScopeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	id, err := newRoleId(ctx)
+	id, err := newRoleId()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -99,7 +99,7 @@ func (r *Repository) UpdateRole(ctx context.Context, role *Role, version uint32,
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			repo, err := NewRepository(ctx, read, w, r.kms)
+			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -142,7 +142,7 @@ func (r *Repository) LookupRole(ctx context.Context, withPublicId string, _ ...O
 			if err := read.LookupByPublicId(ctx, &role); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			repo, err := NewRepository(ctx, read, w, r.kms)
+			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}

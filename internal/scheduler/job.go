@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package scheduler
 
@@ -42,16 +42,16 @@ type JobStatus struct {
 	Completed, Total int
 }
 
-func validateJob(ctx context.Context, j Job) error {
+func validateJob(j Job) error {
 	const op = "scheduler.validateJob"
 	if j == nil {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing job")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing job")
 	}
 	if j.Name() == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing name")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing name")
 	}
 	if j.Description() == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing description")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing description")
 	}
 	return nil
 }

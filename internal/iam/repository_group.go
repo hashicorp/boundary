@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -31,7 +31,7 @@ func (r *Repository) CreateGroup(ctx context.Context, group *Group, _ ...Option)
 	if group.ScopeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing scope id")
 	}
-	id, err := newGroupId(ctx)
+	id, err := newGroupId()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -97,7 +97,7 @@ func (r *Repository) UpdateGroup(ctx context.Context, group *Group, version uint
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			repo, err := NewRepository(ctx, read, w, r.kms)
+			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -135,7 +135,7 @@ func (r *Repository) LookupGroup(ctx context.Context, withPublicId string, _ ...
 			if err := read.LookupByPublicId(ctx, &g); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
-			repo, err := NewRepository(ctx, read, w, r.kms)
+			repo, err := NewRepository(read, w, r.kms)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -224,7 +224,7 @@ func (r *Repository) AddGroupMembers(ctx context.Context, groupId string, groupV
 
 	newGroupMembers := make([]any, 0, len(userIds))
 	for _, id := range userIds {
-		gm, err := NewGroupMemberUser(ctx, groupId, id)
+		gm, err := NewGroupMemberUser(groupId, id)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group member"))
 		}
@@ -317,7 +317,7 @@ func (r *Repository) DeleteGroupMembers(ctx context.Context, groupId string, gro
 
 	deleteMembers := make([]any, 0, len(userIds))
 	for _, id := range userIds {
-		member, err := NewGroupMemberUser(ctx, groupId, id)
+		member, err := NewGroupMemberUser(groupId, id)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group member"))
 		}
@@ -542,13 +542,13 @@ func groupMemberChanges(ctx context.Context, reader db.Reader, groupId string, u
 		}
 		switch c.Action {
 		case "add":
-			gm, err := NewGroupMemberUser(ctx, groupId, c.MemberId)
+			gm, err := NewGroupMemberUser(groupId, c.MemberId)
 			if err != nil {
 				return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group member for add"))
 			}
 			addMembers = append(addMembers, gm)
 		case "delete":
-			gm, err := NewGroupMemberUser(ctx, groupId, c.MemberId)
+			gm, err := NewGroupMemberUser(groupId, c.MemberId)
 			if err != nil {
 				return nil, nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group member for delete"))
 			}

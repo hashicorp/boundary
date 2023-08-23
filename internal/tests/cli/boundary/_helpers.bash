@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 export BOUNDARY_ADDR="${BOUNDARY_ADDR:-http://127.0.0.1:9200}"
 export DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-password}"
@@ -15,8 +15,6 @@ export DEFAULT_HOST_CATALOG="${DEFAULT_HOST_CATALOG:-hcst_1234567890}"
 export DEFAULT_HOST="${DEFAULT_HOST:-hst_1234567890}"
 export DEFAULT_USER="${DEFAULT_USER:-u_1234567890}"
 export DEFAULT_UNPRIVILEGED_USER="${DEFAULT_UNPRIVILEGED_USER:-u_0987654321}"
-export DEFAULT_AMLDAP="${DEFAULT_AMLDAP:-amldap_1234567890}"
-
 
 function strip() {
   echo "$1" | tr -d '"'

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package credentials
 
@@ -65,25 +65,16 @@ var (
 
 func init() {
 	var err error
-	if upMaskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.UsernamePasswordCredential{}},
-		handlers.MaskSource{&pb.Credential{}, &pb.UsernamePasswordAttributes{}},
-	); err != nil {
+	if upMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.UsernamePasswordCredential{}},
+		handlers.MaskSource{&pb.Credential{}, &pb.UsernamePasswordAttributes{}}); err != nil {
 		panic(err)
 	}
-	if spkMaskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.SshPrivateKeyCredential{}},
-		handlers.MaskSource{&pb.Credential{}, &pb.SshPrivateKeyAttributes{}},
-	); err != nil {
+	if spkMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.SshPrivateKeyCredential{}},
+		handlers.MaskSource{&pb.Credential{}, &pb.SshPrivateKeyAttributes{}}); err != nil {
 		panic(err)
 	}
-	if jsonMaskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.JsonCredential{}},
-		handlers.MaskSource{&pb.Credential{}, &pb.JsonAttributes{}},
-	); err != nil {
+	if jsonMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.JsonCredential{}},
+		handlers.MaskSource{&pb.Credential{}, &pb.JsonAttributes{}}); err != nil {
 		panic(err)
 	}
 }
@@ -99,20 +90,20 @@ type Service struct {
 var _ pbs.CredentialServiceServer = (*Service)(nil)
 
 // NewService returns a credential service which handles credential related requests to boundary.
-func NewService(ctx context.Context, repo common.StaticCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
+func NewService(repo common.StaticCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
 	const op = "credentials.NewService"
 	if iamRepo == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if repo == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing static credential repository")
 	}
 	return Service{iamRepoFn: iamRepo, repoFn: repo}, nil
 }
 
 // ListCredentials implements the interface pbs.CredentialServiceServer
 func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRequest) (*pbs.ListCredentialsResponse, error) {
-	if err := validateListRequest(ctx, req); err != nil {
+	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetCredentialStoreId(), action.List)
@@ -128,7 +119,7 @@ func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRe
 		return &pbs.ListCredentialsResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -884,12 +875,12 @@ func validateDeleteRequest(req *pbs.DeleteCredentialRequest) error {
 	)
 }
 
-func validateListRequest(ctx context.Context, req *pbs.ListCredentialsRequest) error {
+func validateListRequest(req *pbs.ListCredentialsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), globals.StaticCredentialStorePrefix, globals.StaticCredentialStorePreviousPrefix) {
 		badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 	}
-	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

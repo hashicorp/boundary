@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 // Package tcp provides a Target subtype for a TCP Target.
 // Importing this package will register it with the target package and
@@ -46,11 +46,11 @@ var (
 
 // NewTarget creates a new in memory tcp target.  WithName, WithDescription and
 // WithDefaultPort options are supported
-func (h targetHooks) NewTarget(ctx context.Context, projectId string, opt ...target.Option) (target.Target, error) {
+func (h targetHooks) NewTarget(projectId string, opt ...target.Option) (target.Target, error) {
 	const op = "tcp.NewTarget"
 	opts := target.GetOpts(opt...)
 	if projectId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing project id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing project id")
 	}
 	t := &Target{
 		Target: &store.Target{

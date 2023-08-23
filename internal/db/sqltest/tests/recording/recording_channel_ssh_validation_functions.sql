@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: BUSL-1.1
+-- SPDX-License-Identifier: MPL-2.0
 
 -- recording_channel_ssh_validation_functions tests the following functions:
 --    validate_recording_channel_ssh_insert

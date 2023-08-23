@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package controller
 
@@ -79,7 +79,7 @@ func newGrpcServer(
 	eventer *event.Eventer,
 ) (*grpc.Server, string, error) {
 	const op = "controller.newGrpcServer"
-	ticket, err := db.NewPrivateId(ctx, "gwticket")
+	ticket, err := db.NewPrivateId("gwticket")
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate gateway ticket"))
 	}

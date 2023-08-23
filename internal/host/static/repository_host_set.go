@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package static
 
@@ -55,7 +55,7 @@ func (r *Repository) CreateSet(ctx context.Context, projectId string, s *HostSet
 		}
 		s.PublicId = opts.withPublicId
 	} else {
-		id, err := newHostSetId(ctx)
+		id, err := newHostSetId()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

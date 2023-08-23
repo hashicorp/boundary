@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -73,13 +73,13 @@ var (
 
 // NewGroupMemberUser creates a new in memory user member of the group. No
 // options are currently supported.
-func NewGroupMemberUser(ctx context.Context, groupId, userId string, _ ...Option) (*GroupMemberUser, error) {
+func NewGroupMemberUser(groupId, userId string, _ ...Option) (*GroupMemberUser, error) {
 	const op = "iam.NewGroupMemberUser"
 	if groupId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing group id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing group id")
 	}
 	if userId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing user id")
 	}
 	return &GroupMemberUser{
 		GroupMemberUser: &store.GroupMemberUser{

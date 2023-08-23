@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package handlers
 
@@ -54,7 +54,7 @@ func TestLookupSession(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return server.NewRepositoryStorage(ctx, rw, rw, kms)
@@ -313,7 +313,7 @@ func TestAuthorizeConnection(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kmsCache)
+		return server.NewRepository(rw, rw, kmsCache)
 	}
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return server.NewRepositoryStorage(ctx, rw, rw, kmsCache)
@@ -469,7 +469,7 @@ func TestCancelSession(t *testing.T) {
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kms)
+		return server.NewRepository(rw, rw, kms)
 	}
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return server.NewRepositoryStorage(ctx, rw, rw, kms)
@@ -568,7 +568,7 @@ func TestHcpbWorkers(t *testing.T) {
 	require.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
 	serversRepoFn := func() (*server.Repository, error) {
-		return server.NewRepository(ctx, rw, rw, kmsCache)
+		return server.NewRepository(rw, rw, kmsCache)
 	}
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return server.NewRepositoryStorage(ctx, rw, rw, kmsCache)

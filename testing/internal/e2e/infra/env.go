@@ -1,13 +1,12 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package infra
 
 import "github.com/kelseyhightower/envconfig"
 
 type Config struct {
-	DockerMirror    string `envconfig:"DOCKER_MIRROR" default:"docker.mirror.hashicorp.services"`
-	BoundaryLicense string `envconfig:"BOUNDARY_LICENSE" default:""`
+	DockerMirror string `envconfig:"DOCKER_MIRROR" default:"docker.mirror.hashicorp.services"`
 }
 
 func LoadConfig() (*Config, error) {

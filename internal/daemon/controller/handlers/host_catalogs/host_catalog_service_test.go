@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package host_catalogs_test
 
@@ -88,10 +88,10 @@ func TestGet_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	repo := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	pluginRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(ctx, rw, rw, kms)
@@ -152,7 +152,7 @@ func TestGet_Static(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn)
+			s, err := host_catalogs.NewService(repo, pluginHostRepo, pluginRepo, iamRepoFn)
 			require.NoError(err, "Couldn't create a new host catalog service.")
 
 			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -179,10 +179,10 @@ func TestGet_Plugin(t *testing.T) {
 
 	rw := db.New(conn)
 	repo := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	pluginRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(ctx, rw, rw, kms)
@@ -268,7 +268,7 @@ func TestGet_Plugin(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn)
+			s, err := host_catalogs.NewService(repo, pluginHostRepo, pluginRepo, iamRepoFn)
 			require.NoError(err, "Couldn't create a new host catalog service.")
 
 			got, gErr := s.GetHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -296,13 +296,13 @@ func TestList(t *testing.T) {
 		return iam.TestRepo(t, conn, wrapper), nil
 	}
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	pluginRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(ctx, rw, rw, kms)
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
@@ -457,7 +457,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := host_catalogs.NewService(ctx, repoFn, pluginHostRepo, pluginRepo, iamRepoFn)
+			s, err := host_catalogs.NewService(repoFn, pluginHostRepo, pluginRepo, iamRepoFn)
 			require.NoError(err, "Couldn't create new auth_method service.")
 
 			// Test with non-anon user
@@ -500,10 +500,10 @@ func TestDelete_Static(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 	rw := db.New(conn)
 	repo := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	pluginRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(ctx, rw, rw, kms)
@@ -513,7 +513,7 @@ func TestDelete_Static(t *testing.T) {
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
-	s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn)
+	s, err := host_catalogs.NewService(repo, pluginHostRepo, pluginRepo, iamRepoFn)
 	require.NoError(t, err, "Couldn't create a new host catalog service.")
 
 	cases := []struct {
@@ -571,10 +571,10 @@ func TestDelete_Plugin(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 	rw := db.New(conn)
 	repo := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	pluginRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(ctx, rw, rw, kms)
@@ -585,7 +585,7 @@ func TestDelete_Plugin(t *testing.T) {
 	plg := plugin.TestPlugin(t, conn, "test")
 	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 
-	s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn)
+	s, err := host_catalogs.NewService(repo, pluginHostRepo, pluginRepo, iamRepoFn)
 	require.NoError(t, err, "Couldn't create a new host catalog service.")
 
 	cases := []struct {
@@ -634,7 +634,6 @@ func TestDelete_Plugin(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	t.Parallel()
-	testCtx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -644,20 +643,20 @@ func TestDelete_twice(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 	rw := db.New(conn)
 	repo := func() (*static.Repository, error) {
-		return static.NewRepository(testCtx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(testCtx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	pluginRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(testCtx, rw, rw, kms)
+		return plugin.NewRepository(context.Background(), rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
-	s, err := host_catalogs.NewService(testCtx, repo, pluginHostRepo, pluginRepo, iamRepoFn)
+	s, err := host_catalogs.NewService(repo, pluginHostRepo, pluginRepo, iamRepoFn)
 	require.NoError(err, "Couldn't create a new host catalog service.")
 	req := &pbs.DeleteHostCatalogRequest{
 		Id: hc.GetPublicId(),
@@ -681,10 +680,10 @@ func TestCreate_Static(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 	rw := db.New(conn)
 	repo := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	pluginRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(ctx, rw, rw, kms)
@@ -791,7 +790,7 @@ func TestCreate_Static(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn)
+			s, err := host_catalogs.NewService(repo, pluginHostRepo, pluginRepo, iamRepoFn)
 			require.NoError(err, "Failed to create a new host catalog service.")
 
 			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -834,7 +833,7 @@ func TestCreate_Plugin(t *testing.T) {
 	org, proj := iam.TestScopes(t, iamRepo)
 	rw := db.New(conn)
 	repo := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(ctx, rw, rw, kms)
@@ -846,7 +845,7 @@ func TestCreate_Plugin(t *testing.T) {
 	name := "test"
 	plg := plugin.TestPlugin(t, conn, name)
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
 			plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginHostServer{
 				OnCreateCatalogFn: func(ctx context.Context, req *plgpb.OnCreateCatalogRequest) (*plgpb.OnCreateCatalogResponse, error) {
 					return nil, nil
@@ -967,7 +966,7 @@ func TestCreate_Plugin(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateHostCatalogRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_catalogs.NewService(ctx, repo, pluginHostRepo, pluginRepo, iamRepoFn)
+			s, err := host_catalogs.NewService(repo, pluginHostRepo, pluginRepo, iamRepoFn)
 			require.NoError(err, "Failed to create a new host catalog service.")
 
 			got, gErr := s.CreateHostCatalog(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -1012,10 +1011,10 @@ func TestUpdate_Static(t *testing.T) {
 	_, proj := iam.TestScopes(t, iamRepo)
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	pluginRepo := func() (*plugin.Repository, error) {
 		return plugin.NewRepository(ctx, rw, rw, kms)
@@ -1023,10 +1022,10 @@ func TestUpdate_Static(t *testing.T) {
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	tested, err := host_catalogs.NewService(ctx, repoFn, pluginHostRepo, pluginRepo, iamRepoFn)
+	tested, err := host_catalogs.NewService(repoFn, pluginHostRepo, pluginRepo, iamRepoFn)
 	require.NoError(t, err, "Failed to create a new host catalog service.")
 
-	hc, err := static.NewHostCatalog(ctx, proj.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
+	hc, err := static.NewHostCatalog(proj.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
 	require.NoError(t, err, "Couldn't get new catalog.")
 	repo, err := repoFn()
 	require.NoError(t, err, "Couldn't create static repostitory")
@@ -1372,7 +1371,6 @@ func TestUpdate_Static(t *testing.T) {
 
 func TestUpdate_Plugin(t *testing.T) {
 	t.Parallel()
-	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1390,18 +1388,18 @@ func TestUpdate_Plugin(t *testing.T) {
 	}
 
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(testCtx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(testCtx, rw, rw, kms, sche, plgm)
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 	pluginRepo := func() (*plugin.Repository, error) {
-		return plugin.NewRepository(testCtx, rw, rw, kms)
+		return plugin.NewRepository(context.Background(), rw, rw, kms)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	tested, err := host_catalogs.NewService(testCtx, repoFn, pluginHostRepo, pluginRepo, iamRepoFn)
+	tested, err := host_catalogs.NewService(repoFn, pluginHostRepo, pluginRepo, iamRepoFn)
 	require.NoError(t, err, "Failed to create a new host catalog service.")
 
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())

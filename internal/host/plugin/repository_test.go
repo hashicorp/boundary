@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/scheduler"
@@ -156,7 +155,7 @@ func TestRepository_New(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(context.Background(), tt.args.r, tt.args.w, tt.args.kms, tt.args.scheduler, tt.args.plugins, tt.args.opts...)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms, tt.args.scheduler, tt.args.plugins, tt.args.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)

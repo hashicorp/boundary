@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package password
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -13,14 +12,13 @@ import (
 )
 
 func Test_PrivateIds(t *testing.T) {
-	ctx := context.Background()
 	t.Run("argon2Config", func(t *testing.T) {
-		id, err := newArgon2ConfigurationId(ctx)
+		id, err := newArgon2ConfigurationId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, argon2ConfigurationPrefix+"_"))
 	})
 	t.Run("argon2Cred", func(t *testing.T) {
-		id, err := newArgon2CredentialId(ctx)
+		id, err := newArgon2CredentialId()
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(id, argon2CredentialPrefix+"_"))
 	})

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package globals
 
@@ -163,24 +163,10 @@ var prefixToResourceType = map[string]resource.Type{
 	SessionRecordingPrefix:                     resource.SessionRecording,
 }
 
-var resourceTypeToPrefixes map[resource.Type][]string = func() map[resource.Type][]string {
-	ret := make(map[resource.Type][]string)
-	for k, v := range prefixToResourceType {
-		ret[v] = append(ret[v], k)
-	}
-	return ret
-}()
-
 // ResourceTypeFromPrefix takes in a resource ID (or a prefix) and returns the
 // corresponding resource typ
 func ResourceTypeFromPrefix(in string) resource.Type {
 	// If full ID, trim to just prefix
 	in, _, _ = strings.Cut(in, "_")
 	return prefixToResourceType[in]
-}
-
-// ResourcePrefixesFromType returns the known prefixes for a given type; if a
-// type is not known the return value will be nil
-func ResourcePrefixesFromType(in resource.Type) []string {
-	return resourceTypeToPrefixes[in]
 }

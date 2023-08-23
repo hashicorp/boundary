@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package password
 
@@ -19,7 +19,7 @@ import (
 // the only configuration type.
 type Configuration interface {
 	AuthMethodId() string
-	validate(context.Context) error
+	validate() error
 }
 
 // GetConfiguration returns the current configuration for authMethodId.
@@ -53,7 +53,7 @@ func (r *Repository) SetConfiguration(ctx context.Context, scopeId string, c Con
 	if c.AuthMethodId() == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth method id")
 	}
-	if err := c.validate(ctx); err != nil {
+	if err := c.validate(); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
@@ -73,7 +73,7 @@ func (r *Repository) setArgon2Conf(ctx context.Context, scopeId string, c *Argon
 	const op = "password.(Repository).setArgon2Conf"
 	c = c.clone()
 
-	id, err := newArgon2ConfigurationId(ctx)
+	id, err := newArgon2ConfigurationId()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

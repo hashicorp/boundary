@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package groups
 
@@ -52,11 +52,7 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.Group{}},
-		handlers.MaskSource{&pb.Group{}},
-	); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.Group{}}, handlers.MaskSource{&pb.Group{}}); err != nil {
 		panic(err)
 	}
 }
@@ -71,17 +67,17 @@ type Service struct {
 var _ pbs.GroupServiceServer = (*Service)(nil)
 
 // NewService returns a group service which handles group related requests to boundary.
-func NewService(ctx context.Context, repo common.IamRepoFactory) (Service, error) {
+func NewService(repo common.IamRepoFactory) (Service, error) {
 	const op = "groups.NewService"
 	if repo == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repo}, nil
 }
 
 // ListGroups implements the interface pbs.GroupServiceServer.
 func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*pbs.ListGroupsResponse, error) {
-	if err := validateListRequest(ctx, req); err != nil {
+	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
@@ -116,7 +112,7 @@ func (s Service) ListGroups(ctx context.Context, req *pbs.ListGroupsRequest) (*p
 		return &pbs.ListGroupsResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -423,7 +419,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Grou
 	if item.GetDescription() != nil {
 		opts = append(opts, iam.WithDescription(item.GetDescription().GetValue()))
 	}
-	u, err := iam.NewGroup(ctx, scopeId, opts...)
+	u, err := iam.NewGroup(scopeId, opts...)
 	if err != nil {
 		return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build group for creation: %v.", err)
 	}
@@ -451,7 +447,7 @@ func (s Service) updateInRepo(ctx context.Context, scopeId, id string, mask []st
 		opts = append(opts, iam.WithName(name.GetValue()))
 	}
 	version := item.GetVersion()
-	g, err := iam.NewGroup(ctx, scopeId, opts...)
+	g, err := iam.NewGroup(scopeId, opts...)
 	if err != nil {
 		return nil, nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to build group for update: %v.", err)
 	}
@@ -685,14 +681,14 @@ func validateDeleteRequest(req *pbs.DeleteGroupRequest) error {
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.GroupPrefix)
 }
 
-func validateListRequest(ctx context.Context, req *pbs.ListGroupsRequest) error {
+func validateListRequest(req *pbs.ListGroupsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Org.Prefix()) &&
 		!handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		req.GetScopeId() != scope.Global.String() {
 		badFields["scope_id"] = "Incorrectly formatted identifier."
 	}
-	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

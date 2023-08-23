@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package vault
 
@@ -32,42 +32,42 @@ const (
 
 func RegisterJobs(ctx context.Context, scheduler *scheduler.Scheduler, r db.Reader, w db.Writer, kms *kms.Kms) error {
 	const op = "vault.RegisterJobs"
-	tokenRenewal, err := newTokenRenewalJob(ctx, r, w, kms)
+	tokenRenewal, err := newTokenRenewalJob(r, w, kms)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, tokenRenewal); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("token renewal job"))
 	}
-	tokenRevoke, err := newTokenRevocationJob(ctx, r, w, kms)
+	tokenRevoke, err := newTokenRevocationJob(r, w, kms)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, tokenRevoke); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("token revocation job"))
 	}
-	credRenewal, err := newCredentialRenewalJob(ctx, r, w, kms)
+	credRenewal, err := newCredentialRenewalJob(r, w, kms)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credRenewal); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("credential renewal job"))
 	}
-	credRevoke, err := newCredentialRevocationJob(ctx, r, w, kms)
+	credRevoke, err := newCredentialRevocationJob(r, w, kms)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credRevoke); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("credential revocation job"))
 	}
-	credStoreCleanup, err := newCredentialStoreCleanupJob(ctx, r, w, kms)
+	credStoreCleanup, err := newCredentialStoreCleanupJob(r, w, kms)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	if err = scheduler.RegisterJob(ctx, credStoreCleanup); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("credential store cleanup job"))
 	}
-	credCleanup, err := newCredentialCleanupJob(ctx, w)
+	credCleanup, err := newCredentialCleanupJob(w)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -94,15 +94,15 @@ type TokenRenewalJob struct {
 // newTokenRenewalJob creates a new in-memory TokenRenewalJob.
 //
 // WithLimit is the only supported option.
-func newTokenRenewalJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*TokenRenewalJob, error) {
+func newTokenRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*TokenRenewalJob, error) {
 	const op = "vault.newTokenRenewalJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)
@@ -243,7 +243,7 @@ func (r *TokenRenewalJob) NextRunIn(ctx context.Context) (time.Duration, error) 
 	const op = "vault.(TokenRenewalJob).NextRunIn"
 	next, err := nextRenewal(ctx, r)
 	if err != nil {
-		return defaultNextRunIn, errors.Wrap(ctx, err, op)
+		return defaultNextRunIn, errors.WrapDeprecated(err, op)
 	}
 
 	return next, nil
@@ -261,12 +261,12 @@ func nextRenewal(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 		query = credentialRenewalNextRunInQuery
 		r = job.reader
 	default:
-		return 0, errors.New(ctx, errors.Unknown, op, "unknown job")
+		return 0, errors.NewDeprecated(errors.Unknown, op, "unknown job")
 	}
 
 	rows, err := r.Query(context.Background(), query, nil)
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, op)
+		return 0, errors.WrapDeprecated(err, op)
 	}
 	defer rows.Close()
 
@@ -277,7 +277,7 @@ func nextRenewal(ctx context.Context, j scheduler.Job) (time.Duration, error) {
 		var n NextRenewal
 		err = r.ScanRows(ctx, rows, &n)
 		if err != nil {
-			return 0, errors.Wrap(ctx, err, op)
+			return 0, errors.WrapDeprecated(err, op)
 		}
 		if n.RenewalIn < 0 {
 			// If we are past the next renewal time, return 0 to schedule immediately
@@ -317,15 +317,15 @@ type TokenRevocationJob struct {
 // newTokenRevocationJob creates a new in-memory TokenRevocationJob.
 //
 // WithLimit is the only supported option.
-func newTokenRevocationJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*TokenRevocationJob, error) {
+func newTokenRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*TokenRevocationJob, error) {
 	const op = "vault.newTokenRevocationJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)
@@ -482,15 +482,15 @@ type CredentialRenewalJob struct {
 // newCredentialRenewalJob creates a new in-memory CredentialRenewalJob.
 //
 // WithLimit is the only supported option.
-func newCredentialRenewalJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialRenewalJob, error) {
+func newCredentialRenewalJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialRenewalJob, error) {
 	const op = "vault.newCredentialRenewalJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)
@@ -611,7 +611,7 @@ func (r *CredentialRenewalJob) NextRunIn(ctx context.Context) (time.Duration, er
 	const op = "vault.(CredentialRenewalJob).NextRunIn"
 	next, err := nextRenewal(ctx, r)
 	if err != nil {
-		return defaultNextRunIn, errors.Wrap(ctx, err, op)
+		return defaultNextRunIn, errors.WrapDeprecated(err, op)
 	}
 
 	return next, nil
@@ -645,15 +645,15 @@ type CredentialRevocationJob struct {
 // newCredentialRevocationJob creates a new in-memory CredentialRevocationJob.
 //
 // WithLimit is the only supported option.
-func newCredentialRevocationJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialRevocationJob, error) {
+func newCredentialRevocationJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialRevocationJob, error) {
 	const op = "vault.newCredentialRevocationJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)
@@ -787,15 +787,15 @@ type CredentialStoreCleanupJob struct {
 // newCredentialStoreCleanupJob creates a new in-memory CredentialStoreCleanupJob.
 //
 // No options are supported.
-func newCredentialStoreCleanupJob(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialStoreCleanupJob, error) {
+func newCredentialStoreCleanupJob(r db.Reader, w db.Writer, kms *kms.Kms, opt ...Option) (*CredentialStoreCleanupJob, error) {
 	const op = "vault.newCredentialStoreCleanupJob"
 	switch {
 	case r == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Reader")
 	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	case kms == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing kms")
 	}
 
 	opts := getOpts(opt...)
@@ -898,10 +898,10 @@ type CredentialCleanupJob struct {
 // newCredentialCleanupJob creates a new in-memory CredentialCleanupJob.
 //
 // No options are supported.
-func newCredentialCleanupJob(ctx context.Context, w db.Writer) (*CredentialCleanupJob, error) {
+func newCredentialCleanupJob(w db.Writer) (*CredentialCleanupJob, error) {
 	const op = "vault.newCredentialCleanupJob"
 	if w == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "missing db.Writer")
 	}
 
 	return &CredentialCleanupJob{

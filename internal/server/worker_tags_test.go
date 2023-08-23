@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package server
 
@@ -115,14 +115,13 @@ func TestWorkerTags_Create(t *testing.T) {
 
 func TestRepository_AddWorkerTags(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(ctx, rw, rw, kms)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 	// WithWorkerTags sets config tags to ensure they are not affected by api tag operations
@@ -289,7 +288,6 @@ func TestRepository_AddWorkerTags(t *testing.T) {
 
 func TestRepository_SetWorkerTags(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -297,7 +295,7 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 	worker := TestKmsWorker(t, conn, wrapper, WithWorkerTags(&Tag{Key: "key_c", Value: "value_c"}))
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(ctx, rw, rw, kms)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
@@ -446,7 +444,6 @@ func TestRepository_SetWorkerTags(t *testing.T) {
 func TestRepository_DeleteWorkerTags(t *testing.T) {
 	// Note: more delete operation testcases are found in subsequent func TestRepository_WorkerTagsConsequent
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -454,7 +451,7 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 	worker := TestKmsWorker(t, conn, wrapper)
 
 	assert, require := assert.New(t), require.New(t)
-	repo, err := NewRepository(ctx, rw, rw, kms)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 
@@ -599,13 +596,12 @@ func TestRepository_DeleteWorkerTags(t *testing.T) {
 
 func TestRepository_WorkerTagsConsequent(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kms)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 	require.NotNil(repo)
 

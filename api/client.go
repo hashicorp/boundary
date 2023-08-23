@@ -650,17 +650,8 @@ func (c *Client) NewRequest(ctx context.Context, method, requestPath string, bod
 		// be pointing to the protocol used in the application layer and not to
 		// the transport layer. Hence, setting the fields accordingly.
 		u.Scheme = "http"
+		u.Host = socket
 		u.Path = ""
-
-		// Go 1.21.0 introduced strict host header validation for clients.
-		// Using unix domain socket addresses in the Host header fails
-		// this validation. https://go.dev/issue/61431 details this problem.
-		// The error-on-domain-socket-host-header will be removed in a
-		// future release, but in the meantime, we need to set it to something
-		// that isn't the actual unix domain socket address. Following
-		// Docker's lead (https://github.com/moby/moby/pull/45942),
-		// use a localhost TLD.
-		u.Host = "api.boundary.localhost"
 	}
 
 	host := u.Host

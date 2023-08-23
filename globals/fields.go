@@ -1,11 +1,10 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package globals
 
 const (
 	IdField                                     = "id"
-	IdsField                                    = "ids"
 	VersionField                                = "version"
 	NameField                                   = "name"
 	DescriptionField                            = "description"

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -92,7 +92,7 @@ func TestNewRepository(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRepository(context.Background(), tt.args.r, tt.args.w, tt.args.kms)
+			got, err := NewRepository(tt.args.r, tt.args.w, tt.args.kms)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Equal(tt.wantErrString, err.Error())
@@ -106,7 +106,6 @@ func TestNewRepository(t *testing.T) {
 
 func Test_Repository_create(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -115,31 +114,31 @@ func Test_Repository_create(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		id := testId(t)
 
-		s, err := NewOrg(ctx, WithName("fname-"+id))
+		s, err := NewOrg(WithName("fname-" + id))
 		assert.NoError(err)
-		s.PublicId, err = newScopeId(ctx, scope.Org)
+		s.PublicId, err = newScopeId(scope.Org)
 		require.NoError(err)
-		retScope, err := repo.create(ctx, s)
+		retScope, err := repo.create(context.Background(), s)
 		require.NoError(err)
 		require.NotNil(retScope)
 		assert.NotEmpty(retScope.GetPublicId())
 		assert.Equal(retScope.GetName(), "fname-"+id)
 
-		foundScope, err := repo.LookupScope(ctx, s.PublicId)
+		foundScope, err := repo.LookupScope(context.Background(), s.PublicId)
 		require.NoError(err)
 		assert.True(proto.Equal(foundScope, retScope.(*Scope)))
 
 		var metadata store.Metadata
-		err = rw.LookupWhere(ctx, &metadata, "key = ? and value = ?", []any{"resource-public-id", s.PublicId})
+		err = rw.LookupWhere(context.Background(), &metadata, "key = ? and value = ?", []any{"resource-public-id", s.PublicId})
 		require.NoError(err)
 
 		var foundEntry oplog.Entry
-		err = rw.LookupWhere(ctx, &foundEntry, "id = ?", []any{metadata.EntryId})
+		err = rw.LookupWhere(context.Background(), &foundEntry, "id = ?", []any{metadata.EntryId})
 		assert.NoError(err)
 	})
 	t.Run("nil-resource", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		resource, err := repo.create(ctx, nil)
+		resource, err := repo.create(context.Background(), nil)
 		require.Error(err)
 		assert.Nil(resource)
 		assert.Equal("iam.(Repository).create: missing resource: parameter violation: error #100", err.Error())

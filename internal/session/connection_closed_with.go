@@ -1,11 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package session
 
 import (
-	"context"
-
 	"github.com/hashicorp/boundary/internal/errors"
 )
 
@@ -18,13 +16,13 @@ type CloseWith struct {
 	ClosedReason ClosedReason
 }
 
-func (c CloseWith) validate(ctx context.Context) error {
+func (c CloseWith) validate() error {
 	const op = "session.(CloseWith).validate"
 	if c.ConnectionId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing connection id")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing connection id")
 	}
 	if c.ClosedReason.String() == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "missing closed reason")
+		return errors.NewDeprecated(errors.InvalidParameter, op, "missing closed reason")
 	}
 	// 0 is valid for BytesUp and BytesDown
 	return nil

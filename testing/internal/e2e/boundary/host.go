@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package boundary
 
@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -186,7 +185,7 @@ func CreateNewAwsHostSetCli(t testing.TB, ctx context.Context, hostCatalogId str
 	return newHostSetId
 }
 
-// WaitForHostsInHostSetCli uses the cli to check if there are any hosts in a host set. It will check a
+// WaitForHostsInHostSetCli uses the cli to check if there are hosts in a host set. It will check a
 // few times before returning a result. The method will fail if there are 0 hosts found.
 func WaitForHostsInHostSetCli(t testing.TB, ctx context.Context, hostSetId string) int {
 	t.Logf("Looking for items in the host set...")
@@ -215,7 +214,7 @@ func WaitForHostsInHostSetCli(t testing.TB, ctx context.Context, hostSetId strin
 				return errors.New("No items are appearing in the host set")
 			}
 
-			t.Logf("Found %d host(s)", actualHostSetCount)
+			t.Logf("Found %d hosts", actualHostSetCount)
 			return nil
 		},
 		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
@@ -226,49 +225,4 @@ func WaitForHostsInHostSetCli(t testing.TB, ctx context.Context, hostSetId strin
 	require.NoError(t, err)
 
 	return actualHostSetCount
-}
-
-// WaitForNumberOfHostsInHostSetCli uses the cli to check if the number of hosts
-// in a host set match the expected. The method will throw an error if it does
-// not match after some retries.
-func WaitForNumberOfHostsInHostSetCli(t testing.TB, ctx context.Context, hostSetId string, expectedHostCount int) {
-	t.Logf("Looking for items in the host set...")
-	var actualHostSetCount int
-	err := backoff.RetryNotify(
-		func() error {
-			output := e2e.RunCommand(ctx, "boundary",
-				e2e.WithArgs(
-					"host-sets", "read",
-					"-id", hostSetId,
-					"-format", "json",
-				),
-			)
-			if output.Err != nil {
-				return backoff.Permanent(errors.New(string(output.Stderr)))
-			}
-
-			var hostSetsReadResult hostsets.HostSetReadResult
-			err := json.Unmarshal(output.Stdout, &hostSetsReadResult)
-			if err != nil {
-				return backoff.Permanent(err)
-			}
-
-			actualHostSetCount = len(hostSetsReadResult.Item.HostIds)
-			if actualHostSetCount != expectedHostCount {
-				return errors.New(
-					fmt.Sprintf("Number of hosts in host set do not match expected. EXPECTED: %d, ACTUAL: %d",
-						expectedHostCount,
-						actualHostSetCount,
-					))
-			}
-
-			t.Logf("Found %d host(s)", actualHostSetCount)
-			return nil
-		},
-		backoff.WithMaxRetries(backoff.NewConstantBackOff(3*time.Second), 5),
-		func(err error, td time.Duration) {
-			t.Logf("%s. Retrying...", err.Error())
-		},
-	)
-	require.NoError(t, err)
 }

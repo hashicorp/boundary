@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package sessions
 
@@ -55,13 +55,13 @@ type Service struct {
 var _ pbs.SessionServiceServer = (*Service)(nil)
 
 // NewService returns a session service which handles session related requests to boundary.
-func NewService(ctx context.Context, repoFn session.RepositoryFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(repoFn session.RepositoryFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
 	const op = "sessions.NewService"
 	if repoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing session repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing session repository")
 	}
 	if iamRepoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	return Service{repoFn: repoFn, iamRepoFn: iamRepoFn}, nil
 }
@@ -124,7 +124,7 @@ func (s Service) GetSession(ctx context.Context, req *pbs.GetSessionRequest) (*p
 func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest) (*pbs.ListSessionsResponse, error) {
 	const op = "session.(Service).ListSessions"
 
-	if err := validateListRequest(ctx, req); err != nil {
+	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 
@@ -149,9 +149,6 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		scopeIds = map[string]*scopes.ScopeInfo{authResults.Scope.Id: authResults.Scope}
 	} else {
 		scopeIds, err = authResults.ScopesAuthorizedForList(ctx, req.GetScopeId(), resource.Session)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	listPerms := authResults.ACL().ListPermissions(scopeIds, resource.Session, IdActions, authResults.UserId)
@@ -172,7 +169,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		return &pbs.ListSessionsResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -473,13 +470,13 @@ func validateGetRequest(req *pbs.GetSessionRequest) error {
 	return handlers.ValidateGetRequest(handlers.NoopValidatorFn, req, globals.SessionPrefix)
 }
 
-func validateListRequest(ctx context.Context, req *pbs.ListSessionsRequest) error {
+func validateListRequest(req *pbs.ListSessionsRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetScopeId()), scope.Project.Prefix()) &&
 		!req.GetRecursive() {
 		badFields["scope_id"] = "This field must be a valid project scope ID or the list operation must be recursive."
 	}
-	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package groups_test
 
@@ -76,7 +76,6 @@ func equalMembers(g *pb.Group, members []string) bool {
 }
 
 func TestGet(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -200,7 +199,7 @@ func TestGet(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetGroupRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := groups.NewService(ctx, repoFn)
+			s, err := groups.NewService(repoFn)
 			require.NoError(err, "Couldn't create new group service.")
 
 			got, gErr := s.GetGroup(auth.DisabledAuthTestContext(repoFn, tc.scopeId), req)
@@ -214,7 +213,6 @@ func TestGet(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -322,7 +320,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := groups.NewService(ctx, repoFn)
+			s, err := groups.NewService(repoFn)
 			require.NoError(err, "Couldn't create new group service.")
 
 			// Test with a non-anon user
@@ -352,7 +350,7 @@ func TestList(t *testing.T) {
 func TestDelete(t *testing.T) {
 	og, pg, repoFn := createDefaultGroupsAndRepo(t)
 
-	s, err := groups.NewService(context.Background(), repoFn)
+	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new group service.")
 
 	cases := []struct {
@@ -418,7 +416,7 @@ func TestDelete_twice(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	og, pg, repoFn := createDefaultGroupsAndRepo(t)
 
-	s, err := groups.NewService(context.Background(), repoFn)
+	s, err := groups.NewService(repoFn)
 	require.NoError(err, "Error when getting new group service")
 	scopeId := og.GetScopeId()
 	req := &pbs.DeleteGroupRequest{
@@ -544,7 +542,7 @@ func TestCreate(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.CreateGroupRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := groups.NewService(context.Background(), repoFn)
+			s, err := groups.NewService(repoFn)
 			require.NoError(err, "Error when getting new group service.")
 
 			got, gErr := s.CreateGroup(auth.DisabledAuthTestContext(repoFn, req.GetItem().GetScopeId()), req)
@@ -572,7 +570,6 @@ func TestCreate(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)
 	iamRepo := iam.TestRepo(t, conn, wrap)
@@ -597,12 +594,12 @@ func TestUpdate(t *testing.T) {
 		require.NoError(t, err, "Couldn't get a new repo")
 		if proj {
 			pgVersion++
-			pg, _, _, err = repo.UpdateGroup(ctx, pg, pgVersion, []string{"Name", "Description"})
+			pg, _, _, err = repo.UpdateGroup(context.Background(), pg, pgVersion, []string{"Name", "Description"})
 			require.NoError(t, err, "Failed to reset the group")
 			pgVersion++
 		} else {
 			ogVersion++
-			og, _, _, err = repo.UpdateGroup(ctx, og, ogVersion, []string{"Name", "Description"})
+			og, _, _, err = repo.UpdateGroup(context.Background(), og, ogVersion, []string{"Name", "Description"})
 			require.NoError(t, err, "Failed to reset the group")
 			ogVersion++
 		}
@@ -613,7 +610,7 @@ func TestUpdate(t *testing.T) {
 		Id: og.GetPublicId(),
 	}
 
-	tested, err := groups.NewService(ctx, repoFn)
+	tested, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error creating new service")
 	cases := []struct {
 		name    string
@@ -985,7 +982,7 @@ func TestAddMember(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := groups.NewService(context.Background(), repoFn)
+	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new group service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
@@ -1120,7 +1117,7 @@ func TestSetMember(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := groups.NewService(context.Background(), repoFn)
+	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new group service.")
 
 	o, p := iam.TestScopes(t, iamRepo)
@@ -1250,7 +1247,7 @@ func TestRemoveMember(t *testing.T) {
 	repoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	s, err := groups.NewService(context.Background(), repoFn)
+	s, err := groups.NewService(repoFn)
 	require.NoError(t, err, "Error when getting new grp service.")
 
 	o, p := iam.TestScopes(t, iamRepo)

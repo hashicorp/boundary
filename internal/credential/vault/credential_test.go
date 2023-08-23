@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package vault
 
@@ -136,7 +136,7 @@ func TestCredential_New(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			ctx := context.Background()
-			got, err := newCredential(ctx, tt.args.libraryId,
+			got, err := newCredential(tt.args.libraryId,
 				tt.args.externalId, tt.args.tokenHmac, tt.args.expiration)
 			if tt.wantErr {
 				assert.Error(err)
@@ -148,7 +148,7 @@ func TestCredential_New(t *testing.T) {
 
 			assert.Emptyf(got.PublicId, "PublicId set")
 
-			id, err := newCredentialId(ctx)
+			id, err := newCredentialId()
 			assert.NoError(err)
 
 			tt.want.PublicId = id

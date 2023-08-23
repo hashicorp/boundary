@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package main
 
@@ -204,11 +204,10 @@ var inputStructs = map[string][]*cmdInfo{
 	},
 	"authtokens": {
 		{
-			ResourceType:     resource.AuthToken.String(),
-			Pkg:              "authtokens",
-			StdActions:       []string{"read", "delete", "list"},
-			HasExtraHelpFunc: true,
-			Container:        "Scope",
+			ResourceType: resource.AuthToken.String(),
+			Pkg:          "authtokens",
+			StdActions:   []string{"read", "delete", "list"},
+			Container:    "Scope",
 		},
 	},
 	"credentialstores": {

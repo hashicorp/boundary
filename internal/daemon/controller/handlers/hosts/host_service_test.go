@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package hosts_test
 
@@ -49,7 +49,6 @@ var testAuthorizedActions = map[subtypes.Subtype][]string{
 
 func TestGet_Static(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -64,10 +63,10 @@ func TestGet_Static(t *testing.T) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
@@ -123,7 +122,7 @@ func TestGet_Static(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := hosts.NewService(ctx, repoFn, pluginRepoFn)
+			s, err := hosts.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create a new host service.")
 
 			got, gErr := s.GetHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
@@ -142,7 +141,6 @@ func TestGet_Static(t *testing.T) {
 
 func TestGet_Plugin(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -162,10 +160,10 @@ func TestGet_Plugin(t *testing.T) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, plgm)
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	h := hostplugin.TestHost(t, conn, hc.GetPublicId(), "test", hostplugin.WithExternalName("test-ext-name"))
@@ -240,7 +238,7 @@ func TestGet_Plugin(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := hosts.NewService(ctx, repoFn, pluginRepoFn)
+			s, err := hosts.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create a new host service.")
 
 			got, gErr := s.GetHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
@@ -260,7 +258,6 @@ func TestGet_Plugin(t *testing.T) {
 }
 
 func TestList_Static(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -275,10 +272,10 @@ func TestList_Static(t *testing.T) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
@@ -349,7 +346,7 @@ func TestList_Static(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := hosts.NewService(ctx, repoFn, pluginRepoFn)
+			s, err := hosts.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
 			// Test non-anonymous listing
@@ -376,7 +373,6 @@ func TestList_Static(t *testing.T) {
 }
 
 func TestList_Plugin(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -395,10 +391,10 @@ func TestList_Plugin(t *testing.T) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, plgm)
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	hcs := hostplugin.TestCatalogs(t, conn, proj.GetPublicId(), plg.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
@@ -472,7 +468,7 @@ func TestList_Plugin(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := hosts.NewService(ctx, repoFn, pluginRepoFn)
+			s, err := hosts.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
 			// Test non-anonymous listing
@@ -504,7 +500,6 @@ func TestList_Plugin(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -519,10 +514,10 @@ func TestDelete(t *testing.T) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
@@ -531,7 +526,7 @@ func TestDelete(t *testing.T) {
 	pluginHc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	pluginH := hostplugin.TestHost(t, conn, pluginHc.GetPublicId(), "test")
 
-	s, err := hosts.NewService(ctx, repoFn, pluginRepoFn)
+	s, err := hosts.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
@@ -588,7 +583,6 @@ func TestDelete(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	t.Parallel()
-	testCtx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -604,15 +598,15 @@ func TestDelete_twice(t *testing.T) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(testCtx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(testCtx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 1)[0]
 
-	s, err := hosts.NewService(testCtx, repoFn, pluginRepoFn)
+	s, err := hosts.NewService(repoFn, pluginRepoFn)
 	require.NoError(err, "Couldn't create a new host set service.")
 	req := &pbs.DeleteHostRequest{
 		Id: h.GetPublicId(),
@@ -627,7 +621,6 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -642,10 +635,10 @@ func TestCreate(t *testing.T) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 
@@ -824,7 +817,7 @@ func TestCreate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := hosts.NewService(ctx, repoFn, pluginRepoFn)
+			s, err := hosts.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Failed to create a new host set service.")
 
 			got, gErr := s.CreateHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
@@ -864,7 +857,6 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate_Static(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -879,10 +871,10 @@ func TestUpdate_Static(t *testing.T) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	repo, err := repoFn()
 	require.NoError(t, err, "Couldn't create new static repo.")
@@ -890,9 +882,9 @@ func TestUpdate_Static(t *testing.T) {
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	s := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 
-	h, err := static.NewHost(ctx, hc.GetPublicId(), static.WithName("default"), static.WithDescription("default"), static.WithAddress("defaultaddress"))
+	h, err := static.NewHost(hc.GetPublicId(), static.WithName("default"), static.WithDescription("default"), static.WithAddress("defaultaddress"))
 	require.NoError(t, err)
-	h, err = repo.CreateHost(ctx, proj.GetPublicId(), h)
+	h, err = repo.CreateHost(context.Background(), proj.GetPublicId(), h)
 	require.NoError(t, err)
 	static.TestSetMembers(t, conn, s.GetPublicId(), []*static.Host{h})
 
@@ -900,14 +892,14 @@ func TestUpdate_Static(t *testing.T) {
 
 	resetHost := func() {
 		version++
-		_, _, err = repo.UpdateHost(ctx, proj.GetPublicId(), h, version, []string{"Name", "Description", "Address"})
+		_, _, err = repo.UpdateHost(context.Background(), proj.GetPublicId(), h, version, []string{"Name", "Description", "Address"})
 		require.NoError(t, err, "Failed to reset host.")
 		version++
 	}
 
 	hCreated := h.GetCreateTime().GetTimestamp().AsTime()
 
-	tested, err := hosts.NewService(ctx, repoFn, pluginRepoFn)
+	tested, err := hosts.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	cases := []struct {
@@ -1332,7 +1324,6 @@ func TestUpdate_Static(t *testing.T) {
 
 func TestUpdate_Plugin(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1347,17 +1338,17 @@ func TestUpdate_Plugin(t *testing.T) {
 	rw := db.New(conn)
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 
 	plg := plugin.TestPlugin(t, conn, "test")
 	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	h := hostplugin.TestHost(t, conn, hc.GetPublicId(), "test")
 
-	tested, err := hosts.NewService(ctx, repoFn, pluginRepoFn)
+	tested, err := hosts.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err)
 
 	got, err := tested.UpdateHost(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), &pbs.UpdateHostRequest{

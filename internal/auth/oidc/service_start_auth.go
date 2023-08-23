@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package oidc
 
@@ -73,7 +73,7 @@ func StartAuth(ctx context.Context, oidcRepoFn OidcRepoFactory, authMethodId str
 	now := time.Now()
 	createTime := timestamppb.New(now.Truncate(time.Second))
 	exp := timestamppb.New(now.Add(AttemptExpiration).Truncate(time.Second))
-	tokenRequestId, err := authtoken.NewAuthTokenId(ctx)
+	tokenRequestId, err := authtoken.NewAuthTokenId()
 	if err != nil {
 		return nil, "", errors.Wrap(ctx, err, op)
 	}

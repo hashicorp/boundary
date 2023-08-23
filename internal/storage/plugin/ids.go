@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
@@ -26,7 +26,7 @@ const (
 
 func newStorageBucketId(ctx context.Context) (string, error) {
 	const op = "plugin.newStorageBucketId"
-	id, err := db.NewPublicId(ctx, globals.PluginStorageBucketPrefix)
+	id, err := db.NewPublicId(globals.PluginStorageBucketPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

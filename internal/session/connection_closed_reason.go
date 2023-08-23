@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package session
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -27,7 +26,7 @@ func (r ClosedReason) String() string {
 	return string(r)
 }
 
-func convertToClosedReason(ctx context.Context, s string) (ClosedReason, error) {
+func convertToClosedReason(s string) (ClosedReason, error) {
 	const op = "session.convertToClosedReason"
 	switch s {
 	case UnknownReason.String():
@@ -43,6 +42,6 @@ func convertToClosedReason(ctx context.Context, s string) (ClosedReason, error) 
 	case ConnectionSystemError.String():
 		return ConnectionSystemError, nil
 	default:
-		return "", errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
+		return "", errors.NewDeprecated(errors.InvalidParameter, op, fmt.Sprintf("%s is not a valid reason", s))
 	}
 }

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -34,7 +34,7 @@ func (r *Repository) AddRoleGrants(ctx context.Context, roleId string, roleVersi
 
 	newRoleGrants := make([]any, 0, len(grants))
 	for _, grant := range grants {
-		roleGrant, err := NewRoleGrant(ctx, roleId, grant)
+		roleGrant, err := NewRoleGrant(roleId, grant)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 		}
@@ -169,7 +169,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 			deleteRoleGrants := make([]any, 0, len(grants))
 			for _, grant := range grants {
 				// Use a fake scope, just want to get out a canonical string
-				perm, err := perms.Parse(ctx, "o_abcd1234", grant, perms.WithSkipFinalValidation(true))
+				perm, err := perms.Parse("o_abcd1234", grant, perms.WithSkipFinalValidation(true))
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
 				}
@@ -178,7 +178,7 @@ func (r *Repository) DeleteRoleGrants(ctx context.Context, roleId string, roleVe
 					continue
 				}
 
-				roleGrant, err := NewRoleGrant(ctx, roleId, grant)
+				roleGrant, err := NewRoleGrant(roleId, grant)
 				if err != nil {
 					return errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 				}
@@ -261,7 +261,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 	deleteRoleGrants := make([]any, 0, len(grants))
 	for _, grant := range grants {
 		// Use a fake scope, just want to get out a canonical string
-		perm, err := perms.Parse(ctx, "o_abcd1234", grant, perms.WithSkipFinalValidation(true))
+		perm, err := perms.Parse("o_abcd1234", grant, perms.WithSkipFinalValidation(true))
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error parsing grant string"))
 		}
@@ -277,7 +277,7 @@ func (r *Repository) SetRoleGrants(ctx context.Context, roleId string, roleVersi
 		}
 
 		// Not found, so add
-		rg, err = NewRoleGrant(ctx, roleId, grant)
+		rg, err = NewRoleGrant(roleId, grant)
 		if err != nil {
 			return nil, db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory role grant"))
 		}

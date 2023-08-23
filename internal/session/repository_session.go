@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package session
 
@@ -63,7 +63,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing addresses")
 	}
 
-	id, err := newId(ctx)
+	id, err := newId()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -93,7 +93,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 			}
 
 			if newSession.HostSetId != "" && newSession.HostId != "" {
-				hs, err := NewSessionHostSetHost(ctx, newSession.PublicId, newSession.HostSetId, newSession.HostId)
+				hs, err := NewSessionHostSetHost(newSession.PublicId, newSession.HostSetId, newSession.HostId)
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}
@@ -103,7 +103,7 @@ func (r *Repository) CreateSession(ctx context.Context, sessionWrapper wrapping.
 				returnedSession.HostSetId = hs.HostSetId
 				returnedSession.HostId = hs.HostId
 			} else if newSession.Endpoint != "" {
-				ta, err := NewSessionTargetAddress(ctx, newSession.PublicId, newSession.TargetId)
+				ta, err := NewSessionTargetAddress(newSession.PublicId, newSession.TargetId)
 				if err != nil {
 					return errors.Wrap(ctx, err, op)
 				}

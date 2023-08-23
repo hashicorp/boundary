@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package vault
 
@@ -57,7 +57,7 @@ func (r *Repository) CreateCredentialLibrary(ctx context.Context, projectId stri
 		return nil, err // intentionally not wrapped.
 	}
 
-	id, err := newCredentialLibraryId(ctx)
+	id, err := newCredentialLibraryId()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

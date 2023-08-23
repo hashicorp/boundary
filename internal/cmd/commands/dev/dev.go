@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package dev
 
@@ -658,7 +658,6 @@ func (c *Command) Run(args []string) int {
 	base.StartMemProfiler(c.Context)
 
 	if err := c.SetupEventing(
-		c.Context,
 		c.Logger,
 		c.StderrLock,
 		serverName,
@@ -925,7 +924,7 @@ func (c *Command) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	opsServer, err := ops.NewServer(c.Context, c.Logger, c.controller, c.worker, c.Listeners...)
+	opsServer, err := ops.NewServer(c.Logger, c.controller, c.worker, c.Listeners...)
 	if err != nil {
 		c.UI.Error(fmt.Errorf("Failed to start ops listeners: %w", err).Error())
 		return base.CommandCliError

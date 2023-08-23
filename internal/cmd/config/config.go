@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package config
 
@@ -218,7 +218,7 @@ type Controller struct {
 	License string `hcl:"license"`
 }
 
-func (c *Controller) InitNameIfEmpty(ctx context.Context) error {
+func (c *Controller) InitNameIfEmpty() error {
 	if c == nil {
 		return fmt.Errorf("controller config is empty")
 	}
@@ -227,7 +227,7 @@ func (c *Controller) InitNameIfEmpty(ctx context.Context) error {
 	}
 
 	var err error
-	c.Name, err = db.NewPublicId(ctx, "c")
+	c.Name, err = db.NewPublicId("c")
 	if err != nil {
 		return fmt.Errorf("error auto-generating controller name: %w", err)
 	}
@@ -346,10 +346,7 @@ func DevWorker(opt ...Option) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing dev config: %w", err)
 	}
-	opts, err := getOpts(opt...)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing options: %w", err)
-	}
+	opts := getOpts(opt...)
 	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
 	parsed.Eventing.ObservationsEnabled = opts.withObservationsEnabled
 	parsed.Eventing.SysEventsEnabled = opts.withSysEventsEnabled
@@ -392,10 +389,7 @@ func DevController(opt ...Option) (*Config, error) {
 	parsed.DevWorkerAuthKey = workerAuthKey
 	parsed.DevBsrKey = bsrKey
 	parsed.DevRecoveryKey = recoveryKey
-	opts, err := getOpts(opt...)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing options: %w", err)
-	}
+	opts := getOpts(opt...)
 	parsed.Eventing.AuditEnabled = opts.withAuditEventsEnabled
 	parsed.Eventing.ObservationsEnabled = opts.withObservationsEnabled
 	parsed.Eventing.SysEventsEnabled = opts.withSysEventsEnabled

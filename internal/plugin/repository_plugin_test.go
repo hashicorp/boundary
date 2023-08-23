@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
@@ -166,12 +166,11 @@ func assertPublicId(t *testing.T, prefix, actual string) {
 }
 
 func TestRepository_LookupPlugin(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	plg := TestPlugin(t, conn, "test")
-	badId, err := newPluginId(ctx)
+	badId, err := newPluginId()
 	assert.NoError(t, err)
 	assert.NotNil(t, badId)
 
@@ -204,11 +203,12 @@ func TestRepository_LookupPlugin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 			kms := kms.TestKms(t, conn, wrapper)
+			ctx := context.Background()
 			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			assert.NotNil(repo)
 
-			got, err := repo.LookupPlugin(ctx, tt.id)
+			got, err := repo.LookupPlugin(context.Background(), tt.id)
 			if tt.wantErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantErr), err), "want err: %q got: %q", tt.wantErr, err)
 				return

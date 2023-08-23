@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package server
 
@@ -59,7 +59,7 @@ func testServerCommand(t *testing.T, opts testServerCommandOpts) *Command {
 	}
 
 	require.NoError(cmd.SetupLogging("trace", "", "", ""))
-	require.NoError(cmd.SetupEventing(cmd.Context, cmd.Logger, cmd.StderrLock, "test-server-command"))
+	require.NoError(cmd.SetupEventing(cmd.Logger, cmd.StderrLock, "test-server-command"))
 
 	if !opts.EnableMetrics {
 		cmd.PrometheusRegisterer = nil

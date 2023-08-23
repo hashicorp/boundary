@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package credentiallibraries
 
@@ -89,18 +89,12 @@ var (
 
 func init() {
 	var err error
-	if maskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.CredentialLibrary{}},
-		handlers.MaskSource{&pb.CredentialLibrary{}, &pb.VaultCredentialLibraryAttributes{}},
-	); err != nil {
+	if maskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.CredentialLibrary{}},
+		handlers.MaskSource{&pb.CredentialLibrary{}, &pb.VaultCredentialLibraryAttributes{}}); err != nil {
 		panic(err)
 	}
-	if sshCertMaskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{&store.SSHCertificateCredentialLibrary{}},
-		handlers.MaskSource{&pb.CredentialLibrary{}, &pb.VaultSSHCertificateCredentialLibraryAttributes{}},
-	); err != nil {
+	if sshCertMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&store.SSHCertificateCredentialLibrary{}},
+		handlers.MaskSource{&pb.CredentialLibrary{}, &pb.VaultSSHCertificateCredentialLibraryAttributes{}}); err != nil {
 		panic(err)
 	}
 }
@@ -116,20 +110,20 @@ type Service struct {
 var _ pbs.CredentialLibraryServiceServer = (*Service)(nil)
 
 // NewService returns a credential library service which handles credential library related requests to boundary.
-func NewService(ctx context.Context, repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
+func NewService(repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
 	const op = "credentiallibraries.NewService"
 	if iamRepo == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing iam repository")
 	}
 	if repo == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing vault credential repository")
+		return Service{}, errors.NewDeprecated(errors.InvalidParameter, op, "missing vault credential repository")
 	}
 	return Service{iamRepoFn: iamRepo, repoFn: repo}, nil
 }
 
 // ListCredentialLibraries implements the interface pbs.CredentialLibraryServiceServer
 func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCredentialLibrariesRequest) (*pbs.ListCredentialLibrariesResponse, error) {
-	if err := validateListRequest(ctx, req); err != nil {
+	if err := validateListRequest(req); err != nil {
 		return nil, err
 	}
 	authResults := s.authResult(ctx, req.GetCredentialStoreId(), action.List)
@@ -145,7 +139,7 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 		return &pbs.ListCredentialLibrariesResponse{}, nil
 	}
 
-	filter, err := handlers.NewFilter(ctx, req.GetFilter())
+	filter, err := handlers.NewFilter(req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +166,7 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
-		item, err := toProto(ctx, item, outputOpts...)
+		item, err := toProto(item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
@@ -218,7 +212,7 @@ func (s Service) GetCredentialLibrary(ctx context.Context, req *pbs.GetCredentia
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cs.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, cs, outputOpts...)
+	item, err := toProto(cs, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +250,7 @@ func (s Service) CreateCredentialLibrary(ctx context.Context, req *pbs.CreateCre
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cl.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, cl, outputOpts...)
+	item, err := toProto(cl, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +313,7 @@ func (s Service) UpdateCredentialLibrary(ctx context.Context, req *pbs.UpdateCre
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, cl.GetPublicId(), IdActions).Strings()))
 	}
 
-	item, err := toProto(ctx, cl, outputOpts...)
+	item, err := toProto(cl, outputOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +396,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 	var out credential.Library
 	switch subtypes.SubtypeFromType(domain, item.GetType()) {
 	case vault.SSHCertificateLibrarySubtype:
-		cl, err := toStorageVaultSSHCertificateLibrary(ctx, item.GetCredentialStoreId(), item)
+		cl, err := toStorageVaultSSHCertificateLibrary(item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -419,7 +413,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 		}
 		out = rl
 	default:
-		cl, err := toStorageVaultLibrary(ctx, item.GetCredentialStoreId(), item)
+		cl, err := toStorageVaultLibrary(item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -482,7 +476,7 @@ func (s Service) updateInRepo(
 		if len(dbMasks) == 0 {
 			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 		}
-		cl, err := toStorageVaultSSHCertificateLibrary(ctx, item.GetCredentialStoreId(), item)
+		cl, err := toStorageVaultSSHCertificateLibrary(item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -499,7 +493,7 @@ func (s Service) updateInRepo(
 		if len(dbMasks) == 0 {
 			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
 		}
-		cl, err := toStorageVaultLibrary(ctx, item.GetCredentialStoreId(), item)
+		cl, err := toStorageVaultLibrary(item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -610,7 +604,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	return auth.Verify(ctx, opts...)
 }
 
-func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option) (*pb.CredentialLibrary, error) {
+func toProto(in credential.Library, opt ...handlers.Option) (*pb.CredentialLibrary, error) {
 	const op = "credentiallibraries.toProto"
 
 	opts := handlers.GetOpts(opt...)
@@ -654,7 +648,7 @@ func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option)
 	case vault.GenericLibrarySubtype:
 		vaultIn, ok := in.(*vault.CredentialLibrary)
 		if !ok {
-			return nil, errors.New(ctx, errors.Internal, op, "unable to cast to vault credential library")
+			return nil, errors.NewDeprecated(errors.Internal, op, "unable to cast to vault credential library")
 		}
 
 		if outputFields.Has(globals.CredentialTypeField) && vaultIn.GetCredentialType() != string(credential.UnspecifiedType) {
@@ -684,7 +678,7 @@ func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option)
 				if len(m) > 0 {
 					mp, err := structpb.NewStruct(m)
 					if err != nil {
-						return nil, errors.New(ctx, errors.Internal, op, "creating proto struct for mapping override")
+						return nil, errors.NewDeprecated(errors.Internal, op, "creating proto struct for mapping override")
 					}
 					out.CredentialMappingOverrides = mp
 				}
@@ -707,7 +701,7 @@ func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option)
 	case vault.SSHCertificateLibrarySubtype:
 		vaultIn, ok := in.(*vault.SSHCertificateCredentialLibrary)
 		if !ok {
-			return nil, errors.New(ctx, errors.Internal, op, "unable to cast to vault ssh certificate credential library")
+			return nil, errors.NewDeprecated(errors.Internal, op, "unable to cast to vault ssh certificate credential library")
 		}
 		// We don't check for mapping overrides here -- this subtype does not currently support them.
 		out.CredentialType = vaultIn.GetCredentialType()
@@ -749,7 +743,7 @@ func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option)
 	return &out, nil
 }
 
-func toStorageVaultLibrary(ctx context.Context, storeId string, in *pb.CredentialLibrary) (out *vault.CredentialLibrary, err error) {
+func toStorageVaultLibrary(storeId string, in *pb.CredentialLibrary) (out *vault.CredentialLibrary, err error) {
 	const op = "credentiallibraries.toStorageVaultLibrary"
 	var opts []vault.Option
 	if in.GetName() != nil {
@@ -807,12 +801,12 @@ func toStorageVaultLibrary(ctx context.Context, storeId string, in *pb.Credentia
 
 	cs, err := vault.NewCredentialLibrary(storeId, attrs.GetPath().GetValue(), opts...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential library"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to build credential library"))
 	}
 	return cs, err
 }
 
-func toStorageVaultSSHCertificateLibrary(ctx context.Context, storeId string, in *pb.CredentialLibrary) (out *vault.SSHCertificateCredentialLibrary, err error) {
+func toStorageVaultSSHCertificateLibrary(storeId string, in *pb.CredentialLibrary) (out *vault.SSHCertificateCredentialLibrary, err error) {
 	const op = "credentiallibraries.toStorageVaultSSHCertificateLibrary"
 	var opts []vault.Option
 	if in.GetName() != nil {
@@ -853,7 +847,7 @@ func toStorageVaultSSHCertificateLibrary(ctx context.Context, storeId string, in
 
 	cs, err := vault.NewSSHCertificateCredentialLibrary(storeId, attrs.GetPath().GetValue(), attrs.GetUsername().GetValue(), opts...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to build credential library"))
+		return nil, errors.WrapDeprecated(err, op, errors.WithMsg("unable to build credential library"))
 	}
 	return cs, err
 }
@@ -1050,12 +1044,12 @@ func validateDeleteRequest(req *pbs.DeleteCredentialLibraryRequest) error {
 	return handlers.ValidateDeleteRequest(handlers.NoopValidatorFn, req, globals.VaultCredentialLibraryPrefix, globals.VaultSshCertificateCredentialLibraryPrefix)
 }
 
-func validateListRequest(ctx context.Context, req *pbs.ListCredentialLibrariesRequest) error {
+func validateListRequest(req *pbs.ListCredentialLibrariesRequest) error {
 	badFields := map[string]string{}
 	if !handlers.ValidId(handlers.Id(req.GetCredentialStoreId()), globals.VaultCredentialStorePrefix) {
 		badFields[globals.CredentialStoreIdField] = "This field must be a valid credential store id."
 	}
-	if _, err := handlers.NewFilter(ctx, req.GetFilter()); err != nil {
+	if _, err := handlers.NewFilter(req.GetFilter()); err != nil {
 		badFields["filter"] = fmt.Sprintf("This field could not be parsed. %v", err)
 	}
 	if len(badFields) > 0 {

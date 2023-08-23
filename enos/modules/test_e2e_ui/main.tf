@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 terraform {
   required_providers {
@@ -38,7 +38,7 @@ variable "local_boundary_dir" {
   description = "Local Path to boundary executable"
   type        = string
 }
-variable "local_boundary_ui_src_dir" {
+variable "local_boundary_ui_dir" {
   description = "Local Path to boundary-ui directory"
   type        = string
 }
@@ -76,11 +76,6 @@ variable "vault_root_token" {
   description = "Root token for vault instance"
   type        = string
   default     = ""
-}
-variable "vault_port" {
-  description = "External Port that vault instance is attached to (outside of docker network)"
-  type        = string
-  default     = "8200"
 }
 variable "aws_access_key_id" {
   description = "Access Key Id for AWS IAM user used in dynamic host catalogs"
@@ -120,7 +115,7 @@ variable "aws_host_set_ips2" {
 
 locals {
   aws_ssh_private_key_path = abspath(var.aws_ssh_private_key_path)
-  vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:${var.vault_port}" : ""
+  vault_addr               = var.vault_addr != "" ? "http://${var.vault_addr}:8200" : ""
   vault_addr_internal      = var.vault_addr_internal != "" ? "http://${var.vault_addr_internal}:8200" : local.vault_addr
   aws_host_set_ips1        = jsonencode(var.aws_host_set_ips1)
   aws_host_set_ips2        = jsonencode(var.aws_host_set_ips2)
@@ -147,7 +142,7 @@ resource "enos_local_exec" "run_e2e_ui_test" {
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
   }
 
-  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" yarn --cwd ${var.local_boundary_ui_src_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]
+  inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" yarn --cwd ${var.local_boundary_ui_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]
 }
 
 output "test_results" {

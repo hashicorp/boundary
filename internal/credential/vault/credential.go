@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package vault
 
 import (
-	"context"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
@@ -48,13 +47,13 @@ type Credential struct {
 	expiration time.Duration `gorm:"-"`
 }
 
-func newCredential(ctx context.Context, libraryId, externalId string, tokenHmac []byte, expiration time.Duration) (*Credential, error) {
+func newCredential(libraryId, externalId string, tokenHmac []byte, expiration time.Duration) (*Credential, error) {
 	const op = "vault.newCredential"
 	if libraryId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no library id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no library id")
 	}
 	if len(tokenHmac) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no tokenHmac")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no tokenHmac")
 	}
 
 	status := string(ActiveCredential)

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package vault
 
@@ -53,7 +53,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 			kms := kms.TestKms(t, conn, wrapper)
 
-			repo, err := NewRepository(ctx, rw, rw, kms, sche)
+			repo, err := NewRepository(rw, rw, kms, sche)
 			require.NoError(err)
 			require.NotNil(repo)
 			err = RegisterJobs(ctx, sche, rw, rw, kms)
@@ -65,7 +65,7 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 			}
 			if tt.tls == TestClientTLS {
 				opts = append(opts, WithCACert(v.CaCert))
-				clientCert, err := NewClientCertificate(ctx, v.ClientCert, v.ClientKey)
+				clientCert, err := NewClientCertificate(v.ClientCert, v.ClientKey)
 				require.NoError(err)
 				opts = append(opts, WithClientCert(clientCert))
 			}
@@ -312,8 +312,6 @@ func TestRepository_getPrivateLibraries(t *testing.T) {
 }
 
 func TestRequestMap(t *testing.T) {
-	ctx := context.Background()
-
 	type args struct {
 		requests []credential.Request
 	}
@@ -392,7 +390,7 @@ func TestRequestMap(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			mapper, err := newMapper(ctx, tt.args.requests)
+			mapper, err := newMapper(tt.args.requests)
 			if tt.wantErr {
 				assert.Error(err)
 				assert.Nil(mapper)
@@ -1257,7 +1255,7 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 
 	sche := scheduler.TestScheduler(t, conn, wrapper)
 	kms := kms.TestKms(t, conn, wrapper)
-	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	repo, err := NewRepository(rw, rw, kms, sche)
 	require.NoError(t, err)
 	require.NotNil(t, repo)
 
@@ -1348,7 +1346,7 @@ func TestRepository_sshCertIssuingCredentialLibrary_retrieveCredential(t *testin
 			lib, err := NewSSHCertificateCredentialLibrary(cs.GetPublicId(), tt.vaulthPath, tt.username, tt.opts...)
 			require.NoError(err)
 			require.NotNil(lib)
-			lib.PublicId, err = newSSHCertificateCredentialLibraryId(ctx)
+			lib.PublicId, err = newSSHCertificateCredentialLibraryId()
 			require.NoError(err)
 
 			_, err = rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{},

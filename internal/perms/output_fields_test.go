@@ -1,10 +1,9 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package perms
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/boundary/globals"
@@ -135,8 +134,6 @@ func Test_OutputFields(t *testing.T) {
 
 func Test_ACLOutputFields(t *testing.T) {
 	t.Parallel()
-
-	ctx := context.Background()
 
 	type input struct {
 		name       string
@@ -279,7 +276,7 @@ func Test_ACLOutputFields(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var grants []Grant
 			for _, g := range test.grants {
-				grant, err := Parse(ctx, "o_myorg", g)
+				grant, err := Parse("o_myorg", g)
 				require.NoError(t, err)
 				grants = append(grants, grant)
 			}

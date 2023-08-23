@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package base
 
@@ -122,7 +122,7 @@ func TestServer_SetupKMSes_Purposes(t *testing.T) {
 				},
 			}
 			s := NewServer(&Command{Context: context.Background()})
-			require.NoError(s.SetupEventing(s.Context, logger, serLock, "setup-kms-testing"))
+			require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
 			err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
 
 			if tt.wantErrContains != "" {
@@ -180,7 +180,7 @@ func TestServer_SetupKMSes_RootMigration(t *testing.T) {
 			},
 		}
 		s := NewServer(&Command{Context: context.Background()})
-		require.NoError(s.SetupEventing(s.Context, logger, serLock, "setup-kms-testing"))
+		require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
 		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
 		require.NoError(err)
 		require.NotNil(s.RootKms)
@@ -210,7 +210,7 @@ func TestServer_SetupKMSes_RootMigration(t *testing.T) {
 			},
 		}
 		s := NewServer(&Command{Context: context.Background()})
-		require.NoError(s.SetupEventing(s.Context, logger, serLock, "setup-kms-testing"))
+		require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
 		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
 		require.Error(err)
 	})
@@ -242,7 +242,7 @@ func TestServer_SetupKMSes_RootMigration(t *testing.T) {
 			},
 		}
 		s := NewServer(&Command{Context: context.Background()})
-		require.NoError(s.SetupEventing(s.Context, logger, serLock, "setup-kms-testing"))
+		require.NoError(s.SetupEventing(logger, serLock, "setup-kms-testing"))
 		err := s.SetupKMSes(s.Context, cli.NewMockUi(), &config.Config{SharedConfig: conf})
 		require.Error(err)
 	})
@@ -361,7 +361,7 @@ func TestServer_SetupEventing(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			event.TestResetSystEventer(t)
 
-			err := tt.s.SetupEventing(context.Background(), tt.logger, tt.lock, tt.name, tt.opt...)
+			err := tt.s.SetupEventing(tt.logger, tt.lock, tt.name, tt.opt...)
 			if tt.wantErrMatch != nil || tt.wantErrIs != nil {
 				require.Error(err)
 				assert.Nil(tt.s.Eventer)

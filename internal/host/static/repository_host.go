@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package static
 
@@ -60,7 +60,7 @@ func (r *Repository) CreateHost(ctx context.Context, projectId string, h *Host, 
 		}
 		h.PublicId = opts.withPublicId
 	} else {
-		id, err := newHostId(ctx)
+		id, err := newHostId()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

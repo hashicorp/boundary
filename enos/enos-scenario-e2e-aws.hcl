@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 # This scenario requires access to the boundary team's test AWS account
 scenario "e2e_aws" {
@@ -195,7 +195,6 @@ scenario "e2e_aws" {
       controller_addresses      = step.create_boundary_cluster.public_controller_addresses
       controller_sg_id          = step.create_boundary_cluster.controller_aux_sg_id
       worker_type_tags          = ["worker_e2e_test"]
-      config_file_path          = "templates/worker.hcl"
     }
   }
 

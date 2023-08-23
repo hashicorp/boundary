@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package server
 
@@ -27,7 +27,7 @@ func TestWorkerAuthActivationTokenConstraints(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, wrap)
 	tlRequire.NoError(kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader)))
 
-	repo, err := NewRepository(ctx, rw, rw, kmsCache)
+	repo, err := NewRepository(rw, rw, kmsCache)
 	tlRequire.NoError(err)
 
 	// First create a worker without an activation token so we can verify it doesn't show up in the table

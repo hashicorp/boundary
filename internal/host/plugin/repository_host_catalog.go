@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
@@ -128,9 +128,6 @@ func (r *Repository) CreateCatalog(ctx context.Context, c *HostCatalog, _ ...Opt
 
 	if plgHc.GetAttributes() != nil {
 		if err := normalizeCatalogAttributes(ctx, plgClient, plgHc); err != nil {
-			return nil, nil, errors.Wrap(ctx, err, op)
-		}
-		if c.Attributes, err = proto.Marshal(plgHc.GetAttributes()); err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
 		}
 	}

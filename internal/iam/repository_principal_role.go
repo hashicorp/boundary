@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package iam
 
@@ -38,7 +38,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 
 	newUserRoles := make([]any, 0, len(userIds))
 	for _, id := range userIds {
-		usrRole, err := NewUserRole(ctx, roleId, id)
+		usrRole, err := NewUserRole(roleId, id)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory user role"))
 		}
@@ -46,7 +46,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	}
 	newGrpRoles := make([]any, 0, len(groupIds))
 	for _, id := range groupIds {
-		grpRole, err := NewGroupRole(ctx, roleId, id)
+		grpRole, err := NewGroupRole(roleId, id)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group role"))
 		}
@@ -54,7 +54,7 @@ func (r *Repository) AddPrincipalRoles(ctx context.Context, roleId string, roleV
 	}
 	newManagedGrpRoles := make([]any, 0, len(managedGroupIds))
 	for _, id := range managedGroupIds {
-		managedGrpRole, err := NewManagedGroupRole(ctx, roleId, id)
+		managedGrpRole, err := NewManagedGroupRole(roleId, id)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory managed group role"))
 		}
@@ -340,7 +340,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 
 	deleteUserRoles := make([]any, 0, len(userIds))
 	for _, id := range userIds {
-		usrRole, err := NewUserRole(ctx, roleId, id)
+		usrRole, err := NewUserRole(roleId, id)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory user role"))
 		}
@@ -348,7 +348,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	}
 	deleteGrpRoles := make([]any, 0, len(groupIds))
 	for _, id := range groupIds {
-		grpRole, err := NewGroupRole(ctx, roleId, id)
+		grpRole, err := NewGroupRole(roleId, id)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group role"))
 		}
@@ -356,7 +356,7 @@ func (r *Repository) DeletePrincipalRoles(ctx context.Context, roleId string, ro
 	}
 	deleteManagedGrpRoles := make([]any, 0, len(managedGroupIds))
 	for _, id := range managedGroupIds {
-		managedGrpRole, err := NewManagedGroupRole(ctx, roleId, id)
+		managedGrpRole, err := NewManagedGroupRole(roleId, id)
 		if err != nil {
 			return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory managed group role"))
 		}
@@ -508,7 +508,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 	for _, id := range userIds {
 		userIdsMap[id] = struct{}{}
 		if _, ok := existingUsers[id]; !ok {
-			usrRole, err := NewUserRole(ctx, role.PublicId, id)
+			usrRole, err := NewUserRole(role.PublicId, id)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory user role for add"))
 			}
@@ -520,7 +520,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 	for _, id := range groupIds {
 		groupIdsMap[id] = struct{}{}
 		if _, ok := existingGroups[id]; !ok {
-			grpRole, err := NewGroupRole(ctx, role.PublicId, id)
+			grpRole, err := NewGroupRole(role.PublicId, id)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group role for add"))
 			}
@@ -532,7 +532,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 	for _, id := range managedGroupIds {
 		managedGroupIdsMap[id] = struct{}{}
 		if _, ok := existingManagedGroups[id]; !ok {
-			managedGrpRole, err := NewManagedGroupRole(ctx, role.PublicId, id)
+			managedGrpRole, err := NewManagedGroupRole(role.PublicId, id)
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory managed group role for add"))
 			}
@@ -542,7 +542,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 	var deleteUserRoles []any
 	for _, p := range existingUsers {
 		if _, ok := userIdsMap[p.PrincipalId]; !ok {
-			usrRole, err := NewUserRole(ctx, p.GetRoleId(), p.GetPrincipalId())
+			usrRole, err := NewUserRole(p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory user role for delete"))
 			}
@@ -552,7 +552,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 	var deleteGrpRoles []any
 	for _, p := range existingGroups {
 		if _, ok := groupIdsMap[p.PrincipalId]; !ok {
-			grpRole, err := NewGroupRole(ctx, p.GetRoleId(), p.GetPrincipalId())
+			grpRole, err := NewGroupRole(p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory group role for delete"))
 			}
@@ -562,7 +562,7 @@ func (r *Repository) PrincipalsToSet(ctx context.Context, role *Role, userIds, g
 	var deleteManagedGrpRoles []any
 	for _, p := range existingManagedGroups {
 		if _, ok := managedGroupIdsMap[p.PrincipalId]; !ok {
-			managedGrpRole, err := NewManagedGroupRole(ctx, p.GetRoleId(), p.GetPrincipalId())
+			managedGrpRole, err := NewManagedGroupRole(p.GetRoleId(), p.GetPrincipalId())
 			if err != nil {
 				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create in memory managed group role for delete"))
 			}
@@ -606,11 +606,6 @@ func splitPrincipals(ctx context.Context, principals []string) (users, groups, m
 			}
 			groups = append(groups, principal)
 		case strings.HasPrefix(principal, globals.OidcManagedGroupPrefix):
-			if managedGroups == nil {
-				managedGroups = make([]string, 0, len(principals))
-			}
-			managedGroups = append(managedGroups, principal)
-		case strings.HasPrefix(principal, globals.LdapManagedGroupPrefix):
 			if managedGroups == nil {
 				managedGroups = make([]string, 0, len(principals))
 			}

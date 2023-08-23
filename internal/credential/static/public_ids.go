@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package static
 
@@ -25,7 +25,7 @@ const (
 )
 
 func newCredentialStoreId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(ctx, globals.StaticCredentialStorePrefix)
+	id, err := db.NewPublicId(globals.StaticCredentialStorePrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "static.newCredentialStoreId")
 	}

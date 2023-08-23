@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 terraform {
   required_providers {
@@ -173,14 +173,13 @@ resource "enos_file" "worker_config" {
   depends_on = [enos_bundle_install.worker]
 
   destination = "/etc/boundary/boundary.hcl"
-  content = templatefile("${path.module}/${var.config_file_path}", {
-    id                     = random_pet.worker.id
-    kms_key_id             = data.aws_kms_key.kms_key.id
-    public_addr            = aws_instance.worker.public_ip
-    type                   = jsonencode(var.worker_type_tags)
-    region                 = data.aws_availability_zone.worker_az.region
-    controller_addresses   = jsonencode(var.controller_addresses)
-    recording_storage_path = var.recording_storage_path
+  content = templatefile("${path.module}/templates/worker.hcl", {
+    id                   = random_pet.worker.id
+    kms_key_id           = data.aws_kms_key.kms_key.id
+    public_addr          = aws_instance.worker.public_ip
+    type                 = jsonencode(var.worker_type_tags)
+    region               = data.aws_availability_zone.worker_az.region
+    controller_addresses = jsonencode(var.controller_addresses)
   })
 
   transport = {
@@ -196,9 +195,8 @@ resource "enos_boundary_start" "worker_start" {
     aws_vpc_security_group_ingress_rule.worker_to_controller,
   ]
 
-  bin_path               = "/opt/boundary/bin"
-  config_path            = "/etc/boundary"
-  recording_storage_path = var.recording_storage_path != "" ? var.recording_storage_path : null
+  bin_path    = "/opt/boundary/bin"
+  config_path = "/etc/boundary"
   transport = {
     ssh = {
       host = aws_instance.worker.public_ip

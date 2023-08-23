@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package database
 
@@ -165,7 +165,6 @@ func (c *MigrateCommand) Run(args []string) (retCode int) {
 	}
 	serverName = fmt.Sprintf("%s/boundary-database-migrate", serverName)
 	if err := c.srv.SetupEventing(
-		c.Context,
 		c.srv.Logger,
 		c.srv.StderrLock,
 		serverName,

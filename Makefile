@@ -263,11 +263,6 @@ protolint:
 .PHONY: copywrite
 copywrite:
 	copywrite headers
-	# In the protobuf API directories, remove the BUSL headers
-	# and rerun copywrite with the directory specific configuration.
-	cd internal/proto/controller/api && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
-	cd internal/proto/controller/custom_options && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
-	cd internal/proto/plugin && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
 
 .PHONY: website
 # must have nodejs and npm installed
@@ -386,10 +381,7 @@ docker-build-dev: build
 .PHONY: version
 # This is used for release builds by .github/workflows/build.yml
 version:
-	@go run \
-		-ldflags "-X 'github.com/hashicorp/boundary/version.Version=$(shell cat version/VERSION)'" \
-		./cmd/boundary version \
-		| awk '/Version Number:/ { print $$3 }'
+	@go run ./cmd/boundary version | awk '/Version Number:/ { print $$3 }'
 
 EDITION?=
 .PHONY: edition

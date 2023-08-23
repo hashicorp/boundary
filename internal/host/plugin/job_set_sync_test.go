@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package plugin
 
@@ -206,7 +206,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 		}, nil
 	}
 
-	hostRepo, err := NewRepository(ctx, rw, rw, kmsCache, sche, plgm)
+	hostRepo, err := NewRepository(rw, rw, kmsCache, sche, plgm)
 	require.NoError(err)
 
 	hsa = &hostSetAgg{PublicId: set1.GetPublicId()}

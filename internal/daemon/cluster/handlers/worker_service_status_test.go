@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package handlers
 
@@ -46,7 +46,7 @@ func TestStatus(t *testing.T) {
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iamRepo)
 
-	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
@@ -482,7 +482,7 @@ func TestStatusSessionClosed(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
@@ -671,7 +671,7 @@ func TestStatusDeadConnection(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
@@ -825,7 +825,7 @@ func TestStatusWorkerWithKeyId(t *testing.T) {
 	kms := kms.TestKms(t, conn, wrapper)
 	org, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 
-	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
@@ -1026,7 +1026,7 @@ func TestStatusAuthorizedWorkers(t *testing.T) {
 	err := kmsCache.CreateKeys(context.Background(), scope.Global.String(), kms.WithRandomReader(rand.Reader))
 	require.NoError(t, err)
 
-	serverRepo, _ := server.NewRepository(ctx, rw, rw, kmsCache)
+	serverRepo, _ := server.NewRepository(rw, rw, kmsCache)
 	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",
@@ -1241,7 +1241,7 @@ func TestWorkerOperationalStatus(t *testing.T) {
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	serverRepo, _ := server.NewRepository(ctx, rw, rw, kms)
+	serverRepo, _ := server.NewRepository(rw, rw, kms)
 	serverRepo.UpsertController(ctx, &store.Controller{
 		PrivateId: "test_controller1",
 		Address:   "127.0.0.1",

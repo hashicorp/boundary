@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package session
 
@@ -193,7 +193,7 @@ func TestSession_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			assert, require := assert.New(t), require.New(t)
-			got, err := New(ctx, tt.args.composedOf)
+			got, err := New(tt.args.composedOf)
 			if tt.wantErr {
 				require.Error(err)
 				assert.True(errors.Match(errors.T(tt.wantIsErr), err))
@@ -202,7 +202,7 @@ func TestSession_Create(t *testing.T) {
 			require.NoError(err)
 			assert.Equal(tt.want, got)
 			if tt.create {
-				id, err := db.NewPublicId(ctx, globals.SessionPrefix)
+				id, err := db.NewPublicId(globals.SessionPrefix)
 				require.NoError(err)
 				got.PublicId = id
 				privKey, certBytes, err := newCert(ctx, id, tt.args.addresses, composedOf.ExpirationTime.Timestamp.AsTime(), rand.Reader)
@@ -235,7 +235,6 @@ func TestSession_Create(t *testing.T) {
 
 func TestSession_Delete(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
@@ -258,7 +257,7 @@ func TestSession_Delete(t *testing.T) {
 			name: "bad-id",
 			session: func() *Session {
 				s := AllocSession()
-				id, err := db.NewPublicId(ctx, globals.SessionPrefix)
+				id, err := db.NewPublicId(globals.SessionPrefix)
 				require.NoError(t, err)
 				s.PublicId = id
 				return &s
@@ -272,7 +271,7 @@ func TestSession_Delete(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			deleteSession := AllocSession()
 			deleteSession.PublicId = tt.session.PublicId
-			deletedRows, err := rw.Delete(ctx, &deleteSession)
+			deletedRows, err := rw.Delete(context.Background(), &deleteSession)
 			if tt.wantErr {
 				require.Error(err)
 				return
