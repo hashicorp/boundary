@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package bsr
 
@@ -31,37 +31,13 @@ const (
 )
 
 // ContainerType defines the type of container.
-type ContainerType string
-
-// FileChecksumValidation is a validation report on a file's checksum value
-type FileChecksumValidation struct {
-	Filename string
-	Passed   bool
-	Error    error
-}
-
-// ContainerChecksumValidation is a map where the key is a file name
-// and the value contains a validation report on whether or
-// not the file matches its expected checksum
-type ContainerChecksumValidation map[string]*FileChecksumValidation
-
-// GetFailedItems returns a filtered map of FileChecksumValidation that have failed
-func (cv ContainerChecksumValidation) GetFailedItems() ContainerChecksumValidation {
-	failedValidations := ContainerChecksumValidation{}
-	for fileName, validation := range cv {
-		if validation.Passed {
-			continue
-		}
-		failedValidations[fileName] = validation
-	}
-	return failedValidations
-}
+type containerType string
 
 // Valid container types.
 const (
-	SessionContainer    ContainerType = "session"
-	ConnectionContainer ContainerType = "connection"
-	ChannelContainer    ContainerType = "channel"
+	sessionContainer    containerType = "session"
+	connectionContainer containerType = "connection"
+	channelContainer    containerType = "channel"
 )
 
 // container contains a group of files in a BSR.
@@ -71,9 +47,9 @@ type container struct {
 
 	// Fields primarily used for writing
 	journal    *journal.Journal
+	sumName    string
 	meta       *checksum.File
 	sum        *checksum.File
-	sumName    string
 	sumEncoder *json.Encoder
 	checksums  *sign.File
 	sigs       storage.File
@@ -88,7 +64,7 @@ type container struct {
 }
 
 // newContainer creates a container for the given type backed by the provide storage.Container.
-func newContainer(ctx context.Context, t ContainerType, c storage.Container, keys *kms.Keys) (*container, error) {
+func newContainer(ctx context.Context, t containerType, c storage.Container, keys *kms.Keys) (*container, error) {
 	j, err := c.OpenFile(ctx, journalFileName,
 		storage.WithCreateFile(),
 		storage.WithFileAccessMode(storage.WriteOnly),
@@ -148,7 +124,7 @@ func newContainer(ctx context.Context, t ContainerType, c storage.Container, key
 type populateKeyFunc func(c *container) (*kms.Keys, error)
 
 // openContainer will set keys and load and verify the checksums for this container
-func openContainer(ctx context.Context, t ContainerType, c storage.Container, keyGetFunc populateKeyFunc) (*container, error) {
+func openContainer(ctx context.Context, t containerType, c storage.Container, keyGetFunc populateKeyFunc) (*container, error) {
 	const op = "bsr.openContainer"
 	switch {
 	case t == "":
@@ -571,59 +547,4 @@ func (c *container) close(_ context.Context) error {
 	}
 
 	return closeError
-}
-
-// ValidateChecksums iterates over all files in the SHA256SUM
-// file and verifies that each file checksum is as expected.
-//
-// This function expects that the container's kms keys
-// are loaded into memory and the signature files are
-// verified.
-func (c *container) ValidateChecksums(ctx context.Context) (ContainerChecksumValidation, error) {
-	const op = "bsr.(container).Validate"
-	if len(c.shaSums) == 0 {
-		return nil, fmt.Errorf("%s: missing checksums", op)
-	}
-	if c.keys == nil {
-		return nil, fmt.Errorf("%s: missing keys", op)
-	}
-	checksumValidation := make(ContainerChecksumValidation, len(c.shaSums))
-	for fileName, expectedChecksum := range c.shaSums {
-		report := &FileChecksumValidation{
-			Filename: fileName,
-		}
-		checksumValidation[fileName] = report
-		actualChecksum, err := c.computeFileChecksum(ctx, fileName, crypto.WithHexEncoding(true))
-		if err != nil {
-			report.Error = err
-			continue
-		}
-		if !bytes.Equal(expectedChecksum, actualChecksum) {
-			report.Error = fmt.Errorf("checksum mismatch")
-			continue
-		}
-		report.Passed = true
-	}
-	return checksumValidation, nil
-}
-
-// computeFileChecksum will open a file, read its contents, and computes SHA256 message digest
-func (c *container) computeFileChecksum(ctx context.Context, fileName string, opt ...wrapping.Option) (checksum []byte, err error) {
-	const op = "bsr.(container).computeFileChecksum"
-	var f storage.File
-	f, err = c.container.OpenFile(ctx, fileName)
-	if err != nil {
-		err = fmt.Errorf("%s: %w", op, err)
-		return
-	}
-	defer func() {
-		if closeErr := f.Close(); closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
-		}
-	}()
-	checksum, err = crypto.Sha256Sum(ctx, f, opt...)
-	if err != nil {
-		err = fmt.Errorf("%s: %w", op, err)
-	}
-	return
 }

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package server
 
@@ -64,7 +64,6 @@ func TestRootCertificate(ctx context.Context, t *testing.T, conn *db.DB, kmsKey 
 
 	cert, err := newRootCertificate(ctx, mathRand.Uint64(), populateBytes(defaultLength), beforeTimestamp, afterTimestamp,
 		rootCertKeys, kmsKey, CurrentState)
-	require.NoError(t, err)
 	err = rw.Create(ctx, cert)
 	require.NoError(t, err)
 	return cert

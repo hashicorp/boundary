@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package ldap
 
@@ -491,62 +491,6 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 				am.ClientCertificate = updateWith.ClientCertificate
 				am.ClientCertificateKeyHmac = updateWith.ClientCertificateKeyHmac
 				am.AccountAttributeMaps = updateWith.AccountAttributeMaps
-				return am
-			},
-		},
-		{
-			name: "update-just-binddn",
-			ctx:  testCtx,
-			repo: testRepo,
-			setup: func() *AuthMethod {
-				return TestAuthMethod(t,
-					testConn, databaseWrapper,
-					org.PublicId,
-					[]string{"ldaps://ldap1", "ldap://ldap2"},
-					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
-				)
-			},
-			updateWith: func(orig *AuthMethod) *AuthMethod {
-				am := AllocAuthMethod()
-				am.PublicId = orig.PublicId
-				am.BindDn = "bind-dn"
-				return &am
-			},
-			fieldMasks: []string{
-				BindDnField,
-			},
-			version: 1,
-			want: func(orig, updateWith *AuthMethod) *AuthMethod {
-				am := orig.clone()
-				am.BindDn = updateWith.BindDn
-				return am
-			},
-		},
-		{
-			name: "update-just-bind-password",
-			ctx:  testCtx,
-			repo: testRepo,
-			setup: func() *AuthMethod {
-				return TestAuthMethod(t,
-					testConn, databaseWrapper,
-					org.PublicId,
-					[]string{"ldaps://ldap1", "ldap://ldap2"},
-					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
-				)
-			},
-			updateWith: func(orig *AuthMethod) *AuthMethod {
-				am := AllocAuthMethod()
-				am.PublicId = orig.PublicId
-				am.BindPassword = "bind-password"
-				return &am
-			},
-			fieldMasks: []string{
-				BindPasswordField,
-			},
-			version: 1,
-			want: func(orig, updateWith *AuthMethod) *AuthMethod {
-				am := orig.clone()
-				am.BindPassword = updateWith.BindPassword
 				return am
 			},
 		},

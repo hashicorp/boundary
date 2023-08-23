@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package database_test
 
@@ -45,28 +45,20 @@ func TestDatabaseMigration(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-
-	boundaryRepo := "hashicorp/boundary"
-	boundaryTag := "latest"
-
-	te := setupEnvironment(t, ctx, c, boundaryRepo, boundaryTag)
-	populateBoundaryDatabase(t, ctx, c, te, boundaryRepo, boundaryTag)
+	te := setupEnvironment(t, ctx, c)
+	populateBoundaryDatabase(t, ctx, c, te)
 
 	// Migrate database
 	t.Log("Stopping boundary before migrating...")
 	err = te.Pool.Client.StopContainer(te.Boundary.Resource.Container.ID, 10)
 	require.NoError(t, err)
 
-	output := e2e.RunCommand(ctx, "boundary", e2e.WithArgs("version"))
-	require.NoError(t, err)
-	t.Logf("Upgrading to version: %s", output.Stdout)
-
-	bConfigFilePath, err := filepath.Abs("testdata/boundary-config.hcl")
+	bonfigFilePath, err := filepath.Abs("testdata/boundary-config.hcl")
 	require.NoError(t, err)
 
 	t.Log("Starting database migration...")
-	output = e2e.RunCommand(ctx, "boundary",
-		e2e.WithArgs("database", "migrate", "-config", bConfigFilePath),
+	output := e2e.RunCommand(ctx, "boundary",
+		e2e.WithArgs("database", "migrate", "-config", bonfigFilePath),
 		e2e.WithEnv("BOUNDARY_POSTGRES_URL", te.Database.UriLocalhost),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
@@ -74,12 +66,24 @@ func TestDatabaseMigration(t *testing.T) {
 	t.Logf("Migration Output: %s", output.Stderr)
 }
 
-func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo, boundaryTag string) TestEnvironment {
+func setupEnvironment(t testing.TB, ctx context.Context, c *config) TestEnvironment {
 	pool, err := dockertest.NewPool("")
 	require.NoError(t, err)
 	err = pool.Client.Ping()
 	require.NoError(t, err)
 	pool.MaxWait = 10 * time.Second
+
+	// This ensures that the latest images are used
+	err = pool.Client.PullImage(docker.PullImageOptions{
+		Repository: "hashicorp/boundary",
+		Tag:        "latest",
+	}, docker.AuthConfiguration{})
+	require.NoError(t, err)
+	err = pool.Client.PullImage(docker.PullImageOptions{
+		Repository: "hashicorp/vault",
+		Tag:        "latest",
+	}, docker.AuthConfiguration{})
+	require.NoError(t, err)
 
 	// Set up docker network
 	network, err := pool.CreateNetwork(t.Name())
@@ -89,7 +93,7 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo
 	})
 
 	// Start Vault
-	v, vaultToken := infra.StartVault(t, pool, network, "hashicorp/vault", "latest")
+	v, vaultToken := infra.StartVault(t, pool, network)
 	t.Cleanup(func() {
 		pool.Purge(v.Resource)
 	})
@@ -112,7 +116,7 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo
 	require.NoError(t, err)
 
 	// Start a Boundary database and wait until it's ready
-	db := infra.StartBoundaryDatabase(t, pool, network, "library/postgres", "latest")
+	db := infra.StartBoundaryDatabase(t, pool, network)
 	t.Cleanup(func() {
 		pool.Purge(db.Resource)
 	})
@@ -127,35 +131,20 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo
 	require.NoError(t, err)
 
 	// Create a target
-	target := infra.StartOpenSshServer(
-		t,
-		pool,
-		network,
-		"linuxserver/openssh-server",
-		"latest",
-		c.TargetSshUser,
-		c.TargetSshKeyPath,
-	)
+	target := infra.StartOpenSshServer(t, pool, network, c.TargetSshUser, c.TargetSshKeyPath)
 	t.Cleanup(func() {
 		pool.Purge(target.Resource)
 	})
 
 	// Initialize the database and extract resulting information
-	dbInit := infra.InitBoundaryDatabase(
-		t,
-		pool,
-		network,
-		boundaryRepo,
-		boundaryTag,
-		db.UriNetwork,
-	)
+	dbInit := infra.InitBoundaryDatabase(t, pool, network, db.UriNetwork)
 	t.Cleanup(func() {
 		pool.Purge(dbInit.Resource)
 	})
 	dbInitInfo := infra.GetDbInitInfoFromContainer(t, pool, dbInit)
 
 	// Start a Boundary server and wait until Boundary has finished loading
-	b := infra.StartBoundary(t, pool, network, boundaryRepo, boundaryTag, db.UriNetwork)
+	b := infra.StartBoundary(t, pool, network, db.UriNetwork)
 	t.Cleanup(func() {
 		pool.Purge(b.Resource)
 	})
@@ -198,7 +187,7 @@ func setupEnvironment(t testing.TB, ctx context.Context, c *config, boundaryRepo
 	}
 }
 
-func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te TestEnvironment, boundaryRepo, boundaryTag string) {
+func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te TestEnvironment) {
 	// Create resources for target. Uses the local CLI so that these methods can be reused.
 	// While the CLI version used won't necessarily match the controller version, it should be (and is
 	// supposed to be) backwards ompatible
@@ -224,7 +213,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	newGroupId := boundary.CreateNewGroupCli(t, ctx, "global")
 	boundary.AddUserToGroup(t, ctx, newUserId, newGroupId)
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
+	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newGroupId)
 
 	// Create static credentials
@@ -330,16 +319,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	auth_token, ok := authenticationResult.Item.Attributes["token"].(string)
 	require.True(t, ok)
 
-	connectTarget := infra.ConnectToTarget(
-		t,
-		te.Pool,
-		te.Network,
-		boundaryRepo,
-		boundaryTag,
-		te.Boundary.UriNetwork,
-		auth_token,
-		newTargetId,
-	)
+	connectTarget := infra.ConnectToTarget(t, te.Pool, te.Network, te.Boundary.UriNetwork, auth_token, newTargetId)
 	t.Cleanup(func() {
 		te.Pool.Purge(connectTarget.Resource)
 	})

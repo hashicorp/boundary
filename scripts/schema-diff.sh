@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 #
 # This script can aid in comparing the database schema between two commits.
 # It will:

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package authmethods_test
 
@@ -1232,7 +1232,8 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			errContains: "missing dn",
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "attributes.bind_password is missing required attributes.bind_dn field",
 		},
 		{
 			name: "ldap-auth-method-missing-bind-password",
@@ -1246,7 +1247,8 @@ func TestCreate(t *testing.T) {
 					},
 				},
 			}},
-			errContains: "missing password",
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "attributes.bind_dn is missing required attributes.bind_password field",
 		},
 		{
 			name: "ldap-auth-method-invalid-client-cert",
@@ -1350,20 +1352,14 @@ func TestCreate(t *testing.T) {
 			require.NoError(err, "Error when getting new auth_method service.")
 
 			got, gErr := s.CreateAuthMethod(requestauth.DisabledAuthTestContext(iamRepoFn, tc.req.GetItem().GetScopeId()), tc.req)
-			switch {
-			case tc.err != nil:
+			if tc.err != nil {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "CreateAuthMethod(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 				if tc.errContains != "" {
 					assert.Contains(gErr.Error(), tc.errContains)
 				}
 				return
-			case tc.errContains != "":
-				require.Error(gErr)
-				assert.Contains(gErr.Error(), tc.errContains)
-				return
 			}
-
 			require.NoError(gErr)
 			if tc.res == nil {
 				require.Nil(got)

@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package connect
 
@@ -758,7 +758,7 @@ func (c *Command) runTcpProxyV1(
 		case strings.Contains(err.Error(), "tofu token not allowed"):
 			// Nothing will be able to be done here, so cancel the context too
 			c.proxyCancel()
-			return errors.New("Session token has already been used")
+			return errors.New("Session is already in use")
 		default:
 			return fmt.Errorf("error reading handshake result: %w", err)
 		}

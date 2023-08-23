@@ -1,6 +1,6 @@
 /**
  * Copyright (c) HashiCorp, Inc.
- * SPDX-License-Identifier: BUSL-1.1
+ * SPDX-License-Identifier: MPL-2.0
  */
 
 module.exports = [
@@ -131,11 +131,6 @@ module.exports = [
   {
     source: '/boundary/docs/concepts/service-discovery',
     destination: '/boundary/docs/concepts/host-discovery',
-    permanent: true,
-  },
-  {
-    source: '/boundary/docs/operations/manage-recorded-sessions',
-    destination: '/boundary/docs/operations/session-recordings',
     permanent: true,
   },
 ]

@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 terraform {
   required_providers {
@@ -24,11 +24,7 @@ variable "image_name" {
   type        = string
 }
 variable "network_name" {
-  description = "Name of Docker Networks to join"
-  type        = list(string)
-}
-variable "database_network" {
-  description = "Name of Docker Network that database lives in"
+  description = "Name of Docker Network"
   type        = string
 }
 variable "container_name" {
@@ -44,24 +40,19 @@ variable "boundary_license" {
   description = "License string"
   type        = string
 }
-variable "config_file" {
-  description = "Path to config file"
-  type        = string
-  default     = "boundary-config.hcl"
-}
+
 
 resource "docker_image" "boundary" {
   name         = var.image_name
-  keep_locally = false
+  keep_locally = true
 }
 
 resource "enos_local_exec" "init_database" {
   environment = {
-    TEST_BOUNDARY_IMAGE   = var.image_name
-    TEST_DATABASE_ADDRESS = var.postgres_address
-    TEST_DATABASE_NETWORK = var.database_network
+    TEST_BOUNDARY_IMAGE   = var.image_name,
+    TEST_DATABASE_ADDRESS = var.postgres_address,
+    TEST_NETWORK_NAME     = var.network_name
     TEST_BOUNDARY_LICENSE = var.boundary_license
-    CONFIG                = "${abspath(path.module)}/${var.config_file}"
   }
   inline = ["bash ./${path.module}/init.sh"]
 }
@@ -71,7 +62,6 @@ locals {
   auth_method_id = local.db_init_info["auth_method"]["auth_method_id"]
   login_name     = local.db_init_info["auth_method"]["login_name"]
   password       = local.db_init_info["auth_method"]["password"]
-  address        = "http://${var.container_name}:9200"
 }
 
 resource "docker_container" "boundary" {
@@ -106,11 +96,9 @@ resource "docker_container" "boundary" {
   capabilities {
     add = ["IPC_LOCK"]
   }
-
-  upload {
-    content = templatefile("${abspath(path.module)}/${var.config_file}", {
-    })
-    file = "/boundary/boundary-config.hcl"
+  volumes {
+    host_path      = abspath(path.module)
+    container_path = "/boundary/"
   }
   healthcheck {
     test     = ["CMD", "wget", "--quiet", "-O", "/dev/null", "http://boundary:9203/health"]
@@ -120,11 +108,8 @@ resource "docker_container" "boundary" {
   }
   wait     = true
   must_run = true
-  dynamic "networks_advanced" {
-    for_each = var.network_name
-    content {
-      name = networks_advanced.value
-    }
+  networks_advanced {
+    name = var.network_name
   }
 }
 
@@ -145,11 +130,7 @@ resource "enos_local_exec" "check_health" {
 }
 
 output "address" {
-  value = local.address
-}
-
-output "upstream_address" {
-  value = "${var.container_name}:9201"
+  value = "http://0.0.0.0:9200"
 }
 
 output "auth_method_id" {

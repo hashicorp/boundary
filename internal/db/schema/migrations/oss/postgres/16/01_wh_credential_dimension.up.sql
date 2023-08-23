@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: BUSL-1.1
+-- SPDX-License-Identifier: MPL-2.0
 
 begin;
   -- replaces check from internal/db/schema/migrations/postgres/0/60_wh_domain_types.up.sql

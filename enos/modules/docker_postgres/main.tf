@@ -1,5 +1,5 @@
 # Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: BUSL-1.1
+# SPDX-License-Identifier: MPL-2.0
 
 terraform {
   required_providers {
@@ -20,8 +20,8 @@ variable "image_name" {
   default     = "docker.mirror.hashicorp.services/library/postgres:latest"
 }
 variable "network_name" {
-  description = "Name of Docker Networks to join"
-  type        = list(string)
+  description = "Name of Docker Network"
+  type        = string
 }
 variable "container_name" {
   description = "Name of Docker Container"
@@ -74,11 +74,8 @@ resource "docker_container" "postgres" {
   }
   wait     = true
   must_run = true
-  dynamic "networks_advanced" {
-    for_each = var.network_name
-    content {
-      name = networks_advanced.value
-    }
+  networks_advanced {
+    name = var.network_name
   }
 }
 

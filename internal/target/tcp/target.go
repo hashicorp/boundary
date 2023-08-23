@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 // Package tcp provides a Target subtype for a TCP Target.
 // Importing this package will register it with the target package and

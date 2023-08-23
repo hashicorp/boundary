@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MPL-2.0
 
 package sessions
 
@@ -149,9 +149,6 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		scopeIds = map[string]*scopes.ScopeInfo{authResults.Scope.Id: authResults.Scope}
 	} else {
 		scopeIds, err = authResults.ScopesAuthorizedForList(ctx, req.GetScopeId(), resource.Session)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	listPerms := authResults.ACL().ListPermissions(scopeIds, resource.Session, IdActions, authResults.UserId)
