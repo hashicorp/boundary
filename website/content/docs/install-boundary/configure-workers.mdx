@@ -323,6 +323,8 @@ Refer to the documentation for additional [top-level configuration options](/bou
 
 For the Community Edition of Boundary, you must configure a worker server that communicates with the controller and is responsible for storage-related tasks.
 
+Boundary Community Edition only supports egress workers. To configure workers for multi-hop sessions, check the Boundary Enterprise configuration.
+
 Complete the following steps to configure the worker.
 
 ### Worker configuration
@@ -345,10 +347,10 @@ listener "tcp" {
 # worker service
 worker {
   public_addr = "<worker_public_addr>"
-  initial_upstreams = ["<intermediate_worker_address>:9202"]
+  initial_upstreams = ["<controller_lb_address>:9201"]
   auth_storage_path = "/etc/boundary.d/auth_storage/"
   tags {
-    type = ["worker3", "egress"]
+    type = ["worker", "egress"]
   }
 }
 
