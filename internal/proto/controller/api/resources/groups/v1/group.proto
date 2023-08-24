@@ -66,5 +66,5 @@ message Group {
   repeated Member members = 100;
 
   // Output only. The available actions on this resource for this user.
-  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public" eventstream:"observation"`
+  repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`
 }

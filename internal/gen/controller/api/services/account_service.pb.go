@@ -529,7 +529,7 @@ type SetPasswordRequest struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version  uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public" eventstream:"observation"`  // @gotags: `class:"public" eventstream:"observation"`
+	Version  uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`  // @gotags: `class:"public"`
 	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 }
 
@@ -641,7 +641,7 @@ type ChangePasswordRequest struct {
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version         uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public" eventstream:"observation"`                  // @gotags: `class:"public" eventstream:"observation"`
+	Version         uint32 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`                  // @gotags: `class:"public"`
 	CurrentPassword string `protobuf:"bytes,3,opt,name=current_password,proto3" json:"current_password,omitempty" class:"secret"` // @gotags: `class:"secret"`
 	NewPassword     string `protobuf:"bytes,4,opt,name=new_password,proto3" json:"new_password,omitempty" class:"secret"`         // @gotags: `class:"secret"`
 }

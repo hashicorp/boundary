@@ -49,7 +49,7 @@ type Account struct {
 	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
-	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	Version uint32 `protobuf:"varint,70,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The type of this Account.
 	Type string `protobuf:"bytes,80,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the Auth Method that is associated with this Account.
@@ -64,7 +64,7 @@ type Account struct {
 	// Output only. managed_group_ids indicates IDs of the managed groups that currently contain this account
 	ManagedGroupIds []string `protobuf:"bytes,110,rep,name=managed_group_ids,proto3" json:"managed_group_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *Account) Reset() {
