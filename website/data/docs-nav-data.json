@@ -785,6 +785,35 @@
             "path": "api-clients/commands/dev"
           },
           {
+            "title": "host-catalogs",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/host-catalogs"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/host-catalogs/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/host-catalogs/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/host-catalogs/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/host-catalogs/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/host-catalogs/update"
+              }
+            ]
+          },
+          {
             "title": "host-sets",
             "routes": [
               {
