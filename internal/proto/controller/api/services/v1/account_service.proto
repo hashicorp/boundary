@@ -145,7 +145,7 @@ message SetPasswordRequest {
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2; // @gotags: `class:"public" eventstream:"observation"`
+  uint32 version = 2; // @gotags: `class:"public"`
   string password = 3; // @gotags: `class:"secret"`
 }
 
@@ -157,7 +157,7 @@ message ChangePasswordRequest {
   string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
-  uint32 version = 2; // @gotags: `class:"public" eventstream:"observation"`
+  uint32 version = 2; // @gotags: `class:"public"`
   string current_password = 3 [json_name = "current_password"]; // @gotags: `class:"secret"`
   string new_password = 4 [json_name = "new_password"]; // @gotags: `class:"secret"`
 }
