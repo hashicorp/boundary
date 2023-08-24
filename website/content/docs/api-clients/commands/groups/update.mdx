@@ -1,0 +1,94 @@
+---
+layout: docs
+page_title: groups update - Command
+description: |-
+  The "groups update" command allows Boundary admin to update a group resource.
+---
+
+# groups update
+
+Command: `boundary groups update`
+
+The `groups update` command updates an existing group information.
+
+## Examples
+
+An existing group (`g_9SpLKOoTse`) has the following detail. 
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Group information:
+  Created Time:        Thu, 24 Aug 2023 13:58:50 PDT
+  Description:         Support engineering group
+  ID:                  g_9SpLKOoTse
+  Name:                support
+  Updated Time:        Thu, 24 Aug 2023 13:58:50 PDT
+  Version:             3
+
+...snip...
+```
+
+</CodeBlockConfig>
+
+Update the name, login name, and description.
+
+```shell-session
+$ boundary groups update -id g_9SpLKOoTse \
+   -description "Customer support for product XXX" \
+   -version 3
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard highlight="3,7">
+
+```plaintext
+Group information:
+  Created Time:        Thu, 24 Aug 2023 13:58:50 PDT
+  Description:         Customer support for product XXX
+  ID:                  g_9SpLKOoTse
+  Name:                support
+  Updated Time:        Thu, 24 Aug 2023 14:33:18 PDT
+  Version:             4
+
+  Scope:
+    ID:                o_R0wbo0H6Zl
+    Name:              quick-start-org
+    Parent Scope ID:   global
+    Type:              org
+
+  Authorized Actions:
+    no-op
+    read
+    update
+    delete
+    add-members
+    set-members
+    remove-members
+```
+
+</CodeBlockConfig>
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary groups update [options] [args]
+```
+
+</CodeBlockConfig>
+
+The available types are: `ldap`, `oidc`, and `password`.
+
+### Command options
+
+- `-description` `(string: "")` - Description to set on the groups.
+- `-id` `(string: "")` - ID of the groups on which to operate.
+- `-name` `(string: "")` - Name to set on the groups.
+- `-version` `(string: "")` - The version of the groups against which to
+   perform an update operation. If not specified, the command will perform a
+   check-and-set automatically.
+
+@include 'cmd-option-note.mdx'

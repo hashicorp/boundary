@@ -785,6 +785,47 @@
             "path": "api-clients/commands/dev"
           },
           {
+            "title": "groups",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/groups"
+              },
+              {
+                "title": "add-members",
+                "path": "api-clients/commands/groups/add-members"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/groups/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/groups/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/groups/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/groups/read"
+              },
+              {
+                "title": "remove-members",
+                "path": "api-clients/commands/groups/remove-members"
+              },
+              {
+                "title": "set-members",
+                "path": "api-clients/commands/groups/set-members"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/groups/update"
+              }
+            ]
+          },
+          {
             "title": "host-catalogs",
             "routes": [
               {
