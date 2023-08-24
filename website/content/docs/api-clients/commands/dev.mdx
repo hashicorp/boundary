@@ -116,14 +116,14 @@ $ boundary dev [options]
    be a Unix domain socket path. This can also be specified via the
    **BOUNDARY_DEV_CONTROLLER_CLUSTER_LISTEN_ADDRESS** environment variable.
 
-- `-combine-logs` `(bool: false)` - If set, both startup information and logs
+- `-combine-logs`  - If set, both startup information and logs
    will be sent to stdout. If not set (the default), startup information will go
    to stdout and logs will be sent to stderr. The default is false.
 
 - `-container-image` `(string: "")` - Specifies a container image to be
    utilized. Must be in `<repo>:<tag>` format
 
-- `-controller-only` `(bool: false)` - If set, only a dev controller will be
+- `-controller-only`  - If set, only a dev controller will be
    started instead of both a dev controller and dev worker The default is false.
 
 - `-controller-public-cluster-address` `(string: "")` - Public address at which
@@ -137,7 +137,7 @@ $ boundary dev [options]
    be read; an env var (`env://`) from which the URL will be read; or a direct
    database URL.
 
-- `-disable-database-destruction` `(bool: false)` - If set, if a database is
+- `-disable-database-destruction`  - If set, if a database is
    created automatically in Docker, it will not be removed when the dev server
    is shut down. The default is false.
 
@@ -237,7 +237,7 @@ $ boundary dev [options]
    is password. This can also be specified via the
    **BOUNDARY_DEV_UNPRIVILEGED_PASSWORD** environment variable.
 
-- `-worker-auth-enable-debugging` `(bool: false)` - Turn on debug logging of the
+- `-worker-auth-enable-debugging`  - Turn on debug logging of the
    worker authentication process. The default is false.
 
 - `-worker-auth-key` `(string: "")` - If set, a valid base64-encoded AES key to
@@ -252,7 +252,7 @@ $ boundary dev [options]
    file storage at the specified location; otherwise in-memory storage or a
    temporary directory will be used.
 
-- `-worker-auth-storage-skip-cleanup` `(bool: false)` - Prevents deletion of
+- `-worker-auth-storage-skip-cleanup`  - Prevents deletion of
    worker credential storage directory if set. Has no effect unless
    worker-auth-storage-dir is specified. The default is false.
 

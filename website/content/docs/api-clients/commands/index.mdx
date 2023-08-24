@@ -230,7 +230,7 @@ $ boundary dev -help
   private key matching the client certificate from `-client-cert`. This can also
   be specified via the `BOUNDARY_CLIENT_KEY` environment variable.
 
-- `-tls-insecure` `(bool: false)` - Disable verification of TLS certificates.
+- `-tls-insecure`  - Disable verification of TLS certificates.
   Using this option is highly discouraged as it decreases the security of data
   transmissions to and from the Boundary server. The default is `false`. This
   can also be specified via the `BOUNDARY_TLS_INSECURE` environment variable.
@@ -251,7 +251,7 @@ client options. Some notable options:
   `keychain`, `pass`, and `secret-service`. The default is auto. This can also
   be specified via the `BOUNDARY_KEYRING_TYPE` environment variable.
 
-- `-output-curl-string` `(bool: false)` - This will format the command that
+- `-output-curl-string`  - This will format the command that
   would have been run as a string using `curl` that can be used directly on the
   command line. This is a great way to discover how CLI functions map to API
   calls. The default is `false`.

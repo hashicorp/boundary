@@ -108,7 +108,7 @@ $ boundary credential-libraries create vault-generic [options] [args]
 The following are Vault credential library specific options in addition to the
 command options.
 
-- `-credential-mapping-override` `(bool: false)` - The credential mapping
+- `-credential-mapping-override`  - The credential mapping
   override.
 
 - `-credential-type` `(string: "")` - The type of credential this library will
@@ -151,7 +151,7 @@ $ boundary credential-libraries create vault-ssh-certificate [options] [args]
 The following are Vault SSH certificate credential library specific options in
 addition to the command options.
 
-- `-critical-option` `(bool: false)` - A key=value pair to add to the request's
+- `-critical-option`  - A key=value pair to add to the request's
    critical-options map. This can also be a key value only which will set a JSON
    null as the value. If a value is provided, the type is automatically
    inferred. Use `-string-critical-option`, `-bool-critical-option`, or
@@ -163,7 +163,7 @@ addition to the command options.
    of the request's critical-options map. Usually this will be sourced from a
    file via "file://" syntax. Is exclusive with the other critical-option flags.
 
-- `-extension` `(bool: false)` - A key=value pair to add to the request's
+- `-extension`  - A key=value pair to add to the request's
    extensions map. This can also be a key value only which will set a JSON null
    as the value. If a value is provided, the type is automatically inferred. Use
    `-string-extension`, `-bool-extension`, or `-num-extension` if the type needs to be
