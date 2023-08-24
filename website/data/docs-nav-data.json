@@ -785,6 +785,35 @@
             "path": "api-clients/commands/dev"
           },
           {
+            "title": "hosts",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/hosts"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/hosts/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/hosts/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/hosts/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/hosts/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/hosts/update"
+              }
+            ]
+          },
+          {
             "title": "logout",
             "path": "api-clients/commands/logout"
           },
