@@ -205,128 +205,64 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	}
 	// request page size+1 so we can tell if we're at the end
 	limit := pageSize + 1
-	opts := []session.Option{
-		session.WithTerminated(req.GetIncludeTerminated()),
-		session.WithLimit(limit),
-	}
-	if refreshToken != nil {
-		opts = append(opts, session.WithStartPageAfterItem(
-			&session.Session{
-				PublicId:   refreshToken.GetLastItemId(),
-				UpdateTime: &timestamp.Timestamp{Timestamp: refreshToken.GetLastItemUpdatedTime()},
-			},
-		))
-	}
-	page, err := repo.ListSessions(ctx, opts...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if len(page) == 0 {
-		resp := &pbs.ListSessionsResponse{
-			ResponseType: "complete",
-			SortBy:       "updated_time",
-			SortDir:      "asc",
-		}
-		if refreshToken != nil {
-			// We got no results, so we need to carry forward
-			// the results from the last refresh token, if there was one.
-			newRefreshToken := &pbs.ListRefreshToken{
-				CreatedTime:     timestamppb.Now(),
-				ResourceType:    pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash: grantsHash,
-			}
-			newRefreshToken.LastItemId = refreshToken.LastItemId
-			newRefreshToken.LastItemUpdatedTime = refreshToken.LastItemUpdatedTime
-			resp.RefreshToken, err = pagination.MarshalRefreshToken(ctx, newRefreshToken)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
-			}
-			resp.RemovedIds, err = repo.ListDeletedIds(ctx, refreshToken.GetCreatedTime().AsTime())
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
-			}
-		}
-		totalItems, err := repo.GetTotalItems(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		resp.EstItemCount = uint32(totalItems)
-		return resp, nil
-	}
-
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	finalItems := make([]*pb.Session, 0, pageSize)
-	// If we got fewer results than requested, we're at the end.
-	completeListing := len(page) < limit
-	if len(page) > pageSize {
-		// Don't loop over the extra item
-		// we requested to see if we were at the end
-		page = page[:pageSize]
-	}
-	res := perms.Resource{
-		Type: resource.Session,
-	}
-	atEnd := completeListing
-	// Loop until we've filled the page
-dbLoop:
-	for {
-		for _, item := range page {
-			res.Id = item.GetPublicId()
-			res.ScopeId = item.GetProjectId()
-			authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-			if len(authorizedActions) == 0 {
-				continue
-			}
-
-			outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-			outputOpts := make([]handlers.Option, 0, 3)
-			outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-			if outputFields.Has(globals.ScopeField) {
-				outputOpts = append(outputOpts, handlers.WithScope(scopeIds[item.ProjectId]))
-			}
-			if outputFields.Has(globals.AuthorizedActionsField) {
-				outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-			}
-
-			item, err := toProto(ctx, item, outputOpts...)
-			if err != nil {
-				return nil, err
-			}
-
-			if filter.Match(item) {
-				finalItems = append(finalItems, item)
-				if len(finalItems) == pageSize {
-					break dbLoop
-				}
-			}
-		}
-		if atEnd {
-			// Note that it's only complete if we completed the loop above.
-			completeListing = true
-			break dbLoop
-		}
-
-		lastItem := page[len(page)-1]
-		// Request another result set from the DB until we fill the page
+	listSessionsFn := func(prevPageLast *session.Session) ([]*session.Session, error) {
 		opts := []session.Option{
 			session.WithTerminated(req.GetIncludeTerminated()),
 			session.WithLimit(limit),
-			session.WithStartPageAfterItem(lastItem),
 		}
-		page, err = repo.ListSessions(ctx, opts...)
+		if prevPageLast == nil {
+			// First list request, only paginate if refresh
+			// token provided.
+			if refreshToken != nil {
+				opts = append(opts, session.WithStartPageAfterItem(
+					&session.Session{
+						PublicId:   refreshToken.GetLastItemId(),
+						UpdateTime: &timestamp.Timestamp{Timestamp: refreshToken.GetLastItemUpdatedTime()},
+					},
+				))
+			}
+		} else {
+			opts = append(opts, session.WithStartPageAfterItem(prevPageLast))
+		}
+		return repo.ListSessions(ctx, opts...)
+	}
+	filterAndConvertFn := func(item *session.Session) (*pb.Session, error) {
+		res := perms.Resource{
+			Type:    resource.Session,
+			Id:      item.GetPublicId(),
+			ScopeId: item.GetProjectId(),
+		}
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
+			return nil, nil
+		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(scopeIds[item.ProjectId]))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		pbItem, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
-		// If we got fewer results than requested, we're at the end.
-		atEnd = len(page) < limit
-		if len(page) > pageSize {
-			// Don't loop over the extra item
-			// we requested to see if we were at the end
-			page = page[:pageSize]
+		if filter.Match(pbItem) {
+			return pbItem, nil
 		}
+		return nil, nil
+	}
+	finalItems, completeListing, err := pagination.FillPage(ctx, limit, pageSize, listSessionsFn, filterAndConvertFn)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	respType := "delta"
@@ -345,9 +281,9 @@ dbLoop:
 		ResourceType:    pbs.ResourceType_RESOURCE_TYPE_SESSION,
 		PermissionsHash: grantsHash,
 	}
-	if len(page) > 0 {
-		newRefreshToken.LastItemId = page[len(page)-1].PublicId
-		newRefreshToken.LastItemUpdatedTime = page[len(page)-1].UpdateTime.Timestamp
+	if len(finalItems) > 0 {
+		newRefreshToken.LastItemId = finalItems[len(finalItems)-1].Id
+		newRefreshToken.LastItemUpdatedTime = finalItems[len(finalItems)-1].UpdatedTime
 	}
 	marshaledToken, err := pagination.MarshalRefreshToken(ctx, newRefreshToken)
 	if err != nil {
