@@ -826,8 +826,136 @@
             ]
           },
           {
+            "title": "host-catalogs",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/host-catalogs"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/host-catalogs/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/host-catalogs/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/host-catalogs/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/host-catalogs/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/host-catalogs/update"
+              }
+            ]
+          },
+          {
+            "title": "host-sets",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/host-sets"
+              },
+              {
+                "title": "add-hosts",
+                "path": "api-clients/commands/host-sets/add-hosts"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/host-sets/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/host-sets/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/host-sets/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/host-sets/read"
+              },
+              {
+                "title": "remove-hosts",
+                "path": "api-clients/commands/host-sets/remove-hosts"
+              },
+              {
+                "title": "set-hosts",
+                "path": "api-clients/commands/host-sets/set-hosts"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/host-sets/update"
+              }
+            ]
+          },
+          {
+            "title": "hosts",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/hosts"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/hosts/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/hosts/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/hosts/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/hosts/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/hosts/update"
+              }
+            ]
+          },
+          {
             "title": "logout",
             "path": "api-clients/commands/logout"
+          },
+          {
+            "title": "managed-groups",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/managed-groups"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/managed-groups/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/managed-groups/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/managed-groups/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/managed-groups/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/managed-groups/update"
+              }
+            ]
           },
           {
             "title": "roles",
