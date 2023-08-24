@@ -65,7 +65,7 @@ $ boundary host-sets update plugin [options] [args]
 #### Command options
 
 - `-description=<string>` - The description to set for the plugin host set.
-- `-id=<string>` - ID of the plugin type host set to update.
+- `-id=<string>` - The ID of the plugin type host set to update.
 - `-name=<string>` - The name to set for the plugin host set.
 - `-version=<int>` - The version of the plugin host set to update.
 If you do not specify a version, the command automatically performs a check-and-set.
@@ -93,7 +93,7 @@ This option supports values from files using "file://" and environment variables
 
 #### Plugin host-set options
 
-- `-preferred-endpoint=<string>` - An endpoint prference that specifies which IP address or DNS name out of a host's available options is preferred.
+- `-preferred-endpoint=<string>` - An endpoint preference that specifies which IP address or DNS name out of a host's available options is preferred.
 You can specify the preference using `cidr:<valid IPv4/6 CIDR>` or `dns:<globbed name>`.
 You can specify multiple preferences which create an order of preferences.
 If you do not specify a preference, Boundary chooses a value from all available values using a built-in priority order.
