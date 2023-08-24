@@ -789,6 +789,35 @@
             "path": "api-clients/commands/logout"
           },
           {
+            "title": "managed-groups",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/managed-groups"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/managed-groups/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/managed-groups/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/managed-groups/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/managed-groups/read"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/managed-groups/update"
+              }
+            ]
+          },
+          {
             "title": "roles",
             "routes": [
               {
