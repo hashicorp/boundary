@@ -122,7 +122,7 @@ message GetGroupResponse {
 
 message ListGroupsRequest {
   string scope_id = 1 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 

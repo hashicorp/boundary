@@ -127,7 +127,7 @@ message GetUserResponse {
 
 message ListUsersRequest {
   string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
 }
 
