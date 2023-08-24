@@ -785,6 +785,47 @@
             "path": "api-clients/commands/dev"
           },
           {
+            "title": "host-sets",
+            "routes": [
+              {
+                "title": "Overview",
+                "path": "api-clients/commands/host-sets"
+              },
+              {
+                "title": "add-hosts",
+                "path": "api-clients/commands/host-sets/add-hosts"
+              },
+              {
+                "title": "create",
+                "path": "api-clients/commands/host-sets/create"
+              },
+              {
+                "title": "delete",
+                "path": "api-clients/commands/host-sets/delete"
+              },
+              {
+                "title": "list",
+                "path": "api-clients/commands/host-sets/list"
+              },
+              {
+                "title": "read",
+                "path": "api-clients/commands/host-sets/read"
+              },
+              {
+                "title": "remove-hosts",
+                "path": "api-clients/commands/host-sets/remove-hosts"
+              },
+              {
+                "title": "set-hosts",
+                "path": "api-clients/commands/host-sets/set-hosts"
+              },
+              {
+                "title": "update",
+                "path": "api-clients/commands/host-sets/update"
+              }
+            ]
+          },
+          {
             "title": "hosts",
             "routes": [
               {
