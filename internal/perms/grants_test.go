@@ -1072,6 +1072,31 @@ func Test_Parse(t *testing.T) {
 	}
 }
 
+// Fuzz_Parse is focused on finding panics
+func Fuzz_Parse(f *testing.F) {
+	tc := []string{
+		"id=*;type=*;actions=read,list;output_fields=",
+		`{"id": "*", "type": "*", "actions": ["read", "list"], "output_fields": []}`,
+		"id=*;type=*;actions=read,list",
+		"ids=*;type=*;actions=read,list",
+		`{"type":"host-catalog","actions":["create"]}`,
+		`{"id":"u_foobar","actions":["read"]}`,
+		`{"id":"u_foobar","actions":["read"],"output_fields":["version","id","name"]}`,
+		`{"id":"u_foobar","output_fields":["version","id","name"]}`,
+		`type=host-catalog;actions=create`,
+		`ids=hcst_foobar,hcst_foobaz;actions=read;output_fields=version,ids,name`,
+		`id=hcst_foobar;actions=read`,
+		`id=acctpw_foobar;actions=read`,
+		`id={{    user.id}};actions=read,update`,
+	}
+	for _, tc := range tc {
+		f.Add(tc)
+	}
+	f.Fuzz(func(t *testing.T, s string) {
+		_, _ = Parse(context.Background(), "global", s)
+	})
+}
+
 func TestHasActionOrSubaction(t *testing.T) {
 	tests := []struct {
 		name string
