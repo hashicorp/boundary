@@ -15,4 +15,4 @@ jobs:
         with:
           packages: './internal/perms'
           fuzz-time: 30s
-          fuzz-regexp: Fuzz_Parse
+          fuzz-regexp: FuzzParse
