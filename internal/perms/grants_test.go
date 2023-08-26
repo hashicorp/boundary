@@ -1123,19 +1123,36 @@ func TestHasActionOrSubaction(t *testing.T) {
 
 func FuzzParse(f *testing.F) {
 	ctx := context.Background()
-
-	f.Add("type=host-catalog;actions=create")
-	f.Add("type=*;actions=*")
-	f.Add("id=*;type=*;actions=*")
-	f.Add("ids=*;type=*;actions=*")
-	f.Add("id=*;type=*;actions=read,list")
-	f.Add("ids=*;type=*;actions=read,list")
-	f.Add("id=foobar;actions=read;output_fields=version,id,name")
-	f.Add("ids=foobar,foobaz;actions=read;output_fields=version,id,name")
-	f.Add("id={{account.id}};actions=update,read")
-	f.Add("ids={{account.id}},{{user.id}};actions=update,read")
-	f.Add(`{"id":"foobar","type":"host-catalog","actions":["create"]}`)
-	f.Add(`{"ids":["foobar"],"type":"host-catalog","actions":["create"]}`)
+	tc := []string{
+		"id=*;type=*;actions=read,list;output_fields=",
+		`{"id": "*", "type": "*", "actions": ["read", "list"], "output_fields": []}`,
+		"id=*;type=*;actions=read,list",
+		"ids=*;type=*;actions=read,list",
+		`{"type":"host-catalog","actions":["create"]}`,
+		`{"id":"u_foobar","actions":["read"]}`,
+		`{"id":"u_foobar","actions":["read"],"output_fields":["version","id","name"]}`,
+		`{"id":"u_foobar","output_fields":["version","id","name"]}`,
+		`type=host-catalog;actions=create`,
+		`ids=hcst_foobar,hcst_foobaz;actions=read;output_fields=version,ids,name`,
+		`id=hcst_foobar;actions=read`,
+		`id=acctpw_foobar;actions=read`,
+		`id={{    user.id}};actions=read,update`,
+		"type=host-catalog;actions=create",
+		"type=*;actions=*",
+		"id=*;type=*;actions=*",
+		"ids=*;type=*;actions=*",
+		"id=*;type=*;actions=read,list",
+		"ids=*;type=*;actions=read,list",
+		"id=foobar;actions=read;output_fields=version,id,name",
+		"ids=foobar,foobaz;actions=read;output_fields=version,id,name",
+		"id={{account.id}};actions=update,read",
+		"ids={{account.id}},{{user.id}};actions=update,read",
+		`{"id":"foobar","type":"host-catalog","actions":["create"]}`,
+		`{"ids":["foobar"],"type":"host-catalog","actions":["create"]}`,
+	}
+	for _, tc := range tc {
+		f.Add(tc)
+	}
 
 	f.Fuzz(func(t *testing.T, grant string) {
 		g, err := Parse(ctx, "global", grant, WithSkipFinalValidation(true))

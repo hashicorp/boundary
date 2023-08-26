@@ -1,0 +1,18 @@
+name: Go fuzz test
+on:
+    push:
+      paths-ignore:
+        - 'website/**'
+    workflow_call:
+    workflow_dispatch:
+jobs:
+  fuzz-grants-parse:
+    name: Fuzz grants.Parse
+    runs-on: ubuntu-latest
+    steps:
+        # commit hash == v1.2.0
+      - uses: jidicula/go-fuzz-action@4f24eed45b25214f31a9fe035ca68ea2c88c6a13
+        with:
+          packages: './internal/perms'
+          fuzz-time: 30s
+          fuzz-regexp: FuzzParse
