@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
@@ -54,6 +55,9 @@ import (
 const (
 	credentialDomain = "credential"
 	hostDomain       = "host"
+	// The default max page size is used when one is not
+	// provided to NewService.
+	defaultMaxPageSize = 1000
 )
 
 // extraWorkerFilterFunc takes in a set of workers and returns another set,
@@ -122,6 +126,7 @@ type Service struct {
 	downstreams             common.Downstreamers
 	kmsCache                *kms.Kms
 	workerStatusGracePeriod *atomic.Int64
+	maxPageSize             uint
 	controllerExt           intglobals.ControllerExtension
 }
 
@@ -141,6 +146,7 @@ func NewService(
 	staticCredRepoFn common.StaticCredentialRepoFactory,
 	downstreams common.Downstreamers,
 	workerStatusGracePeriod *atomic.Int64,
+	maxPageSize uint,
 	controllerExt intglobals.ControllerExtension,
 ) (Service, error) {
 	const op = "targets.NewService"
@@ -171,6 +177,9 @@ func NewService(
 	if staticCredRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
 	}
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
 	return Service{
 		repoFn:                  repoFn,
 		iamRepoFn:               iamRepoFn,
@@ -183,13 +192,14 @@ func NewService(
 		downstreams:             downstreams,
 		kmsCache:                kmsCache,
 		workerStatusGracePeriod: workerStatusGracePeriod,
+		maxPageSize:             maxPageSize,
 		controllerExt:           controllerExt,
 	}, nil
 }
 
 // ListTargets implements the interface pbs.TargetServiceServer.
 func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (*pbs.ListTargetsResponse, error) {
-	const op = "targets.(Service).ListSessions"
+	const op = "targets.(Service).ListTargets"
 
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
@@ -225,21 +235,31 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		return &pbs.ListTargetsResponse{}, nil
 	}
 
-	tl, err := s.listFromRepo(ctx, userPerms)
+	repo, err := s.repoFn(target.WithPermissions(userPerms))
 	if err != nil {
 		return nil, err
 	}
-	if len(tl) == 0 {
-		return &pbs.ListTargetsResponse{}, nil
-	}
-
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
-
-	finalItems := make([]*pb.Target, 0, len(tl))
-	for _, item := range tl {
+	listTargetsFn := func(prevPageLast target.Target, refreshToken *pbs.ListRefreshToken, limit int) ([]target.Target, error) {
+		opts := []target.Option{
+			target.WithLimit(limit),
+		}
+		if prevPageLast == nil {
+			if refreshToken != nil {
+				opts = append(opts, target.WithStartPageAfterItem(
+					refreshToken.GetLastItemId(),
+					refreshToken.GetLastItemUpdatedTime().AsTime(),
+				))
+			}
+		} else {
+			opts = append(opts, target.WithStartPageAfterItem(prevPageLast.GetPublicId(), prevPageLast.GetUpdateTime().AsTime()))
+		}
+		return repo.ListTargets(ctx, opts...)
+	}
+	filterAndConvertFn := func(item target.Target) (*pb.Target, error) {
 		pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target}
 		outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserId)
 
@@ -254,21 +274,49 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
-		item, err := toProto(ctx, item, outputOpts...)
+		pbItem, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
 
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(pbItem)
 		if err != nil {
 			return nil, err
 		}
 		if filter.Match(filterable) {
-			finalItems = append(finalItems, item)
+			return pbItem, nil
 		}
+		return nil, nil
 	}
 
-	return &pbs.ListTargetsResponse{Items: finalItems}, nil
+	listResp, err := pagination.PaginateRequest(
+		ctx,
+		s.maxPageSize,
+		pbs.ResourceType_RESOURCE_TYPE_TARGET,
+		req,
+		listTargetsFn,
+		filterAndConvertFn,
+		&authResults,
+		repo,
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListTargetsResponse{
+		Items:        listResp.Items,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+		RefreshToken: listResp.MarshaledRefreshToken,
+		RemovedIds:   listResp.DeletedIds,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+	}
+	return resp, nil
 }
 
 // GetTarget implements the interface pbs.TargetServiceServer.
@@ -1291,18 +1339,6 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete target"))
 	}
 	return rows > 0, nil
-}
-
-func (s Service) listFromRepo(ctx context.Context, perms []perms.Permission) ([]target.Target, error) {
-	repo, err := s.repoFn(target.WithPermissions(perms))
-	if err != nil {
-		return nil, err
-	}
-	ul, err := repo.ListTargets(ctx, target.WithLimit(-1))
-	if err != nil {
-		return nil, err
-	}
-	return ul, nil
 }
 
 func (s Service) addHostSourcesInRepo(ctx context.Context, targetId string, hostSourceIds []string, version uint32) (target.Target, error) {

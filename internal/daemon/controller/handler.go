@@ -228,6 +228,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.StaticCredentialRepoFn,
 			c.downstreamWorkers,
 			c.workerStatusGracePeriod,
+			c.conf.RawConfig.Controller.MaxPageSize,
 			c.ControllerExtension,
 		)
 		if err != nil {
