@@ -247,6 +247,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1337,6 +1338,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 }
 
 func TestAddTargetHostSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1499,6 +1501,7 @@ func TestAddTargetHostSources(t *testing.T) {
 }
 
 func TestSetTargetHostSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1649,6 +1652,7 @@ func TestSetTargetHostSources(t *testing.T) {
 }
 
 func TestRemoveTargetHostSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1817,6 +1821,7 @@ func TestRemoveTargetHostSources(t *testing.T) {
 }
 
 func TestAddTargetCredentialSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -1999,6 +2004,7 @@ func TestAddTargetCredentialSources(t *testing.T) {
 }
 
 func TestSetTargetCredentialSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -2175,6 +2181,7 @@ func TestSetTargetCredentialSources(t *testing.T) {
 }
 
 func TestRemoveTargetCredentialSources(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -2408,6 +2415,7 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 }
 
 func TestAuthorizeSession(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	targets.SetupSuiteTargetFilters(t)
 	conn, _ := db.TestSetup(t, "postgres")
@@ -2704,6 +2712,7 @@ func TestAuthorizeSession(t *testing.T) {
 }
 
 func TestAuthorizeSessionTypedCredentials(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -3294,6 +3303,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 }
 
 func TestAuthorizeSession_Errors(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	targets.SetupSuiteTargetFilters(t)
 	conn, _ := db.TestSetup(t, "postgres")
