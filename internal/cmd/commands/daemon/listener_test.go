@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"sync"
 	"testing"
 
@@ -17,11 +16,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestListenDialCommunication(t *testing.T) {
+// Note: the name of this test must remain short because the temp dir created
+// includes the name of the test and there is a 108 character limit in allowed
+// unix socket path names.
+func TestListenComms(t *testing.T) {
 	ctx := context.Background()
-	path, err := os.MkdirTemp("", "*")
-	require.NoError(t, err)
-
+	path := t.TempDir()
 	socketListener, err := listener(ctx, path)
 
 	require.NoError(t, err)

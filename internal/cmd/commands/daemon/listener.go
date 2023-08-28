@@ -44,7 +44,7 @@ func listener(ctx context.Context, path string) (net.Listener, error) {
 
 	l, err := net.Listen("unix", socketName)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Failed listening"))
 	}
 	if err := os.Chmod(socketName, socketPerms); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("changing socket permissiosn"))
