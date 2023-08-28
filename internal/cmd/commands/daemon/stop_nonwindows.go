@@ -32,6 +32,9 @@ func (s *StopCommand) stop(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
+	if p == nil {
+		return errors.New(ctx, errors.NotFound, op, "daemon not running")
+	}
 	if err := p.Signal(syscall.SIGTERM); err != nil {
 		return errors.Wrap(ctx, err, op, errors.WithMsg("sending sigterm to process"))
 	}
