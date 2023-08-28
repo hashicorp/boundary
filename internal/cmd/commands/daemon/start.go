@@ -161,26 +161,6 @@ func (c *StartCommand) Run(args []string) int {
 	// TODO: print something out for the spawner to consume in case they can easily
 	// report if the daemon started or not.
 
-	cfg := serverConfig{
-		contextCancel:          c.ContextCancel,
-		refreshIntervalSeconds: c.flagRefreshIntervalSeconds,
-		flagDatabaseUrl:        c.flagDatabaseUrl,
-		flagStoreDebug:         c.flagStoreDebug,
-		flagLogLevel:           c.flagLogLevel,
-		flagLogFormat:          c.flagLogFormat,
-	}
-
-	srv, err := newServer(c.Context, cfg)
-	if err != nil {
-		c.UI.Error(err.Error())
-		return base.CommandUserError
-	}
-	l, err := listener(ctx, dotDir)
-	if err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
-	}
-
 	logFilePath := filepath.Join(dotDir, logFileName)
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
@@ -194,7 +174,23 @@ func (c *StartCommand) Run(args []string) int {
 	}
 	writers = append(writers, logFile)
 
-	if err := srv.setupLogging(ctx, io.MultiWriter(writers...)); err != nil {
+	cfg := &serverConfig{
+		contextCancel:          c.ContextCancel,
+		refreshIntervalSeconds: c.flagRefreshIntervalSeconds,
+		flagDatabaseUrl:        c.flagDatabaseUrl,
+		flagStoreDebug:         c.flagStoreDebug,
+		flagLogLevel:           c.flagLogLevel,
+		flagLogFormat:          c.flagLogFormat,
+		logWriter:              io.MultiWriter(writers...),
+	}
+
+	srv, err := newServer(c.Context, cfg)
+	if err != nil {
+		c.UI.Error(err.Error())
+		return base.CommandUserError
+	}
+	l, err := listener(ctx, dotDir)
+	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
 	}

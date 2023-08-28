@@ -57,24 +57,33 @@ type serverConfig struct {
 	flagStoreDebug         bool
 	flagLogLevel           string
 	flagLogFormat          string
+	logWriter              io.Writer
 }
 
-func (sc *serverConfig) validate() error {
+func (sc *serverConfig) validate(ctx context.Context) error {
+	const op = "daemon.(serverConfig).validate"
+	switch {
+	case util.IsNil(sc.logWriter):
+		return errors.New(ctx, errors.InvalidParameter, op, "missing log writter")
+	}
 	return nil
 }
 
 // can be called before eventing is setup
-func newServer(ctx context.Context, conf serverConfig) (*cacheServer, error) {
+func newServer(ctx context.Context, conf *serverConfig) (*cacheServer, error) {
 	const op = "daemon.newServer"
-	if err := conf.validate(); err != nil {
+	if err := conf.validate(ctx); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	s := &cacheServer{
-		conf:         &conf,
+		conf:         conf,
 		info:         make(map[string]string),
 		infoKeys:     make([]string, 0, 20),
 		tickerWg:     new(sync.WaitGroup),
 		shutdownOnce: new(sync.Once),
+	}
+	if err := s.setupLogging(ctx, conf.logWriter); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return s, nil
 }

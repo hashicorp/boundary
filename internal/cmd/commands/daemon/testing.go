@@ -15,8 +15,7 @@ import (
 
 type TestServer struct {
 	*cacheServer
-	socketDir          string
-	setupLoggingCalled bool
+	socketDir string
 }
 
 // NewTestServer creates a test cache server using reasonable defaults for
@@ -28,10 +27,11 @@ func NewTestServer(t *testing.T, opt ...Option) *TestServer {
 	opts, err := getOpts(opt...)
 	require.NoError(t, err)
 
-	cfg := serverConfig{
+	cfg := &serverConfig{
 		contextCancel:          cancel,
 		refreshIntervalSeconds: DefaultRefreshIntervalSeconds,
 		flagStoreDebug:         opts.withDebug,
+		logWriter:              io.Discard,
 	}
 
 	s, err := newServer(ctx, cfg)
@@ -54,11 +54,6 @@ func (s *TestServer) Serve(t *testing.T, cmd commander) error {
 	l, err := listener(ctx, s.socketDir)
 	require.NoError(t, err)
 
-	if !s.setupLoggingCalled {
-		// logging wasn't called so discard all output from the server.
-		require.NoError(t, s.cacheServer.setupLogging(ctx, io.Discard))
-	}
-
 	t.Cleanup(func() {
 		s.shutdown(ctx)
 	})
@@ -73,13 +68,4 @@ func (s *TestServer) AddTargets(t *testing.T, p *cache.Persona, tars []*targets.
 	r, err := cache.NewRepository(ctx, s.cacheServer.store)
 	require.NoError(t, err)
 	require.NoError(t, r.RefreshTargets(ctx, p, tars))
-}
-
-func (s *TestServer) setupLogging(ctx context.Context, w io.Writer) error {
-	s.setupLoggingCalled = true
-	return s.cacheServer.setupLogging(ctx, w)
-}
-
-func (s *TestServer) SetupLogging(ctx context.Context, w io.Writer) error {
-	return s.setupLogging(ctx, w)
 }
