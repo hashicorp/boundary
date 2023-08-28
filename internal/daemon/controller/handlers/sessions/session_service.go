@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // The default max page size is used when one is not
@@ -142,14 +141,6 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	var refreshToken *pbs.ListRefreshToken
-	if req.GetRefreshToken() != "" {
-		var err error
-		refreshToken, err = pagination.ParseRefreshToken(ctx, req.GetRefreshToken())
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-	}
 
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List, false)
 	if authResults.Error != nil {
@@ -165,19 +156,8 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		}
 	}
 
-	grantsHash, err := authResults.GrantsHash(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if refreshToken != nil {
-		// We have to do this after authorization as it requires the users grants hash
-		if err := pagination.ValidateRefreshToken(ctx, refreshToken, grantsHash, pbs.ResourceType_RESOURCE_TYPE_SESSION); err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-	}
-
 	var scopeIds map[string]*scopes.ScopeInfo
-
+	var err error
 	if !req.GetRecursive() {
 		scopeIds = map[string]*scopes.ScopeInfo{authResults.Scope.Id: authResults.Scope}
 	} else {
@@ -188,7 +168,6 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	}
 
 	listPerms := authResults.ACL().ListPermissions(scopeIds, resource.Session, IdActions, authResults.UserId)
-
 	repo, err := s.repoFn(session.WithPermissions(&perms.UserPermissions{
 		UserId:      authResults.UserId,
 		Permissions: listPerms,
@@ -196,176 +175,88 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-
-	pageSize := int(s.maxPageSize)
-	// Use the requested page size only if it is smaller than
-	// the configured max.
-	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
-		pageSize = int(req.GetPageSize())
-	}
-	// request page size+1 so we can tell if we're at the end
-	limit := pageSize + 1
-	opts := []session.Option{
-		session.WithTerminated(req.GetIncludeTerminated()),
-		session.WithLimit(limit),
-	}
-	if refreshToken != nil {
-		opts = append(opts, session.WithStartPageAfterItem(
-			&session.Session{
-				PublicId:   refreshToken.GetLastItemId(),
-				UpdateTime: &timestamp.Timestamp{Timestamp: refreshToken.GetLastItemUpdatedTime()},
-			},
-		))
-	}
-	page, err := repo.ListSessions(ctx, opts...)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	if len(page) == 0 {
-		resp := &pbs.ListSessionsResponse{
-			ResponseType: "complete",
-			SortBy:       "updated_time",
-			SortDir:      "asc",
+	listSessionsFn := func(prevPageLast *session.Session, refreshToken *pbs.ListRefreshToken, limit int) ([]*session.Session, error) {
+		opts := []session.Option{
+			session.WithTerminated(req.GetIncludeTerminated()),
+			session.WithLimit(limit),
 		}
-		if refreshToken != nil {
-			// We got no results, so we need to carry forward
-			// the results from the last refresh token, if there was one.
-			newRefreshToken := &pbs.ListRefreshToken{
-				CreatedTime:     timestamppb.Now(),
-				ResourceType:    pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash: grantsHash,
+		if prevPageLast == nil {
+			// First list request, only paginate if refresh
+			// token provided.
+			if refreshToken != nil {
+				opts = append(opts, session.WithStartPageAfterItem(
+					&session.Session{
+						PublicId:   refreshToken.GetLastItemId(),
+						UpdateTime: &timestamp.Timestamp{Timestamp: refreshToken.GetLastItemUpdatedTime()},
+					},
+				))
 			}
-			newRefreshToken.LastItemId = refreshToken.LastItemId
-			newRefreshToken.LastItemUpdatedTime = refreshToken.LastItemUpdatedTime
-			resp.RefreshToken, err = pagination.MarshalRefreshToken(ctx, newRefreshToken)
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
-			}
-			resp.RemovedIds, err = repo.ListDeletedIds(ctx, refreshToken.GetCreatedTime().AsTime())
-			if err != nil {
-				return nil, errors.Wrap(ctx, err, op)
-			}
+		} else {
+			opts = append(opts, session.WithStartPageAfterItem(prevPageLast))
 		}
-		totalItems, err := repo.GetTotalItems(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		resp.EstItemCount = uint32(totalItems)
-		return resp, nil
+		return repo.ListSessions(ctx, opts...)
 	}
-
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	finalItems := make([]*pb.Session, 0, pageSize)
-	// If we got fewer results than requested, we're at the end.
-	completeListing := len(page) < limit
-	if len(page) > pageSize {
-		// Don't loop over the extra item
-		// we requested to see if we were at the end
-		page = page[:pageSize]
-	}
-	res := perms.Resource{
-		Type: resource.Session,
-	}
-	atEnd := completeListing
-	// Loop until we've filled the page
-dbLoop:
-	for {
-		for _, item := range page {
-			res.Id = item.GetPublicId()
-			res.ScopeId = item.GetProjectId()
-			authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-			if len(authorizedActions) == 0 {
-				continue
-			}
-
-			outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-			outputOpts := make([]handlers.Option, 0, 3)
-			outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-			if outputFields.Has(globals.ScopeField) {
-				outputOpts = append(outputOpts, handlers.WithScope(scopeIds[item.ProjectId]))
-			}
-			if outputFields.Has(globals.AuthorizedActionsField) {
-				outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-			}
-
-			item, err := toProto(ctx, item, outputOpts...)
-			if err != nil {
-				return nil, err
-			}
-
-			if filter.Match(item) {
-				finalItems = append(finalItems, item)
-				if len(finalItems) == pageSize {
-					break dbLoop
-				}
-			}
+	filterAndConvertFn := func(item *session.Session) (*pb.Session, bool, error) {
+		res := perms.Resource{
+			Type:    resource.Session,
+			Id:      item.GetPublicId(),
+			ScopeId: item.GetProjectId(),
 		}
-		if atEnd {
-			// Note that it's only complete if we completed the loop above.
-			completeListing = true
-			break dbLoop
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
+			return nil, false, nil
 		}
 
-		lastItem := page[len(page)-1]
-		// Request another result set from the DB until we fill the page
-		opts := []session.Option{
-			session.WithTerminated(req.GetIncludeTerminated()),
-			session.WithLimit(limit),
-			session.WithStartPageAfterItem(lastItem),
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(scopeIds[item.ProjectId]))
 		}
-		page, err = repo.ListSessions(ctx, opts...)
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		pbItem, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
-		// If we got fewer results than requested, we're at the end.
-		atEnd = len(page) < limit
-		if len(page) > pageSize {
-			// Don't loop over the extra item
-			// we requested to see if we were at the end
-			page = page[:pageSize]
+		if filter.Match(pbItem) {
+			return pbItem, true, nil
 		}
+		return nil, false, nil
+	}
+	listResp, err := pagination.PaginateRequest(
+		ctx,
+		s.maxPageSize,
+		pbs.ResourceType_RESOURCE_TYPE_SESSION,
+		req,
+		listSessionsFn,
+		filterAndConvertFn,
+		&authResults,
+		repo,
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	respType := "delta"
-	if completeListing {
+	if listResp.CompleteListing {
 		respType = "complete"
 	}
 	resp := &pbs.ListSessionsResponse{
-		Items:        finalItems,
+		Items:        listResp.Items,
 		ResponseType: respType,
 		SortBy:       "updated_time",
 		SortDir:      "asc",
+		RefreshToken: listResp.MarshaledRefreshToken,
+		RemovedIds:   listResp.DeletedIds,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
 	}
-
-	newRefreshToken := &pbs.ListRefreshToken{
-		CreatedTime:     timestamppb.Now(),
-		ResourceType:    pbs.ResourceType_RESOURCE_TYPE_SESSION,
-		PermissionsHash: grantsHash,
-	}
-	if len(page) > 0 {
-		newRefreshToken.LastItemId = page[len(page)-1].PublicId
-		newRefreshToken.LastItemUpdatedTime = page[len(page)-1].UpdateTime.Timestamp
-	}
-	marshaledToken, err := pagination.MarshalRefreshToken(ctx, newRefreshToken)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	resp.RefreshToken = marshaledToken
-	if refreshToken != nil {
-		resp.RemovedIds, err = repo.ListDeletedIds(ctx, refreshToken.GetCreatedTime().AsTime())
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-	}
-	totalItems, err := repo.GetTotalItems(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	resp.EstItemCount = uint32(totalItems)
 
 	return resp, nil
 }
