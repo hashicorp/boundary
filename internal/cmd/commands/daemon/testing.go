@@ -4,15 +4,12 @@
 package daemon
 
 import (
-	"bufio"
-	"bytes"
 	"context"
+	"io"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
-	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,28 +23,15 @@ type TestServer struct {
 func NewTestServer(t *testing.T, opt ...Option) *TestServer {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
-	buf := bytes.NewBuffer(nil)
-
-	ui := &base.BoundaryUI{
-		Ui: &cli.ColoredUi{
-			ErrorColor: cli.UiColorRed,
-			WarnColor:  cli.UiColorYellow,
-			Ui: &cli.BasicUi{
-				Reader: bufio.NewReader(buf),
-				Writer: buf,
-			},
-		},
-		Format: "table",
-	}
 
 	opts, err := getOpts(opt...)
 	require.NoError(t, err)
 
-	cfg := serverConfig{
+	cfg := &serverConfig{
 		contextCancel:          cancel,
 		refreshIntervalSeconds: DefaultRefreshIntervalSeconds,
-		ui:                     ui,
 		flagStoreDebug:         opts.withDebug,
+		logWriter:              io.Discard,
 	}
 
 	s, err := newServer(ctx, cfg)
@@ -71,7 +55,7 @@ func (s *TestServer) Serve(t *testing.T, cmd commander) error {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		s.shutdown()
+		s.shutdown(ctx)
 	})
 	return s.cacheServer.serve(ctx, cmd, l)
 }

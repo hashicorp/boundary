@@ -77,11 +77,15 @@ func (c *AddPersonaCommand) Run(args []string) int {
 }
 
 func (c *AddPersonaCommand) AddPersona(ctx context.Context) (*api.Error, error) {
+	const op = "daemon.(AddPersonaCommand).AddPersona"
 	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 	if err != nil {
 		return nil, err
 	}
 	at := c.ReadTokenFromKeyring(keyringType, tokenName)
+	if at == nil {
+		return nil, errors.New(ctx, errors.Conflict, op, "no auth token available to send to daemon")
+	}
 	client, err := c.Client()
 	if err != nil {
 		return nil, err
