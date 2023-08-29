@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	proxypb "github.com/hashicorp/boundary/api/proxy/pb"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
@@ -22,7 +23,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
-	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/nodeenrollment"
@@ -138,7 +138,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 		connCtx, connCancel := context.WithDeadline(ctx, sess.GetExpiration())
 		defer connCancel()
 
-		var handshake proxy.ClientHandshake
+		var handshake proxypb.ClientHandshake
 		if err := wspb.Read(connCtx, conn, &handshake); err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error reading handshake from client"))
 			if err = conn.Close(websocket.StatusPolicyViolation, "invalid handshake received"); err != nil {
@@ -154,7 +154,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			return
 		}
 
-		if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL {
+		if handshake.Command == proxypb.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL {
 			if err := sess.RequestCancel(ctx); err != nil {
 				event.WriteError(ctx, op, err, event.WithInfoMsg("unable to cancel session"))
 				if err = conn.Close(websocket.StatusInternalError, "unable to cancel session"); err != nil && !stderrors.Is(err, io.EOF) {
@@ -184,7 +184,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 				}
 				return
 			}
-			if handshake.Command == proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
+			if handshake.Command == proxypb.HANDSHAKECOMMAND_HANDSHAKECOMMAND_UNSPECIFIED {
 				err = sess.RequestActivate(ctx, handshake.GetTofuToken())
 				if err != nil {
 					event.WriteError(ctx, op, err, event.WithInfoMsg("unable to validate session"))
@@ -244,7 +244,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 		}()
 
-		handshakeResult := &proxy.HandshakeResult{
+		handshakeResult := &proxypb.HandshakeResult{
 			Expiration:      timestamppb.New(sess.GetExpiration()),
 			ConnectionLimit: sess.GetConnectionLimit(),
 			ConnectionsLeft: connsLeft,

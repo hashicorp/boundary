@@ -21,10 +21,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
+	proxypb "github.com/hashicorp/boundary/api/proxy/pb"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/proxy"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -725,9 +725,9 @@ func (c *Command) sendSessionTeardown(
 	wsConn *websocket.Conn,
 	tofuToken string,
 ) error {
-	handshake := proxy.ClientHandshake{
+	handshake := proxypb.ClientHandshake{
 		TofuToken: tofuToken,
-		Command:   proxy.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL,
+		Command:   proxypb.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL,
 	}
 	if err := wspb.Write(ctx, wsConn, &handshake); err != nil {
 		return fmt.Errorf("error sending teardown handshake to worker: %w", err)
@@ -741,11 +741,11 @@ func (c *Command) runTcpProxyV1(
 	listeningConn *net.TCPConn,
 	tofuToken string,
 ) error {
-	handshake := proxy.ClientHandshake{TofuToken: tofuToken}
+	handshake := proxypb.ClientHandshake{TofuToken: tofuToken}
 	if err := wspb.Write(c.proxyCtx, wsConn, &handshake); err != nil {
 		return fmt.Errorf("error sending handshake to worker: %w", err)
 	}
-	var handshakeResult proxy.HandshakeResult
+	var handshakeResult proxypb.HandshakeResult
 	if err := wspb.Read(c.proxyCtx, wsConn, &handshakeResult); err != nil {
 		switch {
 		case strings.Contains(err.Error(), "unable to authorize connection"):

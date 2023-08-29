@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/netip"
 	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/errors"
@@ -24,7 +25,31 @@ func directDialer(ctx context.Context, endpoint string, _ string, _ proto.Messag
 	if len(endpoint) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "endpoint is empty")
 	}
-	d, err := NewProxyDialer(ctx, func(opt ...Option) (net.Conn, error) {
+
+	tcpAddr, err := net.ResolveTCPAddr("tcp", endpoint)
+	if err != nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "unable to resolve tcp address")
+	}
+	ipAddr, err := netip.ParseAddr(tcpAddr.IP.String())
+	if err != nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "error parsing ip")
+	}
+	if ipAddr.Is4() {
+		cgnatPrefix, err := netip.ParsePrefix("100.64.0.0/10")
+		if err != nil {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "error parsing cgnat prefix")
+		}
+		if cgnatPrefix.Contains(ipAddr) {
+			// Redirect to localhost
+			ip, err := net.ResolveIPAddr("ip4", "localhost")
+			if err != nil {
+				return nil, errors.New(ctx, errors.InvalidParameter, op, "error resolving localhost")
+			}
+			endpoint = fmt.Sprintf("%s:%d", ip.String(), tcpAddr.Port)
+		}
+	}
+
+	d, err := NewProxyDialer(ctx, func(...Option) (net.Conn, error) {
 		remoteConn, err := net.Dial("tcp", endpoint)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
