@@ -250,8 +250,12 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	}
 
 	var foundTargets []*targetView
-	err := r.reader.SearchWhere(ctx, &foundTargets, strings.Join(where, " or "), args,
-		db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx,
+		&foundTargets,
+		strings.Join(where, " or "),
+		args,
+		db.WithLimit(limit),
+	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -263,7 +267,12 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 
 	addresses := map[string]string{}
 	var foundAddresses []*Address
-	err = r.reader.SearchWhere(ctx, &foundAddresses, "target_id in (?)", []any{targetIds})
+	err = r.reader.SearchWhere(ctx,
+		&foundAddresses,
+		"target_id in (?)",
+		[]any{targetIds},
+		db.WithLimit(limit),
+	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

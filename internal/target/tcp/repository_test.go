@@ -271,3 +271,42 @@ func TestRepository_DeleteTarget(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_ListRoles_Above_Default_Count(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+
+	_, proj := iam.TestScopes(t, iamRepo)
+
+	numToCreate := db.DefaultLimit + 5
+	var total int
+	for i := 0; i < numToCreate; i++ {
+		tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), fmt.Sprintf("proj1-%d", i), target.WithAddress("1.2.3.4"))
+		total++
+	}
+	require.Equal(t, numToCreate, total)
+
+	rw := db.New(conn)
+	repo, err := target.NewRepository(ctx, rw, rw, testKms,
+		target.WithPermissions([]perms.Permission{
+			{
+				ScopeId:  proj.PublicId,
+				Resource: resource.Target,
+				Action:   action.List,
+				All:      true,
+			},
+		}))
+	require.NoError(t, err)
+
+	got, err := repo.ListTargets(ctx, target.WithLimit(-1))
+	require.NoError(t, err)
+	assert.Equal(t, total, len(got))
+
+	for _, tar := range got {
+		assert.Equal(t, "1.2.3.4", tar.GetAddress())
+	}
+}
