@@ -4,6 +4,13 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* cli: Add support for specifying a command that will be executed on the remote host when
+  using the `boundary connect ssh` subcommand.
+  ([Issue](https://github.com/hashicorp/boundary/issues/3631),
+  [PR](https://github.com/hashicorp/boundary/pull/3633)).
+
 ### Bug Fixes
 
 * LDAP auth methods: allow bind-dn and bind-password to be updated independently. ([PR](https://github.com/hashicorp/boundary/pull/3511))
