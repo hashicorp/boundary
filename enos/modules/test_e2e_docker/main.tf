@@ -160,9 +160,13 @@ variable "aws_bucket_name" {
   type        = string
   default     = ""
 }
-variable "worker_tags" {
-  type    = list(string)
-  default = [""]
+variable "worker_tag_ingress" {
+  type    = string
+  default = ""
+}
+variable "worker_tag_egress" {
+  type    = string
+  default = ""
 }
 variable "postgres_user" {
   type    = string
@@ -206,38 +210,36 @@ resource "docker_image" "go" {
 resource "enos_local_exec" "run_e2e_test" {
   depends_on = [docker_image.go]
   environment = {
-    TEST_PACKAGE                  = var.test_package,
-    TEST_TIMEOUT                  = var.test_timeout,
-    TEST_RUNNER_IMAGE             = docker_image.go.image_id,
-    TEST_NETWORK_NAME             = var.network_name,
-    E2E_TESTS                     = "true",
-    BOUNDARY_ADDR                 = var.alb_boundary_api_addr,
-    E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id,
-    E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name,
-    E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password,
-    E2E_TARGET_ADDRESS            = var.target_address,
-    E2E_TARGET_PORT               = var.target_port,
-    E2E_SSH_USER                  = var.target_user,
-    E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path,
-    E2E_SSH_CA_KEY                = var.target_ca_key,
-    VAULT_ADDR                    = local.vault_addr,
-    VAULT_ADDR_INTERNAL           = local.vault_addr_internal,
-    VAULT_TOKEN                   = var.vault_root_token,
-    E2E_VAULT_ADDR                = local.vault_addr_internal,
-    E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id,
-    E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key,
-    E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1,
-    E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1,
-    E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2,
-    E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2,
-    E2E_AWS_REGION                = var.aws_region,
-    E2E_AWS_BUCKET_NAME           = var.aws_bucket_name,
-    E2E_WORKER_TAG                = jsonencode(var.worker_tags),
-    E2E_POSTGRES_USER             = var.postgres_user
-    E2E_POSTGRES_PASSWORD         = var.postgres_password
-    E2E_POSTGRES_DB_NAME          = var.postgres_database_name
-    BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir),
-    BOUNDARY_CLI_DIR              = abspath(var.local_boundary_dir),
+    TEST_PACKAGE                  = var.test_package
+    TEST_TIMEOUT                  = var.test_timeout
+    TEST_RUNNER_IMAGE             = docker_image.go.image_id
+    TEST_NETWORK_NAME             = var.network_name
+    E2E_TESTS                     = "true"
+    BOUNDARY_ADDR                 = var.alb_boundary_api_addr
+    E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id
+    E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name
+    E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password
+    E2E_TARGET_ADDRESS            = var.target_address
+    E2E_TARGET_PORT               = var.target_port
+    E2E_SSH_USER                  = var.target_user
+    E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path
+    E2E_SSH_CA_KEY                = var.target_ca_key
+    VAULT_ADDR                    = local.vault_addr
+    VAULT_ADDR_INTERNAL           = local.vault_addr_internal
+    VAULT_TOKEN                   = var.vault_root_token
+    E2E_VAULT_ADDR                = local.vault_addr_internal
+    E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id
+    E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key
+    E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1
+    E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1
+    E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2
+    E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
+    E2E_AWS_REGION                = var.aws_region
+    E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
+    E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
+    E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
+    BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir)
+    BOUNDARY_CLI_DIR              = abspath(var.local_boundary_dir)
     MODULE_DIR                    = abspath(path.module)
   }
 
