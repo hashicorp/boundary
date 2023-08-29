@@ -5,6 +5,7 @@
 package credentiallibraries
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/api"
@@ -25,6 +26,8 @@ type options struct {
 	withAutomaticVersioning bool
 	withSkipCurlOutput      bool
 	withFilter              string
+	withRefreshToken        string
+	withPageSize            uint
 }
 
 func getDefaultOptions() options {
@@ -48,6 +51,12 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	if opts.withFilter != "" {
 		opts.queryMap["filter"] = opts.withFilter
 	}
+	if opts.withRefreshToken != "" {
+		opts.queryMap["refresh_token"] = opts.withRefreshToken
+	}
+	if opts.withPageSize != 0 {
+		opts.queryMap["page_size"] = strconv.FormatUint(uint64(opts.withPageSize), 10)
+	}
 	return opts, apiOpts
 }
 
@@ -66,6 +75,22 @@ func WithAutomaticVersioning(enable bool) Option {
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
 		o.withSkipCurlOutput = true
+	}
+}
+
+// WithRefreshToken tells the API to use the provided refresh token
+// for listing operations on this resource.
+func WithRefreshToken(refreshToken string) Option {
+	return func(o *options) {
+		o.withRefreshToken = refreshToken
+	}
+}
+
+// WithPageSize tells the API use the provided page size for listing
+// opertaions on this resource.
+func WithPageSize(pageSize uint) Option {
+	return func(o *options) {
+		o.withPageSize = pageSize
 	}
 }
 
