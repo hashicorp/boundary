@@ -31,6 +31,12 @@ func sshOptions(c *Command, set *base.FlagSets) {
 	})
 
 	f.StringVar(&base.StringVar{
+		Name:   "remote-command",
+		Target: &c.flagRemoteCommand,
+		Usage:  `Specifies a command that will be executed on the remote host. A complete command line may be specified as command, or it may have additional arguments. If supplied, the arguments will be appended to the command, separated by spaces.`,
+	})
+
+	f.StringVar(&base.StringVar{
 		Name:       "username",
 		Target:     &c.flagUsername,
 		EnvVar:     "BOUNDARY_CONNECT_USERNAME",
@@ -40,7 +46,8 @@ func sshOptions(c *Command, set *base.FlagSets) {
 }
 
 type sshFlags struct {
-	flagSshStyle string
+	flagSshStyle      string
+	flagRemoteCommand string
 }
 
 func (s *sshFlags) defaultExec() string {
@@ -60,7 +67,7 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 	switch strings.ToLower(s.flagSshStyle) {
 	case "ssh":
 		// Might want -t for ssh or -tt but seems fine without it for now...
-		args = append(args, "-p", port, ip)
+		args = append(args, "-p", port)
 
 		switch c.sessionAuthzData.GetType() {
 		case "tcp":
@@ -102,14 +109,14 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 		// when the using env-vars.
 		envs = append(envs, fmt.Sprintf("SSHPASS=%s", password))
 		args = append(args, "-e", "ssh")
-		args = append(args, "-p", port, ip)
+		args = append(args, "-p", port)
 
 		// sshpass cannot handle host key checking, disable localhost key verification
 		// to avoid error: 'SSHPASS detected host authentication prompt. Exiting.'
 		args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
 
 	case "putty":
-		args = append(args, "-P", port, ip)
+		args = append(args, "-P", port)
 	}
 
 	// Check if we got credentials to attempt to use for ssh or putty,
@@ -183,6 +190,15 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 		args = append(args, "-l", username)
 	case c.flagUsername != "":
 		args = append(args, "-l", c.flagUsername)
+	}
+
+	// Add destination
+	args = append(args, ip)
+
+	// Add optional command to run on remote host
+	if s.flagRemoteCommand != "" {
+		cmdArgs := strings.Split(s.flagRemoteCommand, " ")
+		args = append(args, cmdArgs...)
 	}
 
 	return args, envs, retCreds, nil
