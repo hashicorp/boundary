@@ -16,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCliTcpTargetConnectTargetWithLocalhost uses the boundary cli to connect
+// to a target using `boundary connect` and then `ssh localhost`
 func TestCliTcpTargetConnectTargetWithLocalhost(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()

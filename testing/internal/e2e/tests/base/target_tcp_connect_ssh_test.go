@@ -16,9 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliTcpTargetConnectTargetWithSsh uses the boundary cli to create a credential using boundary's
-// built-in credential store. The test attaches that credential to a target and attempts to connect
-// to that target using those credentials.
+// TestCliTcpTargetConnectTargetWithSsh uses the boundary cli to
+// connect to a target using `connect ssh`
 func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
