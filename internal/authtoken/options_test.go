@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/authtoken/store"
+
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/stretchr/testify/assert"
@@ -70,5 +72,18 @@ func Test_GetOpts(t *testing.T) {
 		assert.Empty(opts.withIamOptions)
 		opts = getOpts(WithIamOptions(iam.WithName("foobar")))
 		assert.NotEmpty(opts.withIamOptions)
+	})
+
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		s := &AuthToken{
+			AuthToken: &store.AuthToken{
+				AuthAccountId: "s_1",
+			},
+		}
+		opts := getOpts(WithStartPageAfterItem(s))
+		testOpts := getDefaultOptions()
+		testOpts.withStartPageAfterItem = s
+		assert.Equal(opts, testOpts)
 	})
 }

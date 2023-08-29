@@ -52,7 +52,7 @@ func TestGetSelf(t *testing.T) {
 		return server.NewRepository(ctx, rw, rw, kms)
 	}
 
-	a, err := authtokens.NewService(ctx, tokenRepoFn, iamRepoFn)
+	a, err := authtokens.NewService(ctx, tokenRepoFn, iamRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -131,7 +131,7 @@ func TestGet(t *testing.T) {
 		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
 
-	s, err := authtokens.NewService(ctx, repoFn, iamRepoFn)
+	s, err := authtokens.NewService(ctx, repoFn, iamRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -236,7 +236,7 @@ func TestList_Self(t *testing.T) {
 		},
 	}
 
-	a, err := authtokens.NewService(testCtx, tokenRepoFn, iamRepoFn)
+	a, err := authtokens.NewService(testCtx, tokenRepoFn, iamRepoFn, 1000)
 	require.NoError(t, err)
 
 	for _, tc := range cases {
@@ -370,6 +370,11 @@ func TestList(t *testing.T) {
 			res:  &pbs.ListAuthTokensResponse{Items: allTokens},
 		},
 		{
+			name: "Paginate listing",
+			req:  &pbs.ListAuthTokensRequest{ScopeId: scope.Global.String(), Recursive: true, PageSize: 2},
+			res:  &pbs.ListAuthTokensResponse{Items: allTokens[:2]},
+		},
+		{
 			name: "Filter to Some Tokens",
 			req: &pbs.ListAuthTokensRequest{
 				ScopeId: "global", Recursive: true,
@@ -390,7 +395,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := authtokens.NewService(context.Background(), repoFn, iamRepoFn)
+			s, err := authtokens.NewService(context.Background(), repoFn, iamRepoFn, 1000)
 			assert, require := assert.New(t), require.New(t)
 			require.NoError(err, "Couldn't create new user service.")
 
@@ -438,7 +443,7 @@ func TestDeleteSelf(t *testing.T) {
 		return server.NewRepository(testCtx, rw, rw, kms)
 	}
 
-	a, err := authtokens.NewService(testCtx, tokenRepoFn, iamRepoFn)
+	a, err := authtokens.NewService(testCtx, tokenRepoFn, iamRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -528,7 +533,7 @@ func TestDelete(t *testing.T) {
 	org, _ := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 
-	s, err := authtokens.NewService(ctx, repoFn, iamRepoFn)
+	s, err := authtokens.NewService(ctx, repoFn, iamRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -593,7 +598,7 @@ func TestDelete_twice(t *testing.T) {
 	org, _ := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
 
-	s, err := authtokens.NewService(ctx, repoFn, iamRepoFn)
+	s, err := authtokens.NewService(ctx, repoFn, iamRepoFn, 1000)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteAuthTokenRequest{
 		Id: at.GetPublicId(),

@@ -5,6 +5,7 @@ package authtoken
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -291,7 +292,9 @@ func (r *Repository) ValidateToken(ctx context.Context, id, token string, opt ..
 }
 
 // ListAuthTokens lists auth tokens in the given scopes and supports the
-// WithLimit option.
+// following options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
 func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, opt ...Option) ([]*AuthToken, error) {
 	const op = "authtoken.(Repository).ListAuthTokens"
 	if len(withScopeIds) == 0 {
@@ -299,10 +302,31 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 	}
 	opts := getOpts(opt...)
 
+	whereClause := "auth_account_id in (select public_id from auth_account where scope_id in (?))"
+	args := []any{withScopeIds}
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
+		)
+		whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+	}
+
 	// use the view, to bring in the required account columns. Just don't forget
 	// to convert them before returning them
 	var atvs []*authTokenView
-	if err := r.reader.SearchWhere(ctx, &atvs, "auth_account_id in (select public_id from auth_account where scope_id in (?))", []any{withScopeIds}, db.WithLimit(opts.withLimit)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &atvs, whereClause, args, db.WithLimit(opts.withLimit), db.WithOrder(withOrder)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	authTokens := make([]*AuthToken, 0, len(atvs))
@@ -313,6 +337,36 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 		authTokens = append(authTokens, atv.toAuthToken())
 	}
 	return authTokens, nil
+}
+
+// ListDeletedIds lists the public IDs of any auth tokens deleted since the timestamp provided.
+func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
+	const op = "authtoken.(Repository).ListDeletedIds"
+	var deletedAuthTokens []*deletedAuthToken
+	if err := r.reader.SearchWhere(ctx, &deletedAuthTokens, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted auth tokens"))
+	}
+	var authtokenIds []string
+	for _, tok := range deletedAuthTokens {
+		authtokenIds = append(authtokenIds, tok.PublicId)
+	}
+	return authtokenIds, nil
+}
+
+// GetTotalItems returns the total number of items in the authtoken table.
+func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
+	const op = "authtoken.(Repository).GetTotalItems"
+	rows, err := r.reader.Query(ctx, "select count(*) from auth_token", nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
+		}
+	}
+	return count, nil
 }
 
 // DeleteAuthToken deletes the token with the provided id from the repository returning a count of the
