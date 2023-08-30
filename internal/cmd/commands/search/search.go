@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 	"golang.org/x/exp/slices"
@@ -175,6 +176,7 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response,
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error"))
 	}
+	req.Header.Add(daemon.VersionHeaderKey, version.Get().VersionNumber())
 	q := url.Values{}
 	q.Add("token_name", fb.tokenName)
 	q.Add("keyring_type", fb.keyringType)

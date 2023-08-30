@@ -185,13 +185,13 @@ func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) 
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.HandleFunc("/v1/search", searchTargetsFn)
+	mux.Handle("/v1/search", versionEnforcement(searchTargetsFn))
 
 	personaFn, err := newPersonaHandlerFunc(ctx, s.store, cmd, tic)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.HandleFunc("/v1/personas", personaFn)
+	mux.Handle("/v1/personas", versionEnforcement(personaFn))
 
 	logger, err := event.SysEventer().StandardLogger(ctx, "daemon.serve: ", event.ErrorType)
 	if err != nil {
