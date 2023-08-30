@@ -4,7 +4,6 @@
 package accounts
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -223,7 +222,7 @@ func TestValidateCreateRequest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			req := &pbs.CreateAccountRequest{Item: tc.item}
-			err := validateCreateRequest(context.Background(), req)
+			err := validateCreateRequest(req)
 			if tc.errContains == "" {
 				require.NoError(t, err)
 				return
@@ -286,7 +285,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			err := validateUpdateRequest(context.Background(), tc.req)
+			err := validateUpdateRequest(tc.req)
 			if tc.errContains == "" {
 				require.NoError(t, err)
 				return
@@ -302,7 +301,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			emailClaimField,
 			nameClaimField,
 		}
-		err := validateUpdateRequest(context.Background(), &pbs.UpdateAccountRequest{
+		err := validateUpdateRequest(&pbs.UpdateAccountRequest{
 			Id:         globals.OidcAccountPrefix + "_1234567890",
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
 		})
@@ -320,7 +319,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 			issuerField,
 			subjectField,
 		}
-		err := validateUpdateRequest(context.Background(), &pbs.UpdateAccountRequest{
+		err := validateUpdateRequest(&pbs.UpdateAccountRequest{
 			Id:         globals.OidcAccountPrefix + "_1234567890",
 			UpdateMask: &fieldmaskpb.FieldMask{Paths: readOnlyFields},
 		})

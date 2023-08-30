@@ -52,7 +52,6 @@ var testAuthorizedActions = map[subtypes.Subtype][]string{
 
 func TestGet_Static(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -67,10 +66,10 @@ func TestGet_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	hs := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
@@ -128,7 +127,7 @@ func TestGet_Static(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostSetRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn)
+			s, err := host_sets.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create a new host set service.")
 
 			got, gErr := s.GetHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -147,7 +146,6 @@ func TestGet_Static(t *testing.T) {
 
 func TestGet_Plugin(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -162,7 +160,7 @@ func TestGet_Plugin(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 
 	name := "test"
@@ -172,7 +170,7 @@ func TestGet_Plugin(t *testing.T) {
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, plgm)
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 
 	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
@@ -245,7 +243,7 @@ func TestGet_Plugin(t *testing.T) {
 			req := proto.Clone(toMerge).(*pbs.GetHostSetRequest)
 			proto.Merge(req, tc.req)
 
-			s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn)
+			s, err := host_sets.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create a new host set service.")
 
 			got, gErr := s.GetHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), req)
@@ -265,7 +263,6 @@ func TestGet_Plugin(t *testing.T) {
 }
 
 func TestList_Static(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -280,10 +277,10 @@ func TestList_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hcs := static.TestCatalogs(t, conn, proj.GetPublicId(), 2)
 	hc, hcNoHosts := hcs[0], hcs[1]
@@ -337,7 +334,7 @@ func TestList_Static(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn)
+			s, err := host_sets.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
 			// Test with non-anon user
@@ -365,7 +362,6 @@ func TestList_Static(t *testing.T) {
 }
 
 func TestList_Plugin(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -380,7 +376,7 @@ func TestList_Plugin(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	name := "test"
 	plg := plugin.TestPlugin(t, conn, name)
@@ -388,7 +384,7 @@ func TestList_Plugin(t *testing.T) {
 		plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginServer{}),
 	}
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, plgm)
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	hcNoHosts := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
@@ -451,7 +447,7 @@ func TestList_Plugin(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn)
+			s, err := host_sets.NewService(repoFn, pluginRepoFn)
 			require.NoError(err, "Couldn't create new host set service.")
 
 			// Test with non-anon user
@@ -480,7 +476,6 @@ func TestList_Plugin(t *testing.T) {
 
 func TestDelete_Static(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -495,15 +490,15 @@ func TestDelete_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 
-	s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn)
+	s, err := host_sets.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
@@ -552,7 +547,6 @@ func TestDelete_Static(t *testing.T) {
 
 func TestDelete_Plugin(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -567,10 +561,10 @@ func TestDelete_Plugin(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	name := "test"
 	plg := plugin.TestPlugin(t, conn, name)
@@ -581,7 +575,7 @@ func TestDelete_Plugin(t *testing.T) {
 	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
 	h := hostplugin.TestSet(t, conn, kms, sche, hc, plgm)
 
-	s, err := host_sets.NewService(ctx, repoFn, pluginRepoFn)
+	s, err := host_sets.NewService(repoFn, pluginRepoFn)
 	require.NoError(t, err, "Couldn't create a new host set service.")
 
 	cases := []struct {
@@ -630,7 +624,6 @@ func TestDelete_Plugin(t *testing.T) {
 
 func TestDelete_twice(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	assert, require := assert.New(t), require.New(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
@@ -646,20 +639,20 @@ func TestDelete_twice(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	h := static.TestSets(t, conn, hc.GetPublicId(), 1)[0]
 
-	s, err := host_sets.NewService(ctx, repoFn, plgRepoFn)
+	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(err, "Couldn't create a new host set service.")
 	req := &pbs.DeleteHostSetRequest{
 		Id: h.GetPublicId(),
 	}
-	ctx = auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
+	ctx := auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId())
 	_, gErr := s.DeleteHostSet(ctx, req)
 	assert.NoError(gErr, "First attempt")
 	_, gErr = s.DeleteHostSet(ctx, req)
@@ -669,7 +662,6 @@ func TestDelete_twice(t *testing.T) {
 
 func TestCreate_Static(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -684,10 +676,10 @@ func TestCreate_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
 	prefEndpoints := []string{"cidr:1.2.3.4", "cidr:2.3.4.5/24"}
@@ -792,7 +784,7 @@ func TestCreate_Static(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := host_sets.NewService(ctx, repoFn, plgRepoFn)
+			s, err := host_sets.NewService(repoFn, plgRepoFn)
 			require.NoError(err, "Failed to create a new host set service.")
 
 			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
@@ -826,7 +818,6 @@ func TestCreate_Static(t *testing.T) {
 
 func TestCreate_Plugin(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -841,12 +832,12 @@ func TestCreate_Plugin(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	name := "test"
 	plg := plugin.TestPlugin(t, conn, name)
 	plgRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{
 			plg.GetPublicId(): loopback.NewWrappingPluginHostClient(&loopback.TestPluginHostServer{
 				OnCreateSetFn: func(ctx context.Context, req *plgpb.OnCreateSetRequest) (*plgpb.OnCreateSetResponse, error) {
 					return nil, nil
@@ -1058,7 +1049,7 @@ func TestCreate_Plugin(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := host_sets.NewService(ctx, repoFn, plgRepoFn)
+			s, err := host_sets.NewService(repoFn, plgRepoFn)
 			require.NoError(err, "Failed to create a new host set service.")
 
 			got, gErr := s.CreateHostSet(auth.DisabledAuthTestContext(iamRepoFn, proj.GetPublicId()), tc.req)
@@ -1094,7 +1085,6 @@ func TestCreate_Plugin(t *testing.T) {
 
 func TestUpdate_Static(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1109,7 +1099,7 @@ func TestUpdate_Static(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	repo, err := repoFn()
 	require.NoError(t, err, "Couldn't create new static repo.")
@@ -1119,9 +1109,9 @@ func TestUpdate_Static(t *testing.T) {
 	h := static.TestHosts(t, conn, hc.GetPublicId(), 2)
 	hIds := []string{h[0].GetPublicId(), h[1].GetPublicId()}
 
-	hs, err := static.NewHostSet(ctx, hc.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
+	hs, err := static.NewHostSet(hc.GetPublicId(), static.WithName("default"), static.WithDescription("default"))
 	require.NoError(t, err)
-	hs, err = repo.CreateSet(ctx, proj.GetPublicId(), hs)
+	hs, err = repo.CreateSet(context.Background(), proj.GetPublicId(), hs)
 	require.NoError(t, err)
 
 	static.TestSetMembers(t, conn, hs.GetPublicId(), h)
@@ -1130,7 +1120,7 @@ func TestUpdate_Static(t *testing.T) {
 
 	resetHostSet := func() {
 		version++
-		_, _, _, err = repo.UpdateSet(ctx, proj.GetPublicId(), hs, version, []string{"Name", "Description"})
+		_, _, _, err = repo.UpdateSet(context.Background(), proj.GetPublicId(), hs, version, []string{"Name", "Description"})
 		require.NoError(t, err, "Failed to reset host.")
 		version++
 	}
@@ -1141,9 +1131,9 @@ func TestUpdate_Static(t *testing.T) {
 	}
 
 	plgRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	tested, err := host_sets.NewService(ctx, repoFn, plgRepoFn)
+	tested, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	cases := []struct {
@@ -1476,7 +1466,6 @@ func TestUpdate_Static(t *testing.T) {
 
 func TestUpdate_Plugin(t *testing.T) {
 	t.Parallel()
-	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1492,15 +1481,15 @@ func TestUpdate_Plugin(t *testing.T) {
 	}
 
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(testCtx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	pluginHostRepo := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(testCtx, rw, rw, kms, sche, plgm)
+		return hostplugin.NewRepository(rw, rw, kms, sche, plgm)
 	}
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iamRepo, nil
 	}
-	tested, err := host_sets.NewService(testCtx, repoFn, pluginHostRepo)
+	tested, err := host_sets.NewService(repoFn, pluginHostRepo)
 	require.NoError(t, err, "Failed to create a new host catalog service.")
 
 	hc := hostplugin.TestCatalog(t, conn, proj.GetPublicId(), plg.GetPublicId())
@@ -1815,7 +1804,6 @@ func TestUpdate_Plugin(t *testing.T) {
 }
 
 func TestAddHostSetHosts(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1830,12 +1818,12 @@ func TestAddHostSetHosts(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	s, err := host_sets.NewService(ctx, repoFn, plgRepoFn)
+	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -1937,7 +1925,6 @@ func TestAddHostSetHosts(t *testing.T) {
 }
 
 func TestSetHostSetHosts(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -1952,12 +1939,12 @@ func TestSetHostSetHosts(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	s, err := host_sets.NewService(ctx, repoFn, plgRepoFn)
+	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -2055,7 +2042,6 @@ func TestSetHostSetHosts(t *testing.T) {
 }
 
 func TestRemoveHostSetHosts(t *testing.T) {
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -2070,12 +2056,12 @@ func TestRemoveHostSetHosts(t *testing.T) {
 
 	rw := db.New(conn)
 	repoFn := func() (*static.Repository, error) {
-		return static.NewRepository(ctx, rw, rw, kms)
+		return static.NewRepository(rw, rw, kms)
 	}
 	plgRepoFn := func() (*hostplugin.Repository, error) {
-		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+		return hostplugin.NewRepository(rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	s, err := host_sets.NewService(ctx, repoFn, plgRepoFn)
+	s, err := host_sets.NewService(repoFn, plgRepoFn)
 	require.NoError(t, err, "Error when getting new host set service.")
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]

@@ -495,62 +495,6 @@ func TestRepository_UpdateAuthMethod(t *testing.T) {
 			},
 		},
 		{
-			name: "update-just-binddn",
-			ctx:  testCtx,
-			repo: testRepo,
-			setup: func() *AuthMethod {
-				return TestAuthMethod(t,
-					testConn, databaseWrapper,
-					org.PublicId,
-					[]string{"ldaps://ldap1", "ldap://ldap2"},
-					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
-				)
-			},
-			updateWith: func(orig *AuthMethod) *AuthMethod {
-				am := AllocAuthMethod()
-				am.PublicId = orig.PublicId
-				am.BindDn = "bind-dn"
-				return &am
-			},
-			fieldMasks: []string{
-				BindDnField,
-			},
-			version: 1,
-			want: func(orig, updateWith *AuthMethod) *AuthMethod {
-				am := orig.clone()
-				am.BindDn = updateWith.BindDn
-				return am
-			},
-		},
-		{
-			name: "update-just-bind-password",
-			ctx:  testCtx,
-			repo: testRepo,
-			setup: func() *AuthMethod {
-				return TestAuthMethod(t,
-					testConn, databaseWrapper,
-					org.PublicId,
-					[]string{"ldaps://ldap1", "ldap://ldap2"},
-					WithBindCredential(testCtx, "orig-bind-dn", "orig-bind-password"),
-				)
-			},
-			updateWith: func(orig *AuthMethod) *AuthMethod {
-				am := AllocAuthMethod()
-				am.PublicId = orig.PublicId
-				am.BindPassword = "bind-password"
-				return &am
-			},
-			fieldMasks: []string{
-				BindPasswordField,
-			},
-			version: 1,
-			want: func(orig, updateWith *AuthMethod) *AuthMethod {
-				am := orig.clone()
-				am.BindPassword = updateWith.BindPassword
-				return am
-			},
-		},
-		{
 			name: "missing-auth-method",
 			ctx:  testCtx,
 			repo: testRepo,

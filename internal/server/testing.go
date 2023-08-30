@@ -97,11 +97,11 @@ func TestWorkerAuth(t *testing.T, conn *db.DB, worker *Worker, kmsWrapper wrappi
 // random name will be generated and assigned to the worker.
 func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
-	ctx := context.Background()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := NewRepository(ctx, rw, rw, kms)
+	serversRepo, err := NewRepository(rw, rw, kms)
 	require.NoError(t, err)
+	ctx := context.Background()
 	opts := GetOpts(opt...)
 
 	if opts.withName == "" {
@@ -114,12 +114,10 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 		address := "127.0.0.1"
 		opt = append(opt, WithAddress(address))
 	}
-	if opts.withReleaseVersion == "" {
-		// Only set the release version if it isn't already set
-		versionInfo := version.Get()
-		relVer := versionInfo.FullVersionNumber(false)
-		opt = append(opt, WithReleaseVersion(relVer))
-	}
+	versionInfo := version.Get()
+	relVer := versionInfo.FullVersionNumber(false)
+
+	opt = append(opt, WithReleaseVersion(relVer))
 
 	wrk := NewWorker(scope.Global.String(), opt...)
 	wrk, err = serversRepo.UpsertWorkerStatus(ctx, wrk)
@@ -152,11 +150,11 @@ func TestKmsWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 // passed to WithTestPkiWorkerAuthorizedKeyId is set to the key id.
 func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...Option) *Worker {
 	t.Helper()
-	ctx := context.Background()
 	rw := db.New(conn)
 	kmsCache := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := NewRepository(ctx, rw, rw, kmsCache)
+	serversRepo, err := NewRepository(rw, rw, kmsCache)
 	require.NoError(t, err)
+	ctx := context.Background()
 	opts := GetOpts(opt...)
 
 	require.NoError(t, err)

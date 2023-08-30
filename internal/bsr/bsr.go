@@ -41,7 +41,6 @@ type Session struct {
 
 	Meta        *SessionRecordingMeta
 	SessionMeta *SessionMeta
-	Summary     SessionSummary
 }
 
 // NewSession creates a Session container for a given session id.
@@ -82,7 +81,7 @@ func NewSession(ctx context.Context, meta *SessionRecordingMeta, sessionMeta *Se
 		return nil, err
 	}
 
-	nc, err := newContainer(ctx, SessionContainer, c, keys)
+	nc, err := newContainer(ctx, sessionContainer, c, keys)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +172,7 @@ func persistBsrSessionKeys(ctx context.Context, keys *kms.Keys, c *container) er
 // Signature and checksum files will then be verified.
 // Fields on the underlying container will be populated so that the returned Session can be used for BSR
 // playback and conversion to formats such as asciinema
-func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (s *Session, err error) {
+func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, keyUnwrapFn kms.KeyUnwrapCallbackFunc) (*Session, error) {
 	const op = "bsr.OpenSession"
 	switch {
 	case sessionRecordingId == "":
@@ -192,7 +191,7 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 	keyPopFn := func(c *container) (*kms.Keys, error) {
 		return c.loadKeys(ctx, keyUnwrapFn)
 	}
-	cc, err := openContainer(ctx, SessionContainer, c, keyPopFn)
+	cc, err := openContainer(ctx, sessionContainer, c, keyPopFn)
 	if err != nil {
 		return nil, err
 	}
@@ -200,15 +199,8 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 	// Load and verify recording metadata
 	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
 	if err != nil {
-		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	defer func() {
-		if closeErr := sha256Reader.Close(); closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
-		}
-	}()
-
 	meta, err := decodeSessionRecordingMeta(ctx, sha256Reader)
 	if err != nil {
 		return nil, err
@@ -223,22 +215,10 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 		return nil, err
 	}
 
-	af, ok := summaryAllocFuncs.get(meta.Protocol, SessionContainer)
-	if !ok {
-		return nil, fmt.Errorf("%s: failed to get summary type", op)
-	}
-
-	summary := af(ctx)
-	if err := cc.decodeJsonFile(ctx, fmt.Sprintf(summaryFileNameTemplate, SessionContainer), summary); err != nil {
-		return nil, err
-	}
-	sessionSummary := summary.(SessionSummary)
-
 	session := &Session{
 		container:   cc,
 		Meta:        meta,
 		SessionMeta: sessionMeta,
-		Summary:     sessionSummary,
 	}
 
 	return session, nil
@@ -246,10 +226,7 @@ func OpenSession(ctx context.Context, sessionRecordingId string, f storage.FS, k
 
 // Close closes the Session container.
 func (s *Session) Close(ctx context.Context) error {
-	if !is.Nil(s.container) {
-		return s.container.close(ctx)
-	}
-	return nil
+	return s.container.close(ctx)
 }
 
 // Connection is a container in a bsr for a specific connection in a session
@@ -258,9 +235,7 @@ type Connection struct {
 	*container
 	multiplexed bool
 
-	Meta    *ConnectionRecordingMeta
-	session *Session
-	Summary ConnectionSummary
+	Meta *ConnectionRecordingMeta
 }
 
 // NewConnection creates a Connection container for a given connection id.
@@ -283,7 +258,7 @@ func (s *Session) NewConnection(ctx context.Context, meta *ConnectionRecordingMe
 		return nil, err
 	}
 
-	nc, err := newContainer(ctx, ConnectionContainer, sc, s.keys)
+	nc, err := newContainer(ctx, connectionContainer, sc, s.keys)
 	if err != nil {
 		return nil, err
 	}
@@ -294,12 +269,11 @@ func (s *Session) NewConnection(ctx context.Context, meta *ConnectionRecordingMe
 		container:   nc,
 		multiplexed: s.multiplexed,
 		Meta:        meta,
-		session:     s,
 	}, nil
 }
 
 // OpenConnection will open and validate a BSR connection
-func (s *Session) OpenConnection(ctx context.Context, connId string) (conn *Connection, err error) {
+func (s *Session) OpenConnection(ctx context.Context, connId string) (*Connection, error) {
 	const op = "bsr.(Session).OpenConnection"
 	switch {
 	case connId == "":
@@ -321,7 +295,7 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (conn *Conn
 	keyPopFn := func(c *container) (*kms.Keys, error) {
 		return s.keys, nil
 	}
-	cc, err := openContainer(ctx, ConnectionContainer, c, keyPopFn)
+	cc, err := openContainer(ctx, connectionContainer, c, keyPopFn)
 	if err != nil {
 		return nil, err
 	}
@@ -329,15 +303,8 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (conn *Conn
 	// Load and verify connection metadata
 	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
 	if err != nil {
-		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	defer func() {
-		if closeErr := sha256Reader.Close(); closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
-		}
-	}()
-
 	sm, err := decodeConnectionRecordingMeta(ctx, sha256Reader)
 	if err != nil {
 		return nil, err
@@ -347,22 +314,9 @@ func (s *Session) OpenConnection(ctx context.Context, connId string) (conn *Conn
 		return nil, err
 	}
 
-	af, ok := summaryAllocFuncs.get(s.Meta.Protocol, ConnectionContainer)
-	if !ok {
-		return nil, fmt.Errorf("%s: failed to get summary type", op)
-	}
-
-	summary := af(ctx)
-	if err := cc.decodeJsonFile(ctx, fmt.Sprintf(summaryFileNameTemplate, ConnectionContainer), summary); err != nil {
-		return nil, err
-	}
-	connectionSummary := summary.(ConnectionSummary)
-
 	connection := &Connection{
 		container: cc,
 		Meta:      sm,
-		session:   s,
-		Summary:   connectionSummary,
 	}
 
 	return connection, nil
@@ -391,7 +345,7 @@ func (c *Connection) NewChannel(ctx context.Context, meta *ChannelRecordingMeta)
 	if _, err := c.WriteMeta(ctx, "channel", name); err != nil {
 		return nil, err
 	}
-	nc, err := newContainer(ctx, ChannelContainer, sc, c.keys)
+	nc, err := newContainer(ctx, channelContainer, sc, c.keys)
 	if err != nil {
 		return nil, err
 	}
@@ -408,7 +362,7 @@ func (c *Connection) NewChannel(ctx context.Context, meta *ChannelRecordingMeta)
 }
 
 // OpenChannel will open and validate a BSR channel
-func (c *Connection) OpenChannel(ctx context.Context, chanId string) (ch *Channel, err error) {
+func (c *Connection) OpenChannel(ctx context.Context, chanId string) (*Channel, error) {
 	const op = "bsr.OpenChannel"
 	switch {
 	case chanId == "":
@@ -429,7 +383,7 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (ch *Channe
 	keyPopFn := func(cn *container) (*kms.Keys, error) {
 		return c.keys, nil
 	}
-	cc, err := openContainer(ctx, ChannelContainer, con, keyPopFn)
+	cc, err := openContainer(ctx, channelContainer, con, keyPopFn)
 	if err != nil {
 		return nil, err
 	}
@@ -437,15 +391,8 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (ch *Channe
 	// Load and verify channel metadata
 	sha256Reader, err := crypto.NewSha256SumReader(ctx, cc.metaFile)
 	if err != nil {
-		cc.metaFile.Close()
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	defer func() {
-		if closeErr := sha256Reader.Close(); closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("%s: %w", op, closeErr))
-		}
-	}()
-
 	sm, err := decodeChannelRecordingMeta(ctx, sha256Reader)
 	if err != nil {
 		return nil, err
@@ -455,21 +402,9 @@ func (c *Connection) OpenChannel(ctx context.Context, chanId string) (ch *Channe
 		return nil, err
 	}
 
-	af, ok := summaryAllocFuncs.get(c.session.Meta.Protocol, ChannelContainer)
-	if !ok {
-		return nil, fmt.Errorf("%s: failed to get summary type", op)
-	}
-
-	summary := af(ctx)
-	if err := cc.decodeJsonFile(ctx, fmt.Sprintf(summaryFileNameTemplate, ChannelContainer), summary); err != nil {
-		return nil, err
-	}
-	channelSummary := summary.(ChannelSummary)
-
 	channel := &Channel{
 		container: cc,
 		Meta:      sm,
-		Summary:   channelSummary,
 	}
 
 	return channel, nil
@@ -521,10 +456,7 @@ func (c *Connection) NewRequestsWriter(ctx context.Context, dir Direction) (io.W
 
 // Close closes the Connection container.
 func (c *Connection) Close(ctx context.Context) error {
-	if !is.Nil(c.container) {
-		return c.container.close(ctx)
-	}
-	return nil
+	return c.container.close(ctx)
 }
 
 // Channel is a container in a bsr for a specific channel in a session
@@ -532,16 +464,12 @@ func (c *Connection) Close(ctx context.Context) error {
 type Channel struct {
 	*container
 
-	Meta    *ChannelRecordingMeta
-	Summary ChannelSummary
+	Meta *ChannelRecordingMeta
 }
 
 // Close closes the Channel container.
 func (c *Channel) Close(ctx context.Context) error {
-	if !is.Nil(c.container) {
-		return c.container.close(ctx)
-	}
-	return nil
+	return c.container.close(ctx)
 }
 
 // NewMessagesWriter creates a writer for recording channel messages.

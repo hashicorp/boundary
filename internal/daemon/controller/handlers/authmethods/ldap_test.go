@@ -55,15 +55,15 @@ func Test_UpdateLdap(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(ctx, rw, rw, kms)
+		return password.NewRepository(rw, rw, kms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(ctx, rw, rw, kms)
+		return authtoken.NewRepository(rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	tested, err := authmethods.NewService(kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -81,17 +81,14 @@ func Test_UpdateLdap(t *testing.T) {
 		},
 	}
 
-	freshAuthMethod := func(t *testing.T, attrs *pb.AuthMethod_LdapAuthMethodsAttributes) (*pb.AuthMethod, func()) {
-		if attrs == nil {
-			attrs = defaultAttributes
-		}
+	freshAuthMethod := func(t *testing.T) (*pb.AuthMethod, func()) {
 		ctx := auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId())
 		am, err := tested.CreateAuthMethod(ctx, &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 			ScopeId:     o.GetPublicId(),
 			Name:        wrapperspb.String("default"),
 			Description: wrapperspb.String("default"),
 			Type:        ldap.Subtype.String(),
-			Attrs:       attrs,
+			Attrs:       defaultAttributes,
 		}})
 		require.NoError(t, err)
 
@@ -106,13 +103,12 @@ func Test_UpdateLdap(t *testing.T) {
 	_, testEncodedCert := ldap.TestGenerateCA(t, "localhost")
 
 	tests := []struct {
-		name             string
-		newAttrsOverride *pb.AuthMethod_LdapAuthMethodsAttributes
-		req              *pbs.UpdateAuthMethodRequest
-		res              *pbs.UpdateAuthMethodResponse
-		err              error
-		errContains      string
-		wantErr          bool
+		name        string
+		req         *pbs.UpdateAuthMethodRequest
+		res         *pbs.UpdateAuthMethodResponse
+		err         error
+		errContains string
+		wantErr     bool
 	}{
 		{
 			name: "update-an-existing-auth-method",
@@ -352,128 +348,6 @@ func Test_UpdateLdap(t *testing.T) {
 					AuthorizedCollectionActions: authorizedCollectionActions,
 				},
 			},
-		},
-		{
-			name: "update-only-bind-dn",
-			newAttrsOverride: &pb.AuthMethod_LdapAuthMethodsAttributes{
-				LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-					Urls:         []string{"ldaps://ldap1"},
-					State:        "active-private",
-					BindDn:       &wrapperspb.StringValue{Value: "bind-dn"},
-					BindPassword: &wrapperspb.StringValue{Value: "bind-password"},
-				},
-			},
-			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.bind_dn"},
-				},
-				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
-						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-							BindDn: &wrapperspb.StringValue{Value: "updated"},
-						},
-					},
-				},
-			},
-			res: &pbs.UpdateAuthMethodResponse{
-				Item: &pb.AuthMethod{
-					ScopeId:     o.GetPublicId(),
-					Version:     2,
-					Name:        &wrapperspb.StringValue{Value: "default"},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        ldap.Subtype.String(),
-					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
-						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-							Urls:   []string{"ldaps://ldap1"},
-							State:  "active-private",
-							BindDn: &wrapperspb.StringValue{Value: "updated"},
-							// note: BindPassword is never returned (an HMAC'd
-							// value is returned in a separate attribute)
-						},
-					},
-					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           ldapAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
-				},
-			},
-		},
-		{
-			name: "err-update-only-bind-dn-with-no-orig-bind-password",
-			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.bind_dn"},
-				},
-				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
-						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-							BindDn: &wrapperspb.StringValue{Value: "updated"},
-						},
-					},
-				},
-			},
-			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
-			errContains: "missing password",
-		},
-		{
-			name: "update-only-bind-password",
-			newAttrsOverride: &pb.AuthMethod_LdapAuthMethodsAttributes{
-				LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-					Urls:         []string{"ldaps://ldap1"},
-					State:        "active-private",
-					BindDn:       &wrapperspb.StringValue{Value: "bind-dn"},
-					BindPassword: &wrapperspb.StringValue{Value: "bind-password"},
-				},
-			},
-			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.bind_password"},
-				},
-				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
-						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-							BindPassword: &wrapperspb.StringValue{Value: "updated"},
-						},
-					},
-				},
-			},
-			res: &pbs.UpdateAuthMethodResponse{
-				Item: &pb.AuthMethod{
-					ScopeId:     o.GetPublicId(),
-					Version:     2,
-					Name:        &wrapperspb.StringValue{Value: "default"},
-					Description: &wrapperspb.StringValue{Value: "default"},
-					Type:        ldap.Subtype.String(),
-					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
-						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-							Urls:   []string{"ldaps://ldap1"},
-							State:  "active-private",
-							BindDn: &wrapperspb.StringValue{Value: "bind-dn"},
-							// note: BindPassword is never returned (an HMAC'd
-							// value is returned in a separate attribute)
-						},
-					},
-					Scope:                       defaultScopeInfo,
-					AuthorizedActions:           ldapAuthorizedActions,
-					AuthorizedCollectionActions: authorizedCollectionActions,
-				},
-			},
-		},
-		{
-			name: "err-update-only-bind-password-with-no-orig-bind-dn",
-			req: &pbs.UpdateAuthMethodRequest{
-				UpdateMask: &field_mask.FieldMask{
-					Paths: []string{"attributes.bind_password"},
-				},
-				Item: &pb.AuthMethod{
-					Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
-						LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-							BindPassword: &wrapperspb.StringValue{Value: "updated"},
-						},
-					},
-				},
-			},
-			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
-			errContains: "missing dn",
 		},
 		{
 			name: "update-a-non-existent-auth-method",
@@ -815,7 +689,7 @@ func Test_UpdateLdap(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			am, cleanup := freshAuthMethod(t, tc.newAttrsOverride)
+			am, cleanup := freshAuthMethod(t)
 			defer cleanup()
 
 			tc.req.Item.Version = am.GetVersion()
@@ -887,10 +761,10 @@ func TestAuthenticate_Ldap(t *testing.T) {
 		return ldap.NewRepository(testCtx, testRw, testRw, testKms)
 	}
 	pwRepoFn := func() (*password.Repository, error) {
-		return password.NewRepository(testCtx, testRw, testRw, testKms)
+		return password.NewRepository(testRw, testRw, testKms)
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
-		return authtoken.NewRepository(testCtx, testRw, testRw, testKms)
+		return authtoken.NewRepository(testRw, testRw, testKms)
 	}
 
 	orgDbWrapper, err := testKms.GetWrapper(testCtx, o.GetPublicId(), kms.KeyPurposeDatabase)
@@ -1071,7 +945,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(testCtx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+			s, err := authmethods.NewService(testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
 			require.NoError(err)
 
 			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)

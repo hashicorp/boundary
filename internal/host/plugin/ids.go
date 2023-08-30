@@ -25,7 +25,7 @@ const (
 )
 
 func newHostCatalogId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(ctx, globals.PluginHostCatalogPrefix)
+	id, err := db.NewPublicId(globals.PluginHostCatalogPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "plugin.newHostCatalogId")
 	}
@@ -33,7 +33,7 @@ func newHostCatalogId(ctx context.Context) (string, error) {
 }
 
 func newHostSetId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(ctx, globals.PluginHostSetPrefix)
+	id, err := db.NewPublicId(globals.PluginHostSetPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "plugin.newHostSetId")
 	}
@@ -48,7 +48,7 @@ func newHostId(ctx context.Context, catalogId, externalId string) (string, error
 	if externalId == "" {
 		return "", errors.New(ctx, errors.InvalidParameter, op, "missing external id")
 	}
-	id, err := db.NewPublicId(ctx, globals.PluginHostPrefix, db.WithPrngValues([]string{catalogId, externalId}))
+	id, err := db.NewPublicId(globals.PluginHostPrefix, db.WithPrngValues([]string{catalogId, externalId}))
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}

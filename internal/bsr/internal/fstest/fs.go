@@ -35,9 +35,8 @@ const (
 type MemFS struct {
 	Containers map[string]*MemContainer
 
-	newFunc      NewFunc
-	readOnly     bool
-	originalFile bool
+	newFunc  NewFunc
+	readOnly bool
 }
 
 // NewMemFS creates a MemFS. It supports WithNewFunc, WithReadOnly.
@@ -45,10 +44,9 @@ func NewMemFS(options ...Option) *MemFS {
 	opts := getOpts(options...)
 
 	return &MemFS{
-		Containers:   make(map[string]*MemContainer),
-		newFunc:      opts.withNewFunc,
-		readOnly:     opts.withReadOnly,
-		originalFile: opts.withOriginalFile,
+		Containers: make(map[string]*MemContainer),
+		newFunc:    opts.withNewFunc,
+		readOnly:   opts.withReadOnly,
 	}
 }
 
@@ -70,12 +68,11 @@ func (m *MemFS) New(ctx context.Context, n string) (storage.Container, error) {
 	}
 
 	c := &MemContainer{
-		Name:         n,
-		Sub:          make(map[string]*MemContainer),
-		Files:        make(map[string]*MemFile),
-		mode:         defaultContainerPerm,
-		accessMode:   storage.ReadWrite,
-		originalFile: m.originalFile,
+		Name:       n,
+		Sub:        make(map[string]*MemContainer),
+		Files:      make(map[string]*MemFile),
+		mode:       defaultContainerPerm,
+		accessMode: storage.ReadWrite,
 	}
 	m.Containers[n] = c
 	return c, nil
@@ -99,9 +96,8 @@ func (m *MemFS) Open(_ context.Context, n string) (storage.Container, error) {
 type MemContainer struct {
 	Name string
 
-	Sub          map[string]*MemContainer
-	Files        map[string]*MemFile
-	originalFile bool
+	Sub   map[string]*MemContainer
+	Files map[string]*MemFile
 
 	Closed bool
 
@@ -128,12 +124,7 @@ func (m *MemContainer) Create(ctx context.Context, n string) (storage.File, erro
 }
 
 // OpenFile creates a storage.File in the container using the provided options
-// It supports WithCloseSyncMode, WithFileAccessMode, WithCreateFile.
-//
-// When opening a file with the WithCreateFile option, any existing file will be truncated.
-// When opening an existing file with ReadOnly option, a copy of the file is returned to allow concurrent reads of the same file.
-// Note, ReadOnly files will only contain the snapshot of a file from when it was opened, any mutations to the file after it was
-// opened will not be present in the Read call.
+// It supports WithCloseSyncMode.
 func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.Option) (storage.File, error) {
 	m.Lock()
 	defer m.Unlock()
@@ -151,53 +142,28 @@ func (m *MemContainer) OpenFile(_ context.Context, n string, option ...storage.O
 		return nil, fmt.Errorf("cannot create file in read-only mode: %w", ErrReadOnly)
 	}
 
-	// src is a MemFile reference that is stored in container's Files map, this is the source of truth for a file.
-	// dst is a MemFile reference that is stored in container's Files map when creating a file.
-	// when reading from an existing file stored in the container's Files map, dst becomes a deep copy of the
-	// MemFile referencing the src of truth for the file, thus allowing for multiple reads of the same file.
-	var src, dst *MemFile
+	var f *MemFile
 
 	if opts.WithCreateFile {
 		// create or truncate just like os.Create
-		src = &MemFile{
+		f = &MemFile{
 			Buf: bytes.NewBuffer([]byte{}),
-			src: []byte{},
 		}
-		dst = src
 	} else {
 		var ok bool
-		src, ok = m.Files[n]
+		f, ok = m.Files[n]
 		if !ok {
 			return nil, fmt.Errorf("file %s does not exist: %w", n, ErrDoesNotExist)
 		}
 	}
 
-	src.Lock()
-	defer src.Unlock()
-
-	src.name = n
-	src.syncMode = opts.WithCloseSyncMode
-	src.accessMode = opts.WithFileAccessMode
-	src.mode = defaultFilePerm
-	src.Closed = false
-	m.Files[n] = src
-	if dst == nil {
-		dst = &MemFile{
-			Buf:        bytes.NewBuffer(append([]byte{}, src.src...)),
-			src:        src.src,
-			name:       src.name,
-			syncMode:   src.syncMode,
-			accessMode: src.accessMode,
-			mode:       src.mode,
-			Closed:     src.Closed,
-		}
-	}
-
-	if m.originalFile {
-		return src, nil
-	}
-
-	return dst, nil
+	f.name = n
+	f.syncMode = opts.WithCloseSyncMode
+	f.accessMode = opts.WithFileAccessMode
+	f.mode = defaultFilePerm
+	f.Closed = false
+	m.Files[n] = f
+	return f, nil
 }
 
 // SubContainer creates a new storage.Container in the container.
@@ -220,10 +186,9 @@ func (m *MemContainer) SubContainer(_ context.Context, n string, option ...stora
 			return nil, fmt.Errorf("container %s already exists: %w", n, ErrAlreadyExists)
 		}
 		c = &MemContainer{
-			Name:         n,
-			Sub:          make(map[string]*MemContainer),
-			Files:        make(map[string]*MemFile),
-			originalFile: m.originalFile,
+			Name:  n,
+			Sub:   make(map[string]*MemContainer),
+			Files: make(map[string]*MemFile),
 		}
 	} else {
 		if !exists {
@@ -255,7 +220,6 @@ func (m *memFileInfo) Sys() any           { return nil }
 type MemFile struct {
 	name    string
 	Buf     *bytes.Buffer
-	src     []byte
 	mode    sfs.FileMode
 	modtime time.Time
 
@@ -281,7 +245,6 @@ func NewMemFile(n string, mode sfs.FileMode, options ...Option) *MemFile {
 	return &MemFile{
 		name:       n,
 		Buf:        bytes.NewBuffer([]byte{}),
-		src:        []byte{},
 		mode:       mode,
 		accessMode: storageOpts.WithFileAccessMode,
 		syncMode:   storageOpts.WithCloseSyncMode,
@@ -298,7 +261,6 @@ func NewWritableMemFile(n string, options ...Option) *MemFile {
 	return &MemFile{
 		name:       n,
 		Buf:        bytes.NewBuffer([]byte{}),
-		src:        []byte{},
 		mode:       0o664,
 		accessMode: storage.WriteOnly,
 		syncMode:   storage.Asynchronous,
@@ -321,7 +283,7 @@ func (m *MemFile) Stat() (sfs.FileInfo, error) {
 	}
 	return &memFileInfo{
 		name: m.name,
-		size: int64(len(m.src)),
+		size: int64(m.Buf.Len()),
 		mode: m.mode,
 		mod:  m.modtime,
 	}, nil
@@ -338,7 +300,6 @@ func (m *MemFile) Read(p []byte) (int, error) {
 	if m.Closed {
 		return 0, fmt.Errorf("read on closed file")
 	}
-
 	return m.Buf.Read(p)
 }
 
@@ -381,7 +342,6 @@ func (m *MemFile) Write(p []byte) (n int, err error) {
 	defer func() {
 		m.modtime = time.Now()
 	}()
-	m.src = append(m.src, p...)
 	return m.Buf.Write(p)
 }
 

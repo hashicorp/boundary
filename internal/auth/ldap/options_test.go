@@ -184,18 +184,18 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withBindPassword = "password"
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithBindCredential-only-password", func(t *testing.T) {
+	t.Run("WithBindCredential-missing-dn", func(t *testing.T) {
 		assert := assert.New(t)
 		opts, err := getOpts(WithBindCredential(testCtx, "", "password"))
-		require.NoError(t, err)
+		require.Error(t, err)
 		assert.Empty(opts.withBindDn)
-		assert.NotEmpty(opts.withBindPassword)
+		assert.Empty(opts.withBindPassword)
 	})
-	t.Run("WithBindCredential-only-dn", func(t *testing.T) {
+	t.Run("WithBindCredential-missing-password", func(t *testing.T) {
 		assert := assert.New(t)
 		opts, err := getOpts(WithBindCredential(testCtx, "dn", ""))
-		require.NoError(t, err)
-		assert.NotEmpty(opts.withBindDn)
+		require.Error(t, err)
+		assert.Empty(opts.withBindDn)
 		assert.Empty(opts.withBindPassword)
 	})
 	t.Run("WithBindCredential-missing-dn-and-password", func(t *testing.T) {

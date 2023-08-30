@@ -324,7 +324,7 @@ func NewTestWorker(t testing.TB, opts *TestWorkerOpts) *TestWorker {
 		t.Fatal(err)
 	}
 	serverName = fmt.Sprintf("%s/worker", serverName)
-	if err := tw.b.SetupEventing(tw.b.Context, tw.b.Logger, tw.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
+	if err := tw.b.SetupEventing(tw.b.Logger, tw.b.StderrLock, serverName, base.WithEventerConfig(opts.Config.Eventing)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -412,7 +412,7 @@ func (tw *TestWorker) AddClusterWorkerMember(t testing.TB, opts *TestWorkerOpts)
 	}
 	if nextOpts.Name == "" {
 		var err error
-		nextOpts.Name, err = db.NewPublicId(context.Background(), "w")
+		nextOpts.Name, err = db.NewPublicId("w")
 		if err != nil {
 			t.Fatal(err)
 		}

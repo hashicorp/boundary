@@ -4,7 +4,6 @@
 package db
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -41,7 +40,7 @@ func TestNewPublicId(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewPublicId(context.Background(), tt.args.prefix)
+			got, err := NewPublicId(tt.args.prefix)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewPublicId() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -86,7 +85,7 @@ func TestNewPrivateId(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewPrivateId(context.Background(), tt.args.prefix)
+			got, err := NewPrivateId(tt.args.prefix)
 			if tt.wantErr {
 				assert.Error(err)
 				return
@@ -138,7 +137,7 @@ func TestPseudoRandomId(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewPublicId(context.Background(), "id", WithPrngValues(tt.args.prngValues))
+			got, err := NewPublicId("id", WithPrngValues(tt.args.prngValues))
 			require.NoError(err)
 			if tt.sameAsPrev {
 				assert.Equal(prevTestValue, got)

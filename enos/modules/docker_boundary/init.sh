@@ -15,7 +15,6 @@ docker run \
     --rm \
     --name $TEST_CONTAINER_NAME \
     -e "BOUNDARY_POSTGRES_URL=$TEST_DATABASE_ADDRESS" \
-    -e "BOUNDARY_LICENSE=$TEST_BOUNDARY_LICENSE" \
     -e "SKIP_CHOWN=true" \
     --cap-add IPC_LOCK \
     --mount type=bind,src=$SOURCE,dst=/boundary/ \

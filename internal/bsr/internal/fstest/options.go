@@ -41,7 +41,6 @@ type options struct {
 	withStatFunc       StatFunc
 	withReadOnly       bool
 	withStorageOptions []storage.Option
-	withOriginalFile   bool
 }
 
 func getDefaultOptions() options {
@@ -51,7 +50,6 @@ func getDefaultOptions() options {
 		withStatFunc:       nil,
 		withReadOnly:       false,
 		withStorageOptions: nil,
-		withOriginalFile:   false,
 	}
 }
 
@@ -87,14 +85,5 @@ func WithReadOnly(b bool) Option {
 func WithStorageOptions(opts []storage.Option) Option {
 	return func(o *options) {
 		o.withStorageOptions = opts
-	}
-}
-
-// WithOriginalFile is used to decide if the original of a file
-// should be returned instead of a copy of the file during
-// opening a file.
-func WithOriginalFile() Option {
-	return func(o *options) {
-		o.withOriginalFile = true
 	}
 }

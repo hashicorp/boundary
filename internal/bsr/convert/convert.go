@@ -49,45 +49,26 @@ func ToAsciicast(ctx context.Context, session *bsr.Session, tmp storage.TempFile
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
-		defer conn.Close(ctx)
 
 		ch, err := conn.OpenChannel(ctx, chanId)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
-		defer ch.Close(ctx)
 
-		switch chs := ch.Summary.(type) {
-		case *ssh.ChannelSummary:
-			switch chs.SessionProgram {
-			case ssh.Shell, ssh.Exec:
-				reqScanner, err := ch.OpenRequestScanner(ctx, bsr.Inbound)
-				if err != nil {
-					if !is.Nil(reqScanner) {
-						reqScanner.Close()
-					}
-					return nil, fmt.Errorf("%s: %w", op, err)
-				}
-				defer reqScanner.Close()
+		// TODO sanity checks before getting the data files:
+		// - check connection summary to see if there was an exec or shell request
 
-				msgScanner, err := ch.OpenMessageScanner(ctx, bsr.Outbound)
-				if err != nil {
-					if !is.Nil(msgScanner) {
-						msgScanner.Close()
-					}
-					return nil, fmt.Errorf("%s: %w", op, err)
-				}
-				defer msgScanner.Close()
-				return sshChannelToAsciicast(ctx, reqScanner, msgScanner, tmp, options...)
-			case "":
-				return nil, fmt.Errorf("%s: session program not set for asciicast conversion", op)
-			default:
-				return nil, fmt.Errorf("%s: unsupported %q session program for asciicast conversion", op, chs.SessionProgram)
-			}
-		default:
-			return nil, fmt.Errorf("%s: unexpected error occurred with channel summary. possibly a malformed Boundary Session Recording", op)
+		reqScanner, err := ch.OpenRequestScanner(ctx, bsr.Inbound)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 
+		msgScanner, err := ch.OpenMessageScanner(ctx, bsr.Outbound)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+
+		return sshChannelToAsciicast(ctx, reqScanner, msgScanner, tmp, options...)
 	default:
 		return nil, fmt.Errorf("%s: %w", op, ErrUnsupportedProtocol)
 	}

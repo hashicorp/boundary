@@ -200,7 +200,7 @@ func (c *InitCommand) Run(args []string) (retCode int) {
 		return base.CommandCliError
 	}
 	serverName = fmt.Sprintf("%s/boundary-database-init", serverName)
-	if err := c.SetupEventing(c.Context, c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
+	if err := c.SetupEventing(c.Logger, c.StderrLock, serverName, base.WithEventerConfig(c.Config.Eventing)); err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandCliError
 	}
@@ -500,7 +500,7 @@ func (c *InitCommand) verifyOplogIsEmpty(ctx context.Context) error {
 	const op = "database.(InitCommand).verifyOplogIsEmpty"
 	underlyingDB, err := c.Database.SqlDB(ctx)
 	if err != nil {
-		return errors.New(ctx, errors.Internal, op, "unable to retreive db", errors.WithWrap(err))
+		return errors.NewDeprecated(errors.Internal, op, "unable to retreive db", errors.WithWrap(err))
 	}
 	r := underlyingDB.QueryRowContext(c.Context, "select not exists(select 1 from oplog_entry limit 1)")
 	if r.Err() != nil {
@@ -511,7 +511,7 @@ func (c *InitCommand) verifyOplogIsEmpty(ctx context.Context) error {
 		return errors.Wrap(ctx, err, op)
 	}
 	if !empty {
-		return errors.New(ctx, errors.MigrationIntegrity, op, "oplog_entry is not empty")
+		return errors.NewDeprecated(errors.MigrationIntegrity, op, "oplog_entry is not empty")
 	}
 	return nil
 }

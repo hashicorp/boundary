@@ -26,13 +26,7 @@ var ldapMaskManager handlers.MaskManager
 
 func init() {
 	var err error
-	if ldapMaskManager, err = handlers.NewMaskManager(
-		context.Background(),
-		handlers.MaskDestination{
-			&ldapstore.AuthMethod{},
-		},
-		handlers.MaskSource{&pb.AuthMethod{}, &pb.LdapAuthMethodAttributes{}},
-	); err != nil {
+	if ldapMaskManager, err = handlers.NewMaskManager(handlers.MaskDestination{&ldapstore.AuthMethod{}}, handlers.MaskSource{&pb.AuthMethod{}, &pb.LdapAuthMethodAttributes{}}); err != nil {
 		panic(err)
 	}
 
@@ -298,6 +292,12 @@ func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttribu
 		if _, err := ldap.ParseCertificates(ctx, attrs.GetCertificates()...); err != nil {
 			badFields[certificatesField] = fmt.Sprintf("invalid %s: %s", certificatesField, err.Error())
 		}
+	}
+	if attrs.GetBindDn().GetValue() != "" && attrs.GetBindPassword().GetValue() == "" {
+		badFields[bindPasswordField] = fmt.Sprintf("%s is missing required %s field", bindDnField, bindPasswordField)
+	}
+	if attrs.GetBindPassword().GetValue() != "" && attrs.GetBindDn().GetValue() == "" {
+		badFields[bindDnField] = fmt.Sprintf("%s is missing required %s field", bindPasswordField, bindDnField)
 	}
 	if attrs.GetClientCertificate().GetValue() != "" && attrs.GetClientCertificateKey().GetValue() == "" {
 		badFields[clientCertificateKeyField] = fmt.Sprintf("%s is missing required %s field", clientCertificateField, clientCertificateKeyField)

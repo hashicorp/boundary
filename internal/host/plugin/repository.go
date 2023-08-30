@@ -7,8 +7,6 @@
 package plugin
 
 import (
-	"context"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host"
@@ -36,24 +34,24 @@ type Repository struct {
 // only be used for one transaction and it is not safe for concurrent go
 // routines to access it. WithLimit option is used as a repo wide default
 // limit applied to all ListX methods.
-func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, sched *scheduler.Scheduler, plgm map[string]plgpb.HostPluginServiceClient, opt ...host.Option) (*Repository, error) {
+func NewRepository(r db.Reader, w db.Writer, kms *kms.Kms, sched *scheduler.Scheduler, plgm map[string]plgpb.HostPluginServiceClient, opt ...host.Option) (*Repository, error) {
 	const op = "plugin.NewRepository"
 	switch {
 	case r == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "db.Reader")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "db.Reader")
 	case w == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "db.Writer")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "db.Writer")
 	case kms == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "kms")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "kms")
 	case sched == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "scheduler")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "scheduler")
 	case plgm == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "plgm")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "plgm")
 	}
 
 	opts, err := host.GetOpts(opt...)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.WrapDeprecated(err, op)
 	}
 	if opts.WithLimit == 0 {
 		// zero signals the boundary defaults should be used.

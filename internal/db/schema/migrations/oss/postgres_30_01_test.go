@@ -426,21 +426,21 @@ func loadCurrentDekVersions(t *testing.T, rw *db.Db) []dekVersion {
 
 func testId(t testing.TB, prefix string) string {
 	t.Helper()
-	id, err := db.NewPublicId(context.Background(), prefix)
+	id, err := db.NewPublicId(prefix)
 	require.NoError(t, err)
 	return id
 }
 
 func testScope(t *testing.T, rw *db.Db) *iam.Scope {
 	t.Helper()
-	ctx := context.Background()
 	require := require.New(t)
+	testCtx := context.Background()
 
-	s, err := iam.NewOrg(ctx)
+	s, err := iam.NewOrg()
 	require.NoError(err)
 	s.PublicId = testId(t, "o")
 
-	require.NoError(rw.Create(ctx, &s))
+	require.NoError(rw.Create(testCtx, &s))
 	return s
 }
 

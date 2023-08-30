@@ -5,9 +5,7 @@
 package sessionrecordings
 
 type ValuesAtTime struct {
-	User                *User                `json:"user,omitempty"`
-	Target              *Target              `json:"target,omitempty"`
-	Host                *Host                `json:"host,omitempty"`
-	Credentials         []*Credential        `json:"credentials,omitempty"`
-	CredentialLibraries []*CredentialLibrary `json:"credential_libraries,omitempty"`
+	User   *User   `json:"user,omitempty"`
+	Target *Target `json:"target,omitempty"`
+	Host   *Host   `json:"host,omitempty"`
 }

@@ -34,11 +34,11 @@ jobs:
       go-cache-key: ${{ steps.go-cache-key.outputs.key }}
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
         with:
           fetch-depth: '0'
       - name: Set up Go
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -78,9 +78,10 @@ jobs:
         include:
           - filter: 'e2e_aws builder:crt'
           - filter: 'e2e_database'
-          - filter: 'e2e_docker_base builder:crt'
-          - filter: 'e2e_docker_base_with_vault builder:crt'
-    runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
+          - filter: 'e2e_static builder:crt'
+          - filter: 'e2e_static_with_vault builder:crt'
+          # - filter: 'e2e_ui builder:crt' # Don't run UI tests yet. takes too long.
+    runs-on: ${{ fromJSON(vars.RUNNER) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
       # Scenario variables
@@ -89,20 +90,18 @@ jobs:
       ENOS_VAR_aws_ssh_keypair_name: ${{ github.event.repository.name }}-ci-ssh-key
       ENOS_VAR_aws_ssh_private_key_path: ./support/private_key.pem
       ENOS_VAR_local_boundary_dir: ./support/boundary
-      ENOS_VAR_local_boundary_src_dir: ${{ github.workspace }}
-      ENOS_VAR_local_boundary_ui_src_dir: ./support/src/boundary-ui
+      ENOS_VAR_local_boundary_ui_dir: ./support/boundary-ui
       ENOS_VAR_crt_bundle_path: ./support/boundary.zip
       ENOS_VAR_tfc_api_token: ${{ secrets.TF_API_TOKEN }}
       ENOS_VAR_test_email: ${{ secrets.SERVICE_USER_EMAIL }}
       ENOS_VAR_boundary_edition: ${{ inputs.edition }}
       ENOS_VAR_boundary_docker_image_name: ${{ inputs.docker-image-name }}
       ENOS_VAR_boundary_docker_image_file: ./support/boundary_docker_image.tar
-      ENOS_VAR_go_version: ${{ inputs.go-version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
       - name: Set up Go
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -125,7 +124,7 @@ jobs:
           terraform_wrapper: false
       - name: Import GPG key for Boundary pass keystore
         id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@72b6676b71ab476b77e676928516f6982eef7a41 # v5.3.0
+        uses: crazy-max/ghaction-import-gpg@111c56156bcc6918c056dbef52164cfa583dc549 # v5.2.0
         with:
           gpg_private_key: ${{ secrets.ENOS_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.ENOS_GPG_PASSPHRASE }}
@@ -136,7 +135,7 @@ jobs:
           echo "trusted-key ${{ secrets.ENOS_GPG_UID }}" >> ~/.gnupg/gpg.conf
           cat ~/.gnupg/gpg.conf
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@5fd3084fc36e372ff1fff382a39b10d03659f355 # v2.2.0
+        uses: aws-actions/configure-aws-credentials@e1e17a757e536f70e52b5a12b2e8d1d1c60e04ef # v2.0.0
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_CI }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_CI }}
@@ -183,16 +182,14 @@ jobs:
         run: |
           wget https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip -O /tmp/test-deps/vault.zip
       - name: Install Vault CLI
-        if: matrix.filter == 'e2e_aws_base_with_vault builder:crt' || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui builder:crt' || matrix.filter == 'e2e_docker_base_with_vault builder:crt'
+        if: matrix.filter == 'e2e_static_with_vault builder:crt' || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui builder:crt' || matrix.filter == 'e2e_docker builder:crt'
         run: |
           unzip /tmp/test-deps/vault.zip -d /usr/local/bin
-      - name: GH fix for localhost resolution
-        if: github.repository == 'hashicorp/boundary' && contains(matrix.filter, 'e2e_docker')
+      - name: Add hosts to /etc/hosts
+        # This enables the use of `boundary connect` with docker containers
+        if: matrix.filter == 'e2e_docker builder:crt'
         run: |
-          cat /etc/hosts && echo "-----------"
-          sudo sed -i 's/::1 *localhost ip6-localhost ip6-loopback/::1 ip6 -localhost ip6-loopback/g' /etc/hosts
-          cat /etc/hosts
-          ssh -V
+          sudo echo "127.0.0.1 localhost boundary" | sudo tee -a /etc/hosts
       - name: Download Boundary Linux AMD64 bundle
         id: download
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
@@ -204,34 +201,34 @@ jobs:
           unzip ${{steps.download.outputs.download-path}}/*.zip -d enos/support/boundary
           mv ${{steps.download.outputs.download-path}}/*.zip enos/support/boundary.zip
       - name: Download Boundary Linux AMD64 docker image
-        if: contains(matrix.filter, 'e2e_docker')
+        if: matrix.filter == 'e2e_docker builder:crt'
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
         id: download-docker
         with:
           name: ${{ inputs.docker-image-file }}
           path: ./enos/support/downloads
       - name: Rename docker image file
-        if: contains(matrix.filter, 'e2e_docker')
+        if: matrix.filter == 'e2e_docker builder:crt'
         run: |
           mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
       - name: Set up Node.js
-        uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
         if: matrix.filter == 'e2e_ui builder:crt'
         with:
           node-version: '16.x'
       - name: Checkout boundary-ui
-        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
         if: matrix.filter == 'e2e_ui builder:crt'
         with:
           repository: hashicorp/boundary-ui
-          path: enos/support/src/boundary-ui
+          path: enos/support/boundary-ui
       - name: Install boundary-ui dependencies
         if: matrix.filter == 'e2e_ui builder:crt'
-        run: yarn --cwd enos/support/src/boundary-ui install
+        run: yarn --cwd enos/support/boundary-ui install
       - name: Install playwright dependencies (i.e. browsers)
         if: matrix.filter == 'e2e_ui builder:crt'
         run: npx playwright install --with-deps
-        working-directory: enos/support/src/boundary-ui
+        working-directory: enos/support/boundary-ui
       - name: Output Terraform version info
         run: |
           mkdir -p ./enos/terraform-plugin-cache
@@ -257,7 +254,7 @@ jobs:
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: test-e2e-ui-debug
-          path: enos/support/src/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
+          path: enos/support/boundary-ui/ui/admin/tests/e2e/artifacts/test-failures
           retention-days: 5
       - name: Retry Enos scenario
         id: run_retry

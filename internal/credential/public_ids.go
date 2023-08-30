@@ -33,7 +33,7 @@ const (
 )
 
 func NewUsernamePasswordCredentialId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(ctx, globals.UsernamePasswordCredentialPrefix)
+	id, err := db.NewPublicId(globals.UsernamePasswordCredentialPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "credential.NewUsernamePasswordCredentialId")
 	}
@@ -41,7 +41,7 @@ func NewUsernamePasswordCredentialId(ctx context.Context) (string, error) {
 }
 
 func NewSshPrivateKeyCredentialId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(ctx, globals.SshPrivateKeyCredentialPrefix)
+	id, err := db.NewPublicId(globals.SshPrivateKeyCredentialPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "credential.NewSshPrivateKeyCredentialId")
 	}
@@ -49,7 +49,7 @@ func NewSshPrivateKeyCredentialId(ctx context.Context) (string, error) {
 }
 
 func NewJsonCredentialId(ctx context.Context) (string, error) {
-	id, err := db.NewPublicId(ctx, globals.JsonCredentialPrefix)
+	id, err := db.NewPublicId(globals.JsonCredentialPrefix)
 	if err != nil {
 		return "", errors.Wrap(ctx, err, "credential.NewJsonCredentialId")
 	}

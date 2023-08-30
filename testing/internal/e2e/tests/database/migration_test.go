@@ -213,7 +213,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	newGroupId := boundary.CreateNewGroupCli(t, ctx, "global")
 	boundary.AddUserToGroup(t, ctx, newUserId, newGroupId)
 	newRoleId := boundary.CreateNewRoleCli(t, ctx, newProjectId)
-	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "ids=*;type=target;actions=authorize-session")
+	boundary.AddGrantToRoleCli(t, ctx, newRoleId, "id=*;type=target;actions=authorize-session")
 	boundary.AddPrincipalToRoleCli(t, ctx, newRoleId, newGroupId)
 
 	// Create static credentials
@@ -221,7 +221,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	boundary.CreateNewStaticCredentialPasswordCli(t, ctx, newCredentialStoreId, c.TargetSshUser, "password")
 	boundary.CreateNewStaticCredentialJsonCli(t, ctx, newCredentialStoreId, "testdata/credential.json")
 	newCredentialsId := boundary.CreateNewStaticCredentialPrivateKeyCli(t, ctx, newCredentialStoreId, c.TargetSshUser, c.TargetSshKeyPath)
-	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
+	boundary.AddCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
 
 	// Create vault credentials
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)

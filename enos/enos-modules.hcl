@@ -40,10 +40,6 @@ module "worker" {
   ssh_aws_keypair = var.aws_ssh_keypair_name
 }
 
-module "bucket" {
-  source = "./modules/bucket"
-}
-
 module "build_crt" {
   source = "./modules/build_crt"
 }
@@ -128,10 +124,6 @@ module "test_e2e" {
 
 module "test_e2e_ui" {
   source = "./modules/test_e2e_ui"
-}
-
-module "test_e2e_docker" {
-  source = "./modules/test_e2e_docker"
 }
 
 module "test_smoke" {

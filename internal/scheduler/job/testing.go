@@ -21,15 +21,14 @@ import (
 
 func testJob(t testing.TB, conn *db.DB, name, description string, wrapper wrapping.Wrapper, opt ...Option) *Job {
 	t.Helper()
-	ctx := context.Background()
 	require := require.New(t)
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
 
-	repo, err := NewRepository(ctx, rw, rw, kms)
+	repo, err := NewRepository(rw, rw, kms)
 	require.NoError(err)
 
-	job, err := repo.UpsertJob(ctx, name, description, opt...)
+	job, err := repo.UpsertJob(context.Background(), name, description, opt...)
 	require.NoError(err)
 	require.NotNil(job)
 
@@ -96,10 +95,9 @@ func testRunWithUpdateTime(conn *db.DB, pluginId, name, cId string, updateTime t
 
 func testController(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...testOption) *store.Controller {
 	t.Helper()
-	ctx := context.Background()
 	rw := db.New(conn)
 	kms := kms.TestKms(t, conn, wrapper)
-	serversRepo, err := server.NewRepository(ctx, rw, rw, kms)
+	serversRepo, err := server.NewRepository(rw, rw, kms)
 	require.NoError(t, err)
 
 	opts := getTestOpts(t, opt...)
@@ -115,7 +113,7 @@ func testController(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...
 		PrivateId: privateId,
 		Address:   "127.0.0.1",
 	}
-	_, err = serversRepo.UpsertController(ctx, controller)
+	_, err = serversRepo.UpsertController(context.Background(), controller)
 	require.NoError(t, err)
 	return controller
 }

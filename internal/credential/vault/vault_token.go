@@ -55,19 +55,19 @@ type Token struct {
 	expiration time.Duration `gorm:"-"`
 }
 
-func newToken(ctx context.Context, storeId string, token TokenSecret, accessor []byte, expiration time.Duration) (*Token, error) {
+func newToken(storeId string, token TokenSecret, accessor []byte, expiration time.Duration) (*Token, error) {
 	const op = "vault.newToken"
 	if storeId == "" {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no store id")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no store id")
 	}
 	if len(token) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no vault token")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault token")
 	}
 	if len(accessor) == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no vault token accessor")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no vault token accessor")
 	}
 	if expiration == 0 {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "no expiration")
+		return nil, errors.NewDeprecated(errors.InvalidParameter, op, "no expiration")
 	}
 
 	tokenCopy := make(TokenSecret, len(token))
@@ -77,7 +77,7 @@ func newToken(ctx context.Context, storeId string, token TokenSecret, accessor [
 
 	hmac, err := crypto.HmacSha256WithPrk(context.Background(), tokenCopy, accessorCopy)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.Encrypt))
+		return nil, errors.WrapDeprecated(err, op, errors.WithCode(errors.Encrypt))
 	}
 	t := &Token{
 		expiration: expiration.Round(time.Second),

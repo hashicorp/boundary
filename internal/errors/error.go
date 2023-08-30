@@ -158,6 +158,30 @@ func Wrap(ctx context.Context, e error, op Op, opt ...Option) error {
 	return E(ctx, opt...)
 }
 
+// EDeprecated is the legacy version of E which does not
+// create an event. Please refrain from using this.
+// When all calls are moved from EDeprecated to
+// E, please update ICU-1883
+func EDeprecated(opt ...Option) error {
+	return E(context.TODO(), opt...)
+}
+
+// NewDeprecated is the legacy version of New which does not
+// create an event. Please refrain from using this.
+// When all calls are moved from NewDeprecated to
+// New, please update ICU-1883
+func NewDeprecated(c Code, op Op, msg string, opt ...Option) error {
+	return New(context.TODO(), c, op, msg, opt...)
+}
+
+// WrapDeprecated is the legacy version of New which does not
+// create an event. Please refrain from using this.
+// When all calls are moved from WrapDeprecated to
+// New, please update ICU-1884
+func WrapDeprecated(e error, op Op, opt ...Option) error {
+	return Wrap(context.TODO(), e, op, opt...)
+}
+
 // Convert will convert the error to a Boundary *Err (returning it as an error)
 // and attempt to add a helpful error msg as well. If that's not possible, it
 // will return nil

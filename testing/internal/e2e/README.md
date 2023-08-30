@@ -37,7 +37,7 @@ Set the appropriate environment variables...
 ```shell
 export E2E_TESTS=true  # This is needed for any e2e test. Otherwise, the test is skipped
 
-# For e2e/tests/base
+# For e2e/tests/static
 export BOUNDARY_ADDR=  # e.g. http://127.0.0.1:9200
 export E2E_PASSWORD_AUTH_METHOD_ID=  # e.g. ampw_1234567890
 export E2E_PASSWORD_ADMIN_LOGIN_NAME=  # e.g. "admin"
@@ -47,7 +47,7 @@ export E2E_TARGET_IP=  # e.g. 192.168.0.1
 export E2E_SSH_KEY_PATH=  # e.g. /Users/username/key.pem
 export E2E_SSH_USER=  # e.g. ubuntu
 
-# For e2e/tests/base_with_vault
+# For e2e/tests/static_with_vault
 export BOUNDARY_ADDR=  # e.g. http://127.0.0.1:9200
 export E2E_PASSWORD_AUTH_METHOD_ID=  # e.g. ampw_1234567890
 export E2E_PASSWORD_ADMIN_LOGIN_NAME=  # e.g. "admin"
@@ -84,10 +84,10 @@ export VAULT_TOKEN=
 
 Then, run...
 ```shell
-go test github.com/hashicorp/boundary/testing/internal/e2e/tests/base
+go test github.com/hashicorp/boundary/testing/internal/e2e/tests/static
 go test ./target/ // run target tests if running from this directory
-go test github.com/hashicorp/boundary/testing/internal/e2e/tests/base -v // verbose
-go test github.com/hashicorp/boundary/testing/internal/e2e/tests/base -v -run '^TestCreateTargetApi$' // run a specific test
+go test github.com/hashicorp/boundary/testing/internal/e2e/tests/static -v // verbose
+go test github.com/hashicorp/boundary/testing/internal/e2e/tests/static -v -run '^TestCreateTargetApi$' // run a specific test
 ```
 
 ## Adding Tests

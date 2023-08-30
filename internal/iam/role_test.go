@@ -24,7 +24,6 @@ import (
 
 func TestNewRole(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -84,7 +83,7 @@ func TestNewRole(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRole(ctx, tt.args.scopePublicId, tt.args.opt...)
+			got, err := NewRole(tt.args.scopePublicId, tt.args.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -101,7 +100,6 @@ func TestNewRole(t *testing.T) {
 
 func Test_RoleCreate(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)
 	repo := TestRepo(t, conn, wrapper)
@@ -122,9 +120,9 @@ func Test_RoleCreate(t *testing.T) {
 			args: args{
 				role: func() *Role {
 					id := testId(t)
-					role, err := NewRole(ctx, org.PublicId, WithName(id), WithDescription("description-"+id))
+					role, err := NewRole(org.PublicId, WithName(id), WithDescription("description-"+id))
 					require.NoError(t, err)
-					grpId, err := newRoleId(ctx)
+					grpId, err := newRoleId()
 					require.NoError(t, err)
 					role.PublicId = grpId
 					return role
@@ -137,9 +135,9 @@ func Test_RoleCreate(t *testing.T) {
 			args: args{
 				role: func() *Role {
 					id := testId(t)
-					role, err := NewRole(ctx, proj.PublicId, WithName(id), WithDescription("description-"+id))
+					role, err := NewRole(proj.PublicId, WithName(id), WithDescription("description-"+id))
 					require.NoError(t, err)
-					grpId, err := newRoleId(ctx)
+					grpId, err := newRoleId()
 					require.NoError(t, err)
 					role.PublicId = grpId
 					return role
@@ -151,9 +149,9 @@ func Test_RoleCreate(t *testing.T) {
 			name: "valid-with-dup-null-names-and-descriptions",
 			args: args{
 				role: func() *Role {
-					role, err := NewRole(ctx, org.PublicId)
+					role, err := NewRole(org.PublicId)
 					require.NoError(t, err)
-					roleId, err := newRoleId(ctx)
+					roleId, err := newRoleId()
 					require.NoError(t, err)
 					role.PublicId = roleId
 					return role
@@ -167,9 +165,9 @@ func Test_RoleCreate(t *testing.T) {
 			args: args{
 				role: func() *Role {
 					id := testId(t)
-					role, err := NewRole(ctx, id)
+					role, err := NewRole(id)
 					require.NoError(t, err)
-					roleId, err := newRoleId(ctx)
+					roleId, err := newRoleId()
 					require.NoError(t, err)
 					role.PublicId = roleId
 					return role
@@ -186,14 +184,14 @@ func Test_RoleCreate(t *testing.T) {
 			w := db.New(conn)
 			if tt.wantDup {
 				r := tt.args.role.Clone().(*Role)
-				roleId, err := newRoleId(ctx)
+				roleId, err := newRoleId()
 				require.NoError(err)
 				r.PublicId = roleId
-				err = w.Create(ctx, r)
+				err = w.Create(context.Background(), r)
 				require.NoError(err)
 			}
 			r := tt.args.role.Clone().(*Role)
-			err := w.Create(ctx, r)
+			err := w.Create(context.Background(), r)
 			if tt.wantErr {
 				require.Error(err)
 				assert.Contains(err.Error(), tt.wantErrMsg)
@@ -204,7 +202,7 @@ func Test_RoleCreate(t *testing.T) {
 
 			foundGrp := allocRole()
 			foundGrp.PublicId = tt.args.role.PublicId
-			err = w.LookupByPublicId(ctx, &foundGrp)
+			err = w.LookupByPublicId(context.Background(), &foundGrp)
 			require.NoError(err)
 			assert.Empty(cmp.Diff(r, &foundGrp, protocmp.Transform()))
 		})

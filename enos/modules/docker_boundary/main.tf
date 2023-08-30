@@ -36,10 +36,6 @@ variable "postgres_address" {
   description = "Address to postgres database"
   type        = string
 }
-variable "boundary_license" {
-  description = "License string"
-  type        = string
-}
 
 
 resource "docker_image" "boundary" {
@@ -52,7 +48,6 @@ resource "enos_local_exec" "init_database" {
     TEST_BOUNDARY_IMAGE   = var.image_name,
     TEST_DATABASE_ADDRESS = var.postgres_address,
     TEST_NETWORK_NAME     = var.network_name
-    TEST_BOUNDARY_LICENSE = var.boundary_license
   }
   inline = ["bash ./${path.module}/init.sh"]
 }
@@ -73,7 +68,6 @@ resource "docker_container" "boundary" {
   command = ["boundary", "server", "-config", "/boundary/boundary-config.hcl"]
   env = [
     "BOUNDARY_POSTGRES_URL=${var.postgres_address}",
-    "BOUNDARY_LICENSE=${var.boundary_license}",
     "HOSTNAME=boundary",
     "SKIP_CHOWN=true",
   ]
@@ -130,7 +124,7 @@ resource "enos_local_exec" "check_health" {
 }
 
 output "address" {
-  value = "http://${var.container_name}:9200"
+  value = "http://0.0.0.0:9200"
 }
 
 output "auth_method_id" {

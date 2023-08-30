@@ -651,8 +651,8 @@ github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFb
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 h1:YBftPWNWd4WwGqtY2yeZL2ef8rHAxPBD8KFhJpmcqms=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0/go.mod h1:YN5jB8ie0yfIUg6VvR9Kz84aCaG7AsGZnLjhHbUqwPg=
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
-github.com/hashicorp/cap v0.3.3 h1:qSQs1o9chItmOdotp7b+Vu/LlHCgHxnRyLtYv01Q7VE=
-github.com/hashicorp/cap v0.3.3/go.mod h1:dHTmyMIVbzT981XxRoci5G//dfWmd/HhuNiCH6J5+IA=
+github.com/hashicorp/cap v0.3.0 h1:zFzVxuWy78lO6QRLHu/ONkjx/Jh0lpfvPgmpDGri43E=
+github.com/hashicorp/cap v0.3.0/go.mod h1:dHTmyMIVbzT981XxRoci5G//dfWmd/HhuNiCH6J5+IA=
 github.com/hashicorp/cap/ldap v0.0.0-20230420150311-6d1e00a6c5e0 h1:SFcUsFwjBHGMIXixe/FpNsBlQBJwwXITD936LewHbHs=
 github.com/hashicorp/cap/ldap v0.0.0-20230420150311-6d1e00a6c5e0/go.mod h1:9rAvcOfZF5fAYoN4GRtEI5w0F9Uj/oDAqMndkoRnPrI=
 github.com/hashicorp/dawdle v0.4.0 h1:nAE+aCoAmVulgCPPPrp6oGOykjPhxEe4VUNms/mTKeA=
@@ -745,8 +745,8 @@ github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ
 github.com/hashicorp/golang-lru v0.5.4/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
-github.com/hashicorp/nodeenrollment v0.2.6 h1:zGKOkQaudYSopknZAr8T5ySrBqB2DloyRnSGhg660ks=
-github.com/hashicorp/nodeenrollment v0.2.6/go.mod h1:Do2FvaFHgnnMaqhdSTBX+TkQP0ep8VVQ0rOr+ZjUbJU=
+github.com/hashicorp/nodeenrollment v0.2.4 h1:Rhdgtdd26Ng+r2+m6CDVWT8+wwQzN8y+6kApoc5Q91U=
+github.com/hashicorp/nodeenrollment v0.2.4/go.mod h1:Do2FvaFHgnnMaqhdSTBX+TkQP0ep8VVQ0rOr+ZjUbJU=
 github.com/hashicorp/vault/api v1.9.1 h1:LtY/I16+5jVGU8rufyyAkwopgq/HpUnxFBg+QLOAV38=
 github.com/hashicorp/vault/api v1.9.1/go.mod h1:78kktNcQYbBGSrOjQfHjXN32OhhxXnbYl3zxpd2uPUs=
 github.com/hashicorp/vault/sdk v0.3.0 h1:kR3dpxNkhh/wr6ycaJYqp6AFT/i2xaftbfnwZduTKEY=
@@ -851,8 +851,8 @@ github.com/jefferai/keyring v1.1.7-0.20220316160357-58a74bb55891/go.mod h1:iwmrB
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jhump/protoreflect v1.6.0/go.mod h1:eaTn3RZAmMBcV0fifFvlm6VHNz3wSkYyXYWUh7ymB74=
 github.com/jhump/protoreflect v1.9.1-0.20210817181203-db1a327a393e h1:Yb4fEGk+GtBSNuvy5rs0ZJt/jtopc/z9azQaj3xbies=
-github.com/jimlambrt/gldap v0.1.7 h1:q6W1xyjnHax/JAhjsN/EQ88+DCOEYPy/GDM7/3tk7bA=
-github.com/jimlambrt/gldap v0.1.7/go.mod h1:BRdefIDhx2uYBjxL0fRBGi3eyOvAkkRIXSJYMCyzCaI=
+github.com/jimlambrt/gldap v0.1.6 h1:fnpRGhuHxWjavhDvEjwwveneNrQZuoEfOoDxKWYmtF8=
+github.com/jimlambrt/gldap v0.1.6/go.mod h1:BRdefIDhx2uYBjxL0fRBGi3eyOvAkkRIXSJYMCyzCaI=
 github.com/jinzhu/gorm v1.9.12 h1:Drgk1clyWT9t9ERbzHza6Mj/8FY/CqMyVzOiHviMo6Q=
 github.com/jinzhu/gorm v1.9.12/go.mod h1:vhTjlKSJUTWNtcbQtrMBFCxy7eXTzeCAzfL5fBZT/Qs=
 github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=
