@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/targets"
@@ -16,9 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCliTcpTargetConnectTargetWithSsh uses the boundary cli to
-// connect to a target using `connect ssh`
-func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
+// TestCliTcpTargetConnectTargetWithSshRemoteCommand uses the boundary cli to
+// connect to a target using `connect ssh -remote-commmand`
+func TestCliTcpTargetConnectTargetWithSshRemoteCommand(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()
 	require.NoError(t, err)
@@ -69,12 +70,15 @@ func TestCliTcpTargetConnectTargetWithSsh(t *testing.T) {
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
 			"connect", "ssh",
-			"-target-id", newTargetId, "--",
+			"-target-id", newTargetId,
+			"-remote-command", "hostname -i",
+			"--",
 			"-o", "UserKnownHostsFile=/dev/null",
 			"-o", "StrictHostKeyChecking=no",
 			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
+	require.Equal(t, c.TargetIp, strings.TrimSpace(string(output.Stdout)))
 	t.Log("Successfully connected to target")
 }
