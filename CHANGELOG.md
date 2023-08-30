@@ -13,6 +13,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/3650)).  
 * feat: allow HCP cluster id to be sourced from file or env variable
     ([PR](https://github.com/hashicorp/boundary/pull/3709)).
+* feat: list Endpoint Pagination: All list endpoints now support paginating through
+  results.
+  * api: All list endpoint functions have added support for pagination. The new
+    WithRefreshToken option can be used to request a list of updated and deleted resources.
 
 ### Bug Fixes
 

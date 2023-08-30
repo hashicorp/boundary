@@ -70,12 +70,32 @@ func (n WorkerDeleteResult) GetResponse() *api.Response {
 }
 
 type WorkerListResult struct {
-	Items    []*Worker
-	response *api.Response
+	Items        []*Worker `json:"items,omitempty"`
+	EstItemCount uint      `json:"est_item_count,omitempty"`
+	RemovedIds   []string  `json:"removed_ids,omitempty"`
+	RefreshToken string    `json:"refresh_token,omitempty"`
+	ResponseType string    `json:"response_type,omitempty"`
+	response     *api.Response
 }
 
 func (n WorkerListResult) GetItems() []*Worker {
 	return n.Items
+}
+
+func (n WorkerListResult) GetEstItemCount() uint {
+	return n.EstItemCount
+}
+
+func (n WorkerListResult) GetRemovedIds() []string {
+	return n.RemovedIds
+}
+
+func (n WorkerListResult) GetRefreshToken() string {
+	return n.RefreshToken
+}
+
+func (n WorkerListResult) GetResponseType() string {
+	return n.ResponseType
 }
 
 func (n WorkerListResult) GetResponse() *api.Response {
@@ -377,7 +397,49 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Work
 		return nil, apiErr
 	}
 	target.response = resp
-	return target, nil
+	if opts.withRefreshToken != "" || target.ResponseType == "complete" || target.ResponseType == "" {
+		return target, nil
+	}
+	// if refresh token is not set explicitly and there are more results,
+	// automatically fetch the rest of the results.
+	for {
+		req, err := c.client.NewRequest(ctx, "GET", "workers", nil, apiOpts...)
+		if err != nil {
+			return nil, fmt.Errorf("error creating List request: %w", err)
+		}
+
+		opts.queryMap["refresh_token"] = target.RefreshToken
+		if len(opts.queryMap) > 0 {
+			q := url.Values{}
+			for k, v := range opts.queryMap {
+				q.Add(k, v)
+			}
+			req.URL.RawQuery = q.Encode()
+		}
+
+		resp, err := c.client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("error performing client request during List call: %w", err)
+		}
+
+		page := new(WorkerListResult)
+		apiErr, err := resp.Decode(page)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding List response: %w", err)
+		}
+		if apiErr != nil {
+			return nil, apiErr
+		}
+		target.Items = append(target.Items, page.Items...)
+		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
+		target.EstItemCount = page.EstItemCount
+		target.RefreshToken = page.RefreshToken
+		target.ResponseType = page.ResponseType
+		target.response = resp
+		if target.ResponseType == "complete" {
+			return target, nil
+		}
+	}
 }
 
 func (c *Client) AddWorkerTags(ctx context.Context, id string, version uint32, apiTags map[string][]string, opt ...Option) (*WorkerUpdateResult, error) {
