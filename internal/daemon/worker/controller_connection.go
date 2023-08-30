@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/boundary/globals"
@@ -30,6 +31,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/nodeenrollment"
@@ -38,6 +40,7 @@ import (
 	"github.com/hashicorp/nodeenrollment/util/toggledlogger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/protobuf/proto"
@@ -271,7 +274,7 @@ func (w *Worker) createClientConn(addr string) error {
 
 	w.controllerUpstreamMsgConn.Store(&producer)
 
-	go w.monitorControllerConnectionState(w.baseContext)
+	go monitorControllerConnectionState(w.baseContext, cc, w.controllerConnectionState)
 
 	return nil
 }
@@ -408,8 +411,13 @@ func (w *Worker) workerConnectionInfo(addr string) (*structpb.Struct, error) {
 
 // monitorControllerConnectionState listens for new state changes from worker's
 // connection to the controller and updates controllerConnectionState
-func (w *Worker) monitorControllerConnectionState(context context.Context) {
-	for w.GrpcClientConn.WaitForStateChange(context, w.controllerConnectionState) {
-		w.controllerConnectionState = w.GrpcClientConn.GetState()
+func monitorControllerConnectionState(context context.Context, cc *grpc.ClientConn, controllerConnectionState *atomic.Value) {
+	var state connectivity.State
+	if v := controllerConnectionState.Load(); !util.IsNil(v) {
+		state = v.(connectivity.State)
+	}
+
+	for cc.WaitForStateChange(context, state) {
+		controllerConnectionState.Store(cc.GetState())
 	}
 }

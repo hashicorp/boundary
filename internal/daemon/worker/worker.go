@@ -48,7 +48,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/protobuf/proto"
 )
@@ -132,7 +131,7 @@ type Worker struct {
 	lastStatusSuccess         *atomic.Value
 	workerStartTime           time.Time
 	operationalState          *atomic.Value
-	controllerConnectionState connectivity.State
+	controllerConnectionState *atomic.Value
 
 	controllerMultihopConn *atomic.Value
 
@@ -209,6 +208,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		pkiConnManager:              cluster.NewDownstreamManager(),
 		successfulStatusGracePeriod: new(atomic.Int64),
 		statusCallTimeoutDuration:   new(atomic.Int64),
+		controllerConnectionState:   new(atomic.Value),
 	}
 
 	w.operationalState.Store(server.UnknownOperationalState)

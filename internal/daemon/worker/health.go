@@ -14,6 +14,7 @@ import (
 	pbhealth "github.com/hashicorp/boundary/internal/gen/worker/health"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/util"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -55,9 +56,14 @@ func (w *Worker) HealthInformation() *pbhealth.HealthInfo {
 		operationalState = v.(server.OperationalState)
 	}
 
+	var controllerConnectionState connectivity.State
+	if v := w.controllerConnectionState.Load(); !util.IsNil(v) {
+		controllerConnectionState = v.(connectivity.State)
+	}
+
 	healthInfo := &pbhealth.HealthInfo{
 		State:                     operationalState.String(),
-		ControllerConnectionState: w.controllerConnectionState.String(),
+		ControllerConnectionState: controllerConnectionState.String(),
 	}
 
 	if w.sessionManager == nil {
