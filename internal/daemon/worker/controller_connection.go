@@ -425,6 +425,6 @@ func monitorControllerConnectionState(context context.Context, cc *grpc.ClientCo
 			return
 		}
 
-		controllerConnectionState.Store(cc.GetState())
+		controllerConnectionState.Store(newState)
 	}
 }
