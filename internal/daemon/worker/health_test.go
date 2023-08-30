@@ -78,6 +78,9 @@ func TestGetHealth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Add delay for connection controller state to update
+			time.Sleep(2 * time.Second)
+
 			path := "/health"
 			if tt.queryParams != "" {
 				path = fmt.Sprintf("%s?%s", path, tt.queryParams)
