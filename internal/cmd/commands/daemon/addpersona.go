@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
@@ -130,6 +131,7 @@ func addPersona(ctx context.Context, daemonPath string, p *personaToAdd) (*api.E
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Add(VersionHeaderKey, version.Get().VersionNumber())
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
