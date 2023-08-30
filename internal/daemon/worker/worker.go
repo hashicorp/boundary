@@ -48,6 +48,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	ua "go.uber.org/atomic"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/protobuf/proto"
 )
@@ -127,10 +128,11 @@ type Worker struct {
 
 	recorderManager recorderManager
 
-	everAuthenticated *ua.Uint32
-	lastStatusSuccess *atomic.Value
-	workerStartTime   time.Time
-	operationalState  *atomic.Value
+	everAuthenticated         *ua.Uint32
+	lastStatusSuccess         *atomic.Value
+	workerStartTime           time.Time
+	operationalState          *atomic.Value
+	controllerConnectionState connectivity.State
 
 	controllerMultihopConn *atomic.Value
 

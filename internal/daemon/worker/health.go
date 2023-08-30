@@ -50,12 +50,14 @@ func (w workerHealthServer) GetHealth(ctx context.Context, req *opsservices.GetH
 
 // HealthInformation returns the current worker process health information.
 func (w *Worker) HealthInformation() *pbhealth.HealthInfo {
-	state := server.UnknownOperationalState
+	operationalState := server.UnknownOperationalState
 	if v := w.operationalState.Load(); !util.IsNil(v) {
-		state = v.(server.OperationalState)
+		operationalState = v.(server.OperationalState)
 	}
+
 	healthInfo := &pbhealth.HealthInfo{
-		State: state.String(),
+		State:                     operationalState.String(),
+		ControllerConnectionState: w.controllerConnectionState.String(),
 	}
 
 	if w.sessionManager == nil {

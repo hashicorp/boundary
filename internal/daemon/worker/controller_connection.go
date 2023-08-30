@@ -271,6 +271,8 @@ func (w *Worker) createClientConn(addr string) error {
 
 	w.controllerUpstreamMsgConn.Store(&producer)
 
+	go w.monitorControllerConnectionState(w.baseContext)
+
 	return nil
 }
 
@@ -402,4 +404,12 @@ func (w *Worker) workerConnectionInfo(addr string) (*structpb.Struct, error) {
 		return nil, errors.Wrap(w.baseContext, err, op, errors.WithMsg("getting worker state"))
 	}
 	return st, nil
+}
+
+// monitorControllerConnectionState listens for new state changes from worker's
+// connection to the controller and updates controllerConnectionState
+func (w *Worker) monitorControllerConnectionState(context context.Context) {
+	for w.GrpcClientConn.WaitForStateChange(context, w.controllerConnectionState) {
+		w.controllerConnectionState = w.GrpcClientConn.GetState()
+	}
 }
