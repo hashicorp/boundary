@@ -5,7 +5,10 @@ package authtoken
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -301,8 +304,15 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 	}
 	opts := getOpts(opt...)
 
-	whereClause := "auth_account_id in (select public_id from auth_account where scope_id in (?))"
-	args := []any{withScopeIds}
+	var inClauses []string
+	var args []any
+	for i, scopeId := range withScopeIds {
+		arg := "scope_id_" + strconv.Itoa(i)
+		inClauses = append(inClauses, "@"+arg)
+		args = append(args, sql.Named(arg, scopeId))
+	}
+	inClause := strings.Join(inClauses, ", ")
+	whereClause := "auth_account_id in (select public_id from auth_account where scope_id in (" + inClause + "))"
 	// Ordering and pagination are tightly coupled.
 	// We order by update_time ascending so that new
 	// and updated items appear at the end of the pagination.
@@ -315,18 +325,20 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 		// start of the page. We use greater than or equal for the update
 		// time as there may be items with identical update_times. We
 		// then use PublicId as a tiebreaker.
-		//args = append(args,
-		//	sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
-		//	sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
-		//)
-		//whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
-
 		args = append(args,
-			opts.withStartPageAfterItem.updateTime,
-			opts.withStartPageAfterItem.updateTime,
-			opts.withStartPageAfterItem.publicId,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
 		)
-		whereClause += " and update_time > ? or (update_time = ? and public_id > ?)"
+		whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+
+		/*
+			args = append(args,
+				opts.withStartPageAfterItem.updateTime,
+				opts.withStartPageAfterItem.updateTime,
+				opts.withStartPageAfterItem.publicId,
+			)
+			whereClause += " and update_time > ? or (update_time = ? and public_id > ?)"
+		*/
 	}
 
 	// use the view, to bring in the required account columns. Just don't forget
