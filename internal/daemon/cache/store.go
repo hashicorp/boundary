@@ -7,7 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	_ "github.com/glebarez/go-sqlite"
+	_ "gorm.io/driver/sqlite"
+
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-dbw"
