@@ -11,6 +11,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/3679)).
 * feat: add worker upstream connection status to ops health check
   ([PR](https://github.com/hashicorp/boundary/pull/3650)).  
+* List Endpoint Pagination: All list endpoints now support paginating through
+  results.
+  * api: All list endpoint functions have added support for pagination. The new
+    WithRefreshToken and WithPageSize options can be used to control pagination.
+    If no refresh token is provided, the list endpoint function will automatically
+    page through the whole result set.
 
 ### Bug Fixes
 
