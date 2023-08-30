@@ -409,8 +409,8 @@ func (w *Worker) workerConnectionInfo(addr string) (*structpb.Struct, error) {
 	return st, nil
 }
 
-// monitorControllerConnectionState listens for new state changes from worker's
-// connection to the controller and updates controllerConnectionState
+// monitorControllerConnectionState listens for new state changes from grpc client
+// connection and updates controllerConnectionState
 func monitorControllerConnectionState(context context.Context, cc *grpc.ClientConn, controllerConnectionState *atomic.Value) {
 	var state connectivity.State
 	if v := controllerConnectionState.Load(); !util.IsNil(v) {
@@ -418,6 +418,13 @@ func monitorControllerConnectionState(context context.Context, cc *grpc.ClientCo
 	}
 
 	for cc.WaitForStateChange(context, state) {
+		newState := cc.GetState()
+
+		// if the client is shutdown, exit function
+		if newState == connectivity.Shutdown {
+			return
+		}
+
 		controllerConnectionState.Store(cc.GetState())
 	}
 }

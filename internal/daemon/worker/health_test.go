@@ -120,7 +120,10 @@ func TestMonitorControllerConnectionState(t *testing.T) {
 	grpcResolver.InitialAddresses([]string{servers[0].address})
 
 	t.Cleanup(func() {
+		cc.Close()
 		cancelStateCtx()
+
+		assert.Equal(t, connectivity.Shutdown, cc.GetState())
 
 		for _, s := range servers {
 			s.srv.GracefulStop()
