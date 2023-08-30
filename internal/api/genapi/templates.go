@@ -266,7 +266,49 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 		return nil, apiErr
 	}
 	target.response = resp
-	return target, nil
+	if opts.withRefreshToken != "" || target.ResponseType == "complete" || target.ResponseType == "" {
+		return target, nil
+	}
+	// if refresh token is not set explicitly and there are more results,
+	// automatically fetch the rest of the results.
+	for {
+		req, err := c.client.NewRequest(ctx, "GET", "{{ .CollectionPath }}", nil, apiOpts...)
+		if err != nil {
+			return nil, fmt.Errorf("error creating List request: %w", err)
+		}
+
+		opts.queryMap["refresh_token"] = target.RefreshToken
+		if len(opts.queryMap) > 0 {
+			q := url.Values{}
+			for k, v := range opts.queryMap {
+				q.Add(k, v)
+			}
+			req.URL.RawQuery = q.Encode()
+		}
+
+		resp, err := c.client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("error performing client request during List call: %w", err)
+		}
+
+		page := new({{ .Name }}ListResult)
+		apiErr, err := resp.Decode(page)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding List response: %w", err)
+		}
+		if apiErr != nil {
+			return nil, apiErr
+		}
+		target.Items = append(target.Items, page.Items...)
+		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
+		target.EstItemCount = page.EstItemCount
+		target.RefreshToken = page.RefreshToken
+		target.ResponseType = page.ResponseType
+		target.response = resp
+		if target.ResponseType == "complete" {
+			return target, nil
+		}
+	}
 }
 `))
 
@@ -652,12 +694,32 @@ func (n {{ .Name }}DeleteResult) GetResponse() *api.Response {
 {{ end }}
 {{ if ( hasResponseType .CreateResponseTypes "list" ) }}
 type {{ .Name }}ListResult struct {
-	Items []*{{ .Name }}
+	Items        []*{{ .Name }} `, "`json:\"items,omitempty\"`", `
+	EstItemCount uint           `, "`json:\"est_item_count,omitempty\"`", `
+	RemovedIds   []string       `, "`json:\"removed_ids,omitempty\"`", `
+	RefreshToken string         `, "`json:\"refresh_token,omitempty\"`", `
+	ResponseType string         `, "`json:\"response_type,omitempty\"`", `
 	response *api.Response
 }
 
 func (n {{ .Name }}ListResult) GetItems() []*{{ .Name }} {
 	return n.Items
+}
+
+func (n {{ .Name }}ListResult) GetEstItemCount() uint {
+	return n.EstItemCount
+}
+
+func (n {{ .Name }}ListResult) GetRemovedIds() []string {
+	return n.RemovedIds
+}
+
+func (n {{ .Name }}ListResult) GetRefreshToken() string {
+	return n.RefreshToken
+}
+
+func (n {{ .Name }}ListResult) GetResponseType() string {
+	return n.ResponseType
 }
 
 func (n {{ .Name }}ListResult) GetResponse() *api.Response {
@@ -718,6 +780,8 @@ type options struct {
 	withAutomaticVersioning bool
 	withSkipCurlOutput bool
 	withFilter string
+	withRefreshToken string
+	withPageSize uint 
 	{{ if .RecursiveListing }} withRecursive bool {{ end }}
 }
 
@@ -741,6 +805,12 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	}
 	if opts.withFilter != "" {
 		opts.queryMap["filter"] = opts.withFilter
+	}
+	if opts.withRefreshToken != "" {
+		opts.queryMap["refresh_token"] = opts.withRefreshToken
+	}
+	if opts.withPageSize != 0 {
+		opts.queryMap["page_size"] = strconv.FormatUint(uint64(opts.withPageSize), 10)
 	}{{ if .RecursiveListing }}
 	if opts.withRecursive {
 		opts.queryMap["recursive"] = strconv.FormatBool(opts.withRecursive)
@@ -765,6 +835,22 @@ func WithAutomaticVersioning(enable bool) Option {
 func WithSkipCurlOutput(skip bool) Option {
 	return func(o *options) {
 		o.withSkipCurlOutput = true
+	}
+}
+
+// WithRefreshToken tells the API to use the provided refresh token
+// for listing operations on this resource.
+func WithRefreshToken(refreshToken string) Option {
+	return func(o *options) {
+		o.withRefreshToken = refreshToken
+	}
+}
+
+// WithPageSize tells the API use the provided page size for listing
+// opertaions on this resource.
+func WithPageSize(pageSize uint) Option {
+	return func(o *options) {
+		o.withPageSize = pageSize
 	}
 }
 

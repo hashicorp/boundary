@@ -3,6 +3,13 @@
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
  ## Next
+
+ ## New and Improved
+* feat: list Endpoint Pagination: All list endpoints now support paginating through
+  results.
+  * api: All list endpoint functions have added support for pagination. The new
+    WithRefreshToken option can be used to request a list of updated and deleted resources.
+
 ## 0.14.0 (2023/10/10)
 
 ### Deprecations/Changes
