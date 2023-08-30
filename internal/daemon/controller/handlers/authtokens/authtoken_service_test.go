@@ -263,6 +263,22 @@ func TestList_Self(t *testing.T) {
 	}
 }
 
+func authTokenToProto(at *authtoken.AuthToken, scope *scopes.ScopeInfo) *pb.AuthToken {
+	return &pb.AuthToken{
+		Id:                      at.GetPublicId(),
+		ScopeId:                 at.GetScopeId(),
+		UserId:                  at.GetIamUserId(),
+		AuthMethodId:            at.GetAuthMethodId(),
+		AccountId:               at.GetAuthAccountId(),
+		CreatedTime:             at.GetCreateTime().GetTimestamp(),
+		UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
+		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
+		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
+		Scope:                   scope,
+		AuthorizedActions:       testAuthorizedActions,
+	}
+}
+
 func TestList(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -281,57 +297,24 @@ func TestList(t *testing.T) {
 	var globalTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
 		at := authtoken.TestAuthToken(t, conn, kms, scope.Global.String())
-		globalTokens = append(globalTokens, &pb.AuthToken{
-			Id:                      at.GetPublicId(),
-			ScopeId:                 at.GetScopeId(),
-			UserId:                  at.GetIamUserId(),
-			AuthMethodId:            at.GetAuthMethodId(),
-			AccountId:               at.GetAuthAccountId(),
-			CreatedTime:             at.GetCreateTime().GetTimestamp(),
-			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
-			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
-			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
-			AuthorizedActions:       testAuthorizedActions,
-		})
+		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"})
+		globalTokens = append(globalTokens, atp)
 	}
 
 	orgWithSomeTokens, _ := iam.TestScopes(t, iamRepo)
 	var wantSomeTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
 		at := authtoken.TestAuthToken(t, conn, kms, orgWithSomeTokens.GetPublicId())
-		wantSomeTokens = append(wantSomeTokens, &pb.AuthToken{
-			Id:                      at.GetPublicId(),
-			ScopeId:                 at.GetScopeId(),
-			UserId:                  at.GetIamUserId(),
-			AuthMethodId:            at.GetAuthMethodId(),
-			AccountId:               at.GetAuthAccountId(),
-			CreatedTime:             at.GetCreateTime().GetTimestamp(),
-			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
-			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
-			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-			AuthorizedActions:       testAuthorizedActions,
-		})
+		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()})
+		wantSomeTokens = append(wantSomeTokens, atp)
 	}
 
 	orgWithOtherTokens, _ := iam.TestScopes(t, iamRepo)
 	var wantOtherTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
 		at := authtoken.TestAuthToken(t, conn, kms, orgWithOtherTokens.GetPublicId())
-		wantOtherTokens = append(wantOtherTokens, &pb.AuthToken{
-			Id:                      at.GetPublicId(),
-			ScopeId:                 at.GetScopeId(),
-			UserId:                  at.GetIamUserId(),
-			AuthMethodId:            at.GetAuthMethodId(),
-			AccountId:               at.GetAuthAccountId(),
-			CreatedTime:             at.GetCreateTime().GetTimestamp(),
-			UpdatedTime:             at.GetUpdateTime().GetTimestamp(),
-			ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
-			ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
-			Scope:                   &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-			AuthorizedActions:       testAuthorizedActions,
-		})
+		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()})
+		wantOtherTokens = append(wantOtherTokens, atp)
 	}
 
 	allTokens := append(globalTokens, wantSomeTokens...)
@@ -346,17 +329,34 @@ func TestList(t *testing.T) {
 		{
 			name: "List Some Tokens",
 			req:  &pbs.ListAuthTokensRequest{ScopeId: orgWithSomeTokens.GetPublicId()},
-			res:  &pbs.ListAuthTokensResponse{Items: wantSomeTokens},
+			res: &pbs.ListAuthTokensResponse{
+				Items:        wantSomeTokens,
+				EstItemCount: 9,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List Other Tokens",
 			req:  &pbs.ListAuthTokensRequest{ScopeId: orgWithOtherTokens.GetPublicId()},
-			res:  &pbs.ListAuthTokensResponse{Items: wantOtherTokens},
+			res: &pbs.ListAuthTokensResponse{
+				Items:        wantOtherTokens,
+				EstItemCount: 9,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List No Token",
 			req:  &pbs.ListAuthTokensRequest{ScopeId: orgNoTokens.GetPublicId()},
-			res:  &pbs.ListAuthTokensResponse{},
+			res: &pbs.ListAuthTokensResponse{
+				EstItemCount: 9,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		// TODO: When an org doesn't exist, we should return a 404 instead of an empty list.
 		{
@@ -367,12 +367,24 @@ func TestList(t *testing.T) {
 		{
 			name: "List Recursively",
 			req:  &pbs.ListAuthTokensRequest{ScopeId: "global", Recursive: true},
-			res:  &pbs.ListAuthTokensResponse{Items: allTokens},
+			res: &pbs.ListAuthTokensResponse{
+				Items:        allTokens,
+				EstItemCount: 9,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Paginate listing",
 			req:  &pbs.ListAuthTokensRequest{ScopeId: scope.Global.String(), Recursive: true, PageSize: 2},
-			res:  &pbs.ListAuthTokensResponse{Items: allTokens[:2]},
+			res: &pbs.ListAuthTokensResponse{
+				Items:        allTokens[:2],
+				EstItemCount: 9,
+				ResponseType: "delta",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter to Some Tokens",
@@ -380,12 +392,23 @@ func TestList(t *testing.T) {
 				ScopeId: "global", Recursive: true,
 				Filter: fmt.Sprintf(`"/item/scope/id"==%q`, orgWithSomeTokens.GetPublicId()),
 			},
-			res: &pbs.ListAuthTokensResponse{Items: wantSomeTokens},
+			res: &pbs.ListAuthTokensResponse{
+				Items:        wantSomeTokens,
+				EstItemCount: 9,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter All Tokens",
 			req:  &pbs.ListAuthTokensRequest{ScopeId: orgWithOtherTokens.GetPublicId(), Filter: `"/item/scope/id"=="thisdoesntmatch"`},
-			res:  &pbs.ListAuthTokensResponse{},
+			res: &pbs.ListAuthTokensResponse{
+				EstItemCount: 9,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -408,7 +431,16 @@ func TestList(t *testing.T) {
 			} else {
 				require.NoError(gErr)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAuthTokens() with scope %q got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+
+			// Compare without comparing the refresh token
+			assert.Empty(
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "refresh_token"),
+				),
+			)
 
 			// Now check anon listing
 			got, gErr = s.ListAuthTokens(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -422,6 +454,75 @@ func TestList(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestListPagination(t *testing.T) {
+	testCtx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrap)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.TestRepo(t, conn, wrap), nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(testCtx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(testCtx, rw, rw, kms)
+	}
+	iamRepo := iam.TestRepo(t, conn, wrap)
+
+	orgWithTokens, _ := iam.TestScopes(t, iamRepo)
+	var allTokens []*pb.AuthToken
+	for i := 0; i < 3; i++ {
+		at := authtoken.TestAuthToken(t, conn, kms, orgWithTokens.GetPublicId())
+		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()})
+		allTokens = append(allTokens, atp)
+	}
+
+	a, err := authtokens.NewService(testCtx, tokenRepoFn, iamRepoFn, 1000)
+	assert, require := assert.New(t), require.New(t)
+	require.NoError(err, "Couldn't create new user service.")
+
+	at := authtoken.TestAuthToken(t, conn, kms, orgWithTokens.GetPublicId())
+
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	// Start paginating, recursively
+	req := &pbs.ListAuthTokensRequest{
+		ScopeId:      orgWithTokens.GetPublicId(),
+		Recursive:    true,
+		Filter:       "",
+		RefreshToken: "",
+		PageSize:     2,
+	}
+	got, err := a.ListAuthTokens(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListAuthTokensResponse{
+				Items:        allTokens[0:2],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "refresh_token"),
+		),
+	)
 }
 
 func TestDeleteSelf(t *testing.T) {

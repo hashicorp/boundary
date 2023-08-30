@@ -5,7 +5,6 @@ package authtoken
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -316,11 +315,18 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 		// start of the page. We use greater than or equal for the update
 		// time as there may be items with identical update_times. We
 		// then use PublicId as a tiebreaker.
+		//args = append(args,
+		//	sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
+		//	sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
+		//)
+		//whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+
 		args = append(args,
-			sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
-			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
+			opts.withStartPageAfterItem.updateTime,
+			opts.withStartPageAfterItem.updateTime,
+			opts.withStartPageAfterItem.publicId,
 		)
-		whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+		whereClause += " and update_time > ? or (update_time = ? and public_id > ?)"
 	}
 
 	// use the view, to bring in the required account columns. Just don't forget

@@ -142,12 +142,10 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		res.ScopeId = at.GetScopeId()
 		authorizedActions := authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions, auth.WithResource(&res))
 		if len(authorizedActions) == 0 {
-			// return unauth error?
 			return nil, false, nil
 		}
 
 		if authorizedActions.OnlySelf() && at.GetIamUserId() != authResults.UserId {
-			// return unauth err?
 			return nil, false, nil
 		}
 
