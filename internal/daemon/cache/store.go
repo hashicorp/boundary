@@ -7,8 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	_ "gorm.io/driver/sqlite"
-
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-dbw"

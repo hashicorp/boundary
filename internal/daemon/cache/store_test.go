@@ -37,7 +37,10 @@ func TestPersona(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, n)
 
-	n, err = rw.Delete(ctx, &p)
+	// TODO: When gorm sqlite driver fixes it's delete, use rw.Delete instead of the Exec.
+	// n, err := rw.Delete(ctx, p)
+	n, err = rw.Exec(ctx, "delete from cache_persona where (boundary_addr, keyring_type, token_name) in (values (?, ?, ?))",
+		[]any{p.BoundaryAddr, p.KeyringType, p.TokenName})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, n)
 }
@@ -91,7 +94,10 @@ func TestTarget(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 
-		n, err = rw.Delete(ctx, target)
+		// TODO: When gorm sqlite driver fixes it's delete, use rw.Delete instead of the Exec.
+		// n, err = rw.Delete(ctx, target)
+		n, err = rw.Exec(ctx, "delete from cache_target where (boundary_addr, keyring_type, token_name, id) in (values (?, ?, ?, ?))",
+			[]any{target.BoundaryAddr, target.KeyringType, target.TokenName, target.Id})
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
@@ -120,7 +126,10 @@ func TestTarget(t *testing.T) {
 	})
 
 	t.Run("deleting the persona deletes the target", func(t *testing.T) {
-		n, err := rw.Delete(ctx, p)
+		// TODO: When gorm sqlite driver fixes it's delete, use rw.Delete instead of the Exec.
+		// n, err := rw.Delete(ctx, p)
+		n, err := rw.Exec(ctx, "delete from cache_persona where (boundary_addr, keyring_type, token_name) in (values (?, ?, ?))",
+			[]any{p.BoundaryAddr, p.KeyringType, p.TokenName})
 		require.NoError(t, err)
 		require.Equal(t, 1, n)
 
