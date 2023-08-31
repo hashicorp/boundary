@@ -274,7 +274,7 @@ func (w *Worker) createClientConn(addr string) error {
 
 	w.controllerUpstreamMsgConn.Store(&producer)
 
-	go monitorControllerConnectionState(w.baseContext, cc, w.controllerConnectionState)
+	go monitorUpstreamConnectionState(w.baseContext, cc, w.upstreamConnectionState)
 
 	return nil
 }
@@ -409,11 +409,11 @@ func (w *Worker) workerConnectionInfo(addr string) (*structpb.Struct, error) {
 	return st, nil
 }
 
-// monitorControllerConnectionState listens for new state changes from grpc client
-// connection and updates controllerConnectionState
-func monitorControllerConnectionState(context context.Context, cc *grpc.ClientConn, controllerConnectionState *atomic.Value) {
+// monitorUpstreamConnectionState listens for new state changes from grpc client
+// connection and updates the state
+func monitorUpstreamConnectionState(context context.Context, cc *grpc.ClientConn, connectionState *atomic.Value) {
 	var state connectivity.State
-	if v := controllerConnectionState.Load(); !util.IsNil(v) {
+	if v := connectionState.Load(); !util.IsNil(v) {
 		state = v.(connectivity.State)
 	}
 
@@ -425,6 +425,6 @@ func monitorControllerConnectionState(context context.Context, cc *grpc.ClientCo
 			return
 		}
 
-		controllerConnectionState.Store(newState)
+		connectionState.Store(newState)
 	}
 }

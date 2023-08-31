@@ -724,9 +724,9 @@ func TestCreateOpsHandler(t *testing.T) {
 				pbResp := &pbs.GetHealthResponse{}
 				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
 				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
-					State:                     server.ActiveOperationalState.String(),
-					ActiveSessionCount:        wrapperspb.UInt32(0),
-					ControllerConnectionState: connectivity.TransientFailure.String(),
+					State:                   server.ActiveOperationalState.String(),
+					ActiveSessionCount:      wrapperspb.UInt32(0),
+					UpstreamConnectionState: connectivity.TransientFailure.String(),
 				}}
 				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
 			},
@@ -749,9 +749,9 @@ func TestCreateOpsHandler(t *testing.T) {
 				pbResp := &pbs.GetHealthResponse{}
 				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
 				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
-					State:                     server.ActiveOperationalState.String(),
-					ActiveSessionCount:        wrapperspb.UInt32(0),
-					ControllerConnectionState: connectivity.TransientFailure.String(),
+					State:                   server.ActiveOperationalState.String(),
+					ActiveSessionCount:      wrapperspb.UInt32(0),
+					UpstreamConnectionState: connectivity.TransientFailure.String(),
 				}}
 				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
 			},

@@ -56,14 +56,14 @@ func (w *Worker) HealthInformation() *pbhealth.HealthInfo {
 		operationalState = v.(server.OperationalState)
 	}
 
-	var controllerConnectionState connectivity.State
-	if v := w.controllerConnectionState.Load(); !util.IsNil(v) {
-		controllerConnectionState = v.(connectivity.State)
+	var upstreamConnectionState connectivity.State
+	if v := w.upstreamConnectionState.Load(); !util.IsNil(v) {
+		upstreamConnectionState = v.(connectivity.State)
 	}
 
 	healthInfo := &pbhealth.HealthInfo{
-		State:                     operationalState.String(),
-		ControllerConnectionState: controllerConnectionState.String(),
+		State:                   operationalState.String(),
+		UpstreamConnectionState: upstreamConnectionState.String(),
 	}
 
 	if w.sessionManager == nil {
