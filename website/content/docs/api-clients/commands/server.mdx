@@ -9,14 +9,13 @@ description: |-
 
 Command: `boundary server`
 
-The `server` command starts a server (controller, worker, or both) with a
-configuration file. Refer to the [configuration](/boundary/docs/configuration)
-page to learn more about Boundary configuration.
+The `server` command starts a server with a configuration file.
+You can use it to start a controller, worker, or both.
+Refer to the [configuration](/boundary/docs/configuration) page to learn more about configuring Boundary.
 
 ## Examples
 
-Start the worker server providing the full path to the worker config file (such
-as `/home/ubuntu/boundary/downstream-worker.hcl`).
+The following example starts the worker server by providing the full path to the worker config file, `/home/ubuntu/boundary/downstream-worker.hcl`.
 
 ```shell-session
 $ boundary server -config="/home/ubuntu/boundary/downstream-worker.hcl"
@@ -60,12 +59,13 @@ $ boundary server -config=/etc/boundary/controller.hcl
 
 ### Command options
 
-- `-config` `(string: "")` - Path to the configuration file. Can be specified
-   multiple times for multiple configuration files (only if using HCL format).
+- `-config` `(string: "")` - Path to the configuration file.
+If you use HCL formatting, you can specify multiple configuration files.
 
-- `-config-kms` `(string: "")` - Path to a configuration file containing a "kms"
-   block marked for "config" purpose, to perform decryption of the main
-   configuration file. If not set, will look for such a block in the main
+- `-config-kms` `(string: "")` - Path to a configuration file that contains a "kms"
+   block marked for "config" purpose.
+   The kms block decrypts the main configuration file.
+   If you do not set a kms block, Boundary looks for such a block in the main
    configuration file, which has some drawbacks; see the help output for
    "boundary config encrypt -h" for details.
 
@@ -73,6 +73,5 @@ $ boundary server -config=/etc/boundary/controller.hcl
    Supported values are "standard" and "json".
 
 - `-log-level` `(string: "")` - Log verbosity level, mostly as a fallback for
-   events. Supported values (in order of more detail to less) are "trace",
-   "debug", "info", "warn", and "err". This can also be specified via the
-   **BOUNDARY_LOG_LEVEL** environment variable.
+   events. Supported values are "trace", "debug", "info", "warn", and "err", in order of more detail to less.
+   You can also be specify log verbosity level using the **BOUNDARY_LOG_LEVEL** environment variable.
