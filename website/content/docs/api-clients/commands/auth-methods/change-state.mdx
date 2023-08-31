@@ -2,7 +2,7 @@
 layout: docs
 page_title: auth-methods change-state - Command
 description: |-
-  The "auth-methods change-state" command allows Boundary admin to change-state of an auth method.
+  The "auth-methods change-state" command lets Boundary admin change the state of an auth method.
 ---
 
 # auth-methods change-state
@@ -10,34 +10,32 @@ description: |-
 Command: `boundary auth-methods change-state`
 
 The `auth-methods change-state` command changes the active and visibility state
-of an oidc-type auth method given its ID. 
+of an OIDC-type auth method given its ID.
 
 An OIDC auth method can be in one of several different states: Inactive, Active
 Private, and Active Public. The current state of an OIDC auth method
 affects how endpoints respond to requests and, in some cases, whether access to
 an endpoint requires authentication.
 
-- **MakeInactive** transitions an OIDC auth method from either the Active Private
-  or the Active Public state into the Inactive state.
-- **MakePrivate** transitions an OIDC auth method from either the Inactive or the
-  Active Public state into the Active Private state. If transitioning from the
-  Inactive state, the transition will only succeed if the configuration is
+- **MakeInactive** transitions an OIDC auth method from either the **Active Private**
+  or the **Active Public** state into the **Inactive** state.
+- **MakePrivate** transitions an OIDC auth method from either the **Inactive** or the
+  **Active Public** state into the **Active Private** state. If the transition is from the
+  **Inactive** state, it will only succeed if the configuration is
   valid.
-- **MakePublic** transitions an OIDC auth method from either the Inactive or the
-  Active Private state into the Active Public state. If transitioning from the
-  Inactive state, the transition will only succeed if the configuration is
+- **MakePublic** transitions an OIDC auth method from either the **Inactive** or the
+  **Active Private** state into the **Active Public** state. If the transition is from the
+  **Inactive** state, it will only succeed if the configuration is
   valid.
 
-Before changing the state of an auth-method, Boundary will retrieve the
-Provider’s discovery document for the auth method’s issuer and attempt to
+Before you change the state of an auth-method, Boundary retrieves the provider’s discovery document for the auth method’s issuer and attempts to
 validate the auth-method’s configuration against this published information. If
-Boundary is unable to validate the configuration an error is returned and the
-state change is not made.
-
+Boundary is unable to validate the configuration, an error is returned and the
+state change is not successful.
 
 ## Examples
 
-Change the OIDC auth method's state to active-public
+The following example changes the OIDC auth method's state to `active-public`:
 
 ```shell-session
 $ boundary auth-methods change-state oidc -id amoidc_oHt4HQFCrN \
@@ -91,7 +89,6 @@ Auth Method information:
 
 </CodeBlockConfig>
 
-
 ## Usage
 
 <CodeBlockConfig hideClipboard>
@@ -104,32 +101,32 @@ $ boundary auth-methods change-state oidc [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - ID of the oidc-type auth method on which to operate.
+- `-id` `(string: "")` - Specifies the ID of the oidc-type auth method on which to operate.
 
 ### OIDC auth method options
 
-- `-disable-discovered-config-validation`  - Disable validating
+- `-disable-discovered-config-validation`  - Disables validating
    the given auth method against configuration from the authorization server's
-   discovery URL. This must be specified every time an unvalidatable auth method
-   is updated or state changed; not specifying it is equivalent to setting it to
-   false. The default is false.
+   discovery URL. You must specify this value every time an auth method that cannot be validated
+   is updated or state changed. Not specifying a value is equivalent to setting the value to
+   `false`. The default is `false`.
 
-- `-state` `(string: "")` - The desired operational state of the auth method.
+- `-state` `(string: "")` - Indicates the desired operational state of the auth method.
   Three different states exist for an authentication method:
 
    - `inactive` users can not authenticate with inactive auth methods and the
    inactive auth methods are not listed for unauthenticated users.
    - `active-private` users can authenticate with active-private auth methods
    and active-private auth methods are not listed for unauthenticated users.
-   - `active-public` users can authenticate active-public auth methods and
+   - `active-public` users can authenticate with active-public auth methods and
    active-public auth methods are listed for unauthenticated users.
 
-If a change is made from `active-public` or `active-private` to `inactive`, all
+If you change an auth method from `active-public` or `active-private` to `inactive`, all
 in-flight authentications will succeed unless the auth method’s configuration is
 modified while the request is in-flight.
 
-When changing an auth method's state using `boundary auth-methods change-state`
-the `-disable-discovered-config-validation` flag is used to disable validation
+When you change an auth method's state using `boundary auth-methods change-state`,
+Boundary uses the `-disable-discovered-config-validation` flag to disable validation
 against the provider’s published discovery document. This allows for the very
 rare occurrence when the Provider has published an invalid discovery document.
 

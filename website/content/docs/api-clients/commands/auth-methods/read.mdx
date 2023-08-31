@@ -2,7 +2,7 @@
 layout: docs
 page_title: auth-methods read - Command
 description: |-
-  The "auth-methods read" command allows Boundary admin to read an auth method.
+  The "auth-methods read" command lets Boundary admin read an auth method.
 ---
 
 # auth-methods read
@@ -13,7 +13,7 @@ The `auth-methods read` command reads an auth method given its ID.
 
 ## Examples
 
-Read the auth method details where its ID is "amoidc_AliCbVihqv".
+The following example reads the auth method details for an auth method with the ID `amoidc_AliCbVihqv`.
 
 ```shell-session
 $ boundary auth-methods read -id amoidc_AliCbVihqv
@@ -76,6 +76,6 @@ $ boundary auth-methods read [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - ID of the auth method to delete.
+- `-id` `(string: "")` - Specifies the ID of the auth method to read.
 
 @include 'cmd-option-note.mdx'

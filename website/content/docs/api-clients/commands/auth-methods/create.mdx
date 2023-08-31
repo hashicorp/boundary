@@ -2,20 +2,19 @@
 layout: docs
 page_title: auth-methods create - Command
 description: |-
-  The "auth-methods create" command allows Boundary admin to create an auth method.
+  The "auth-methods create" command lets Boundary admin create an auth method.
 ---
 
 # auth-methods create
 
 Command: `boundary auth-methods create`
 
-The `auth-methods create` command allows create operations on Boundary auth
+The `auth-methods create` command lets you create Boundary auth
 method resources. The available auth method types are: LDAP, OIDC, and password.
 
 ## Examples
 
-Create an OIDC auth method by passing the OIDC provider's domain (`-issuer`),
-client ID, and client secret.
+The following example creates an OIDC auth method by passing the OIDC provider's domain (`-issuer`), client ID, and client secret:
 
 ```shell-session
 $ boundary auth-methods create oidc \
@@ -85,21 +84,30 @@ The available types are: `ldap`, `oidc`, and `password`.
 
 ### Command options:
 
-- `-description` `(string: "")` - Description to set on the ldap-type auth
-  method.
-- `-name` `(string: "")` - Name to set on the ldap-type auth method.
-- `-scope-id` `(string: "")` - Scope in which to make the request. The default
-   is global. This can also be specified via the `BOUNDARY_SCOPE_ID`
-   environment variable.
+- `-description` `(string: "")` - Specifies the description to set on the auth method.
+- `-name` `(string: "")` - Specifies the name to set on the auth method.
+- `-scope-id` `(string: "")` - Indicates the scope in which to make the request. The default
+   is `global`. You can also specify the scope using the `BOUNDARY_SCOPE_ID` environment variable.
 
 @include 'cmd-option-note.mdx'
 
-#### Usages by type
+### Usages by type
 
 <Tabs>
-<Tab heading="ldap">
+<Tab heading="LDAP">
 
-Create an auth method of `ldap` type.
+The `boundary auth-methods create ldap` command creates an LDAP auth method.
+
+#### Example
+
+The following example creates an LDAP auth method with the name `prodops` and the description `LDAP auth-method for ProdOps`:
+
+```shell-session
+$ boundary auth-methods create ldap -name prodops \
+   -description "LDAP auth-method for ProdOps"
+```
+
+#### Usage
 
 <CodeBlockConfig hideClipboard>
 
@@ -109,26 +117,25 @@ $ boundary auth-methods create ldap [options] [args]
 
 </CodeBlockConfig>
 
+#### LDAP auth method options
 
-#### LDAP auth method option
+The following are LDAP-specific options in addition to the command
+options:
 
-The following are LDAP specific options in addition to the command
-options.
+- `-anon-group-search`  - Uses anon bind when performing LDAP
+   group searches (optional). The default is `false`.
 
-- `-anon-group-search`  - Use anon bind when performing LDAP
-   group searches (optional). The default is false.
+- `-bind-dn` `(string: "")` - Uses the distinguished name of entry to bind when
+   performing user and group searches (optional).
 
-- `-bind-dn` `(string: "")` - The distinguished name of entry to bind when
-   performing user and group searches (optional). 
+- `-bind-password` `(string: "")` - Indicates the password to use along with bind-dn
+  performing user and group searches (optional).
 
-- `-bind-password` `(string: "")` - The password to use along with bind-dn
-  performing user and group searches (optional). 
-
-- `-certificate` `(string: "")` - PEM-encoded X.509 CA certificate in ASN.1 DER
+- `-certificate` `(string: "")` - Specifies a PEM-encoded X.509 CA certificate in ASN.1 DER
    form that can be used as a trust anchor when connecting to an LDAP
-   server(optional). This may be specified multiple times. 
+   server(optional). You can specify this value multiple times.
 
-- `-client-certificate` `(string: "")` - PEM-encoded X.509 client certificate in
+- `-client-certificate` `(string: "")` - Specifies a PEM-encoded X.509 client certificate in
    ASN.1 DER form that can be used to authenticate against an LDAP server
    (optional).
 
@@ -136,58 +143,62 @@ options.
    certificate key in PKCS #8, ASN.1 DER form used with the client certificate
    (optional).
 
-- `-discover-dn`  - Use anon bind to discover the bind DN of a
-   user (optional). The default is false.
+- `-discover-dn`  - Uses anon bind to discover the bind DN of a
+   user (optional). The default value is `false`.
 
-- `-enable-groups`  - Find the authenticated user's groups during
-   authentication (optional). The default is false.
+- `-enable-groups`  - Finds the authenticated user's groups during
+   authentication (optional). The default is `false`.
 
-- `-group-attr` `(string: "")` - The attribute that enumerates a user's group
+- `-group-attr` `(string: "")` - Indicates the attribute that enumerates a user's group
    membership from entries returned by a group search (optional).
 
-- `-group-dn` `(string: "")` - The base DN under which to perform group search.
+- `-group-dn` `(string: "")` - Specifies the base DN under which to perform group search.
 
-- `-group-filter` `(string: "")` - A go template used to construct a LDAP group
+- `-group-filter` `(string: "")` - Indicates a go template used to construct a LDAP group
    search filter (optional).
 
-- `-insecure-tls`  - Skip the LDAP server SSL certificate
-   validation (optional) - insecure and use with caution. The default is false.
+- `-insecure-tls`  - Skips the LDAP server SSL certificate
+   validation (optional). Use this option with caution; it is insecure. The default value is `false`.
 
-- `-start-tls`  - Issue StartTLS command after connecting
-   (optional). The default is false.
+- `-start-tls`  - Issues the StartTLS command after connecting
+   (optional). The default value is `false`.
 
-- `-state` `(string: "")` - The desired operational state of the auth method.
+- `-state` `(string: "")` - Indicates the desired operational state of the auth method.
 
-- `-upn-domain` `(string: "")` - The userPrincipalDomain used to construct the
+- `-upn-domain` `(string: "")` - Specifies the userPrincipalDomain used to construct the
    UPN string for the authenticating user (optional).
 
-- `-urls` `(string: "")` - The LDAP URLs that specify LDAP servers to connect to
-   (required). May be specified multiple times.
+- `-urls` `(string: "")` - Indicates the LDAP URLs that specify LDAP servers to connect to
+   (required). You can specify this value multiple times.
 
-- `-use-token-groups`  - Use the Active Directory tokenGroups
+- `-use-token-groups`  - Uses the Active Directory tokenGroups
    constructed attribute of the user to find the group memberships (optional).
-   The default is false.
+   The default value is `false`.
 
-- `-user-attr` `(string: "")` - The attribute on user entry matching the
-   username passed when authenticating (optional).
+- `-user-attr` `(string: "")` - Specifies the attribute on user entry that matches the
+   username that is passed during authentication (optional).
 
-- `-user-dn` `(string: "")` - The base DN under which to perform user search
+- `-user-dn` `(string: "")` - Indicates the base DN under which to perform user search
 (optional).
 
-- `-user-filter` `(string: "")` - A go template used to construct a LDAP user
+- `-user-filter` `(string: "")` - Specifies a go template used to construct a LDAP user
 search filter (optional).
+
+</Tab>
+<Tab heading="OIDC">
+
+The `boundary auth-methods create oidc` command creates an OIDC auth method.
 
 #### Example
 
+The following example creates an OIDC auth method with the name `prodops` and the description `Oidc auth-method for ProdOps`:
+
 ```shell-session
-$ boundary auth-methods create ldap -name prodops \
-   -description "LDAP auth-method for ProdOps"
+$ boundary auth-methods create oidc -name prodops \
+   -description "Oidc auth-method for ProdOps"
 ```
 
-</Tab>
-<Tab heading="oidc">
-
-Create an auth method of `oidc` type.
+#### Usage
 
 <CodeBlockConfig hideClipboard>
 
@@ -199,51 +210,52 @@ $ boundary auth-methods create oidc [options] [args]
 
 #### OIDC auth method options
 
-The following are OIDC auth-methods specific options in addition to the command
-options.
+The following are OIDC-specific options in addition to the command options:
 
-- `-account-claim-maps` `(string: "")` - The optional account claim maps from
+- `-account-claim-maps` `(string: "")` - Specifies the optional account claim maps from
    custom claims to the standard claims of sub, name and email. These maps are
    represented as key=value where the key equals the Provider from-claim and the
-   value equals the Boundary to-claim. For example "oid=sub". May be specified
+   value equals the Boundary to-claim. For example "oid=sub". You may specify this value
    multiple times for different to-claims.
 
-- `-allowed-audience` `(string: "")` - The acceptable audience ("aud") claim.
-  May be specified multiple times.
+- `-allowed-audience` `(string: "")` - Indicates the acceptable audience ("aud") claim.
+ You may specify this value multiple times.
 
-- `-api-url-prefix` `(string: "")` - The URL prefix used by the OIDC provider in
+- `-api-url-prefix` `(string: "")` - Specifies the URL prefix used by the OIDC provider in
   the authentication flow.
 
-- `-claims-scopes` `(tring: "")` - The optional claims scope requested. May be
-  specified multiple times. 
+- `-claims-scopes` `(tring: "")` - Indicates the optional claims scope requested. You may specify this value multiple times.
 
-- `-client-id` `(string: "")` - The OAuth 2.0 Client Identifier this auth method
+- `-client-id` `(string: "")` - Specifies the OAuth 2.0 Client Identifier this auth method
    should use with the provider.
 
-- `-client-secret` `(string: "")` - The corresponding client secret.
+- `-client-secret` `(string: "")` - Indicates the corresponding client secret.
 
-- `-idp-ca-cert` `(string: "")` - Optional PEM-encoded X.509 CA certificate that
-   can be used as trust anchors when connecting to an OIDC provider. May be
-   specified multiple times.
+- `-idp-ca-cert` `(string: "")` - Specifies an optional PEM-encoded X.509 CA certificate that
+   can be used as trust anchors when connecting to an OIDC provider. You may specify this value multiple times.
 
-- `-issuer` `(string: "")` - The provider's Issuer URL.
+- `-issuer` `(string: "")` - Indicates the provider's issuer URL.
 
-- `-max-age` `(string: "")` - The OIDC "max_age" parameter sent to the provider.
+- `-max-age` `(string: "")` - Indicates the OIDC "max_age" parameter that is sent to the provider.
 
-- `-signing-algorithm` `(string: "")` - The allowed signing algorithm. May be
-   specified multiple times for multiple values.
+- `-signing-algorithm` `(string: "")` - Indicates the allowed signing algorithm. You may specify this multiple times for multiple values.
+
+
+
+</Tab>
+<Tab heading="Password">
+
+The `boundary auth-methods create password` command creates a Password type auth method.
 
 #### Example
 
+The following example creates a Password type auth method with the name `prodops` and the description `Password auth-method for ProdOps`:
+
 ```shell-session
-$ boundary auth-methods create oidc -name prodops \
-   -description "Oidc auth-method for ProdOps"
+$ boundary auth-methods create password -name prodops \
+   -description "Password auth-method for ProdOps"
 ```
-
-</Tab>
-<Tab heading="password">
-
-Create an auth method of `password` type.
+#### Usage
 
 <CodeBlockConfig hideClipboard>
 
@@ -253,21 +265,14 @@ $ boundary accounts create password [options] [args]
 
 </CodeBlockConfig>
 
-### Password auth method options
+#### Password auth method options
 
 The following are password auth method specific options in addition to the
-command options.
+command options:
 
-- `-min-login-name-length` `(string: "")` - The minimum length of login names
+- `-min-login-name-length` `(string: "")` - Specifies the minimum length of login names.
 
-- `-min-password-length` `(string: "")` - The minimum length of passwords
-
-#### Example
-
-```shell-session
-$ boundary auth-methods create password -name prodops \
-   -description "Password auth-method for ProdOps"
-```
+- `-min-password-length` `(string: "")` - Specifies the minimum length of passwords.
 
 </Tab>
 </Tabs>
