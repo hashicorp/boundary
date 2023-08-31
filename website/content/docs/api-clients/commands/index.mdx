@@ -8,7 +8,7 @@ description: |-
 # CLI
 
 Boundary's CLI has predictable behavior throughout its various commands. This
-page details the common patterns used to help users make better use
+page details the common patterns used to help you make better use
 of the CLI.
 
 ## CLI command structure
@@ -27,7 +27,7 @@ boundary <command> <subcommand> [options] [args]
 
 </CodeBlockConfig>
 
-- `options` - [Client](/boundary/docs/api-clients/cli#client-options) and [connection](/boundary/docs/api-clients/cli#connection-options) options to specify additional settings
+- `options` - [Client](#client-options) and [connection](#connection-options) options to specify additional settings
 - `args` - API arguments specific to the operation
 
 ### Examples
@@ -66,7 +66,7 @@ Boundary uses various mechanisms, depending on platform, to allow for secure
 storage of authentication tokens for later use. Each platform has a
 platform-specific option.
 On Windows and macOS, the platform-specific options are the defaults.
-The Unix password manager [pass](https://www.passwordstore.org/) is also available on all platforms.
+The Unix password manager [pass](https://www.passwordstore.org/) is available on all platforms.
 You can also set `-keyring-type` to `none` or use the environment variable **BOUNDARY_KEYRING_TYPE** to disable storage and retrieval of the token on all platforms.
 
 Additionally, you can store or retrieve more than one token at once using the
@@ -76,7 +76,7 @@ Configuring multiple tokens lets you store tokens used by different Boundary ins
 <Tabs>
 <Tab heading="Windows">
 
-On Windows, Boundary uses the default Windows credential store (`wincred`).
+On Windows, Boundary uses the default Windows credential store, `wincred`.
 
 Available keyring types:
 
@@ -115,7 +115,7 @@ Available keyring types:
 ## Map to collections and sub-types
 
 Generally speaking, Boundary's CLI commands map to the collections they operate
-on. For instance, when operating on roles, the command is `boundary roles ...`.
+on. For example, when you operate on roles, the command is `boundary roles ...`.
 
 As a result, the patterns for reading, deleting, and listing are predictable:
 
@@ -124,7 +124,7 @@ As a result, the patterns for reading, deleting, and listing are predictable:
 - `boundary <collection> list`
 
 The `read` and `delete` commands always operate on a particular resource identifier, so
-they always require an `-id` parameter.
+they require an `-id` parameter.
 The `list` command operates on collections, so it requires either a `-scope-id` parameter or, depending on the type, a higher level resource identifier, such as `-auth-method-id`.
 
 Creating and updating resources may require an extra parameter, if the resource type
@@ -160,12 +160,12 @@ To see the available parameters, pass the `-h` flag to any command.
 Flags are semi-position dependent. The flags must come **after** the command
 definition, but are otherwise order independent.
 
-For instance, the following commands are equivalent:
+For example, the following commands are equivalent:
 
 - `boundary roles create -scope-id global -name foo`
 - `boundary roles create -name foo -scope-id global`
 
-But the following results in an error:
+But the following example results in an error:
 
 - `boundary roles -name foo -scope-id global create`
 
@@ -185,7 +185,7 @@ You should use `null` to clear a value to ensure that you revert it to Boundary'
 
 Boundary uses `null` because the API is JSON. Using `null` as the
 value causes the key for the parameter to be inserted into the eventual API
-call's JSON object. but with the value set to the JSON `null`. This in turn
+call's JSON object, but with the value set to the JSON `null`. This in turn
 informs the controller that the value should be set to its default. Keep in
 mind that this is not a direct translation to database `NULL` semantics.
 
@@ -203,30 +203,29 @@ the `-h` flag.
 $ boundary dev -help
 ```
 
-- `-addr` `(string: "")` - Address of the Boundary controller, as a complete URL
-  (as example `https://boundary.example.com:9200`). You can also specify the address
+- `-addr` `(string: "")` - Indicates the address of the Boundary controller, as a complete URL, for example `https://boundary.example.com:9200`. You can also specify the address
   using the **BOUNDARY_ADDR** environment variable.
 
-- `-ca-cert` `(string: "")` - Path on the local disk to a single PEM-encoded CA
+- `-ca-cert` `(string: "")` - Indicates the path on the local disk to a single PEM-encoded CA
   certificate that is used to verify the controller or worker's server's SSL certificate.
-  This value takes precedence over `-ca-path`. You can also specify the path can also be using the **BOUNDARY_CACERT** environment variable.
+  This value takes precedence over `-ca-path`. You can also specify the path using the **BOUNDARY_CACERT** environment variable.
 
-- `-ca-path` `(string: "")` - Path on the local disk to a directory of
+- `-ca-path` `(string: "")` - Indicates the path on the local disk to a directory of
   PEM-encoded CA certificates to verify the controller's SSL certificate.
   You can also specify the path using the **BOUNDARY_CAPATH** environment variable.
 
-- `-client-cert` `(string: "")` - Path on the local disk to a single PEM-encoded
+- `-client-cert` `(string: "")` - Indicates the path on the local disk to a single PEM-encoded
   CA certificate to use for TLS authentication to the Boundary controller. If
   you specify this flag, the `-client-key` flag is also required. You can also specify the path using the **BOUNDARY_CLIENT_CERT** environment variable.
 
-- `-client-key` `(string: "")` - Path on the local disk to a single PEM-encoded
+- `-client-key` `(string: "")` - Indicates the path on the local disk to a single PEM-encoded
   private key matching the client certificate from `-client-cert`. You can also specify the path using the **BOUNDARY_CLIENT_KEY** environment variable.
 
 - `-tls-insecure`  - Disables verification of TLS certificates.
   Using this option is highly discouraged as it decreases the security of data
   transmissions to and from the Boundary server. The default is `false`. You can also disable verification of TLS certificates using the **BOUNDARY_TLS_INSECURE** environment variable.
 
-- `-tls-server-name` `(string: "")` - Name to use as the SNI host when
+- `-tls-server-name` `(string: "")` - Specifies the name to use as the SNI host when
   you connect to the Boundary server using TLS. You can also specify the SNI host name using the
   **BOUNDARY_TLS_SERVER_NAME** environment variable.
 
@@ -235,11 +234,17 @@ $ boundary dev -help
 Every command that results in an API call contains a set of flags that control
 client options. Some notable options include the following:
 
-- `-keyring-type` `(string: "")` - The type of keyring to use. The default value is
+- `-keyring-type` `(string: "")` - Indicates the type of keyring to use. The default value is
   `auto`, which uses the Windows credential manager, OSX keychain, or
-  cross-platform password store depending on platform. Set this value to `none` to disable
-  keyring functionality. Available keyring types, depending on platform, are: `wincred`,
-  `keychain`, `pass`, and `secret-service`. You can also specify the keyring type using the **BOUNDARY_KEYRING_TYPE** environment variable.
+  cross-platform password store, depending on platform. Set this value to `none` to disable
+  keyring functionality. Available keyring types, depending on platform, are:
+
+  - `wincred`
+  - `keychain`
+  - `pass`
+  - `secret-service`
+
+  You can also specify the keyring type using the **BOUNDARY_KEYRING_TYPE** environment variable.
 
 - `-output-curl-string`  - Formats the command that
   would have been run as a string using `curl` that you can use directly on the
@@ -250,15 +255,14 @@ client options. Some notable options include the following:
   file that contains the information necessary to access a KMS configured to be
   used for the recovery workflow within a Boundary controller. You can also specify the configuration file using the **BOUNDARY_RECOVERY_CONFIG** environment variable.
 
-- `-token` `(string: "")` - A URL that points to a file on disk `(file://)` from
-  which a token is read or an environment variable `(env://)` from which the token is read. This value overrides the `token-name` parameter.
+- `-token` `(string: "")` - Specifies a URL that points to a file on disk `(file://)` or an environment variable `(env://)` from which the token is read. This value overrides the `token-name` parameter.
 
 - `-token-name` `(string: "")` - Designates the name of the token. When the CLI authenticates, it stores the token
   in the platform-specific OS credential store. You can use the `token-name`
-  parameter to store more than one token at a time. Specifying this
-  parameter during authentication uses the given name as part of the key for
-  storage; specifying it for any other command causes the corresponding
-  token to be used for that call. You can also specify the token name using the
+  parameter to store more than one token at a time. When you specify this
+  parameter during authentication, Boundary uses the given name as part of the key for
+  storage. If you specify it for any other command, Boundary uses the corresponding
+  token for that call. You can also specify the token name using the
   **BOUNDARY_TOKEN_NAME** environment variable.
 
 ### Output options
@@ -267,7 +271,7 @@ Nearly every command supports having its success output be formatted as JSON via
 `-format json`. For commands that result in an API call, the JSON output is
 the exact output from the controller. If you use the output of the CLI in scripts
 or as parameters to other tools, **always** use the formatted output. The default text
-output is meant for human users. and the formatting or the information included
+output is meant for human users, and the formatting or the information included
 within that output from the original JSON may change at any time.
 
 Note that using `-format json` on a `boundary authenticate` command results in
@@ -292,16 +296,16 @@ Boundary includes the following environment variables to help you configure conn
 
 ### `BOUNDARY_ADDR`
 
-Address of the Boundary controller as a complete URL (e.g. https://boundary.example.com:9200)
+Indicates the address of the Boundary controller as a complete URL, for example `https://boundary.example.com:9200`.
 
 ### `BOUNDARY_CACERT`
 
-Path on the local disk to a single PEM-encoded CA certificate to verify the controller
+Specifies the path on the local disk to a single PEM-encoded CA certificate to verify the controller
 or worker's SSL certificate. This variable takes precedence over the `BOUNDARY_CAPATH` variable or `-ca-path` connection option, if specified.
 
 ### `BOUNDARY_CAPATH`
 
-Path on the local disk to a directory of PEM-encoded CA certificates to verify the SSL
+Specifies the path on the local disk to a directory of PEM-encoded CA certificates to verify the SSL
 certificate of the controller.
 
 ### `BOUNDARY_CLIENT_CERT`
@@ -311,7 +315,7 @@ to the Boundary controller. If you set the path, you must also specify a client 
 
 ### `BOUNDARY_CLIENT_KEY`
 
-Path on the local disk to a single PEM-encoded private key that matches the client certificate
+Specifies the path on the local disk to a single PEM-encoded private key that matches the client certificate
 specified by the `BOUNDARY_CLIENT_CERT` variable or the `-client-cert` connection option.
 
 ### `BOUNDARY_TLS_INSECURE`
@@ -321,7 +325,7 @@ decreases the security of data transmissions to and from the Boundary server. Th
 
 ### `BOUNDARY_TLS_SERVER_NAME`
 
-Name to use as the SNI host when connecting to the Boundary server via TLS.
+Indicates the name to use as the SNI host when you connect to the Boundary server using TLS.
 
 ### Client options
 
@@ -329,14 +333,19 @@ Boundary includes the following environment variables to help you configure clie
 
 ### `BOUNDARY_KEYRING_TYPE`
 
-The type of keyring to use. Defaults to `auto` which uses the Windows credential manager,
-OSX keychain, or cross-platform password store, depending on platform.
+Specifies the type of keyring to use. Defaults to `auto` which uses the Windows credential manager,
+OSX keychain, or cross-platform password store, depending on the platform.
 Set the value to `none` to disable keyring
-functionality. Available keyring types, depending on the platform, include: `wincred`, `keychain`, `pass`, and `secret-service`.
+functionality. Available keyring types, depending on the platform, include:
+
+- `wincred`
+- `keychain`
+- `pass`
+- `secret-service`
 
 ### `BOUNDARY_RECOVERY_CONFIG`
 
-Determines if the given config file is parsed for a "kms" block with the purpose "recovery".
+Determines if the given config file is parsed for a "kms" block with the purpose `recovery`.
 If you specify a value, Boundary uses the recovery mechanism to authorize the call.
 
 ### `BOUNDARY_TOKEN_NAME`
@@ -350,14 +359,14 @@ Boundary includes the following environment variables to help you configure conn
 
 ### `BOUNDARY_CONNECT_AUTHZ_TOKEN`
 
-The authorization string returned from the Boundary controller when an "authorize-session" action is used against a target.
+Specifies the authorization string returned from the Boundary controller when an "authorize-session" action is used against a target.
 If you set the string to `-`, the command attempts to read in the authorization string from standard input.
 
 ### `BOUNDARY_CONNECT_EXEC`
 
 Executes the given binary after connecting to the worker.
 This enviornment variable should be a binary on your path or an absolute path.
-If you follow any command flags with " -- " (space, two hyphens, space), then any arguments that follow are set directly to the binary.
+If you follow any command flags with ` -- ` (space, two hyphens, space), then any arguments that follow are set directly to the binary.
 
 ### `BOUNDARY_CONNECT_LISTEN_ADDR`
 
@@ -372,12 +381,12 @@ If the CLI cannot bind the address, the command produces an error.
 
 ### `BOUNDARY_CONNECT_TARGET_SCOPE_ID`
 
-Target scope ID, if you authorize the session using scope parameters and target name.
+Indicates the target scope ID, if you authorize the session using scope parameters and target name.
 This variable is mutually exclusive with `BOUNDARY_CONNECT_TARGET_SCOPE_NAME`.
 
 ### `BOUNDARY_CONNECT_TARGET_SCOPE_NAME`
 
-Target scope name, if you authorize the session using scope parameters and target name.
+Indicates the target scope name, if you authorize the session using scope parameters and target name.
 This variable is mutually exclusive with `BOUNDARY_CONNECT_TARGET_SCOPE_ID`.
 
 ### Command options
