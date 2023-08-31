@@ -214,19 +214,7 @@ func (w *Worker) v1KmsAuthDialFn(ctx context.Context, addr string, extraAlpnProt
 
 func (w *Worker) createClientConn(addr string) error {
 	const op = "worker.(Worker).createClientConn"
-	defaultTimeout := (time.Second + time.Nanosecond).String()
-	defServiceConfig := fmt.Sprintf(`
-	  {
-		"loadBalancingConfig": [ { "round_robin": {} } ],
-		"methodConfig": [
-		  {
-			"name": [],
-			"timeout": %q,
-			"waitForReady": true
-		  }
-		]
-	  }
-	  `, defaultTimeout)
+
 	var res resolver.Builder
 	for _, v := range w.addressReceivers {
 		if rec, ok := v.(*grpcResolverReceiver); ok {
@@ -236,26 +224,9 @@ func (w *Worker) createClientConn(addr string) error {
 	if res == nil {
 		return errors.New(w.baseContext, errors.Internal, op, "unable to find a resolver.Builder amongst the address receivers")
 	}
-	dialOpts := []grpc.DialOption{
-		grpc.WithResolvers(res),
-		grpc.WithUnaryInterceptor(metric.InstrumentClusterClient()),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
-		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
-		grpc.WithContextDialer(w.upstreamDialerFunc()),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithDefaultServiceConfig(defServiceConfig),
-		// Don't have the resolver reach out for a service config from the
-		// resolver, use the one specified as default
-		grpc.WithDisableServiceConfig(),
-		grpc.WithConnectParams(grpc.ConnectParams{
-			Backoff: backoff.Config{
-				BaseDelay:  time.Second,
-				Multiplier: 1.2,
-				Jitter:     0.2,
-				MaxDelay:   3 * time.Second,
-			},
-		}),
-	}
+
+	dialOpts := createDefaultGRPCDialOptions(res, w.upstreamDialerFunc())
+
 	cc, err := grpc.DialContext(w.baseContext,
 		fmt.Sprintf("%s:///%s", res.Scheme(), addr),
 		dialOpts...,
@@ -277,6 +248,46 @@ func (w *Worker) createClientConn(addr string) error {
 	go monitorUpstreamConnectionState(w.baseContext, cc, w.upstreamConnectionState)
 
 	return nil
+}
+
+// createDefaultGRPCDialOptions creates grpc.DialOption using default options
+func createDefaultGRPCDialOptions(res resolver.Builder, upstreamDialerFn func(context.Context, string) (net.Conn, error)) []grpc.DialOption {
+	defaultTimeout := (time.Second + time.Nanosecond).String()
+	defServiceConfig := fmt.Sprintf(`
+	  {
+		"loadBalancingConfig": [ { "round_robin": {} } ],
+		"methodConfig": [
+		  {
+			"name": [],
+			"timeout": %q,
+			"waitForReady": true
+		  }
+		]
+	  }
+	  `, defaultTimeout)
+
+	dialOpts := []grpc.DialOption{
+		grpc.WithResolvers(res),
+		grpc.WithUnaryInterceptor(metric.InstrumentClusterClient()),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(math.MaxInt32)),
+		grpc.WithContextDialer(upstreamDialerFn),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultServiceConfig(defServiceConfig),
+		// Don't have the resolver reach out for a service config from the
+		// resolver, use the one specified as default
+		grpc.WithDisableServiceConfig(),
+		grpc.WithConnectParams(grpc.ConnectParams{
+			Backoff: backoff.Config{
+				BaseDelay:  time.Second,
+				Multiplier: 1.2,
+				Jitter:     0.2,
+				MaxDelay:   3 * time.Second,
+			},
+		}),
+	}
+
+	return dialOpts
 }
 
 func (w *Worker) workerAuthTLSConfig(extraAlpnProtos ...string) (*tls.Config, *base.WorkerAuthInfo, error) {
@@ -411,17 +422,17 @@ func (w *Worker) workerConnectionInfo(addr string) (*structpb.Struct, error) {
 
 // monitorUpstreamConnectionState listens for new state changes from grpc client
 // connection and updates the state
-func monitorUpstreamConnectionState(context context.Context, cc *grpc.ClientConn, connectionState *atomic.Value) {
+func monitorUpstreamConnectionState(ctx context.Context, cc *grpc.ClientConn, connectionState *atomic.Value) {
 	var state connectivity.State
 	if v := connectionState.Load(); !util.IsNil(v) {
 		state = v.(connectivity.State)
 	}
 
-	for cc.WaitForStateChange(context, state) {
+	for cc.WaitForStateChange(ctx, state) {
 		newState := cc.GetState()
 
-		// if the client is shutdown, exit function
-		if newState == connectivity.Shutdown {
+		// if the client is shutdown or if ctx is canceled, exit function
+		if newState == connectivity.Shutdown || ctx.Err() != nil {
 			return
 		}
 
