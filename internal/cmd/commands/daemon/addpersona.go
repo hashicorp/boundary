@@ -117,8 +117,9 @@ func addPersona(ctx context.Context, daemonPath string, p *personaToAdd) (*api.E
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if _, err := os.Stat(strings.TrimPrefix(addr, "unix://")); strings.HasPrefix(addr, "unix://") && err == os.ErrNotExist {
-		return nil, errors.New(ctx, errors.Internal, op, "daemon unix socket is not setup")
+	_, err = os.Stat(strings.TrimPrefix(addr, "unix://"))
+	if strings.HasPrefix(addr, "unix://") && err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	if err := client.SetAddr(addr); err != nil {
 		return nil, errors.Wrap(ctx, err, op)

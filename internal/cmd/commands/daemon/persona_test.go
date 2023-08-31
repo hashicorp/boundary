@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -129,6 +130,19 @@ func TestPersona(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, apiErr)
 		assert.Contains(t, apiErr.Message, "id doesn't match")
+		assert.False(t, tr.called)
+	})
+
+	t.Run("not found unix socket", func(t *testing.T) {
+		pa := &personaToAdd{
+			KeyringType:  "akeyringtype",
+			TokenName:    "default",
+			BoundaryAddr: "http://127.0.0.1",
+			AuthTokenId:  "at_1234567890",
+		}
+		apiErr, err := addPersona(ctx, filepath.Join(tmpdir, "doesnt_exist"), pa)
+		assert.ErrorContains(t, err, "no such file or directory")
+		assert.Nil(t, apiErr)
 		assert.False(t, tr.called)
 	})
 
