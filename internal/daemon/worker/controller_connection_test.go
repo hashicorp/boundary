@@ -113,6 +113,8 @@ func waitForConnectionStateCondition(upstreamConnectionState *atomic.Value, expe
 			ch <- struct{}{}
 			return
 		}
+		// Small delay for checking state
+		time.Sleep(time.Millisecond)
 	}
 }
 
