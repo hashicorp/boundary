@@ -26,7 +26,7 @@ func TestMonitorUpstreamConnectionState(t *testing.T) {
 	ctx := context.Background()
 	stateCtx, cancelStateCtx := context.WithCancel(ctx)
 
-	controllerConnectionState := new(atomic.Value)
+	upstreamConnectionState := new(atomic.Value)
 
 	servers, err := createTestServers(t)
 	require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestMonitorUpstreamConnectionState(t *testing.T) {
 	require.NoError(t, err)
 
 	// track GRPC state changes
-	go monitorUpstreamConnectionState(stateCtx, cc, controllerConnectionState)
+	go monitorUpstreamConnectionState(stateCtx, cc, upstreamConnectionState)
 
 	grpcResolver.InitialAddresses([]string{servers[0].address})
 
@@ -89,7 +89,7 @@ func TestMonitorUpstreamConnectionState(t *testing.T) {
 			// Add delay for connection state to update with GRPC manual resolver
 			time.Sleep(2 * time.Second)
 
-			got := controllerConnectionState.Load()
+			got := upstreamConnectionState.Load()
 			assert.Equal(t, tt.expectedState, got)
 		})
 	}
