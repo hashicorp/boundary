@@ -345,13 +345,8 @@ func TestList(t *testing.T) {
 		})
 	}
 
-	sorterFn := func(a *pb.AuthMethod, b *pb.AuthMethod) bool {
-		switch {
-		case a.GetId() > b.GetId():
-			return true
-		default:
-			return false
-		}
+	sorterFn := func(a *pb.AuthMethod, b *pb.AuthMethod) int {
+		return strings.Compare(a.GetId(), b.GetId())
 	}
 	cpSorted := func(ams []*pb.AuthMethod) []*pb.AuthMethod {
 		cp := make([]*pb.AuthMethod, 0, len(ams))
