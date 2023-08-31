@@ -34,6 +34,8 @@ type LdapAuthMethodAttributes struct {
 	BindPasswordHmac         string   `json:"bind_password_hmac,omitempty"`
 	UseTokenGroups           bool     `json:"use_token_groups,omitempty"`
 	AccountAttributeMaps     []string `json:"account_attribute_maps,omitempty"`
+	MaximumPageSize          uint32   `json:"maximum_page_size,omitempty"`
+	DereferenceAliases       string   `json:"dereference_aliases,omitempty"`
 }
 
 func AttributesMapToLdapAuthMethodAttributes(in map[string]interface{}) (*LdapAuthMethodAttributes, error) {
