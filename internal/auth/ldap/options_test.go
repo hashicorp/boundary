@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -323,5 +324,30 @@ func Test_getOpts(t *testing.T) {
 		assert.NotEqual(opts, testOpts)
 		testOpts.withPublicId = "test"
 		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithMaximumPageSize", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithMaximumPageSize(testCtx, 10))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withMaximumPageSize = 10
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithDerefAliases", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithDerefAliases(testCtx, DerefAlways))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withDerefAliases = DerefAlways
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithDerefAliases-invalid", func(t *testing.T) {
+		assert := assert.New(t)
+		_, err := getOpts(WithDerefAliases(testCtx, "Invalid"))
+		require.Error(t, err)
+		assert.ErrorContains(err, `"Invalid" is not a valid ldap dereference alias type`)
+		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "want err code: %q got: %q", errors.InvalidParameter, err)
 	})
 }
