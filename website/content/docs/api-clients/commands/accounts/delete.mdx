@@ -2,19 +2,19 @@
 layout: docs
 page_title: accounts delete - Command
 description: |-
-  The "accounts delete" command allows Boundary admin to delete an account resource.
+  The "accounts delete" command lets Boundary admin delete an account resource.
 ---
 
 # accounts delete
 
 Command: `boundary accounts delete`
 
-The `accounts delete` command deletes an existing account.
+The `accounts delete` command lets you delete an existing account.
 
 
 ## Examples
 
-Delete an account with the given ID. 
+The folloiwng example deletes an account with the ID `acctpw_0987654321`.
 
 ```shell-session
 $ boundary accounts delete -id=acctpw_0987654321
@@ -34,6 +34,6 @@ $ boundary accounts delete [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - ID of the account to delete.
+- `-id` `(string: "")` - Specifies the ID of the account to delete.
 
 @include 'cmd-option-note.mdx'

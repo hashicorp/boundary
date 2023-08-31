@@ -2,20 +2,22 @@
 layout: docs
 page_title: accounts create - Command
 description: |-
-  The "accounts create" command allows Boundary admin to create a new account resource.
+  The "accounts create" command lets Boundary admin create a new account resource.
 ---
 
 # accounts create
 
 Command: `boundary accounts create`
 
-The `accounts create` command creates an account associated with LDAP, OIDC, or
-password auth method.
+The `accounts create` command lets you create an account associated with one of the following auth methods:
 
-## Examples
+- LDAP
+- OIDC
+- Password
 
-Create an account named "test_account". Give it a password `supersecure` when
-prompted.
+## Example
+
+The following example creates an account named `test_account`. In this example, you provide a password when prompted:
 
 ```shell-session
 $ boundary accounts create password \
@@ -73,23 +75,34 @@ $ boundary accounts create [type] [options] [args]
 
 </CodeBlockConfig>
 
-The available types are: `ldap`, `oidc`, and `password`.
-
 ### Command options
 
-- `-auth-method-id` `(string: "")` - The auth-method resource to use for the
-   operation. This can also be specified via the `BOUNDARY_AUTH_METHOD_ID`
+- `-auth-method-id` `(string: "")` - Indicates the auth-method resource to use for the
+   operation. You can also specify the auth-method using the `BOUNDARY_AUTH_METHOD_ID`
    environment variable.
-- `-description` `(string: "")` - Description to set on the account.
-- `-name` `(string: "")` - Name to set on the account.
+- `-description` `(string: "")` - Indicates the description to set for the account.
+- `-name` `(string: "")` - Indicates the name to set on the account.
 
 
-#### Usages by type
+### Usages by type
+
+You can create `ldap`, `oidc`, and `password` type accounts.
 
 <Tabs>
-<Tab heading="ldap">
+<Tab heading="LDAP">
 
-Create an account of `ldap` type.
+The `boundary accounts create ldap` command creates an account of `ldap` type.
+
+#### Example
+
+The example below creates an LDAP account with the login name `prodops` and the description `ldap account for ProdOps`:
+
+```shell-session
+$ boundary accounts create ldap -login-name prodops \
+   -description "ldap account for ProdOps"
+```
+
+#### Usage
 
 <CodeBlockConfig hideClipboard>
 
@@ -99,25 +112,27 @@ $ boundary accounts create ldap [options] [args]
 
 </CodeBlockConfig>
 
-
 #### LDAP account option
 
-The following are LDAP account specific options in addition to the command
-options.
+The following option is LDAP-specific, in addition to the command options:
 
-- `-login-name` `(string: "")` - The login name for the account.
+- `-login-name` `(string: "")` - Specifies the login name for the account.
+
+</Tab>
+<Tab heading="OIDC">
+
+The `boundary accounts create oidc` command creates an account of `oidc` type.
 
 #### Example
 
+The following example creates an OIDC account with the subject `prodops` and the description `Oidc account for ProdOps`:
+
 ```shell-session
-$ boundary accounts create ldap -login-name prodops \
-   -description "ldap account for ProdOps"
+$ boundary accounts create oidc -subject "prodops" \
+   -description "Oidc account for ProdOps"
 ```
 
-</Tab>
-<Tab heading="oidc">
-
-Create an account of `oidc` type.
+#### Usage
 
 <CodeBlockConfig hideClipboard>
 
@@ -129,23 +144,26 @@ $ boundary accounts create oidc [options] [args]
 
 #### OIDC account options
 
-The following are OIDC account specific options in addition to the command
-options.
+The following options are OIDC-specific, in addition to the command options:
 
-- `-issuer` `(string: "")` - The issuer for the account.
-- `-subject` `(string: "")` - The subject for this account on the OIDC provider.
+- `-issuer` `(string: "")` - Indicates the issuer for the account.
+- `-subject` `(string: "")` - Indicates the subject for this account on the OIDC provider.
+
+</Tab>
+<Tab heading="Password">
+
+The `boundary accounts create password` command creates an account of `password` type.
 
 #### Example
 
+The following example creates a password-type account with the login name `prodops` and the description `Password account for ProdOps`:
+
 ```shell-session
-$ boundary accounts create oidc -subject "prodops" \
-   -description "Oidc account for ProdOps"
+$ boundary accounts create password -login-name prodops \
+   -description "Password account for ProdOps"
 ```
 
-</Tab>
-<Tab heading="password">
-
-Create an account of `password` type.
+#### Usage
 
 <CodeBlockConfig hideClipboard>
 
@@ -155,24 +173,15 @@ $ boundary accounts create password [options] [args]
 
 </CodeBlockConfig>
 
-### Password account options
+#### Password account options
 
-The following are password account specific options in addition to the command
-options.
+The following options are password-specific, in addition to the command
+options:
 
-- `-login-name` `(string: "")` - The login name for the account
-- `-password` `(string: "")` - The password for the account. If blank, the
-   command will prompt for the password to be entered interactively in a
-   non-echoing way. Otherwise, this can refer to a file on disk (`file://`) from
-   which a password will be read or an environment variable (`env://`) from
-   which the password will be read.
-
-#### Example
-
-```shell-session
-$ boundary accounts create password -login-name prodops \
-   -description "Password account for ProdOps"
-```
+- `-login-name` `(string: "")` - Indicates the login name for the account
+- `-password` `(string: "")` - Indicates the password for the account. If blank, the
+   command prompts you to enter the password interactively in a
+   non-echoing way. Otherwise, thi value can refer to a file on disk (`file://`) or an environment variable (`env://`) from which the password is read.
 
 </Tab>
 </Tabs>

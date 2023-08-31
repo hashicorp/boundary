@@ -2,19 +2,19 @@
 layout: docs
 page_title: accounts read - Command
 description: |-
-  The "accounts read" command allows Boundary admin to read an account resource.
+  The "accounts read" command lets Boundary admin read an account resource.
 ---
 
 # accounts read
 
 Command: `boundary accounts read`
 
-The `accounts read` command retrieves the account details for a given ID.
+The `accounts read` command retrieves the account details for a given account ID.
 
 
 ## Examples
 
-Read an account information with ID, `acctpw_1234567890`.
+The following example reads any account information with the ID `acctpw_1234567890`:
 
 ```shell-session
 $ boundary accounts read -id acctpw_1234567890
@@ -65,6 +65,6 @@ $ boundary accounts read [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - ID of the account to operate.
+- `-id` `(string: "")` - Indicates the ID of the account to read.
 
 @include 'cmd-option-note.mdx'

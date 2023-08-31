@@ -32,7 +32,7 @@ boundary <command> <subcommand> [options] [args]
 
 ### Examples
 
-The following example shows the use of the [`-addr`](/boundary/docs/api-clients/cli#addr) flag to specify which Boundary controller to send a request to.
+The following example shows the use of the [`-addr`](/boundary/docs/api-clients/cli#addr) flag to specify which Boundary controller to send a request to:
 
 ```shell-session
 $ boundary authenticate password \
@@ -78,7 +78,7 @@ Configuring multiple tokens lets you store tokens used by different Boundary ins
 
 On Windows, Boundary uses the default Windows credential store, `wincred`.
 
-Available keyring types:
+Available keyring types include:
 
 - `wincred` (default)
 - `pass`
@@ -90,7 +90,7 @@ Available keyring types:
 On macOS, Boundary uses Keychain via `/usr/bin/security`.
 Using this binary lets us keep the Boundary binary statically linked, which we prefer.
 
-Available keyring types:
+Available keyring types include:
 
 - `keychain` (default)
 - `pass`
@@ -102,7 +102,7 @@ Available keyring types:
 On all other platforms, the default is `pass`.
 However, you can use an implementation of the [freedesktop.org secret service](https://specifications.freedesktop.org/secret-service/latest/) if it is available via `gnome-keyring`, `kwallet`, or other applications.
 
-Available keyring types:
+Available keyring types include:
 
 - `pass` (default)
 - `secret-service`
