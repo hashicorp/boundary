@@ -336,6 +336,26 @@ func Test_Unmarshaling(t *testing.T) {
 			textErr:   `perms.(Grant).unmarshalText: empty ID provided: parameter violation: error #100`,
 		},
 		{
+			name:      "segment ids comma",
+			jsonInput: `{"ids":[","]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids starting with comma",
+			jsonInput: `{"ids":[",something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids with comma",
+			jsonInput: `{"ids":["some,thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids ending with comma",
+			jsonInput: `{"ids":["something,"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
 			name: "good id",
 			expected: Grant{
 				id: "foobar",
@@ -425,7 +445,22 @@ func Test_Unmarshaling(t *testing.T) {
 		{
 			name:      "bad output fields comma",
 			jsonInput: `{"output_fields":[","]}`,
-			jsonErr:   `perms.(Grant).unmarshalJSON: "," is not a valid output field: parameter violation: error #100`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "output fields starting with comma",
+			jsonInput: `{"output_fields":[",something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "output fields with comma",
+			jsonInput: `{"output_fields":["some,thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "output fields ending with comma",
+			jsonInput: `{"output_fields":["something,"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma: parameter violation: error #100`,
 		},
 		{
 			name: "good actions",

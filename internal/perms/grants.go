@@ -232,11 +232,13 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 		g.ids = make([]string, len(ids))
 		for i, id := range ids {
 			idStr, ok := id.(string)
-			if !ok {
+			switch {
+			case !ok:
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q element %q as string", "ids", id))
-			}
-			if idStr == "" {
+			case idStr == "":
 				return errors.New(ctx, errors.InvalidParameter, op, "empty ID provided")
+			case strings.Contains(idStr, ","):
+				return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma")
 			}
 			g.ids[i] = idStr
 		}
@@ -289,8 +291,8 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 				switch {
 				case !ok:
 					return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
-				case field == ",":
-					return errors.New(ctx, errors.InvalidParameter, op, `"," is not a valid output field`)
+				case strings.Contains(field, ","):
+					return errors.New(ctx, errors.InvalidParameter, op, "output fields cannot contain a comma")
 				default:
 					fields = append(fields, field)
 				}
