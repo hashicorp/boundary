@@ -219,8 +219,13 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 	}
 	if rawId, ok := raw["id"]; ok {
 		id, ok := rawId.(string)
-		if !ok {
+		switch {
+		case !ok:
 			return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q as string", "id"))
+		case id == "":
+			return errors.New(ctx, errors.InvalidParameter, op, "empty ID provided")
+		case strings.ContainsAny(id, ",;="):
+			return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma, semicolon or equals sign")
 		}
 		g.id = id
 	}
@@ -237,8 +242,8 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q element %q as string", "ids", id))
 			case idStr == "":
 				return errors.New(ctx, errors.InvalidParameter, op, "empty ID provided")
-			case strings.Contains(idStr, ","):
-				return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma")
+			case strings.ContainsAny(idStr, ",;="):
+				return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma, semicolon or equals sign")
 			}
 			g.ids[i] = idStr
 		}
@@ -267,6 +272,8 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 					return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in actions array as string", v))
 				case actionStr == "":
 					return errors.New(ctx, errors.InvalidParameter, op, "empty action found")
+				case strings.ContainsAny(actionStr, ",;="):
+					return errors.New(ctx, errors.InvalidParameter, op, "action cannot contain a comma, semicolon or equals sign")
 				default:
 					g.actionsBeingParsed = append(g.actionsBeingParsed, strings.ToLower(actionStr))
 				}
@@ -291,8 +298,8 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 				switch {
 				case !ok:
 					return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
-				case strings.Contains(field, ","):
-					return errors.New(ctx, errors.InvalidParameter, op, "output fields cannot contain a comma")
+				case strings.ContainsAny(field, ",;="):
+					return errors.New(ctx, errors.InvalidParameter, op, "output fields cannot contain a comma, semicolon or equals sign")
 				default:
 					fields = append(fields, field)
 				}
@@ -322,6 +329,9 @@ func (g *Grant) unmarshalText(ctx context.Context, grantString string) error {
 		switch kv[0] {
 		case "id":
 			g.id = kv[1]
+			if strings.Contains(g.id, ",") {
+				return errors.New(ctx, errors.InvalidParameter, op, "ID cannot contain a comma")
+			}
 
 		case "ids":
 			g.ids = strings.Split(kv[1], ",")

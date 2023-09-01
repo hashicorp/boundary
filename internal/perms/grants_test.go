@@ -322,6 +322,34 @@ func Test_Unmarshaling(t *testing.T) {
 			textErr:   `perms.(Grant).unmarshalText: segment "id=" not formatted correctly, missing value: parameter violation: error #100`,
 		},
 		{
+			name:      "bad segment id comma",
+			jsonInput: `{"id":","}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+			textInput: `id=,`,
+			textErr:   `perms.(Grant).unmarshalText: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "bad segment id start with comma",
+			jsonInput: `{"id":",something"}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+			textInput: `id=,something`,
+			textErr:   `perms.(Grant).unmarshalText: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "bad segment id with comma",
+			jsonInput: `{"id":"some,thing"}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+			textInput: `id=some,thing`,
+			textErr:   `perms.(Grant).unmarshalText: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
+			name:      "bad segment id end with comma",
+			jsonInput: `{"id":"something,"}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+			textInput: `id=something,`,
+			textErr:   `perms.(Grant).unmarshalText: ID cannot contain a comma: parameter violation: error #100`,
+		},
+		{
 			name:      "bad segment ids",
 			jsonInput: `{"ids":true}`,
 			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "ids" as array: parameter violation: error #100`,
@@ -338,22 +366,62 @@ func Test_Unmarshaling(t *testing.T) {
 		{
 			name:      "segment ids comma",
 			jsonInput: `{"ids":[","]}`,
-			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma: parameter violation: error #100`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name:      "segment ids starting with comma",
 			jsonInput: `{"ids":[",something"]}`,
-			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma: parameter violation: error #100`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name:      "segment ids with comma",
 			jsonInput: `{"ids":["some,thing"]}`,
-			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma: parameter violation: error #100`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name:      "segment ids ending with comma",
 			jsonInput: `{"ids":["something,"]}`,
-			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma: parameter violation: error #100`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids semicolon",
+			jsonInput: `{"ids":[","]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids starting with semicolon",
+			jsonInput: `{"ids":[";something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids with semicolon",
+			jsonInput: `{"ids":["some;thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids ending with semicolon",
+			jsonInput: `{"ids":["something;"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids equals sign",
+			jsonInput: `{"ids":["="]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids starting with equals sign",
+			jsonInput: `{"ids":["=something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids with equals sign",
+			jsonInput: `{"ids":["some=thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids ending with equals sign",
+			jsonInput: `{"ids":["something="]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name: "good id",
@@ -445,22 +513,62 @@ func Test_Unmarshaling(t *testing.T) {
 		{
 			name:      "bad output fields comma",
 			jsonInput: `{"output_fields":[","]}`,
-			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma: parameter violation: error #100`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name:      "output fields starting with comma",
 			jsonInput: `{"output_fields":[",something"]}`,
-			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma: parameter violation: error #100`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name:      "output fields with comma",
 			jsonInput: `{"output_fields":["some,thing"]}`,
-			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma: parameter violation: error #100`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name:      "output fields ending with comma",
 			jsonInput: `{"output_fields":["something,"]}`,
-			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma: parameter violation: error #100`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: output fields cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids semicolon",
+			jsonInput: `{"ids":[";"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids starting with semicolon",
+			jsonInput: `{"ids":[";something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids with semicolon",
+			jsonInput: `{"ids":["some;thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids ending with semicolon",
+			jsonInput: `{"ids":["something;"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids equals sign",
+			jsonInput: `{"ids":["="]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids starting with equals sign",
+			jsonInput: `{"ids":["=something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids with equals sign",
+			jsonInput: `{"ids":["some=thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment ids ending with equals sign",
+			jsonInput: `{"ids":["something="]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: ID cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 		{
 			name: "good actions",
@@ -488,6 +596,26 @@ func Test_Unmarshaling(t *testing.T) {
 			name:      "bad json action",
 			jsonInput: `{"actions":[1, true]}`,
 			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret 1 in actions array as string: parameter violation: error #100`,
+		},
+		{
+			name:      "segment actions comma",
+			jsonInput: `{"actions":[","]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: action cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment actions starting with comma",
+			jsonInput: `{"actions":[",something"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: action cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment actions with comma",
+			jsonInput: `{"actions":["some,thing"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: action cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
+		},
+		{
+			name:      "segment actions ending with comma",
+			jsonInput: `{"actions":["something,"]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: action cannot contain a comma, semicolon or equals sign: parameter violation: error #100`,
 		},
 	}
 
@@ -1196,6 +1324,7 @@ func FuzzParse(f *testing.F) {
 		"ids={{account.id}},{{user.id}};actions=update,read",
 		`{"id":"foobar","type":"host-catalog","actions":["create"]}`,
 		`{"ids":["foobar"],"type":"host-catalog","actions":["create"]}`,
+		`{"ids":["\""]}`,
 	}
 	for _, tc := range tc {
 		f.Add(tc)
