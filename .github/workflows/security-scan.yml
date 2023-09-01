@@ -25,7 +25,7 @@ jobs:
         echo "go-version=$(cat .go-version)" >> "$GITHUB_OUTPUT"
 
     - name: Set up Go
-      uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+      uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
       with:
         go-version: "${{ steps.get-go-version.outputs.go-version }}"
         cache: false
@@ -76,7 +76,7 @@ jobs:
         repository: "$PWD"
 
     - name: Upload SARIF file
-      uses: github/codeql-action/upload-sarif@85c77f1dfc42a47cc98299e8779c151d2159b120 # codeql-bundle-v2.14.0
+      uses: github/codeql-action/upload-sarif@f9a7c6738f28efb36e31d49c53a201a9c5d6a476 # codeql-bundle-v2.14.2
       with:
         sarif_file: results.sarif
 
