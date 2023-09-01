@@ -329,6 +329,11 @@ func Test_Unmarshaling(t *testing.T) {
 			textErr:   `perms.(Grant).unmarshalText: segment "ids=" not formatted correctly, missing value: parameter violation: error #100`,
 		},
 		{
+			name:      "bad json segment ids",
+			jsonInput: `{"ids":[""]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: segment "ids=" not formatted correctly, missing value: parameter violation: error #100`,
+		},
+		{
 			name: "good id",
 			expected: Grant{
 				id: "foobar",
@@ -414,6 +419,11 @@ func Test_Unmarshaling(t *testing.T) {
 			jsonErr:   `perms.(Grant).unmarshalJSON: unable to interpret "output_fields" as array: parameter violation: error #100`,
 			textInput: `output_fields=ids=version,name`,
 			textErr:   `perms.(Grant).unmarshalText: segment "output_fields=ids=version,name" not formatted correctly, wrong number of equal signs: parameter violation: error #100`,
+		},
+		{
+			name:      "bad output fields comma",
+			jsonInput: `{"output_fields":[","]}`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: "," is not a valid output field: parameter violation: error #100`,
 		},
 		{
 			name: "good actions",

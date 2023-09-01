@@ -235,6 +235,9 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 			if !ok {
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q element %q as string", "ids", id))
 			}
+			if idStr == "" {
+				return errors.New(ctx, errors.InvalidParameter, op, `segment "ids=" not formatted correctly, missing value`)
+			}
 			g.ids[i] = idStr
 		}
 	}
@@ -286,6 +289,8 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 				switch {
 				case !ok:
 					return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %v in output_fields array as string", v))
+				case field == ",":
+					return errors.New(ctx, errors.InvalidParameter, op, `"," is not a valid output field`)
 				default:
 					fields = append(fields, field)
 				}
