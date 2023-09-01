@@ -329,9 +329,11 @@ func Test_Unmarshaling(t *testing.T) {
 			textErr:   `perms.(Grant).unmarshalText: segment "ids=" not formatted correctly, missing value: parameter violation: error #100`,
 		},
 		{
-			name:      "bad json segment ids",
+			name:      "empty segment ids",
 			jsonInput: `{"ids":[""]}`,
-			jsonErr:   `perms.(Grant).unmarshalJSON: segment "ids=" not formatted correctly, missing value: parameter violation: error #100`,
+			jsonErr:   `perms.(Grant).unmarshalJSON: empty ID provided: parameter violation: error #100`,
+			textInput: `ids=,`,
+			textErr:   `perms.(Grant).unmarshalText: empty ID provided: parameter violation: error #100`,
 		},
 		{
 			name: "good id",

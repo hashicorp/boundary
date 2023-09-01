@@ -236,7 +236,7 @@ func (g *Grant) unmarshalJSON(ctx context.Context, data []byte) error {
 				return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unable to interpret %q element %q as string", "ids", id))
 			}
 			if idStr == "" {
-				return errors.New(ctx, errors.InvalidParameter, op, `segment "ids=" not formatted correctly, missing value`)
+				return errors.New(ctx, errors.InvalidParameter, op, "empty ID provided")
 			}
 			g.ids[i] = idStr
 		}
@@ -323,6 +323,11 @@ func (g *Grant) unmarshalText(ctx context.Context, grantString string) error {
 
 		case "ids":
 			g.ids = strings.Split(kv[1], ",")
+			for _, id := range g.ids {
+				if id == "" {
+					return errors.New(ctx, errors.InvalidParameter, op, "empty ID provided")
+				}
+			}
 
 		case "type":
 			typeString := strings.ToLower(kv[1])
