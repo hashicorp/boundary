@@ -57,4 +57,4 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          echo -e "Fuzz test failed on commit ${{ env.SHA }}. To troubleshoot locally, use the [GitHub CLI](https://cli.github.com) to download the seed corpus with\n```\ngh run download ${{ github.run_id }} -n fuzz-corpus\n```"
+          echo -e "Fuzz test failed on commit ${{ env.SHA }}. To troubleshoot locally, use the [GitHub CLI](https://cli.github.com) to download the seed corpus with\n\ngh run download ${{ github.run_id }} -n fuzz-corpus\n"
