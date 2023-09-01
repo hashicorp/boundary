@@ -127,10 +127,11 @@ type Worker struct {
 
 	recorderManager recorderManager
 
-	everAuthenticated *ua.Uint32
-	lastStatusSuccess *atomic.Value
-	workerStartTime   time.Time
-	operationalState  *atomic.Value
+	everAuthenticated       *ua.Uint32
+	lastStatusSuccess       *atomic.Value
+	workerStartTime         time.Time
+	operationalState        *atomic.Value
+	upstreamConnectionState *atomic.Value
 
 	controllerMultihopConn *atomic.Value
 
@@ -207,6 +208,7 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 		pkiConnManager:              cluster.NewDownstreamManager(),
 		successfulStatusGracePeriod: new(atomic.Int64),
 		statusCallTimeoutDuration:   new(atomic.Int64),
+		upstreamConnectionState:     new(atomic.Value),
 	}
 
 	w.operationalState.Store(server.UnknownOperationalState)
