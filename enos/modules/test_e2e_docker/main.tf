@@ -164,6 +164,18 @@ variable "worker_tags" {
   type    = list(string)
   default = [""]
 }
+variable "postgres_user" {
+  type    = string
+  default = ""
+}
+variable "postgres_password" {
+  type    = string
+  default = ""
+}
+variable "postgres_database_name" {
+  type    = string
+  default = ""
+}
 variable "test_timeout" {
   type    = string
   default = "15m"
@@ -221,6 +233,9 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_REGION                = var.aws_region,
     E2E_AWS_BUCKET_NAME           = var.aws_bucket_name,
     E2E_WORKER_TAG                = jsonencode(var.worker_tags),
+    E2E_POSTGRES_USER             = var.postgres_user
+    E2E_POSTGRES_PASSWORD         = var.postgres_password
+    E2E_POSTGRES_DB_NAME          = var.postgres_database_name
     BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir),
     BOUNDARY_CLI_DIR              = abspath(var.local_boundary_dir),
     MODULE_DIR                    = abspath(path.module)

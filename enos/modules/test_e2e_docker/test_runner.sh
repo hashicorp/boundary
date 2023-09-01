@@ -33,6 +33,9 @@ docker run \
     -e "E2E_AWS_HOST_SET_IPS2=$E2E_AWS_HOST_SET_IPS2" \
     -e "E2E_AWS_REGION=$E2E_AWS_REGION" \
     -e "E2E_AWS_BUCKET_NAME=$E2E_AWS_BUCKET_NAME" \
+    -e "E2E_POSTGRES_USER=$E2E_POSTGRES_USER" \
+    -e "E2E_POSTGRES_PASSWORD=$E2E_POSTGRES_PASSWORD" \
+    -e "E2E_POSTGRES_DB_NAME=$E2E_POSTGRES_DB_NAME" \
     -e "E2E_WORKER_TAG=$E2E_WORKER_TAG" \
     --mount type=bind,src=$BOUNDARY_DIR,dst=/src/boundary/ \
     --mount type=bind,src=$MODULE_DIR/../..,dst=/testlogs \
