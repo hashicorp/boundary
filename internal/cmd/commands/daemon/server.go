@@ -137,36 +137,33 @@ func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) 
 
 	s.printInfo(ctx)
 
-	{
-		// If we have a persona information already, add it to the repository immediately so it can start
-		// get updated.
+	repo, err := cache.NewRepository(ctx, s.store, cmd.ReadTokenFromKeyring)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+
+	// If we have a token info already, add it to the repository immediately so
+	// it can start to get updated.
+	func() {
 		client, err := cmd.Client()
 		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		repo, err := cache.NewRepository(ctx, s.store)
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
+			event.WriteError(ctx, op, err)
+			return
 		}
 		krType, tokName, err := cmd.DiscoverKeyringTokenInfo()
 		if err != nil {
-			return errors.Wrap(ctx, err, op)
+			event.WriteError(ctx, op, err)
+			return
 		}
-		at := cmd.ReadTokenFromKeyring(krType, tokName)
-		if at != nil {
-			err := repo.AddPersona(ctx, &cache.Persona{
-				KeyringType:  krType,
-				TokenName:    tokName,
-				BoundaryAddr: client.Addr(),
-				AuthTokenId:  at.Id,
-			})
-			if err != nil {
-				return errors.Wrap(ctx, err, op)
+		if at := cmd.ReadTokenFromKeyring(krType, tokName); at != nil {
+			if err := repo.AddPersona(ctx, client.Addr(), tokName, krType, at.Id); err != nil {
+				event.WriteError(ctx, op, err)
+				return
 			}
 		}
-	}
+	}()
 
-	tic, err := newRefreshTicker(ctx, s.conf.refreshIntervalSeconds, s.store, cmd.ReadTokenFromKeyring)
+	tic, err := newRefreshTicker(ctx, s.conf.refreshIntervalSeconds, repo.Refresh)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -181,17 +178,17 @@ func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) 
 	}()
 
 	mux := http.NewServeMux()
-	searchTargetsFn, err := newSearchTargetsHandlerFunc(ctx, s.store)
+	searchTargetsFn, err := newSearchTargetsHandlerFunc(ctx, repo)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.Handle("/v1/search", versionEnforcement(searchTargetsFn))
+	mux.HandleFunc("/v1/search", searchTargetsFn)
 
-	personaFn, err := newPersonaHandlerFunc(ctx, s.store, cmd, tic)
+	personaFn, err := newPersonaHandlerFunc(ctx, repo, tic)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.Handle("/v1/personas", versionEnforcement(personaFn))
+	mux.HandleFunc("/v1/personas", personaFn)
 
 	logger, err := event.SysEventer().StandardLogger(ctx, "daemon.serve: ", event.ErrorType)
 	if err != nil {

@@ -7,10 +7,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
@@ -27,14 +25,15 @@ func (r *testRefresher) refresh() {
 }
 
 type testAtReader struct {
-	at string
+	atId string
 }
 
 func (r *testAtReader) ReadTokenFromKeyring(k, a string) *authtokens.AuthToken {
 	return &authtokens.AuthToken{
-		Id:           r.at,
+		Id:           r.atId,
 		AuthMethodId: "test_auth_method",
-		Token:        fmt.Sprintf("%s_%s", r.at, a),
+		Token:        fmt.Sprintf("%s_%s", r.atId, a),
+		UserId:       r.atId,
 	}
 }
 
@@ -43,8 +42,12 @@ func TestPersona(t *testing.T) {
 	s, _, err := openStore(ctx, "", true)
 	require.NoError(t, err)
 
+	atReader := &testAtReader{"at_1234567890"}
+	repo, err := cache.NewRepository(ctx, s, atReader.ReadTokenFromKeyring)
+	require.NoError(t, err)
+
 	tr := &testRefresher{}
-	ph, err := newPersonaHandlerFunc(ctx, s, &testAtReader{"at_1234567890"}, tr)
+	ph, err := newPersonaHandlerFunc(ctx, repo, tr)
 	require.NoError(t, err)
 
 	mux := http.NewServeMux()
@@ -68,7 +71,7 @@ func TestPersona(t *testing.T) {
 			KeyringType:  "",
 			TokenName:    "default",
 			BoundaryAddr: "http://127.0.0.1",
-			AuthTokenId:  "at_1234567890",
+			AuthTokenId:  atReader.atId,
 		}
 		apiErr, err := addPersona(ctx, tmpdir, pa)
 		assert.NoError(t, err)
@@ -82,7 +85,7 @@ func TestPersona(t *testing.T) {
 			KeyringType:  "akeyringtype",
 			TokenName:    "",
 			BoundaryAddr: "http://127.0.0.1",
-			AuthTokenId:  "at_1234567890",
+			AuthTokenId:  atReader.atId,
 		}
 		apiErr, err := addPersona(ctx, tmpdir, pa)
 		assert.NoError(t, err)
@@ -96,7 +99,7 @@ func TestPersona(t *testing.T) {
 			KeyringType:  "akeyringtype",
 			TokenName:    "default",
 			BoundaryAddr: "",
-			AuthTokenId:  "at_1234567890",
+			AuthTokenId:  atReader.atId,
 		}
 		apiErr, err := addPersona(ctx, tmpdir, pa)
 		assert.NoError(t, err)
@@ -129,20 +132,7 @@ func TestPersona(t *testing.T) {
 		apiErr, err := addPersona(ctx, tmpdir, pa)
 		assert.NoError(t, err)
 		assert.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "id doesn't match")
-		assert.False(t, tr.called)
-	})
-
-	t.Run("not found unix socket", func(t *testing.T) {
-		pa := &personaToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "default",
-			BoundaryAddr: "http://127.0.0.1",
-			AuthTokenId:  "at_1234567890",
-		}
-		apiErr, err := addPersona(ctx, filepath.Join(tmpdir, "doesnt_exist"), pa)
-		assert.ErrorContains(t, err, "no such file or directory")
-		assert.Nil(t, apiErr)
+		assert.Contains(t, apiErr.Message, "Failed to add a persona")
 		assert.False(t, tr.called)
 	})
 
@@ -151,28 +141,20 @@ func TestPersona(t *testing.T) {
 			KeyringType:  "akeyringtype",
 			TokenName:    "default",
 			BoundaryAddr: "http://127.0.0.1",
-			AuthTokenId:  "at_1234567890",
+			AuthTokenId:  atReader.atId,
 		}
 		apiErr, err := addPersona(ctx, tmpdir, pa)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
 		assert.True(t, tr.called)
 
-		repo, err := cache.NewRepository(ctx, s)
+		repo, err := cache.NewRepository(ctx, s, (&testAtReader{"at_1234"}).ReadTokenFromKeyring)
 		require.NoError(t, err)
 
-		p, err := repo.LookupPersona(ctx, pa.BoundaryAddr, pa.KeyringType, pa.TokenName)
+		p, err := repo.LookupPersona(ctx, pa.TokenName, pa.KeyringType)
 		require.NoError(t, err)
 		assert.NotNil(t, p)
-		assert.LessOrEqual(t, p.LastAccessedTime, time.Now())
-
-		p.LastAccessedTime = time.Time{}
-		assert.Equal(t, &cache.Persona{
-			BoundaryAddr: pa.BoundaryAddr,
-			KeyringType:  pa.KeyringType,
-			TokenName:    pa.TokenName,
-			AuthTokenId:  "at_1234567890",
-		}, p)
+		assert.Equal(t, atReader.atId, p.AuthTokenId)
 	})
 	srv.Shutdown(ctx)
 	wg.Wait()
