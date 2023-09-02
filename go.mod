@@ -72,7 +72,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	golang.org/x/crypto v0.12.0
 	golang.org/x/sync v0.2.0
-	golang.org/x/sys v0.11.0
+	golang.org/x/sys v0.12.0
 	golang.org/x/term v0.11.0
 	golang.org/x/tools v0.9.1
 	google.golang.org/genproto v0.0.0-20230526203410-71b5a4ffd15e
@@ -93,7 +93,7 @@ require (
 	github.com/creack/pty v1.1.18
 	github.com/hashicorp/cap/ldap v0.0.0-20230824195246-512b26a36f79
 	github.com/hashicorp/dbassert v0.0.0-20230622135851-cc4c0f18f4a7
-	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20230831151732-61c41efe3b2c
+	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20230902160534-7a966e6313fd
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.6
 	github.com/jackc/pgx/v5 v5.4.3
@@ -196,7 +196,7 @@ require (
 	go.uber.org/goleak v1.1.12 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
