@@ -48,7 +48,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault/api v1.9.1
 	github.com/iancoleman/strcase v0.2.0
-	github.com/jackc/pgconn v1.14.0
+	github.com/jackc/pgconn v1.14.1
 	github.com/jackc/pgx/v4 v4.18.1 // indirect
 	github.com/jefferai/keyring v1.1.7-0.20220316160357-58a74bb55891
 	github.com/kr/pretty v0.3.1
@@ -70,45 +70,55 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/zalando/go-keyring v0.2.3
 	go.uber.org/atomic v1.9.0
-	golang.org/x/crypto v0.9.0
+	golang.org/x/crypto v0.12.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.8.0
-	golang.org/x/term v0.8.0
+	golang.org/x/sys v0.11.0
+	golang.org/x/term v0.11.0
 	golang.org/x/tools v0.6.0
 	google.golang.org/genproto v0.0.0-20230526203410-71b5a4ffd15e
 	google.golang.org/grpc v1.55.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.31.0
 	gorm.io/driver/postgres v1.5.2
-	gorm.io/gorm v1.25.2-0.20230530020048-26663ab9bf55 // indirect
+	gorm.io/gorm v1.25.4 // indirect
 	mvdan.cc/gofumpt v0.3.1
 	nhooyr.io/websocket v1.8.7
 )
 
-require github.com/hashicorp/go-dbw v0.0.0-20230611160117-87377d5c7f5b
+require github.com/hashicorp/go-dbw v0.1.0
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/creack/pty v1.1.18
-	github.com/glebarez/go-sqlite v1.21.1
-	github.com/glebarez/sqlite v1.8.0
+	github.com/glebarez/go-sqlite v1.21.2
+	github.com/glebarez/sqlite v1.9.0
 	github.com/hashicorp/cap/ldap v0.0.0-20230420150311-6d1e00a6c5e0
 	github.com/hashicorp/dbassert v0.0.0-20230405175854-2d88acd5134b
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20221122211539-47c893099f13
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/nodeenrollment v0.2.6
-	github.com/jackc/pgx/v5 v5.3.1
+	github.com/jackc/pgx/v5 v5.4.3
 	github.com/jimlambrt/gldap v0.1.7
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/go-ps v1.0.0
 	github.com/sevlyar/go-daemon v0.1.6
 	golang.org/x/exp v0.0.0-20230811145659-89c5cff77bcb
 	golang.org/x/net v0.10.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc
 	gopkg.in/square/go-jose.v2 v2.5.1
+	gorm.io/driver/sqlite v1.5.3
+)
+
+require (
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	modernc.org/libc v1.22.5 // indirect
+	modernc.org/mathutil v1.5.0 // indirect
+	modernc.org/memory v1.5.0 // indirect
+	modernc.org/sqlite v1.23.1 // indirect
 )
 
 require (
@@ -139,7 +149,6 @@ require (
 	github.com/docker/docker v23.0.3+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
@@ -165,7 +174,7 @@ require (
 	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/jefferai/go-libsecret v0.0.0-20210525195240-b53481abef97 // indirect
 	github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f // indirect
-	github.com/jinzhu/gorm v1.9.12 // indirect
+	github.com/jinzhu/gorm v1.9.16 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
@@ -187,7 +196,6 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/sethvargo/go-diceware v0.3.0 // indirect
@@ -199,18 +207,14 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	github.com/xo/dburl v0.14.2 // indirect
+	github.com/xo/dburl v0.16.0 // indirect
 	go.uber.org/goleak v1.1.10 // indirect
 	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.22.3 // indirect
-	modernc.org/mathutil v1.5.0 // indirect
-	modernc.org/memory v1.5.0 // indirect
-	modernc.org/sqlite v1.21.1 // indirect
 )

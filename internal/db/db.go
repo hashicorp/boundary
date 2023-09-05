@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/glebarez/sqlite"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-dbw"
@@ -154,7 +153,7 @@ func Open(ctx context.Context, dbType DbType, connectionUrl string, opt ...Optio
 		},
 		)
 	case Sqlite:
-		dialect = sqlite.Open(connectionUrl)
+		dialect = sqliteOpen(connectionUrl)
 	default:
 		return nil, fmt.Errorf("unable to open %s database type", dbType)
 	}

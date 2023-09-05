@@ -578,6 +578,7 @@ func (c *Client) Clone() *Client {
 	config := c.config
 
 	newConfig := &Config{
+		socketAddr:         config.socketAddr,
 		Addr:               config.Addr,
 		Token:              config.Token,
 		RecoveryKmsWrapper: config.RecoveryKmsWrapper,
