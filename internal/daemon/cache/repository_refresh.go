@@ -50,7 +50,6 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 	}
 
 	var retErr error
-	var retrievedTargets []*targets.Target
 	for _, p := range personas {
 
 		at := r.tokenLookupFn(p.KeyringType, p.TokenName)
@@ -67,7 +66,7 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 			continue
 		}
 
-		event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for persona %v", len(retrievedTargets), p))
+		event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for persona %v", len(tars), p))
 		if err := r.refreshCachedTargets(ctx, p, tars); err != nil {
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for persona %v", p)))
 			continue
