@@ -81,7 +81,7 @@ func (r *Repository) AddPersona(ctx context.Context, p *Persona) error {
 			}
 		}
 		if oldestPersona != nil {
-			if _, err := writer.Delete(ctx, oldestPersona); err != nil {
+			if _, err := deletePersona(ctx, writer, oldestPersona); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 		}
@@ -138,6 +138,28 @@ func (r *Repository) LookupPersona(ctx context.Context, addr, keyringType, token
 	return p, nil
 }
 
+// deletePersona executes a delete command using the provided db.Writer for the provided persona.
+func deletePersona(ctx context.Context, w db.Writer, p *Persona) (int, error) {
+	const op = "cache.deletePersona"
+	switch {
+	case util.IsNil(w):
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "writer is nil")
+	case util.IsNil(p):
+		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "persona is nil")
+	}
+	// TODO(https://github.com/go-gorm/gorm/issues/4879): Use the
+	//   writer.Delete() function once the gorm bug is fixed. Until then
+	//   the gorm driver for sqlite has an error which wont execute a
+	//   delete correctly. as a work around we manually execute the
+	//   query here.
+	n, err := w.Exec(ctx, "delete from cache_persona where (boundary_addr, keyring_type, token_name) in (values (?, ?, ?))",
+		[]any{p.BoundaryAddr, p.KeyringType, p.TokenName})
+	if err != nil {
+		err = errors.Wrap(ctx, err, op)
+	}
+	return n, err
+}
+
 func (r *Repository) DeletePersona(ctx context.Context, p *Persona) error {
 	const op = "cache.(Repository).DeletePersona"
 	switch {
@@ -151,7 +173,7 @@ func (r *Repository) DeletePersona(ctx context.Context, p *Persona) error {
 		return errors.New(ctx, errors.InvalidParameter, op, "missing keyring type")
 	}
 
-	n, err := r.rw.Delete(ctx, p)
+	n, err := deletePersona(ctx, r.rw, p)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
