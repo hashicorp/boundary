@@ -14,8 +14,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/mitchellh/go-ps"
-
 	"github.com/hashicorp/boundary/internal/errors"
 	"golang.org/x/sys/windows"
 )
@@ -86,9 +84,12 @@ func pidFileInUse(ctx context.Context, pidFile string) (*os.Process, error) {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	p, err := ps.FindProcess(pid)
+	p, err := os.FindProcess(pid)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	if p == nil {
+		return nil, errors.New(ctx, errors.NotFound, op, "cannot find process")
 	}
 	return p, nil
 }

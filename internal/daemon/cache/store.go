@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	_ "github.com/glebarez/go-sqlite"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/go-dbw"
