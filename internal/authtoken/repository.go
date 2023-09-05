@@ -330,15 +330,6 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
 		)
 		whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
-
-		/*
-			args = append(args,
-				opts.withStartPageAfterItem.updateTime,
-				opts.withStartPageAfterItem.updateTime,
-				opts.withStartPageAfterItem.publicId,
-			)
-			whereClause += " and update_time > ? or (update_time = ? and public_id > ?)"
-		*/
 	}
 
 	// use the view, to bring in the required account columns. Just don't forget

@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -33,7 +34,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "read:self", "delete", "delete:self"}
+var fullAuthorizedActions = []string{"no-op", "read", "read:self", "delete", "delete:self"}
+var selfAuthorizedActions = []string{"read:self", "delete:self"}
 
 func TestGetSelf(t *testing.T) {
 	ctx := context.Background()
@@ -148,7 +150,7 @@ func TestGet(t *testing.T) {
 		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-		AuthorizedActions:       testAuthorizedActions,
+		AuthorizedActions:       []string{"read:self", "delete:self"},
 	}
 
 	cases := []struct {
@@ -263,7 +265,7 @@ func TestList_Self(t *testing.T) {
 	}
 }
 
-func authTokenToProto(at *authtoken.AuthToken, scope *scopes.ScopeInfo) *pb.AuthToken {
+func authTokenToProto(at *authtoken.AuthToken, scope *scopes.ScopeInfo, authorizedActions []string) *pb.AuthToken {
 	return &pb.AuthToken{
 		Id:                      at.GetPublicId(),
 		ScopeId:                 at.GetScopeId(),
@@ -275,7 +277,7 @@ func authTokenToProto(at *authtoken.AuthToken, scope *scopes.ScopeInfo) *pb.Auth
 		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 		Scope:                   scope,
-		AuthorizedActions:       testAuthorizedActions,
+		AuthorizedActions:       authorizedActions,
 	}
 }
 
@@ -297,7 +299,7 @@ func TestList(t *testing.T) {
 	var globalTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
 		at := authtoken.TestAuthToken(t, conn, kms, scope.Global.String())
-		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"})
+		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}, fullAuthorizedActions)
 		globalTokens = append(globalTokens, atp)
 	}
 
@@ -305,7 +307,7 @@ func TestList(t *testing.T) {
 	var wantSomeTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
 		at := authtoken.TestAuthToken(t, conn, kms, orgWithSomeTokens.GetPublicId())
-		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()})
+		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithSomeTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()}, fullAuthorizedActions)
 		wantSomeTokens = append(wantSomeTokens, atp)
 	}
 
@@ -313,7 +315,7 @@ func TestList(t *testing.T) {
 	var wantOtherTokens []*pb.AuthToken
 	for i := 0; i < 3; i++ {
 		at := authtoken.TestAuthToken(t, conn, kms, orgWithOtherTokens.GetPublicId())
-		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()})
+		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()}, fullAuthorizedActions)
 		wantOtherTokens = append(wantOtherTokens, atp)
 	}
 
@@ -472,12 +474,24 @@ func TestListPagination(t *testing.T) {
 		return server.NewRepository(testCtx, rw, rw, kms)
 	}
 	iamRepo := iam.TestRepo(t, conn, wrap)
+	tokenRepo, _ := tokenRepoFn()
+	orgWithTokens, pwt := iam.TestScopes(t, iamRepo)
 
-	orgWithTokens, _ := iam.TestScopes(t, iamRepo)
+	authMethod := password.TestAuthMethods(t, conn, orgWithTokens.GetPublicId(), 1)[0]
+	// auth account is only used to join auth method to user.
+	// We don't do anything else with the auth account in the test setup.
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "test_user")
+
+	u := iam.TestUser(t, iamRepo, orgWithTokens.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+
+	privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
+	iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
+
 	var allTokens []*pb.AuthToken
-	for i := 0; i < 3; i++ {
-		at := authtoken.TestAuthToken(t, conn, kms, orgWithTokens.GetPublicId())
-		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()})
+	for i := 0; i < 9; i++ {
+		at, _ := tokenRepo.CreateAuthToken(testCtx, u, acct.GetPublicId())
+		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()}, selfAuthorizedActions)
 		allTokens = append(allTokens, atp)
 	}
 
@@ -485,19 +499,19 @@ func TestListPagination(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	require.NoError(err, "Couldn't create new user service.")
 
-	at := authtoken.TestAuthToken(t, conn, kms, orgWithTokens.GetPublicId())
+	masterToken, _ := tokenRepo.CreateAuthToken(testCtx, u, acct.GetPublicId())
 
 	requestInfo := authpb.RequestInfo{
 		TokenFormat: uint32(auth.AuthTokenTypeBearer),
-		PublicId:    at.GetPublicId(),
-		Token:       at.GetToken(),
+		Token:       masterToken.GetToken(),
+		PublicId:    masterToken.GetPublicId(),
 	}
-	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	requestContext := context.WithValue(testCtx, requests.ContextRequestInformationKey, &requests.RequestContext{})
 	ctx := auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 
 	// Start paginating, recursively
 	req := &pbs.ListAuthTokensRequest{
-		ScopeId:      orgWithTokens.GetPublicId(),
+		ScopeId:      masterToken.GetScopeId(),
 		Recursive:    true,
 		Filter:       "",
 		RefreshToken: "",
@@ -505,7 +519,7 @@ func TestListPagination(t *testing.T) {
 	}
 	got, err := a.ListAuthTokens(ctx, req)
 	require.NoError(err)
-	require.Len(got.GetItems(), 1)
+	require.Len(got.GetItems(), 2)
 	// Compare without comparing the refresh token
 	assert.Empty(
 		cmp.Diff(

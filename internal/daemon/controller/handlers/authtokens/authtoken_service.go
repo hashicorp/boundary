@@ -145,6 +145,7 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 			return nil, false, nil
 		}
 
+		// issues here I think?
 		if authorizedActions.OnlySelf() && at.GetIamUserId() != authResults.UserId {
 			return nil, false, nil
 		}
@@ -317,19 +318,6 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
-}
-
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*authtoken.AuthToken, error) {
-	repo, err := s.repoFn()
-	_ = repo
-	if err != nil {
-		return nil, err
-	}
-	ul, err := repo.ListAuthTokens(ctx, scopeIds, authtoken.WithLimit(-1))
-	if err != nil {
-		return nil, err
-	}
-	return ul, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
