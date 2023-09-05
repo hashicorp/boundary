@@ -150,7 +150,7 @@ func TestGet(t *testing.T) {
 		ApproximateLastUsedTime: at.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          at.GetExpirationTime().GetTimestamp(),
 		Scope:                   &scopes.ScopeInfo{Id: org.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
-		AuthorizedActions:       []string{"read:self", "delete:self"},
+		AuthorizedActions:       fullAuthorizedActions,
 	}
 
 	cases := []struct {
@@ -500,6 +500,8 @@ func TestListPagination(t *testing.T) {
 	require.NoError(err, "Couldn't create new user service.")
 
 	masterToken, _ := tokenRepo.CreateAuthToken(testCtx, u, acct.GetPublicId())
+	mtp := authTokenToProto(masterToken, &scopes.ScopeInfo{Id: orgWithTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()}, selfAuthorizedActions)
+	allTokens = append(allTokens, mtp)
 
 	requestInfo := authpb.RequestInfo{
 		TokenFormat: uint32(auth.AuthTokenTypeBearer),
@@ -520,13 +522,138 @@ func TestListPagination(t *testing.T) {
 	got, err := a.ListAuthTokens(ctx, req)
 	require.NoError(err)
 	require.Len(got.GetItems(), 2)
-	// Compare without comparing the refresh token
+	// all comparisons will be done without comparing the refresh token
 	assert.Empty(
 		cmp.Diff(
 			got,
 			&pbs.ListAuthTokensResponse{
 				Items:        allTokens[0:2],
 				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "refresh_token"),
+		),
+	)
+
+	// request second page
+	req.RefreshToken = got.RefreshToken
+	got, err = a.ListAuthTokens(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 2)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListAuthTokensResponse{
+				Items:        allTokens[2:4],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "refresh_token"),
+		),
+	)
+
+	// request the rest of the results
+	req.RefreshToken = got.RefreshToken
+	req.PageSize = 6
+	got, err = a.ListAuthTokens(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 6)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListAuthTokensResponse{
+				Items:        allTokens[4:],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "refresh_token"),
+		),
+	)
+
+	// create another auth token
+	at, _ := tokenRepo.CreateAuthToken(testCtx, u, acct.GetPublicId())
+	newToken := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()}, selfAuthorizedActions)
+	allTokens = append(allTokens, newToken)
+
+	// delete a different auth token
+	_, err = tokenRepo.DeleteAuthToken(ctx, allTokens[0].Id)
+	require.NoError(err)
+	deletedAuthToken := allTokens[0]
+	allTokens = allTokens[1:]
+
+	// request the changes
+	req.RefreshToken = got.RefreshToken
+	got, err = a.ListAuthTokens(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListAuthTokensResponse{
+				Items:        []*pb.AuthToken{newToken},
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   []string{deletedAuthToken.Id},
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.RefreshToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, allTokens[len(allTokens)-2].Id, allTokens[len(allTokens)-1].Id)
+	got, err = a.ListAuthTokens(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListAuthTokensResponse{
+				Items:        []*pb.AuthToken{allTokens[len(allTokens)-2]},
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListAuthTokensResponse{}, "refresh_token"),
+		),
+	)
+	req.RefreshToken = got.RefreshToken
+	// Get the second page
+	got, err = a.ListAuthTokens(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListAuthTokensResponse{
+				Items:        []*pb.AuthToken{allTokens[len(allTokens)-1]},
+				ResponseType: "complete",
 				RefreshToken: "",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
