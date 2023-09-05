@@ -18,7 +18,7 @@ You can specify your SSH client of choice using the `-style` option.
 The SSH helper command sets the host key `Alias`.
 When an `Alias` is set, SSH does not use `localhost:<port>` for host key validation, but instead uses one of the following:
 
-- For connections to a target that has an attached host-set, the SSH helper command sets the `HostID` as the alias.
+- For connections to a target that has an attached host set, the SSH helper command sets the `HostID` as the alias.
 - For connections directly to a host, the SSH helper command sets the `HostID` as the alias.
 - For connections to a target that has an address field configured, the SSH helper command sets the `TargetID` as the alias.
 

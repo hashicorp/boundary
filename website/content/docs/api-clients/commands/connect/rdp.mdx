@@ -16,7 +16,7 @@ The command fills in the local address and port.
 
 ## Examples
 
-The following example authoirzes a session to a target with the ID `ttcp_1234567890` and invokes an RDP session with the built-in Windows RDP client, `mstsc`:
+The following example authorizes a session to a target with the ID `ttcp_1234567890` and invokes an RDP session with the built-in Windows RDP client, `mstsc`:
 
 ```shell-session
 $ boundary connect rdp \
@@ -52,6 +52,6 @@ This command performs a target authorization or consumes an existing authorizati
 This value also sets a suitable default for `-exec`, if you did not specify a value.
 The currently-understood value is `mstsc`, which is the default on Windows and launches the Windows client.
 It is also the default on Mac, and launches an rdp://URL.
-You can also specfiy how the CLI attempts to invoke an RDP client using the **BOUNDARY_CONNECT_RDP_STYLE** environment variable.
+You can also specify how the CLI attempts to invoke an RDP client using the **BOUNDARY_CONNECT_RDP_STYLE** environment variable.
 
 @include 'cmd-option-note.mdx'
