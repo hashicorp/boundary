@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     name: CLI tests
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
       - name: Import GPG key for Boundary pass keystore
         id: import_gpg
         uses: crazy-max/ghaction-import-gpg@72b6676b71ab476b77e676928516f6982eef7a41 # v5.3.0
