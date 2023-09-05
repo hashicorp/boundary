@@ -2,31 +2,31 @@
 layout: docs
 page_title: config - Command
 description: |-
-  The "config" command groups subcommands for operators interacting with Boundary's config files.
+  The "config" command groups subcommands for operators to interact with Boundary's configuration files.
 ---
 
 # config
 
 Command: `boundary config`
 
-The `config` command groups subcommands for operators interacting with
-Boundary's config files.
+The `config` command groups subcommands for operators to interact with
+Boundary's configuration files.
 
 ## Examples
 
-Encrypt sensitive values in a config file
+The following command encrypts sensitive values in a configuration file:
 
 ```shell-session
 $ boundary config encrypt config.hcl
 ```
 
-Decrypt sensitive values in a config file.
+The following command decrypts sensitive values in a configuration file:
 
 ```shell-session
 $ boundary config decrypt config.hcl
 ```
 
-Read a stored token out.
+The following comand reads a stored token's output.
 
 ```shell-session
 $ boundary config get-token
@@ -51,7 +51,7 @@ Subcommands:
 
 </CodeBlockConfig>
 
-For more information, examples, and usage about a subcommand, click on the name
+For more information, examples, and usage, click on the name
 of the subcommand in the sidebar or one of the links below:
 
 - [autocomplete](/boundary/docs/api-clients/commands/config/autocomplete)

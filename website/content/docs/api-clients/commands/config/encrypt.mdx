@@ -9,21 +9,20 @@ description: |-
 
 Command: `boundary config encrypt`
 
-The `config encrypt` command encrypts sensitive values in a Boundary's
-configuration file. These values must be marked with `{{encrypt()}}` as
-appropriate. For example, `key = {{encrypt(key_value)}}`.
+The `config encrypt` command encrypts sensitive values in a Boundary
+configuration file. You must mark these values with `{{encrypt()}}` as
+appropriate, for example: `key = {{encrypt(key_value)}}`.
 
 
 ## Examples
 
-Overwrite into the existing config file use the `-overwrite` flag.
+The following command overwrites the existing configuration file use the `-overwrite` flag:
 
 ```shell-session
 $ boundary config encrypt -overwrite config.hcl
 ```
 
-In order for this command to perform its task, a "kms" block must be defined
-within a configuration file. 
+In order for this command to perform its task, you must define a "kms" block within a configuration file:
 
 ```hcl
 kms "aead" {
@@ -33,10 +32,10 @@ kms "aead" {
 }
 ```
 
-The "kms" block can be defined in the configuration file or via the -config
-flag. If defined in the configuration file, only string parameters are
-supported, and the markers must be inside the quote marks delimiting the string.
-Additionally, if the block is defined inline, do not use an "aead" block with
+You can define the "kms" block in the configuration file or using the `-config`
+flag. If you define it in in the configuration file, only string parameters are
+supported, and the markers must be inside the quotation marks that delimit the string.
+Additionally, if you define the block inline, do not use an "aead" block with
 the key defined in the configuration file as it provides no protection.
 
 ## Usage
@@ -52,18 +51,16 @@ $ boundary config encrypt [options] [args]
 
 ### Command options
 
-- `-config` `(string: "")` - The configuration file upon which to perform
-  encryption or encryption
+- `-config` `(string: "")` - Indicates the configuration file to encrypt.
 
-- `-config-kms` `(string: "")` - If specified, the given file will be parsed for
-   a "kms" block with purpose "config" and will use it to perform the command.
-   If not set, the command will expect a block inline with the configuration
-   file, and will only be able to support quoted string parameters.
+- `-config-kms` `(string: "")` - Specifies whether the given file is parsed for
+   a "kms" block with purpose `config`, and whether it should be used to perform the command.
+   If you do not configure this value, the command expects a block to be defined inline with the configuration file, and will only be able to support quoted string parameters.
 
-- `-overwrite`  - Overwrite the existing file. The default is
-  false.
+- `-overwrite`  - Overwrites the existing file. The default value is
+  `false`.
 
-- `-strip`  - Strip the declarations from the file afterwards.
-  The default is false.
+- `-strip`  - Strips the declarations from the file afterwards.
+  The default value is `false`.
 
 @include 'cmd-option-note.mdx'

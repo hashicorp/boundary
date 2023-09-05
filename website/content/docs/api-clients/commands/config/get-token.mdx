@@ -13,7 +13,7 @@ The `config get-token` command fetches a token stored by the Boundary CLI.
 
 ## Examples
 
-Get the token stored by the Boundary CLI.
+The following command gets the token stored by the Boundary CLI:
 
 ```shell-session
 $ boundary config get-token
@@ -29,9 +29,8 @@ at_yczA5UPS7Y_s13B5PWh7KENvtKQKgDxaEvP682FMfq5eXrpzKNTpmaHgLS2ucRexrTQ7ueMhDFY5M
 
 </CodeBlockConfig>
 
-This can be useful in various situations. For example, a line such as the
-following could be in a shell script shared by developers, such that each
-developer on their own machine executing the script ends up using their own
+This command can be useful in various situations. For example, developers could share a line such as the following in a shell script, such that each
+developer on their own machine executes the script using their own
 Boundary token:
 
 <CodeBlockConfig hideClipboard>
@@ -44,11 +43,11 @@ $ curl --header "Authorization: Bearer $(boundary config get-token)" \
 
 </CodeBlockConfig>
 
-This command keeps parity with the behavior of other Boundary commands; if the
-`BOUNDARY_TOKEN` environment variable it set, it will override the value loaded
+This command keeps parity with the behavior of other Boundary commands; if you set the
+`BOUNDARY_TOKEN` environment variable, it overrides the value loaded
 from the system store. Not only does this keep parity, but it also allows
-examples such as the one above to work even if there is no stored token but if
-an environment variable is specified.
+examples such as the one above to work even if there is no stored token, but you specified
+an environment variable.
 
 ## Usage
 
@@ -62,27 +61,32 @@ $ boundary config get-token [options] [args]
 
 ### Command options
 
-- `-account-id`  - If specified, print out the account ID
-      associated with the token instead of the token itself. The default is
-      false.
+- `-account-id`  - Prints out the account ID
+      associated with the token instead of the token itself, if specified. The default value is
+      `false`.
 
-- `-auth-method-id`  - If specified, print out the auth method ID
-   associated with the token instead of the token itself. The default is false.
+- `-auth-method-id`  - Prints out the auth method ID
+   associated with the token instead of the token itself, if specified. The default value is `false`.
 
-- `-keyring-type` `(string: "")` - The type of keyring to use. Defaults to
-   "auto" which will use the Windows credential manager, OSX keychain, or
-   cross-platform password store depending on platform. Set to "none" to disable
-   keyring functionality. Available types, depending on platform, are:
-   "wincred", "keychain", "pass", and "secret-service". The default is auto.
-   This can also be specified via the BOUNDARY_KEYRING_TYPE environment
+- `-keyring-type` `(string: "")` - Indicates the type of keyring to use. This value defaults to
+   `auto` which uses the Windows credential manager, OSX keychain, or
+   cross-platform password store depending on the platform. Set this value to `none` to disable
+   keyring functionality. The following keyring types are available, depending on platform:
+
+   - `wincred`
+   - `keychain`
+   - `pass`
+   - `secret-service`
+
+  You can also specify the keyring type using the **BOUNDARY_KEYRING_TYPE** environment
    variable.
 
-- `-token-name` `(string: "")` - If specified, the given value will be used as
-   the name when loading the token from the system credential store. This must
-   correspond to a name used when authenticating. This can also be specified via
-   the BOUNDARY_TOKEN_NAME environment variable.
+- `-token-name` `(string: "")` - Indicates whether the given value should be used as
+   the name when loading the token from the system credential store. This value must
+   correspond to a name used when authenticating. You can also specify the token name using
+   the **BOUNDARY_TOKEN_NAME** environment variable.
 
-- `-user-id`  - If specified, print out the user ID associated
-   with the token instead of the token itself. The default is false.
+- `-user-id`  - Prints out the user ID associated
+   with the token instead of the token itself, if specified. The default value is `false`.
 
 @include 'cmd-option-note.mdx'
