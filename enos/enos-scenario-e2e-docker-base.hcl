@@ -118,7 +118,7 @@ scenario "e2e_docker_base" {
       local_boundary_dir       = step.build_boundary_docker_image.cli_zip_path
       local_boundary_src_dir   = local.local_boundary_src_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
-      target_ip                = step.create_host.address
+      target_address           = step.create_host.address
       target_port              = step.create_host.port
       target_user              = "ubuntu"
     }

@@ -35,7 +35,7 @@ func TestCliTcpTargetConnectTargetWithLocalhost(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
@@ -73,7 +73,7 @@ func TestCliTcpTargetConnectTargetWithLocalhost(t *testing.T) {
 		),
 	)
 	require.NoError(t, output.Err, string(output.Stderr))
-	require.Equal(t, c.TargetIp, strings.TrimSpace(string(output.Stdout)))
+	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
 
 	// Cancel session
 	cancel()

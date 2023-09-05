@@ -246,7 +246,7 @@ scenario "e2e_aws" {
       aws_host_set_ips1        = step.create_targets_with_tag1.target_ips
       aws_host_set_filter2     = step.create_tag2_inputs.tag_string
       aws_host_set_ips2        = step.create_targets_with_tag2.target_ips
-      target_ip                = step.create_isolated_target.target_ips[0]
+      target_address           = step.create_isolated_target.target_ips[0]
       worker_tags              = step.create_isolated_worker.worker_tags
     }
   }
