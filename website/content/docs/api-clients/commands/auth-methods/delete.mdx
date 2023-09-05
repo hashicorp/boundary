@@ -2,7 +2,7 @@
 layout: docs
 page_title: auth-methods delete - Command
 description: |-
-  The "auth-methods delete" command allows Boundary admin to delete an auth method.
+  The "auth-methods delete" command lets Boundary admin delete an auth method.
 ---
 
 # auth-methods delete
@@ -11,14 +11,13 @@ Command: `boundary auth-methods delete`
 
 The `auth-methods delete` command deletes an auth method given its ID.
 
-## Examples
+## Example
 
-Delete an auth method with ID, "amoidc_oHt4HQFCrN".
+The following example deletes an auth method with the ID, `moidc_oHt4HQFCrN`.
 
 ```shell-session
 $ boundary auth-methods delete -id amoidc_oHt4HQFCrN
 ```
-
 
 ## Usage
 
@@ -30,9 +29,8 @@ $ boundary auth-methods delete [options] [args]
 
 </CodeBlockConfig>
 
-
 ### Command options
 
-- `-id` `(string: "")` - ID of the auth method to delete.
+- `-id` `(string: "")` - Specifies the ID of the auth method to delete.
 
 @include 'cmd-option-note.mdx'
