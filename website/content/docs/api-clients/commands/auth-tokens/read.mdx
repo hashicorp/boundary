@@ -13,7 +13,7 @@ The `auth-tokens read` command reads an auth token given its ID.
 
 ## Examples
 
-Read the auth token details where its ID is "at_Gvd3jsqSO2".
+The following example reads the auth token details for an auth token with the ID `at_Gvd3jsqSO2`:
 
 ```shell-session
 $ boundary auth-tokens read -id at_Gvd3jsqSO2
@@ -60,6 +60,6 @@ $ boundary auth-tokens read [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - ID of the auth token on which to operate.
+- `-id` `(string: "")` - Specifies the ID of the auth token to read.
 
 @include 'cmd-option-note.mdx'

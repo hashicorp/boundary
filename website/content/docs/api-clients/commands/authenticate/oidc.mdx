@@ -9,24 +9,24 @@ description: |-
 
 Command: `boundary authenticate oidc`
 
-The `authenticate oidc` command invokes the OIDC auth method to authenticate the
+The `authenticate oidc` command lets you invoke the OIDC auth method to authenticate the
 Boundary CLI.
 
-The OIDC authentication method allows Boundary users to delegate authentication
-to an OIDC provider. This feature allows Boundary to integrate with widely
+The OIDC authentication method lets Boundary users delegate authentication
+to an OIDC provider. OIDC authentication allows Boundary to integrate with widely
 adopted identity providers like Okta, cloud-hosted active directory services
 with an OIDC frontend, and cloud identity management systems such as AWS IAM.
 
 ## Examples
 
-Authenticate with Boundary using an oidc auth method with ID, "amoidc_q7jAdI1QgA".
+The following command authenticates the Boundary CLI using an OIDC auth method with the ID `amoidc_q7jAdI1QgA`:
 
 ```shell-session
 $ boundary authenticate oidc -auth-method-id amoidc_q7jAdI1QgA
 Opening returned authentication URL in your browser...
 ```
 
-**Example output:** 
+**Example output:**
 
 <CodeBlockConfig hideClipboard>
 
@@ -52,14 +52,12 @@ $ boundary authenticate oidc [options] [args]
 
 </CodeBlockConfig>
 
-
 ### Command options
 
-- `-auth-method-id` `(string: "")` - The auth-method resource to use for the
-      operation This can also be specified via the `BOUNDARY_AUTH_METHOD_ID`
-      environment variable.
+- `-auth-method-id` `(string: "")` - Specifies the auth method resource you want to use for the authentication.
+You can also specify the auth method resource using the `BOUNDARY_AUTH_METHOD_ID` environment variable.
 
-- `-scope-id` `(string: "")` - The scope ID to use for the operation. This can
-      also be specified via the `BOUNDARY_SCOPE_ID` environment variable.
+- `-scope-id` `(string: "")` - Indicates the scope ID to use for the operation.
+You can also specify the scope ID using the `BOUNDARY_SCOPE_ID` environment variable.
 
 @include 'cmd-option-note.mdx'
