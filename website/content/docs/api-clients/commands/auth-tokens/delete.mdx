@@ -11,9 +11,9 @@ Command: `boundary auth-tokens delete`
 
 The `auth-tokens delete` command deletes an auth token given its ID.
 
-## Examples
+## Example
 
-Delete an auth token with ID, "at_LvUqeYz80B".
+The following command deletes an auth token with the ID `at_LvUqeYz80B`:
 
 ```shell-session
 $ boundary auth-tokens delete -id at_LvUqeYz80B
@@ -33,6 +33,6 @@ $ boundary auth-tokens delete [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - ID of the auth token on which to operate.
+- `-id` `(string: "")` - Specifies the ID of the auth token to delete.
 
 @include 'cmd-option-note.mdx'
