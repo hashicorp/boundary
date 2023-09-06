@@ -172,7 +172,7 @@ jobs:
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
       - name: Go Build
         env:
-          CGO_ENABLED: "0"
+          CGO_ENABLED: "1"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
           METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
         uses: hashicorp/actions-go-build@v0.1.9  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
