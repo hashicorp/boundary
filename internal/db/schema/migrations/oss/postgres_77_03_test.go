@@ -27,8 +27,8 @@ import (
 // a shared table table space into their own set of tables.
 func TestMigrations_OplogKeyConversion(t *testing.T) {
 	const (
-		priorMigration   = 75001
-		currentMigration = 76004
+		priorMigration   = 76001
+		currentMigration = 77004
 	)
 
 	t.Parallel()
