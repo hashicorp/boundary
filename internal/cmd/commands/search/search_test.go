@@ -55,7 +55,14 @@ func (r *testCommander) ReadTokenFromKeyring(k, a string) *authtokens.AuthToken 
 
 func TestSearch(t *testing.T) {
 	ctx := context.Background()
-	cmd := &testCommander{t: t, p: &cache.Persona{UserId: "u_1234567890", BoundaryAddr: "http://someaddr", TokenName: "token1", KeyringType: "keyring"}}
+	p := &cache.Persona{
+		UserId:       "u_1234567890",
+		BoundaryAddr: "http://someaddr",
+		TokenName:    "token1",
+		KeyringType:  "keyring",
+		AuthTokenId:  "at_authtokenid",
+	}
+	cmd := &testCommander{t: t, p: p}
 
 	srv := daemon.NewTestServer(t, cmd)
 	var wg sync.WaitGroup
@@ -79,6 +86,7 @@ func TestSearch(t *testing.T) {
 				keyringType:  cmd.keyring(),
 				tokenName:    cmd.tokenName(),
 				flagQuery:    "name=name",
+				authTokenId:  p.AuthTokenId,
 			},
 			apiErrContains: "resource is a required field but was empty",
 		},
@@ -88,6 +96,7 @@ func TestSearch(t *testing.T) {
 				boundaryAddr: cmd.p.BoundaryAddr,
 				keyringType:  cmd.keyring(),
 				tokenName:    cmd.tokenName(),
+				authTokenId:  p.AuthTokenId,
 				flagQuery:    "name=name",
 				resource:     "hosts",
 			},
@@ -98,6 +107,7 @@ func TestSearch(t *testing.T) {
 			fb: filterBy{
 				keyringType: cmd.keyring(),
 				tokenName:   cmd.tokenName(),
+				authTokenId: p.AuthTokenId,
 				flagQuery:   "name=name",
 				resource:    "targets",
 			},
@@ -108,6 +118,7 @@ func TestSearch(t *testing.T) {
 			fb: filterBy{
 				boundaryAddr: cmd.p.BoundaryAddr,
 				tokenName:    cmd.tokenName(),
+				authTokenId:  p.AuthTokenId,
 				flagQuery:    "name=name",
 				resource:     "targets",
 			},
@@ -118,6 +129,7 @@ func TestSearch(t *testing.T) {
 			fb: filterBy{
 				boundaryAddr: cmd.p.BoundaryAddr,
 				keyringType:  cmd.keyring(),
+				authTokenId:  p.AuthTokenId,
 				flagQuery:    "name=name",
 				resource:     "targets",
 			},
@@ -129,6 +141,7 @@ func TestSearch(t *testing.T) {
 				boundaryAddr: "an unknown address",
 				keyringType:  "unrecognized",
 				tokenName:    "unrecognized",
+				authTokenId:  "unknown",
 				flagQuery:    "description % tar",
 				resource:     "targets",
 			},
@@ -140,6 +153,7 @@ func TestSearch(t *testing.T) {
 				boundaryAddr: cmd.p.BoundaryAddr,
 				keyringType:  cmd.keyring(),
 				tokenName:    cmd.tokenName(),
+				authTokenId:  p.AuthTokenId,
 				flagQuery:    "item % tar",
 				resource:     "targets",
 			},
@@ -164,6 +178,7 @@ func TestSearch(t *testing.T) {
 			boundaryAddr: cmd.p.BoundaryAddr,
 			keyringType:  cmd.keyring(),
 			tokenName:    cmd.tokenName(),
+			authTokenId:  p.AuthTokenId,
 			resource:     "targets",
 		})
 		require.NoError(t, err)
@@ -180,6 +195,7 @@ func TestSearch(t *testing.T) {
 			boundaryAddr: cmd.p.BoundaryAddr,
 			keyringType:  cmd.keyring(),
 			tokenName:    cmd.tokenName(),
+			authTokenId:  p.AuthTokenId,
 			flagQuery:    "name=name",
 			resource:     "targets",
 		})
@@ -202,6 +218,7 @@ func TestSearch(t *testing.T) {
 			boundaryAddr: cmd.p.BoundaryAddr,
 			keyringType:  cmd.keyring(),
 			tokenName:    cmd.tokenName(),
+			authTokenId:  p.AuthTokenId,
 			resource:     "targets",
 		})
 		require.NoError(t, err)
@@ -217,6 +234,7 @@ func TestSearch(t *testing.T) {
 			boundaryAddr: cmd.p.BoundaryAddr,
 			keyringType:  cmd.keyring(),
 			tokenName:    cmd.tokenName(),
+			authTokenId:  p.AuthTokenId,
 			flagQuery:    "id % ttcp",
 			resource:     "targets",
 		})
@@ -233,6 +251,7 @@ func TestSearch(t *testing.T) {
 			boundaryAddr: cmd.p.BoundaryAddr,
 			keyringType:  cmd.keyring(),
 			tokenName:    cmd.tokenName(),
+			authTokenId:  p.AuthTokenId,
 			flagQuery:    "id % ttcp_1234567890",
 			resource:     "targets",
 		})
