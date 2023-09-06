@@ -26,7 +26,6 @@ func TestRewrap_storageBucketSecretRewrapFn(t *testing.T) {
 	ctx := context.Background()
 	t.Run("errors-on-query-error", func(t *testing.T) {
 		conn, mock := db.TestSetupWithMock(t)
-		conn.Debug(true)
 		wrapper := db.TestWrapper(t)
 		mock.ExpectQuery(
 			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
