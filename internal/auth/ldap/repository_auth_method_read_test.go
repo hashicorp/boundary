@@ -184,6 +184,8 @@ func TestRepository_getAuthMethods(t *testing.T) {
 					WithCertificates(testCtx, testCert),
 					WithClientCertificate(testCtx, derPrivKey, testCert), // not a client cert but good enough for this test.)
 					WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{"mail": ToEmailAttribute, "displayName": ToFullNameAttribute}),
+					WithMaximumPageSize(testCtx, 10),
+					WithDerefAliases(testCtx, DerefAlways),
 				)
 				return am.PublicId, nil, []*AuthMethod{am}
 			},
