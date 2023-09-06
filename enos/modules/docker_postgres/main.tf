@@ -43,6 +43,11 @@ variable "database_name" {
   type        = string
   default     = "boundarydb"
 }
+variable "port" {
+  description = "Docker container port to use"
+  type        = number
+  default     = 5432
+}
 
 resource "docker_image" "postgres" {
   name         = var.image_name
@@ -63,8 +68,8 @@ resource "docker_container" "postgres" {
     container_path = "/etc/postgresql/"
   }
   ports {
-    internal = 5432
-    external = 5432
+    internal = var.port
+    external = var.port
   }
   healthcheck {
     test     = ["CMD", "pg_isready", "-U", "${var.user}", "-d", "${var.database_name}"]
@@ -92,4 +97,24 @@ resource "enos_local_exec" "wait" {
 
 output "address" {
   value = "postgres://${var.user}:${var.password}@${var.container_name}:5432/${var.database_name}?sslmode=disable"
+}
+
+output "user" {
+  value = var.user
+}
+
+output "password" {
+  value = var.password
+}
+
+output "database_name" {
+  value = var.database_name
+}
+
+output "port" {
+  value = var.port
+}
+
+output "container_name" {
+  value = var.container_name
 }

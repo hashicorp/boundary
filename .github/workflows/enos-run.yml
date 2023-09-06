@@ -80,6 +80,7 @@ jobs:
           - filter: 'e2e_database'
           - filter: 'e2e_docker_base builder:crt'
           - filter: 'e2e_docker_base_with_vault builder:crt'
+          - filter: 'e2e_docker_base_with_postgres builder:crt'
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}

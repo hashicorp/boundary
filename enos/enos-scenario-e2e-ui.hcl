@@ -220,7 +220,7 @@ scenario "e2e_ui" {
       local_boundary_dir        = local.local_boundary_dir
       local_boundary_ui_src_dir = local.local_boundary_ui_src_dir
       aws_ssh_private_key_path  = local.aws_ssh_private_key_path
-      target_ip                 = step.create_targets_with_tag1.target_ips[0]
+      target_address            = step.create_targets_with_tag1.target_ips[0]
       target_user               = "ubuntu"
       target_port               = "22"
       vault_addr                = step.create_vault_cluster.instance_public_ips[0]

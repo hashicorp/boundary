@@ -4,7 +4,7 @@
 # For this scenario to work, add the following line to /etc/hosts
 # 127.0.0.1 localhost boundary
 
-scenario "e2e_docker_base" {
+scenario "e2e_docker_base_with_postgres" {
   terraform_cli = terraform_cli.default
   terraform     = terraform.default
   providers = [
@@ -87,26 +87,13 @@ scenario "e2e_docker_base" {
     }
   }
 
-  step "create_host" {
-    module = module.docker_openssh_server
-    depends_on = [
-      step.create_docker_network
-    ]
-    variables {
-      image_name            = "${var.docker_mirror}/linuxserver/openssh-server:latest"
-      network_name          = [local.network_cluster]
-      private_key_file_path = local.aws_ssh_private_key_path
-    }
-  }
-
   step "run_e2e_test" {
     module = module.test_e2e_docker
     depends_on = [
       step.create_boundary,
-      step.create_host,
     ]
     variables {
-      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base"
+      test_package             = "github.com/hashicorp/boundary/testing/internal/e2e/tests/base_with_postgres"
       docker_mirror            = var.docker_mirror
       network_name             = step.create_docker_network.network_name
       go_version               = var.go_version
@@ -118,9 +105,12 @@ scenario "e2e_docker_base" {
       local_boundary_dir       = step.build_boundary_docker_image.cli_zip_path
       local_boundary_src_dir   = local.local_boundary_src_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
-      target_address           = step.create_host.address
-      target_port              = step.create_host.port
+      target_address           = step.create_boundary_database.container_name
+      target_port              = step.create_boundary_database.port
       target_user              = "ubuntu"
+      postgres_user            = step.create_boundary_database.user
+      postgres_password        = step.create_boundary_database.password
+      postgres_database_name   = step.create_boundary_database.database_name
     }
   }
 }

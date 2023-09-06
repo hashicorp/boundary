@@ -1,15 +1,16 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package base_test
+package base_with_postgres_test
 
 import "github.com/kelseyhightower/envconfig"
 
 type config struct {
 	TargetAddress    string `envconfig:"E2E_TARGET_ADDRESS" required:"true"` // e.g. 192.168.0.1
-	TargetSshKeyPath string `envconfig:"E2E_SSH_KEY_PATH" required:"true"`   // e.g. /Users/username/key.pem
-	TargetSshUser    string `envconfig:"E2E_SSH_USER" required:"true"`       // e.g. ubuntu
 	TargetPort       string `envconfig:"E2E_TARGET_PORT" required:"true"`
+	PostgresDbName   string `envconfig:"E2E_POSTGRES_DB_NAME" required:"true"`
+	PostgresUser     string `envconfig:"E2E_POSTGRES_USER" required:"true"`
+	PostgresPassword string `envconfig:"E2E_POSTGRES_PASSWORD" required:"true"`
 }
 
 func loadTestConfig() (*config, error) {
