@@ -4,10 +4,7 @@
 package event
 
 import (
-	"encoding/json"
 	"fmt"
-	"reflect"
-
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -53,10 +50,14 @@ func newObservation(fromOperation Op, opt ...Option) (*observation, error) {
 		Flush:       opts.withFlush,
 		Op:          fromOperation,
 		RequestInfo: opts.withRequestInfo,
-		Request:     opts.withRequest,
-		Response:    opts.withResponse,
 		Version:     observationVersion,
 	}
+
+	if opts.withTelemetry {
+		i.Request = opts.withRequest
+		i.Response = opts.withResponse
+	}
+
 	if err := i.validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -117,16 +118,11 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 				}
 			}
 			if g.Request.Details != nil {
-				res := recurseStructureWithTagFilter(
-					g.Request.Details,
-					map[string]string{
-						"eventstream": "observation",
-					},
-					false,
-				)
-				data, _ := json.Marshal(res)
-				fmt.Printf("RESULT request = %s", string(data))
-				msgReq.Details = g.Request.Details
+				filteredRequest, err := filterProtoMessage(g.Request.Details, telemetryFilter)
+				if err != nil {
+					continue
+				}
+				msgReq.Details = filteredRequest
 			}
 			if g.Request.Operation != "" {
 				msgReq.Operation = g.Request.Operation
@@ -151,17 +147,11 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 				msgRes.StatusCode = g.Response.StatusCode
 			}
 			if g.Response.Details != nil {
-				res := recurseStructureWithTagFilter(
-					g.Response.Details,
-					map[string]string{
-						"eventstream": "observation",
-					},
-					false,
-				)
-				data, _ := json.Marshal(res)
-				fmt.Printf("RESULT response = %s \n", string(data))
-
-				msgRes.Details = g.Response.Details
+				filteredResponse, err := filterProtoMessage(g.Response.Details, telemetryFilter)
+				if err != nil {
+					continue
+				}
+				msgRes.Details = filteredResponse
 			}
 			if g.Response.DetailsUpstreamMessage != nil {
 				msgRes.DetailsUpstreamMessage = g.Response.DetailsUpstreamMessage
@@ -183,93 +173,4 @@ func (o *observation) GetID() string {
 // the Gateable ID
 func (o *observation) FlushEvent() bool {
 	return o.Flush
-}
-
-func recurseStructureWithTagFilter(value any, allowedStructTags map[string]string, allowLevel bool) any {
-	if allowedStructTags == nil {
-		allowedStructTags = map[string]string{}
-	}
-
-	kind := reflect.ValueOf(value).Kind()
-
-	switch kind {
-	case reflect.Interface, reflect.Ptr:
-		value = reflect.ValueOf(value).Elem().Interface()
-		return recurseStructureWithTagFilter(value, allowedStructTags, allowLevel)
-	case reflect.Map:
-		out := map[string]any{}
-		m := reflect.ValueOf(value)
-		for _, k := range m.MapKeys() {
-			mVal := m.MapIndex(k).Interface()
-			if vv := recurseStructureWithTagFilter(mVal, allowedStructTags, allowLevel); vv != nil {
-				if strKey, ok := k.Interface().(string); ok {
-					out[strKey] = vv
-				} else {
-					out[fmt.Sprintf("%v", k)] = vv
-				}
-			}
-		}
-		if allowLevel {
-			return out
-		}
-		return nil
-	case reflect.Array, reflect.Slice:
-		out := []any{}
-		s := reflect.ValueOf(value)
-		for i := 0; i < s.Len(); i++ {
-			sVal := s.Index(i).Interface()
-			if vv := recurseStructureWithTagFilter(sVal, allowedStructTags, allowLevel); vv != nil {
-				out = append(out, vv)
-			}
-		}
-		if allowLevel {
-			return out
-		}
-		return nil
-	case reflect.Struct:
-		// traverse the struct recursively, and apply any tag filters
-		fields := reflect.TypeOf(value)
-		values := reflect.ValueOf(value)
-		num := fields.NumField()
-		out := map[string]any{}
-		for i := 0; i < num; i++ {
-			field := fields.Field(i)
-			name := field.Name
-			allowLevel := false
-			if len(allowedStructTags) == 0 {
-				allowLevel = true
-			} else {
-				for tag, tagValue := range allowedStructTags {
-					if field.Tag.Get(tag) == tagValue {
-						// log.Printf("%s is allowed by Tags (%s:\"%s\")", name, tag, tagValue)
-						allowLevel = true
-						break
-					}
-				}
-			}
-			if !field.IsExported() {
-				continue
-			}
-			if values.Field(i).IsZero() {
-				if allowLevel {
-					out[name] = ""
-				}
-				continue
-			}
-			if !values.Field(i).IsValid() {
-				continue
-			}
-			value := values.Field(i).Interface()
-			if vv := recurseStructureWithTagFilter(value, allowedStructTags, allowLevel); vv != nil {
-				out[name] = vv
-			}
-		}
-		return out
-	default:
-		// any other non structured type, we will just barf out as is
-		if allowLevel {
-			return value
-		}
-		return nil
-	}
 }
