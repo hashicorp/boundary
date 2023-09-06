@@ -117,7 +117,8 @@ jobs:
     needs:
       - product-metadata
       - set-product-version
-    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    runs-on: [ custom, linux, xxl, 20.04 ]
+    # runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
         goos: [ freebsd, windows, netbsd, openbsd, solaris ]
