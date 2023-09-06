@@ -2,20 +2,18 @@
 layout: docs
 page_title: credential-stores read - Command
 description: |-
-  The "credential-stores read" command allows Boundary admin to read a credential store information.
+  The "credential-stores read" command lets Boundary admin read credential store information.
 ---
 
 # credential-stores read
 
 Command: `boundary credential-stores read`
 
-The `credential-stores read` command reads a credential store information
-of a specific ID.
-
+The `credential-stores read` command reads credential store information for a credential store with a specific ID.
 
 ## Examples
 
-Retrieve a credential store information for a given ID, `clvlt_QYnQPAjA24`.
+The following example retrieves credential store information for a credential store with the ID `csvlt_5fvkRjCjou`:
 
 ```shell-session
 $ boundary credential-stores read -id csvlt_5fvkRjCjou
@@ -68,9 +66,8 @@ $ boundary credential-stores read [options] [args]
 
 </CodeBlockConfig>
 
-
 ### Command options
 
-- `-id` `(string: "")` - ID of the credential stores on which to operate.
+- `-id` `(string: "")` - Indicates the ID of the credential store for which to read information.
 
 @include 'cmd-option-note.mdx'

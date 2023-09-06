@@ -2,20 +2,18 @@
 layout: doc
 page_title: credential-libraries update - Command
 description: |-
-  The "credential-libraries update" command allows Boundary admin to update a credential library resource.
+  The "credential-libraries update" command lets Boundary admin update a credential library resource.
 ---
 
 # credential-libraries update
 
 Command: `boundary credential-libraries update`
 
-The `credential-libraries update` command performs update operations on Boundary
-credential library resources. 
+The `credential-libraries update` command lets you update Boundary credential library resources.
 
 ## Examples
 
-Update an existing Vault credential library to point to a new Vault secrets
-engine path.
+The following example updates an existing Vault credential library with the ID `csvlt_5fvkRjCjou` to point to a new Vault secrets engine path:
 
 ```shell-session
 $ boundary credential-libraries update vault-generic \
@@ -67,6 +65,16 @@ $ boundary credential-libraries update vault [options] [args]
 
 </CodeBlockConfig>
 
+### Command options
+
+- `-description` `(string: "")` - Specifies a description to set on the credential library.
+- `-id` `(string: "")` - Indicates the ID of the credential library to update.
+- `-name` `(string: "")` - Specifies a name to set on the credential library.
+- `-version` `(int: 0)` - The version of the credential library against which to perform the update operation.
+If you don't specify a version, the command performs a check-and-set automatically.
+
+#### Usages by type
+
 The available types are `vault-generic` and `vault-ssh-certificate`.
 
 <Note>
@@ -76,24 +84,23 @@ instead.
 
 </Note>
 
-### Command options
-
-- `-description` `(string: "")` - Description to set on the credential library.
-
-- `-id` `(string: "")` - ID of the credential library on which to operate.
-
-- `-name` `(string: "")` - Name to set on the credential library.
-
-- `-version` `(int: 0)` - The version of the credential library against which to
-   perform an update operation. If not specified, the command will perform a
-   check-and-set automatically.
-
-#### Usages by type
-
 <Tabs>
 <Tab heading="Vault">
 
-Update a credential library of `vault-generic` type.
+The `credential-libraries update vault-generic` command lets you update a generic Vault credential library.
+
+#### Example
+
+The following example updates a generic Vault credential library with the ID `clvlt_1234567890` to add the name `devops` and the description `For DevOps usage`:
+
+```shell-session
+$ boundary credential-libraries update vault-generic \
+   -id clvlt_1234567890 \
+   -name devops \
+   -description "For DevOps usage"
+```
+
+#### Usage
 
 <CodeBlockConfig hideClipboard>
 
@@ -103,38 +110,34 @@ $ boundary credential-libraries create vault-generic [options] [args]
 
 </CodeBlockConfig>
 
-### Vault credential library options
+#### Vault credential library options
 
-The following are Vault credential library specific options in addition to the
-command options.
+The following are specific Vault credential library options in addition to the command options:
 
-- `-credential-mapping-override`  - The credential mapping
-  override.
+- `-credential-mapping-override`  - Indicates an override for credential mapping.
+- `-vault-http-method` `(string: "")` - Determines the HTTP method the library should use when it communicates with Vault.
+- `-vault-http-request-body` `(strinboundary credential-libraries update vault-ssh-certificate -id clvsclt_1234567890 -name devops -description "For DevOps usage": "")` - Indicates the HTTP request body the credential library uses to communicate with Vault.
+This value can be the HTTP request body itself, it can refer to a file on disk (`file://`) from which the value is read, or it can refer to an environment variable (`env://`) from which the value is read.
+- `-vault-path` `(string: "")` - Indicates the path in Vault to request credentials from.
 
-- `-vault-http-method` `(string: "")` - The http method the library should use
-  when communicating with Vault.
+</Tab>
 
-- `-vault-http-request-body` `(strinboundary credential-libraries update vault-ssh-certificate -id clvsclt_1234567890 -name devops -description "For DevOps usage": "")` - The http request body the library
-   uses to communicate with vault. This can be the value itself, refer to a file
-   on disk (`file://`) from which the value will be read, or an env var
-   (`env://`) from which the value will be read.
+<Tab heading="Vault SSH certificate">
 
-- `-vault-path` `(string: "")` - The path in vault to request credentials from.
-
+The `credential-libraries update vault-ssh-certificate` command lets you update a Vault SSH certificate credential library.
 
 #### Example
 
+The following example updates a Vault SSH certificate credential library with the ID `clvsclt_1234567890` to add the name `devops` and the description `For DevOps usage`:
+
 ```shell-session
-$ boundary credential-libraries update vault-generic \
-   -id clvlt_1234567890 \
+$ boundary credential-libraries update vault-ssh-certificate \
+   -id clvsclt_1234567890 \
    -name devops \
    -description "For DevOps usage"
 ```
 
-</Tab>
-<Tab heading="Vault SSH certificate">
-
-Update a credential library of `vault-ssh-certificate` type.
+#### Usage
 
 <CodeBlockConfig hideClipboard>
 
@@ -144,59 +147,41 @@ $ boundary credential-libraries update vault-ssh-certificate [options] [args]
 
 </CodeBlockConfig>
 
-### Vault SSH certificate credential library options
+#### Vault SSH certificate credential library options
 
-The following are Vault SSH certificate credential library specific options in
-addition to the command options.
+The following are options specific to the Vault SSH certificate credential library, in addition to the command options:
 
-- `-critical-option`  - A key=value pair to add to the request's
-   critical-options map. This can also be a key value only which will set a JSON
-   null as the value. If a value is provided, the type is automatically
-   inferred. Use `-string-critical-option`, `-bool-critical-option`, or
-   `-num-critical-option` if the type needs to be overridden. Can be specified
-   multiple times. Supports sourcing values from files via "file://" and env
-   vars via "env://".
-
-- `-critical-options` `(string: "")` - A JSON map value to use as the entirety
-   of the request's critical-options map. Usually this will be sourced from a
-   file via "file://" syntax. Is exclusive with the other critical-option flags.
-
-- `-extension`  - A key=value pair to add to the request's
-   extensions map. This can also be a key value only which will set a JSON null
-   as the value. If a value is provided, the type is automatically inferred. Use
-   `-string-extension`, `-bool-extension`, or `-num-extension` if the type needs to be
-   overridden. Can be specified multiple times. Supports sourcing values from
-   files via "file://" and env vars via "env://".
-
-- `-extensions` `(string: "")` - A JSON map value to use as the entirety of
-   the request's extensions map. Usually this will be sourced from a file via
-   "file://" syntax. Is exclusive with the other extension flags.
-
-- `-key-bits` `(string: "")` - The number of bits when generating the ssh
-   private key. Depends on key_type. If ed25519 this should not be set, or set
-   to 0, if ecdsa one of 256, 384, 521, if rsa one of 2048, 3072, 4096.
-
-- `-key-id` `(string: "")` - The key id that the created certificate should
-  have.
-
-- `-key-type` `(string: "")` - The key type for the generated ssh private key.
-   One of: ed25519, ecdsa, rsa.
-
-- `-ttl` `(string: "")` - The time-to-live for the generated certificate.
-
-- `-username` `(string: "")` - The username to use with the ssh certificate.
-
-- `-vault-path` `(string: "")` - The path in vault to request credentials from.
-
-
-#### Example
-
-```shell-session
-$ boundary credential-libraries update vault-ssh-certificate \
-   -id clvsclt_1234567890 \
-   -name devops \
-   -description "For DevOps usage"
-```
+- `-critical-option`  - Specifies a key=value pair to add to the request's
+   critical-options map.
+   It can also be a key value only which sets a JSON null as the value.
+   If you provide a value, Boundary infers the type automatically.
+   You can use `-string-critical-option`, `-bool-critical-option`, or `-num-critical-option` to override the type.
+   You can specify values for this option multiple times.
+   This option supports sourcing values from files using "file://" and environment variables using "env://".
+- `-critical-options` `(string: "")` Indicates a JSON  map value to use as the entirety of the request's critical-options map.
+Usually this value is sourced from a file using "file://" syntax.
+This value is exclusive with the other critical-option flags.
+- `-extension`  - Specifies a key=value pair to add to the request's extensions map.
+It can also be a key value only which will set a JSON null as the value.
+If you provide a value, Boundary automatically infers the type.
+You can use `-string-extension`, `-bool-extension`, or `-num-extension` to override the type.
+You can specify values for this option multiple times.
+This option supports sourcing values from files using "file://" and environment variables using "env://".
+- `-extensions` `(string: "")` - Specifies a JSON map value to use as the entirety of
+   the request's extensions map.
+   Usually this value is sourced from a file using "file://" syntax.
+   This option is exclusive with the other extension flags.
+- `-key-bits` `(string: "")` - Specifies the number of bits to use when the SSH private key is generated.
+The value depends on the `key_type`.
+If you use a `ed25519` key, you should not set a value or set the value to `0`.
+If you use a `ecdsa` key, you should set the value to `256`, `384`, or `521`.
+If you use an `rsa` key, you should set the value to `2048`, `3072`, or `4096`.
+- `-key-id` `(string: "")` - Specifies the certificate's key id.
+- `-key-type` `(string: "")` - Specifies the key type for the ssh private key.
+Supported values include `ed25519`, `ecdsa`, and `rsa`.
+- `-ttl` `(string: "")` - Indicates the generated certificate's time-to-live.
+- `-username` `(string: "")` - Specifies the username to use with the SSH certificate.
+- `-vault-path` `(string: "")` - Specifies the path in Vault to request credentials from.
 
 </Tab>
 </Tabs>

@@ -2,20 +2,19 @@
 layout: docs
 page_title: credential-libraries read - Command
 description: |-
-  The "credential-libraries read" command allows Boundary admin to read a credential library information.
+  The "credential-libraries read" command lets Boundary admin read credential library information.
 ---
 
 # credential-libraries read
 
 Command: `boundary credential-libraries read`
 
-The `credential-libraries read` command reads a credential library information
-of a specific ID.
+The `credential-libraries read` command reads the credential library information for a specific credential library ID.
 
 
 ## Examples
 
-Retrieve a credential library information for a given ID, `clvlt_QYnQPAjA24`.
+The following example retrieves credential library information for a credential library with the ID `clvlt_QYnQPAjA24`:
 
 ```shell-session
 $ boundary credential-libraries read -id clvlt_QYnQPAjA24
@@ -67,6 +66,6 @@ $ boundary credential-libraries read [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - ID of the credential library on which to operate.
+- `-id` `(string: "")` - Indicates the ID of the credential library from which to read information.
 
 @include 'cmd-option-note.mdx'

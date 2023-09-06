@@ -9,16 +9,15 @@ description: |-
 
 Command: `boundary credential-libraries list`
 
-The `credential-libraries list` command lists credential libraries within an
-enclosing scope or resource.
+The `credential-libraries list` command lists credential libraries within an enclosing scope or resource.
 
 ## Examples
 
-List all credential libraries for a given credential store.
+The following example lists all credential libraries for a credential store with the ID `clvlt_QYnQPAjA24`:
 
 ```shell-session
 $ boundary credential-libraries list \
-   -credential-store-id clvlt_QYnQPAjA24
+   -credential-store-id
 ```
 
 **Example output:**
@@ -53,13 +52,11 @@ $ boundary credential-libraries list [options] [args]
 
 ### Command options
 
-- `-credential-store-id` `(string: "")` - The credential-store resource to use
-  for the operation. This can also be specified via the
-  `BOUNDARY_CREDENTIAL_STORE_ID` environment variable.
-
-- `-filter` `(string: "")` - If set, the list operation will be filtered before
-   being returned. The filter operates against each item in the list. Using
-   single quotes is recommended as filters contain double quotes. 
-
+- `-credential-store-id` `(string: "")` - Indicates the credential store resource to list credential libraries for.
+You can also specify the credential store using the **BOUNDARY_CREDENTIAL_STORE_ID** environment variable.
+- `-filter` `(string: "")` - Indicates whether Boundary filters the list operation before the results are returned.
+The filter operates against each item in the list.
+We recommend that you use single quotes, because the filters contain double quotes.
+Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
 
 @include 'cmd-option-note.mdx'

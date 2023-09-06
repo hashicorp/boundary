@@ -2,19 +2,18 @@
 layout: doc
 page_title: credential-stores update - Command
 description: |-
-  The "credential-stores update" command allows Boundary admin to update a credential store resource.
+  The "credential-stores update" command lets Boundary admin update a credential store resource.
 ---
 
 # credential-stores update
 
 Command: `boundary credential-stores update`
 
-The `credential-stores update` command performs update operations on Boundary
-credential store resources.
+The `credential-stores update` command lets you update Boundary credential store resources.
 
 ## Examples
 
-Update an existing Vault credential store.
+The following example updates an existing Vault credential store with the ID `csvlt_5fvkRjCjou` to add the description `For DevOps usage`, and the Vault namespace `devops`:
 
 ```shell-session
 $ boundary credential-stores update vault -id csvlt_5fvkRjCjou \
@@ -74,23 +73,32 @@ $ boundary credential-stores update vault [options] [args]
 
 ### Command options
 
-- `-description` `(string: "")` - Description to set on the credential store.
-
-- `-id` `(string: "")` - ID of the credential store on which to operate.
-
-- `-name` `(string: "")` - Name to set on the credential store.
-
-- `-version` `(int: 0)` - The version of the credential store against which to
-   perform an update operation. If not specified, the command will perform a
-   check-and-set automatically.
-
+- `-description` `(string: "")` - Specifies the description to set on the credential store.
+- `-id` `(string: "")` - Indicates the ID of the credential store to update.
+- `-name` `(string: "")` - Specifies the name to set on the credential store.
+- `-version` `(int: 0)` - Indicates the version of the credential store against which to perform an update operation.
+If you do not specify a version, the command performs a check-and-set automatically.
 
 #### Usages by type
+
+The available types are `static` and `vault`.
 
 <Tabs>
 <Tab heading="Static">
 
-Update a credential store of `static` type.
+The `credential-stores update static` command lets you update information for a static credential store.
+
+#### Example
+
+The following example updates a static credential store with the name `devops` and the description `For DevOps usage`:
+
+```shell-session
+$ boundary credential-stores update static \
+   -name devops \
+   -description "For DevOps usage"
+```
+
+#### Usage
 
 <CodeBlockConfig hideClipboard>
 
@@ -100,18 +108,23 @@ $ boundary credential-stores update static [options] [args]
 
 </CodeBlockConfig>
 
+</Tab>
+<Tab heading="Vault">
+
+The `credential-stores update vault` command lets you update a Vault credential store.
+
 #### Example
 
+The following example updates a Vault credential store with the ID `csvlt_1234567890` to add the name `devops` and the description `For DevOps usage`:
+
 ```shell-session
-$ boundary credential-stores update static \
+$ boundary credential-stores update vault \
+   -id csvlt_1234567890 \
    -name devops \
    -description "For DevOps usage"
 ```
 
-</Tab>
-<Tab heading="Vault">
-
-Update a credential store of `vault` type.
+#### Usage
 
 <CodeBlockConfig hideClipboard>
 
@@ -121,54 +134,26 @@ $ boundary credential-stores update vault [options] [args]
 
 </CodeBlockConfig>
 
-### Vault credential store options
+#### Vault credential store options
 
-The following are Vault credential store specific options in addition to the
-command options.
+The following options are specific to Vault credential stores in addition to the command options:
 
-- `-vault-address` `(string: "")` - The address of the Vault server. This should
-  be a complete URL such as https://127.0.0.1:8200
-
-- `-vault-ca-cert` `(string: "")` - The CA Cert to use when connecting to vault.
-  This can be the value itself, refer to a file on disk (`file://`) from which the
-   value will be read, or an env var (env://) from which the value will be read.
-
-- `-vault-client-certificate` `(string: "")` - The client certificate to use
-  when boundary connects to vault for this store. This can be the value itself,
-  refer to a file on disk (`file://`) from which the value will be read, or an env
-  var (`env://`) from which the value will be read.
-
-- `-vault-client-certificate-key` `(string: "")` - The client certificate's
-  private key to use when boundary connects to vault for this store. This can be
-  the value itself, refer to a file on disk (`file://`) from which the value will
-  be read, or an env var (`env://`) from which the value will be read.
-
-- `-vault-namespace` `(string: "")` - The vault namespace the store should use.
-
-- `-vault-tls-server-name` `(string: "")` - Name to use as the SNI host when
-  connecting via TLS.
-
-- `-vault-tls-skip-verify`  - Whether to skip tls verification.
-The default is false.
-
-- `-vault-token` `(string: "")` - The vault token to use when boundary connects
-  to vault for this store.
-
-- `-worker-filter` `(string: "")` - A boolean expression to filter which workers
-  can handle Vault commands for this credential store.
-
-
-#### Example
-
-```shell-session
-$ boundary credential-stores update vault \
-   -id csvlt_1234567890 \
-   -name devops \
-   -description "For DevOps usage"
-```
+- `-vault-address` `(string: "")` - Indicates the address of the Vault server.
+The address should be a complete URL such as https://127.0.0.1:8200.
+- `-vault-ca-cert` `(string: "")` - Indicates the CA certificate to use when you connect to Vault.
+This value can be the CA certificate itself, or it can be a reference to a file on disk (`file://`) or an environment variable (env://) from which Boundary reads the value.
+- `-vault-client-certificate` `(string: "")` - Indicates the client certificate to use when Boundary connects to Vault for this credential store.
+This value can be the client certificate itself, or it can be a reference to a file on disk (`file://`) or an environment variable (env://) from which Boundary reads the value.
+- `-vault-client-certificate-key` `(string: "")` - Specifies which private key the client certificate should use when Boundary connects to Vault for this store.
+This value can be the private key itself, or it can be a reference to a file on disk (`file://`) or an environment variable (env://) from which Boundary reads the value.
+- `-vault-namespace` `(string: "")` - Indicates which Vault namespace the credential store should use.
+- `-vault-tls-server-name` `(string: "")` - Indicates the name to use as the SNI host when you connect using TLS.
+- `-vault-tls-skip-verify`  - Indicates whether to skip TLS verification.
+The default value is `false`.
+- `-vault-token` `(string: "")` - Specifies which Vault token to use when Boundary connects to Vault for this credential store.
+- `-worker-filter` `(string: "")` - Specifies a Boolean expression to filter which workers can process Vault commands for this credential store.
 
 </Tab>
 </Tabs>
-
 
 @include 'cmd-option-note.mdx'
