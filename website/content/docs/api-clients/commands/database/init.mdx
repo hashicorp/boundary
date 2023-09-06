@@ -79,7 +79,7 @@ Some initial resources are created in the following order, and in the indicated 
 <Tip>
 
 You can use flags to prevent Boundary from creating these resources.
-If you use flags ato skip any of these resources, any resources that would be created afterwards are also skipped.
+If you use flags to skip any of these resources, any resources that would be created afterwards are also skipped.
 Refer to the following [init options](#init-options) for the available flags.
 
 </Tip>
@@ -87,10 +87,11 @@ Refer to the following [init options](#init-options) for the available flags.
 ### Command options
 
 - `-config` `(string: "")` - Indicates the path to the configuration file.
-- `-config-kms` `(string: "")` - Indicates the path to a configuration file containing a "kms" block marked for tje "config" purpose.
+- `-config-kms` `(string: "")` - Indicates the path to a configuration file containing a "kms" block marked for the "config" purpose.
 The KMS block performs decryption of the main configuration file.
 If you don't set a "kms" block, Boundary looks for such a block in the main configuration file, which has some drawbacks; see the help output for `boundary config encrypt -h` for details.
-- `-log-format` `(string: "")` - Specifies the log format. Supported values are `standard` and `json`.
+- `-log-format` `(string: "")` - Specifies the log format.
+Supported values are `standard` and `json`.
 - `-log-level` `(string: "")` - Specifies the log verbosity level. Supported values include the following in order of more detail to less:
 
   - `trace`
@@ -104,7 +105,7 @@ If you don't set a "kms" block, Boundary looks for such a block in the main conf
 ### Init options:
 
 - `-migration-url` `(string: "")` - Overrides the migration URL set in the configuration file, and specifies the URL used to connect to the database for initialization, if set.
-Configuring this option can allow different permissions for the user running initialization vs. normal operation.
+Configuring this option can allow different permissions for the user running initialization vs. standard operations.
 This value can refer to a direct database URL, or it can refer to file on disk (`file://`) or an environment variable (`env://`) from which Boundary reads the URL.
 
 - `-skip-auth-method-creation` - Skips the creation of an auth method as part of initialization, if not set.
