@@ -24,6 +24,7 @@ type ListRequest interface {
 
 // ResponseItem represents the outgoing protobuf response type.
 type ResponseItem interface {
+	comparable
 	GetId() string
 	GetUpdatedTime() *timestamppb.Timestamp
 }
@@ -56,7 +57,7 @@ type ListItemsFunc[T any] func(prevPageLast T, refreshToken *pbs.ListRefreshToke
 
 // ConvertAndFilterFunc defines the signature of the callback used to
 // convert from T to PbT and filter the results.
-type ConvertAndFilterFunc[T any, PbT ResponseItem] func(item T) (PbT, bool, error)
+type ConvertAndFilterFunc[T any, PbT ResponseItem] func(item T) (PbT, error)
 
 // PaginateRequest performs refresh token parsing and validation
 // and performs pagination as specified by the request page size
@@ -169,8 +170,8 @@ func fillPage[T any, PbT ResponseItem](
 	limit int,
 	pageSize int,
 	refreshToken *pbs.ListRefreshToken,
-	listItemsFn func(prevPageLast T, refreshToken *pbs.ListRefreshToken, limit int) ([]T, error),
-	convertAndFilterFn func(item T) (PbT, bool, error),
+	listItemsFn ListItemsFunc[T],
+	convertAndFilterFn ConvertAndFilterFunc[T, PbT],
 ) ([]PbT, bool, error) {
 	const op = "pagination.fillPage"
 
@@ -193,11 +194,12 @@ func fillPage[T any, PbT ResponseItem](
 dbLoop:
 	for {
 		for i, item := range page {
-			pbItem, ok, err := convertAndFilterFn(item)
+			pbItem, err := convertAndFilterFn(item)
 			if err != nil {
 				return nil, false, errors.Wrap(ctx, err, op)
 			}
-			if ok {
+			var zero PbT
+			if pbItem != zero {
 				finalItems = append(finalItems, pbItem)
 				if len(finalItems) == pageSize {
 					if completeListing && i != len(page)-1 {
