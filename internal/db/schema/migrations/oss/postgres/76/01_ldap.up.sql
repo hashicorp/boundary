@@ -47,7 +47,7 @@ begin;
         on delete cascade
         on update cascade
   );
-  comment on table auth_ldap_bind_credential is 
+  comment on table auth_ldap_deref_aliases is 
   'auth_ldap_deref_aliases are optional and specify how Boundary should handle '
   'dereferencing aliases durning LDAP searches';
 
