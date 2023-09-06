@@ -137,11 +137,11 @@ The following options are specific to Vault credential stores in addition to the
 - `-vault-address` `(string: "")` - Indicates the address of the Vault server.
 The address should be a complete URL such as https://127.0.0.1:8200.
 - `-vault-ca-cert` `(string: "")` - Indicates the CA certificate to use when you connect to Vault.
-This value can be the CA certificate itself, or it can be a reference to a file on disk (`file://`) or an environment variable (env://) from which Boundary reads the value.
+This value can be the CA certificate itself, or it can be a reference to a file on disk (`file://`) or an environment variable (`env://`) from which Boundary reads the value.
 - `-vault-client-certificate` `(string: "")` - Indicates the client certificate to use when Boundary connects to Vault for this credential store.
-This value can be the client certificate itself, or it can be a reference to a file on disk (`file://`) or an environment variable (env://) from which Boundary reads the value.
+This value can be the client certificate itself, or it can be a reference to a file on disk (`file://`) or an environment variable (`env://`) from which Boundary reads the value.
 - `-vault-client-certificate-key` `(string: "")` - Specifies which private key the client certificate should use when Boundary connects to Vault for this store.
-This value can be the private key itself, or it can be a reference to a file on disk (`file://`) or an environment variable (env://) from which Boundary reads the value.
+This value can be the private key itself, or it can be a reference to a file on disk (`file://`) or an environment variable (`env://`) from which Boundary reads the value.
 - `-vault-namespace` `(string: "")` - Indicates which Vault namespace the credential store should use.
 - `-vault-tls-server-name` `(string: "")` - Indicates the name to use as the SNI host when you connect using TLS.
 - `-vault-tls-skip-verify`  - Indicates whether to skip TLS verification.
