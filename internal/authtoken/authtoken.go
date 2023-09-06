@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -166,4 +167,21 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 	encoded := base58.FastBase58Encoding(marshaledBlob)
 
 	return globals.ServiceTokenV1 + encoded, nil
+}
+
+// sortAuthToken is used to encapsulate the information
+// needed for sorting and filtering for pagination.
+type sortAuthToken struct {
+	publicId   string
+	updateTime time.Time
+}
+
+type deletedAuthToken struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAuthToken) TableName() string {
+	return "auth_token_deleted"
 }

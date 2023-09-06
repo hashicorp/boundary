@@ -71,4 +71,16 @@ func Test_GetOpts(t *testing.T) {
 		opts = getOpts(WithIamOptions(iam.WithName("foobar")))
 		assert.NotEmpty(opts.withIamOptions)
 	})
+
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts := getOpts(WithStartPageAfterItem("s_1", updateTime))
+		testOpts := getDefaultOptions()
+		testOpts.withStartPageAfterItem = &sortAuthToken{
+			publicId:   "s_1",
+			updateTime: updateTime,
+		}
+		assert.Equal(opts, testOpts)
+	})
 }

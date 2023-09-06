@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -23,6 +24,10 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
 	"google.golang.org/grpc/codes"
 )
+
+// The default max page size is used when one is not
+// provided to NewService.
+const defaultMaxPageSize = 1000
 
 var (
 	// IdActions contains the set of actions that can be performed on
@@ -46,14 +51,15 @@ var (
 type Service struct {
 	pbs.UnsafeAuthTokenServiceServer
 
-	repoFn    common.AuthTokenRepoFactory
-	iamRepoFn common.IamRepoFactory
+	repoFn      common.AuthTokenRepoFactory
+	iamRepoFn   common.IamRepoFactory
+	maxPageSize uint
 }
 
 var _ pbs.AuthTokenServiceServer = (*Service)(nil)
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(ctx context.Context, repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "authtoken.NewService"
 	if repo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing auth token repository")
@@ -61,14 +67,23 @@ func NewService(ctx context.Context, repo common.AuthTokenRepoFactory, iamRepoFn
 	if iamRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
-	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
+	return Service{
+		repoFn:      repo,
+		iamRepoFn:   iamRepoFn,
+		maxPageSize: maxPageSize,
+	}, nil
 }
 
 // ListAuthTokens implements the interface pbs.AuthTokenServiceServer.
 func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequest) (*pbs.ListAuthTokensResponse, error) {
+	const op = "authtoken.(Service).ListAuthTokens"
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
+
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
@@ -93,32 +108,45 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		return &pbs.ListAuthTokensResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
-	}
-	if len(ul) == 0 {
-		return &pbs.ListAuthTokensResponse{}, nil
 	}
 
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.AuthToken, 0, len(ul))
-	res := perms.Resource{
-		Type: resource.AuthToken,
+
+	listAuthTokensFn := func(prevPageLast *authtoken.AuthToken, refreshToken *pbs.ListRefreshToken, limit int) ([]*authtoken.AuthToken, error) {
+		opts := []authtoken.Option{
+			authtoken.WithLimit(limit),
+		}
+		if prevPageLast == nil {
+			if refreshToken != nil {
+				opts = append(opts, authtoken.WithStartPageAfterItem(
+					refreshToken.GetLastItemId(),
+					refreshToken.GetLastItemUpdatedTime().AsTime()))
+			}
+		} else {
+			opts = append(opts, authtoken.WithStartPageAfterItem(prevPageLast.GetPublicId(), prevPageLast.GetUpdateTime().AsTime()))
+		}
+		return repo.ListAuthTokens(ctx, scopeIds, opts...)
 	}
-	for _, at := range ul {
+	filterAndConvertFn := func(at *authtoken.AuthToken) (*pb.AuthToken, error) {
+		res := perms.Resource{
+			Type: resource.AuthToken,
+		}
+
 		res.Id = at.GetPublicId()
 		res.ScopeId = at.GetScopeId()
 		authorizedActions := authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions, auth.WithResource(&res))
 		if len(authorizedActions) == 0 {
-			continue
+			return nil, nil
 		}
 
 		if authorizedActions.OnlySelf() && at.GetIamUserId() != authResults.UserId {
-			continue
+			return nil, nil
 		}
 
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
@@ -131,17 +159,47 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions.Strings()))
 		}
 
-		item, err := toProto(ctx, at, outputOpts...)
+		pbItem, err := toProto(ctx, at, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
 
-		if filter.Match(item) {
-			finalItems = append(finalItems, item)
+		if filter.Match(pbItem) {
+			return pbItem, nil
 		}
+		return nil, nil
 	}
 
-	return &pbs.ListAuthTokensResponse{Items: finalItems}, nil
+	listResp, err := pagination.PaginateRequest(
+		ctx,
+		s.maxPageSize,
+		pbs.ResourceType_RESOURCE_TYPE_AUTH_TOKEN,
+		req,
+		listAuthTokensFn,
+		filterAndConvertFn,
+		&authResults,
+		repo,
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+
+	resp := &pbs.ListAuthTokensResponse{
+		Items:        listResp.Items,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+		RefreshToken: listResp.MarshaledRefreshToken,
+		RemovedIds:   listResp.DeletedIds,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+	}
+
+	return resp, nil
 }
 
 // GetAuthToken implements the interface pbs.AuthTokenServiceServer.
@@ -259,19 +317,6 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 		return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete user"))
 	}
 	return rows > 0, nil
-}
-
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*authtoken.AuthToken, error) {
-	repo, err := s.repoFn()
-	_ = repo
-	if err != nil {
-		return nil, err
-	}
-	ul, err := repo.ListAuthTokens(ctx, scopeIds, authtoken.WithLimit(-1))
-	if err != nil {
-		return nil, err
-	}
-	return ul, nil
 }
 
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {

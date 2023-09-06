@@ -38,6 +38,7 @@ type options struct {
 	withPublicId                 string
 	withPasswordOptions          []password.Option
 	withIamOptions               []iam.Option
+	withStartPageAfterItem       *sortAuthToken
 }
 
 func getDefaultOptions() options {
@@ -114,5 +115,16 @@ func WithPasswordOptions(with ...password.Option) Option {
 func WithIamOptions(with ...iam.Option) Option {
 	return func(o *options) {
 		o.withIamOptions = with
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(publicId string, updateTime time.Time) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = &sortAuthToken{
+			publicId:   publicId,
+			updateTime: updateTime,
+		}
 	}
 }
