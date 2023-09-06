@@ -9,6 +9,7 @@ alter table oplog_entry
 
 drop trigger insert_oplog_entry on oplog_entry;
 drop function insert_oplog_entry();
+-- replaces function defined in 56/01_oplog_key_id_scope_id_truncation.up.sql
 create function insert_oplog_entry() returns trigger
 as $$
 begin
