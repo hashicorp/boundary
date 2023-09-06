@@ -2,20 +2,18 @@
 layout: docs
 page_title: groups remove-members - Command
 description: |-
-  The "groups remove-members" command allows Boundary admin to remove members (users) from a group given its ID..
+  The "groups remove-members" command lets Boundary admin remove members (users) from a group given its ID.
 ---
 
 # groups remove-members
 
 Command: `boundary groups remove-members`
 
-The `groups remove-members` command removes members (users) from a group given
-its ID.
+The `groups remove-members` command removes users from a group, given its ID.
 
 ## Examples
 
-Remove a user with ID, `u_J5l9FWB7yq` from "webdev" group where its group ID is
-`g_FNVVhAd0on`.
+The following example removes a user with the ID `u_J5l9FWB7yq` from a group with the ID `g_FNVVhAd0on`:
 
 ```shell-session
 $ boundary groups remove-members -id g_FNVVhAd0on \
@@ -71,9 +69,9 @@ $ boundary groups remove-members [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - ID of the group on which to operate.
+- `-id` `(string: "")` - Indicates the ID of the group from which to remove a member.
 
-- `-member` `(string: "")` - ID of the user to be added to the group. The
-  `-member` flag can be specified multiple times.
+- `-member` `(string: "")` - Indicates the ID of the user to be removed from the group.
+You can specify the `-member` flag multiple times.
 
 @include 'cmd-option-note.mdx'

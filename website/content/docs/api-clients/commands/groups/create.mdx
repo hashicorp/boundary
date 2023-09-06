@@ -2,18 +2,18 @@
 layout: docs
 page_title: groups create - Command
 description: |-
-  The "groups create" command allows Boundary admin to create a group.
+  The "groups create" command lets Boundary admin create a group.
 ---
 
 # groups create
 
 Command: `boundary groups create`
 
-The `groups create` command creates a new group.
+The `groups create` command lets you create a new group.
 
 ## Examples
 
-Create a group, "group01" under the "IT_Support" organization.
+The following example creates a group, `group01` in the scope `o_R0wbo0H6Zl`:
 
 ```shell-session
 $ boundary groups create -name "group01" \
@@ -66,13 +66,10 @@ $ boundary groups create [options] [args]
 
 ### Command options
 
-- `-description` `(string: "")` - Description to set on the group.
-
-- `-name` `(string: "")` - Name to set on the group.
-
-- `-scope-id` `(string: "")` - Scope in which to make the request. The default
-   is global. This can also be specified via the BOUNDARY_SCOPE_ID environment
-   variable.
-
+- `-description` `(string: "")` - Specifies a description to set on the new group.
+- `-name` `(string: "")` - Specifies a name to set on the new group.
+- `-scope-id` `(string: "")` - Indicates the scope in which to create the group.
+The default value is `global`.
+You can also specify a scope using the **BOUNDARY_SCOPE_ID** environment variable.
 
 @include 'cmd-option-note.mdx'

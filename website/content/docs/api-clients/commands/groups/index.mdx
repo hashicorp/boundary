@@ -2,25 +2,23 @@
 layout: docs
 page_title: groups - Command
 description: |-
-  The "groups" command allows Boundary admin to create and manage the group resources.
+  The "groups" command lets Boundary admin create and manage group resources.
 ---
 
 # groups
 
 Command: `boundary groups`
 
-The `groups` command create and manage the group resource in Boundary.
+The `groups` command lets you create and manage group resources in Boundary.
 
-A group in Boundary is a resource that represents a collection of users that are
-treated equally for the purposes of access control. A group is a principal,
-which allows it to be assigned to roles. Roles assigned to a group are
-indirectly assigned to the users in the group, and users receive all permissions
-of the assigned roles. Groups can be defined at the global, organization, or
-project scope.
+A group in Boundary is a resource that represents a collection of users that are treated equally for the purposes of access control.
+A group is a principal, which means it can be assigned to roles.
+Roles assigned to a group are indirectly assigned to the users in the group, and users receive all permissions of the assigned roles.
+You can define groups at the global, organization, or project scope.
 
 ## Examples
 
-Create a group, "group01" under the "IT_Support" organization.
+The following example creates a group, `group01` in a scope with the id `o_R0wbo0H6Zl`:
 
 ```shell-session
 $ boundary groups create -name "group01" \
@@ -81,7 +79,7 @@ Subcommands:
 
 </CodeBlockConfig>
 
-For more information, examples, and usage about a subcommand, click on the name
+For more information, examples, and usage, click on the name
 of the subcommand in the sidebar or one of the links below:
 
 - [add-members](/boundary/docs/api-clients/commands/groups/add-members)

@@ -2,19 +2,19 @@
 layout: docs
 page_title: groups delete - Command
 description: |-
-  The "groups delete" command allows Boundary admin to delete a group resource.
+  The "groups delete" command lets Boundary admin delete a group resource.
 ---
 
 # groups delete
 
 Command: `boundary groups delete`
 
-The `groups delete` command deletes an existing group.
+The `groups delete` command lets you delete an existing group.
 
 
 ## Examples
 
-Delete a group with the given ID (`g_FNVVhAd0on`). 
+The following example deletes a group with the given ID, `g_FNVVhAd0on`.
 
 ```shell-session
 $ boundary groups delete -id g_FNVVhAd0on
@@ -34,6 +34,6 @@ $ boundary groups delete [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - ID of the groups to delete.
+- `-id` `(string: "")` - Indicates the ID of the group to delete.
 
 @include 'cmd-option-note.mdx'

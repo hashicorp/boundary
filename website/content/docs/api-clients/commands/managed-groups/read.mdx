@@ -2,18 +2,18 @@
 layout: docs
 page_title: managed-groups read - Command
 description: |-
-  The "managed-groups read" command lets you read a managed group with a given ID.
+  The "managed-groups read" command lets you read the details of a managed group with a given ID.
 ---
 
 # managed-groups read
 
 Command: `boundary managed-groups read`
 
-The `boundary managed-groups read` command lets you read a Boundary managed group using its given ID.
+The `boundary managed-groups read` command lets you read the details of a Boundary managed group using its given ID.
 
 ## Example
 
-This example reads a managed group with the ID `_1234567890`:
+This example reads the details of a managed group with the ID `_1234567890`:
 
 ```shell-session
 $ boundary managed-groups read -id _1234567890
@@ -31,6 +31,6 @@ $ boundary managed-groups read [options] [args]
 
 ### Command options
 
-- `-id=<string>` - ID of the managed group to read.
+- `-id=<string>` - Indicates the ID of the managed group you want to read information for.
 
 @include 'cmd-option-note.mdx'
