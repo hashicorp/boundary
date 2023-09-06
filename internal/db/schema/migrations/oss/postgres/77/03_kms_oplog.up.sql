@@ -23,8 +23,8 @@ create table kms_oplog_root_key_version (
   private_id kms_private_id primary key,
   root_key_id kms_private_id not null
     constraint kms_oplog_root_key_fkey
-      references kms_oplog_root_key(private_id) 
-      on delete cascade 
+      references kms_oplog_root_key(private_id)
+      on delete cascade
       on update cascade,
   version kms_version,
   key bytea not null
@@ -38,7 +38,7 @@ create table kms_oplog_root_key_version (
 );
 comment on table kms_oplog_root_key_version is
   'kms_oplog_root_key_version contains versions of a kms_oplog_root_key';
-  
+
  -- define the immutable fields for kms_root_key_version (all of them)
 create trigger kms_immutable_columns before update on kms_oplog_root_key_version
   for each row execute procedure kms_immutable_columns('private_id', 'root_key_id', 'create_time');
@@ -75,13 +75,13 @@ create table kms_oplog_data_key_version (
   private_id kms_private_id primary key,
   data_key_id kms_private_id not null
     constraint kms_oplog_data_key_fkey
-      references kms_oplog_data_key(private_id) 
-      on delete cascade 
-      on update cascade, 
+      references kms_oplog_data_key(private_id)
+      on delete cascade
+      on update cascade,
   root_key_version_id kms_private_id not null
     constraint kms_oplog_root_key_version_fkey
-      references kms_oplog_root_key_version(private_id) 
-      on delete cascade 
+      references kms_oplog_root_key_version(private_id)
+      on delete cascade
       on update cascade,
   version kms_version,
   key bytea not null
@@ -105,7 +105,7 @@ create trigger kms_immutable_columns before update on kms_oplog_data_key_version
 -- to change)
 
 -- ############################################################################
--- Next: we will convert all the existing oplog DEK into the new schema model 
+-- Next: we will convert all the existing oplog DEK into the new schema model
 -- before adding triggers for create_time, and version
 -- this is important, especially for the version column!
 
@@ -126,17 +126,17 @@ from kms_data_key where purpose = 'oplog';
 insert into kms_oplog_data_key_version (private_id, data_key_id, root_key_version_id, version, key, create_time)
 select kdkv.private_id, kdkv.data_key_id, kdkv.root_key_version_id, kdkv.version, kdkv.key, kdkv.create_time
 from kms_data_key_version kdkv, kms_oplog_data_key kodk
-where  kdkv.data_key_id = kodk.private_id;
+where kdkv.data_key_id = kodk.private_id;
 
 -- ############################################################################
 -- post conversion, we add the required constraints and triggers
 
 alter table oplog_entry
-add constraint kms_oplog_data_key_version_fkey
+  add constraint kms_oplog_data_key_version_fkey
     foreign key(key_id)
-        references kms_oplog_data_key_version (private_id)
-        on delete restrict
-        on update cascade;
+      references kms_oplog_data_key_version (private_id)
+      on delete restrict
+      on update cascade;
 
 create trigger kms_default_create_time_column before insert on kms_oplog_root_key
   for each row execute procedure kms_default_create_time();
@@ -154,6 +154,6 @@ create trigger default_create_time before insert on kms_oplog_data_key_version
   for each row execute procedure kms_default_create_time();
 
 create trigger kms_version_column before insert on kms_oplog_data_key_version
-	for each row execute procedure kms_version_column('data_key_id');
+  for each row execute procedure kms_version_column('data_key_id');
 
 commit;
