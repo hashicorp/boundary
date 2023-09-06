@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
@@ -35,6 +36,27 @@ func defaultTargetFunc(ctx context.Context, addr, token string) ([]*targets.Targ
 	return l.Items, nil
 }
 
+// SessionRetrievalFunc is a function that retrieves sessions
+// from the provided boundary addr using the provided token.
+type SessionRetrievalFunc func(ctx context.Context, addr, token string) ([]*sessions.Session, error)
+
+func defaultSessionFunc(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
+	const op = "cache.defaultSessionFunc"
+	client, err := api.NewClient(&api.Config{
+		Addr:  addr,
+		Token: token,
+	})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	sClient := sessions.NewClient(client)
+	l, err := sClient.List(ctx, "global", sessions.WithRecursive(true))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return l.Items, nil
+}
+
 // Refresh iterates over all personas in the cache, attempts to read the
 // resources for those personas from boundary and updates the cache with
 // the values retrieved there.  Refresh accepts the options
@@ -50,13 +72,16 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if opts.withTargetRetrievalFunc == nil {
-		opts.withTargetRetrievalFunc = defaultTargetFunc
-	}
 
 	personas, err := r.listPersonas(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
+	}
+	if opts.withTargetRetrievalFunc == nil {
+		opts.withTargetRetrievalFunc = defaultTargetFunc
+	}
+	if opts.withSessionRetrievalFunc == nil {
+		opts.withSessionRetrievalFunc = defaultSessionFunc
 	}
 
 	var retErr error
@@ -70,16 +95,33 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 			continue
 		}
 
-		tars, err := opts.withTargetRetrievalFunc(ctx, p.BoundaryAddr, at.Token)
-		if err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for persona %#v", p)))
-			continue
-		}
+		// Targets
+		{
+			tars, err := opts.withTargetRetrievalFunc(ctx, p.BoundaryAddr, at.Token)
+			if err != nil {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for persona %#v", p)))
+				continue
+			}
 
-		event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for persona %v", len(tars), p))
-		if err := r.refreshCachedTargets(ctx, p, tars); err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for persona %v", p)))
-			continue
+			event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for persona %v", len(tars), p))
+			if err := r.refreshCachedTargets(ctx, p, tars); err != nil {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for persona %v", p)))
+				continue
+			}
+		}
+		// Sessions
+		{
+			sess, err := opts.withSessionRetrievalFunc(ctx, p.BoundaryAddr, at.Token)
+			if err != nil {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for persona %#v", p)))
+				continue
+			}
+
+			event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d sessions for persona %v", len(sess), p))
+			if err := r.refreshCachedSessions(ctx, p, sess); err != nil {
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for persona %v", p)))
+				continue
+			}
 		}
 	}
 	return retErr
