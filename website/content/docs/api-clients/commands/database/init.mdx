@@ -13,14 +13,13 @@ The `database init` command initializes Boundary's database.
 
 ## Examples
 
-Initialize a Boundary's database with configuration specified in the
-`/etc/boundary/controller.hcl` file.
+The following example initializes a Boundary's database with the configuration specified in the `/etc/boundary/controller.hcl` file:
 
 ```shell-session
 $ boundary database init -config=/etc/boundary/controller.hcl
 ```
 
-The `controller.hcl` file contains database URL.
+The `controller.hcl` file contains the database URL.
 
 <CodeBlockConfig filename="/etc/boundary.d/controller.hcl" hideClipboard highlight="19-23">
 
@@ -66,70 +65,64 @@ $ boundary database init [options] [args]
 
 </CodeBlockConfig>
 
-Unless told not to via flags, some initial resources will be created, in the
-following order and in the indicated scopes:
+Some initial resources are created in the following order, and in the indicated scopes:
 
-- Initial Login Role (global)
-- Password-Type Auth Method (global)
-- Org Scope (global)
-- Project Scope (org)
-   - Static-Type Host Catalog (project)
-      - Static-Type Host Set
-      - Static-Type Host
+- Initial login role (global)
+- Password-type auth method (global)
+- Org scope (global)
+- Project scope (org)
+   - Static-type host catalog (project)
+      - Static-type host set
+      - Static-type host
    - Target (project)
 
 <Tip>
 
-If flags are used to skip any of these resources, any resources that would be
-created afterwards are also skipped. Refer to the following [init
-options](#init-options) for the available flags.
+You can use flags to prevent Boundary from creating these resources.
+If you use flags to skip any of these resources, any resources that would be created afterwards are also skipped.
+Refer to the following [init options](#init-options) for the available flags.
 
 </Tip>
 
 ### Command options
 
-- `-config` `(string: "")` - Path to the configuration file.
+- `-config` `(string: "")` - Indicates the path to the configuration file.
+- `-config-kms` `(string: "")` - Indicates the path to a configuration file containing a "kms" block marked for the "config" purpose.
+The KMS block performs decryption of the main configuration file.
+If you don't set a "kms" block, Boundary looks for such a block in the main configuration file, which has some drawbacks; see the help output for `boundary config encrypt -h` for details.
+- `-log-format` `(string: "")` - Specifies the log format.
+Supported values are `standard` and `json`.
+- `-log-level` `(string: "")` - Specifies the log verbosity level. Supported values include the following in order of more detail to less:
 
-- `-config-kms` `(string: "")` - Path to a configuration file containing a "kms"
-   block marked for "config" purpose, to perform decryption of the main
-   configuration file. If not set, will look for such a block in the main
-   configuration file, which has some drawbacks; see the help output for
-   "boundary config encrypt -h" for details.
+  - `trace`
+  - `debug`
+  - `info`
+  - `warn`
+  - `err`
 
-- `-log-format` `(string: "")` - Log format. Supported values are "standard" and
-  "json".
-
-- `-log-level` `(string: "")` - Log verbosity level. Supported values (in order
-   of more detail to less) are "trace", "debug", "info", "warn", and "err". This
-   can also be specified via the `BOUNDARY_LOG_LEVEL` environment variable.
+  You can also specify a log level using the **BOUNDARY_LOG_LEVEL** environment variable.
 
 ### Init options:
 
-- `-migration-url` `(string: "")` - If set, overrides a migration URL set in
-   config, and specifies the URL used to connect to the database for
-   initialization. This can allow different permissions for the user running
-   initialization vs. normal operation. This can refer to a file on disk
-   (`file://`) from which a URL will be read; an env var (`env://`) from which the
-   URL will be read; or a direct database URL.
+- `-migration-url` `(string: "")` - Overrides the migration URL set in the configuration file, and specifies the URL used to connect to the database for initialization, if set.
+Configuring this option can allow different permissions for the user running initialization vs. standard operations.
+This value can refer to a direct database URL, or it can refer to file on disk (`file://`) or an environment variable (`env://`) from which Boundary reads the URL.
 
-- `-skip-auth-method-creation` - If not set, an auth method will
-   not be created as part of initialization. If set, the recovery KMS will be
-   needed to perform any actions. The default is false.
+- `-skip-auth-method-creation` - Skips the creation of an auth method as part of initialization, if not set.
+If you set this value, the recovery KMS is required to perform any actions.
+The default value is `false`.
 
-- `-skip-host-resources-creation` - If not set, host resources
-   (host catalog, host set, host) will not be created as part of initialization.
-   The default is false.
+- `-skip-host-resources-creation` - Skips the creation of host resources as part of the initialization, inlcuding host catalog, host set, and hosts, if not set.
+The default value is `false`.
 
-- `-skip-initial-login-role-creation` - If not set, a default
-   role allowing necessary grants for logging in will not be created as part of
-   initialization. If set, the recovery KMS will be needed to perform any
-   actions. The default is false.
+- `-skip-initial-login-role-creation` - Skips the creation of a default role allowing necessary grants for logging in as part of initialization, if not set.
+If you set this value, the recovery KMS is required to perform any actions.
+The default value is `false`.
 
-- `-skip-scopes-creation` - If not set, scopes will not be
-   created as part of initialization. The default is false.
+- `-skip-scopes-creation` - Skips the creation of scopes as part of initialization, if not set.
+The default value is `false`.
 
-- `-skip-target-creation` - If not set, a target will not be
-   created as part of initialization. The default is false.
-
+- `-skip-target-creation` - Skips the creation of a target as part of initialization, if not set.
+The default value is `false`.
 
 @include 'cmd-option-note.mdx'
