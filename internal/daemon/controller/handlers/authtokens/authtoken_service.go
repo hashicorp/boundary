@@ -133,7 +133,7 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		}
 		return repo.ListAuthTokens(ctx, scopeIds, opts...)
 	}
-	filterAndConvertFn := func(at *authtoken.AuthToken) (*pb.AuthToken, bool, error) {
+	filterAndConvertFn := func(at *authtoken.AuthToken) (*pb.AuthToken, error) {
 		res := perms.Resource{
 			Type: resource.AuthToken,
 		}
@@ -142,12 +142,12 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		res.ScopeId = at.GetScopeId()
 		authorizedActions := authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions, auth.WithResource(&res))
 		if len(authorizedActions) == 0 {
-			return nil, false, nil
+			return nil, nil
 		}
 
 		// issues here I think?
 		if authorizedActions.OnlySelf() && at.GetIamUserId() != authResults.UserId {
-			return nil, false, nil
+			return nil, nil
 		}
 
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
@@ -162,13 +162,13 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 
 		pbItem, err := toProto(ctx, at, outputOpts...)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
 		if filter.Match(pbItem) {
-			return pbItem, true, nil
+			return pbItem, nil
 		}
-		return nil, false, nil
+		return nil, nil
 	}
 
 	listResp, err := pagination.PaginateRequest(
