@@ -8,6 +8,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/stretchr/testify/require"
@@ -65,19 +66,27 @@ func (s *TestServer) Serve(t *testing.T) error {
 	return s.cacheServer.serve(ctx, s.cmd, l)
 }
 
-// AddTargets adds targets to the cache for the provided address, token name, and keyring type.
-// They token info must already be known to the server.
-func (s *TestServer) AddTargets(t *testing.T, tarAddr string, tarToken string, tars []*targets.Target) {
+// AddResources adds targets to the cache for the provided address, token name,
+// and keyring type. They token info must already be known to the server.
+func (s *TestServer) AddResources(t *testing.T, p *cache.Persona, tars []*targets.Target, sess []*sessions.Session) {
 	t.Helper()
 	ctx := context.Background()
 	r, err := cache.NewRepository(ctx, s.cacheServer.store, s.cmd.ReadTokenFromKeyring)
 	require.NoError(t, err)
 
 	tarFn := func(ctx context.Context, addr string, tok string) ([]*targets.Target, error) {
-		if addr != tarAddr || tok != tarToken {
+		at := s.cmd.ReadTokenFromKeyring(p.KeyringType, p.TokenName)
+		if addr != p.BoundaryAddr || tok != at.Token {
 			return nil, nil
 		}
 		return tars, nil
 	}
-	require.NoError(t, r.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn)))
+	sessFn := func(ctx context.Context, addr string, tok string) ([]*sessions.Session, error) {
+		at := s.cmd.ReadTokenFromKeyring(p.KeyringType, p.TokenName)
+		if addr != p.BoundaryAddr || tok != at.Token {
+			return nil, nil
+		}
+		return sess, nil
+	}
+	require.NoError(t, r.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn), cache.WithSessionRetrievalFunc(sessFn)))
 }
