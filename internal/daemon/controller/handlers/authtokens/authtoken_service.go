@@ -145,7 +145,6 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 			return nil, nil
 		}
 
-		// issues here I think?
 		if authorizedActions.OnlySelf() && at.GetIamUserId() != authResults.UserId {
 			return nil, nil
 		}

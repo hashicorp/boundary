@@ -84,8 +84,8 @@ message ListAuthTokensResponse {
   // This may contain items that are not known to the cache, if they were
   // created and deleted between listings.
   repeated string removed_ids = 60 [json_name = "removed_ids"]; // @gotags: `class:"public"`
-  uint32 est_item_count = 70 [json_name = "est_item_count"]; // @gotags: `class:"public"`
   // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 70 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }
 
 message DeleteAuthTokenRequest {

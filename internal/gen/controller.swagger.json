@@ -7593,7 +7593,7 @@
         "est_item_count": {
           "type": "integer",
           "format": "int64",
-          "title": ""
+          "description": "An estimate at the total items available. This may change during pagination."
         }
       }
     },

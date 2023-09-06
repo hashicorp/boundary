@@ -230,8 +230,9 @@ type ListAuthTokensResponse struct {
 	// as part of an pagination. They should be dropped from any client cache.
 	// This may contain items that are not known to the cache, if they were
 	// created and deleted between listings.
-	RemovedIds   []string `protobuf:"bytes,60,rep,name=removed_ids,proto3" json:"removed_ids,omitempty" class:"public"`        // @gotags: `class:"public"`
-	EstItemCount uint32   `protobuf:"varint,70,opt,name=est_item_count,proto3" json:"est_item_count,omitempty" class:"public"` // @gotags: `class:"public"`
+	RemovedIds []string `protobuf:"bytes,60,rep,name=removed_ids,proto3" json:"removed_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	// An estimate at the total items available. This may change during pagination.
+	EstItemCount uint32 `protobuf:"varint,70,opt,name=est_item_count,proto3" json:"est_item_count,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *ListAuthTokensResponse) Reset() {
