@@ -53,6 +53,7 @@ const (
 	clientCertificateKeyField = "attributes.client_certificate_key"
 	certificatesField         = "attributes.certificates"
 	accountAttributesMapField = "attributes.account_attribute_maps"
+	derefAliasesField         = "attributes.dereference_aliases"
 )
 
 func (s Service) authenticateLdap(ctx context.Context, req *pbs.AuthenticateRequest, authResults *auth.VerifyResults) (*pbs.AuthenticateResponse, error) {
@@ -257,6 +258,12 @@ func toStorageLdapAuthMethod(ctx context.Context, scopeId string, in *pb.AuthMet
 			}
 			opts = append(opts, ldap.WithUrls(ctx, urls...))
 		}
+		if attrs.GetMaximumPageSize() > 0 {
+			opts = append(opts, ldap.WithMaximumPageSize(ctx, attrs.MaximumPageSize))
+		}
+		if attrs.GetDereferenceAliases().GetValue() != "" {
+			opts = append(opts, ldap.WithDerefAliases(ctx, ldap.DerefAliasType(attrs.GetDereferenceAliases().GetValue())))
+		}
 	}
 	u, err := ldap.NewAuthMethod(ctx, scopeId, opts...)
 	if err != nil {
@@ -323,6 +330,12 @@ func validateLdapAttributes(ctx context.Context, attrs *pb.LdapAuthMethodAttribu
 	if len(attrs.AccountAttributeMaps) > 0 {
 		if _, err := ldap.ParseAccountAttributeMaps(ctx, attrs.AccountAttributeMaps...); err != nil {
 			badFields[accountAttributesMapField] = fmt.Sprintf("invalid %s (unable to parse)", accountAttributesMapField)
+		}
+	}
+	if attrs.GetDereferenceAliases().GetValue() != "" {
+		d := ldap.DerefAliasType(attrs.GetDereferenceAliases().GetValue())
+		if err := d.IsValid(ctx); err != nil {
+			badFields[derefAliasesField] = fmt.Sprintf("%s is not a valid %s", attrs.GetDereferenceAliases().GetValue(), derefAliasesField)
 		}
 	}
 }
