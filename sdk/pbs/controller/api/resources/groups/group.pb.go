@@ -112,7 +112,7 @@ type Group struct {
 	// Output only. The members of this Group.
 	Members []*Member `protobuf:"bytes,100,rep,name=members,proto3" json:"members,omitempty"`
 	// Output only. The available actions on this resource for this user.
-	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
+	AuthorizedActions []string `protobuf:"bytes,300,rep,name=authorized_actions,proto3" json:"authorized_actions,omitempty" class:"public"` // @gotags: `class:"public"`
 }
 
 func (x *Group) Reset() {
