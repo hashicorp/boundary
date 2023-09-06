@@ -200,7 +200,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	filterAndConvertFn := func(item *session.Session) (*pb.Session, bool, error) {
+	filterAndConvertFn := func(item *session.Session) (*pb.Session, error) {
 		res := perms.Resource{
 			Type:    resource.Session,
 			Id:      item.GetPublicId(),
@@ -208,7 +208,7 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 		}
 		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
-			return nil, false, nil
+			return nil, nil
 		}
 
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
@@ -223,12 +223,12 @@ func (s Service) ListSessions(ctx context.Context, req *pbs.ListSessionsRequest)
 
 		pbItem, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 		if filter.Match(pbItem) {
-			return pbItem, true, nil
+			return pbItem, nil
 		}
-		return nil, false, nil
+		return nil, nil
 	}
 	listResp, err := pagination.PaginateRequest(
 		ctx,
