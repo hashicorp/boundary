@@ -720,6 +720,45 @@ func TestRepository_ListAuthTokens_Multiple_Scopes(t *testing.T) {
 	assert.Equal(t, total, len(got))
 }
 
+func TestRepository_ListAuthTokens_Pagination(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	wantCnt := 5
+	for i := 0; i < wantCnt; i++ {
+		TestAuthToken(t, conn, kms, org.GetPublicId())
+	}
+
+	page1, err := repo.ListAuthTokens(ctx, []string{org.GetPublicId()}, WithLimit(2))
+	require.NoError(err)
+	require.Len(page1, 2)
+	page2, err := repo.ListAuthTokens(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].UpdateTime.AsTime()))
+	require.NoError(err)
+	require.Len(page2, 2)
+	for _, item := range page1 {
+		assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+		assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+	}
+	page3, err := repo.ListAuthTokens(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].UpdateTime.AsTime()))
+	require.NoError(err)
+	require.Len(page3, 1)
+	for _, item := range append(page1, page2...) {
+		assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+	}
+	page4, err := repo.ListAuthTokens(ctx, []string{org.GetPublicId()}, WithLimit(2), WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].UpdateTime.AsTime()))
+	require.NoError(err)
+	require.Empty(page4)
+}
+
 func Test_IssuePendingToken(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -879,4 +918,74 @@ func Test_CloseExpiredPendingTokens(t *testing.T) {
 			assert.Equal(tt.wantCnt, tokensClosed)
 		})
 	}
+}
+
+func TestListDeletedIds(t *testing.T) {
+	t.Parallel()
+	_, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+	at := TestAuthToken(t, conn, kms, org.GetPublicId())
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Delete token
+	_, err = repo.DeleteAuthToken(ctx, at.PublicId)
+	require.NoError(err)
+
+	// Expect a single entry
+	deletedIds, err = repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Equal([]string{at.PublicId}, deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
+}
+
+func TestGetTotalItems(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.GetTotalItems(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Create an auth token, expect 1 entries
+	at := TestAuthToken(t, conn, kms, org.GetPublicId())
+	numItems, err = repo.GetTotalItems(ctx)
+	require.NoError(err)
+	assert.Equal(1, numItems)
+
+	// Delete the auth token, expect 0 again
+	_, err = repo.DeleteAuthToken(ctx, at.PublicId)
+	require.NoError(err)
+	numItems, err = repo.GetTotalItems(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
 }

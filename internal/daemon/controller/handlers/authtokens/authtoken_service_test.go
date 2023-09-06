@@ -34,8 +34,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var fullAuthorizedActions = []string{"no-op", "read", "read:self", "delete", "delete:self"}
-var selfAuthorizedActions = []string{"read:self", "delete:self"}
+var (
+	fullAuthorizedActions = []string{"no-op", "read", "read:self", "delete", "delete:self"}
+	selfAuthorizedActions = []string{"read:self", "delete:self"}
+)
 
 func TestGetSelf(t *testing.T) {
 	ctx := context.Background()
