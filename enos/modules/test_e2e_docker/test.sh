@@ -14,7 +14,7 @@ apt update
 # pass is used to store the auth token from `boundary authenticate``
 # lsb-release is used for adding the hashicorp apt source
 # postgresql is used for postgres tests
-apt install unzip pass lsb-release postgresql -y
+apt install unzip pass lsb-release postgresql-client -y
 
 # Create a GPG key
 export KEY_PW=boundary
