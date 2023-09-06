@@ -64,13 +64,13 @@ $ boundary managed-groups update ldap [options] [args]
 
 #### Command options
 
-- `-description=<string>` - The description to set for the LDAP managed group.
-- `-group-names=<string>` - The LDAP group names against which an LDAP account's associated groups are evaluated to determine membership.
+- `-description=<string>` - Sets the description for the LDAP managed group.
+- `-group-names=<string>` - Indicates the LDAP group names against which an LDAP account's associated groups are evaluated to determine membership.
 Boundary evaluates managed group membership when you log in.
 You can specify multiple group names.
-- `-id=<string>` - ID of the LDAP managed group to update.
-- `-name=<string>` - The name to set for the LDAP managed group.
-- `-version=<int>` - The version of the LDAP managed group to update.
+- `-id=<string>` - Indicates the ID of the LDAP managed group to update.
+- `-name=<string>` - Sets the name for the LDAP managed group.
+- `-version=<int>` - Indicates the version of the LDAP managed group to update.
 If you do not specify a version, the command automatically performs a check-and-set.
 
 </Tab>
@@ -98,12 +98,12 @@ $ boundary managed-groups update oidc [options] [args]
 
 #### Command options
 
-- `-description=<string>` - The description to set for the OIDC managed group.
-- `-filter=<string>` - The filter that defines the criteria against which an account's OIDC token and user info are evaluated to determine if it is a member of the OIDC managed group.
+- `-description=<string>` - Sets the description for the OIDC managed group.
+- `-filter=<string>` - Specifies the filter that defines the criteria against which an account's OIDC token and user info are evaluated to determine if it is a member of the OIDC managed group.
 Boundary evaluates managed group membership when you log in.
-- `-id=<string>` - ID of the OIDC managed group you want to update.
-- `-name=<string>` - The name to set for the OIDC managed group.
-- `-version=<int>` - The version of the OIDC managed group to update.
+- `-id=<string>` - Indicates the ID of the OIDC managed group you want to update.
+- `-name=<string>` - Sets the name for the OIDC managed group.
+- `-version=<int>` - Indicates the version of the OIDC managed group to update.
 If you do not specify a version, the command performs a check-and-set automatically.
 
 </Tab>
