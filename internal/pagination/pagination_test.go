@@ -365,8 +365,8 @@ func TestPaginateRequest(t *testing.T) {
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return nil, false, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{}
 		repo := &testRepo{}
@@ -382,8 +382,8 @@ func TestPaginateRequest(t *testing.T) {
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return nil, false, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{}
 		repo := &testRepo{}
@@ -399,8 +399,8 @@ func TestPaginateRequest(t *testing.T) {
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return nil, false, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{}
 		repo := &testRepo{}
@@ -414,8 +414,8 @@ func TestPaginateRequest(t *testing.T) {
 		resourceType := pbs.ResourceType_RESOURCE_TYPE_SESSION
 		req := &testRequest{}
 		listItemsFn := (func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error))(nil)
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return nil, false, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{}
 		repo := &testRepo{}
@@ -431,7 +431,7 @@ func TestPaginateRequest(t *testing.T) {
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			return nil, nil
 		}
-		convertAndFilterFn := (func(item *testType) (*testPbType, bool, error))(nil)
+		convertAndFilterFn := (func(item *testType) (*testPbType, error))(nil)
 		grantsHasher := &testGrantHasher{}
 		repo := &testRepo{}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -446,8 +446,8 @@ func TestPaginateRequest(t *testing.T) {
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return nil, false, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return nil, nil
 		}
 		grantsHasher := (*testGrantHasher)(nil)
 		repo := &testRepo{}
@@ -463,8 +463,8 @@ func TestPaginateRequest(t *testing.T) {
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return nil, false, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{}
 		repo := (*testRepo)(nil)
@@ -486,9 +486,9 @@ func TestPaginateRequest(t *testing.T) {
 			assert.Empty(t, refreshToken)
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			t.Fatal("Should not have called convertAndFilterFn")
-			return nil, false, nil
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{
 			HashFn: func() ([]byte, error) {
@@ -521,9 +521,9 @@ func TestPaginateRequest(t *testing.T) {
 			assert.Empty(t, refreshToken)
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			t.Fatal("Should not have called convertAndFilterFn")
-			return nil, false, nil
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{
 			HashFn: func() ([]byte, error) {
@@ -561,9 +561,9 @@ func TestPaginateRequest(t *testing.T) {
 			assert.Empty(t, refreshToken)
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			t.Fatal("Should not have called convertAndFilterFn")
-			return nil, false, nil
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{
 			HashFn: func() ([]byte, error) {
@@ -606,9 +606,9 @@ func TestPaginateRequest(t *testing.T) {
 			assert.Equal(t, 3, limit)
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			t.Fatal("Should not have called convertAndFilterFn")
-			return nil, false, nil
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{
 			HashFn: func() ([]byte, error) {
@@ -641,9 +641,9 @@ func TestPaginateRequest(t *testing.T) {
 			assert.Equal(t, 3, limit)
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			t.Fatal("Should not have called convertAndFilterFn")
-			return nil, false, nil
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{
 			HashFn: func() ([]byte, error) {
@@ -678,9 +678,9 @@ func TestPaginateRequest(t *testing.T) {
 			assert.Equal(t, 1001, limit)
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			t.Fatal("Should not have called convertAndFilterFn")
-			return nil, false, nil
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{
 			HashFn: func() ([]byte, error) {
@@ -718,9 +718,9 @@ func TestPaginateRequest(t *testing.T) {
 			assert.Equal(t, 3, limit)
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			t.Fatal("Should not have called convertAndFilterFn")
-			return nil, false, nil
+			return nil, nil
 		}
 		grantsHasher := &testGrantHasher{
 			HashFn: func() ([]byte, error) {
@@ -758,8 +758,8 @@ func TestPaginateRequest(t *testing.T) {
 			assert.Equal(t, 3, limit)
 			return []*testType{{1}, {2}, {3}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return &testPbType{item.I}, true, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return &testPbType{item.I}, nil
 		}
 		grantsHasher := &testGrantHasher{
 			HashFn: func() ([]byte, error) {
@@ -815,8 +815,8 @@ func TestPaginateRequest(t *testing.T) {
 			assert.Equal(t, 3, limit)
 			return []*testType{{1}, {2}, {3}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return &testPbType{item.I}, true, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return &testPbType{item.I}, nil
 		}
 		grantsHasher := &testGrantHasher{
 			HashFn: func() ([]byte, error) {
@@ -872,9 +872,9 @@ func Test_fillPage(t *testing.T) {
 			}
 			return nil, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			t.Fatal("Should not have called convertAndFilterFn")
-			return nil, false, nil
+			return nil, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.NoError(t, err)
@@ -891,8 +891,8 @@ func Test_fillPage(t *testing.T) {
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return &testPbType{item.I}, true, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return &testPbType{item.I}, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.NoError(t, err)
@@ -909,8 +909,8 @@ func Test_fillPage(t *testing.T) {
 			}
 			return []*testType{{1}, {2}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return &testPbType{item.I}, true, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return &testPbType{item.I}, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.NoError(t, err)
@@ -928,12 +928,12 @@ func Test_fillPage(t *testing.T) {
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			if item.I%2 == 0 {
 				// Filter every other item
-				return nil, false, nil
+				return nil, nil
 			}
-			return &testPbType{item.I}, true, nil
+			return &testPbType{item.I}, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.NoError(t, err)
@@ -951,12 +951,12 @@ func Test_fillPage(t *testing.T) {
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			if item.I%2 == 0 {
 				// Filter every other item
-				return nil, false, nil
+				return nil, nil
 			}
-			return &testPbType{item.I}, true, nil
+			return &testPbType{item.I}, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.NoError(t, err)
@@ -974,12 +974,12 @@ func Test_fillPage(t *testing.T) {
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			if item.I%2 == 0 {
 				// Filter every other item
-				return nil, false, nil
+				return nil, nil
 			}
-			return &testPbType{item.I}, true, nil
+			return &testPbType{item.I}, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.NoError(t, err)
@@ -997,12 +997,12 @@ func Test_fillPage(t *testing.T) {
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			if item.I != 1 {
 				// Filter every item except the first
-				return nil, false, nil
+				return nil, nil
 			}
-			return &testPbType{item.I}, true, nil
+			return &testPbType{item.I}, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.NoError(t, err)
@@ -1026,12 +1026,12 @@ func Test_fillPage(t *testing.T) {
 				return nil, nil
 			}
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			if item.I != 1 {
 				// Filter every item except the first
-				return nil, false, nil
+				return nil, nil
 			}
-			return &testPbType{item.I}, true, nil
+			return &testPbType{item.I}, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.NoError(t, err)
@@ -1049,9 +1049,9 @@ func Test_fillPage(t *testing.T) {
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			// Filter every item
-			return nil, false, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			// Filtery item
+			return nil, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.NoError(t, err)
@@ -1068,8 +1068,8 @@ func Test_fillPage(t *testing.T) {
 			}
 			return []testTypeIface{&testType{1}, &testType{2}, &testType{3}}, nil
 		}
-		convertAndFilterFn := func(item testTypeIface) (*testPbType, bool, error) {
-			return &testPbType{item.testType().I}, true, nil
+		convertAndFilterFn := func(item testTypeIface) (*testPbType, error) {
+			return &testPbType{item.testType().I}, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.NoError(t, err)
@@ -1083,9 +1083,9 @@ func Test_fillPage(t *testing.T) {
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			return nil, stderrors.New("failed to list")
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			t.Fatal("Unexpected call to convert function")
-			return nil, false, nil
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			t.Fatal("Should not have called convertAndFilterFn")
+			return nil, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.ErrorContains(t, err, "failed to list")
@@ -1102,12 +1102,12 @@ func Test_fillPage(t *testing.T) {
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
 			if item.I != 1 {
 				// Filter every item except the first
-				return nil, false, nil
+				return nil, nil
 			}
-			return &testPbType{item.I}, true, nil
+			return &testPbType{item.I}, nil
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.ErrorContains(t, err, "failed to list subsequently")
@@ -1121,8 +1121,8 @@ func Test_fillPage(t *testing.T) {
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			return []*testType{{1}}, nil
 		}
-		convertAndFilterFn := func(item *testType) (*testPbType, bool, error) {
-			return nil, false, stderrors.New("failed to convert")
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			return nil, stderrors.New("failed to convert")
 		}
 		items, complete, err := fillPage(ctx, limit, pageSize, refreshToken, listItemsFn, convertAndFilterFn)
 		require.ErrorContains(t, err, "failed to convert")
