@@ -10,8 +10,10 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
@@ -28,6 +30,7 @@ var (
 
 	supportedResourceTypes = []string{
 		"targets",
+		"sessions",
 	}
 )
 
@@ -125,7 +128,14 @@ func (c *SearchCommand) Run(args []string) int {
 	case "json":
 		c.UI.Output(string(resp.Body.Bytes()))
 	default:
-		c.UI.Output(printTargetListTable(res.Targets))
+		switch {
+		case len(res.Targets) > 0:
+			c.UI.Output(printTargetListTable(res.Targets))
+		case len(res.Sessions) > 0:
+			c.UI.Output(printSessionListTable(res.Sessions))
+		default:
+			c.UI.Output("No items found")
+		}
 	}
 	return base.CommandSuccess
 }
@@ -246,6 +256,74 @@ func printTargetListTable(items []*targets.Target) string {
 		if item.Address != "" {
 			output = append(output,
 				fmt.Sprintf("    Address:             %s", item.Address),
+			)
+		}
+		if len(item.AuthorizedActions) > 0 {
+			output = append(output,
+				"    Authorized Actions:",
+				base.WrapSlice(6, item.AuthorizedActions),
+			)
+		}
+	}
+
+	return base.WrapForHelpText(output)
+}
+
+func printSessionListTable(items []*sessions.Session) string {
+	if len(items) == 0 {
+		return "No sessions found"
+	}
+	var output []string
+	output = []string{
+		"",
+		"Session information:",
+	}
+	for i, item := range items {
+		if i > 0 {
+			output = append(output, "")
+		}
+		if item.Id != "" {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", item.Id),
+			)
+		} else {
+			output = append(output,
+				fmt.Sprintf("  ID:                    %s", "(not available)"),
+			)
+		}
+		if item.ScopeId != "" {
+			output = append(output,
+				fmt.Sprintf("    Scope ID:            %s", item.ScopeId),
+			)
+		}
+		if item.Status != "" {
+			output = append(output,
+				fmt.Sprintf("    Status:              %s", item.Status),
+			)
+		}
+		if !item.CreatedTime.IsZero() {
+			output = append(output,
+				fmt.Sprintf("    Created Time:        %s", item.CreatedTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if !item.ExpirationTime.IsZero() {
+			output = append(output,
+				fmt.Sprintf("    Expiration Time:     %s", item.ExpirationTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if !item.UpdatedTime.IsZero() {
+			output = append(output,
+				fmt.Sprintf("    Updated Time:        %s", item.UpdatedTime.Local().Format(time.RFC1123)),
+			)
+		}
+		if item.UserId != "" {
+			output = append(output,
+				fmt.Sprintf("    User ID:             %s", item.UserId),
+			)
+		}
+		if item.TargetId != "" {
+			output = append(output,
+				fmt.Sprintf("    Target ID:           %s", item.TargetId),
 			)
 		}
 		if len(item.AuthorizedActions) > 0 {
