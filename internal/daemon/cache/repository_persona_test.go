@@ -84,7 +84,6 @@ func TestRepository_AddPersona(t *testing.T) {
 			assert.ErrorContains(t, err, tc.errorContains)
 		})
 	}
-
 }
 
 func TestRepository_AddPersona_EvictsOverLimit(t *testing.T) {
