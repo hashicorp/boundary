@@ -157,19 +157,19 @@ The following are options specific to the Vault SSH certificate credential libra
    If you provide a value, Boundary infers the type automatically.
    You can use `-string-critical-option`, `-bool-critical-option`, or `-num-critical-option` to override the type.
    You can specify values for this option multiple times.
-   This option supports sourcing values from files using "file://" and environment variables using "env://".
+   This option supports sourcing values from files using `file://` and environment variables using `env://`.
 - `-critical-options` `(string: "")` Indicates a JSON  map value to use as the entirety of the request's critical-options map.
-Usually this value is sourced from a file using "file://" syntax.
+Usually this value is sourced from a file using the `file://` syntax.
 This value is exclusive with the other critical-option flags.
 - `-extension`  - Specifies a key=value pair to add to the request's extensions map.
 It can also be a key value only which will set a JSON null as the value.
 If you provide a value, Boundary automatically infers the type.
 You can use `-string-extension`, `-bool-extension`, or `-num-extension` to override the type.
 You can specify values for this option multiple times.
-This option supports sourcing values from files using "file://" and environment variables using "env://".
+This option supports sourcing values from files using `file://` and environment variables using `env://`.
 - `-extensions` `(string: "")` - Specifies a JSON map value to use as the entirety of
    the request's extensions map.
-   Usually this value is sourced from a file using "file://" syntax.
+   Usually this value is sourced from a file using the `file://` syntax.
    This option is exclusive with the other extension flags.
 - `-key-bits` `(string: "")` - Specifies the number of bits to use when the SSH private key is generated.
 The value depends on the `key_type`.
