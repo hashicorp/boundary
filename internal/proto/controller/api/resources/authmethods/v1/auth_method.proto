@@ -570,4 +570,31 @@ message LdapAuthMethodAttributes {
       that: "AccountAttributeMaps"
     }
   ]; // @gotags: `class:"public"`
+
+  // maximum_page_size (optional) specifies a maximum ldap search result size to
+  // use when retrieving the authenticated user's group memberships. This can
+  // be used to avoid reaching the LDAP server's max result size.
+  uint32 maximum_page_size = 240 [
+    json_name = "maximum_page_size",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.maximum_page_size",
+      that: "MaximumPageSize"
+    }
+  ]; // @gotags: `class:"public"`
+
+  // dereference_aliases (optional) will control how aliases are dereferenced when
+  // performing the search. Possible values are: never, finding, searching,
+  // and always. If unset, a default of "never" is used. When set to
+  // "finding", it will only dereference aliases during name resolution of the
+  // base. When set to "searching", it will dereference aliases after name
+  // resolution.
+  google.protobuf.StringValue dereference_aliases = 250 [
+    json_name = "dereference_aliases",
+    (custom_options.v1.generate_sdk_option) = true,
+    (custom_options.v1.mask_mapping) = {
+      this: "attributes.dereference_aliases",
+      that: "DereferenceAliases"
+    }
+  ]; // @gotags: `class:"public"`
 }

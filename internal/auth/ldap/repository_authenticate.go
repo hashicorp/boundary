@@ -77,6 +77,8 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 		BindDN:                am.BindDn,
 		BindPassword:          am.BindPassword,
 		RequestTimeout:        DefaultRequestTimeout,
+		DerefAliases:          am.DereferenceAliases,
+		MaximumPageSize:       int(am.MaximumPageSize),
 	})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to initialize ldap client with auth method retrieved from database"))

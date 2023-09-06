@@ -4,6 +4,12 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* feat: add API support for additional LDAP auth method fields:
+  maximum_page_size and dereference_aliases
+  ([PR](https://github.com/hashicorp/boundary/pull/3679)).
+
 ### Bug Fixes
 
 * LDAP auth methods: allow bind-dn and bind-password to be updated

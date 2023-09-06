@@ -903,6 +903,7 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 			ClientCertificateKeyHmac: base64.RawURLEncoding.EncodeToString(i.GetClientCertificateKeyHmac()),
 			BindPasswordHmac:         base64.RawURLEncoding.EncodeToString(i.GetBindPasswordHmac()),
 			UseTokenGroups:           i.GetUseTokenGroups(),
+			MaximumPageSize:          i.GetMaximumPageSize(),
 		}
 		if i.GetUpnDomain() != "" {
 			attrs.UpnDomain = wrapperspb.String(i.GetUpnDomain())
@@ -933,6 +934,9 @@ func toAuthMethodProto(ctx context.Context, in auth.AuthMethod, opt ...handlers.
 		}
 		if len(i.GetAccountAttributeMaps()) > 0 {
 			attrs.AccountAttributeMaps = i.GetAccountAttributeMaps()
+		}
+		if i.GetDereferenceAliases() != "" {
+			attrs.DereferenceAliases = wrapperspb.String(i.GetDereferenceAliases())
 		}
 
 		out.Attrs = &pb.AuthMethod_LdapAuthMethodsAttributes{

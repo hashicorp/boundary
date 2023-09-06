@@ -170,9 +170,13 @@ func TestGet(t *testing.T) {
 		AuthorizedCollectionActions: authorizedCollectionActions,
 	}
 
-	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldaps://ldap1"}, ldap.WithAccountAttributeMap(ctx, map[string]ldap.AccountToAttribute{
-		"mail": ldap.ToEmailAttribute,
-	}))
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.GetPublicId(), []string{"ldaps://ldap1"},
+		ldap.WithAccountAttributeMap(ctx, map[string]ldap.AccountToAttribute{
+			"mail": ldap.ToEmailAttribute,
+		}),
+		ldap.WithMaximumPageSize(ctx, 10),
+		ldap.WithDerefAliases(ctx, ldap.DerefAlways),
+	)
 	wantLdap := &pb.AuthMethod{
 		Id:          ldapAm.GetPublicId(),
 		ScopeId:     ldapAm.GetScopeId(),
@@ -184,6 +188,8 @@ func TestGet(t *testing.T) {
 				State:                string(ldap.InactiveState),
 				Urls:                 []string{"ldaps://ldap1"},
 				AccountAttributeMaps: []string{"mail=email"},
+				MaximumPageSize:      10,
+				DereferenceAliases:   wrapperspb.String(string(ldap.DerefAlways)),
 			},
 		},
 		Version: 1,
@@ -362,7 +368,11 @@ func TestList(t *testing.T) {
 		return cp
 	}
 
-	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), []string{"ldaps://ldap1"}, ldap.WithOperationalState(ctx, ldap.ActivePublicState))
+	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, oWithAuthMethods.GetPublicId(), []string{"ldaps://ldap1"},
+		ldap.WithOperationalState(ctx, ldap.ActivePublicState),
+		ldap.WithMaximumPageSize(ctx, 10),
+		ldap.WithDerefAliases(ctx, ldap.DerefAlways),
+	)
 	wantSomeAuthMethods = append(wantSomeAuthMethods, &pb.AuthMethod{
 		Id:          ldapAm.GetPublicId(),
 		ScopeId:     oWithAuthMethods.GetPublicId(),
@@ -373,8 +383,10 @@ func TestList(t *testing.T) {
 		Type:        ldap.Subtype.String(),
 		Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
 			LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
-				State: string(ldap.ActivePublicState),
-				Urls:  []string{"ldaps://ldap1"},
+				State:              string(ldap.ActivePublicState),
+				Urls:               []string{"ldaps://ldap1"},
+				MaximumPageSize:    10,
+				DereferenceAliases: wrapperspb.String(string(ldap.DerefAlways)),
 			},
 		},
 		AuthorizedActions:           ldapAuthorizedActions,
@@ -774,6 +786,8 @@ func TestCreate(t *testing.T) {
 						ClientCertificateKey: wrapperspb.String(string(testEncodedKey)),
 						UseTokenGroups:       true,
 						AccountAttributeMaps: []string{"mail=email"},
+						MaximumPageSize:      10,
+						DereferenceAliases:   wrapperspb.String(string(ldap.DerefAlways)),
 					},
 				},
 			}},
@@ -808,6 +822,8 @@ func TestCreate(t *testing.T) {
 							ClientCertificate:    wrapperspb.String(testEncodedCert),
 							UseTokenGroups:       true,
 							AccountAttributeMaps: []string{"mail=email"},
+							MaximumPageSize:      10,
+							DereferenceAliases:   wrapperspb.String(string(ldap.DerefAlways)),
 						},
 					},
 					AuthorizedActions:           ldapAuthorizedActions,
@@ -1204,6 +1220,21 @@ func TestCreate(t *testing.T) {
 			}},
 			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
 			errContains: "is not either ldap or ldaps",
+		},
+		{
+			name: "ldap-auth-method-invalid-deref-aliases",
+			req: &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
+				ScopeId: o.GetPublicId(),
+				Type:    ldap.Subtype.String(),
+				Attrs: &pb.AuthMethod_LdapAuthMethodsAttributes{
+					LdapAuthMethodsAttributes: &pb.LdapAuthMethodAttributes{
+						Urls:               []string{"ldap://ldap1"},
+						DereferenceAliases: wrapperspb.String("invalid"),
+					},
+				},
+			}},
+			err:         handlers.ApiErrorWithCode(codes.InvalidArgument),
+			errContains: "invalid is not a valid attributes.dereference_aliases",
 		},
 		{
 			name: "ldap-auth-method-invalid-cert",
