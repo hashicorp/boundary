@@ -4,13 +4,15 @@ begin;
 
 create table kms_oplog_collection_version (
     version kms_version,
-    create_time timestamp not null default current_timestamp,
-    update_time timestamp not null default current_timestamp
+    create_time kms_timestamp not null default current_timestamp,
+    update_time kms_timestamp not null default current_timestamp
 );
+comment on table kms_oplog_collection_version is
+ 'kms_oplog_collection_version is a single-row table which stores the current version of the kms collection';
 
 -- ensure that it's only ever one row
 create unique index kms_oplog_collection_version_one_row
-ON kms_oplog_collection_version((version is not null));
+  on kms_oplog_collection_version((version is not null));
 
 create trigger kms_immutable_columns before update on kms_oplog_collection_version
   for each row execute procedure kms_immutable_columns('create_time');

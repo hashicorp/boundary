@@ -129,7 +129,15 @@ from kms_data_key_version kdkv, kms_oplog_data_key kodk
 where  kdkv.data_key_id = kodk.private_id;
 
 -- ############################################################################
--- post conversion, we add the required triggers
+-- post conversion, we add the required constraints and triggers
+
+alter table oplog_entry
+add constraint kms_oplog_data_key_version_fkey
+    foreign key(key_id)
+        references kms_oplog_data_key_version (private_id)
+        on delete restrict
+        on update cascade;
+
 create trigger kms_default_create_time_column before insert on kms_oplog_root_key
   for each row execute procedure kms_default_create_time();
 

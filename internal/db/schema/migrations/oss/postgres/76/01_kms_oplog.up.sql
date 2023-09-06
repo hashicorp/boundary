@@ -4,10 +4,8 @@
 begin;
 
 alter table oplog_entry
-  drop constraint iam_scope_fkey;
-alter table oplog_entry
+  drop constraint iam_scope_fkey,
   drop constraint kms_data_key_version_fkey;
-
 
 drop trigger insert_oplog_entry on oplog_entry;
 drop function insert_oplog_entry();

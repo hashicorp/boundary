@@ -13,7 +13,7 @@ comment on table kms_oplog_schema_version is
   'kms_oplog_schema_version contains the kms schema version for oplog keys';
 
 create unique index kms_oplog_schema_version_one_row
-ON kms_oplog_schema_version((version is not null));
+  on kms_oplog_schema_version((version is not null));
 
  -- define the immutable fields for kms_root_key (all of them)
 create trigger kms_immutable_columns before update on kms_oplog_schema_version
