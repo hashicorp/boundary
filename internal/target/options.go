@@ -52,6 +52,7 @@ type options struct {
 	WithStorageBucketId        string
 	WithEnableSessionRecording bool
 	WithNetResolver            intglobals.NetIpResolver
+	WithStartPageAfterItem     *sortTarget
 }
 
 func getDefaultOptions() options {
@@ -263,5 +264,16 @@ func WithStorageBucketId(id string) Option {
 func WithNetResolver(resolver intglobals.NetIpResolver) Option {
 	return func(o *options) {
 		o.WithNetResolver = resolver
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(publicId string, updateTime time.Time) Option {
+	return func(o *options) {
+		o.WithStartPageAfterItem = &sortTarget{
+			publicId:   publicId,
+			updateTime: updateTime,
+		}
 	}
 }
