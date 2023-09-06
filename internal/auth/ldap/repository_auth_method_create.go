@@ -159,6 +159,13 @@ func (r *Repository) CreateAuthMethod(ctx context.Context, am *AuthMethod, opt .
 				}
 				msgs = append(msgs, attrMapsOplogMsgs...)
 			}
+			if cv.DerefAliases != nil {
+				var daOplogMsg oplog.Message
+				if err := w.Create(ctx, cv.DerefAliases, db.NewOplogMsg(&daOplogMsg)); err != nil {
+					return err
+				}
+				msgs = append(msgs, &daOplogMsg)
+			}
 			md, err := am.oplog(ctx, oplog.OpType_OP_TYPE_CREATE)
 			if err != nil {
 				return errors.Wrap(ctx, err, op, errors.WithMsg("unable to generate oplog metadata"))

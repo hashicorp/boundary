@@ -415,6 +415,30 @@ func DefaultOidcAuthMethodClientSecret() Option {
 	}
 }
 
+func WithLdapAuthMethodDereferenceAliases(inDereferenceAliases string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["dereference_aliases"] = inDereferenceAliases
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodDereferenceAliases() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["dereference_aliases"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithDescription(inDescription string) Option {
 	return func(o *options) {
 		o.postMap["description"] = inDescription
@@ -687,6 +711,30 @@ func DefaultOidcAuthMethodMaxAge() Option {
 		}
 		val := raw.(map[string]interface{})
 		val["max_age"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
+func WithLdapAuthMethodMaximumPageSize(inMaximumPageSize uint32) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["maximum_page_size"] = inMaximumPageSize
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultLdapAuthMethodMaximumPageSize() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["maximum_page_size"] = nil
 		o.postMap["attributes"] = val
 	}
 }

@@ -140,6 +140,16 @@ func TestAuthMethod(t testing.TB,
 			}
 			am.BindPasswordHmac = bc.PasswordHmac
 		}
+		if opts.withDerefAliases != "" {
+			d, err := NewDerefAliases(testCtx, am.PublicId, opts.withDerefAliases)
+			if err != nil {
+				return err
+			}
+			if err := w.Create(testCtx, d); err != nil {
+				return err
+			}
+			am.DereferenceAliases = d.DereferenceAliases
+		}
 		return nil
 	})
 	require.NoError(err)
