@@ -2,18 +2,18 @@
 layout: docs
 page_title: host-catalogs read - Command
 description: |-
-  The "host-catalogs read" command lets you read a host catalog with a given ID.
+  The "host-catalogs read" command lets you read host catalog information with a given host catalog ID.
 ---
 
 # host-catalogs read
 
 Command: `boundary host-catalogs read`
 
-The `boundary host-catalogs read` command lets you read a Boundary host catalog using its given ID.
+The `boundary host-catalogs read` command lets you read information about a Boundary host catalog using its given ID.
 
 ## Example
 
-This example reads a host catalog with the ID `_1234567890`:
+This example reads the details for a host catalog with the ID `_1234567890`:
 
 ```shell-session
 $ boundary host-catalogs read -id _1234567890
@@ -31,6 +31,6 @@ $ boundary host-catalogs read [options] [args]
 
 ### Command options
 
-- `-id=<string>` - The ID of the host catalog to read.
+- `-id=<string>` - Indicates the ID of the host catalog whose information you want to read.
 
 @include 'cmd-option-note.mdx'

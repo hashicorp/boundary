@@ -2,18 +2,18 @@
 layout: docs
 page_title: host-sets read - Command
 description: |-
-  The "host-sets read" command lets you read a host set with a given ID.
+  The "host-sets read" command lets you read the details of a host set resource using its given ID.
 ---
 
 # host-sets read
 
 Command: `boundary host-sets read`
 
-The `boundary host-sets read` command lets you read a Boundary host set using its given ID.
+The `boundary host-sets read` command lets you read the details of a Boundary host set using its given ID.
 
 ## Example
 
-This example reads a host set with the ID `_1234567890`:
+This example reads host set details for a host set with the ID `_1234567890`:
 
 ```shell-session
 $ boundary host-sets read -id _1234567890
@@ -31,6 +31,6 @@ $ boundary host-sets read [options] [args]
 
 ### Command options
 
-- `-id=<string>` - The ID of the host set to read.
+- `-id=<string>` - Indicates the ID of the host set whose information you want to read.
 
 @include 'cmd-option-note.mdx'
