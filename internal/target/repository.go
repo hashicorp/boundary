@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
@@ -230,7 +231,9 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, pro
 // ListTargets lists targets in a project based on the data in the WithPermissions option
 // provided to the Repository constructor. If no permissions are available, this function
 // is a no-op.
-// Supports WithLimit which overrides the limit set in the Repository object.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
 func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
 	const op = "target.(Repository).ListTargets"
 
@@ -242,19 +245,39 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	if len(where) == 0 {
 		return []Target{}, nil
 	}
-
+	whereClause := strings.Join(where, " or ")
 	opts := GetOpts(opt...)
 	limit := r.defaultLimit
 	if opts.WithLimit != 0 {
 		limit = opts.WithLimit
 	}
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.WithStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use public_id as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.updateTime),
+			sql.Named("after_item_id", opts.WithStartPageAfterItem.publicId),
+		)
+		whereClause += "and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+	}
 
 	var foundTargets []*targetView
-	err := r.reader.SearchWhere(ctx,
+	err := r.reader.SearchWhere(
+		ctx,
 		&foundTargets,
-		strings.Join(where, " or "),
+		whereClause,
 		args,
 		db.WithLimit(limit),
+		db.WithOrder(withOrder),
 	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -326,6 +349,36 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 	}
 
 	return where, args
+}
+
+// ListDeletedIds lists the public IDs of any targets deleted since the timestamp provided.
+func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
+	const op = "target.(Repository).ListDeletedIds"
+	var deleteTargets []*deletedTarget
+	if err := r.reader.SearchWhere(ctx, &deleteTargets, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted targets"))
+	}
+	var targetIds []string
+	for _, t := range deleteTargets {
+		targetIds = append(targetIds, t.PublicId)
+	}
+	return targetIds, nil
+}
+
+// GetTotalItems returns the total number of items across all targets.
+func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
+	const op = "target.(Repository).GetTotalItems"
+	rows, err := r.reader.Query(ctx, "select count(*) from "+targetsViewDefaultTable, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
+		}
+	}
+	return count, nil
 }
 
 // DeleteTarget will delete a target from the repository.
