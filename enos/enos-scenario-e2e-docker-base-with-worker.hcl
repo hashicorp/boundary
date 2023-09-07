@@ -3,6 +3,7 @@
 
 # For this scenario to work, add the following line to /etc/hosts
 # 127.0.0.1 localhost boundary
+# 127.0.0.1 localhost worker
 
 scenario "e2e_docker_base_with_worker" {
   terraform_cli = terraform_cli.default
