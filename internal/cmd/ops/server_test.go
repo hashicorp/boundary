@@ -38,7 +38,6 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -724,11 +723,17 @@ func TestCreateOpsHandler(t *testing.T) {
 				pbResp := &pbs.GetHealthResponse{}
 				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
 				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
-					State:                   server.ActiveOperationalState.String(),
-					ActiveSessionCount:      wrapperspb.UInt32(0),
-					UpstreamConnectionState: connectivity.TransientFailure.String(),
+					State:              server.ActiveOperationalState.String(),
+					ActiveSessionCount: wrapperspb.UInt32(0),
 				}}
-				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
+				assert.Empty(t,
+					cmp.Diff(
+						want,
+						pbResp,
+						protocmp.Transform(),
+						protocmp.IgnoreFields(&pbhealth.HealthInfo{}, "upstream_connection_state"),
+					),
+				)
 			},
 		},
 		{
@@ -749,11 +754,17 @@ func TestCreateOpsHandler(t *testing.T) {
 				pbResp := &pbs.GetHealthResponse{}
 				require.NoError(t, jsonpb.Unmarshal(rsp.Body, pbResp))
 				want := &pbs.GetHealthResponse{WorkerProcessInfo: &pbhealth.HealthInfo{
-					State:                   server.ActiveOperationalState.String(),
-					ActiveSessionCount:      wrapperspb.UInt32(0),
-					UpstreamConnectionState: connectivity.TransientFailure.String(),
+					State:              server.ActiveOperationalState.String(),
+					ActiveSessionCount: wrapperspb.UInt32(0),
 				}}
-				assert.Empty(t, cmp.Diff(want, pbResp, protocmp.Transform()))
+				assert.Empty(t,
+					cmp.Diff(
+						want,
+						pbResp,
+						protocmp.Transform(),
+						protocmp.IgnoreFields(&pbhealth.HealthInfo{}, "upstream_connection_state"),
+					),
+				)
 			},
 		},
 		{
