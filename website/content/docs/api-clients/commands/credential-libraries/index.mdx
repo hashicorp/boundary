@@ -2,26 +2,26 @@
 layout: docs
 page_title: credential-libraries - Command
 description: |-
-  The "credential-libraries" command allows Boundary admin to create and manage the credential libraries.
+  The "credential-libraries" command lets Boundary admin create and manage credential libraries.
 ---
 
 # credential-libraries
 
 Command: `boundary credential-libraries`
 
-The `credential-libraries` command allows operations on Boundary credential
-library resources. A credential library provides credentials for sessions. All
-credentials returned by a library must be equivalent from an access control
-perspective. A credential library is responsible for managing the lifecycle of
-the credentials it returns. For dynamic secrets, this includes creation,
-renewal, and revocation. For rotating credentials, this includes check-out,
-check-in, and rotation of secrets. The system retrieves credentials from a
-library for a session and notifies the library when the session has been
-terminated. A credential library belongs to a single credential store.
+The `credential-libraries` command lets you perform operations on Boundary credential library resources.
+A credential library provides credentials for sessions.
+All credentials returned by a library must be equivalent from an access control perspective.
+
+A credential library is responsible for managing the lifecycle of the credentials it returns.
+For dynamic secrets, this includes creation, renewal, and revocation.
+For rotating credentials, this includes check-out, check-in, and rotation of secrets.
+The system retrieves credentials from a library for a session and notifies the library when the session has been terminated.
+A credential library belongs to a single credential store.
 
 ## Examples
 
-Retrieve a credential library information for a given ID, `clvlt_QYnQPAjA24`.
+The following example retrieves information for a credential library with the ID, `clvlt_QYnQPAjA24`:
 
 ```shell-session
 $ boundary credential-libraries read -id clvlt_QYnQPAjA24
@@ -79,11 +79,11 @@ Subcommands:
 
 </CodeBlockConfig>
 
-For more information, examples, and usage about a subcommand, click on the name
+For more information, examples, and usage, click on the name
 of the subcommand in the sidebar or one of the links below:
 
 - [create](/boundary/docs/api-clients/commands/credential-libraries/create)
 - [delete](/boundary/docs/api-clients/commands/credential-libraries/delete)
+- [list](/boundary/docs/api-clients/commands/credential-libraries/list)
 - [read](/boundary/docs/api-clients/commands/credential-libraries/read)
 - [update](/boundary/docs/api-clients/commands/credential-libraries/update)
-- [list](/boundary/docs/api-clients/commands/credential-libraries/list)

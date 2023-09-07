@@ -2,7 +2,7 @@
 layout: docs
 page_title: credential-stores delete - Command
 description: |-
-  The "credential-stores delete" command allows Boundary admin to delete a credential store resource.
+  The "credential-stores delete" command lets Boundary admin delete a credential store resource.
 ---
 
 # credential-stores delete
@@ -13,7 +13,7 @@ The `credential-stores delete` command deletes a credential store given its ID.
 
 ## Examples
 
-Delete a credential store of the given ID. 
+The following example deletes a credential store with the ID `csvlt_5fvkRjCjou`:
 
 ```shell-session
 $ boundary credential-stores delete -id csvlt_5fvkRjCjou
@@ -33,6 +33,6 @@ $ boundary credential-stores delete [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - ID of the credential store on which to operate.
+- `-id` `(string: "")` - Indicates the ID of the credential store to delete.
 
 @include 'cmd-option-note.mdx'

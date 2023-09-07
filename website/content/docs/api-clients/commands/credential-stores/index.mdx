@@ -2,24 +2,22 @@
 layout: docs
 page_title: credential-stores - Command
 description: |-
-  The "credential-stores" command allows Boundary admin to create and manage the credential libraries.
+  The "credential-stores" command lets Boundary admin create and manage credential stores.
 ---
 
 # credential-stores
 
 Command: `boundary credential-stores`
 
-The `credential-stores` command allows operations on Boundary credential
-library resources. 
+The `credential-stores` command lets you manage Boundary credential store resources.
 
-A credential store belongs to a scope and must support the principle of least
-privilege by providing mechanisms to limit the credentials it can access to the
-minimum necessary for the scope it is in.
-
+A credential store is a resource that can retrieve, store, and potentially generate credentials of differing types and differing access levels.
+They belong to projects and support the principle of least privilege by limiting the credentials that can be accessed to the minimum necessary for the project.
+A credential store can also contain credential libraries.
 
 ## Examples
 
-List all credential stores for a given scope ID.
+The following example lists all credential stores for a scope with the ID `p_tnqESc86qE`:
 
 ```shell-session
 $ boundary credential-stores list -scope-id p_tnqESc86qE
@@ -62,11 +60,11 @@ Subcommands:
 
 </CodeBlockConfig>
 
-For more information, examples, and usage about a subcommand, click on the name
+For more information, examples, and usage, click on the name
 of the subcommand in the sidebar or one of the links below:
 
 - [create](/boundary/docs/api-clients/commands/credential-stores/create)
 - [delete](/boundary/docs/api-clients/commands/credential-stores/delete)
+- [list](/boundary/docs/api-clients/commands/credential-stores/list)
 - [read](/boundary/docs/api-clients/commands/credential-stores/read)
 - [update](/boundary/docs/api-clients/commands/credential-stores/update)
-- [list](/boundary/docs/api-clients/commands/credential-stores/list)
