@@ -41,8 +41,8 @@ func TestWorkerList_Addresses(t *testing.T) {
 }
 
 func TestWorkerList_EgressFilter(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
+	// This prevents us from running tests in parallel.
 	SetupSuiteTargetFilters(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	wrapper := db.TestWrapper(t)

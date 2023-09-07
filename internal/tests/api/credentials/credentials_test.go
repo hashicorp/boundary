@@ -412,6 +412,7 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 		Level: hclog.Trace,
 	})
 
+	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 
 	tc := controller.NewTestController(t, &controller.TestControllerOpts{SchedulerRunJobInterval: 100 * time.Millisecond})
