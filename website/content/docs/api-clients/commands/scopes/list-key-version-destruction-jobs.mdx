@@ -9,7 +9,7 @@ description: |-
 
 Command: `scopes list-key-version-destruction-jobs`
 
-When the [key version destruction job](/boundary/docs/api-clients/commands/scopes/destroy-key-version) runs, it asynchronously re-encrypts any existing data within the latest key version before it destroys the key version.
+When the [key version destruction job](/boundary/docs/api-clients/commands/scopes/destroy-key-version) runs, it asynchronously re-encrypts any existing data within the latest key version before it destroys the key version you selected for destruction.
 The `scopes list-key-version-destruction jobs` command lists all pending key version destruction jobs within a scope.
 
 ## Example
@@ -32,6 +32,6 @@ $ boundary scopes list-key-version-destruction-jobs [args]
 
 ### Command options
 
-- `-scope-id=<string>` - The ID of the scope in which to list key version destruction jobs.
+- `-scope-id=<string>` - Indicates the ID of the scope in which to list key version destruction jobs.
 
 @include 'cmd-option-note.mdx'

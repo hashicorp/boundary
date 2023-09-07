@@ -13,7 +13,7 @@ The `boundary scopes rotate-keys` command lets you replace a scope's current KEK
 
 ## Example
 
-This example rotates all keys within the scope `s_1234567890`.
+This example rotates all keys within the scope `s_1234567890`:
 
 ```shell-session
 $ boundary scopes rotate-keys -scope-id s_1234567890
@@ -31,8 +31,8 @@ $ boundary scopes rotate-keys [args]
 
 ### Command options
 
-- `-rewrap` - Whether to re-encrypt DEKs with the new KEK.
+- `-rewrap` - Indicates whether to re-encrypt DEKs with the new KEK.
 The default value is `false`.
-- `-scope-id=<string>` - The enclosing scope from which to rotate the keys.
+- `-scope-id=<string>` - Specifies the enclosing scope in which you want to rotate the keys.
 
 @include 'cmd-option-note.mdx'
