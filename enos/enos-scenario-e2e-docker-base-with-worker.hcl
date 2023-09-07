@@ -91,13 +91,14 @@ scenario "e2e_docker_base_with_worker" {
     module = module.docker_boundary
     depends_on = [
       step.create_docker_network_cluster,
+      step.create_docker_network_database,
       step.create_boundary_database,
       step.build_boundary_docker_image
     ]
     variables {
       image_name       = matrix.builder == "crt" ? var.boundary_docker_image_name : step.build_boundary_docker_image.image_name
       network_name     = [local.network_cluster, local.network_database]
-      database_network = local.network_cluster
+      database_network = local.network_database
       postgres_address = step.create_boundary_database.address
       boundary_license = var.boundary_edition != "oss" ? step.read_license.license : ""
     }
