@@ -2,18 +2,18 @@
 layout: docs
 page_title: roles read - Command
 description: |-
-  The "roles read" command lets you read a role with a given ID.
+  The "roles read" command lets you read the information about a role with a given ID.
 ---
 
 # roles read
 
 Command: `boundary roles read`
 
-The `boundary roles read` command lets you read a Boundary role using its given ID.
+The `boundary roles read` command lets you read the information about a Boundary role using its given ID.
 
 ## Example
 
-This example reads a role with the ID `r_1234567890`:
+This example reads the details of a role with the ID `r_1234567890`:
 
 ```shell-session
 $ boundary roles read -id r_1234567890
@@ -31,6 +31,6 @@ $ boundary roles read [options] [args]
 
 ### Command options
 
-- `-id=<string>` - ID of the role to read.
+- `-id=<string>` - Specifies the ID of the role to read.
 
 @include 'cmd-option-note.mdx'
