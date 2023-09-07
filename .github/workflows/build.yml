@@ -117,7 +117,7 @@ jobs:
     needs:
       - product-metadata
       - set-product-version
-    runs-on: [ custom, linux, xxl, 20.04 ]
+    runs-on: [ boundary-linux-latest-32-cores ]
     # runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
