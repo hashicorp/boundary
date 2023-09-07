@@ -41,17 +41,21 @@ if which gh &> /dev/null;  then
         jq -r '.id')
 
     if [[ ${artifact_id} ]]; then
-        echo "Downloading artifact: ${artifact_id} for admin-ui-${UI_EDITION} ${UI_COMMITISH}"
-        tmp_dir=$(mktemp -d)
-        gh api "repos/hashicorp/${REPO_NAME}/actions/artifacts/${artifact_id}/zip" > "${tmp_dir}/boundary-ui.zip"
-        trap 'rm -rf ${tmp_dir}' EXIT
+        if [[ $(gh api "repos/hashicorp/${REPO_NAME}/actions/artifacts/${artifact_id}" --jq '.expired') == "true" ]]; then
+          echo "Artifact has expired. Falling back to building the UI locally..."
+        else
+          echo "Downloading artifact: ${artifact_id} for admin-ui-${UI_EDITION} ${UI_COMMITISH}"
+          tmp_dir=$(mktemp -d)
+          gh api "repos/hashicorp/${REPO_NAME}/actions/artifacts/${artifact_id}/zip" > "${tmp_dir}/boundary-ui.zip"
+          trap 'rm -rf ${tmp_dir}' EXIT
 
-        # remove any previous artifact download or git clone
-        rm -rf "${UI_CLONE_DIR}"
+          # remove any previous artifact download or git clone
+          rm -rf "${UI_CLONE_DIR}"
 
-        mkdir -p "${UI_CLONE_DIR}/ui/admin/dist"
-        unzip "${tmp_dir}/boundary-ui.zip" -d "${UI_CLONE_DIR}/ui/admin/dist"
-        exit $?
+          mkdir -p "${UI_CLONE_DIR}/ui/admin/dist"
+          unzip "${tmp_dir}/boundary-ui.zip" -d "${UI_CLONE_DIR}/ui/admin/dist"
+          exit $?
+        fi
     else
         echo "could not find artifact: admin-ui-${UI_EDITION} ${UI_COMMITISH}, falling back to git clone"
     fi
