@@ -22,8 +22,8 @@ import (
 
 func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	const op = "cluster.TestWorkerSessionMultipleConnections"
-	t.Parallel()
 
+	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 
 	require := require.New(t)

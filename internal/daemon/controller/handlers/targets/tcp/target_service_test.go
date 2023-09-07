@@ -2415,8 +2415,8 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 }
 
 func TestAuthorizeSession(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
+	// This prevents us from running tests in parallel.
 	targets.SetupSuiteTargetFilters(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
@@ -2712,13 +2712,13 @@ func TestAuthorizeSession(t *testing.T) {
 }
 
 func TestAuthorizeSessionTypedCredentials(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
+	// This prevents us from running tests in parallel.
 	targets.SetupSuiteTargetFilters(t)
 
 	sche := scheduler.TestScheduler(t, conn, wrapper)
@@ -3303,8 +3303,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 }
 
 func TestAuthorizeSession_Errors(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
+	// This prevents us from running tests in parallel.
 	targets.SetupSuiteTargetFilters(t)
 	conn, _ := db.TestSetup(t, "postgres")
 	rw := db.New(conn)

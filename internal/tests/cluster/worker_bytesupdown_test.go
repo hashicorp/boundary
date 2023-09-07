@@ -21,9 +21,9 @@ import (
 )
 
 func TestWorkerBytesUpDown(t *testing.T) {
-	t.Parallel()
 	require := require.New(t)
 
+	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 
 	logger := hclog.New(&hclog.LoggerOptions{
