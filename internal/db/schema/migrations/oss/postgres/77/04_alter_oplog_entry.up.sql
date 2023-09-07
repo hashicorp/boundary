@@ -5,7 +5,12 @@ begin;
 
 alter table oplog_entry
   drop constraint iam_scope_fkey,
-  drop constraint kms_data_key_version_fkey;
+  drop constraint kms_data_key_version_fkey,
+  add constraint kms_oplog_data_key_version_fkey
+    foreign key(key_id)
+      references kms_oplog_data_key_version (private_id)
+      on delete restrict
+      on update cascade;
 
 drop trigger insert_oplog_entry on oplog_entry;
 drop function insert_oplog_entry();
