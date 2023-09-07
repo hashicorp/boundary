@@ -31,14 +31,14 @@ $ boundary scopes create [options] [args]
 
 ### Command options
 
-- `-description=<string>` - A description to assign to the scope.
-- `-name=<string>` - The name you want to give the scope.
-- `-scope-id=<string>` - The scope in which to create the scope.
+- `-description=<string>` - Assigns a description to the scope.
+- `-name=<string>` - Assigns a name to the scope.
+- `-scope-id=<string>` - Indicates the scope in which to create the scope.
 The default is `global`.
-You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
-- `-skip-admin-role-creation` - If you enable this option, Boundary does not create a role that grants the current user administrative access to the newly created scope.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
+- `-skip-admin-role-creation` - Indicates that Boundary should not create a role that grants the current user administrative access to the newly created scope.
 The default value is `false`.
-- `-skip-default-role-creation` - If you enable this option, Boundary does not create a role that grants the anonymous user access to log in to auth methods and other actions within the newly created scope.
+- `-skip-default-role-creation` - Indicates that Boundary should not create a role that grants the anonymous user access to log in to auth methods and other actions within the newly created scope.
 The default value is `false`.
 
 @include 'cmd-option-note.mdx'
