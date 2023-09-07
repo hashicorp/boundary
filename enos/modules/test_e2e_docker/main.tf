@@ -240,6 +240,9 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
     E2E_AWS_REGION                = var.aws_region
     E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
+    E2E_POSTGRES_USER             = var.postgres_user
+    E2E_POSTGRES_PASSWORD         = var.postgres_password
+    E2E_POSTGRES_DB_NAME          = var.postgres_database_name
     E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
     E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
     E2E_WORKER_TAG_COLLOCATED     = var.worker_tag_collocated
