@@ -5,19 +5,27 @@ package cache
 
 import (
 	"context"
+	stdErrors "errors"
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// unimplementedAuthTokenReader is an unimplemented function for reading auth
+// tokens from a provided boundary address.
+func unimplementedAuthTokenReader(ctx context.Context, addr string, authToken string) (*authtokens.AuthToken, error) {
+	return nil, stdErrors.New("unimplemented")
+}
 
 func TestRepository_SaveError(t *testing.T) {
 	ctx := context.Background()
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	testResource := "test_resource_type"

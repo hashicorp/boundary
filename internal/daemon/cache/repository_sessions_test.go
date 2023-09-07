@@ -18,7 +18,7 @@ func TestRepository_refreshSessions(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	addr := "address"
@@ -148,7 +148,7 @@ func TestRepository_ListSessions(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	errorCases := []struct {
@@ -268,7 +268,7 @@ func TestRepository_QuerySessions(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	query := "status % status1 or status % status2"

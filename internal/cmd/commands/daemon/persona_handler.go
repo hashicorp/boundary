@@ -6,7 +6,6 @@ package daemon
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -20,11 +19,17 @@ type refresher interface {
 	refresh()
 }
 
-type personaToAdd struct {
+// upsertPersonaRequest is the payload sent as the body of a post request
+// and processed by this handler. All except for the AuthToken are always
+// required. When KeyringType is not "none" then AuthToken should not be
+// set and all other fields are required.  When it is "none" AuthToken must be
+// set and the TokenName should match the AuthTokenId.
+type upsertPersonaRequest struct {
 	KeyringType  string
 	TokenName    string
 	BoundaryAddr string
 	AuthTokenId  string
+	AuthToken    string
 }
 
 func newPersonaHandlerFunc(ctx context.Context, repo *cache.Repository, refresher refresher) (http.HandlerFunc, error) {
@@ -42,7 +47,7 @@ func newPersonaHandlerFunc(ctx context.Context, repo *cache.Repository, refreshe
 			writeError(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		var perReq personaToAdd
+		var perReq upsertPersonaRequest
 
 		data, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -58,18 +63,28 @@ func newPersonaHandlerFunc(ctx context.Context, repo *cache.Repository, refreshe
 		case perReq.TokenName == "":
 			writeError(w, "TokenName is a required field but was empty", http.StatusBadRequest)
 			return
-		case perReq.KeyringType == "":
-			writeError(w, "KeyringType is a required field but was empty", http.StatusBadRequest)
-			return
 		case perReq.BoundaryAddr == "":
 			writeError(w, "BoundaryAddr is a required field but was empty", http.StatusBadRequest)
 			return
 		case perReq.AuthTokenId == "":
 			writeError(w, "AuthTokenId is a required field but was empty", http.StatusBadRequest)
 			return
-		case perReq.KeyringType == base.NoneKeyring:
-			// TODO: Support personas that have tokens not stored in a keyring
-			writeError(w, fmt.Sprintf("KeyringType is set to %s which is not supported", perReq.KeyringType), http.StatusBadRequest)
+		}
+
+		var opts []cache.Option
+		switch perReq.KeyringType {
+		case base.NoneKeyring:
+			switch {
+			case perReq.TokenName != perReq.AuthTokenId:
+				writeError(w, "When KeyringType is 'none' TokenName must match the AuthTokenId", http.StatusBadRequest)
+				return
+			case perReq.AuthToken == "":
+				writeError(w, "AuthToken is empty when KeyringType is 'none'", http.StatusBadRequest)
+				return
+			}
+			opts = append(opts, cache.WithAuthToken(perReq.AuthToken))
+		case "":
+			writeError(w, "KeyringType is a required field but was empty", http.StatusBadRequest)
 			return
 		}
 
@@ -79,7 +94,7 @@ func newPersonaHandlerFunc(ctx context.Context, repo *cache.Repository, refreshe
 			return
 		}
 
-		if err = repo.AddPersona(ctx, perReq.BoundaryAddr, perReq.TokenName, perReq.KeyringType, perReq.AuthTokenId); err != nil {
+		if err = repo.AddPersona(ctx, perReq.BoundaryAddr, perReq.TokenName, perReq.KeyringType, perReq.AuthTokenId, opts...); err != nil {
 			writeError(w, "Failed to add a persona", http.StatusInternalServerError)
 			return
 		}

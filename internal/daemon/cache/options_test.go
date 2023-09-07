@@ -62,6 +62,21 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withAuthTokenId = id
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("WithAuthToken format fails", func(t *testing.T) {
+		tok := "thetoken"
+		opts, err := getOpts(WithAuthToken(tok))
+		assert.Error(t, err)
+		testOpts := getDefaultOptions()
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithAuthToken success", func(t *testing.T) {
+		tok := "at_123_token"
+		opts, err := getOpts(WithAuthToken(tok))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withAuthToken = tok
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithTargetRetrievalFunc", func(t *testing.T) {
 		var f TargetRetrievalFunc = func(ctx context.Context, keyringstring, tokenName string) ([]*targets.Target, error) { return nil, nil }
 		opts, err := getOpts(WithTargetRetrievalFunc(f))

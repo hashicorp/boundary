@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/observability/event"
 )
@@ -81,18 +82,30 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 
 	var retErr error
 	for _, p := range personas {
-
-		at := r.tokenLookupFn(p.KeyringType, p.TokenName)
-		if at == nil {
-			if err := r.deletePersona(ctx, p); err != nil {
-				retErr = stderrors.Join(retErr, err)
+		var token string
+		switch p.KeyringType {
+		case base.NoneKeyring, "":
+			var ok bool
+			token, ok = r.tokIdToTok[p.AuthTokenId]
+			if !ok {
+				if err := r.deletePersona(ctx, p); err != nil {
+					retErr = stderrors.Join(retErr, err)
+				}
 			}
-			continue
+		default:
+			at := r.tokenKeyringFn(p.KeyringType, p.TokenName)
+			if at == nil {
+				if err := r.deletePersona(ctx, p); err != nil {
+					retErr = stderrors.Join(retErr, err)
+				}
+				continue
+			}
+			token = at.Token
 		}
 
 		// Targets
 		{
-			tars, err := opts.withTargetRetrievalFunc(ctx, p.BoundaryAddr, at.Token)
+			tars, err := opts.withTargetRetrievalFunc(ctx, p.BoundaryAddr, token)
 			if err != nil {
 				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for persona %#v", p)))
 				continue
@@ -106,7 +119,7 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 		}
 		// Sessions
 		{
-			sess, err := opts.withSessionRetrievalFunc(ctx, p.BoundaryAddr, at.Token)
+			sess, err := opts.withSessionRetrievalFunc(ctx, p.BoundaryAddr, token)
 			if err != nil {
 				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for persona %#v", p)))
 				continue

@@ -18,7 +18,7 @@ func TestRepository_refreshTargets(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	addr := "address"
@@ -151,7 +151,7 @@ func TestRepository_ListTargets(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	errorCases := []struct {
@@ -274,7 +274,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	query := "name % name1 or name % name2"

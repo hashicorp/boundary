@@ -18,24 +18,37 @@ const (
 	personaStalenessLimit = 36 * time.Hour
 )
 
-// TokenLookupFn takes a keyring type and token name and returns the token
-type TokenLookupFn func(keyring string, tokenName string) *authtokens.AuthToken
+// TokenKeyringFn takes a token name and returns the token
+type TokenKeyringFn func(keyring string, tokenName string) *authtokens.AuthToken
+
+// AuthTokenReadFn reads an auth token's resource information from boundary
+type AuthTokenReadFn func(ctx context.Context, addr string, authToken string) (*authtokens.AuthToken, error)
 
 type Repository struct {
-	rw            *db.Db
-	tokenLookupFn TokenLookupFn
+	rw             *db.Db
+	tokenKeyringFn TokenKeyringFn
+	tokenReadFn    AuthTokenReadFn
+	tokIdToTok     map[string]string
 }
 
-func NewRepository(ctx context.Context, s *Store, tFn TokenLookupFn, opt ...Option) (*Repository, error) {
+// NewRepository returns a cache repository.  The provided Store must be 
+func NewRepository(ctx context.Context, s *Store, keyringFn TokenKeyringFn, atReadFn AuthTokenReadFn, opt ...Option) (*Repository, error) {
 	const op = "cache.NewRepository"
 	switch {
 	case util.IsNil(s):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing store")
-	case util.IsNil(tFn):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token lookup function")
+	case util.IsNil(keyringFn):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token keyring function")
+	case util.IsNil(atReadFn):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token read function")
 	}
 
-	return &Repository{rw: db.New(s.conn), tokenLookupFn: tFn}, nil
+	return &Repository{
+		rw:             db.New(s.conn),
+		tokenKeyringFn: keyringFn,
+		tokenReadFn:    atReadFn,
+		tokIdToTok:     make(map[string]string),
+	}, nil
 }
 
 func (r *Repository) SaveError(ctx context.Context, resourceType string, err error) error {

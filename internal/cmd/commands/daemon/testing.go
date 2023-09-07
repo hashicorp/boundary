@@ -5,9 +5,11 @@ package daemon
 
 import (
 	"context"
+	stdErrors "errors"
 	"io"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
@@ -71,7 +73,8 @@ func (s *TestServer) Serve(t *testing.T) error {
 func (s *TestServer) AddResources(t *testing.T, p *cache.Persona, tars []*targets.Target, sess []*sessions.Session) {
 	t.Helper()
 	ctx := context.Background()
-	r, err := cache.NewRepository(ctx, s.cacheServer.store, s.cmd.ReadTokenFromKeyring)
+
+	r, err := cache.NewRepository(ctx, s.cacheServer.store, s.cmd.ReadTokenFromKeyring, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	tarFn := func(ctx context.Context, addr string, tok string) ([]*targets.Target, error) {
@@ -89,4 +92,10 @@ func (s *TestServer) AddResources(t *testing.T, p *cache.Persona, tars []*target
 		return sess, nil
 	}
 	require.NoError(t, r.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn), cache.WithSessionRetrievalFunc(sessFn)))
+}
+
+// unimplementedAuthTokenReader is an unimplemented function for reading auth
+// tokens from a provided boundary address.
+func unimplementedAuthTokenReader(ctx context.Context, addr string, authToken string) (*authtokens.AuthToken, error) {
+	return nil, stdErrors.New("unimplemented")
 }

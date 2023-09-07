@@ -6,18 +6,20 @@ package cache
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func testAuthTokenLookup(k, t string) *authtokens.AuthToken {
 	return &authtokens.AuthToken{
-		Id:           fmt.Sprintf("at_%s", t),
-		Token:        fmt.Sprintf("at_%s_%s", t, k),
+		Id:           t,
+		Token:        fmt.Sprintf("%s_%s", t, k),
 		UserId:       fmt.Sprintf("u_%s", t),
 		AuthMethodId: fmt.Sprintf("ampw_%s", t),
 		AccountId:    fmt.Sprintf("acctpw_%s", t),
@@ -29,7 +31,7 @@ func TestRepository_AddPersona(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	errCases := []struct {
@@ -38,6 +40,7 @@ func TestRepository_AddPersona(t *testing.T) {
 		tokenName     string
 		keyringType   string
 		authTokenId   string
+		opts          []Option
 		errorContains string
 	}{
 		{
@@ -76,11 +79,38 @@ func TestRepository_AddPersona(t *testing.T) {
 			keyringType:   "keyring",
 			errorContains: "boundary auth token id is empty",
 		},
+		{
+			name:          "none keyring mismatched token name token id",
+			addr:          "address",
+			tokenName:     "tokenName",
+			authTokenId:   "at_123",
+			keyringType:   base.NoneKeyring,
+			opts:          []Option{WithAuthToken("at_123_token")},
+			errorContains: "token name must match the auth token id",
+		},
+		{
+			name:          "none keyring token doesnt match auth token id",
+			addr:          "address",
+			tokenName:     "at_different",
+			authTokenId:   "at_different",
+			keyringType:   base.NoneKeyring,
+			opts:          []Option{WithAuthToken("at_123_token")},
+			errorContains: "auth token id doesn't match the provided auth token",
+		},
+		{
+			name:          "none keyring authtoken reader fails",
+			addr:          "address",
+			tokenName:     "at_123",
+			authTokenId:   "at_123",
+			keyringType:   base.NoneKeyring,
+			opts:          []Option{WithAuthToken("at_123_token")},
+			errorContains: "unable to get auth token info",
+		},
 	}
 
 	for _, tc := range errCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := r.AddPersona(ctx, tc.addr, tc.tokenName, tc.keyringType, tc.authTokenId)
+			err := r.AddPersona(ctx, tc.addr, tc.tokenName, tc.keyringType, tc.authTokenId, tc.opts...)
 			assert.ErrorContains(t, err, tc.errorContains)
 		})
 	}
@@ -91,7 +121,7 @@ func TestRepository_AddPersona_EvictsOverLimit(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	addr := "address"
@@ -118,12 +148,50 @@ func TestRepository_AddPersona_EvictsOverLimit(t *testing.T) {
 	assert.NotEmpty(t, gotP)
 }
 
+func TestRepository_AddPersona_EvictsOverLimit_Keyringless(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, func(_ context.Context, _, authToken string) (*authtokens.AuthToken, error) {
+		atId := strings.Join(strings.Split(authToken, "_")[0:2], "_")
+		return testAuthTokenLookup(base.NoneKeyring, atId), nil
+	})
+	require.NoError(t, err)
+
+	addr := "address"
+	keyringType := base.NoneKeyring
+	tokenName := "at_token"
+	at := testAuthTokenLookup(keyringType, tokenName)
+
+	assert.NoError(t, r.AddPersona(ctx, addr, tokenName, keyringType, at.Id, WithAuthToken(at.Token)))
+	assert.NoError(t, r.AddPersona(ctx, addr, tokenName, keyringType, at.Id, WithAuthToken(at.Token)))
+	for i := 0; i < personaLimit; i++ {
+		tn := fmt.Sprintf("%s%d", tokenName, i)
+		at := testAuthTokenLookup(keyringType, tn)
+		assert.NoError(t, r.AddPersona(ctx, addr, tn, keyringType, at.Id, WithAuthToken(at.Token)))
+	}
+	// Lookup the first persona added. It should have been evicted for being
+	// used the least recently.
+	gotP, err := r.LookupPersona(ctx, tokenName, keyringType)
+	assert.NoError(t, err)
+	assert.Nil(t, gotP)
+	_, ok := r.tokIdToTok[tokenName]
+	assert.False(t, ok)
+
+	gotP, err = r.LookupPersona(ctx, tokenName+"0", keyringType)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, gotP)
+	_, ok = r.tokIdToTok[tokenName+"0"]
+	assert.True(t, ok)
+}
+
 func TestRepository_AddPersona_AddingExistingUpdatesLastAccessedTime(t *testing.T) {
 	ctx := context.Background()
 	s, err := Open(ctx, WithDebug(true))
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	p1 := &Persona{
@@ -160,7 +228,7 @@ func TestRepository_ListPersonas(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	t.Run("no token", func(t *testing.T) {
@@ -193,7 +261,7 @@ func TestRepository_DeletePersona(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	t.Run("delete non existing", func(t *testing.T) {
@@ -223,7 +291,7 @@ func TestRepository_LookupPersona(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	t.Run("empty token name", func(t *testing.T) {
@@ -289,7 +357,7 @@ func TestRepository_RemoveStalePersonas(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	r, err := NewRepository(ctx, s, testAuthTokenLookup, unimplementedAuthTokenReader)
 	require.NoError(t, err)
 
 	staleTime := time.Now().Add(-(personaStalenessLimit + 1*time.Hour))

@@ -79,24 +79,42 @@ func (c *AddPersonaCommand) Run(args []string) int {
 
 func (c *AddPersonaCommand) AddPersona(ctx context.Context) (*api.Error, error) {
 	const op = "daemon.(AddPersonaCommand).AddPersona"
-	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
-	if err != nil {
-		return nil, err
-	}
-	at := c.ReadTokenFromKeyring(keyringType, tokenName)
-	if at == nil {
-		return nil, errors.New(ctx, errors.Conflict, op, "no auth token available to send to daemon")
-	}
 	client, err := c.Client()
 	if err != nil {
 		return nil, err
 	}
 
-	pa := personaToAdd{
+	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
+	if err != nil {
+		return nil, err
+	}
+	var atId string
+	var token string
+	switch keyringType {
+	case "", base.NoneKeyring:
+		keyringType = base.NoneKeyring
+		token = client.Token()
+		if parts := strings.Split(token, "_"); len(parts) == 3 {
+			atId = strings.Join(parts[0:2], "_")
+		} else {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "found auth token is not in the proper format")
+		}
+		tokenName = atId
+	default:
+		at := c.ReadTokenFromKeyring(keyringType, tokenName)
+		if at == nil {
+			return nil, errors.New(ctx, errors.Conflict, op, "no auth token available to send to daemon")
+		}
+		atId = at.Id
+		token = ""
+	}
+
+	pa := upsertPersonaRequest{
 		KeyringType:  keyringType,
 		TokenName:    tokenName,
 		BoundaryAddr: client.Addr(),
-		AuthTokenId:  at.Id,
+		AuthTokenId:  atId,
+		AuthToken:    token,
 	}
 
 	dotPath, err := DefaultDotDirectory(ctx)
@@ -107,7 +125,7 @@ func (c *AddPersonaCommand) AddPersona(ctx context.Context) (*api.Error, error) 
 	return addPersona(ctx, dotPath, &pa)
 }
 
-func addPersona(ctx context.Context, daemonPath string, p *personaToAdd) (*api.Error, error) {
+func addPersona(ctx context.Context, daemonPath string, p *upsertPersonaRequest) (*api.Error, error) {
 	const op = "daemon.addPersona"
 	client, err := api.NewClient(nil)
 	if err != nil {

@@ -115,6 +115,37 @@ func (s *cacheServer) shutdown(ctx context.Context) error {
 	return shutdownErr
 }
 
+func defaultAuthTokenRead(cmd Commander) func(ctx context.Context, addr string, tok string) (*authtokens.AuthToken, error) {
+	return func(ctx context.Context, addr, tok string) (*authtokens.AuthToken, error) {
+		const op = "daemon.defaultAuthTokenRead"
+		switch {
+		case addr == "":
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "address is missing")
+		case tok == "":
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token is missing")
+		}
+		atIdParts := strings.Split(tok, "_")
+		if len(atIdParts) != 3 {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token is in an inproper format")
+		}
+		atId := strings.Join(atIdParts[0:2], "_")
+
+		c, err := cmd.Client()
+		if err != nil {
+			return nil, err
+		}
+		c.SetAddr(addr)
+		c.SetToken(tok)
+		atClient := authtokens.NewClient(c)
+
+		at, err := atClient.Read(ctx, atId)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		return at.GetItem(), nil
+	}
+}
+
 // start will fire up the refresh goroutine and the caching API http server as a
 // daemon.  The daemon bits are included so it's easy for CLI cmds to start the
 // a cache server
@@ -138,8 +169,7 @@ func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener) 
 	s.infoKeys = append(s.infoKeys, "Database URL")
 
 	s.printInfo(ctx)
-
-	repo, err := cache.NewRepository(ctx, s.store, cmd.ReadTokenFromKeyring)
+	repo, err := cache.NewRepository(ctx, s.store, cmd.ReadTokenFromKeyring, defaultAuthTokenRead(cmd))
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

@@ -4,12 +4,16 @@
 package cache
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/hashicorp/go-dbw"
 )
 
 type options struct {
 	withBoundaryAddress        string
 	withAuthTokenId            string
+	withAuthToken              string
 	withDebug                  bool
 	withUrl                    string
 	withUpdateLastAccessedTime bool
@@ -74,6 +78,17 @@ func WithBoundaryAddress(a string) Option {
 func WithAuthTokenId(id string) Option {
 	return func(o *options) error {
 		o.withAuthTokenId = id
+		return nil
+	}
+}
+
+// WithAuthToken provides an option for specifying an auth token id
+func WithAuthToken(token string) Option {
+	return func(o *options) error {
+		if len(strings.Split(token, "_")) != 3 {
+			return fmt.Errorf("provided token %q cannot be parsed as an auth token", token)
+		}
+		o.withAuthToken = token
 		return nil
 	}
 }
