@@ -11,6 +11,16 @@ controller {
   }
 }
 
+worker {
+  name        = "boundary-collocated-worker"
+  description = "A worker that runs alongside the controller in the same process"
+  address     = "boundary:9202"
+
+  tags {
+    type = ["${worker_type_tag}"]
+  }
+}
+
 listener "tcp" {
   address     = "boundary:9200"
   purpose     = "api"

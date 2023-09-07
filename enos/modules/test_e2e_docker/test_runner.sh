@@ -38,6 +38,7 @@ docker run \
     -e "E2E_POSTGRES_DB_NAME=$E2E_POSTGRES_DB_NAME" \
     -e "E2E_WORKER_TAG_INGRESS=$E2E_WORKER_TAG_INGRESS" \
     -e "E2E_WORKER_TAG_EGRESS=$E2E_WORKER_TAG_EGRESS" \
+    -e "E2E_WORKER_TAG_COLLOCATED=$E2E_WORKER_TAG_COLLOCATED" \
     --mount type=bind,src=$BOUNDARY_DIR,dst=/src/boundary/ \
     --mount type=bind,src=$MODULE_DIR/../..,dst=/testlogs \
     --mount type=bind,src=$(go env GOCACHE),dst=/root/.cache/go-build \

@@ -168,6 +168,10 @@ variable "worker_tag_egress" {
   type    = string
   default = ""
 }
+variable "worker_tag_collocated" {
+  type    = string
+  default = ""
+}
 variable "postgres_user" {
   type    = string
   default = ""
@@ -238,6 +242,7 @@ resource "enos_local_exec" "run_e2e_test" {
     E2E_AWS_BUCKET_NAME           = var.aws_bucket_name
     E2E_WORKER_TAG_INGRESS        = var.worker_tag_ingress
     E2E_WORKER_TAG_EGRESS         = var.worker_tag_egress
+    E2E_WORKER_TAG_COLLOCATED     = var.worker_tag_collocated
     BOUNDARY_DIR                  = abspath(var.local_boundary_src_dir)
     BOUNDARY_CLI_DIR              = abspath(var.local_boundary_dir)
     MODULE_DIR                    = abspath(path.module)

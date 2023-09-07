@@ -49,6 +49,11 @@ variable "config_file" {
   type        = string
   default     = "boundary-config.hcl"
 }
+variable "worker_tag" {
+  description = "Tag to set on worker for use in worker filters"
+  type        = string
+  default     = "collocated"
+}
 
 resource "docker_image" "boundary" {
   name         = var.image_name
@@ -109,6 +114,7 @@ resource "docker_container" "boundary" {
 
   upload {
     content = templatefile("${abspath(path.module)}/${var.config_file}", {
+      worker_type_tag = var.worker_tag
     })
     file = "/boundary/boundary-config.hcl"
   }
@@ -162,4 +168,8 @@ output "login_name" {
 
 output "password" {
   value = local.password
+}
+
+output "worker_tag" {
+  value = var.worker_tag
 }
