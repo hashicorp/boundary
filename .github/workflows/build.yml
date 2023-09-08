@@ -120,8 +120,10 @@ jobs:
     runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
-        goos: [ freebsd, windows, netbsd, openbsd, solaris ]
-        goarch: [ "386", "amd64", "arm" ]
+        #goos: [ freebsd, windows, netbsd, openbsd, solaris ]
+        #goarch: [ "386", "amd64", "arm" ]
+        goos: [ freebsd ]
+        goarch: [ arm ]
         go: [ "${{ needs.product-metadata.outputs.go-version }}" ]
         exclude:
           - goos: solaris
@@ -170,9 +172,13 @@ jobs:
           repo: "hashicorp/boundary-ui"
           name: admin-ui-${{ needs.product-metadata.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
+      - name: Install cross-compiler
+        run: |
+          sudo apt install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
       - name: Go Build
         env:
           CGO_ENABLED: "1"
+          CC_FOR_${{ matrix.goos }}_${{ matrix.goarch }}: "arm-linux-gnueabihf-gcc"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
           METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
         uses: hashicorp/actions-go-build@v0.1.9  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
