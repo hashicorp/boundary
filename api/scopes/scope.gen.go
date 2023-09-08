@@ -344,6 +344,12 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Scop
 	}
 	// if refresh token is not set explicitly and there are more results,
 	// automatically fetch the rest of the results.
+	// idToIndex keeps a map from the ID of an item to its index in target.Items.
+	// This is used to remove deleted items from the result after pagination is done.
+	idToIndex := map[string]int{}
+	for i, item := range target.Items {
+		idToIndex[item.Id] = i
+	}
 	for {
 		req, err := c.client.NewRequest(ctx, "GET", "scopes", nil, apiOpts...)
 		if err != nil {
@@ -372,14 +378,34 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Scop
 		if apiErr != nil {
 			return nil, apiErr
 		}
-		target.Items = append(target.Items, page.Items...)
+		for _, item := range page.Items {
+			target.Items = append(target.Items, item)
+			idToIndex[item.Id] = len(target.Items) - 1
+		}
 		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
 		target.EstItemCount = page.EstItemCount
 		target.RefreshToken = page.RefreshToken
 		target.ResponseType = page.ResponseType
 		target.response = resp
 		if target.ResponseType == "complete" {
-			return target, nil
+			break
 		}
 	}
+	// Remove any items deleted since the start of the iteration,
+	// and also remove those IDs from the RemovedIds slice.
+	// https://github.com/golang/go/wiki/SliceTricks#filtering-without-allocating
+	removedIds := target.RemovedIds
+	target.RemovedIds = target.RemovedIds[:0]
+	for _, removedId := range removedIds {
+		if i, ok := idToIndex[removedId]; ok {
+			// Remove the item at index i.
+			// https://github.com/golang/go/wiki/SliceTricks#delete
+			copy(target.Items[i:], target.Items[i+1:])
+			target.Items[len(target.Items)-1] = nil
+			target.Items = target.Items[:len(target.Items)-1]
+		} else {
+			target.RemovedIds = append(target.RemovedIds, removedId)
+		}
+	}
+	return target, nil
 }
