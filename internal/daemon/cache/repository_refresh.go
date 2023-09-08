@@ -36,9 +36,9 @@ func defaultTargetFunc(ctx context.Context, addr, token string) ([]*targets.Targ
 	return l.Items, nil
 }
 
-type sessionRetrievalFunc func(ctx context.Context, keyringstring, tokenName string) ([]*sessions.Session, error)
+type sessionRetrievalFunc func(ctx context.Context, addr, token string) ([]*sessions.Session, error)
 
-func defaultSessionFunc(ctx context.Context, addr string, token string) ([]*sessions.Session, error) {
+func defaultSessionFunc(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
 	const op = "cache.defaultSessionFunc"
 	client, err := api.NewClient(&api.Config{
 		Addr:  addr,
