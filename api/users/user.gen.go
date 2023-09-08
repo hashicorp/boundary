@@ -349,7 +349,8 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*User
 	// if refresh token is not set explicitly and there are more results,
 	// automatically fetch the rest of the results.
 	// idToIndex keeps a map from the ID of an item to its index in target.Items.
-	// This is used to remove deleted items from the result after pagination is done.
+	// This is used to update updated items in-place and remove deleted items
+	// from the result after pagination is done.
 	idToIndex := map[string]int{}
 	for i, item := range target.Items {
 		idToIndex[item.Id] = i
@@ -383,8 +384,13 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*User
 			return nil, apiErr
 		}
 		for _, item := range page.Items {
-			target.Items = append(target.Items, item)
-			idToIndex[item.Id] = len(target.Items) - 1
+			if i, ok := idToIndex[item.Id]; ok {
+				// Item has already been seen at index i, update in-place
+				target.Items[i] = item
+			} else {
+				target.Items = append(target.Items, item)
+				idToIndex[item.Id] = len(target.Items) - 1
+			}
 		}
 		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
 		target.EstItemCount = page.EstItemCount
