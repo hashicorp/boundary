@@ -117,8 +117,7 @@ jobs:
     needs:
       - product-metadata
       - set-product-version
-    runs-on: [ boundary-linux-latest-32-cores ]
-    # runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
     strategy:
       matrix:
         goos: [ freebsd, windows, netbsd, openbsd, solaris ]
