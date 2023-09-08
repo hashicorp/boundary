@@ -42,7 +42,7 @@ You can create controller-led or worker-led types of workers.
 <Tabs>
 <Tab heading="controller-led">
 
-The `boundary workers create controller-led` command lets you create a worker by receiving an activation token from a controller.
+The `workers create controller-led` command lets you create a worker by receiving an activation token from a controller.
 
 #### Example
 
@@ -64,16 +64,16 @@ $ boundary workers create controller-led [options] [args]
 
 #### Command options
 
-- `-description=<string>` - Description to set on the controller-led type worker.
-- `name=<string>` - Name to set on the controller-led type worker.
-- `scope-id=<string>` - Scope in which to make the request.
+- `-description=<string>` - Sets a description on the controller-led type worker.
+- `name=<string>` - Sets a name on the controller-led type worker.
+- `scope-id=<string>` - Specifies the scope in which to make the request.
 The default is `global`.
-You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
 
 </Tab>
 <Tab heading="worker-led">
 
-The `boundary workers create worker-led` command lets you create a worker by providing an auth method from the worker.
+The `workers create worker-led` command lets you create a worker by providing an auth method from the worker.
 
 #### Example
 
@@ -95,15 +95,15 @@ $ boundary workers create worker-led [options] [args]
 
 #### Command options
 
-- `-description=<string>` - Description to set on the worker-led type worker.
-- `name=<string>` - Name to set on the worker-led type worker.
-- `scope-id=<string>` - Scope in which to make the request.
+- `-description=<string>` - Sets a description on the worker-led type worker.
+- `name=<string>` - Sets a name on the worker-led type worker.
+- `scope-id=<string>` - Specifies the scope in which to make the request.
 The default is `global`.
-You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
 
 #### Worker creation options
 
-- `worker-generated-auth-token=<string>` - The auth token provided by the worker that is used to register the worker with Boundary.
+- `worker-generated-auth-token=<string>` - Specifies the auth token that is provided by the worker and used to register the worker with Boundary.
 
 </Tab>
 </Tabs>

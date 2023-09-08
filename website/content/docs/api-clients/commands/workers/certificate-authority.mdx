@@ -13,7 +13,7 @@ The `boundary workers certificate-authority` command lets you manage the certifi
 
 ## Example
 
-This example lets you read the current certificate authority:
+This example lets you read information about the current certificate authority:
 
 ```shell-session
 $ boundary workers certificate-authority read
@@ -40,9 +40,9 @@ Subcommands:
 You can read or reinitialize certificate authorities.
 
 <Tabs>
-<Tab heading="read">
+<Tab heading="Read">
 
-The `boundary workers certificate-authority read` command lets you read the certificate authority that is used to authorize Boundary workers.
+The `workers certificate-authority read` command lets you read the details of the certificate authority that is used to authorize Boundary workers.
 
 #### Usage
 
@@ -52,26 +52,26 @@ $ boundary workers certificate-authority read [options] [args]
 
 #### Worker certificate authority options
 
-- `-scope-id=<string>` - Scope in which to read the certificate authority.
+- `-scope-id=<string>` - Indicates the scope in which to read the certificate authority.
 The default scope is `global`.
-You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
 
 </Tab>
-<Tab heading="reinitialize">
+<Tab heading="Reinitialize">
 
-The `boundary workers certificate-authority reinitialize` command lets you reinitialize the certificate authority that is used to authorize Boundary workers.
+The `workers certificate-authority reinitialize` command lets you reinitialize the certificate authority that is used to authorize Boundary workers.
 
 #### Usage
 
 ```shell-session
-$ boundary workers certificate-authority reinitialize [options] [args]
+$ workers certificate-authority reinitialize [options] [args]
 ```
 
 #### Worker certificate authority options
 
-- `-scope-id=<string>` - Scope in which to reinitialize the certificate authority.
+- `-scope-id=<string>` - Indicates the scope in which to reinitialize the certificate authority.
 The default scope is `global`.
-You can also specify the scope using the BOUNDARY_SCOPE_ID environment variable.
+You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
 
 </Tab>
 </Tabs>
