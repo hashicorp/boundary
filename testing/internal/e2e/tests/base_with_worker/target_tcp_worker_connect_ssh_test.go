@@ -18,6 +18,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCliTcpTargetWorkerConnectTarget uses the boundary cli to do the
+// following...
+// - create a target with an egress worker filter and confirm that you can
+// connect to it
+// - update the target to use a worker filter that can't reach the host and
+// confirm that you cannot connect to it
+// - attempt to create a target with an ingress worker filter and confirm that
+// the operation fails
+// Note: This test is specific to the community version
 func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	e2e.MaybeSkipTest(t)
 	c, err := loadTestConfig()

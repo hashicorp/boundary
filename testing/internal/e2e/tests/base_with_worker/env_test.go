@@ -13,8 +13,6 @@ type config struct {
 	WorkerTagIngress    string `envconfig:"E2E_WORKER_TAG_INGRESS" required:"true"`    // e.g. "ingress"
 	WorkerTagEgress     string `envconfig:"E2E_WORKER_TAG_EGRESS" required:"true"`     // e.g. "egress"
 	WorkerTagCollocated string `envconfig:"E2E_WORKER_TAG_COLLOCATED" required:"true"` // e.g. "collocated"
-	// Note: Key is base64 encoded
-	TargetCaKey string `envconfig:"E2E_SSH_CA_KEY" required:"true"`
 	// VaultAddr is the address that the Boundary server uses to interact with the running Vault instance
 	VaultAddr       string `envconfig:"E2E_VAULT_ADDR" required:"true"` // e.g. "http://127.0.0.1:8200"
 	VaultSecretPath string `envconfig:"E2E_VAULT_SECRET_PATH" default:"e2e_secrets"`
