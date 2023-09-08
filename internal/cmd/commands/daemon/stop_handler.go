@@ -26,8 +26,6 @@ func newStopHandlerFunc(ctx context.Context, cancelFn context.CancelFunc) (http.
 		}
 
 		w.WriteHeader(http.StatusNoContent)
-		defer func() {
-			cancelFn()
-		}()
+		cancelFn()
 	}, nil
 }
