@@ -2,18 +2,18 @@
 layout: docs
 page_title: session-recordings read - Command
 description: |-
-  The "session-recordings read" command lets you read Boundary session recordings by ID.
+  The "session-recordings read" command lets you read information about Boundary session recordings by ID.
 ---
 
 # session-recordings read
 
 Command: `boundary session-recordings read`
 
-The `boundary session-recordings read` command lets you read a Boundary session recording by providing the ID.
+The `boundary session-recordings read` command lets you read information about a Boundary session recording by providing the ID.
 
 ## Example
 
-This example reads a session recording with the ID `s_1234567890`:
+This example reads the details of a session recording with the ID `s_1234567890`:
 
 ```shell-session
 $ boundary session-recordings read -id s_1234567890
@@ -31,6 +31,6 @@ $ boundary session-recordings read [options] [args]
 
 ### Command options
 
-- `-id=<string>` - ID of the session recording to read.
+- `-id=<string>` - Indicates the ID of the session recording you want to read.
 
 @include 'cmd-option-note.mdx'

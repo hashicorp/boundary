@@ -2,18 +2,18 @@
 layout: docs
 page_title: sessions read - Command
 description: |-
-  The "sessions read" command lets you read Boundary sessions by ID.
+  The "sessions read" command lets you read information about Boundary sessions by ID.
 ---
 
 # sessions read
 
 Command: `boundary sessions read`
 
-The `boundary sessions read` command lets you read a Boundary session by providing the ID.
+The `boundary sessions read` command lets you read information a Boundary session by providing the ID.
 
 ## Example
 
-This example reads a session with the ID `s_1234567890`:
+This example reads the details of a session with the ID `s_1234567890`:
 
 ```shell-session
 $ boundary sessions read -id s_1234567890
@@ -31,6 +31,6 @@ $ boundary sessions read [options] [args]
 
 ### Command options
 
-- `-id=<string>` - ID of the session to read.
+- `-id=<string>` - Indicates the ID of the session you want to read.
 
 @include 'cmd-option-note.mdx'

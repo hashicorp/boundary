@@ -9,11 +9,11 @@ description: |-
 
 Command: `users list`
 
-The `users list` command lets you list the users who belong to the scope or resource you specify.
+The `users list` command lets you list the users who belong to a given scope or resource.
 
 ## Example
 
-This example lists users in the scope `s_1234567890`:
+This example lists all users in the scope `s_1234567890`:
 
 ```shell-session
 $ boundary users list -scope-id s_1234567890
@@ -31,14 +31,14 @@ $ boundary users list [options] [args]
 
 ### Command options
 
-- `-filter=<string>` - If you set this value, the list operation is filtered before it is returned.
+- `-filter=<string>` - Determines whether the list operation is filtered before it is returned.
 The filter operates against each item in the list.
 We recommend that you use single quotes, as filters contain double quotes.
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
-- `-recursive` - If you set this value, the list operation is applied recursively into child scopes, if the type supports it.
+- `-recursive` - Runs the list operation recursively into child scopes, if the type supports it.
 The default value is `false`.
-- `-scope-id=<string>` - Designates the scope from which to list the users.
+- `-scope-id=<string>` - Indicates the scope that contains the users you want to list.
 The default value is `global`.
-You can also specify this value using the BOUNDARY_SCOPE_ID environment variable.
+You can also specify this value using the **BOUNDARY_SCOPE_ID** environment variable.
 
 @include 'cmd-option-note.mdx'
