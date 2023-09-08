@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"golang.org/x/sys/windows"
@@ -66,7 +67,7 @@ func pidFileInUse(ctx context.Context, pidFile string) (*os.Process, error) {
 	var err error
 	var file *os.File
 	if file, err = os.OpenFile(pidFile, os.O_RDONLY, 0o640); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("OpenFile"))
 	}
 	if file == nil {
 		return nil, nil
@@ -81,12 +82,16 @@ func pidFileInUse(ctx context.Context, pidFile string) (*os.Process, error) {
 	var pid int
 	_, err = fmt.Fscan(file, &pid)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Fscan"))
 	}
 
 	p, err := os.FindProcess(pid)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		if strings.Contains(err.Error(), "The parameter is incorrect") {
+			return nil, errors.New(ctx, errors.NotFound, op, "cannot find process")
+		}
+		// we failed to get the process for whatever reason
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("FindProcess %d", pid))
 	}
 	if p == nil {
 		return nil, errors.New(ctx, errors.NotFound, op, "cannot find process")
