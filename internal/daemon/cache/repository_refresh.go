@@ -14,9 +14,9 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 )
 
-type targetRetrievalFunc func(ctx context.Context, keyringstring, tokenName string) ([]*targets.Target, error)
+type targetRetrievalFunc func(ctx context.Context, addr, token string) ([]*targets.Target, error)
 
-func defaultTargetFunc(ctx context.Context, addr string, token string) ([]*targets.Target, error) {
+func defaultTargetFunc(ctx context.Context, addr, token string) ([]*targets.Target, error) {
 	const op = "cache.defaultTargetFunc"
 	client, err := api.NewClient(&api.Config{
 		Addr:  addr,
