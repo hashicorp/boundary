@@ -129,6 +129,9 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 			"-o", "IdentitiesOnly=yes", // forces the use of the provided key
 		),
 	)
+	// Note: If this test fails due to: "Unable to connect to worker at
+	// worker:9402", modify your /etc/hosts file to contain...
+	// `127.0.0.1  localhost  worker``
 	require.NoError(t, output.Err, string(output.Stderr))
 	require.Equal(t, c.TargetAddress, strings.TrimSpace(string(output.Stdout)))
 	t.Log("Successfully connected to target")
