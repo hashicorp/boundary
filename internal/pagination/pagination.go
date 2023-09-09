@@ -103,6 +103,11 @@ func PaginateRequest[T any, PbT ResponseItem](
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	var refreshToken *pbs.ListRefreshToken
+	resp := &ListResponse[PbT]{}
+	// Note that we have to set the create time of the new refresh token before
+	// we list the deleted IDs, or we risk missing items that were deleted between
+	// listing deleted IDs and the creation of the refresh token.
+	newRefreshTokenCreateTime := time.Now()
 	if req.GetRefreshToken() != "" {
 		// Note that refresh token parsing and validation happens after authorization,
 		// since validation requires access to the grants hash.
@@ -111,6 +116,14 @@ func PaginateRequest[T any, PbT ResponseItem](
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		if err := validateRefreshToken(ctx, refreshToken, grantsHash, resourceType); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+
+		// List deleted IDs before listing the items to avoid including deleted
+		// items in the results (any item that is deleted between listing items
+		// and listing deleted IDs would show up in both).
+		resp.DeletedIds, err = repo.ListDeletedIds(ctx, refreshToken.GetCreatedTime().AsTime())
+		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
@@ -124,23 +137,25 @@ func PaginateRequest[T any, PbT ResponseItem](
 	// request page size+1 so we can tell if we're at the end
 	limit := pageSize + 1
 
-	finalItems, completeListing, err := fillPage(ctx, limit, pageSize, refreshToken, itemLister, converterAndFilterer)
+	resp.Items, resp.CompleteListing, err = fillPage(ctx, limit, pageSize, refreshToken, itemLister, converterAndFilterer)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	resp := &ListResponse[PbT]{
-		Items:           finalItems,
-		CompleteListing: completeListing,
-	}
-
-	if len(finalItems) > 0 {
+	// Only include a refresh token if we received a result
+	// or we have an incoming refresh token, so that we always have
+	// something to populate LastItemId and LastItemUpdatedTime with.
+	if len(resp.Items) > 0 || refreshToken != nil {
 		newRefreshToken := &pbs.ListRefreshToken{
-			CreatedTime:         timestamppb.Now(),
+			CreatedTime:         timestamppb.New(newRefreshTokenCreateTime),
 			ResourceType:        resourceType,
 			PermissionsHash:     grantsHash,
-			LastItemId:          finalItems[len(finalItems)-1].GetId(),
-			LastItemUpdatedTime: finalItems[len(finalItems)-1].GetUpdatedTime(),
+			LastItemId:          refreshToken.GetLastItemId(),
+			LastItemUpdatedTime: refreshToken.GetLastItemUpdatedTime(),
+		}
+		if len(resp.Items) > 0 {
+			newRefreshToken.LastItemId = resp.Items[len(resp.Items)-1].GetId()
+			newRefreshToken.LastItemUpdatedTime = resp.Items[len(resp.Items)-1].GetUpdatedTime()
 		}
 		resp.MarshaledRefreshToken, err = marshalRefreshToken(ctx, newRefreshToken)
 		if err != nil {
@@ -148,12 +163,6 @@ func PaginateRequest[T any, PbT ResponseItem](
 		}
 	}
 
-	if refreshToken != nil {
-		resp.DeletedIds, err = repo.ListDeletedIds(ctx, refreshToken.GetCreatedTime().AsTime())
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-	}
 	resp.EstimatedItemCount, err = repo.GetTotalItems(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

@@ -849,6 +849,63 @@ func TestPaginateRequest(t *testing.T) {
 		assert.Equal(t, []byte("some hash"), refreshToken2.PermissionsHash)
 		assert.Equal(t, resourceType, refreshToken2.ResourceType)
 	})
+	t.Run("no-rows-and-request-token", func(t *testing.T) {
+		t.Parallel()
+		maxPageSize := uint(1000)
+		resourceType := pbs.ResourceType_RESOURCE_TYPE_SESSION
+		refreshToken := &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(time.Now().Add(-time.Hour)),
+			ResourceType:        resourceType,
+			LastItemId:          "some-id",
+			LastItemUpdatedTime: timestamppb.New(time.Now().Add(-2 * time.Hour)),
+			PermissionsHash:     []byte("some hash"),
+		}
+		marshaledToken, err := marshalRefreshToken(ctx, refreshToken)
+		require.NoError(t, err)
+		req := &testRequest{
+			PageSize:     2,
+			RefreshToken: marshaledToken,
+		}
+		listItemsFn := func(prevPageLast *testType, rt *pbs.ListRefreshToken, limit int) ([]*testType, error) {
+			assert.Empty(t, cmp.Diff(refreshToken, rt, protocmp.Transform()))
+			assert.Equal(t, 3, limit)
+			return nil, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			t.Fatal("Should not have converted any items")
+			return nil, nil
+		}
+		grantsHasher := &testGrantHasher{
+			HashFn: func() ([]byte, error) {
+				return []byte("some hash"), nil
+			},
+		}
+		repo := &testRepo{
+			DeletedIdsFn: func(time.Time) ([]string, error) {
+				return []string{"id1", "id2"}, nil
+			},
+			EstimatedTotalItemsFn: func() (int, error) {
+				return 100, nil
+			},
+		}
+		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
+		require.NoError(t, err)
+		assert.Empty(t, listResp.Items)
+		assert.True(t, listResp.CompleteListing)
+		assert.Equal(t, []string{"id1", "id2"}, listResp.DeletedIds)
+		assert.Equal(t, 100, listResp.EstimatedItemCount)
+		assert.NotEmpty(t, listResp.MarshaledRefreshToken)
+		refreshToken2, err := parseRefreshToken(ctx, listResp.MarshaledRefreshToken)
+		require.NoError(t, err)
+		// Created time should be ~within 10 seconds of now
+		now := time.Now()
+		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(-10*time.Second).Before(now))
+		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(10*time.Second).After(now))
+		assert.Equal(t, refreshToken.LastItemId, refreshToken2.LastItemId)
+		assert.True(t, refreshToken2.LastItemUpdatedTime.AsTime().Equal(refreshToken.LastItemUpdatedTime.AsTime()))
+		assert.Equal(t, []byte("some hash"), refreshToken2.PermissionsHash)
+		assert.Equal(t, resourceType, refreshToken2.ResourceType)
+	})
 }
 
 func Test_fillPage(t *testing.T) {
