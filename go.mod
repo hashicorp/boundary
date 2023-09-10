@@ -91,7 +91,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/creack/pty v1.1.18
-	github.com/hashicorp/cap/ldap v0.0.0-20230824195246-512b26a36f79
+	github.com/hashicorp/cap/ldap v0.0.0-20230907231022-8e71bfc048ed
 	github.com/hashicorp/dbassert v0.0.0-20230622135851-cc4c0f18f4a7
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20230902160534-7a966e6313fd
 	github.com/hashicorp/go-version v1.6.0
