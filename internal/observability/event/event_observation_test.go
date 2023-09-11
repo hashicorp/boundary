@@ -61,6 +61,78 @@ func Test_newObservation(t *testing.T) {
 				RequestInfo: TestRequestInfo(t),
 			},
 		},
+		{
+			name:   "with-request-no-telemetry",
+			fromOp: Op("with-request-no-telemetry"),
+			opts: []Option{
+				WithId("with-request-no-telemetry"),
+				WithRequestInfo(TestRequestInfo(t)),
+				WithFlush(),
+				WithRequest(TestWorkerRequest(t)),
+			},
+			want: &observation{
+				ID:          "with-request-no-telemetry",
+				Flush:       true,
+				Version:     errorVersion,
+				Op:          Op("with-request-no-telemetry"),
+				RequestInfo: TestRequestInfo(t),
+			},
+		},
+		{
+			name:   "with-response-no-telemetry",
+			fromOp: Op("with-response-no-telemetry"),
+			opts: []Option{
+				WithId("with-response-no-telemetry"),
+				WithRequestInfo(TestRequestInfo(t)),
+				WithFlush(),
+				WithResponse(TestWorkerResponse(t)),
+			},
+			want: &observation{
+				ID:          "with-response-no-telemetry",
+				Flush:       true,
+				Version:     errorVersion,
+				Op:          Op("with-response-no-telemetry"),
+				RequestInfo: TestRequestInfo(t),
+			},
+		},
+		{
+			name:   "with-request-with-telemetry",
+			fromOp: Op("with-request-with-telemetry"),
+			opts: []Option{
+				WithId("with-request-with-telemetry"),
+				WithRequestInfo(TestRequestInfo(t)),
+				WithFlush(),
+				WithRequest(TestWorkerRequest(t)),
+				WithTelemetry(),
+			},
+			want: &observation{
+				ID:          "with-request-with-telemetry",
+				Flush:       true,
+				Version:     errorVersion,
+				Op:          Op("with-request-with-telemetry"),
+				RequestInfo: TestRequestInfo(t),
+				Request:     TestWorkerRequest(t),
+			},
+		},
+		{
+			name:   "with-response-with-telemetry",
+			fromOp: Op("with-response-with-telemetry"),
+			opts: []Option{
+				WithId("with-response-with-telemetry"),
+				WithRequestInfo(TestRequestInfo(t)),
+				WithFlush(),
+				WithResponse(TestWorkerResponse(t)),
+				WithTelemetry(),
+			},
+			want: &observation{
+				ID:          "with-response-with-telemetry",
+				Flush:       true,
+				Version:     errorVersion,
+				Op:          Op("with-response-with-telemetry"),
+				RequestInfo: TestRequestInfo(t),
+				Response:    TestWorkerResponse(t),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

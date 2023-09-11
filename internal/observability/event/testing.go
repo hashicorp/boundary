@@ -13,6 +13,7 @@ import (
 	"time"
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/gen/controller/servers"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
@@ -361,4 +362,29 @@ func testLogger(t *testing.T, testLock hclog.Locker) hclog.Logger {
 		Name:       "test",
 		JSONFormat: true,
 	})
+}
+
+func TestWorkerRequest(t testing.TB) *Request {
+	t.Helper()
+	return &Request{
+		Operation: "op",
+		Endpoint:  "/worker-status/<id>",
+		Details: &servers.ServerWorkerStatus{
+			PublicId: "worker-public-id",
+			Name:     "worker-name",
+			Address:  "worker-address",
+		},
+	}
+}
+
+func TestWorkerResponse(t testing.TB) *Response {
+	t.Helper()
+	return &Response{
+		StatusCode: 200,
+		Details: &servers.ServerWorkerStatus{
+			PublicId: "worker-public-id",
+			Name:     "worker-name",
+			Address:  "worker-address",
+		},
+	}
 }
