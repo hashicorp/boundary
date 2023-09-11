@@ -18,8 +18,8 @@ docker run \
     -e "E2E_PASSWORD_ADMIN_LOGIN_NAME=$E2E_PASSWORD_ADMIN_LOGIN_NAME" \
     -e "E2E_PASSWORD_ADMIN_PASSWORD=$E2E_PASSWORD_ADMIN_PASSWORD" \
     -e "E2E_TARGET_ADDRESS=$E2E_TARGET_ADDRESS" \
-    -e "E2E_SSH_USER=$E2E_SSH_USER" \
     -e "E2E_TARGET_PORT=$E2E_TARGET_PORT" \
+    -e "E2E_SSH_USER=$E2E_SSH_USER" \
     -e "E2E_SSH_CA_KEY=$E2E_SSH_CA_KEY" \
     -e "E2E_SSH_KEY_PATH=/keys/target.pem" \
     -e "VAULT_ADDR=$VAULT_ADDR_INTERNAL" \
@@ -36,7 +36,9 @@ docker run \
     -e "E2E_POSTGRES_USER=$E2E_POSTGRES_USER" \
     -e "E2E_POSTGRES_PASSWORD=$E2E_POSTGRES_PASSWORD" \
     -e "E2E_POSTGRES_DB_NAME=$E2E_POSTGRES_DB_NAME" \
-    -e "E2E_WORKER_TAG=$E2E_WORKER_TAG" \
+    -e "E2E_WORKER_TAG_INGRESS=$E2E_WORKER_TAG_INGRESS" \
+    -e "E2E_WORKER_TAG_EGRESS=$E2E_WORKER_TAG_EGRESS" \
+    -e "E2E_WORKER_TAG_COLLOCATED=$E2E_WORKER_TAG_COLLOCATED" \
     --mount type=bind,src=$BOUNDARY_DIR,dst=/src/boundary/ \
     --mount type=bind,src=$MODULE_DIR/../..,dst=/testlogs \
     --mount type=bind,src=$(go env GOCACHE),dst=/root/.cache/go-build \

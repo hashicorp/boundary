@@ -18,7 +18,7 @@ type config struct {
 	TargetSshUser      string `envconfig:"E2E_SSH_USER" required:"true"`             // e.g. "ubuntu"
 	TargetPort         string `envconfig:"E2E_TARGET_PORT" required:"true"`          // e.g. "22"
 	TargetAddress      string `envconfig:"E2E_TARGET_ADDRESS" required:"true"`       // e.g. "192.168.0.1"
-	WorkerTags         string `envconfig:"E2E_WORKER_TAG" required:"true"`           // e.g. "[\"tag1\", \"tag2\"]"
+	WorkerTagEgress    string `envconfig:"E2E_WORKER_TAG_EGRESS" required:"true"`    // e.g. "egress"
 }
 
 func loadTestConfig() (*config, error) {
