@@ -31,7 +31,7 @@ func (s *StopCommand) stop(ctx context.Context) error {
 		return errors.Wrap(ctx, err, op)
 	}
 
-	apiErr, err := tryStopThroughHandler(ctx, dotPath)
+	apiErr, err := stopThroughHandler(ctx, dotPath)
 	switch {
 	case err != nil, apiErr != nil:
 		var errMsg string
