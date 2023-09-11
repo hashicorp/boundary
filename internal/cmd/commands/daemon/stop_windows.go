@@ -69,10 +69,6 @@ func stopThroughHandler(ctx context.Context, dotPath string) (*api.Error, error)
 	const op = "daemon.stopThroughHandler"
 
 	sockAddr := SocketAddress(dotPath)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
