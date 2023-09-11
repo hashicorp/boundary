@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// newStopHandlerFunc creates a handler that cancelles the server context.
+// newStopHandlerFunc creates a handler that cancels the server context.
 // This is only expected to be used on windows currently since it cannot use
 // POSIX signals to perform a graceful shutdown.
 func newStopHandlerFunc(ctx context.Context, cancelFn context.CancelFunc) (http.HandlerFunc, error) {
