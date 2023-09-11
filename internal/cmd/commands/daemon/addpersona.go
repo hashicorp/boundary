@@ -114,9 +114,6 @@ func addPersona(ctx context.Context, daemonPath string, p *personaToAdd) (*api.E
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	addr := SocketAddress(daemonPath)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
 	_, err = os.Stat(strings.TrimPrefix(addr, "unix://"))
 	if strings.HasPrefix(addr, "unix://") && err != nil {
 		return nil, errors.Wrap(ctx, err, op)
