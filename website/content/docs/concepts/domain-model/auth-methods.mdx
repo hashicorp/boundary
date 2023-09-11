@@ -176,6 +176,13 @@ The ldap auth method has the following additional attributes:
   the value equals the `to_attribute`.  For example, `preferredName=fullName`.  All
   attribute names are case insensitive.
 
+  - `maximum_page_size` - (optional) If set, it specifies a maximum ldap search
+    result size to use when retrieving the authenticated user's group
+    memberships. This can be used to avoid reaching the LDAP server's max result
+    size. 
+
+  - `dereference_aliases` - (optional) If set, it will control how aliases are
+    dereferenced when performing the search.
 
 ## Referenced by
 
