@@ -23,7 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"

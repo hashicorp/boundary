@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"

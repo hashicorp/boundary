@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker/internal/metric"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/go-multierror"
 	nodee "github.com/hashicorp/nodeenrollment"

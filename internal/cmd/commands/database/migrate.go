@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
 	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/go-secure-stdlib/mlock"

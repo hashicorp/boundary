@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/rotation"
 	"github.com/hashicorp/nodeenrollment/types"

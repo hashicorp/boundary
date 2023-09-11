@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 )

@@ -19,7 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/db_test"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/oplog/store"
 	"github.com/hashicorp/go-hclog"

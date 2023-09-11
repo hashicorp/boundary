@@ -21,7 +21,7 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"

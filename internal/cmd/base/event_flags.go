@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-bexpr"
 )
 
