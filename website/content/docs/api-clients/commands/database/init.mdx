@@ -86,13 +86,13 @@ Refer to the following [init options](#init-options) for the available flags.
 
 ### Command options
 
-- `-config` `(string: "")` - Indicates the path to the configuration file.
-- `-config-kms` `(string: "")` - Indicates the path to a configuration file containing a "kms" block marked for the "config" purpose.
+- `-config` `(string: "")` - The path to the configuration file.
+- `-config-kms` `(string: "")` - The path to a configuration file containing a `kms` block marked for the `config` purpose.
 The KMS block performs decryption of the main configuration file.
-If you don't set a "kms" block, Boundary looks for such a block in the main configuration file, which has some drawbacks; see the help output for `boundary config encrypt -h` for details.
-- `-log-format` `(string: "")` - Specifies the log format.
+If you don't set a `kms` block, Boundary looks for such a block in the main configuration file, which has some drawbacks; see the help output for `boundary config encrypt -h` for details.
+- `-log-format` `(string: "")` - The log format.
 Supported values are `standard` and `json`.
-- `-log-level` `(string: "")` - Specifies the log verbosity level. Supported values include the following in order of more detail to less:
+- `-log-level` `(string: "")` - The log verbosity level. Supported values include the following in order of more detail to less:
 
   - `trace`
   - `debug`
@@ -104,25 +104,25 @@ Supported values are `standard` and `json`.
 
 ### Init options:
 
-- `-migration-url` `(string: "")` - Overrides the migration URL set in the configuration file, and specifies the URL used to connect to the database for initialization, if set.
+- `-migration-url` `(string: "")` - If set, this value overrides the migration URL set in the configuration file, and specifies the URL used to connect to the database for initialization.
 Configuring this option can allow different permissions for the user running initialization vs. standard operations.
 This value can refer to a direct database URL, or it can refer to file on disk (`file://`) or an environment variable (`env://`) from which Boundary reads the URL.
 
-- `-skip-auth-method-creation` - Skips the creation of an auth method as part of initialization, if not set.
+- `-skip-auth-method-creation` - If not set, skips the creation of an auth method as part of initialization.
 If you set this value, the recovery KMS is required to perform any actions.
 The default value is `false`.
 
-- `-skip-host-resources-creation` - Skips the creation of host resources as part of the initialization, inlcuding host catalog, host set, and hosts, if not set.
+- `-skip-host-resources-creation` - If not set, skips the creation of host resources as part of the initialization, inlcuding host catalog, host set, and hosts.
 The default value is `false`.
 
-- `-skip-initial-login-role-creation` - Skips the creation of a default role allowing necessary grants for logging in as part of initialization, if not set.
+- `-skip-initial-login-role-creation` - If not set, skips the creation of a default role allowing necessary grants for logging in as part of initialization.
 If you set this value, the recovery KMS is required to perform any actions.
 The default value is `false`.
 
-- `-skip-scopes-creation` - Skips the creation of scopes as part of initialization, if not set.
+- `-skip-scopes-creation` - If not set, skips the creation of scopes as part of initialization.
 The default value is `false`.
 
-- `-skip-target-creation` - Skips the creation of a target as part of initialization, if not set.
+- `-skip-target-creation` - If not set, skips the creation of a target as part of initialization.
 The default value is `false`.
 
 @include 'cmd-option-note.mdx'

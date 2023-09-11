@@ -77,11 +77,11 @@ $ boundary accounts create [type] [options] [args]
 
 ### Command options
 
-- `-auth-method-id` `(string: "")` - Indicates the auth-method resource to use for the
-   operation. You can also specify the auth-method using the `BOUNDARY_AUTH_METHOD_ID`
+- `-auth-method-id` `(string: "")` - The auth-method resource to use for the
+   operation. You can also specify the auth-method using the **BOUNDARY_AUTH_METHOD_ID**
    environment variable.
-- `-description` `(string: "")` - Indicates the description to set for the account.
-- `-name` `(string: "")` - Indicates the name to set on the account.
+- `-description` `(string: "")` - The description to set for the account.
+- `-name` `(string: "")` - The name to set on the account.
 
 
 ### Usages by type
@@ -181,7 +181,7 @@ options:
 - `-login-name` `(string: "")` - Indicates the login name for the account
 - `-password` `(string: "")` - Indicates the password for the account. If blank, the
    command prompts you to enter the password interactively in a
-   non-echoing way. Otherwise, thi value can refer to a file on disk (`file://`) or an environment variable (`env://`) from which the password is read.
+   non-echoing way. Otherwise, this value can refer to a file on disk (`file://`) or an environment variable (`env://`) from which the password is read.
 
 </Tab>
 </Tabs>

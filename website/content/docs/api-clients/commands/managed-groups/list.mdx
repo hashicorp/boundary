@@ -31,9 +31,9 @@ $ boundary managed-groups list [options] [args]
 
 ### Command options
 
-- `auth-method-id=<string>` - Indicates the auth method resource to use for this operation.
-You can also specify the auth method using the BOUNDARY_AUTH_METHOD_ID environment variable.
-- `-filter=<string>` - Determines whether Boundary filters the list operation before the results are returned.
+- `auth-method-id=<string>` - The auth method resource to use for this operation.
+You can also specify the auth method using the **BOUNDARY_AUTH_METHOD_ID** environment variable.
+- `-filter=<string>` - If set, Boundary filters the list operation before the results are returned.
 The filter operates against each item in the list.
 We recommend that you use single quotes, because the filters contain double quotes.
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.

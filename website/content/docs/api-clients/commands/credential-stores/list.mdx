@@ -50,13 +50,13 @@ $ boundary credential-stores list [options] [args]
 
 ### Command options
 
-- `-filter` `(string: "")` - Determines whether Boundary filters the list operation before the results are returned.
+- `-filter` `(string: "")` - If set, Boundary filters the list operation before the results are returned.
 The filter operates against each item in the list.
 We recommend that you use single quotes, because the filters contain double quotes.
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
-- `-recursive`  - Indicates whether the list operation should be applied recursively into child scopes, if supported by the type.
+- `-recursive`  - If set, the list operation is applied recursively into child scopes, if supported by the type.
 The default value is `false`.
-- `-scope-id ``(string: "")` - Indicates the scope in which to make the request.
+- `-scope-id ``(string: "")` - The scope in which to make the request.
 The default value is `global`.
 You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
 

@@ -64,19 +64,19 @@ $ boundary targets create ssh [options] [args]
 
 #### SSH target options
 
-- `-address=<string>` - Specifies an optional valid network address for the target to connect to.
+- `-address=<string>` - An optional valid network address for the target to connect to.
 You cannot use an address alongside host sources.
-- `-default-client-port=<string>` - Designates the default client port on the target.
-- `-default-port=<string>` - Designates the default port on the target.
+- `-default-client-port=<string>` - The default client port on the target.
+- `-default-port=<string>` - The default port on the target.
 If you do not specify a default port, Boundary uses port 22.
-- `-egress-worker-filter=<string>` - Specifies a Boolean expression that filters which egress workers can process sessions for the target.
-- `-enable-session-recording=<string>` - Specifies a Boolean expression you can use to enable session recording for the target.
-- `-ingress-worker-filter=<string>` - Specifies a Boolean expression that filters which ingress workers can process sessions for the target.
-- `-session-connection-limit=<string>` - Indicates the maximum number of connections allowed for a session.
+- `-egress-worker-filter=<string>` - A Boolean expression that filters which egress workers can process sessions for the target.
+- `-enable-session-recording=<string>` - A Boolean expression you can use to enable session recording for the target.
+- `-ingress-worker-filter=<string>` - A Boolean expression that filters which ingress workers can process sessions for the target.
+- `-session-connection-limit=<string>` - The maximum number of connections allowed for a session.
 A value of `-1` means the connections are unlimited.
-- `-session-max-seconds=<string>` - Indicates the maximum lifetime of the session, including all connections.
+- `-session-max-seconds=<string>` - The maximum lifetime of the session, including all connections.
 You can specify an integer number of seconds or a duration string.
-- `-storage-bucket-id=<string>` - Indicates the public ID of the storage bucket to associate with the target.
+- `-storage-bucket-id=<string>` - The public ID of the storage bucket to associate with the target.
 
 
 </Tab>
@@ -104,16 +104,16 @@ $ boundary targets create tcp [options] [args]
 
 #### TCP target options
 
-- `-address=<string>` - Specifies an optional valid network address for the target to connect to.
+- `-address=<string>` - An optional valid network address for the target to connect to.
 You cannot use an address alongside host sources.
-- `-default-client-port=<string>` - Designates the default client port on the target.
-- `-default-port=<string>` - Designates the default port on the target.
+- `-default-client-port=<string>` - The default client port on the target.
+- `-default-port=<string>` - The default port on the target.
 If you do not specify a default port, Boundary uses port 22.
-- `-egress-worker-filter=<string>` - Specifies a Boolean expression that filters which egress workers can process sessions for the target.
-- `-ingress-worker-filter=<string>` - Specifies a Boolean expression that filters which ingress workers can process sessions for the target.
-- `-session-connection-limit=<string>` - Indicates the maximum number of connections allowed for a session.
+- `-egress-worker-filter=<string>` - A Boolean expression that filters which egress workers can process sessions for the target.
+- `-ingress-worker-filter=<string>` - A Boolean expression that filters which ingress workers can process sessions for the target.
+- `-session-connection-limit=<string>` - The maximum number of connections allowed for a session.
 A value of `-1` means the connections are unlimited.
-- `-session-max-seconds=<string>` - Indicates the maximum lifetime of the session, including all connections.
+- `-session-max-seconds=<string>` - The maximum lifetime of the session, including all connections.
 You can specify an integer number of seconds or a duration string.
 
 </Tab>

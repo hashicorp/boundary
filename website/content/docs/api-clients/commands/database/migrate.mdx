@@ -32,12 +32,12 @@ $ boundary database migrate [options]
 
 ### Command options
 
-- `-config` `(string: "")` - Indicates the path to the configuration file.
-- `-config-kms` `(string: "")` - Indicates the path to a configuration file containing a "kms" block marked for the "config" purpose.
+- `-config` `(string: "")` - The path to the configuration file.
+- `-config-kms` `(string: "")` - The path to a configuration file containing a `kms` block marked for the `config` purpose.
 The KMS block performs decryption of the main configuration file.
-If you don't set a "kms" block, Boundary looks for such a block in the main configuration file, which has some drawbacks; see the help output for `boundary config encrypt -h` for details.
-- `-log-format` `(string: "")` - Specifies the log format. Supported values are `standard` and `json`.
-- `-log-level` `(string: "")` - Specifies the log verbosity level. Supported values include the following in order of more detail to less:
+If you don't set a `kms` block, Boundary looks for such a block in the main configuration file, which has some drawbacks; see the help output for `boundary config encrypt -h` for details.
+- `-log-format` `(string: "")` - The log format. Supported values are `standard` and `json`.
+- `-log-level` `(string: "")` - The log verbosity level. Supported values include the following in order of more detail to less:
 
   - `trace`
   - `debug`
@@ -49,10 +49,10 @@ If you don't set a "kms" block, Boundary looks for such a block in the main conf
 
 ### Migration options:
 
-- `-migration-url` `(string: "")` - Overrides the migration URL set in the configuration file, and specifies the URL use to connect to the database for migration, if set.
+- `-migration-url` `(string: "")` - If set, this value overrides the migration URL set in the configuration file, and specifies the URL use to connect to the database for migration.
 Configuring this option can allow different permissions for the user running initialization or migration vs. a standard operation.
 This value can refer to a direct database URL, or it can refer to a file on disk (`file://`) or an environment variable (env://) from which Boundary reads the URL.
-- `-repair` `(string: "")` - Runs the repair function for the provided migration
+- `-repair` `(string: "")` - If set, runs the repair function for the provided migration
   version.
 
 

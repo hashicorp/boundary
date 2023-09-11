@@ -39,24 +39,24 @@ This command performs a target authorization or consumes an existing authorizati
 
 ### HTTP options:
 
-- `-host` `(string: "")` - Specifies the host value to use and overides the
-  endpoint address from the session information.
-  Boundary passes the specified hostname through to the client for use in the host header and TLS SNI value, if supported.
+- `-host` `(string: "")` - The host value to use.
+  This setting overrides the endpoint address from the session information.
+  Boundary passes the specified host name through to the client for use in the host header and TLS SNI value, if supported.
   You can also specify the host value using the **BOUNDARY_CONNECT_HTTP_HOST** environment variable.
 
-- `-method` `(string: "")` - Specifies the HTTP method to use.
+- `-method` `(string: "")` - The HTTP method to use.
 If you don't set a method, Boundary uses the client's default.
 You can also specify a method using a the **BOUNDARY_CONNECT_HTTP_METHOD** environment variable.
 
-- `-path` `(string: "")` - Specifies the path that will be appended to the
+- `-path` `(string: "")` - The path that is appended to the
   generated URL.
   You can also specify a path using the **BOUNDARY_CONNECT_HTTP_PATH** environment variable.
 
-- `-scheme` `(string: "")` - Specifies the scheme to use.
+- `-scheme` `(string: "")` - The scheme to use.
 The default scheme is `https`.
 You can also specify the scheme using the **BOUNDARY_CONNECT_HTTP_SCHEME** environment variable.
 
-- `-style` `(string: "")` - Specifies how the CLI attempts to invoke an HTTP client.
+- `-style` `(string: "")` - How the CLI attempts to invoke an HTTP client.
 This value also sets a suitable default for `-exec`, if you did not specify a value.
 The default and currently-understood value is `curl`.
 You can also specify how the CLI attempts to invoke the HTTP client using the **BOUNDARY_CONNECT_HTTP_STYLE** environment variable.

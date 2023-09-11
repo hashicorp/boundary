@@ -32,12 +32,12 @@ $ boundary roles remove-grants [options] [args]
 
 ### Command options
 
-- `-grant=<string>` - Specifies which grants you want to remove from the role.
+- `-grant=<string>` - The grants you want to remove from the role.
 You can specify grants in compact string format or JSON.
 If you use JSON, be sure to escape it properly.
 You can optionally specify multiple grants.
-- `-id=<string>` - Indicates the ID of the role to remove grants from.
-- `-version=<int>` - Indicates the version of the role to remove grants from.
+- `-id=<string>` - The ID of the role you want to remove grants from.
+- `-version=<int>` - The version of the role you want to remove grants from.
 If you do not specify a version, the command performs a check-and-set automatically.
 
 @include 'cmd-option-note.mdx'

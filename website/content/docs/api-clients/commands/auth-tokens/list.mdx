@@ -72,16 +72,16 @@ $ boundary auth-tokens list [options] [args]
 
 ### Command options
 
-- `-filter` `(string: "")` - Determines whether the list operation is filtered before it is returned.
+- `-filter` `(string: "")` - If set, the list operation is filtered before it is returned.
 The filter operates against each item in the list.
 We recommend that you use single quotes, as filters contain double quotes.
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
 
-- `-recursive`  - Determines whether the list operation is applied recursively into child scopes, if the type supports it.
+- `-recursive`  - If set, the list operation is applied recursively into child scopes, if the type supports it.
 The default value is `false`.
 
-- `-scope-id` `(string: "")` - Designates the scope from which to list the auth tokens.
+- `-scope-id` `(string: "")` - The scope from which to list the auth tokens.
 The default value is `global`.
-You can also specify this value using the BOUNDARY_SCOPE_ID environment variable.
+You can also specify this value using the **BOUNDARY_SCOPE_ID** environment variable.
 
 @include 'cmd-option-note.mdx'

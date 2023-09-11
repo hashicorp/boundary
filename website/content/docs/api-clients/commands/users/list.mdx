@@ -31,13 +31,13 @@ $ boundary users list [options] [args]
 
 ### Command options
 
-- `-filter=<string>` - Determines whether the list operation is filtered before it is returned.
+- `-filter=<string>` - If set, Boundary filters the list operation before it is returned.
 The filter operates against each item in the list.
 We recommend that you use single quotes, as filters contain double quotes.
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
-- `-recursive` - Runs the list operation recursively into child scopes, if the type supports it.
+- `-recursive` - If set, runs the list operation recursively into child scopes, if the type supports it.
 The default value is `false`.
-- `-scope-id=<string>` - Indicates the scope that contains the users you want to list.
+- `-scope-id=<string>` - The scope that contains the users you want to list.
 The default value is `global`.
 You can also specify this value using the **BOUNDARY_SCOPE_ID** environment variable.
 

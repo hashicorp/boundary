@@ -59,32 +59,32 @@ of the subcommand in the sidebar or one of the links below:
 
 ### Command options
 
--  `-addr` `(string: "")` - Indicates the address of the Boundary controller as a complete URL, for example https://boundary.example.com:9200.
+-  `-addr` `(string: "")` - The address of the Boundary controller as a complete URL, for example https://boundary.example.com:9200.
    Instead of passing the `-addr` argument with every command, you can configure the **BOUNDARY_ADDR** environment variable.
    In both cases, the value denotes the address of the Boundary environment you want to send CLI commands to.
--  `-ca-cert` `(string: "")` - Indicates the path on the local disk to a single PEM-encoded CA certificate that should be used to verify the controller or worker server's SSL certificate.
+-  `-ca-cert` `(string: "")` - The path on the local disk to a single PEM-encoded CA certificate that should be used to verify the controller or worker server's SSL certificate.
    This value takes precedence over `-ca-path`.
    You can also specify the path using the **BOUNDARY_CACERT** environment variable.
--  `-ca-path` `(string: "")` - Indicates the path on the local disk to a directory of PEM-encoded CA certificates that should be used to verify the controller's SSL certificate.
+-  `-ca-path` `(string: "")` - The path on the local disk to a directory of PEM-encoded CA certificates that should be used to verify the controller's SSL certificate.
    You can also specify the path using the **BOUNDARY_CAPATH** environment variable.
--  `-client-cert` `(string: "")` - Indicates the path on the local disk to a single PEM-encoded CA certificate that should be used for TLS authentication to the Boundary controller.
+-  `-client-cert` `(string: "")` - The path on the local disk to a single PEM-encoded CA certificate that should be used for TLS authentication to the Boundary controller.
    If you configure this flag, the `-client-key` value is also required.
    You can also specify the path using the **BOUNDARY_CLIENT_CERT** environment variable.
--  `-client-key` `(string: "")` - Indicates the path on the local disk to a single PEM-encoded private key that matches the client certificate you referenced with `-client-cert`.
+-  `-client-key` `(string: "")` - The path on the local disk to a single PEM-encoded private key that matches the client certificate you referenced with `-client-cert`.
   You can also specify the path using the **BOUNDARY_CLIENT_KEY** environment variable.
--  `-listen-addr` `(string: "")` - Determines whether the CLI attempts to bind its listening address to the given value, which must be an IP address.
+-  `-listen-addr` `(string: "")` - If set, the CLI attempts to bind its listening address to the given value, which must be an IP address.
    If it cannot bind the listening address, the command produces an error.
    If you do not set this value, Boundary defaults to the most common IPv4 loopback address, 127.0.0.1.
    You can also specify a listening address using the **BOUNDARY_CONNECT_LISTEN_ADDR** environment variable.
--  `-listen-port` `(string: "")` - Determines whether the CLI attempts to bind its listening port to the given value.
+-  `-listen-port` `(string: "")` - If set, the CLI attempts to bind its listening port to the given value.
    If it cannot bind the listening port, the command produces error.
    You can also specify a listening address using the **BOUNDARY_CONNECT_LISTEN_PORT** environment variable.
-- `-tls-insecure` - Disables verification of TLS certificates.
+- `-tls-insecure` - If set, this option disables verification of TLS certificates.
    We highly discourage using this option as it decreases the security of data transmissions to
       and from the Boundary server.
       The default value is `false`.
       You can also disable TLS certificate validation using the **BOUNDARY_TLS_INSECURE** environment variable.
--  `-tls-server-name` `(string: "")` - Designates a name to use as the SNI host when you connect to the Boundary server using TLS.
+-  `-tls-server-name` `(string: "")` - A name to use as the SNI host when you connect to the Boundary server using TLS.
    You can also specify the SNI host using the **BOUNDARY_TLS_SERVER_NAME** environment variable.
 
 

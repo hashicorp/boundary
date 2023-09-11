@@ -32,15 +32,15 @@ $ boundary sessions list [options] [args]
 
 ### Command options
 
-- `-filter=<string>` - Determines whether Boundary filters the list operation before the results are returned.
+- `-filter=<string>` - If set, Boundary filters the list operation before the results are returned.
 The filter operates against each item in the list.
 We recommend that you use single quotes, because the filters contain double quotes.
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
-- `-include-terminated` - Specifies whether you want terminated sessions to be included in the `list` results.
+- `-include-terminated` - If set, Boundary includes terminated sessions in the `list` results.
 The default value is `false`.
-- `recursive` - Runs the list operation recursively on any child scopes, if the type supports it.
+- `recursive` - If set, runs the list operation recursively on any child scopes, if the type supports it.
 The default value is `false`.
-- `scope-id=<string>` - Indicates the scope from which to list sessions.
+- `scope-id=<string>` - The scope from which to list sessions.
 The default value is `global`.
 You can also specify this value using the **BOUNDARY_SCOPE_ID** environment variable.
 

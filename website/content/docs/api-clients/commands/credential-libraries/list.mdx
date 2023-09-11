@@ -52,9 +52,9 @@ $ boundary credential-libraries list [options] [args]
 
 ### Command options
 
-- `-credential-store-id` `(string: "")` - Indicates the credential store resource to list credential libraries for.
+- `-credential-store-id` `(string: "")` - The credential store resource to list credential libraries for.
 You can also specify the credential store using the **BOUNDARY_CREDENTIAL_STORE_ID** environment variable.
-- `-filter` `(string: "")` - Indicates whether Boundary filters the list operation before the results are returned.
+- `-filter` `(string: "")` - If set, Boundary filters the list operation before the results are returned.
 The filter operates against each item in the list.
 We recommend that you use single quotes, because the filters contain double quotes.
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.

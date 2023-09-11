@@ -31,13 +31,13 @@ $ boundary scopes update [options] [args]
 
 ### Command options
 
-- `-description=<string>` - Assigns a description to the scope.
-- `-id=<string>` - Indicates the ID of the scope to update.
-- `-name=<string>` - Assigns a name to the scope.
-- `-primary-auth-method-id=<string>` - Specifies the primary auth method ID for the scope.
+- `-description=<string>` - The description to set on the scope.
+- `-id=<string>` - The ID of the scope to update.
+- `-name=<string>` - The name to set on the scope.
+- `-primary-auth-method-id=<string>` - The primary auth method ID for the scope.
 The primary auth method is allowed to create users on the initial login.
 It is also used as a source for the account full name and email used for the scope's users.
-- `-version=<int>` - Indicates the version of the scope to update.
+- `-version=<int>` - The version of the scope to update.
 If you do not specify a version, the command performs a check-and-set automatically.
 
 @include 'cmd-option-note.mdx'

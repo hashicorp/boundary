@@ -31,11 +31,11 @@ $ boundary session-recordings download [options] [args]
 
 ### Command options
 
-- `-id=<string>` - Indicates the ID of the session recording resource you want to download.
-- `-no-clobber` - Prevents downloads from overwriting existing files, if enabled.
+- `-id=<string>` - The ID of the session recording resource you want to download.
+- `-no-clobber` - If set, prevents downloads from overwriting existing files.
 This option is aliased as `-nc`.
 The default value is `false`.
-- `-output=<string>` - Specifies an optional output file for the download.
+- `-output=<string>` - If set, indicates an optional output file for the download.
 If you do not provide a value, the recording ID is given a ".cast" extension.
 Use `-` for stdout.
 This option is aliased as `-o`.
