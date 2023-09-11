@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -347,11 +348,10 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Stor
 		return nil, apiErr
 	}
 	target.response = resp
-	if opts.withRefreshToken != "" || target.ResponseType == "complete" || target.ResponseType == "" {
+	if target.ResponseType == "complete" || target.ResponseType == "" {
 		return target, nil
 	}
-	// if refresh token is not set explicitly and there are more results,
-	// automatically fetch the rest of the results.
+	// If there are more results, automatically fetch the rest of the results.
 	// idToIndex keeps a map from the ID of an item to its index in target.Items.
 	// This is used to update updated items in-place and remove deleted items
 	// from the result after pagination is done.
@@ -405,21 +405,20 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Stor
 			break
 		}
 	}
-	// Remove any items deleted since the start of the iteration,
-	// and also remove those IDs from the RemovedIds slice.
-	// https://github.com/golang/go/wiki/SliceTricks#filtering-without-allocating
-	removedIds := target.RemovedIds
-	target.RemovedIds = target.RemovedIds[:0]
-	for _, removedId := range removedIds {
+	for _, removedId := range target.RemovedIds {
 		if i, ok := idToIndex[removedId]; ok {
-			// Remove the item at index i.
-			// https://github.com/golang/go/wiki/SliceTricks#delete
-			copy(target.Items[i:], target.Items[i+1:])
-			target.Items[len(target.Items)-1] = nil
+			// Remove the item at index i without preserving order
+			// https://github.com/golang/go/wiki/SliceTricks#delete-without-preserving-order
+			target.Items[i] = target.Items[len(target.Items)-1]
 			target.Items = target.Items[:len(target.Items)-1]
-		} else {
-			target.RemovedIds = append(target.RemovedIds, removedId)
+			// Update the index of the last element
+			idToIndex[target.Items[i].Id] = i
 		}
 	}
+	// Finally, sort the results again since in-place updates and deletes
+	// may have shuffled items.
+	slices.SortFunc(target.Items, func(i, j *StorageBucket) int {
+		return i.UpdatedTime.Compare(j.UpdatedTime)
+	})
 	return target, nil
 }
