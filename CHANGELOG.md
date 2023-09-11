@@ -9,6 +9,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * feat: add API support for additional LDAP auth method fields:
   maximum_page_size and dereference_aliases
   ([PR](https://github.com/hashicorp/boundary/pull/3679)).
+* feat: add worker upstream connection status to ops health check
+  ([PR](https://github.com/hashicorp/boundary/pull/3650)).  
 
 ### Bug Fixes
 
