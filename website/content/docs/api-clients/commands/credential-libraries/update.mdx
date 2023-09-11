@@ -67,9 +67,9 @@ $ boundary credential-libraries update vault [options] [args]
 
 ### Command options
 
-- `-description` `(string: "")` - Specifies a description to set on the credential library.
-- `-id` `(string: "")` - Indicates the ID of the credential library to update.
-- `-name` `(string: "")` - Specifies a name to set on the credential library.
+- `-description` `(string: "")` - A description to set on the credential library.
+- `-id` `(string: "")` - The ID of the credential library to update.
+- `-name` `(string: "")` - A name to set on the credential library.
 - `-version` `(int: 0)` - The version of the credential library against which to perform the update operation.
 If you don't specify a version, the command performs a check-and-set automatically.
 
@@ -114,11 +114,11 @@ $ boundary credential-libraries create vault-generic [options] [args]
 
 The following are specific Vault credential library options in addition to the command options:
 
-- `-credential-mapping-override`  - Indicates an override for credential mapping.
-- `-vault-http-method` `(string: "")` - Determines the HTTP method the library should use when it communicates with Vault.
-- `-vault-http-request-body` `(strinboundary credential-libraries update vault-ssh-certificate -id clvsclt_1234567890 -name devops -description "For DevOps usage": "")` - Indicates the HTTP request body the credential library uses to communicate with Vault.
+- `-credential-mapping-override`  - An override for credential mapping.
+- `-vault-http-method` `(string: "")` - The HTTP method the library should use when it communicates with Vault.
+- `-vault-http-request-body` `(strinboundary credential-libraries update vault-ssh-certificate -id clvsclt_1234567890 -name devops -description "For DevOps usage": "")` - The HTTP request body the credential library uses to communicate with Vault.
 This value can be the HTTP request body itself, it can refer to a file on disk (`file://`) from which the value is read, or it can refer to an environment variable (`env://`) from which the value is read.
-- `-vault-path` `(string: "")` - Indicates the path in Vault to request credentials from.
+- `-vault-path` `(string: "")` - The path in Vault to request credentials from.
 
 </Tab>
 
@@ -151,27 +151,27 @@ $ boundary credential-libraries update vault-ssh-certificate [options] [args]
 
 The following are options specific to the Vault SSH certificate credential library, in addition to the command options:
 
-- `-critical-option`  - Specifies a key=value pair to add to the request's
+- `-critical-option`  - A key=value pair to add to the request's
    critical-options map.
    It can also be a key value only which sets a JSON null as the value.
    If you provide a value, Boundary infers the type automatically.
    You can use `-string-critical-option`, `-bool-critical-option`, or `-num-critical-option` to override the type.
    You can specify values for this option multiple times.
    This option supports sourcing values from files using `file://` and environment variables using `env://`.
-- `-critical-options` `(string: "")` Indicates a JSON  map value to use as the entirety of the request's critical-options map.
+- `-critical-options` `(string: "")` A JSON  map value to use as the entirety of the request's critical-options map.
 Usually this value is sourced from a file using the `file://` syntax.
 This value is exclusive with the other critical-option flags.
-- `-extension`  - Specifies a key=value pair to add to the request's extensions map.
+- `-extension`  - A key=value pair to add to the request's extensions map.
 It can also be a key value only which will set a JSON null as the value.
 If you provide a value, Boundary automatically infers the type.
 You can use `-string-extension`, `-bool-extension`, or `-num-extension` to override the type.
 You can specify values for this option multiple times.
 This option supports sourcing values from files using `file://` and environment variables using `env://`.
-- `-extensions` `(string: "")` - Specifies a JSON map value to use as the entirety of
+- `-extensions` `(string: "")` - A JSON map value to use as the entirety of
    the request's extensions map.
    Usually this value is sourced from a file using the `file://` syntax.
    This option is exclusive with the other extension flags.
-- `-key-bits` `(string: "")` - Specifies the number of bits to use when the SSH private key is generated.
+- `-key-bits` `(string: "")` - The number of bits to use when the SSH private key is generated.
 The value depends on the `key_type`.
 If you use a `ed25519` key, you should not set a value or set the value to `0`.
 If you use a `ecdsa` key, you should set the value to `256`, `384`, or `521`.
@@ -179,9 +179,9 @@ If you use an `rsa` key, you should set the value to `2048`, `3072`, or `4096`.
 - `-key-id` `(string: "")` - Specifies the certificate's key id.
 - `-key-type` `(string: "")` - Specifies the key type for the ssh private key.
 Supported values include `ed25519`, `ecdsa`, and `rsa`.
-- `-ttl` `(string: "")` - Indicates the generated certificate's time-to-live.
-- `-username` `(string: "")` - Specifies the username to use with the SSH certificate.
-- `-vault-path` `(string: "")` - Specifies the path in Vault to request credentials from.
+- `-ttl` `(string: "")` - The generated certificate's time-to-live.
+- `-username` `(string: "")` - The username to use with the SSH certificate.
+- `-vault-path` `(string: "")` - The path in Vault to request credentials from.
 
 </Tab>
 </Tabs>

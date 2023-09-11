@@ -14,7 +14,7 @@ of an OIDC-type auth method given its ID.
 
 An OIDC auth method can be in one of several different states: Inactive, Active
 Private, and Active Public. The current state of an OIDC auth method
-affects how endpoints respond to requests and, in some cases, whether access to
+affects how endpoints respond to requests and, sometimes, whether access to
 an endpoint requires authentication.
 
 - **MakeInactive** transitions an OIDC auth method from either the **Active Private**
@@ -101,7 +101,7 @@ $ boundary auth-methods change-state oidc [options] [args]
 
 ### Command options
 
-- `-id` `(string: "")` - Specifies the ID of the oidc-type auth method on which to operate.
+- `-id` `(string: "")` - The ID of the oidc-type auth method on which to operate.
 
 ### OIDC auth method options
 
@@ -111,7 +111,7 @@ $ boundary auth-methods change-state oidc [options] [args]
    is updated or state changed. Not specifying a value is equivalent to setting the value to
    `false`. The default is `false`.
 
-- `-state` `(string: "")` - Indicates the desired operational state of the auth method.
+- `-state` `(string: "")` - The desired operational state of the auth method.
   Three different states exist for an authentication method:
 
    - `inactive` users can not authenticate with inactive auth methods and the

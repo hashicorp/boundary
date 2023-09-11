@@ -84,15 +84,15 @@ $ boundary auth-methods list [options] [args]
 
 ### Command options
 
-- `-filter` `(string: "")` - Indicates whether the list operation should be filtered before
+- `-filter` `(string: "")` - If set, the list operation is filtered before
    being returned. The filter operates against each item in the list. We recommend using
    single quotes, because filters contain double quotes.
 
-- `-recursive`  - Indicates whether the list operation should be applied
+- `-recursive`  - If set, the list operation is applied
    recursively into child scopes, if supported by the type. The default value is
    `false`.
 
-- `-scope-id` `(string: "")` - Indicates the scope in which to make the request. The default
+- `-scope-id` `(string: "")` - The scope in which to make the request. The default
    scope is `global`. You can also specify a scope using the **BOUNDARY_SCOPE_ID** environment
    variable.
 

@@ -64,13 +64,13 @@ $ boundary managed-groups create ldap [options] [args]
 
 #### Command options
 
-- `-auth-method-id=<string>` - Specifies the auth-method resource to use for creating the managed group.
-You can also specify the auth-method resource using the BOUNDARY_AUTH_METHOD_ID environment variable.
-- `-description=<string>` - Sets the description for the LDAP managed group.
-- `-group-names=<string>` - Indicates the LDAP group names against which an LDAP account's associated groups are evaluated to determine membership.
+- `-auth-method-id=<string>` - The auth-method resource to use for creating the managed group.
+You can also specify the auth-method resource using the **BOUNDARY_AUTH_METHOD_ID** environment variable.
+- `-description=<string>` - The description to set for the LDAP managed group.
+- `-group-names=<string>` - The LDAP group names against which an LDAP account's associated groups are evaluated to determine membership.
 Boundary evaluates managed group membership when you log in.
 You can specify multiple group names.
-- `-name=<string>` - Sets the name for the LDAP managed group.
+- `-name=<string>` - The name for the LDAP managed group.
 
 </Tab>
 <Tab heading="OIDC">

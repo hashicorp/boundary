@@ -64,51 +64,51 @@ $ boundary host-catalogs update plugin [options] [args]
 
 #### Command options
 
-- `-description=<string>` - Sets the description for the plugin host catalog.
-- `-id=<string>` - Specifies the ID of the plugin type host catalog to update.
-- `-name=<string>` - Sets the name for the plugin host catalog.
-- `-version=<int>` - Indicates the version of the plugin host catalog to update.
+- `-description=<string>` - The description to set on the plugin host catalog.
+- `-id=<string>` - The ID of the plugin type host catalog to update.
+- `-name=<string>` - The name to set on the plugin host catalog.
+- `-version=<int>` - The version of the plugin host catalog to update.
 If you do not specify a version, the command automatically performs a check-and-set.
 
 #### Attribute options
 
-- `-attr` - Specifies a key=value pair to add to the request's attribute map.
+- `-attr` - A key=value pair to add to the request's attribute map.
 This option can also be a key value only, which sets a JSON null as the value.
 If you provide a value, Boundary automatically infers the type.
 You can override the type using `-string-attr`, `-bool-attr`, or `-num-attr`.
 You can specify this value multiple times.
 This option supports referencing values from files using `file://` and environment variables using `env://`.
-- `-attributes=<string>` - Specifies a JSON map value that you can use as the entirety of the request's attributes map.
+- `-attributes=<string>` - A JSON map value that you can use as the entirety of the request's attributes map.
 Usually this value is sourced from a file using the `file://` syntax.
 This option is exclusive with other `attr` flags.
-- `-bool-attr` - Specifies a key=value Boolean value that you can add to the request's attributes map.
+- `-bool-attr` - A key=value Boolean value that you can add to the request's attributes map.
 You can specify this value multiple times.
 This option supports referencing values from files using `file://` and environment variables using `env://`.
-- `-num-attr` - Specifies a key=value numeric value that you can add to the request's attributes map.
+- `-num-attr` - A key=value numeric value that you can add to the request's attributes map.
 You can specify this value multiple times.
 This attribute supports referencing values from files using `file://` and environment variables using `env://`.
-- `-string-attr` - Specifies a key=value string value that you can add to the request's attributes map.
+- `-string-attr` - A key=value string value that you can add to the request's attributes map.
 You can specify this value multiple times.
 This option supports referencing values from files using `file://` and environment variables using `env://`.
 
 ### Secrets options
 
-- `-bool-secret` - Specifies a key=value Boolean value that you can add to the request's secrets map.
+- `-bool-secret` - A key=value Boolean value that you can add to the request's secrets map.
 You can specify this value multiple times.
 This option supports referencing values from files using `file://` and environment variables using `env://`.
-- `-num-secret` - Specifies a key=value numeric value that you can add to the request's secrets map.
+- `-num-secret` - A key=value numeric value that you can add to the request's secrets map.
 You can specify this value multiple times.
 This option supports referencing values from files using `file://` and environment variables using `env://`.
-- `-secret` - Specifies a key=value pair that you can add to the request's secrets map.
+- `-secret` - A key=value pair that you can add to the request's secrets map.
 This option can also be a key value only, which sets a JSON null as the value.
 If you provide a value, Boundary automatically infers the type.
 You can override the type using `-string-secret`, `-bool-secret`, or `-num-secret`.
 You can specify this value multiple times.
 This option supports referencing values from files using `file://` and environment variables using `env://`.
-- `-secrets=<string>` - Specifies a JSON map value that you can use as the entirety of the request's secrets map.
+- `-secrets=<string>` - A JSON map value that you can use as the entirety of the request's secrets map.
 Usually this value is sourced from file using `file://` syntax.
 This option is exclusive with other secret flags.
-- `-string-secret` - Specifies key=value string value that you can add to the request's attributes map.
+- `-string-secret` - A key=value string value that you can add to the request's attributes map.
 You can specify this value multiple times.
 This option supports referencing values from files using `file://` and environment variables using `env://`.
 
@@ -138,10 +138,10 @@ $ boundary host-catalogs update static [options] [args]
 
 #### Command options
 
-- `-description=<string>` - Sets the description for the static host catalog.
-- `-id=<string>` - Indicates the ID of the static type host catalog you want to update.
-- `-name=<string>` - Sets the name for the static host catalog.
-- `-version=<int>` - Indicates the version of the static type host catalog you want to update.
+- `-description=<string>` - The description to set on the static host catalog.
+- `-id=<string>` - The ID of the static type host catalog you want to update.
+- `-name=<string>` - The name to set on the static host catalog.
+- `-version=<int>` - The version of the static type host catalog you want to update.
 If you do not specify a version, the command automatically performs a check-and-set.
 
 </Tab>

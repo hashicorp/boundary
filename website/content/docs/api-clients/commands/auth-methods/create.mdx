@@ -82,10 +82,10 @@ $ boundary auth-methods create [type] [sub command] [options] [args]
 
 ### Command options:
 
-- `-description` `(string: "")` - Specifies the description to set on the auth method.
-- `-name` `(string: "")` - Specifies the name to set on the auth method.
-- `-scope-id` `(string: "")` - Indicates the scope in which to make the request. The default
-   is `global`. You can also specify the scope using the `BOUNDARY_SCOPE_ID` environment variable.
+- `-description` `(string: "")` - The description to set on the auth method.
+- `-name` `(string: "")` - The name to set on the auth method.
+- `-scope-id` `(string: "")` - The scope in which to make the request. The default
+   is `global`. You can also specify the scope using the **BOUNDARY_SCOPE_ID** environment variable.
 
 @include 'cmd-option-note.mdx'
 
@@ -139,7 +139,7 @@ options:
    ASN.1 DER form that can be used to authenticate against an LDAP server
    (optional).
 
-- `-client-certificate-key` `(string: "")` - PEM-encoded X.509 client
+- `-client-certificate-key` `(string: "")` - Specifies a PEM-encoded X.509 client
    certificate key in PKCS #8, ASN.1 DER form used with the client certificate
    (optional).
 
@@ -270,9 +270,9 @@ $ boundary accounts create password [options] [args]
 The following are password auth method specific options in addition to the
 command options:
 
-- `-min-login-name-length` `(string: "")` - Specifies the minimum length of login names.
+- `-min-login-name-length` `(string: "")` - The minimum length of login names.
 
-- `-min-password-length` `(string: "")` - Specifies the minimum length of passwords.
+- `-min-password-length` `(string: "")` - The minimum length of passwords.
 
 </Tab>
 </Tabs>

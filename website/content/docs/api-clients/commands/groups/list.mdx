@@ -80,11 +80,11 @@ $ boundary groups list [options] [args]
 
 ### Command options
 
-- `-filter` `(string: "")` - Indicates whether Boundary should filter the list operation before the results are returned.
+- `-filter` `(string: "")` - If set, Boundary filters the list operation before the results are returned.
 The filter operates against each item in the list.
 We recommend that you use single quotes, because the filters contain double quotes.
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
-- `-recursive`  - Runs the list operation recursively on any child scopes, if the type supports it.
+- `-recursive`  - If set, runs the list operation recursively on any child scopes, if the type supports it.
 The default value is `false`.
 - `-scope-id ``(string: "")` - The scope from which to list the groups.
 The default value is `global`.

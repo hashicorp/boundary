@@ -41,16 +41,16 @@ This command performs a target authorization or consumes an existing authorizati
 
 ### Kubernetes options:
 
-- `-host` `(string: "")` - Specifies the host value to use and overrides the
-  endpoint address from the session information.
-  Boundary passes the specified hostname through to the client for use in the TLS SNI value, if supported.
-  You can also specfiy the host value using the **BOUNDARY_CONNECT_KUBE_HOST** environment variable.
+- `-host` `(string: "")` - The host value to use.
+  If set, this value overrides the endpoint address from the session information.
+  Boundary passes the specified host name through to the client for use in the TLS SNI value, if supported.
+  You can also specify the host value using the **BOUNDARY_CONNECT_KUBE_HOST** environment variable.
 
-- `-scheme` `(string: "")` - Specifies the scheme to use.
+- `-scheme` `(string: "")` - The scheme to use.
 The default value is `https`.
 You can also specify the scheme using the **BOUNDARY_CONNECT_KUBE_SCHEME** environment variable.
 
-- `-style` `(string: "")` - Specifies how the CLI attempts to invoke a Kubernetes client.
+- `-style` `(string: "")` - How the CLI attempts to invoke a Kubernetes client.
 This value also sets a suitable default for `-exec`, if you did not specify a value.
 The default and currently-understood value is `kubectl`.
 You can also specify how the CLI attempts to invoke a Kubernetes client using the `BOUNDARY_CONNECT_KUBE_STYLE` environment variable.

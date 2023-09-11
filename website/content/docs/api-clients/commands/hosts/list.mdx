@@ -31,11 +31,11 @@ $ boundary hosts list [options] [args]
 
 ### Command options
 
-- `-filter=<string>` - Indicates whether Boundary should filter the list operation before the results are returned.
+- `-filter=<string>` - If set, Boundary filters the list operation before the results are returned.
 The filter operates against each item in the list.
 We recommend that you use single quotes, because the filters contain double quotes.
 Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
-- `-host-catalog-id=<string>` - Indicates which host catalog resource to use to produce the list.
+- `-host-catalog-id=<string>` - The host catalog resource to use to produce the list.
 You can also specify the host catalog using the **BOUNDARY_HOST_CATALOG_ID** environment variable.
 
 @include 'cmd-option-note.mdx'

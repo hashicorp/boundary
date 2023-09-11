@@ -54,15 +54,15 @@ $ boundary connect postgres [options] [args]
 
 ### Postgres options:
 
-- `-dbname` `(string: "")` - Specifies the database name to pass through to the client.
+- `-dbname` `(string: "")` - The database name you want to pass through to the client.
 You can also specify the database name using the **BOUNDARY_CONNECT_DBNAME** environment variable.
 
-- `-style`  `(string: "")` - Specifies how the CLI attempts to invoke a Postgres client.
+- `-style`  `(string: "")` - How the CLI attempts to invoke a Postgres client.
 This value also sets a suitable default for `-exec`, if you did not specify a value.
 The default and currently-understood value is `psql`.
 You can also specify how the CLI attempts to invoke a Postgres client using the **BOUNDARY_CONNECT_POSTGRES_STYLE** environment variable.
 
-- `-username`  `(string: "")` - Specifies the username to pass through to the client.
+- `-username`  `(string: "")` - The username you want to pass through to the client.
 This value may be overridden by credentials sourced from a credential store.
 You can also specfiy a username using the **BOUNDARY_CONNECT_USERNAME** environment variable.
 

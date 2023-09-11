@@ -62,9 +62,9 @@ $ boundary accounts list [options] [args]
 
 ### Command options
 
-- `-auth-method-id` `(string: "")` - Indicates the auth-method resource from which to list accounts. You can also specify the auth-method resource using the `BOUNDARY_AUTH_METHOD_ID`
+- `-auth-method-id` `(string: "")` - The auth-method resource from which to list accounts. You can also specify the auth-method resource using the **BOUNDARY_AUTH_METHOD_ID**
    environment variable.
-- `-filter` `(string: "")` - Indicates whether the list operation should be filtered before
+- `-filter` `(string: "")` - If set, the list operation is filtered before
    being returned. The filter operates against each item in the list. We recommend using
    single quotes, because filters contain double quotes.
 

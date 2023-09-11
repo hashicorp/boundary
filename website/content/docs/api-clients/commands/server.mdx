@@ -59,20 +59,20 @@ $ boundary server -config=/etc/boundary/controller.hcl
 
 ### Command options
 
-- `-config` `(string: "")` - Indicates the path to the configuration file.
+- `-config` `(string: "")` - The path to the configuration file.
 If you use HCL formatting, you can specify multiple configuration files.
 
-- `-config-kms` `(string: "")` - Indicates the path to a configuration file that contains a "kms"
+- `-config-kms` `(string: "")` - The path to a configuration file that contains a "kms"
    block marked for `config` purpose.
    The kms block decrypts the main configuration file.
    If you do not set a kms block, Boundary looks for the kms block in the main
    configuration file, which has some drawbacks; see the help output for
    "boundary config encrypt -h" for details.
 
-- `-log-format` `(string: "")` - Indicates the log format to use, mostly as a fallback for events.
+- `-log-format` `(string: "")` - The log format to use, mostly as a fallback for events.
    Supported values are `standard` and `json`.
 
-- `-log-level` `(string: "")` - Indicates the log verbosity level to use, mostly as a fallback for
+- `-log-level` `(string: "")` - The log verbosity level to use, mostly as a fallback for
    events. The following values are supported, in order of more detail to less.
 
    - `trace`
