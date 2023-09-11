@@ -27,9 +27,6 @@ func TestPidInUse(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, used)
 
-	// TODO: This currently fails on nonwindows because the library uses removes
-	// the pid file when attempting to create a second one and there is a lock
-	// error.
 	failingPidCleanup, err := writePidFile(ctx, pidPath)
 	assert.Error(t, err)
 

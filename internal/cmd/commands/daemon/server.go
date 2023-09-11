@@ -65,6 +65,8 @@ func (sc *serverConfig) validate(ctx context.Context) error {
 	switch {
 	case util.IsNil(sc.logWriter):
 		return errors.New(ctx, errors.InvalidParameter, op, "missing log writter")
+	case util.IsNil(sc.contextCancel):
+		return errors.New(ctx, errors.InvalidParameter, op, "missing contextCancel")
 	}
 	return nil
 }
@@ -192,6 +194,12 @@ func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) 
 		return errors.Wrap(ctx, err, op)
 	}
 	mux.Handle("/v1/personas", versionEnforcement(personaFn))
+
+	stopFn, err := newStopHandlerFunc(ctx, s.conf.contextCancel)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	mux.Handle("/v1/stop", versionEnforcement(stopFn))
 
 	logger, err := event.SysEventer().StandardLogger(ctx, "daemon.serve: ", event.ErrorType)
 	if err != nil {

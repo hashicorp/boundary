@@ -130,7 +130,8 @@ func (c *StartCommand) AutocompleteFlags() complete.Flags {
 
 func (c *StartCommand) Run(args []string) int {
 	const op = "daemon.(StartCommand).Run"
-	ctx := c.Context
+	ctx, cancel := context.WithCancel(c.Context)
+	defer cancel()
 
 	var err error
 	f := c.Flags()
@@ -175,7 +176,7 @@ func (c *StartCommand) Run(args []string) int {
 	writers = append(writers, logFile)
 
 	cfg := &serverConfig{
-		contextCancel:          c.ContextCancel,
+		contextCancel:          cancel,
 		refreshIntervalSeconds: c.flagRefreshIntervalSeconds,
 		flagDatabaseUrl:        c.flagDatabaseUrl,
 		flagStoreDebug:         c.flagStoreDebug,
@@ -184,7 +185,7 @@ func (c *StartCommand) Run(args []string) int {
 		logWriter:              io.MultiWriter(writers...),
 	}
 
-	srv, err := newServer(c.Context, cfg)
+	srv, err := newServer(ctx, cfg)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
@@ -236,7 +237,7 @@ func makeBackground(ctx context.Context, dotDir string, runBackgroundFlag bool) 
 	pidPath := filepath.Join(dotDir, pidFileName)
 	if running, err := pidFileInUse(ctx, pidPath); running != nil {
 		return false, writers, noopPidCleanup, errors.New(ctx, errors.Conflict, op, "daemon already running")
-	} else if err != nil {
+	} else if err != nil && !errors.Match(errors.T(errors.NotFound), err) {
 		return false, writers, noopPidCleanup, errors.Wrap(ctx, err, op)
 	}
 
