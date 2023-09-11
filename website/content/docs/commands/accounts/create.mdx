@@ -116,7 +116,7 @@ $ boundary accounts create ldap [options] [args]
 
 The following option is LDAP-specific, in addition to the command options:
 
-- `-login-name` `(string: "")` - Specifies the login name for the account.
+- `-login-name` `(string: "")` - The login name for the account.
 
 </Tab>
 <Tab heading="OIDC">
@@ -146,8 +146,8 @@ $ boundary accounts create oidc [options] [args]
 
 The following options are OIDC-specific, in addition to the command options:
 
-- `-issuer` `(string: "")` - Indicates the issuer for the account.
-- `-subject` `(string: "")` - Indicates the subject for this account on the OIDC provider.
+- `-issuer` `(string: "")` - The issuer for the account.
+- `-subject` `(string: "")` - The subject for this account on the OIDC provider.
 
 </Tab>
 <Tab heading="Password">
@@ -178,8 +178,8 @@ $ boundary accounts create password [options] [args]
 The following options are password-specific, in addition to the command
 options:
 
-- `-login-name` `(string: "")` - Indicates the login name for the account
-- `-password` `(string: "")` - Indicates the password for the account. If blank, the
+- `-login-name` `(string: "")` - The login name for the account
+- `-password` `(string: "")` - The password for the account. If blank, the
    command prompts you to enter the password interactively in a
    non-echoing way. Otherwise, this value can refer to a file on disk (`file://`) or an environment variable (`env://`) from which the password is read.
 
