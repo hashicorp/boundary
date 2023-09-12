@@ -378,6 +378,22 @@ func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+// Now returns the current timestamp in the DB.
+func (r *Repository) Now(ctx context.Context) (time.Time, error) {
+	const op = "authtoken.(Repository).Now"
+	rows, err := r.reader.Query(ctx, "select current_timestamp", nil)
+	if err != nil {
+		return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+	}
+	var now time.Time
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &now); err != nil {
+			return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+		}
+	}
+	return now, nil
+}
+
 // DeleteAuthToken deletes the token with the provided id from the repository returning a count of the
 // number of records deleted.  All options are ignored.
 func (r *Repository) DeleteAuthToken(ctx context.Context, id string, opt ...Option) (int, error) {
