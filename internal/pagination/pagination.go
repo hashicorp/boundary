@@ -34,6 +34,7 @@ type ResponseItem interface {
 type Repository interface {
 	ListDeletedIds(ctx context.Context, since time.Time) ([]string, error)
 	GetTotalItems(ctx context.Context) (int, error)
+	Now(ctx context.Context) (time.Time, error)
 }
 
 // GrantsHasher defines the interface used
@@ -103,11 +104,14 @@ func PaginateRequest[T any, PbT ResponseItem](
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	var refreshToken *pbs.ListRefreshToken
-	resp := &ListResponse[PbT]{}
 	// Note that we have to set the create time of the new refresh token before
-	// we list the deleted IDs, or we risk missing items that were deleted between
-	// listing deleted IDs and the creation of the refresh token.
-	newRefreshTokenCreateTime := time.Now()
+	// we list the deleted IDs or items, or we risk missing items that were deleted between
+	// listing deleted IDs or items and the creation of the refresh token. Duplicates are okay.
+	newRefreshTokenCreateTime, err := repo.Now(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	resp := &ListResponse[PbT]{}
 	if req.GetRefreshToken() != "" {
 		// Note that refresh token parsing and validation happens after authorization,
 		// since validation requires access to the grants hash.
@@ -122,6 +126,9 @@ func PaginateRequest[T any, PbT ResponseItem](
 		// List deleted IDs before listing the items to avoid including deleted
 		// items in the results (any item that is deleted between listing items
 		// and listing deleted IDs would show up in both).
+		// We also assign the new refresh token create time such that it can safely
+		// be used to get deleted IDs next time without risking bugs from clock skew
+		// between the controller and DB.
 		resp.DeletedIds, err = repo.ListDeletedIds(ctx, refreshToken.GetCreatedTime().AsTime())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
