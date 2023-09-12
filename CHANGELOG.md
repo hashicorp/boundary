@@ -11,6 +11,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/3679)).
 * feat: add worker upstream connection status to ops health check
   ([PR](https://github.com/hashicorp/boundary/pull/3650)).  
+* feat: allow HCP cluster id to be sourced from file or env variable
+    ([PR](https://github.com/hashicorp/boundary/pull/3709)).
 
 ### Bug Fixes
 
