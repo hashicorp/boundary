@@ -8,11 +8,11 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"slices"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
+	"golang.org/x/exp/slices"
 )
 
 type AuthToken struct {
@@ -301,8 +301,8 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Auth
 	}
 	// Finally, sort the results again since in-place updates and deletes
 	// may have shuffled items.
-	slices.SortFunc(target.Items, func(i, j *AuthToken) int {
-		return i.UpdatedTime.Compare(j.UpdatedTime)
+	slices.SortFunc(target.Items, func(i, j *AuthToken) bool {
+		return i.UpdatedTime.Before(j.UpdatedTime)
 	})
 	return target, nil
 }

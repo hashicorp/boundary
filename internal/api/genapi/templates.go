@@ -335,8 +335,8 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 	}
 	// Finally, sort the results again since in-place updates and deletes
 	// may have shuffled items.
-	slices.SortFunc(target.Items, func(i, j *{{ .Name }}) int {
-		return i.UpdatedTime.Compare(j.UpdatedTime)
+	slices.SortFunc(target.Items, func(i, j *{{ .Name }}) bool {
+		return i.UpdatedTime.Before(j.UpdatedTime)
 	})
 	return target, nil
 }
@@ -676,10 +676,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kr/pretty"
-
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
+	"golang.org/x/exp/slices"
 )
 
 type {{ .Name }} struct { {{ range .Fields }}

@@ -9,12 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"slices"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/plugins"
 	"github.com/hashicorp/boundary/api/scopes"
+	"golang.org/x/exp/slices"
 )
 
 type HostSet struct {
@@ -414,8 +414,8 @@ func (c *Client) List(ctx context.Context, hostCatalogId string, opt ...Option) 
 	}
 	// Finally, sort the results again since in-place updates and deletes
 	// may have shuffled items.
-	slices.SortFunc(target.Items, func(i, j *HostSet) int {
-		return i.UpdatedTime.Compare(j.UpdatedTime)
+	slices.SortFunc(target.Items, func(i, j *HostSet) bool {
+		return i.UpdatedTime.Before(j.UpdatedTime)
 	})
 	return target, nil
 }

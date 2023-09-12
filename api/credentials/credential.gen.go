@@ -9,11 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"slices"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
+	"golang.org/x/exp/slices"
 )
 
 type Credential struct {
@@ -414,8 +414,8 @@ func (c *Client) List(ctx context.Context, credentialStoreId string, opt ...Opti
 	}
 	// Finally, sort the results again since in-place updates and deletes
 	// may have shuffled items.
-	slices.SortFunc(target.Items, func(i, j *Credential) int {
-		return i.UpdatedTime.Compare(j.UpdatedTime)
+	slices.SortFunc(target.Items, func(i, j *Credential) bool {
+		return i.UpdatedTime.Before(j.UpdatedTime)
 	})
 	return target, nil
 }
