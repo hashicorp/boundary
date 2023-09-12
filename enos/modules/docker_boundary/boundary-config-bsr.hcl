@@ -34,6 +34,12 @@ listener "tcp" {
 }
 
 listener "tcp" {
+  address     = "boundary:9202"
+  purpose     = "proxy"
+  tls_disable = true
+}
+
+listener "tcp" {
   address     = "boundary:9203"
   purpose     = "ops"
   tls_disable = true
