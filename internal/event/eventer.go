@@ -59,9 +59,9 @@ type broker interface {
 	Send(ctx context.Context, t eventlogger.EventType, payload any) (eventlogger.Status, error)
 	Reopen(ctx context.Context) error
 	StopTimeAt(now time.Time)
-	RegisterNode(id eventlogger.NodeID, node eventlogger.Node) error
+	RegisterNode(id eventlogger.NodeID, node eventlogger.Node, opt ...eventlogger.Option) error
 	SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error
-	RegisterPipeline(def eventlogger.Pipeline) error
+	RegisterPipeline(def eventlogger.Pipeline, opt ...eventlogger.Option) error
 }
 
 // queuedEvent stores an event and the context that was associated with it when
@@ -241,7 +241,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 	case opts.withBroker != nil:
 		b = opts.withBroker
 	default:
-		b = eventlogger.NewBroker()
+		b, _ = eventlogger.NewBroker()
 	}
 
 	e := &Eventer{

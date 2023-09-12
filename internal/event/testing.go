@@ -325,7 +325,7 @@ func (b *testMockBroker) Reopen(ctx context.Context) error {
 	return nil
 }
 
-func (b *testMockBroker) RegisterPipeline(def eventlogger.Pipeline) error {
+func (b *testMockBroker) RegisterPipeline(def eventlogger.Pipeline, opt ...eventlogger.Option) error {
 	b.pipelines = append(b.pipelines, def)
 	return nil
 }
@@ -341,7 +341,7 @@ func (b *testMockBroker) StopTimeAt(t time.Time) {
 	b.stopTimeAt = t
 }
 
-func (b *testMockBroker) RegisterNode(id eventlogger.NodeID, node eventlogger.Node) error {
+func (b *testMockBroker) RegisterNode(id eventlogger.NodeID, node eventlogger.Node, opt ...eventlogger.Option) error {
 	b.registeredNodeIds = append(b.registeredNodeIds, id)
 	return nil
 }
