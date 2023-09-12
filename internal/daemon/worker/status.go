@@ -7,9 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"math/rand"
 	"time"
+
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 
 	"github.com/hashicorp/boundary/internal/daemon/worker/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker/session"

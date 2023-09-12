@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"math"
 	"math/big"
 	mathrand "math/rand"
@@ -22,6 +21,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
