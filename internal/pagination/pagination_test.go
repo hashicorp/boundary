@@ -318,6 +318,7 @@ type (
 	testRepo struct {
 		DeletedIdsFn          func(time.Time) ([]string, error)
 		EstimatedTotalItemsFn func() (int, error)
+		NowFn                 func() (time.Time, error)
 	}
 )
 
@@ -351,6 +352,10 @@ func (t *testRepo) ListDeletedIds(_ context.Context, tm time.Time) ([]string, er
 
 func (t *testRepo) GetTotalItems(context.Context) (int, error) {
 	return t.EstimatedTotalItemsFn()
+}
+
+func (t *testRepo) Now(context.Context) (time.Time, error) {
+	return t.NowFn()
 }
 
 func TestPaginateRequest(t *testing.T) {
@@ -503,6 +508,9 @@ func TestPaginateRequest(t *testing.T) {
 			EstimatedTotalItemsFn: func() (int, error) {
 				return 100, nil
 			},
+			NowFn: func() (time.Time, error) {
+				return time.Now(), nil
+			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
 		require.ErrorContains(t, err, "some error")
@@ -537,6 +545,9 @@ func TestPaginateRequest(t *testing.T) {
 			},
 			EstimatedTotalItemsFn: func() (int, error) {
 				return 100, nil
+			},
+			NowFn: func() (time.Time, error) {
+				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -577,6 +588,9 @@ func TestPaginateRequest(t *testing.T) {
 			},
 			EstimatedTotalItemsFn: func() (int, error) {
 				return 100, nil
+			},
+			NowFn: func() (time.Time, error) {
+				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -622,6 +636,9 @@ func TestPaginateRequest(t *testing.T) {
 			EstimatedTotalItemsFn: func() (int, error) {
 				return 100, nil
 			},
+			NowFn: func() (time.Time, error) {
+				return time.Now(), nil
+			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
 		require.ErrorContains(t, err, "some error")
@@ -657,6 +674,48 @@ func TestPaginateRequest(t *testing.T) {
 			},
 			EstimatedTotalItemsFn: func() (int, error) {
 				return 0, stderrors.New("some error")
+			},
+			NowFn: func() (time.Time, error) {
+				return time.Now(), nil
+			},
+		}
+		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
+		require.ErrorContains(t, err, "some error")
+		assert.Empty(t, listResp)
+	})
+	t.Run("fails-when-now-fails", func(t *testing.T) {
+		t.Parallel()
+		maxPageSize := uint(1000)
+		resourceType := pbs.ResourceType_RESOURCE_TYPE_SESSION
+		req := &testRequest{
+			PageSize:     2,
+			RefreshToken: "",
+		}
+		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
+			assert.Empty(t, prevPageLast)
+			assert.Empty(t, refreshToken)
+			assert.Equal(t, 3, limit)
+			return nil, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			t.Fatal("Should not have called convertAndFilterFn")
+			return nil, nil
+		}
+		grantsHasher := &testGrantHasher{
+			HashFn: func() ([]byte, error) {
+				return []byte("some hash"), nil
+			},
+		}
+		repo := &testRepo{
+			DeletedIdsFn: func(time.Time) ([]string, error) {
+				t.Fatal("Should not have requested the deleted Ids")
+				return nil, nil
+			},
+			EstimatedTotalItemsFn: func() (int, error) {
+				return 100, nil
+			},
+			NowFn: func() (time.Time, error) {
+				return time.Time{}, stderrors.New("some error")
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -694,6 +753,9 @@ func TestPaginateRequest(t *testing.T) {
 			},
 			EstimatedTotalItemsFn: func() (int, error) {
 				return 100, nil
+			},
+			NowFn: func() (time.Time, error) {
+				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -735,6 +797,9 @@ func TestPaginateRequest(t *testing.T) {
 			EstimatedTotalItemsFn: func() (int, error) {
 				return 100, nil
 			},
+			NowFn: func() (time.Time, error) {
+				return time.Now(), nil
+			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
 		require.NoError(t, err)
@@ -773,6 +838,9 @@ func TestPaginateRequest(t *testing.T) {
 			},
 			EstimatedTotalItemsFn: func() (int, error) {
 				return 100, nil
+			},
+			NowFn: func() (time.Time, error) {
+				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -830,6 +898,9 @@ func TestPaginateRequest(t *testing.T) {
 			EstimatedTotalItemsFn: func() (int, error) {
 				return 100, nil
 			},
+			NowFn: func() (time.Time, error) {
+				return time.Now(), nil
+			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
 		require.NoError(t, err)
@@ -846,6 +917,66 @@ func TestPaginateRequest(t *testing.T) {
 		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(10*time.Second).After(now))
 		assert.Equal(t, "some-id", refreshToken2.LastItemId)
 		assert.True(t, refreshToken2.LastItemUpdatedTime.AsTime().Equal((&testPbType{}).GetUpdatedTime().AsTime()))
+		assert.Equal(t, []byte("some hash"), refreshToken2.PermissionsHash)
+		assert.Equal(t, resourceType, refreshToken2.ResourceType)
+	})
+	t.Run("no-rows-and-request-token", func(t *testing.T) {
+		t.Parallel()
+		maxPageSize := uint(1000)
+		resourceType := pbs.ResourceType_RESOURCE_TYPE_SESSION
+		refreshToken := &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(time.Now().Add(-time.Hour)),
+			ResourceType:        resourceType,
+			LastItemId:          "some-id",
+			LastItemUpdatedTime: timestamppb.New(time.Now().Add(-2 * time.Hour)),
+			PermissionsHash:     []byte("some hash"),
+		}
+		marshaledToken, err := marshalRefreshToken(ctx, refreshToken)
+		require.NoError(t, err)
+		req := &testRequest{
+			PageSize:     2,
+			RefreshToken: marshaledToken,
+		}
+		listItemsFn := func(prevPageLast *testType, rt *pbs.ListRefreshToken, limit int) ([]*testType, error) {
+			assert.Empty(t, cmp.Diff(refreshToken, rt, protocmp.Transform()))
+			assert.Equal(t, 3, limit)
+			return nil, nil
+		}
+		convertAndFilterFn := func(item *testType) (*testPbType, error) {
+			t.Fatal("Should not have converted any items")
+			return nil, nil
+		}
+		grantsHasher := &testGrantHasher{
+			HashFn: func() ([]byte, error) {
+				return []byte("some hash"), nil
+			},
+		}
+		repo := &testRepo{
+			DeletedIdsFn: func(time.Time) ([]string, error) {
+				return []string{"id1", "id2"}, nil
+			},
+			EstimatedTotalItemsFn: func() (int, error) {
+				return 100, nil
+			},
+			NowFn: func() (time.Time, error) {
+				return time.Now(), nil
+			},
+		}
+		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
+		require.NoError(t, err)
+		assert.Empty(t, listResp.Items)
+		assert.True(t, listResp.CompleteListing)
+		assert.Equal(t, []string{"id1", "id2"}, listResp.DeletedIds)
+		assert.Equal(t, 100, listResp.EstimatedItemCount)
+		assert.NotEmpty(t, listResp.MarshaledRefreshToken)
+		refreshToken2, err := parseRefreshToken(ctx, listResp.MarshaledRefreshToken)
+		require.NoError(t, err)
+		// Created time should be ~within 10 seconds of now
+		now := time.Now()
+		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(-10*time.Second).Before(now))
+		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(10*time.Second).After(now))
+		assert.Equal(t, refreshToken.LastItemId, refreshToken2.LastItemId)
+		assert.True(t, refreshToken2.LastItemUpdatedTime.AsTime().Equal(refreshToken.LastItemUpdatedTime.AsTime()))
 		assert.Equal(t, []byte("some hash"), refreshToken2.PermissionsHash)
 		assert.Equal(t, resourceType, refreshToken2.ResourceType)
 	})
