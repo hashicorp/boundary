@@ -363,11 +363,15 @@ func (c *Command) Run(args []string) int {
 				c.UI.Error(fmt.Errorf("Initial upstreams and HCPB cluster ID are mutually exclusive fields").Error())
 				return base.CommandUserError
 			}
-			clusterId := c.Config.HcpbClusterId
+			clusterId, err := parseutil.ParsePath(c.Config.HcpbClusterId)
+			if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+				c.UI.Error(fmt.Errorf("Failed to parse HCP Boundary cluster ID %q: %w", clusterId, err).Error())
+				return base.CommandUserError
+			}
 			if strings.HasPrefix(clusterId, "int-") {
 				clusterId = strings.TrimPrefix(clusterId, "int-")
 			}
-			_, err := uuid.ParseUUID(clusterId)
+			_, err = uuid.ParseUUID(clusterId)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Invalid HCP Boundary cluster ID %q: %w", clusterId, err).Error())
 				return base.CommandUserError
