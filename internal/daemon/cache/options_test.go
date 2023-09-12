@@ -63,7 +63,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithTargetRetrievalFunc", func(t *testing.T) {
-		var f targetRetrievalFunc = func(ctx context.Context, keyringstring, tokenName string) ([]*targets.Target, error) { return nil, nil }
+		var f TargetRetrievalFunc = func(ctx context.Context, keyringstring, tokenName string) ([]*targets.Target, error) { return nil, nil }
 		opts, err := getOpts(WithTargetRetrievalFunc(f))
 		require.NoError(t, err)
 

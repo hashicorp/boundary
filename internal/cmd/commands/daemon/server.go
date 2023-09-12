@@ -29,7 +29,9 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
-type commander interface {
+// Commander is an interface that provides a way to get an apiClient
+// and retrieve the keyring and token information used by a command.
+type Commander interface {
 	Client(opt ...base.Option) (*api.Client, error)
 	DiscoverKeyringTokenInfo() (string, string, error)
 	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
@@ -116,7 +118,7 @@ func (s *cacheServer) shutdown(ctx context.Context) error {
 // start will fire up the refresh goroutine and the caching API http server as a
 // daemon.  The daemon bits are included so it's easy for CLI cmds to start the
 // a cache server
-func (s *cacheServer) serve(ctx context.Context, cmd commander, l net.Listener) error {
+func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener) error {
 	const op = "daemon.(cacheServer).start"
 	switch {
 	case util.IsNil(ctx):

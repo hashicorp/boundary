@@ -16,12 +16,12 @@ import (
 type TestServer struct {
 	*cacheServer
 	socketDir string
-	cmd       commander
+	cmd       Commander
 }
 
 // NewTestServer creates a test cache server using reasonable defaults for
 // tests.  Supports the option WithDebugFlag to enable debug output for sql
-func NewTestServer(t *testing.T, cmd commander, opt ...Option) *TestServer {
+func NewTestServer(t *testing.T, cmd Commander, opt ...Option) *TestServer {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 

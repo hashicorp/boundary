@@ -25,15 +25,15 @@ const (
 	personaStalenessLimit = 36 * time.Hour
 )
 
-// tokenLookupFn takes a token name and returns the token
-type tokenLookupFn func(keyring string, tokenName string) *authtokens.AuthToken
+// TokenLookupFn takes a keyring type and token name and returns the token
+type TokenLookupFn func(keyring string, tokenName string) *authtokens.AuthToken
 
 type Repository struct {
 	rw            *db.Db
-	tokenLookupFn tokenLookupFn
+	tokenLookupFn TokenLookupFn
 }
 
-func NewRepository(ctx context.Context, s *Store, tFn tokenLookupFn, opt ...Option) (*Repository, error) {
+func NewRepository(ctx context.Context, s *Store, tFn TokenLookupFn, opt ...Option) (*Repository, error) {
 	const op = "cache.NewRepository"
 	switch {
 	case util.IsNil(s):

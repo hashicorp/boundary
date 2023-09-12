@@ -14,7 +14,9 @@ import (
 	"github.com/hashicorp/boundary/internal/observability/event"
 )
 
-type targetRetrievalFunc func(ctx context.Context, addr, token string) ([]*targets.Target, error)
+// TargetRetrievalFunc is a function that retrieves targets
+// from the provided boundary addr using the provided token.
+type TargetRetrievalFunc func(ctx context.Context, addr, token string) ([]*targets.Target, error)
 
 func defaultTargetFunc(ctx context.Context, addr, token string) ([]*targets.Target, error) {
 	const op = "cache.defaultTargetFunc"
