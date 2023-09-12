@@ -1,0 +1,42 @@
+---
+layout: docs
+page_title: session-recordings - Command
+description: |-
+  The "session-recordings" command lets you perform operations on Boundary session recording resources.
+---
+
+# session-recordings
+
+Command: `boundary session-recordings`
+
+The `session-recordings` command lets you perform operations on Boundary session recording resources.
+
+## Example
+
+The following command downloads a session recording with the id `chr_1234567890`:
+
+```shell-session
+$ boundary session-recordings download -id chr_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+Usage: boundary session-recordings <subcommand> [options] [args]
+  # ...
+Subcommands:
+    download    Download a session recording
+    list        List a session recording
+    read        Read a session recording
+```
+
+</CodeBlockConfig>
+
+For more information, examples, and usage, click on the name
+of the subcommand in the sidebar or one of the links below:
+
+- [download](/boundary/docs/commands/session-recordings/download)
+- [list](/boundary/docs/commands/session-recordings/list)
+- [read](/boundary/docs/commands/session-recordings/read)
