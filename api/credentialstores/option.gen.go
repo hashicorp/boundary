@@ -27,7 +27,6 @@ type options struct {
 	withSkipCurlOutput      bool
 	withFilter              string
 	withRefreshToken        string
-	withPageSize            uint
 	withRecursive           bool
 }
 
@@ -54,9 +53,6 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	}
 	if opts.withRefreshToken != "" {
 		opts.queryMap["refresh_token"] = opts.withRefreshToken
-	}
-	if opts.withPageSize != 0 {
-		opts.queryMap["page_size"] = strconv.FormatUint(uint64(opts.withPageSize), 10)
 	}
 	if opts.withRecursive {
 		opts.queryMap["recursive"] = strconv.FormatBool(opts.withRecursive)
@@ -87,14 +83,6 @@ func WithSkipCurlOutput(skip bool) Option {
 func WithRefreshToken(refreshToken string) Option {
 	return func(o *options) {
 		o.withRefreshToken = refreshToken
-	}
-}
-
-// WithPageSize tells the API use the provided page size for listing
-// opertaions on this resource.
-func WithPageSize(pageSize uint) Option {
-	return func(o *options) {
-		o.withPageSize = pageSize
 	}
 }
 
