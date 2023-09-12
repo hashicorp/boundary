@@ -157,6 +157,7 @@ func Test_InitSysEventer(t *testing.T) {
 			tt.want.errPipelines = got.errPipelines
 			tt.want.observationPipelines = got.observationPipelines
 			tt.want.auditWrapperNodes = got.auditWrapperNodes
+			tt.want.serverName = got.serverName
 			assert.Equal(tt.want, got)
 		})
 	}
@@ -690,6 +691,7 @@ func Test_NewEventer(t *testing.T) {
 			tt.want.errPipelines = got.errPipelines
 			tt.want.observationPipelines = got.observationPipelines
 			tt.want.auditWrapperNodes = got.auditWrapperNodes
+			tt.want.serverName = got.serverName
 			assert.Equal(tt.want, got)
 
 			assert.Lenf(testBroker.registeredNodeIds, len(tt.wantRegistered), "got nodes: %q", testBroker.registeredNodeIds)

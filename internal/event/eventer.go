@@ -74,6 +74,7 @@ type queuedEvent struct {
 // Eventer provides a method to send events to pipelines of sinks
 type Eventer struct {
 	broker               broker
+	serverName           string
 	flushableNodes       []flushable
 	conf                 EventerConfig
 	logger               hclog.Logger
@@ -88,6 +89,11 @@ type Eventer struct {
 	gated          atomic.Bool
 	gatedQueue     []*queuedEvent
 	gatedQueueLock *sync.Mutex
+}
+
+type node struct {
+	node eventlogger.Node
+	id   eventlogger.NodeID
 }
 
 type pipeline struct {
@@ -250,6 +256,7 @@ func NewEventer(log hclog.Logger, serializationLock *sync.Mutex, serverName stri
 		conf:              c,
 		broker:            b,
 		auditWrapperNodes: []any{},
+		serverName:        serverName,
 	}
 
 	if !opts.withNow.IsZero() {
