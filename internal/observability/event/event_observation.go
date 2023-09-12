@@ -5,6 +5,7 @@ package event
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
