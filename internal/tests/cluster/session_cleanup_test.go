@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/dawdle"

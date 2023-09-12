@@ -14,7 +14,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 )
 
 func StartMemProfiler(ctx context.Context) {

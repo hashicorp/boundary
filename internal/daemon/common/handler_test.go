@@ -19,8 +19,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/filters/gated"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"

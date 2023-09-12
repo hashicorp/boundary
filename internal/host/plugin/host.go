@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"google.golang.org/protobuf/proto"

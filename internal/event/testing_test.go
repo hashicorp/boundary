@@ -12,7 +12,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

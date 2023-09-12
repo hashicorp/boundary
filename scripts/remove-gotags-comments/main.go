@@ -11,7 +11,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 )
 
 var swaggerPath = flag.String("path", "", "The path to the swagger file to parse. Will also be written to")

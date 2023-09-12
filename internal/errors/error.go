@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/hashicorp/boundary/internal/event"
 	pberrors "github.com/hashicorp/boundary/internal/gen/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
