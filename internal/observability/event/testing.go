@@ -14,6 +14,7 @@ import (
 
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers"
+	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/groups"
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
@@ -364,27 +365,43 @@ func testLogger(t *testing.T, testLock hclog.Locker) hclog.Logger {
 	})
 }
 
-func TestWorkerRequest(t testing.TB) *Request {
+func testWorkerStatus(t testing.TB) *services.StatusRequest {
 	t.Helper()
-	return &Request{
-		Operation: "op",
-		Endpoint:  "/worker-status/<id>",
-		Details: &servers.ServerWorkerStatus{
-			PublicId: "worker-public-id",
-			Name:     "worker-name",
-			Address:  "worker-address",
+	return &services.StatusRequest{
+		Jobs: []*services.JobStatus{
+			{Job: &services.Job{
+				Type:    1,
+				JobInfo: nil,
+			}},
+		},
+		UpdateTags: false,
+		WorkerStatus: &servers.ServerWorkerStatus{
+			PublicId:    "testID",
+			Name:        "w_1234567890",
+			Description: "A default worker created in",
+			Address:     "127.0.0.1:9202",
+			Tags: []*servers.TagPair{
+				{
+					Key:   "type",
+					Value: "dev",
+				},
+			},
+			KeyId:            "ovary-valid-curler-scrambled-glutinous-alias-rework-debit",
+			ReleaseVersion:   "Boundary v0.13.1",
+			OperationalState: "active",
 		},
 	}
 }
 
-func TestWorkerResponse(t testing.TB) *Response {
+func testWorkerStatusObservable(t testing.TB) *services.StatusRequest {
 	t.Helper()
-	return &Response{
-		StatusCode: 200,
-		Details: &servers.ServerWorkerStatus{
-			PublicId: "worker-public-id",
-			Name:     "worker-name",
-			Address:  "worker-address",
+	return &services.StatusRequest{
+		Jobs: []*services.JobStatus{},
+		WorkerStatus: &servers.ServerWorkerStatus{
+			PublicId:         "testID",
+			Tags:             []*servers.TagPair{},
+			ReleaseVersion:   "Boundary v0.13.1",
+			OperationalState: "active",
 		},
 	}
 }
