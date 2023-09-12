@@ -163,11 +163,11 @@
                 "path": "concepts/security/permissions"
               },
               {
-                "title": "Grant Strings",
+                "title": "Grant strings",
                 "path": "concepts/security/permissions/grants"
               },
               {
-                "title": "Advanced Concepts",
+                "title": "Assignable permissions",
                 "path": "concepts/security/permissions/advanced"
               },
               {
