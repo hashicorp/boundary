@@ -381,6 +381,22 @@ func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+// Now returns the current timestamp in the DB.
+func (r *Repository) Now(ctx context.Context) (time.Time, error) {
+	const op = "session.(Repository).Now"
+	rows, err := r.reader.Query(ctx, "select current_timestamp", nil)
+	if err != nil {
+		return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+	}
+	var now time.Time
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &now); err != nil {
+			return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+		}
+	}
+	return now, nil
+}
+
 // DeleteSession will delete a session from the repository.
 func (r *Repository) DeleteSession(ctx context.Context, publicId string, _ ...Option) (int, error) {
 	const op = "session.(Repository).DeleteSession"
