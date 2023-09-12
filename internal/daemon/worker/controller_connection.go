@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"math"
 	"math/big"
 	mathrand "math/rand"
@@ -72,7 +73,11 @@ func (w *Worker) StartControllerConnections() error {
 
 	if len(initialAddrs) == 0 {
 		if w.conf.RawConfig.HcpbClusterId != "" && HandleHcpbClusterId != nil {
-			clusterAddress := HandleHcpbClusterId(w.conf.RawConfig.HcpbClusterId)
+			clusterId, err := parseutil.ParsePath(w.conf.RawConfig.HcpbClusterId)
+			if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+				return fmt.Errorf("failed to parse HCP Boundary cluster ID:  %q: %w", clusterId, err)
+			}
+			clusterAddress := HandleHcpbClusterId(clusterId)
 			initialAddrs = append(initialAddrs, clusterAddress)
 			event.WriteSysEvent(w.baseContext, op, fmt.Sprintf("Setting HCP Boundary cluster address %s as upstream address", clusterAddress))
 		} else {

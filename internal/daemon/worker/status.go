@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"math/rand"
 	"time"
 
@@ -249,8 +250,13 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 					if len(w.conf.RawConfig.Worker.InitialUpstreams) > 0 {
 						addrs = append(addrs, w.conf.RawConfig.Worker.InitialUpstreams...)
 					} else if HandleHcpbClusterId != nil && len(w.conf.RawConfig.HcpbClusterId) > 0 {
-						clusterAddress := HandleHcpbClusterId(w.conf.RawConfig.HcpbClusterId)
-						addrs = append(addrs, clusterAddress)
+						clusterId, err := parseutil.ParsePath(w.conf.RawConfig.HcpbClusterId)
+						if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+							event.WriteError(cancelCtx, op, err, event.WithInfoMsg("failed to parse HCP Boundary cluster ID"))
+						} else {
+							clusterAddress := HandleHcpbClusterId(clusterId)
+							addrs = append(addrs, clusterAddress)
+						}
 					}
 
 					addrs = strutil.RemoveDuplicates(addrs, false)
