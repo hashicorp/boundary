@@ -14,6 +14,12 @@ listener "tcp" {
   tls_disable = true
 }
 
+listener "tcp" {
+  address = "0.0.0.0:${port_ops}"
+  purpose = "ops"
+  tls_disable = true
+}
+
 worker {
   name = "${worker_name}"
   public_addr = "${worker_name}:${port}"
