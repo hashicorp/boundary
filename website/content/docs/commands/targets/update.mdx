@@ -1,0 +1,124 @@
+---
+layout: docs
+page_title: targets update - Command
+description: |-
+  The "targets update" command lets you update a target.
+---
+
+# targets update
+
+Command: `targets update`
+
+The `targets update` command lets you update a target.
+
+## Example
+
+This example updates a TCP target with the ID `ttcp_1234567890` to add the name `devops` and the description `For DevOps usage`:
+
+```shell-session
+$ boundary targets update tcp -id ttcp_1234567890 -name devops -description "For DevOps usage"
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets update [type] [sub command] [options] [args]
+
+Please see the typed subcommand help for detailed usage information.
+
+Subcommands:
+    ssh    Update a ssh-type target (HCP only)
+    tcp    Update a tcp-type target
+```
+
+</CodeBlockConfig>
+
+### Usages by type
+
+You can update SSH or TCP targets.
+
+<Tabs>
+<Tab heading="SSH">
+
+The `targets update ssh` command lets you update SSH targets.
+
+#### Example
+
+This example updates an SSH target with the ID `tssh_1234567890` to add the name `devops` and the description `SSH target for DevOps`:
+
+```shell-session
+$ boundary targets update ssh -id tssh_1234567890 -name "devops" -description "SSH target for DevOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets update ssh [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### SSH target options
+
+- `-address=<string>` - An optional valid network address for the target to connect to.
+You cannot use an address alongside host sources.
+- `-default-client-port=<string>` - The default client port on the target, if set.
+- `-default-port=<string>` - The default port on the target, if set.
+If you do not specify a default port, Boundary uses port 22.
+- `-egress-worker-filter=<string>` - A Boolean expression that filters which egress workers can process sessions for the target.
+- `-enable-session-recording=<string>` - A Boolean expression you can use to enable session recording for the target.
+- `-ingress-worker-filter=<string>` - A Boolean expression that filters which ingress workers can process sessions for the target.
+- `-session-connection-limit=<string>` - The maximum number of connections allowed for a session.
+A value of `-1` means the connections are unlimited.
+- `-session-max-seconds=<string>` - The maximum lifetime of the session, including all connections.
+You can specify an integer number of seconds or a duration string.
+- `-storage-bucket-id=<string>` - The public ID of the storage bucket you want to associate with the target.
+
+
+</Tab>
+<Tab heading="TCP">
+
+The `targets update tcp` command lets you update TCP targets.
+
+#### Example
+
+This example updates a TCP target with the ID `ttcp_1234567890` to add the name `devops` and the description `TCP target for DevOps`:
+
+```shell-session
+$ boundary targets update tcp -id ttcp_1234567890 -name "devops" -description "TCP target for DevOps"
+```
+
+#### Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary targets update tcp [options] [args]
+```
+
+</CodeBlockConfig>
+
+#### TCP target options
+
+- `-address=<string>` - An optional valid network address for the target to connect to.
+You cannot use an address alongside host sources.
+- `-default-client-port=<string>` - The default client port on the target, if set.
+- `-default-port=<string>` - The default port on the target, if set.
+If you do not specify a default port, Boundary uses port 22.
+- `-egress-worker-filter=<string>` - A Boolean expression that filters which egress workers can process sessions for the target.
+- `-ingress-worker-filter=<string>` - A Boolean expression that filters which ingress workers can process sessions for the target.
+- `-session-connection-limit=<string>` - The maximum number of connections allowed for a session.
+A value of `-1` means the connections are unlimited.
+- `-session-max-seconds=<string>` - The maximum lifetime of the session, including all connections.
+You can specify an integer number of seconds or a duration string.
+- `-worker-filter=<string>` - This option is deprecated.
+Use the egress or ingress filters instead.
+
+</Tab>
+</Tabs>
+
+@include 'cmd-option-note.mdx'

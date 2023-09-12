@@ -1,0 +1,87 @@
+---
+layout: docs
+page_title: auth-tokens list - Command
+description: |-
+  The "auth-tokens list" command allows Boundary admin to list available auth tokens.
+---
+
+# auth-tokens list
+
+Command: `boundary auth-tokens list`
+
+The `auth-tokens list` command lists all auth tokens within an enclosing scope or
+resource.
+
+
+## Examples
+
+The following command lists all auth tokens recursively from any child scopes, if applicable:
+
+```shell-session
+$ boundary auth-tokens list
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```plaintext
+Auth Token information:
+  ID:                            at_TXmYwSqnnO
+    Approximate Last Used Time:  Sun, 13 Aug 2023 18:03:51 PDT
+    Auth Method ID:              ampw_1234567890
+    Created Time:                Sun, 13 Aug 2023 17:23:16 PDT
+    Expiration Time:             Sun, 20 Aug 2023 17:23:16 PDT
+    Updated Time:                Sun, 13 Aug 2023 18:03:51 PDT
+    User ID:                     u_1234567890
+    Authorized Actions:
+      no-op
+      read
+      read:self
+      delete
+      delete:self
+
+  ID:                            at_Gvd3jsqSO2
+    Approximate Last Used Time:  Sun, 13 Aug 2023 18:04:34 PDT
+    Auth Method ID:              ampw_1234567890
+    Created Time:                Sun, 13 Aug 2023 18:04:34 PDT
+    Expiration Time:             Sun, 20 Aug 2023 18:04:34 PDT
+    Updated Time:                Sun, 13 Aug 2023 18:04:34 PDT
+    User ID:                     u_1234567890
+    Authorized Actions:
+      no-op
+      read
+      read:self
+      delete
+      delete:self
+```
+
+</CodeBlockConfig>
+
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary auth-tokens list [options] [args]
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-filter` `(string: "")` - If set, the list operation is filtered before it is returned.
+The filter operates against each item in the list.
+We recommend that you use single quotes, as filters contain double quotes.
+Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
+
+- `-recursive`  - If set, the list operation is applied recursively into child scopes, if the type supports it.
+The default value is `false`.
+
+- `-scope-id` `(string: "")` - The scope from which to list the auth tokens.
+The default value is `global`.
+You can also specify this value using the **BOUNDARY_SCOPE_ID** environment variable.
+
+@include 'cmd-option-note.mdx'
