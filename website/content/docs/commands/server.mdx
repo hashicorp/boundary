@@ -1,0 +1,84 @@
+---
+layout: docs
+page_title: server - Command
+description: |-
+  The `server` command starts a server (controller, worker, or both) with a configuration file.
+---
+
+# server
+
+Command: `boundary server`
+
+The `server` command starts a server with a configuration file.
+You can use it to start a controller, worker, or both.
+Refer to the [configuration](/boundary/docs/configuration) page to learn more about configuring Boundary.
+
+## Examples
+
+The following example starts the worker server by providing the full path to the worker config file, `/home/ubuntu/boundary/downstream-worker.hcl`:
+
+```shell-session
+$ boundary server -config="/home/ubuntu/boundary/downstream-worker.hcl"
+```
+
+**Example output:**
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+==> Boundary server configuration:
+
+                               Cgo: disabled
+                        Listener 1: tcp (addr: "0.0.0.0:9202", max_request_duration: "1m30s", purpose: "proxy")
+                         Log Level: info
+                             Mlock: supported: true, enabled: false
+                           Version: Boundary v0.13.0+ent
+                       Version Sha: d8aaf3500f65fb7d605d27db232457fe3a26bf43
+        Worker Auth Current Key Id: harddisk-stunt-serve-shininess-essay-courier-manger-deface
+  Worker Auth Registration Request: GzusqckarbczHoLGQ4UA25uSRvw33DNChURoR2CF1BXRUm7frqLSncV64LeYWxQDCstE25Vj6QSBQ1aGh8BUo1dnz899rt3LgktzRGU4vWYcHmvPQKpsSUTJqA42nJxBfpxopKyCvzxZNxgbTSw5BNN9BUsnoy58niY5ui38NhKPKdmKjVDoU4TRVd4Bvti4F2H5C8pBB3qhY6qyeaSRoKjDcEzdTa7S3JicVzbtmfWnfyMLTJ21jRypH2S5haK4RBhFP319mw6DYNhVo7opBkBoW2FaaJbeowGj8b5wFX
+          Worker Auth Storage Path: /home/ubuntu/boundary/worker2
+          Worker Public Proxy Addr: 44.204.92.85:9202
+
+==> Boundary server started! Log data will stream in below:
+...
+```
+
+</CodeBlockConfig>
+
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary server -config=/etc/boundary/controller.hcl
+```
+
+</CodeBlockConfig>
+
+
+### Command options
+
+- `-config` `(string: "")` - The path to the configuration file.
+If you use HCL formatting, you can specify multiple configuration files.
+
+- `-config-kms` `(string: "")` - The path to a configuration file that contains a "kms"
+   block marked for `config` purpose.
+   The kms block decrypts the main configuration file.
+   If you do not set a kms block, Boundary looks for the kms block in the main
+   configuration file, which has some drawbacks; see the help output for
+   "boundary config encrypt -h" for details.
+
+- `-log-format` `(string: "")` - The log format to use, mostly as a fallback for events.
+   Supported values are `standard` and `json`.
+
+- `-log-level` `(string: "")` - The log verbosity level to use, mostly as a fallback for
+   events. The following values are supported, in order of more detail to less.
+
+   - `trace`
+   - `debug`
+   - `info`
+   - `warn`
+   - `err`
+
+   You can also be specify log verbosity level using the **BOUNDARY_LOG_LEVEL** environment variable.
