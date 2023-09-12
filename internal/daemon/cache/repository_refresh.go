@@ -36,7 +36,9 @@ func defaultTargetFunc(ctx context.Context, addr, token string) ([]*targets.Targ
 	return l.Items, nil
 }
 
-type sessionRetrievalFunc func(ctx context.Context, addr, token string) ([]*sessions.Session, error)
+// SessionRetrievalFunc is a function that retrieves sessions
+// from the provided boundary addr using the provided token.
+type SessionRetrievalFunc func(ctx context.Context, addr, token string) ([]*sessions.Session, error)
 
 func defaultSessionFunc(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
 	const op = "cache.defaultSessionFunc"
