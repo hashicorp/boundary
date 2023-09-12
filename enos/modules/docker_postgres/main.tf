@@ -63,6 +63,8 @@ resource "docker_container" "postgres" {
     "POSTGRES_USER=${var.user}",
     "POSTGRES_PASSWORD=${var.password}",
   ]
+  cpu_set = "1-2"
+  memory  = 2000
   volumes {
     host_path      = abspath(path.module)
     container_path = "/etc/postgresql/"
