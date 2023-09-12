@@ -1,10 +1,14 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package event
 
 import (
+	"testing"
+
 	"github.com/hashicorp/boundary/internal/gen/controller/servers"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	tassert "github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func Test_OnlyObservationTaggedFieldsPopulated(t *testing.T) {

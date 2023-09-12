@@ -1,9 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 package event
 
 import (
 	"errors"
-	"google.golang.org/protobuf/proto"
 	"reflect"
+
+	"google.golang.org/protobuf/proto"
 )
 
 // protoFilter is a signature for a struct field validation test
@@ -44,7 +48,6 @@ func filterValue(fv reflect.Value, isObservable bool) error {
 }
 
 func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter, isObservable bool) error {
-
 	kind := value.Kind()
 
 	switch kind {
