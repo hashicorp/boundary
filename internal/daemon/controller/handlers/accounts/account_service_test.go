@@ -107,7 +107,7 @@ func TestNewService(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := accounts.NewService(ctx, tc.pwRepo, tc.oidcRepo, ldapRepoFn)
+			_, err := accounts.NewService(ctx, tc.pwRepo, tc.oidcRepo, ldapRepoFn, 1000)
 			if tc.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -136,7 +136,7 @@ func TestGet(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -413,7 +413,7 @@ func TestListPassword(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 			require.NoError(err, "Couldn't create new user service.")
 
 			// Test non-anon first
@@ -570,7 +570,7 @@ func TestListOidc(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
@@ -725,7 +725,7 @@ func TestListLdap(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
@@ -796,7 +796,7 @@ func TestDelete(t *testing.T) {
 	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
 	ldapAcct := ldap.TestAccount(t, conn, ldapAm, "test-account")
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -905,7 +905,7 @@ func TestDelete_twice(t *testing.T) {
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	ac := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteAccountRequest{
 		Id: ac.GetPublicId(),
@@ -936,7 +936,7 @@ func TestCreatePassword(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new account service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -1183,7 +1183,7 @@ func TestCreateOidc(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new account service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -1420,7 +1420,7 @@ func TestCreateLdap(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new account service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -1701,7 +1701,7 @@ func TestUpdatePassword(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new accounts service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -2100,7 +2100,7 @@ func TestUpdateOidc(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 
-	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -2485,7 +2485,7 @@ func TestUpdateLdap(t *testing.T) {
 	require.NoError(t, err)
 	am := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap"})
 
-	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -2854,7 +2854,7 @@ func TestSetPassword(t *testing.T) {
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {
@@ -2996,7 +2996,7 @@ func TestChangePassword(t *testing.T) {
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {

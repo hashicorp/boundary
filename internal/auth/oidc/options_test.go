@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
@@ -205,5 +206,16 @@ func Test_GetOpts(t *testing.T) {
 		var r db.Reader
 		opts := getOpts(WithReader(r))
 		assert.Equal(r, opts.withReader)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts := getOpts(WithStartPageAfterItem("s_1", updateTime))
+		testOpts := getDefaultOptions()
+		testOpts.withStartPageAfterItem = &sortAccount{
+			publicId:   "s_1",
+			updateTime: updateTime,
+		}
+		assert.Equal(opts, testOpts)
 	})
 }

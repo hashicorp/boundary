@@ -6,8 +6,10 @@ package oidc
 import (
 	"context"
 	"net/url"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -135,4 +137,21 @@ func (c *Account) oplog(op oplog.OpType, authMethodScopeId string) oplog.Metadat
 		metadata["scope-id"] = []string{authMethodScopeId}
 	}
 	return metadata
+}
+
+// sortAccount is used to encapsulate the information
+// needed for sorting and filtering for pagination.
+type sortAccount struct {
+	publicId   string
+	updateTime time.Time
+}
+
+type deletedAccount struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAccount) TableName() string {
+	return "account_deleted"
 }
