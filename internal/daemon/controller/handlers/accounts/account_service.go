@@ -166,13 +166,55 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 		return nil, err
 	}
 
+	filterAndConvertFn := func(acct auth.Account) (*pb.Account, error) {
+		res := perms.Resource{
+			ScopeId: authResults.Scope.Id,
+			Type:    resource.Account,
+			Pin:     authMethodId,
+		}
+		res.Id = acct.GetPublicId()
+		authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())], requestauth.WithResource(&res)).Strings()
+		if len(authorizedActions) == 0 {
+			return nil, nil
+		}
+
+		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+		outputOpts := make([]handlers.Option, 0, 3)
+		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+		if outputFields.Has(globals.ScopeField) {
+			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+		}
+		if outputFields.Has(globals.AuthorizedActionsField) {
+			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+		}
+
+		pbItem, err := toProto(ctx, acct, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+
+		// This comes last so that we can use pbItem fields in the filter after
+		// the allowed fields are populated above
+		filterable, err := subtypes.Filterable(pbItem)
+		if err != nil {
+			return nil, err
+		}
+		if filter.Match(filterable) {
+			return pbItem, nil
+		}
+		return nil, nil
+	}
+
+	var listAccountsFn func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error)
+	var repo pagination.Repository
 	switch subtypes.SubtypeFromId(domain, authMethodId) {
 	case ldap.Subtype:
 		ldapRepo, err := s.ldapRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		listAccountsFn := func(prevPageLast *ldap.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]*ldap.Account, error) {
+		repo = ldapRepo
+		listAccountsFn = func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error) {
 			opts := []ldap.Option{
 				ldap.WithLimit(ctx, limit),
 			}
@@ -185,84 +227,23 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 			} else {
 				opts = append(opts, ldap.WithStartPageAfterItem(prevPageLast.GetPublicId(), prevPageLast.GetUpdateTime().AsTime()))
 			}
-			return ldapRepo.ListAccounts(ctx, authMethodId, opts...)
-		}
-
-		filterAndConvertFn := func(acct *ldap.Account) (*pb.Account, error) {
-			res := perms.Resource{
-				ScopeId: authResults.Scope.Id,
-				Type:    resource.Account,
-				Pin:     authMethodId,
-			}
-			res.Id = acct.GetPublicId()
-			authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())], requestauth.WithResource(&res)).Strings()
-			if len(authorizedActions) == 0 {
-				return nil, nil
-			}
-
-			outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-			outputOpts := make([]handlers.Option, 0, 3)
-			outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-			if outputFields.Has(globals.ScopeField) {
-				outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-			}
-			if outputFields.Has(globals.AuthorizedActionsField) {
-				outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-			}
-
-			pbItem, err := toProto(ctx, acct, outputOpts...)
+			accs, err := ldapRepo.ListAccounts(ctx, authMethodId, opts...)
 			if err != nil {
 				return nil, err
 			}
-
-			// This comes last so that we can use pbItem fields in the filter after
-			// the allowed fields are populated above
-			filterable, err := subtypes.Filterable(pbItem)
-			if err != nil {
-				return nil, err
+			var authAccs []auth.Account
+			for _, acc := range accs {
+				authAccs = append(authAccs, acc)
 			}
-			if filter.Match(filterable) {
-				return pbItem, nil
-			}
-			return nil, nil
+			return authAccs, nil
 		}
-
-		listResp, err := pagination.PaginateRequest(
-			ctx,
-			s.maxPageSize,
-			pbs.ResourceType_RESOURCE_TYPE_ACCOUNT,
-			req,
-			listAccountsFn,
-			filterAndConvertFn,
-			&authResults,
-			ldapRepo,
-		)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-
-		respType := "delta"
-		if listResp.CompleteListing {
-			respType = "complete"
-		}
-
-		resp := &pbs.ListAccountsResponse{
-			Items:        listResp.Items,
-			ResponseType: respType,
-			SortBy:       "updated_time",
-			SortDir:      "asc",
-			RefreshToken: listResp.MarshaledRefreshToken,
-			RemovedIds:   listResp.DeletedIds,
-			EstItemCount: uint32(listResp.EstimatedItemCount),
-		}
-
-		return resp, nil
 	case oidc.Subtype:
 		oidcRepo, err := s.oidcRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		listAccountsFn := func(prevPageLast *oidc.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]*oidc.Account, error) {
+		repo = oidcRepo
+		listAccountsFn = func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error) {
 			opts := []oidc.Option{
 				oidc.WithLimit(limit),
 			}
@@ -275,84 +256,23 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 			} else {
 				opts = append(opts, oidc.WithStartPageAfterItem(prevPageLast.GetPublicId(), prevPageLast.GetUpdateTime().AsTime()))
 			}
-			return oidcRepo.ListAccounts(ctx, authMethodId, opts...)
-		}
-
-		filterAndConvertFn := func(acct *oidc.Account) (*pb.Account, error) {
-			res := perms.Resource{
-				ScopeId: authResults.Scope.Id,
-				Type:    resource.Account,
-				Pin:     authMethodId,
-			}
-			res.Id = acct.GetPublicId()
-			authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())], requestauth.WithResource(&res)).Strings()
-			if len(authorizedActions) == 0 {
-				return nil, nil
-			}
-
-			outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-			outputOpts := make([]handlers.Option, 0, 3)
-			outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-			if outputFields.Has(globals.ScopeField) {
-				outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-			}
-			if outputFields.Has(globals.AuthorizedActionsField) {
-				outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-			}
-
-			pbItem, err := toProto(ctx, acct, outputOpts...)
+			accs, err := oidcRepo.ListAccounts(ctx, authMethodId, opts...)
 			if err != nil {
 				return nil, err
 			}
-
-			// This comes last so that we can use pbItem fields in the filter after
-			// the allowed fields are populated above
-			filterable, err := subtypes.Filterable(pbItem)
-			if err != nil {
-				return nil, err
+			var authAccs []auth.Account
+			for _, acc := range accs {
+				authAccs = append(authAccs, acc)
 			}
-			if filter.Match(filterable) {
-				return pbItem, nil
-			}
-			return nil, nil
+			return authAccs, nil
 		}
-
-		listResp, err := pagination.PaginateRequest(
-			ctx,
-			s.maxPageSize,
-			pbs.ResourceType_RESOURCE_TYPE_ACCOUNT,
-			req,
-			listAccountsFn,
-			filterAndConvertFn,
-			&authResults,
-			oidcRepo,
-		)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-
-		respType := "delta"
-		if listResp.CompleteListing {
-			respType = "complete"
-		}
-
-		resp := &pbs.ListAccountsResponse{
-			Items:        listResp.Items,
-			ResponseType: respType,
-			SortBy:       "updated_time",
-			SortDir:      "asc",
-			RefreshToken: listResp.MarshaledRefreshToken,
-			RemovedIds:   listResp.DeletedIds,
-			EstItemCount: uint32(listResp.EstimatedItemCount),
-		}
-
-		return resp, nil
 	case password.Subtype:
 		pwRepo, err := s.pwRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		listAccountsFn := func(prevPageLast *password.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]*password.Account, error) {
+		repo = pwRepo
+		listAccountsFn = func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error) {
 			opts := []password.Option{
 				password.WithLimit(limit),
 			}
@@ -365,80 +285,48 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 			} else {
 				opts = append(opts, password.WithStartPageAfterItem(prevPageLast.GetPublicId(), prevPageLast.GetUpdateTime().AsTime()))
 			}
-			return pwRepo.ListAccounts(ctx, authMethodId, opts...)
-		}
-
-		filterAndConvertFn := func(acct *password.Account) (*pb.Account, error) {
-			res := perms.Resource{
-				ScopeId: authResults.Scope.Id,
-				Type:    resource.Account,
-				Pin:     authMethodId,
-			}
-			res.Id = acct.GetPublicId()
-			authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())], requestauth.WithResource(&res)).Strings()
-			if len(authorizedActions) == 0 {
-				return nil, nil
-			}
-
-			outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-			outputOpts := make([]handlers.Option, 0, 3)
-			outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-			if outputFields.Has(globals.ScopeField) {
-				outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-			}
-			if outputFields.Has(globals.AuthorizedActionsField) {
-				outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-			}
-
-			pbItem, err := toProto(ctx, acct, outputOpts...)
+			accs, err := pwRepo.ListAccounts(ctx, authMethodId, opts...)
 			if err != nil {
 				return nil, err
 			}
-
-			// This comes last so that we can use pbItem fields in the filter after
-			// the allowed fields are populated above
-			filterable, err := subtypes.Filterable(pbItem)
-			if err != nil {
-				return nil, err
+			var authAccs []auth.Account
+			for _, acc := range accs {
+				authAccs = append(authAccs, acc)
 			}
-			if filter.Match(filterable) {
-				return pbItem, nil
-			}
-			return nil, nil
+			return authAccs, nil
 		}
-
-		listResp, err := pagination.PaginateRequest(
-			ctx,
-			s.maxPageSize,
-			pbs.ResourceType_RESOURCE_TYPE_ACCOUNT,
-			req,
-			listAccountsFn,
-			filterAndConvertFn,
-			&authResults,
-			pwRepo,
-		)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-
-		respType := "delta"
-		if listResp.CompleteListing {
-			respType = "complete"
-		}
-
-		resp := &pbs.ListAccountsResponse{
-			Items:        listResp.Items,
-			ResponseType: respType,
-			SortBy:       "updated_time",
-			SortDir:      "asc",
-			RefreshToken: listResp.MarshaledRefreshToken,
-			RemovedIds:   listResp.DeletedIds,
-			EstItemCount: uint32(listResp.EstimatedItemCount),
-		}
-
-		return resp, nil
 	}
-	return nil, nil
+
+	listResp, err := pagination.PaginateRequest(
+		ctx,
+		s.maxPageSize,
+		pbs.ResourceType_RESOURCE_TYPE_ACCOUNT,
+		req,
+		listAccountsFn,
+		filterAndConvertFn,
+		&authResults,
+		repo,
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+
+	resp := &pbs.ListAccountsResponse{
+		Items:        listResp.Items,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+		RefreshToken: listResp.MarshaledRefreshToken,
+		RemovedIds:   listResp.DeletedIds,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+	}
+
+	return resp, nil
 }
 
 // GetAccount implements the interface pbs.AccountServiceServer.
