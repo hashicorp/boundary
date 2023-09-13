@@ -161,6 +161,24 @@ func Test_NewEventFlags(t *testing.T) {
 			},
 		},
 		{
+			name:          "telemetry-true",
+			defaultFormat: "cloudevents-json",
+			composedOf:    ComposedOfEventArgs{Format: "cloudevents-json", Telemetry: "true"},
+			wantFlags: &EventFlags{
+				Format:           "cloudevents-json",
+				TelemetryEnabled: &setTrue,
+			},
+		},
+		{
+			name:          "telemetry-false",
+			defaultFormat: "cloudevents-json",
+			composedOf:    ComposedOfEventArgs{Format: "cloudevents-json", Telemetry: "false"},
+			wantFlags: &EventFlags{
+				Format:           "cloudevents-json",
+				TelemetryEnabled: &setFalse,
+			},
+		},
+		{
 			name:          "valid-allow",
 			defaultFormat: "cloudevents-json",
 			composedOf:    ComposedOfEventArgs{Format: "cloudevents-json", Allow: []string{`"/Data/Header/status" == 401`}},
