@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/stretchr/testify/assert"
@@ -130,5 +131,16 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withMappingOverride = unknownMapper(1)
 		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts := getOpts(WithStartPageAfterItem("s_1", updateTime))
+		testOpts := getDefaultOptions()
+		testOpts.withStartPageAfterItem = &sortCredentialLibrary{
+			publicId:   "s_1",
+			updateTime: updateTime,
+		}
+		assert.Equal(opts, testOpts)
 	})
 }
