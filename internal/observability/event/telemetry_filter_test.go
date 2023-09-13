@@ -56,8 +56,8 @@ func Test_OnlyObservationTaggedFieldsPopulated(t *testing.T) {
 	assert.Zero(output.WorkerStatus.Address)
 	assert.Zero(output.WorkerStatus.Description)
 	assert.Zero(output.WorkerStatus.KeyId)
-	assert.Len(output.WorkerStatus.Tags, 0)
-	assert.Len(output.Jobs, 0)
+	assert.Len(output.WorkerStatus.Tags, 1)
+	assert.Len(output.Jobs, 1)
 }
 
 func Test_AllFieldsPopulatedWithoutFilter(t *testing.T) {
