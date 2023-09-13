@@ -63,6 +63,7 @@ resource "docker_image" "boundary" {
 
 locals {
   recording_storage_path = "/recordings"
+  port_ops               = var.port + 1
 }
 
 resource "docker_container" "worker" {
@@ -77,6 +78,10 @@ resource "docker_container" "worker" {
   ports {
     internal = var.port
     external = var.port
+  }
+  ports {
+    internal = local.port_ops
+    external = local.port_ops
   }
   capabilities {
     add = ["IPC_LOCK"]
@@ -96,6 +101,7 @@ resource "docker_container" "worker" {
       type_tags              = jsonencode(var.tags)
       recording_storage_path = local.recording_storage_path
       port                   = var.port
+      port_ops               = local.port_ops
     })
     file = "/boundary/worker-config.hcl"
   }
@@ -113,6 +119,14 @@ resource "docker_container" "worker" {
       name = networks_advanced.value
     }
   }
+}
+
+resource "enos_local_exec" "check_address" {
+  depends_on = [
+    docker_container.worker
+  ]
+
+  inline = ["timeout 10s bash -c 'until echo $(curl -s -i \"http://0.0.0.0:${local.port_ops}/health?worker_info=1\") | grep -i \\\"upstream_connection_state\\\":\\\"READY\\\"; do sleep 2; done'"]
 }
 
 output "upstream_address" {
