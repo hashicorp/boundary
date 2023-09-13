@@ -1470,3 +1470,23 @@ func TestGetTotalItems(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, numItems)
 }
+
+func TestNow(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+
+	now, err := repo.Now(ctx)
+	require.NoError(err)
+	// Check that it's within 1 second of now according to the system
+	// If this is flaky... just increase the limit 😬.
+	assert.True(now.Before(time.Now().Add(time.Second)))
+	assert.True(now.After(time.Now().Add(-time.Second)))
+}

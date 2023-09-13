@@ -17,7 +17,6 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	requestauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -3376,12 +3375,12 @@ func TestListPagination(t *testing.T) {
 	at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
 
 	requestInfo := authpb.RequestInfo{
-		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		TokenFormat: uint32(requestauth.AuthTokenTypeBearer),
 		PublicId:    at.GetPublicId(),
 		Token:       at.GetToken(),
 	}
 	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
-	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+	ctx = requestauth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
 
 	req := &pbs.ListAccountsRequest{
 		AuthMethodId: authMethod.GetPublicId(),

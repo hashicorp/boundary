@@ -1204,7 +1204,6 @@ func TestRepository_ListAccounts_Pagination(t *testing.T) {
 	page4, err := repo.ListAccounts(testCtx, authMethods[0].GetPublicId(), WithLimit(2), WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].UpdateTime.AsTime()))
 	require.NoError(t, err)
 	require.Empty(t, page4)
-
 }
 
 func TestListDeletedIds(t *testing.T) {
@@ -1271,4 +1270,24 @@ func TestGetTotalItems(t *testing.T) {
 	numItems, err = repo.GetTotalItems(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 0, numItems)
+}
+
+func TestNow(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+
+	now, err := repo.Now(ctx)
+	require.NoError(err)
+	// Check that it's within 1 second of now according to the system
+	// If this is flaky... just increase the limit 😬.
+	assert.True(now.Before(time.Now().Add(time.Second)))
+	assert.True(now.After(time.Now().Add(-time.Second)))
 }
