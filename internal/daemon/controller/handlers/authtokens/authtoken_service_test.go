@@ -335,7 +335,7 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListAuthTokensRequest{ScopeId: orgWithSomeTokens.GetPublicId()},
 			res: &pbs.ListAuthTokensResponse{
 				Items:        wantSomeTokens,
-				EstItemCount: 9,
+				EstItemCount: 3,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -346,7 +346,7 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListAuthTokensRequest{ScopeId: orgWithOtherTokens.GetPublicId()},
 			res: &pbs.ListAuthTokensResponse{
 				Items:        wantOtherTokens,
-				EstItemCount: 9,
+				EstItemCount: 3,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -356,7 +356,6 @@ func TestList(t *testing.T) {
 			name: "List No Token",
 			req:  &pbs.ListAuthTokensRequest{ScopeId: orgNoTokens.GetPublicId()},
 			res: &pbs.ListAuthTokensResponse{
-				EstItemCount: 9,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -398,7 +397,7 @@ func TestList(t *testing.T) {
 			},
 			res: &pbs.ListAuthTokensResponse{
 				Items:        wantSomeTokens,
-				EstItemCount: 9,
+				EstItemCount: 3,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -408,7 +407,6 @@ func TestList(t *testing.T) {
 			name: "Filter All Tokens",
 			req:  &pbs.ListAuthTokensRequest{ScopeId: orgWithOtherTokens.GetPublicId(), Filter: `"/item/scope/id"=="thisdoesntmatch"`},
 			res: &pbs.ListAuthTokensResponse{
-				EstItemCount: 9,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",

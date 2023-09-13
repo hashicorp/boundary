@@ -170,9 +170,16 @@ func PaginateRequest[T any, PbT ResponseItem](
 		}
 	}
 
-	resp.EstimatedItemCount, err = repo.GetTotalItems(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	if refreshToken == nil && resp.CompleteListing {
+		// This single page contains all visible items, set
+		// estimated item count based on length of the items
+		// slice directly
+		resp.EstimatedItemCount = len(resp.Items)
+	} else {
+		resp.EstimatedItemCount, err = repo.GetTotalItems(ctx)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	}
 
 	return resp, nil
