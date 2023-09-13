@@ -14,14 +14,17 @@ a [user][] can connect to
 and interact with
 through Boundary
 by way of a session.
+
 A target can only be defined within a [project][].
 A target can contain references to [host sets][] from [host catalogs][]
 which belong to the same project as the target.
 A target can contain references to [credential libraries][]
 from [credential stores][] which belong to the same project as the target.
+
 A target can contain an address
 which is used by a session to connect to a networked resource.
 A target cannot have an address and also reference host sources.
+
 A user must be assigned a [role][] with the `authorize-session` [permission][]
 for the target to
 establish a session with a networked resource by way of an address,
@@ -35,9 +38,6 @@ A target has the following configurable attributes:
   The `name` must be unique within the target's [project][].
 
 - `description` - (optional)
-
-- `type` - (required)
-  Defines the type of connection to a target. Options are `static`, `tcp`, and `ssh`. Even if the type of connection to the target is `ssh`, you should select the `tcp` subcommand. Using the `ssh` command is reserved for [credential injection](https://developer.hashicorp.com/boundary/tutorials/hcp-administration/hcp-ssh-cred-injection)
 
 - `address` - (optional)
   This value represents a network resource address and is used when establishing a session.
@@ -74,6 +74,17 @@ A target has the following configurable attributes:
   The default is 8 hours (28800 seconds).
   This value must be greater than 0.
 
+## Target types
+
+Boundary supports TCP and SSH target types.
+An SSH target **must** have at least one injected application credential.
+A TCP target **cannot** have any injected application credentials.
+Note the following target type requirements:
+
+- **To use brokered credentials to connect to an SSH target**: you must use a `tcp` target type.
+- **To use injected application credentials to connect to an SSH target**: you must use an `ssh` target type.
+- **To enable session recording for an SSH target**: you must use injected application credentials and an `ssh` target type.
+
 ### TCP target attributes
 
 TCP targets have the following additional attribute:
@@ -84,8 +95,15 @@ TCP targets have the following additional attribute:
 ### SSH target attributes <sup>HCP/ENT</sup>
 
 SSH targets can source username/password or SSH private key credentials from Vault [credential libraries][] or static
-[credentials][]. Boundary then injects credentials into the SSH session between a client and end host. This allows users to
+[credentials][]. If you use injected credentials, Boundary injects credentials into the SSH session between a client and end host. Injected credentials allow users to
 securely connect to remote hosts using SSH, while never being in possession of a valid credential for that target host.
+
+<Note>
+
+If you set the target `type` to `ssh`, you must use brokered or injected credentials.
+You cannot reference a static .pem file.
+
+</Note>
 
 SSH targets have the following additional attributes:
 
@@ -100,8 +118,6 @@ SSH targets have the following additional attributes:
 - `storage_bucket_id` - (optional)
   Designates the storage bucket to be used for session recording.
   This attribute is required if you set `enable_session_recording` to `true`.
-
-  If you inject SSH credentials into a Boundary session, you must set the `type` to `ssh` and not `tcp`.
 
 ## Referenced by
 
