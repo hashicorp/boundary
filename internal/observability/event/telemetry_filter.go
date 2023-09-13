@@ -23,14 +23,14 @@ func telemetryFilter(field reflect.StructField) bool {
 }
 
 // filterValue will preserve or zero a value based on if it is classed as observable
-func filterValue(fv reflect.Value, isObservable bool) error {
+func filterValue(fv reflect.Value, isObservable bool) {
 	if isObservable {
-		return nil // let data persist to telemetry
+		return // let data persist to telemetry
 	}
 
 	// check for nil value (prevent panics)
 	if fv == reflect.ValueOf(nil) {
-		return nil
+		return
 	}
 
 	if fv.Kind() == reflect.Ptr {
@@ -39,12 +39,12 @@ func filterValue(fv reflect.Value, isObservable bool) error {
 
 	// check to see if it's an exported struct field
 	if !fv.CanSet() {
-		return nil
+		return
 	}
 
 	fv.SetZero()
 
-	return nil
+	return
 }
 
 func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter, isObservable bool) error {
@@ -101,7 +101,8 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 		return nil
 	default:
 		// any other non structured type, we will output or not via filterValue
-		return filterValue(value, isObservable)
+		filterValue(value, isObservable)
+		return nil
 	}
 
 	return nil
