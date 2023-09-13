@@ -16,14 +16,19 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
+	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	requestauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
@@ -3310,31 +3315,25 @@ func TestListPagination(t *testing.T) {
 	ldapRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
-	// tokenRepoFn := func() (*authtoken.Repository, error) {
-	// 	return authtoken.NewRepository(ctx, rw, rw, kmsCache)
-	// }
-	// serversRepoFn := func() (*server.Repository, error) {
-	// 	return server.NewRepository(ctx, rw, rw, kmsCache)
-	// }
-
-	ldapRepo, err := ldapRepoFn()
-	require.NoError(t, err)
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kmsCache)
+	}
 
 	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new user service.")
 
-	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
-	require.NoError(t, err)
-	amSomeAccounts := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://some-accounts"})
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	tokenRepo, _ := tokenRepoFn()
+	pwRepo, _ := pwRepoFn()
+	o, pwt := iam.TestScopes(t, iamRepo)
 
-	// at := authtoken.TestAuthToken(t, conn, kmsCache, o.GetPublicId())
-	// uId := at.GetIamUserId()
+	authMethod := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 
 	var accounts []*pb.Account
-	for i := 0; i < 10; i++ {
-		loginName := fmt.Sprintf("test-login-name%d", i)
-		aa := ldap.TestAccount(t, conn, amSomeAccounts, loginName)
+	for _, aa := range password.TestMultipleAccounts(t, conn, authMethod.GetPublicId(), 9) {
 		accounts = append(accounts, &pb.Account{
 			Id:           aa.GetPublicId(),
 			AuthMethodId: aa.GetAuthMethodId(),
@@ -3342,32 +3341,55 @@ func TestListPagination(t *testing.T) {
 			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         ldap.Subtype.String(),
-			Attrs: &pb.Account_LdapAccountAttributes{
-				LdapAccountAttributes: &pb.LdapAccountAttributes{
-					LoginName: loginName,
-				},
+			Type:         "password",
+			Attrs: &pb.Account_PasswordAccountAttributes{
+				PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
 			},
-			AuthorizedActions: ldapAuthorizedActions,
+			AuthorizedActions: pwAuthorizedActions,
 		})
 	}
 
-	// requestInfo := authpb.RequestInfo{
-	// 	TokenFormat: uint32(auth.AuthTokenTypeBearer),
-	// 	PublicId:    at.GetPublicId(),
-	// 	Token:       at.GetToken(),
-	// }
-	// requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
-	// ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "test-login-last")
+	u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+
+	privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
+	iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
+	privOrgRole := iam.TestRole(t, conn, o.GetPublicId())
+	iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
+
+	accounts = append(accounts, &pb.Account{
+		Id:           acct.GetPublicId(),
+		AuthMethodId: acct.GetAuthMethodId(),
+		CreatedTime:  acct.GetCreateTime().GetTimestamp(),
+		UpdatedTime:  acct.GetUpdateTime().GetTimestamp(),
+		Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+		Version:      1,
+		Type:         "password",
+		Attrs: &pb.Account_PasswordAccountAttributes{
+			PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: acct.GetLoginName()},
+		},
+		AuthorizedActions: pwAuthorizedActions,
+	})
+
+	at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
 
 	req := &pbs.ListAccountsRequest{
-		AuthMethodId: amSomeAccounts.GetPublicId(),
+		AuthMethodId: authMethod.GetPublicId(),
 		Filter:       "",
 		RefreshToken: "",
 		PageSize:     2,
 	}
-	// just do disabled auth and finish tests, then figure out
-	ctx = requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId())
+
 	got, err := s.ListAccounts(ctx, req)
 	require.NoError(t, err)
 	require.Len(t, got.GetItems(), 2)
@@ -3437,8 +3459,8 @@ func TestListPagination(t *testing.T) {
 		),
 	)
 
-	// create another ldap acct
-	aa := ldap.TestAccount(t, conn, amSomeAccounts, "new-test-login")
+	// create another acct
+	aa := password.TestAccount(t, conn, authMethod.GetPublicId(), "test-login-new-last")
 	newAccount := &pb.Account{
 		Id:           aa.GetPublicId(),
 		AuthMethodId: aa.GetAuthMethodId(),
@@ -3446,18 +3468,16 @@ func TestListPagination(t *testing.T) {
 		UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
 		Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 		Version:      1,
-		Type:         ldap.Subtype.String(),
-		Attrs: &pb.Account_LdapAccountAttributes{
-			LdapAccountAttributes: &pb.LdapAccountAttributes{
-				LoginName: "new-test-login",
-			},
+		Type:         "password",
+		Attrs: &pb.Account_PasswordAccountAttributes{
+			PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
 		},
-		AuthorizedActions: ldapAuthorizedActions,
+		AuthorizedActions: pwAuthorizedActions,
 	}
 	accounts = append(accounts, newAccount)
 
 	// delete different acct
-	_, err = ldapRepo.DeleteAccount(ctx, accounts[0].Id)
+	_, err = pwRepo.DeleteAccount(ctx, o.GetPublicId(), accounts[0].Id)
 	require.NoError(t, err)
 	deletedAccount := accounts[0]
 	accounts = accounts[1:]
