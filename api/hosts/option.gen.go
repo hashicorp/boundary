@@ -5,7 +5,6 @@
 package hosts
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/api"
@@ -27,7 +26,6 @@ type options struct {
 	withSkipCurlOutput      bool
 	withFilter              string
 	withRefreshToken        string
-	withPageSize            uint
 }
 
 func getDefaultOptions() options {
@@ -53,9 +51,6 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	}
 	if opts.withRefreshToken != "" {
 		opts.queryMap["refresh_token"] = opts.withRefreshToken
-	}
-	if opts.withPageSize != 0 {
-		opts.queryMap["page_size"] = strconv.FormatUint(uint64(opts.withPageSize), 10)
 	}
 	return opts, apiOpts
 }
@@ -83,14 +78,6 @@ func WithSkipCurlOutput(skip bool) Option {
 func WithRefreshToken(refreshToken string) Option {
 	return func(o *options) {
 		o.withRefreshToken = refreshToken
-	}
-}
-
-// WithPageSize tells the API use the provided page size for listing
-// opertaions on this resource.
-func WithPageSize(pageSize uint) Option {
-	return func(o *options) {
-		o.withPageSize = pageSize
 	}
 }
 

@@ -266,11 +266,17 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 		return nil, apiErr
 	}
 	target.response = resp
-	if opts.withRefreshToken != "" || target.ResponseType == "complete" || target.ResponseType == "" {
+	if target.ResponseType == "complete" || target.ResponseType == "" {
 		return target, nil
 	}
-	// if refresh token is not set explicitly and there are more results,
-	// automatically fetch the rest of the results.
+	// If there are more results, automatically fetch the rest of the results.
+	// idToIndex keeps a map from the ID of an item to its index in target.Items.
+	// This is used to update updated items in-place and remove deleted items
+	// from the result after pagination is done.
+	idToIndex := map[string]int{}
+	for i, item := range target.Items {
+		idToIndex[item.Id] = i
+	}
 	for {
 		req, err := c.client.NewRequest(ctx, "GET", "{{ .CollectionPath }}", nil, apiOpts...)
 		if err != nil {
@@ -299,16 +305,40 @@ func (c *Client) List(ctx context.Context, {{ .CollectionFunctionArg }} string, 
 		if apiErr != nil {
 			return nil, apiErr
 		}
-		target.Items = append(target.Items, page.Items...)
+		for _, item := range page.Items {
+			if i, ok := idToIndex[item.Id]; ok {
+				// Item has already been seen at index i, update in-place
+				target.Items[i] = item
+			} else {
+				target.Items = append(target.Items, item)
+				idToIndex[item.Id] = len(target.Items)-1
+			}
+		}
 		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
 		target.EstItemCount = page.EstItemCount
 		target.RefreshToken = page.RefreshToken
 		target.ResponseType = page.ResponseType
 		target.response = resp
 		if target.ResponseType == "complete" {
-			return target, nil
+			break
 		}
 	}
+	for _, removedId := range  target.RemovedIds {
+		if i, ok := idToIndex[removedId]; ok {
+			// Remove the item at index i without preserving order
+			// https://github.com/golang/go/wiki/SliceTricks#delete-without-preserving-order
+			target.Items[i] = target.Items[len(target.Items)-1] 
+			target.Items = target.Items[:len(target.Items)-1]
+			// Update the index of the last element
+			idToIndex[target.Items[i].Id] = i
+		}
+	}
+	// Finally, sort the results again since in-place updates and deletes
+	// may have shuffled items.
+	slices.SortFunc(target.Items, func(i, j *{{ .Name }}) bool {
+		return i.UpdatedTime.Before(j.UpdatedTime)
+	})
+	return target, nil
 }
 `))
 
@@ -646,10 +676,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kr/pretty"
-
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/scopes"
+	"golang.org/x/exp/slices"
 )
 
 type {{ .Name }} struct { {{ range .Fields }}
@@ -781,7 +810,6 @@ type options struct {
 	withSkipCurlOutput bool
 	withFilter string
 	withRefreshToken string
-	withPageSize uint 
 	{{ if .RecursiveListing }} withRecursive bool {{ end }}
 }
 
@@ -808,9 +836,6 @@ func getOpts(opt ...Option) (options, []api.Option) {
 	}
 	if opts.withRefreshToken != "" {
 		opts.queryMap["refresh_token"] = opts.withRefreshToken
-	}
-	if opts.withPageSize != 0 {
-		opts.queryMap["page_size"] = strconv.FormatUint(uint64(opts.withPageSize), 10)
 	}{{ if .RecursiveListing }}
 	if opts.withRecursive {
 		opts.queryMap["recursive"] = strconv.FormatBool(opts.withRecursive)
@@ -843,14 +868,6 @@ func WithSkipCurlOutput(skip bool) Option {
 func WithRefreshToken(refreshToken string) Option {
 	return func(o *options) {
 		o.withRefreshToken = refreshToken
-	}
-}
-
-// WithPageSize tells the API use the provided page size for listing
-// opertaions on this resource.
-func WithPageSize(pageSize uint) Option {
-	return func(o *options) {
-		o.withPageSize = pageSize
 	}
 }
 
