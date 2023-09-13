@@ -55,32 +55,40 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 		value = value.Elem()
 		return recurseStructureWithProtoFilter(value, filterFunc, isObservable)
 	case reflect.Map:
-		m := reflect.ValueOf(value)
-		for _, k := range m.MapKeys() {
-			mVal := m.MapIndex(k)
+		// m := reflect.ValueOf(value)
+		// fmt.Printf("type of m %+v \n", reflect.TypeOf(value))
+		for _, k := range value.MapKeys() {
+			mVal := value.MapIndex(k)
 			if err := recurseStructureWithProtoFilter(mVal, filterFunc, isObservable); err != nil {
 				return err
 			}
 		}
 		return nil
 	case reflect.Array, reflect.Slice:
-		if isObservable {
-			for i := 0; i < value.Len(); i++ {
-				sVal := value.Index(i)
-				if err := recurseStructureWithProtoFilter(sVal, filterFunc, isObservable); err != nil {
-					return err
-				}
-			}
-		} else {
-			if kind == reflect.Slice {
-				value.SetLen(0) // truncate
-			} else {
-				// fixed size, so we zero
-				for i := 0; i < value.Len(); i++ {
-					value.Index(i).SetZero()
-				}
+		for i := 0; i < value.Len(); i++ {
+			sVal := value.Index(i)
+			// fmt.Printf("Array: sval %+v, is observable %+v \n", sVal, isObservable)
+			if err := recurseStructureWithProtoFilter(sVal, filterFunc, isObservable); err != nil {
+				return err
 			}
 		}
+		//if isObservable {
+		//	for i := 0; i < value.Len(); i++ {
+		//		sVal := value.Index(i)
+		//		if err := recurseStructureWithProtoFilter(sVal, filterFunc, isObservable); err != nil {
+		//			return err
+		//		}
+		//	}
+		//} else {
+		//	if kind == reflect.Slice {
+		//		value.SetLen(0) // truncate
+		//	} else {
+		//		// fixed size, so we zero
+		//		for i := 0; i < value.Len(); i++ {
+		//			value.Index(i).SetZero()
+		//		}
+		//	}
+		//}
 	case reflect.Struct:
 		fields := value.Type()
 		num := fields.NumField()
@@ -94,6 +102,7 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 			if filterFunc != nil {
 				isObservable = filterFunc(field)
 			}
+			// fmt.Printf("field name %+v, is observable %+v \n", field.Name, isObservable)
 			if err := recurseStructureWithProtoFilter(v, filterFunc, isObservable); err != nil {
 				return err
 			}
