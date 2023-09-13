@@ -35,6 +35,11 @@ func defaultTargetFunc(ctx context.Context, addr, token string) ([]*targets.Targ
 	return l.Items, nil
 }
 
+// Refresh iterates over all personas in the cache, attempts to read the
+// resources for those personas from boundary and updates the cache with
+// the values retrieved there.  Refresh accepts the options
+// WithTarget which overwrites the default function used to retrieve the
+// targets from a boundary address.
 func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 	const op = "cache.(Repository).Refresh"
 	if err := r.removeStalePersonas(ctx); err != nil {

@@ -282,6 +282,25 @@ func TestRepository_LookupPersona(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, p)
 	})
+
+	t.Run("withUpdateLastAccessedTime", func(t *testing.T) {
+		addr := "address"
+		keyringType := "keyring"
+		tokenName := "token"
+		at := testAuthTokenLookup(keyringType, tokenName)
+
+		assert.NoError(t, r.AddPersona(ctx, addr, tokenName, keyringType, at.Id))
+		time.Sleep(1 * time.Millisecond)
+
+		beforeP, err := r.LookupPersona(ctx, tokenName, keyringType, WithUpdateLastAccessedTime(true))
+		assert.NoError(t, err)
+		assert.NotEmpty(t, beforeP)
+
+		afterP, err := r.LookupPersona(ctx, tokenName, keyringType)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, afterP)
+		assert.Greater(t, afterP.LastAccessedTime, beforeP.LastAccessedTime)
+	})
 }
 
 func TestRepository_RemoveStalePersonas(t *testing.T) {

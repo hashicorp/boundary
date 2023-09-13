@@ -115,14 +115,13 @@ func (r *Repository) LookupPersona(ctx context.Context, tokenName, keyringType s
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	if opts.withBoundaryAddress != "" && opts.withBoundaryAddress != p.BoundaryAddr {
+	switch {
+	case opts.withBoundaryAddress != "" && opts.withBoundaryAddress != p.BoundaryAddr:
 		// If we found a persona that doesn't have the provided address it
 		// is not the correct one, so the return should indicate the looked up
 		// persona could not be found.
 		return nil, nil
-	}
-
-	if opts.withAuthTokenId != "" && opts.withAuthTokenId != p.AuthTokenId {
+	case opts.withAuthTokenId != "" && opts.withAuthTokenId != p.AuthTokenId:
 		// If we found a persona that doesn't have the provided auth token id
 		// is not the correct one, so the return should indicate the looked up
 		// persona could not be found.
@@ -131,7 +130,6 @@ func (r *Repository) LookupPersona(ctx context.Context, tokenName, keyringType s
 
 	if opts.withUpdateLastAccessedTime {
 		updatedP := &Persona{
-			BoundaryAddr:     p.BoundaryAddr,
 			TokenName:        p.TokenName,
 			KeyringType:      p.KeyringType,
 			LastAccessedTime: time.Now(),
