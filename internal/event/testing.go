@@ -415,10 +415,12 @@ func testWorkerStatus(t testing.TB) *services.StatusRequest {
 func testWorkerStatusObservable(t testing.TB) *services.StatusRequest {
 	t.Helper()
 	return &services.StatusRequest{
-		Jobs: []*services.JobStatus{},
+		Jobs: []*services.JobStatus{
+			{Job: &services.Job{}},
+		},
 		WorkerStatus: &servers.ServerWorkerStatus{
 			PublicId:         "testID",
-			Tags:             []*servers.TagPair{},
+			Tags:             []*servers.TagPair{{}},
 			ReleaseVersion:   "Boundary v0.13.1",
 			OperationalState: "active",
 		},
