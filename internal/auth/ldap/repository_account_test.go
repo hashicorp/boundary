@@ -812,6 +812,61 @@ func TestRepository_ListAccounts_Limits(t *testing.T) {
 	}
 }
 
+func TestRepository_ListAccounts_Pagination(t *testing.T) {
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testWrapper := db.TestWrapper(t)
+
+	testCtx := context.Background()
+	testKms := kms.TestKms(t, testConn, testWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := testKms.GetWrapper(testCtx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	testRepo, err := NewRepository(testCtx, testRw, testRw, testKms)
+	assert.NoError(t, err)
+
+	authMethod1 := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	authMethod2 := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap2"})
+	accounts1 := []*Account{
+		TestAccount(t, testConn, authMethod1, "create-success1"),
+		TestAccount(t, testConn, authMethod1, "create-success2"),
+		TestAccount(t, testConn, authMethod1, "create-success3"),
+		TestAccount(t, testConn, authMethod1, "create-success4"),
+		TestAccount(t, testConn, authMethod1, "create-success5"),
+	}
+	// these are added to make sure we're correctly only pulling from one account
+	accounts2 := []*Account{
+		TestAccount(t, testConn, authMethod2, "create-success"),
+		TestAccount(t, testConn, authMethod2, "create-success2"),
+		TestAccount(t, testConn, authMethod2, "create-success3"),
+	}
+	_ = accounts1
+	_ = accounts2
+
+	page1, err := testRepo.ListAccounts(testCtx, authMethod1.GetPublicId(), WithLimit(testCtx, 2))
+	require.NoError(t, err)
+	require.Len(t, page1, 2)
+	page2, err := testRepo.ListAccounts(testCtx, authMethod1.GetPublicId(), WithLimit(testCtx, 2), WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].UpdateTime.AsTime()))
+	require.NoError(t, err)
+	require.Len(t, page2, 2)
+	for _, item := range page1 {
+		assert.NotEqual(t, item.GetPublicId(), page2[0].GetPublicId())
+		assert.NotEqual(t, item.GetPublicId(), page2[1].GetPublicId())
+	}
+	page3, err := testRepo.ListAccounts(testCtx, authMethod1.GetPublicId(), WithLimit(testCtx, 2), WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].UpdateTime.AsTime()))
+	require.NoError(t, err)
+	require.Len(t, page3, 1)
+	for _, item := range append(page1, page2...) {
+		assert.NotEqual(t, item.GetPublicId(), page3[0].GetPublicId())
+	}
+	page4, err := testRepo.ListAccounts(testCtx, authMethod1.GetPublicId(), WithLimit(testCtx, 2), WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].UpdateTime.AsTime()))
+	require.NoError(t, err)
+	require.Empty(t, page4)
+}
+
 func TestRepository_UpdateAccount(t *testing.T) {
 	testCtx := context.Background()
 	testConn, _ := db.TestSetup(t, "postgres")
@@ -1340,4 +1395,78 @@ func assertPublicId(t *testing.T, prefix, actual string) {
 	parts := strings.Split(actual, "_")
 	assert.Equalf(t, 2, len(parts), "want one '_' in PublicId, got multiple in %q", actual)
 	assert.Equalf(t, prefix, parts[0], "PublicId want prefix: %q, got: %q in %q", prefix, parts[0], actual)
+}
+
+func TestListDeletedIds(t *testing.T) {
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testWrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	testKms := kms.TestKms(t, testConn, testWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := testKms.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, testRw, testRw, testKms)
+	assert.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+
+	// Create and delete account
+	authMethod := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	account := TestAccount(t, testConn, authMethod, "create-success")
+	_, err = repo.DeleteAccount(ctx, account.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, err = repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{account.PublicId}, deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+}
+
+func TestGetTotalItems(t *testing.T) {
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testWrapper := db.TestWrapper(t)
+
+	testCtx := context.Background()
+	testKms := kms.TestKms(t, testConn, testWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := testKms.GetWrapper(testCtx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	testRepo, err := NewRepository(testCtx, testRw, testRw, testKms)
+	assert.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := testRepo.GetTotalItems(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create an account, expect 1 entries
+	authMethod := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	account := TestAccount(t, testConn, authMethod, "create-success")
+	numItems, err = testRepo.GetTotalItems(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// // Delete the account token, expect 0 again
+	_, err = testRepo.DeleteAccount(testCtx, account.GetPublicId())
+	require.NoError(t, err)
+	numItems, err = testRepo.GetTotalItems(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }

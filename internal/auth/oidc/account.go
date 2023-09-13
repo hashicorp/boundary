@@ -153,5 +153,5 @@ type deletedAccount struct {
 
 // TableName returns the tablename to override the default gorm table name
 func (s *deletedAccount) TableName() string {
-	return "account_deleted"
+	return "auth_account_deleted"
 }

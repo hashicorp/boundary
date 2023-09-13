@@ -1165,3 +1165,110 @@ func TestRepository_UpdateAccount_DupeNames(t *testing.T) {
 		assert.NoError(db.TestVerifyOplog(t, rw, aa.PublicId, db.WithOperation(oplog.OpType_OP_TYPE_UPDATE), db.WithCreateNotBefore(10*time.Second)))
 	})
 }
+
+func TestRepository_ListAccounts_Pagination(t *testing.T) {
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	testCtx := context.Background()
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
+	assert.NoError(t, err)
+
+	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 3)
+	accounts1 := TestMultipleAccounts(t, conn, authMethods[0].GetPublicId(), 5)
+	accounts2 := TestMultipleAccounts(t, conn, authMethods[1].GetPublicId(), 3)
+	_ = accounts1
+	_ = accounts2
+
+	page1, err := repo.ListAccounts(testCtx, authMethods[0].GetPublicId(), WithLimit(2))
+	require.NoError(t, err)
+	require.Len(t, page1, 2)
+	page2, err := repo.ListAccounts(testCtx, authMethods[0].GetPublicId(), WithLimit(2), WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].UpdateTime.AsTime()))
+	require.NoError(t, err)
+	require.Len(t, page2, 2)
+	for _, item := range page1 {
+		assert.NotEqual(t, item.GetPublicId(), page2[0].GetPublicId())
+		assert.NotEqual(t, item.GetPublicId(), page2[1].GetPublicId())
+	}
+	page3, err := repo.ListAccounts(testCtx, authMethods[0].GetPublicId(), WithLimit(2), WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].UpdateTime.AsTime()))
+	require.NoError(t, err)
+	require.Len(t, page3, 1)
+	for _, item := range append(page1, page2...) {
+		assert.NotEqual(t, item.GetPublicId(), page3[0].GetPublicId())
+	}
+	page4, err := repo.ListAccounts(testCtx, authMethods[0].GetPublicId(), WithLimit(2), WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].UpdateTime.AsTime()))
+	require.NoError(t, err)
+	require.Empty(t, page4)
+
+}
+
+func TestListDeletedIds(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
+	assert.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+
+	// Create and delete account
+	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 1)
+	account := TestAccount(t, conn, authMethods[0].GetPublicId(), "test")
+	_, err = repo.DeleteAccount(ctx, org.GetPublicId(), account.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, err = repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{account.PublicId}, deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+}
+
+func TestGetTotalItems(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+	repo, err := NewRepository(context.Background(), rw, rw, kms)
+	assert.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.GetTotalItems(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create an account, expect 1 entries
+	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 1)
+	account := TestAccount(t, conn, authMethods[0].GetPublicId(), "test")
+	numItems, err = repo.GetTotalItems(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// // Delete the account token, expect 0 again
+	_, err = repo.DeleteAccount(ctx, org.GetPublicId(), account.GetPublicId())
+	require.NoError(t, err)
+	numItems, err = repo.GetTotalItems(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+}

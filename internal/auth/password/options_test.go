@@ -72,7 +72,7 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithStartPageAfterItem", func(t *testing.T) {
 		assert := assert.New(t)
 		updateTime := time.Now()
-		opts := getOpts(WithStartPageAfterItem("s_1", updateTime))
+		opts := GetOpts(WithStartPageAfterItem("s_1", updateTime))
 		testOpts := getDefaultOptions()
 		testOpts.withStartPageAfterItem = &sortAccount{
 			publicId:   "s_1",

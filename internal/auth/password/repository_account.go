@@ -155,6 +155,12 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 	}
 	opts := GetOpts(opt...)
 
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+
 	var args []any
 	args = append(args, sql.Named("with_auth_method_id", withAuthMethodId))
 	whereClause := "auth_method_id = @with_auth_method_id"
@@ -179,7 +185,7 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 	}
 
 	var accts []*Account
-	err := r.reader.SearchWhere(ctx, &accts, whereClause, args, db.WithLimit(opts.withLimit), db.WithOrder(withOrder))
+	err := r.reader.SearchWhere(ctx, &accts, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -203,7 +209,7 @@ func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]str
 // GetTotalItems returns the total number of items in the accounts table.
 func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
 	const op = "account.(Repository).GetTotalItems"
-	rows, err := r.reader.Query(ctx, "select count(*) from account", nil)
+	rows, err := r.reader.Query(ctx, "select count(*) from auth_account", nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total accounts"))
 	}
