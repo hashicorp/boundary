@@ -1089,8 +1089,8 @@ func Test_fillPage(t *testing.T) {
 		pageSize := 2
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			if prevPageLast != nil {
-				assert.Equal(t, 2, prevPageLast.I)
-				return []*testType{{3}, {4}, {5}}, nil
+				assert.Equal(t, 3, prevPageLast.I)
+				return []*testType{{4}, {5}, {6}}, nil
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
@@ -1112,8 +1112,8 @@ func Test_fillPage(t *testing.T) {
 		pageSize := 2
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			if prevPageLast != nil {
-				assert.Equal(t, 2, prevPageLast.I)
-				return []*testType{{3}, {4}}, nil
+				assert.Equal(t, 3, prevPageLast.I)
+				return []*testType{{4}, {5}}, nil
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
@@ -1135,8 +1135,8 @@ func Test_fillPage(t *testing.T) {
 		pageSize := 2
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			if prevPageLast != nil {
-				assert.Equal(t, 2, prevPageLast.I)
-				return []*testType{{3}}, nil
+				assert.Equal(t, 3, prevPageLast.I)
+				return []*testType{{4}}, nil
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
@@ -1158,8 +1158,8 @@ func Test_fillPage(t *testing.T) {
 		pageSize := 2
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			if prevPageLast != nil {
-				assert.Equal(t, 2, prevPageLast.I)
-				return []*testType{{3}}, nil
+				assert.Equal(t, 3, prevPageLast.I)
+				return []*testType{{4}}, nil
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
@@ -1183,9 +1183,9 @@ func Test_fillPage(t *testing.T) {
 			switch {
 			case prevPageLast == nil:
 				return []*testType{{1}, {2}, {3}}, nil
-			case prevPageLast.I == 2:
-				return []*testType{{3}, {4}, {5}}, nil
-			case prevPageLast.I == 4:
+			case prevPageLast.I == 3:
+				return []*testType{{4}, {5}, {6}}, nil
+			case prevPageLast.I == 6:
 				return nil, nil
 			default:
 				t.Fatalf("unexpected call to listItemsFn with %#v", prevPageLast)
@@ -1210,8 +1210,8 @@ func Test_fillPage(t *testing.T) {
 		pageSize := 2
 		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
 			if prevPageLast != nil {
-				assert.Equal(t, 2, prevPageLast.I)
-				return []*testType{{3}}, nil
+				assert.Equal(t, 3, prevPageLast.I)
+				return []*testType{{4}}, nil
 			}
 			return []*testType{{1}, {2}, {3}}, nil
 		}
