@@ -6,9 +6,24 @@ package event
 import (
 	"errors"
 	"reflect"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 )
+
+// Any fields in these packages should be treated as atomic structures
+var coreProtoPackages = map[string]bool{
+	"anypb":           true,
+	"apipb":           true,
+	"durationpb":      true,
+	"emptypb":         true,
+	"fieldmaskpb":     true,
+	"sourcecontextpb": true,
+	"structpb":        true,
+	"timestamppb":     true,
+	"typepb":          true,
+	"wrapperspb":      true,
+}
 
 // protoFilter is a signature for a struct field validation test
 type protoFilter func(field reflect.StructField) bool
@@ -47,6 +62,12 @@ func filterValue(fv reflect.Value, isObservable bool) {
 	return
 }
 
+func packageNameFromType(field reflect.StructField) string {
+	typeSegments := strings.Split(field.Type.String(), ".")
+	pkg := strings.TrimLeft(typeSegments[0], "*")
+	return pkg
+}
+
 func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter, isObservable bool) error {
 	kind := value.Kind()
 
@@ -55,8 +76,6 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 		value = value.Elem()
 		return recurseStructureWithProtoFilter(value, filterFunc, isObservable)
 	case reflect.Map:
-		// m := reflect.ValueOf(value)
-		// fmt.Printf("type of m %+v \n", reflect.TypeOf(value))
 		for _, k := range value.MapKeys() {
 			mVal := value.MapIndex(k)
 			if err := recurseStructureWithProtoFilter(mVal, filterFunc, isObservable); err != nil {
@@ -65,30 +84,22 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 		}
 		return nil
 	case reflect.Array, reflect.Slice:
-		for i := 0; i < value.Len(); i++ {
-			sVal := value.Index(i)
-			// fmt.Printf("Array: sval %+v, is observable %+v \n", sVal, isObservable)
-			if err := recurseStructureWithProtoFilter(sVal, filterFunc, isObservable); err != nil {
-				return err
+		if value.Len() > 0 {
+			zeroCount := 0
+			for i := 0; i < value.Len(); i++ {
+				sVal := value.Index(i)
+				if err := recurseStructureWithProtoFilter(sVal, filterFunc, isObservable); err != nil {
+					return err
+				}
+				if sVal.IsValid() && sVal.IsZero() {
+					zeroCount++
+				}
+			}
+			// if slice is empty after processing, we can zero its length
+			if zeroCount == value.Len() && kind == reflect.Slice {
+				value.SetLen(0)
 			}
 		}
-		//if isObservable {
-		//	for i := 0; i < value.Len(); i++ {
-		//		sVal := value.Index(i)
-		//		if err := recurseStructureWithProtoFilter(sVal, filterFunc, isObservable); err != nil {
-		//			return err
-		//		}
-		//	}
-		//} else {
-		//	if kind == reflect.Slice {
-		//		value.SetLen(0) // truncate
-		//	} else {
-		//		// fixed size, so we zero
-		//		for i := 0; i < value.Len(); i++ {
-		//			value.Index(i).SetZero()
-		//		}
-		//	}
-		//}
 	case reflect.Struct:
 		fields := value.Type()
 		num := fields.NumField()
@@ -102,7 +113,13 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 			if filterFunc != nil {
 				isObservable = filterFunc(field)
 			}
-			// fmt.Printf("field name %+v, is observable %+v \n", field.Name, isObservable)
+			// structures in core proto packages are not recursively filtered
+			if coreProtoPackages[packageNameFromType(field)] {
+				if !isObservable {
+					v.SetZero()
+				}
+				continue
+			}
 			if err := recurseStructureWithProtoFilter(v, filterFunc, isObservable); err != nil {
 				return err
 			}

@@ -516,12 +516,8 @@ func Test_composeFromTelemetryFiltering(t *testing.T) {
 				pmsg, ok := req.(*Response)
 				assert.True(ok)
 				assert.NotNil(pmsg)
-				// fmt.Printf("ACTUAL %+v \n", pmsg.Details)
-				// j, err := json.Marshal(pmsg)
-				// assert.NotNil(err)
-				// fmt.Printf("ACTUAL JSON %s \n", string(j))
-				// fmt.Printf("RESPONSE %+v \n", tt.wantFilteredResponse.Details)
-				// assert.True(proto.Equal(tt.wantFilteredResponse.Details, pmsg.Details))
+				assert.True(proto.Equal(tt.wantFilteredResponse.Details, pmsg.Details), "protos differ:\nexpected: %+v\nactual: %+v", tt.wantFilteredResponse.Details, pmsg.Details)
+
 			}
 		})
 	}
