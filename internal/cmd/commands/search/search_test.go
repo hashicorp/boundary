@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
@@ -208,12 +209,15 @@ func TestSearch(t *testing.T) {
 		assert.EqualValues(t, r, daemon.SearchResult{})
 	})
 
-	srv.AddTargets(t, cmd.p.BoundaryAddr, cmd.ReadTokenFromKeyring(cmd.keyring(), cmd.tokenName()).Token, []*targets.Target{
+	srv.AddResources(t, cmd.p, []*targets.Target{
 		{Id: "ttcp_1234567890", Name: "name1", Description: "description1"},
 		{Id: "ttcp_0987654321", Name: "name2", Description: "description2"},
+	}, []*sessions.Session{
+		{Id: "sess_1234567890", TargetId: "ttcp_1234567890", Status: "pending"},
+		{Id: "sess_0987654321", TargetId: "ttcp_0987654321", Status: "pending"},
 	})
 
-	t.Run("response from list", func(t *testing.T) {
+	t.Run("target response from list", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
 			boundaryAddr: cmd.p.BoundaryAddr,
 			keyringType:  cmd.keyring(),
@@ -229,7 +233,7 @@ func TestSearch(t *testing.T) {
 		assert.NotNil(t, r)
 		assert.Len(t, r.Targets, 2)
 	})
-	t.Run("full response from query", func(t *testing.T) {
+	t.Run("full target response from query", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
 			boundaryAddr: cmd.p.BoundaryAddr,
 			keyringType:  cmd.keyring(),
@@ -246,7 +250,7 @@ func TestSearch(t *testing.T) {
 		assert.NotNil(t, r)
 		assert.Len(t, r.Targets, 2)
 	})
-	t.Run("partial response from query", func(t *testing.T) {
+	t.Run("partial target response from query", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
 			boundaryAddr: cmd.p.BoundaryAddr,
 			keyringType:  cmd.keyring(),
@@ -261,6 +265,59 @@ func TestSearch(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
 		assert.NotNil(t, r)
+		assert.Len(t, r.Sessions, 0)
 		assert.Len(t, r.Targets, 1)
+	})
+
+	t.Run("session response from list", func(t *testing.T) {
+		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
+			boundaryAddr: cmd.p.BoundaryAddr,
+			keyringType:  cmd.keyring(),
+			tokenName:    cmd.tokenName(),
+			authTokenId:  p.AuthTokenId,
+			resource:     "sessions",
+		})
+		require.NoError(t, err)
+		r := daemon.SearchResult{}
+		apiErr, err := resp.Decode(&r)
+		assert.NoError(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, r)
+		assert.Len(t, r.Targets, 0)
+		assert.Len(t, r.Sessions, 2)
+	})
+	t.Run("full session response from query", func(t *testing.T) {
+		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
+			boundaryAddr: cmd.p.BoundaryAddr,
+			keyringType:  cmd.keyring(),
+			tokenName:    cmd.tokenName(),
+			authTokenId:  p.AuthTokenId,
+			flagQuery:    "id % sess",
+			resource:     "sessions",
+		})
+		require.NoError(t, err)
+		r := daemon.SearchResult{}
+		apiErr, err := resp.Decode(&r)
+		assert.NoError(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, r)
+		assert.Len(t, r.Sessions, 2)
+	})
+	t.Run("partial session response from query", func(t *testing.T) {
+		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
+			boundaryAddr: cmd.p.BoundaryAddr,
+			keyringType:  cmd.keyring(),
+			tokenName:    cmd.tokenName(),
+			authTokenId:  p.AuthTokenId,
+			flagQuery:    "id % sess_1234567890",
+			resource:     "sessions",
+		})
+		require.NoError(t, err)
+		r := daemon.SearchResult{}
+		apiErr, err := resp.Decode(&r)
+		assert.NoError(t, err)
+		assert.Nil(t, apiErr)
+		assert.NotNil(t, r)
+		assert.Len(t, r.Sessions, 1)
 	})
 }

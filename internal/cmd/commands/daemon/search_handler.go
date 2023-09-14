@@ -58,9 +58,6 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 		case resource == "":
 			writeError(w, "resource is a required field but was empty", http.StatusBadRequest)
 			return
-		case resource != "targets":
-			writeError(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
-			return
 		case tokenName == "":
 			writeError(w, fmt.Sprintf("%s is a required field but was empty", tokenNameKey), http.StatusBadRequest)
 			return
@@ -71,7 +68,7 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 			writeError(w, fmt.Sprintf("%s is a required field but was empty", boundaryAddrKey), http.StatusBadRequest)
 			return
 		case authTokenId == "":
-			writeError(w, fmt.Sprintf("%s is a required field but was empty", authTokenId), http.StatusBadRequest)
+			writeError(w, fmt.Sprintf("%s is a required field but was empty", authTokenIdKey), http.StatusBadRequest)
 			return
 		}
 
@@ -83,12 +80,16 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 		}
 
 		query := r.URL.Query().Get(queryKey)
-		var found []*targets.Target
-		switch query {
-		case "":
-			found, err = repo.ListTargets(r.Context(), p)
+
+		var res *SearchResult
+		switch resource {
+		case "targets":
+			res, err = searchTargets(r.Context(), repo, p, query, filter)
+		case "sessions":
+			res, err = searchSessions(r.Context(), repo, p, query, filter)
 		default:
-			found, err = repo.QueryTargets(r.Context(), p, query)
+			writeError(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
+			return
 		}
 
 		if err != nil {
@@ -98,26 +99,65 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 			default:
 				writeError(w, err.Error(), http.StatusInternalServerError)
 			}
-			return
+		}
+		if res == nil {
+			writeError(w, "nil SearchResult generated", http.StatusInternalServerError)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-
-		finalItems := make([]*targets.Target, 0, len(found))
-		for _, item := range found {
-			if filter.Match(item) {
-				finalItems = append(finalItems, item)
-			}
-		}
-
-		res := SearchResult{
-			Targets: finalItems,
-		}
 		j, err := json.Marshal(res)
 		if err != nil {
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(j)
+	}, nil
+}
+
+func searchTargets(ctx context.Context, repo *cache.Repository, p *cache.Persona, query string, filter *handlers.Filter) (*SearchResult, error) {
+	var found []*targets.Target
+	var err error
+	switch query {
+	case "":
+		found, err = repo.ListTargets(ctx, p)
+	default:
+		found, err = repo.QueryTargets(ctx, p, query)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	finalTars := make([]*targets.Target, 0, len(found))
+	for _, item := range found {
+		if filter.Match(item) {
+			finalTars = append(finalTars, item)
+		}
+	}
+	return &SearchResult{
+		Targets: finalTars,
+	}, nil
+}
+
+func searchSessions(ctx context.Context, repo *cache.Repository, p *cache.Persona, query string, filter *handlers.Filter) (*SearchResult, error) {
+	var found []*sessions.Session
+	var err error
+	switch query {
+	case "":
+		found, err = repo.ListSessions(ctx, p)
+	default:
+		found, err = repo.QuerySessions(ctx, p, query)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	finalSess := make([]*sessions.Session, 0, len(found))
+	for _, item := range found {
+		if filter.Match(item) {
+			finalSess = append(finalSess, item)
+		}
+	}
+	return &SearchResult{
+		Sessions: finalSess,
 	}, nil
 }
