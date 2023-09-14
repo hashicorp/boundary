@@ -6,6 +6,7 @@ package oidc
 import (
 	"crypto/x509"
 	"net/url"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 )
@@ -48,6 +49,7 @@ type options struct {
 	withOperationalState    AuthMethodState
 	withAccountClaimMap     map[string]AccountToClaim
 	withReader              db.Reader
+	withStartPageAfterItem  *sortAccount
 }
 
 func getDefaultOptions() options {
@@ -230,5 +232,16 @@ func WithAccountClaimMap(acm map[string]AccountToClaim) Option {
 func WithReader(reader db.Reader) Option {
 	return func(o *options) {
 		o.withReader = reader
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(publicId string, updateTime time.Time) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = &sortAccount{
+			publicId:   publicId,
+			updateTime: updateTime,
+		}
 	}
 }
