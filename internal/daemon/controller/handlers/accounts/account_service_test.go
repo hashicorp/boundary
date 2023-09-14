@@ -157,7 +157,7 @@ func TestGet(t *testing.T) {
 		Version:      1,
 		Type:         password.Subtype.String(),
 		Attrs: &pb.Account_PasswordAccountAttributes{
-			&pb.PasswordAccountAttributes{LoginName: pwA.GetLoginName()},
+			PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: pwA.GetLoginName()},
 		},
 		AuthorizedActions: pwAuthorizedActions,
 	}
@@ -184,7 +184,7 @@ func TestGet(t *testing.T) {
 		Version:      1,
 		Type:         oidc.Subtype.String(),
 		Attrs: &pb.Account_OidcAccountAttributes{
-			&pb.OidcAccountAttributes{
+			OidcAccountAttributes: &pb.OidcAccountAttributes{
 				Issuer:  oidcAm.GetIssuer(),
 				Subject: "test-subject",
 			},
@@ -308,8 +308,10 @@ func TestGet(t *testing.T) {
 }
 
 func TestListPassword(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
@@ -358,11 +360,15 @@ func TestListPassword(t *testing.T) {
 			Version:      1,
 			Type:         "password",
 			Attrs: &pb.Account_PasswordAccountAttributes{
-				&pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
+				PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
 			},
 			AuthorizedActions: pwAuthorizedActions,
 		})
 	}
+
+	// Run analyze in the DB to update the estimate tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 
 	cases := []struct {
 		name     string
@@ -376,7 +382,7 @@ func TestListPassword(t *testing.T) {
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId()},
 			res: &pbs.ListAccountsResponse{
 				Items:        wantSomeAccounts,
-				EstItemCount: 6,
+				EstItemCount: uint32(len(wantSomeAccounts)),
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -398,7 +404,7 @@ func TestListPassword(t *testing.T) {
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amOtherAccounts.GetPublicId()},
 			res: &pbs.ListAccountsResponse{
 				Items:        wantOtherAccounts,
-				EstItemCount: 6,
+				EstItemCount: uint32(len(wantOtherAccounts)),
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -408,7 +414,6 @@ func TestListPassword(t *testing.T) {
 			name: "List No Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amNoAccounts.GetPublicId()},
 			res: &pbs.ListAccountsResponse{
-				EstItemCount: 6,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -427,7 +432,7 @@ func TestListPassword(t *testing.T) {
 			},
 			res: &pbs.ListAccountsResponse{
 				Items:        wantSomeAccounts[1:2],
-				EstItemCount: 6,
+				EstItemCount: 1,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -441,7 +446,7 @@ func TestListPassword(t *testing.T) {
 				Filter:       `"/item/id"=="noaccountmatchesthis"`,
 			},
 			res: &pbs.ListAccountsResponse{
-				EstItemCount: 6,
+				EstItemCount: 0,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -476,7 +481,7 @@ func TestListPassword(t *testing.T) {
 					protocmp.SortRepeatedFields(got),
 					protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
 				),
-				"ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -498,6 +503,8 @@ func TestListPassword(t *testing.T) {
 func TestListOidc(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
@@ -537,7 +544,7 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         oidc.Subtype.String(),
 			Attrs: &pb.Account_OidcAccountAttributes{
-				&pb.OidcAccountAttributes{
+				OidcAccountAttributes: &pb.OidcAccountAttributes{
 					Issuer:  amSomeAccounts.GetIssuer(),
 					Subject: subId,
 				},
@@ -559,7 +566,7 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         oidc.Subtype.String(),
 			Attrs: &pb.Account_OidcAccountAttributes{
-				&pb.OidcAccountAttributes{
+				OidcAccountAttributes: &pb.OidcAccountAttributes{
 					Issuer:  amOtherAccounts.GetIssuer(),
 					Subject: subId,
 				},
@@ -567,6 +574,10 @@ func TestListOidc(t *testing.T) {
 			AuthorizedActions: oidcAuthorizedActions,
 		})
 	}
+
+	// Run analyze in the DB to update the estimate tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 
 	cases := []struct {
 		name     string
@@ -580,7 +591,7 @@ func TestListOidc(t *testing.T) {
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId()},
 			res: &pbs.ListAccountsResponse{
 				Items:        wantSomeAccounts,
-				EstItemCount: 6,
+				EstItemCount: uint32(len(wantSomeAccounts)),
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -602,7 +613,7 @@ func TestListOidc(t *testing.T) {
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amOtherAccounts.GetPublicId()},
 			res: &pbs.ListAccountsResponse{
 				Items:        wantOtherAccounts,
-				EstItemCount: 6,
+				EstItemCount: uint32(len(wantOtherAccounts)),
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -612,7 +623,6 @@ func TestListOidc(t *testing.T) {
 			name: "List No Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amNoAccounts.GetPublicId()},
 			res: &pbs.ListAccountsResponse{
-				EstItemCount: 6,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -631,7 +641,7 @@ func TestListOidc(t *testing.T) {
 			},
 			res: &pbs.ListAccountsResponse{
 				Items:        wantSomeAccounts[1:2],
-				EstItemCount: 6,
+				EstItemCount: 1,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -645,7 +655,6 @@ func TestListOidc(t *testing.T) {
 				Filter:       `"/item/id"=="noaccountmatchesthis"`,
 			},
 			res: &pbs.ListAccountsResponse{
-				EstItemCount: 6,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -682,7 +691,6 @@ func TestListOidc(t *testing.T) {
 					protocmp.Transform(),
 					protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
 				),
-				"ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res,
 			)
 
 			// Now test with anon
@@ -705,6 +713,8 @@ func TestListOidc(t *testing.T) {
 func TestListLdap(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
@@ -770,6 +780,10 @@ func TestListLdap(t *testing.T) {
 		})
 	}
 
+	// Run analyze in the DB to update the estimate tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
 	cases := []struct {
 		name     string
 		req      *pbs.ListAccountsRequest
@@ -782,7 +796,7 @@ func TestListLdap(t *testing.T) {
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId()},
 			res: &pbs.ListAccountsResponse{
 				Items:        wantSomeAccounts,
-				EstItemCount: 6,
+				EstItemCount: uint32(len(wantSomeAccounts)),
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -804,7 +818,7 @@ func TestListLdap(t *testing.T) {
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amOtherAccounts.GetPublicId()},
 			res: &pbs.ListAccountsResponse{
 				Items:        wantOtherAccounts,
-				EstItemCount: 6,
+				EstItemCount: uint32(len(wantOtherAccounts)),
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -814,7 +828,6 @@ func TestListLdap(t *testing.T) {
 			name: "List No Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amNoAccounts.GetPublicId()},
 			res: &pbs.ListAccountsResponse{
-				EstItemCount: 6,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -833,7 +846,7 @@ func TestListLdap(t *testing.T) {
 			},
 			res: &pbs.ListAccountsResponse{
 				Items:        wantSomeAccounts[1:2],
-				EstItemCount: 6,
+				EstItemCount: 1,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -847,7 +860,6 @@ func TestListLdap(t *testing.T) {
 				Filter:       `"/item/id"=="noaccountmatchesthis"`,
 			},
 			res: &pbs.ListAccountsResponse{
-				EstItemCount: 6,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -1104,7 +1116,7 @@ func TestCreatePassword(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "validaccount",
 							Password:  nil,
 						},
@@ -1121,7 +1133,7 @@ func TestCreatePassword(t *testing.T) {
 					Version:      1,
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "validaccount",
 							Password:  nil,
 						},
@@ -1136,7 +1148,7 @@ func TestCreatePassword(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "notypedefined",
 							Password:  nil,
 						},
@@ -1151,7 +1163,7 @@ func TestCreatePassword(t *testing.T) {
 					Version:      1,
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "notypedefined",
 							Password:  nil,
 						},
@@ -1168,7 +1180,7 @@ func TestCreatePassword(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "name_with_password"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "haspassword",
 							Password:  &wrapperspb.StringValue{Value: "somepassword"},
 						},
@@ -1185,7 +1197,7 @@ func TestCreatePassword(t *testing.T) {
 					Version:      1,
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "haspassword",
 							Password:  nil,
 						},
@@ -1201,7 +1213,7 @@ func TestCreatePassword(t *testing.T) {
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Type:         "wrong",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "nopwprovided",
 							Password:  nil,
 						},
@@ -1219,7 +1231,7 @@ func TestCreatePassword(t *testing.T) {
 					Id:           globals.PasswordAccountPrefix + "_notallowed",
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "cantprovideid",
 							Password:  nil,
 						},
@@ -1237,7 +1249,7 @@ func TestCreatePassword(t *testing.T) {
 					CreatedTime:  timestamppb.Now(),
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "nocreatedtime",
 							Password:  nil,
 						},
@@ -1255,7 +1267,7 @@ func TestCreatePassword(t *testing.T) {
 					UpdatedTime:  timestamppb.Now(),
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "noupdatetime",
 							Password:  nil,
 						},
@@ -1356,7 +1368,7 @@ func TestCreateOidc(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "valid-account",
 						},
 					},
@@ -1372,7 +1384,7 @@ func TestCreateOidc(t *testing.T) {
 					Version:      1,
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "valid-account",
 							Issuer:  am.GetIssuer(),
 						},
@@ -1387,7 +1399,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "no type defined",
 						},
 					},
@@ -1401,7 +1413,7 @@ func TestCreateOidc(t *testing.T) {
 					Version:      1,
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "no type defined",
 							Issuer:  am.GetIssuer(),
 						},
@@ -1418,7 +1430,7 @@ func TestCreateOidc(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "overwritten-issuer",
 							Issuer:  "https://overwrite.com",
 						},
@@ -1434,7 +1446,7 @@ func TestCreateOidc(t *testing.T) {
 					Version:      1,
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "overwritten-issuer",
 							Issuer:  "https://overwrite.com",
 						},
@@ -1450,7 +1462,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Type:         password.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "cant-specify-mismatching-type",
 						},
 					},
@@ -1467,7 +1479,7 @@ func TestCreateOidc(t *testing.T) {
 					Id:           globals.OidcAccountPrefix + "_notallowed",
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "cant-specify-id",
 						},
 					},
@@ -1484,7 +1496,7 @@ func TestCreateOidc(t *testing.T) {
 					CreatedTime:  timestamppb.Now(),
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "cant-specify-created-time",
 						},
 					},
@@ -1501,7 +1513,7 @@ func TestCreateOidc(t *testing.T) {
 					UpdatedTime:  timestamppb.Now(),
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "cant-specify-update-time",
 						},
 					},
@@ -1850,12 +1862,12 @@ func TestUpdatePassword(t *testing.T) {
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &pb.Account_PasswordAccountAttributes{
-		&pb.PasswordAccountAttributes{
+		PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 			LoginName: "default",
 		},
 	}
 	modifiedAttributes := &pb.Account_PasswordAccountAttributes{
-		&pb.PasswordAccountAttributes{
+		PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 			LoginName: "modified",
 		},
 	}
@@ -2249,13 +2261,13 @@ func TestUpdateOidc(t *testing.T) {
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &pb.Account_OidcAccountAttributes{
-		&pb.OidcAccountAttributes{
+		OidcAccountAttributes: &pb.OidcAccountAttributes{
 			Issuer:  "https://www.alice.com",
 			Subject: "test-subject",
 		},
 	}
 	modifiedAttributes := &pb.Account_OidcAccountAttributes{
-		&pb.OidcAccountAttributes{
+		OidcAccountAttributes: &pb.OidcAccountAttributes{
 			Issuer:  "https://www.changed.com",
 			Subject: "changed",
 		},
@@ -3004,7 +3016,7 @@ func TestSetPassword(t *testing.T) {
 	createAccount := func(t *testing.T, pw string) *pb.Account {
 		am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 		pwAttrs := &pb.Account_PasswordAccountAttributes{
-			&pb.PasswordAccountAttributes{
+			PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 				LoginName: "testusername",
 			},
 		}
@@ -3145,9 +3157,11 @@ func TestChangePassword(t *testing.T) {
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {
 		am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-		pwAttrs := &pb.Account_PasswordAccountAttributes{&pb.PasswordAccountAttributes{
-			LoginName: "testusername",
-		}}
+		pwAttrs := &pb.Account_PasswordAccountAttributes{
+			PasswordAccountAttributes: &pb.PasswordAccountAttributes{
+				LoginName: "testusername",
+			},
+		}
 		if pw != "" {
 			pwAttrs.PasswordAccountAttributes.Password = wrapperspb.String(pw)
 		}
@@ -3299,6 +3313,8 @@ func TestChangePassword(t *testing.T) {
 func TestListPagination(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
@@ -3388,6 +3404,10 @@ func TestListPagination(t *testing.T) {
 		RefreshToken: "",
 		PageSize:     2,
 	}
+
+	// Run analyze in the DB to update the estimate tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 
 	got, err := s.ListAccounts(ctx, req)
 	require.NoError(t, err)
