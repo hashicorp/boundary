@@ -1243,6 +1243,8 @@ func TestListDeletedIds(t *testing.T) {
 func TestGetTotalItems(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 
@@ -1260,6 +1262,11 @@ func TestGetTotalItems(t *testing.T) {
 	// Create an account, expect 1 entries
 	authMethods := TestAuthMethods(t, conn, org.GetPublicId(), 1)
 	account := TestAccount(t, conn, authMethods[0].GetPublicId(), "test")
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
 	numItems, err = repo.GetTotalItems(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, numItems)
@@ -1267,6 +1274,9 @@ func TestGetTotalItems(t *testing.T) {
 	// // Delete the account token, expect 0 again
 	_, err = repo.DeleteAccount(ctx, org.GetPublicId(), account.GetPublicId())
 	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
 	numItems, err = repo.GetTotalItems(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 0, numItems)

@@ -1435,6 +1435,8 @@ func TestGetTotalItems(t *testing.T) {
 	testWrapper := db.TestWrapper(t)
 
 	testCtx := context.Background()
+	sqlDb, err := testConn.SqlDB(testCtx)
+	require.NoError(t, err)
 	testKms := kms.TestKms(t, testConn, testWrapper)
 	iamRepo := iam.TestRepo(t, testConn, testWrapper)
 	org, _ := iam.TestScopes(t, iamRepo)
@@ -1459,6 +1461,11 @@ func TestGetTotalItems(t *testing.T) {
 		WithApiUrl(TestConvertToUrls(t, "https://www.alice.com/callback")[0]),
 	)
 	account := TestAccount(t, testConn, authMethod, "create-success1")
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(testCtx, "analyze")
+	require.NoError(t, err)
+
 	numItems, err = testRepo.GetTotalItems(testCtx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, numItems)
@@ -1466,6 +1473,9 @@ func TestGetTotalItems(t *testing.T) {
 	// Delete the account token, expect 0 again
 	_, err = testRepo.DeleteAccount(testCtx, org.GetPublicId(), account.GetPublicId())
 	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(testCtx, "analyze")
+	require.NoError(t, err)
+
 	numItems, err = testRepo.GetTotalItems(testCtx)
 	require.NoError(t, err)
 	assert.Equal(t, 0, numItems)

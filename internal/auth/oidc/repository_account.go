@@ -135,7 +135,9 @@ func (r *Repository) LookupAccount(ctx context.Context, withPublicId string, opt
 	return a, nil
 }
 
-// ListAccounts in an auth method and supports WithLimit option.
+// ListAccounts in an auth method and supports the following options:
+//   - WithLimit
+//   - WithStartPageAfterItem
 func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*Account, error) {
 	const op = "oidc.(Repository).ListAccounts"
 	if withAuthMethodId == "" {
@@ -197,7 +199,7 @@ func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]str
 // GetTotalItems returns the total number of items in the accounts table.
 func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
 	const op = "account.(Repository).GetTotalItems"
-	rows, err := r.reader.Query(ctx, "select count(*) from auth_account", nil)
+	rows, err := r.reader.Query(ctx, estimateCountAccounts, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total accounts"))
 	}
