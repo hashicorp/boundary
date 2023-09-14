@@ -27,14 +27,17 @@ an agent to be installed on every end host.
 Getting Started
 -------------------------------
 
-Boundary consists of two server components: Controllers, which serve the API
-and coordinate session requests; and Workers, which perform the actual session
-handling. A normal Boundary installation will consist of one or more
+Boundary consists of two server components: 
+
+* **Controller**, which serve the API and coordinate session requests
+* **Workers**, which perform the actual session handling.
+
+A real-world Boundary installation will likely consist of one or more
 Controllers paired with one or more Workers. A single Boundary binary can act
 in either of these two modes.
 
-Additionally, Boundary provides a client that provides access to request and
-connect to authorized sessions.
+Additionally, Boundary provides a Desktop client & CLI for end-users to request & establish 
+authorized sessions to resources across a network.
 
 Boundary does _not_ require software to be installed on the endpoint hosts
 and services.
