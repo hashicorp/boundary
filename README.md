@@ -7,10 +7,7 @@
 
 <img alt="Boundary" src="boundary.png" alt="Image" width="500px"/>
 
-Boundary provides a secure way to access hosts and critical systems without 
-having to manage credentials or expose your network, and is entirely open source.
-
-Boundary provides secure access to hosts and critical systems without distributing and managing credentials, configuring firewalls, or exposing your private network. Traditionally, for users to access their resources, it's required that organizations establish and maintain SSH bastion hosts and VPNs.
+Boundary provides a secure way to access hosts and critical systems without the need to handle credentials, set up firewalls, or expose your network.
 
 With Boundary you can:
 
