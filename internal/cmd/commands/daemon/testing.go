@@ -16,11 +16,12 @@ import (
 type TestServer struct {
 	*cacheServer
 	socketDir string
+	cmd       Commander
 }
 
 // NewTestServer creates a test cache server using reasonable defaults for
 // tests.  Supports the option WithDebugFlag to enable debug output for sql
-func NewTestServer(t *testing.T, opt ...Option) *TestServer {
+func NewTestServer(t *testing.T, cmd Commander, opt ...Option) *TestServer {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -36,7 +37,11 @@ func NewTestServer(t *testing.T, opt ...Option) *TestServer {
 
 	s, err := newServer(ctx, cfg)
 	require.NoError(t, err)
-	return &TestServer{cacheServer: s, socketDir: t.TempDir()}
+	return &TestServer{
+		cacheServer: s,
+		socketDir:   t.TempDir(),
+		cmd:         cmd,
+	}
 }
 
 // BaseSocketDir returns the base directory in which the daemon socket is
@@ -47,7 +52,7 @@ func (s *TestServer) BaseSocketDir() string {
 
 // Serve runs the cache server. This is a blocking call and returns when the
 // server is shutdown or stops for any other reason.
-func (s *TestServer) Serve(t *testing.T, cmd commander) error {
+func (s *TestServer) Serve(t *testing.T) error {
 	t.Helper()
 	ctx := context.Background()
 
@@ -57,15 +62,22 @@ func (s *TestServer) Serve(t *testing.T, cmd commander) error {
 	t.Cleanup(func() {
 		s.shutdown(ctx)
 	})
-	return s.cacheServer.serve(ctx, cmd, l)
+	return s.cacheServer.serve(ctx, s.cmd, l)
 }
 
-// AddTargets adds targets to the cache for the provided Persona. The persona
-// must be one already known to the server.
-func (s *TestServer) AddTargets(t *testing.T, p *cache.Persona, tars []*targets.Target) {
+// AddTargets adds targets to the cache for the provided address, token name, and keyring type.
+// They token info must already be known to the server.
+func (s *TestServer) AddTargets(t *testing.T, tarAddr string, tarToken string, tars []*targets.Target) {
 	t.Helper()
 	ctx := context.Background()
-	r, err := cache.NewRepository(ctx, s.cacheServer.store)
+	r, err := cache.NewRepository(ctx, s.cacheServer.store, s.cmd.ReadTokenFromKeyring)
 	require.NoError(t, err)
-	require.NoError(t, r.RefreshTargets(ctx, p, tars))
+
+	tarFn := func(ctx context.Context, addr string, tok string) ([]*targets.Target, error) {
+		if addr != tarAddr || tok != tarToken {
+			return nil, nil
+		}
+		return tars, nil
+	}
+	require.NoError(t, r.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn)))
 }
