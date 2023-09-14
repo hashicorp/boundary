@@ -132,8 +132,8 @@ type ListSessionsRequest struct {
 	// Set this option to include terminated sessions as well.
 	IncludeTerminated bool `protobuf:"varint,40,opt,name=include_terminated,proto3" json:"include_terminated,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// An opaque token used to continue an existing iteration or
-	// request updated items. If paginating, use this token in the
-	// next list request.
+	// request updated items. If not specified, pagination
+	// will start from the beginning.
 	RefreshToken string `protobuf:"bytes,50,opt,name=refresh_token,proto3" json:"refresh_token,omitempty" class:"public"` // @gotags: `class:"public"`
 	// The maximum size of a page in this iteration.
 	// If unset, the default page size configured will be used.
@@ -237,7 +237,7 @@ type ListSessionsResponse struct {
 	// The direction of the sort, either "asc" or "desc".
 	SortDir string `protobuf:"bytes,50,opt,name=sort_dir,proto3" json:"sort_dir,omitempty" class:"public"` // @gotags: `class:"public"`
 	// A list of item IDs that have been removed since they were returned
-	// as part of an pagination. They should be dropped from any client cache.
+	// as part of a pagination. They should be dropped from any client cache.
 	// This may contain items that are not known to the cache, if they were
 	// created and deleted between listings.
 	RemovedIds []string `protobuf:"bytes,60,rep,name=removed_ids,proto3" json:"removed_ids,omitempty" class:"public"` // @gotags: `class:"public"`

@@ -5,8 +5,10 @@ package vault
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
@@ -453,7 +455,9 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, projectId stri
 }
 
 // ListCredentialLibraries returns a slice of CredentialLibraries for the
-// storeId. WithLimit is the only option supported.
+// storeId. Supports the following options:
+//   - WithLimit
+//   - WithStartPageAfterItem
 func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string, opt ...Option) ([]*CredentialLibrary, error) {
 	const op = "vault.(Repository).ListCredentialLibraries"
 	if storeId == "" {
@@ -465,10 +469,78 @@ func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
+	args := []any{sql.Named("store_id", storeId)}
+	whereClause := "store_id = @store_id"
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
+		)
+		whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+	}
 	var libs []*CredentialLibrary
-	err := r.reader.SearchWhere(ctx, &libs, "store_id = ?", []any{storeId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &libs, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return libs, nil
+}
+
+// ListDeletedIds lists the public IDs of any credential libraries deleted since the timestamp provided.
+// This includes both generic and ssh certificate credential libraries across all credential stores.
+func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
+	const op = "vault.(Repository).ListDeletedIds"
+	var deletedCredentialLibraries []*deletedCredentialLibrary
+	if err := r.reader.SearchWhere(ctx, &deletedCredentialLibraries, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credential libraries"))
+	}
+	var credentialLibraryIds []string
+	for _, cl := range deletedCredentialLibraries {
+		credentialLibraryIds = append(credentialLibraryIds, cl.PublicId)
+	}
+	return credentialLibraryIds, nil
+}
+
+// GetTotalItems returns an estimate of the total number of items in the credential library table.
+// This includes both generic and ssh certificate credential libraries.
+func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
+	const op = "vault.(Repository).GetTotalItems"
+	rows, err := r.reader.Query(ctx, estimateCountCredentialLibraries, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential libraries"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential libraries"))
+		}
+	}
+	return count, nil
+}
+
+// Now returns the current timestamp in the DB.
+func (r *Repository) Now(ctx context.Context) (time.Time, error) {
+	const op = "vault.(Repository).Now"
+	rows, err := r.reader.Query(ctx, "select current_timestamp", nil)
+	if err != nil {
+		return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+	}
+	var now time.Time
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &now); err != nil {
+			return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+		}
+	}
+	return now, nil
 }

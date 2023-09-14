@@ -884,6 +884,52 @@ func TestRepository_ListSSHCertificateCredentialLibraries_Limits(t *testing.T) {
 	}
 }
 
+func TestRepository_ListSSHCertificateCredentialLibraries_Pagination(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	css := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 3)
+
+	for _, cs := range css[:2] { // Leave the third store empty
+		TestSSHCertificateCredentialLibraries(t, conn, wrapper, cs.GetPublicId(), 5)
+	}
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	for _, cs := range css[:2] {
+		page1, err := repo.ListSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), WithLimit(2))
+		require.NoError(err)
+		require.Len(page1, 2)
+		page2, err := repo.ListSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), WithLimit(2), WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].UpdateTime.AsTime()))
+		require.NoError(err)
+		require.Len(page2, 2)
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, err := repo.ListSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), WithLimit(2), WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].UpdateTime.AsTime()))
+		require.NoError(err)
+		require.Len(page3, 1)
+		for _, item := range append(page1, page2...) {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+		}
+		page4, err := repo.ListSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), WithLimit(2), WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].UpdateTime.AsTime()))
+		require.NoError(err)
+		require.Empty(page4)
+	}
+
+	emptyPage, err := repo.ListSSHCertificateCredentialLibraries(ctx, css[2].GetPublicId(), WithLimit(2))
+	require.NoError(err)
+	require.Empty(emptyPage)
+}
+
 func TestRepository_UpdateSSHCertificateCredentialLibrary(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
