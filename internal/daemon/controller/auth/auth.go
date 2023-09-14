@@ -11,6 +11,7 @@ import (
 	"hash"
 	"hash/fnv"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -948,6 +949,8 @@ func (r *VerifyResults) GrantsHash(ctx context.Context) ([]byte, error) {
 	for _, grant := range r.grants {
 		values = append(values, grant.Grant, grant.RoleId, grant.ScopeId)
 	}
+	// Sort for deterministic output
+	slices.Sort(values)
 	hashVal, err := hashStrings(values...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

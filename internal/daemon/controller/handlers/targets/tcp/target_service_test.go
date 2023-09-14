@@ -422,6 +422,8 @@ func TestListPagination(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
 
@@ -469,6 +471,10 @@ func TestListPagination(t *testing.T) {
 			Address:                &wrapperspb.StringValue{},
 		})
 	}
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 
 	// Test without anon user
 	requestInfo := authpb.RequestInfo{
@@ -579,6 +585,10 @@ func TestListPagination(t *testing.T) {
 	require.NoError(t, err)
 	deletedTarget := allTargets[0]
 	allTargets = allTargets[1:]
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 
 	// Request updated results
 	req.RefreshToken = got.RefreshToken
