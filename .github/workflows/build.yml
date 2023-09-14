@@ -176,11 +176,11 @@ jobs:
         run: |
           sudo apt update
           sudo apt install libc6-armel-cross libc6-dev-armel-cross binutils-arm-linux-gnueabi libncurses5-dev build-essential bison flex libssl-dev bc
-          sudo apt install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+          sudo apt install gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
       - name: Go Build
         env:
           CGO_ENABLED: "1"
-          CC_FOR_TARGET: "arm-linux-gnueabihf-gcc"
+          CC_FOR_TARGET: "arm-linux-gnueabi-gcc"
           PRERELEASE_PRODUCT_VERSION: ${{ needs.set-product-version.outputs.prerelease-product-version }}
           METADATA_PRODUCT_VERSION: ${{ needs.product-metadata.outputs.product-edition }}
         uses: hashicorp/actions-go-build@v0.1.9  # TSCCR: loading action configs: failed to query HEAD reference: failed to get advertised references: authorization failed
