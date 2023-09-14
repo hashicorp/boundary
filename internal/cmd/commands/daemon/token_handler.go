@@ -20,14 +20,14 @@ type refresher interface {
 	refresh()
 }
 
-type personaToAdd struct {
+type userTokenToAdd struct {
 	KeyringType  string
 	TokenName    string
 	BoundaryAddr string
 	AuthTokenId  string
 }
 
-func newPersonaHandlerFunc(ctx context.Context, repo *cache.Repository, refresher refresher) (http.HandlerFunc, error) {
+func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher refresher) (http.HandlerFunc, error) {
 	const op = "daemon.newPersonaHandlerFunc"
 	switch {
 	case util.IsNil(repo):
@@ -42,7 +42,7 @@ func newPersonaHandlerFunc(ctx context.Context, repo *cache.Repository, refreshe
 			writeError(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		var perReq personaToAdd
+		var perReq userTokenToAdd
 
 		data, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -73,21 +73,22 @@ func newPersonaHandlerFunc(ctx context.Context, repo *cache.Repository, refreshe
 			return
 		}
 
-		p, err := repo.LookupPersona(ctx, perReq.TokenName, perReq.KeyringType)
+		tok, err := repo.LookupToken(ctx, perReq.TokenName, perReq.KeyringType)
 		if err != nil {
 			writeError(w, "error performing persona lookup", http.StatusInternalServerError)
 			return
 		}
 
-		if err = repo.AddPersona(ctx, perReq.BoundaryAddr, perReq.TokenName, perReq.KeyringType, perReq.AuthTokenId); err != nil {
-			writeError(w, "Failed to add a persona", http.StatusInternalServerError)
+		if err = repo.AddToken(ctx, perReq.BoundaryAddr, perReq.TokenName, perReq.KeyringType, perReq.AuthTokenId); err != nil {
+			writeError(w, "Failed to add a token", http.StatusInternalServerError)
 			return
 		}
 
 		w.WriteHeader(http.StatusNoContent)
 
-		if p == nil || p.AuthTokenId != perReq.AuthTokenId {
-			// If this was a new persona or an updated auth token refresh the cache.
+		// TODO: Figure out how to refresh only when the user id has changed
+		// and not every time the auth token changes.
+		if tok == nil || tok.AuthTokenId != perReq.AuthTokenId {
 			refresher.refresh()
 		}
 	}, nil

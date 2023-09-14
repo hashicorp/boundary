@@ -68,22 +68,22 @@ func (s *TestServer) Serve(t *testing.T) error {
 
 // AddResources adds targets to the cache for the provided address, token name,
 // and keyring type. They token info must already be known to the server.
-func (s *TestServer) AddResources(t *testing.T, p *cache.Persona, tars []*targets.Target, sess []*sessions.Session) {
+func (s *TestServer) AddResources(t *testing.T, p *cache.Token, tars []*targets.Target, sess []*sessions.Session) {
 	t.Helper()
 	ctx := context.Background()
 	r, err := cache.NewRepository(ctx, s.cacheServer.store, s.cmd.ReadTokenFromKeyring)
 	require.NoError(t, err)
 
-	tarFn := func(ctx context.Context, addr string, tok string) ([]*targets.Target, error) {
+	tarFn := func(ctx context.Context, _, tok string) ([]*targets.Target, error) {
 		at := s.cmd.ReadTokenFromKeyring(p.KeyringType, p.TokenName)
-		if addr != p.BoundaryAddr || tok != at.Token {
+		if tok != at.Token {
 			return nil, nil
 		}
 		return tars, nil
 	}
-	sessFn := func(ctx context.Context, addr string, tok string) ([]*sessions.Session, error) {
+	sessFn := func(ctx context.Context, _, tok string) ([]*sessions.Session, error) {
 		at := s.cmd.ReadTokenFromKeyring(p.KeyringType, p.TokenName)
-		if addr != p.BoundaryAddr || tok != at.Token {
+		if tok != at.Token {
 			return nil, nil
 		}
 		return sess, nil

@@ -339,8 +339,8 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"daemon add-persona": func() (cli.Command, error) {
-			return &daemon.AddPersonaCommand{
+		"daemon add-token": func() (cli.Command, error) {
+			return &daemon.AddTokenCommand{
 				Command: base.NewCommand(ui),
 			}, nil
 		},

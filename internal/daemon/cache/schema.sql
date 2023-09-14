@@ -2,84 +2,72 @@
 -- SPDX-License-Identifier: BUSL-1.1
 
 begin;
-create table if not exists cache_persona (
-  keyring_type text not null,
-  token_name text not null,
-  boundary_addr text not null,
-  auth_token_id text not null,
-  user_id text not null,
+-- user contains the boundary user information for the boundary user that owns
+-- the information in the cache.
+create table if not exists user (
+  id text not null primary key
+    check (length(id) > 0),
+  address text not null
+    check (length(address) > 0)
+);
+
+-- token contains the token information for a user
+create table if not exists token (
+  keyring_type text not null
+    check (length(keyring_type) > 0),
+  token_name text not null
+    check (length(token_name) > 0),
+  auth_token_id text not null
+    check (length(auth_token_id) > 0),
+  user_id text not null
+    references user(id)
+    on delete cascade,
   last_accessed_time timestamp not null default (strftime('%Y-%m-%d %H:%M:%f','now')),
-  unique(keyring_type, token_name, boundary_addr, user_id),
   primary key (keyring_type, token_name)
 );
 
-create table if not exists cache_target (
-  keyring_type text not null,
-  token_name text not null,
-  boundary_addr text not null,
-  boundary_user_id text not null,
-  id text not null,
+-- delete_orphaned_users
+create trigger token_update_delete_orphaned_users after update on token
+begin
+delete from user
+where
+    id not in (select user_id from token);
+end;
+
+create trigger token_delete_delete_orphaned_users after delete on token
+begin
+delete from user
+where
+    id not in (select user_id from token);
+end;
+
+create table if not exists target (
+  user_id text not null
+    references user(id)
+    on delete cascade,
+  id text not null
+    check (length(id) > 0),
   name text,
   description text,
   address text,
   item text,
-  foreign key (keyring_type, token_name, boundary_addr, boundary_user_id)
-	references cache_persona(keyring_type, token_name, boundary_addr, user_id)
-	on delete cascade,
-  primary key (keyring_type, token_name, boundary_addr, boundary_user_id, id)
+  primary key (user_id, id)
 );
 
--- delete_orphaned_targets will delete targets when a persona changes to no
--- longer have the same boundary address or boundary user id
-create trigger delete_orphaned_targets before update on cache_persona
-begin
-delete from cache_target
-where
-    (new.boundary_addr <> old.boundary_addr or new.user_id <> old.user_id)
-  and
-    keyring_type = old.keyring_type
-  and
-    token_name = old.token_name
-  and
-    boundary_addr = old.boundary_addr
-  and
-    boundary_user_id = old.user_id;
-end;
-
-create table if not exists cache_session (
-  keyring_type text not null,
-  token_name text not null,
-  boundary_addr text not null,
-  boundary_user_id text not null,
-  id text not null,
+create table if not exists session (
+  user_id text not null
+    references user(id)
+    on delete cascade,
+  id text not null
+    check (length(id) > 0),
   endpoint text,
   type text,
   status text,
   item text,
-  foreign key (keyring_type, token_name, boundary_addr, boundary_user_id)
-	references cache_persona(keyring_type, token_name, boundary_addr, user_id)
-	on delete cascade,
-  primary key (keyring_type, token_name, boundary_addr, boundary_user_id, id)
+  primary key (user_id, id)
 );
 
--- delete_orphaned_sessions will delete sessions when a persona changes to no
--- longer have the same boundary address or boundary user id
-create trigger delete_orphaned_sessions before update on cache_persona
-begin
-delete from cache_session
-where
-    (new.boundary_addr <> old.boundary_addr or new.user_id <> old.user_id)
-  and
-    keyring_type = old.keyring_type
-  and
-    token_name = old.token_name
-  and
-    boundary_addr = old.boundary_addr
-  and
-    boundary_user_id = old.user_id;
-end;
-
-create table if not exists cache_api_error (
+create table if not exists api_error (
 	token_name text not null,
 	resource_type text not null,
 	error text not null,

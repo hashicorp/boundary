@@ -145,17 +145,12 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := c.Client()
-	if err != nil {
-		return nil, err
-	}
 
 	tf := filterBy{
-		boundaryAddr: client.Addr(),
-		tokenName:    tokenName,
-		keyringType:  keyringType,
-		flagQuery:    c.flagQuery,
-		resource:     c.flagResource,
+		tokenName:   tokenName,
+		keyringType: keyringType,
+		flagQuery:   c.flagQuery,
+		resource:    c.flagResource,
 	}
 	at := c.ReadTokenFromKeyring(keyringType, tokenName)
 	if at != nil {
@@ -194,7 +189,6 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response,
 	q := url.Values{}
 	q.Add("token_name", fb.tokenName)
 	q.Add("keyring_type", fb.keyringType)
-	q.Add("boundary_addr", fb.boundaryAddr)
 	q.Add("auth_token_id", fb.authTokenId)
 	q.Add("resource", fb.resource)
 	q.Add("query", fb.flagQuery)
@@ -338,10 +332,9 @@ func printSessionListTable(items []*sessions.Session) string {
 }
 
 type filterBy struct {
-	flagQuery    string
-	tokenName    string
-	keyringType  string
-	boundaryAddr string
-	authTokenId  string
-	resource     string
+	flagQuery   string
+	tokenName   string
+	keyringType string
+	authTokenId string
+	resource    string
 }

@@ -9,42 +9,188 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestPersona(t *testing.T) {
+func TestUser(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+	rw := db.New(s.conn)
+
+	t.Run("missing address", func(t *testing.T) {
+		u := &user{
+			Id: "u1",
+		}
+		assert.ErrorContains(t, rw.Create(ctx, &u), "constraint failed")
+	})
+
+	t.Run("missing id", func(t *testing.T) {
+		u := &user{
+			Address: "address",
+		}
+		assert.ErrorContains(t, rw.Create(ctx, &u), "constraint failed")
+	})
+
+	t.Run("create success", func(t *testing.T) {
+		u := &user{
+			Id:      "created",
+			Address: "address",
+		}
+		assert.NoError(t, rw.Create(ctx, &u))
+	})
+
+	t.Run("update", func(t *testing.T) {
+		u := &user{
+			Id:      "update",
+			Address: "address",
+		}
+		require.NoError(t, rw.Create(ctx, &u))
+		updatedU := u.clone()
+		updatedU.Address = "updated"
+		_, err := rw.Update(ctx, updatedU, []string{"address"}, nil)
+		require.NoError(t, err)
+
+		lookedUp := u.clone()
+		require.NoError(t, rw.LookupById(ctx, lookedUp))
+		assert.Equal(t, updatedU.Address, lookedUp.Address)
+	})
+}
+
+func TestUser_NoMoreTokens(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+	rw := db.New(s.conn)
+
+	u := &user{
+		Id:      "userId",
+		Address: "address",
+	}
+	require.NoError(t, rw.Create(ctx, u))
+
+	tok1 := &Token{
+		UserId:      u.Id,
+		KeyringType: "first",
+		TokenName:   "first",
+		AuthTokenId: "at_1234567890",
+	}
+	require.NoError(t, rw.Create(ctx, tok1))
+	tok2 := &Token{
+		UserId:      u.Id,
+		KeyringType: "second",
+		TokenName:   "second",
+		AuthTokenId: "at_1234567890",
+	}
+	require.NoError(t, rw.Create(ctx, tok2))
+	assert.NoError(t, rw.LookupById(ctx, u))
+
+	// deleting a single token doesn't remove the user
+	_, err = rw.Exec(ctx, "delete from token where (keyring_type, token_name) = (?, ?)", []any{tok1.KeyringType, tok1.TokenName})
+	require.NoError(t, err)
+	assert.NoError(t, rw.LookupById(ctx, u))
+
+	// deleting both tokens _does_ remove the user
+	_, err = rw.Exec(ctx, "delete from token", nil)
+	require.NoError(t, err)
+	assert.True(t, errors.IsNotFoundError(rw.LookupById(ctx, u)))
+}
+
+func TestToken(t *testing.T) {
 	ctx := context.Background()
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
 	rw := db.New(s.conn)
-	addr := "boundary"
-	userId := "u_12345"
-	p := Persona{
-		BoundaryAddr: addr,
-		UserId:       userId,
-		KeyringType:  "keyring",
-		TokenName:    "default",
-		AuthTokenId:  "at_1234567890",
+
+	u := &user{
+		Id:      "userId",
+		Address: "address",
 	}
-	before := time.Now().Truncate(1 * time.Millisecond)
-	require.NoError(t, rw.Create(ctx, &p))
 
-	require.NoError(t, rw.LookupById(ctx, &p))
-	assert.GreaterOrEqual(t, p.LastAccessedTime, before)
+	t.Run("no user foreign key constraint", func(t *testing.T) {
+		tok := &Token{
+			UserId:      u.Id,
+			KeyringType: "keyring",
+			TokenName:   "default",
+			AuthTokenId: "at_1234567890",
+		}
+		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
+	})
 
-	p.AuthTokenId = "at_0987654321"
-	n, err := rw.Update(ctx, &p, []string{"AuthTokenId"}, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, n)
+	require.NoError(t, rw.Create(ctx, u))
+	t.Run("missing auth token id", func(t *testing.T) {
+		tok := &Token{
+			UserId:      u.Id,
+			KeyringType: "keyring",
+			TokenName:   "default",
+		}
+		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
+	})
+
+	t.Run("no user id", func(t *testing.T) {
+		tok := &Token{
+			KeyringType: "keyring",
+			TokenName:   "default",
+			AuthTokenId: "at_1234567890",
+		}
+		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
+	})
+
+	t.Run("create", func(t *testing.T) {
+		tok := &Token{
+			UserId:      u.Id,
+			KeyringType: "keyring",
+			TokenName:   "default",
+			AuthTokenId: "at_1234567890",
+		}
+		before := time.Now().Truncate(1 * time.Millisecond)
+		require.NoError(t, rw.Create(ctx, tok))
+		require.NoError(t, rw.LookupById(ctx, tok))
+		assert.GreaterOrEqual(t, tok.LastAccessedTime, before)
+	})
+
+	t.Run("update", func(t *testing.T) {
+		tok := &Token{
+			UserId:      u.Id,
+			KeyringType: "updated",
+			TokenName:   "default",
+			AuthTokenId: "at_1234567890",
+		}
+		require.NoError(t, rw.Create(ctx, tok))
+
+		tok.AuthTokenId = "at_0987654321"
+		n, err := rw.Update(ctx, tok, []string{"AuthTokenId"}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, n)
+	})
+
+	t.Run("delete user deletes token", func(t *testing.T) {
+		u := &user{
+			Id:      "deletethis",
+			Address: "deleted",
+		}
+		require.NoError(t, rw.Create(ctx, u))
+
+		tok := &Token{
+			UserId:      u.Id,
+			KeyringType: "deleteuser",
+			TokenName:   "default",
+			AuthTokenId: "at_1234567890",
+		}
+		require.NoError(t, rw.Create(ctx, tok))
+
+		_, err = rw.Exec(ctx, "delete from user where id = ?", []any{u.Id})
+
+		require.True(t, errors.IsNotFoundError(rw.LookupById(ctx, tok)))
+	})
 
 	// TODO: When gorm sqlite driver fixes it's delete, use rw.Delete instead of the Exec.
 	// n, err := rw.Delete(ctx, p)
-	n, err = rw.Exec(ctx, "delete from cache_persona where (boundary_addr, keyring_type, token_name) in (values (?, ?, ?))",
-		[]any{p.BoundaryAddr, p.KeyringType, p.TokenName})
+	_, err = rw.Exec(ctx, "delete from token", nil)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, n)
 }
 
 func TestTarget(t *testing.T) {
@@ -54,70 +200,33 @@ func TestTarget(t *testing.T) {
 
 	rw := db.New(s.conn)
 
-	keyringType := "keyring"
-	tokenName := "token"
 	addr := "boundary"
 	userId := "u_12345"
-	p := &Persona{
-		KeyringType:  keyringType,
-		TokenName:    tokenName,
-		BoundaryAddr: addr,
-		UserId:       userId,
-		AuthTokenId:  "at_1234567890",
+	u := &user{
+		Id:      userId,
+		Address: addr,
 	}
-	require.NoError(t, rw.Create(ctx, p))
+	require.NoError(t, rw.Create(ctx, u))
 
 	t.Run("target without user id", func(t *testing.T) {
 		unknownTarget := &Target{
-			KeyringType:  p.KeyringType,
-			TokenName:    p.TokenName,
-			BoundaryAddr: "some unknown addr",
-			Id:           "tssh_1234567890",
-			Name:         "target",
-			Description:  "target desc",
-			Address:      "some address",
-			Item:         "{id:'tssh_1234567890'}",
+			Id:          "tssh_1234567890",
+			Name:        "target",
+			Description: "target desc",
+			Address:     "some address",
+			Item:        "{id:'tssh_1234567890'}",
 		}
-		require.ErrorContains(t, rw.Create(ctx, unknownTarget), "FOREIGN KEY constraint")
-	})
-	t.Run("target without keyring type", func(t *testing.T) {
-		unknownTarget := &Target{
-			TokenName:      p.TokenName,
-			BoundaryUserId: p.UserId,
-			BoundaryAddr:   "some unknown addr",
-			Id:             "tssh_1234567890",
-			Name:           "target",
-			Description:    "target desc",
-			Address:        "some address",
-			Item:           "{id:'tssh_1234567890'}",
-		}
-		require.ErrorContains(t, rw.Create(ctx, unknownTarget), "FOREIGN KEY constraint")
-	})
-	t.Run("target without token name", func(t *testing.T) {
-		unknownTarget := &Target{
-			KeyringType:    p.KeyringType,
-			BoundaryUserId: p.UserId,
-			BoundaryAddr:   "some unknown addr",
-			Id:             "tssh_1234567890",
-			Name:           "target",
-			Description:    "target desc",
-			Address:        "some address",
-			Item:           "{id:'tssh_1234567890'}",
-		}
-		require.ErrorContains(t, rw.Create(ctx, unknownTarget), "FOREIGN KEY constraint")
+		require.ErrorContains(t, rw.Create(ctx, unknownTarget), "constraint failed")
 	})
 
 	t.Run("target actions", func(t *testing.T) {
 		target := &Target{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "tssh_1234567890",
-			Name:           "target",
-			Description:    "target desc",
-			Address:        "some address",
-			Item:           "{id:'tssh_1234567890'}",
+			UserId:      u.Id,
+			Id:          "tssh_1234567890",
+			Name:        "target",
+			Description: "target desc",
+			Address:     "some address",
+			Item:        "{id:'tssh_1234567890'}",
 		}
 
 		require.NoError(t, rw.Create(ctx, target))
@@ -131,201 +240,58 @@ func TestTarget(t *testing.T) {
 
 		// TODO: Once the sqlite driver properly builds the delete query call
 		// n, err = rw.Delete(ctx, target) instead of the Exec call
-		n, err = rw.Exec(ctx, "delete from cache_target where (boundary_addr, boundary_user_id, id) IN (values (?, ?, ?))",
-			[]any{target.BoundaryAddr, target.BoundaryUserId, target.Id})
+		n, err = rw.Exec(ctx, "delete from target where (user_id, id) IN (values (?, ?))",
+			[]any{target.UserId, target.Id})
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
 
 	t.Run("lookup a target", func(t *testing.T) {
 		target := &Target{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "tssh_1234567890",
-			Name:           "target",
-			Description:    "target desc",
-			Address:        "some address",
-			Item:           "{id:'tssh_1234567890'}",
+			UserId:      u.Id,
+			Id:          "tssh_1234567890",
+			Name:        "target",
+			Description: "target desc",
+			Address:     "some address",
+			Item:        "{id:'tssh_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, target))
 
 		lookTar := &Target{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   target.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             target.Id,
+			UserId: target.UserId,
+			Id:     target.Id,
 		}
 		assert.NoError(t, rw.LookupById(ctx, lookTar))
 		assert.NotNil(t, lookTar)
 
 		// cleanup the targets
-		_, err := rw.Exec(ctx, "delete from cache_target", nil)
+		_, err := rw.Exec(ctx, "delete from target", nil)
 		require.NoError(t, err)
 	})
 
-	t.Run("deleting the persona deletes the target", func(t *testing.T) {
+	t.Run("deleting the user deletes the target", func(t *testing.T) {
 		target := &Target{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "tssh_1234567890",
-			Name:           "target",
-			Description:    "target desc",
-			Address:        "some address",
-			Item:           "{id:'tssh_1234567890'}",
+			UserId:      u.Id,
+			Id:          "tssh_1234567890",
+			Name:        "target",
+			Description: "target desc",
+			Address:     "some address",
+			Item:        "{id:'tssh_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, target))
 		// Deleting the user deletes the target
 		// TODO: Once the sqlite driver supports proper deletes change from the
 		// Exec call to .Delete
 		// n, err := rw.Delete(ctx, &u)
-		n, err := rw.Exec(ctx, "delete from cache_persona where (keyring_type, token_name, boundary_addr, user_id) IN (values (?, ?, ?, ?))",
-			[]any{p.KeyringType, p.TokenName, p.BoundaryAddr, userId})
+		n, err := rw.Exec(ctx, "delete from user where id = ?", []any{userId})
 		require.NoError(t, err)
 		require.Equal(t, 1, n)
 
 		lookTar := &Target{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   target.BoundaryAddr,
-			BoundaryUserId: target.BoundaryUserId,
-			Id:             target.Id,
+			UserId: target.UserId,
+			Id:     target.Id,
 		}
 		assert.ErrorContains(t, rw.LookupById(ctx, lookTar), "not found")
-	})
-
-	t.Run("changing the personas user id deletes the target", func(t *testing.T) {
-		// Ensure that the trigger executes with an on conflict update
-		personaOnConflict := &db.OnConflict{
-			Target: db.Columns{"keyring_type", "token_name"},
-			Action: db.SetColumns([]string{"auth_token_id", "boundary_addr", "user_id", "last_accessed_time"}),
-		}
-		p := &Persona{
-			KeyringType:  keyringType,
-			TokenName:    tokenName,
-			BoundaryAddr: addr,
-			UserId:       userId,
-			AuthTokenId:  "at_1234567890",
-		}
-		require.NoError(t, rw.Create(ctx, p, db.WithOnConflict(personaOnConflict)))
-
-		target := &Target{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "tssh_1234567890",
-			Name:           "target",
-			Description:    "target desc",
-			Address:        "some address",
-			Item:           "{id:'tssh_1234567890'}",
-		}
-		require.NoError(t, rw.Create(ctx, target))
-
-		newPersona := p.clone()
-		newPersona.UserId = "A New Id"
-		require.NoError(t, rw.Create(ctx, newPersona, db.WithOnConflict(personaOnConflict)))
-
-		lookTar := &Target{
-			KeyringType:    target.KeyringType,
-			TokenName:      target.TokenName,
-			BoundaryAddr:   target.BoundaryAddr,
-			BoundaryUserId: target.BoundaryUserId,
-			Id:             target.Id,
-		}
-		require.ErrorContains(t, rw.LookupById(ctx, lookTar), "not found")
-	})
-
-	t.Run("changing the personas address deletes the target", func(t *testing.T) {
-		// Ensure that the trigger executes with an on conflict update
-		personaOnConflict := &db.OnConflict{
-			Target: db.Columns{"keyring_type", "token_name"},
-			Action: db.SetColumns([]string{"auth_token_id", "boundary_addr", "user_id", "last_accessed_time"}),
-		}
-		p := &Persona{
-			KeyringType:  keyringType,
-			TokenName:    tokenName,
-			BoundaryAddr: addr,
-			UserId:       userId,
-			AuthTokenId:  "at_1234567890",
-		}
-		require.NoError(t, rw.Create(ctx, p, db.WithOnConflict(personaOnConflict)))
-
-		target := &Target{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "tssh_1234567890",
-			Name:           "target",
-			Description:    "target desc",
-			Address:        "some address",
-			Item:           "{id:'tssh_1234567890'}",
-		}
-		require.NoError(t, rw.Create(ctx, target))
-
-		newPersona := p.clone()
-		newPersona.BoundaryAddr = "a.new.address"
-		require.NoError(t, rw.Create(ctx, newPersona, db.WithOnConflict(personaOnConflict)))
-
-		lookTar := &Target{
-			KeyringType:    target.KeyringType,
-			TokenName:      target.TokenName,
-			BoundaryAddr:   target.BoundaryAddr,
-			BoundaryUserId: target.BoundaryUserId,
-			Id:             target.Id,
-		}
-		require.ErrorContains(t, rw.LookupById(ctx, lookTar), "not found")
-	})
-
-	t.Run("changing the personas token id doesnt delete the target", func(t *testing.T) {
-		// Ensure that the trigger executes with an on conflict update
-		personaOnConflict := &db.OnConflict{
-			Target: db.Columns{"keyring_type", "token_name"},
-			Action: db.SetColumns([]string{"auth_token_id", "boundary_addr", "user_id", "last_accessed_time"}),
-		}
-		p := &Persona{
-			KeyringType:  keyringType,
-			TokenName:    tokenName,
-			BoundaryAddr: addr,
-			UserId:       userId,
-			AuthTokenId:  "at_1234567890",
-		}
-		require.NoError(t, rw.Create(ctx, p, db.WithOnConflict(personaOnConflict)))
-
-		target := &Target{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "tssh_1234567890",
-			Name:           "target",
-			Description:    "target desc",
-			Address:        "some address",
-			Item:           "{id:'tssh_1234567890'}",
-		}
-		require.NoError(t, rw.Create(ctx, target))
-
-		newPersona := p.clone()
-		newPersona.AuthTokenId = "A New Id"
-		require.NoError(t, rw.Create(ctx, newPersona, db.WithOnConflict(personaOnConflict)))
-
-		lookTar := &Target{
-			KeyringType:    target.KeyringType,
-			TokenName:      target.TokenName,
-			BoundaryAddr:   target.BoundaryAddr,
-			BoundaryUserId: target.BoundaryUserId,
-			Id:             target.Id,
-		}
-		require.NoError(t, rw.LookupById(ctx, lookTar))
-
-		// cleanup the targets
-		_, err := rw.Exec(ctx, "delete from cache_target", nil)
-		require.NoError(t, err)
 	})
 }
 
@@ -336,59 +302,27 @@ func TestSession(t *testing.T) {
 
 	rw := db.New(s.conn)
 
-	keyringType := "keyring"
-	tokenName := "token"
 	addr := "boundary"
 	userId := "u_12345"
-	p := &Persona{
-		KeyringType:  keyringType,
-		TokenName:    tokenName,
-		BoundaryAddr: addr,
-		UserId:       userId,
-		AuthTokenId:  "at_1234567890",
+	u := &user{
+		Id:      userId,
+		Address: addr,
 	}
-	require.NoError(t, rw.Create(ctx, p))
+	require.NoError(t, rw.Create(ctx, u))
 
 	t.Run("session without user id", func(t *testing.T) {
 		unknownSess := &Session{
-			KeyringType:  p.KeyringType,
-			TokenName:    p.TokenName,
-			BoundaryAddr: "some unknown addr",
-			Id:           "sess_1234567890",
-			Item:         "{id:'sess_1234567890'}",
+			Id:   "sess_1234567890",
+			Item: "{id:'sess_1234567890'}",
 		}
 		require.ErrorContains(t, rw.Create(ctx, unknownSess), "FOREIGN KEY constraint")
 	})
-	t.Run("session without keyring type", func(t *testing.T) {
-		unknownSession := &Session{
-			TokenName:      p.TokenName,
-			BoundaryUserId: p.UserId,
-			BoundaryAddr:   "some unknown addr",
-			Id:             "s_1234567890",
-			Item:           "{id:'s_1234567890'}",
-		}
-		require.ErrorContains(t, rw.Create(ctx, unknownSession), "FOREIGN KEY constraint")
-	})
-	t.Run("session without token name", func(t *testing.T) {
-		unknownSession := &Session{
-			KeyringType:    p.KeyringType,
-			BoundaryUserId: p.UserId,
-			BoundaryAddr:   "some unknown addr",
-			Id:             "s_1234567890",
-			Item:           "{id:'s_1234567890'}",
-		}
-		require.ErrorContains(t, rw.Create(ctx, unknownSession), "FOREIGN KEY constraint")
-	})
-
 	t.Run("session actions", func(t *testing.T) {
 		session := &Session{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "s_1234567890",
-			Endpoint:       "endpoint",
-			Item:           "{id:'s_1234567890'}",
+			UserId:   u.Id,
+			Id:       "s_1234567890",
+			Endpoint: "endpoint",
+			Item:     "{id:'s_1234567890'}",
 		}
 
 		require.NoError(t, rw.Create(ctx, session))
@@ -402,187 +336,53 @@ func TestSession(t *testing.T) {
 
 		// TODO: Once the sqlite driver properly builds the delete query call
 		// n, err = rw.Delete(ctx, session) instead of the Exec call
-		n, err = rw.Exec(ctx, "delete from cache_session where (boundary_addr, boundary_user_id, id) IN (values (?, ?, ?))",
-			[]any{session.BoundaryAddr, session.BoundaryUserId, session.Id})
+		n, err = rw.Exec(ctx, "delete from session where (user_id, id) IN (values (?, ?))",
+			[]any{session.UserId, session.Id})
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
 
 	t.Run("lookup a session", func(t *testing.T) {
 		session := &Session{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "s_1234567890",
-			Endpoint:       "endpoint",
-			Item:           "{id:'s_1234567890'}",
+			UserId:   u.Id,
+			Id:       "s_1234567890",
+			Endpoint: "endpoint",
+			Item:     "{id:'s_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, session))
 
 		lookSess := &Session{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   session.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             session.Id,
+			UserId: u.Id,
+			Id:     session.Id,
 		}
 		assert.NoError(t, rw.LookupById(ctx, lookSess))
 		assert.NotNil(t, lookSess)
 
 		// cleanup the sessions
-		_, err := rw.Exec(ctx, "delete from cache_session", nil)
+		_, err := rw.Exec(ctx, "delete from session", nil)
 		require.NoError(t, err)
 	})
 
 	t.Run("deleting the persona deletes the session", func(t *testing.T) {
 		session := &Session{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "s_1234567890",
-			Endpoint:       "endpoint",
-			Item:           "{id:'s_1234567890'}",
+			UserId:   u.Id,
+			Id:       "s_1234567890",
+			Endpoint: "endpoint",
+			Item:     "{id:'s_1234567890'}",
 		}
 		require.NoError(t, rw.Create(ctx, session))
 		// Deleting the user deletes the session
 		// TODO: Once the sqlite driver supports proper deletes change from the
 		// Exec call to .Delete
 		// n, err := rw.Delete(ctx, &u)
-		n, err := rw.Exec(ctx, "delete from cache_persona where (keyring_type, token_name, boundary_addr, user_id) IN (values (?, ?, ?, ?))",
-			[]any{p.KeyringType, p.TokenName, p.BoundaryAddr, userId})
+		n, err := rw.Exec(ctx, "delete from user where id = ?", []any{userId})
 		require.NoError(t, err)
 		require.Equal(t, 1, n)
 
 		lookSess := &Session{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   session.BoundaryAddr,
-			BoundaryUserId: session.BoundaryUserId,
-			Id:             session.Id,
+			UserId: session.UserId,
+			Id:     session.Id,
 		}
 		assert.ErrorContains(t, rw.LookupById(ctx, lookSess), "not found")
-	})
-
-	t.Run("changing the personas user id deletes the session", func(t *testing.T) {
-		// Ensure that the trigger executes with an on conflict update
-		personaOnConflict := &db.OnConflict{
-			Target: db.Columns{"keyring_type", "token_name"},
-			Action: db.SetColumns([]string{"auth_token_id", "boundary_addr", "user_id", "last_accessed_time"}),
-		}
-		p := &Persona{
-			KeyringType:  keyringType,
-			TokenName:    tokenName,
-			BoundaryAddr: addr,
-			UserId:       userId,
-			AuthTokenId:  "at_1234567890",
-		}
-		require.NoError(t, rw.Create(ctx, p, db.WithOnConflict(personaOnConflict)))
-
-		session := &Session{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "s_1234567890",
-			Item:           "{id:'s_1234567890'}",
-		}
-		require.NoError(t, rw.Create(ctx, session))
-
-		newPersona := p.clone()
-		newPersona.UserId = "A New Id"
-		require.NoError(t, rw.Create(ctx, newPersona, db.WithOnConflict(personaOnConflict)))
-
-		lookSess := &Session{
-			KeyringType:    session.KeyringType,
-			TokenName:      session.TokenName,
-			BoundaryAddr:   session.BoundaryAddr,
-			BoundaryUserId: session.BoundaryUserId,
-			Id:             session.Id,
-		}
-		require.ErrorContains(t, rw.LookupById(ctx, lookSess), "not found")
-	})
-
-	t.Run("changing the personas address deletes the session", func(t *testing.T) {
-		// Ensure that the trigger executes with an on conflict update
-		personaOnConflict := &db.OnConflict{
-			Target: db.Columns{"keyring_type", "token_name"},
-			Action: db.SetColumns([]string{"auth_token_id", "boundary_addr", "user_id", "last_accessed_time"}),
-		}
-		p := &Persona{
-			KeyringType:  keyringType,
-			TokenName:    tokenName,
-			BoundaryAddr: addr,
-			UserId:       userId,
-			AuthTokenId:  "at_1234567890",
-		}
-		require.NoError(t, rw.Create(ctx, p, db.WithOnConflict(personaOnConflict)))
-
-		session := &Session{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "s_1234567890",
-			Item:           "{id:'s_1234567890'}",
-		}
-		require.NoError(t, rw.Create(ctx, session))
-
-		newPersona := p.clone()
-		newPersona.BoundaryAddr = "a.new.address"
-		require.NoError(t, rw.Create(ctx, newPersona, db.WithOnConflict(personaOnConflict)))
-
-		lookSess := &Session{
-			KeyringType:    session.KeyringType,
-			TokenName:      session.TokenName,
-			BoundaryAddr:   session.BoundaryAddr,
-			BoundaryUserId: session.BoundaryUserId,
-			Id:             session.Id,
-		}
-		require.ErrorContains(t, rw.LookupById(ctx, lookSess), "not found")
-	})
-
-	t.Run("changing the personas token id doesnt delete the session", func(t *testing.T) {
-		// Ensure that the trigger executes with an on conflict update
-		personaOnConflict := &db.OnConflict{
-			Target: db.Columns{"keyring_type", "token_name"},
-			Action: db.SetColumns([]string{"auth_token_id", "boundary_addr", "user_id", "last_accessed_time"}),
-		}
-		p := &Persona{
-			KeyringType:  keyringType,
-			TokenName:    tokenName,
-			BoundaryAddr: addr,
-			UserId:       userId,
-			AuthTokenId:  "at_1234567890",
-		}
-		require.NoError(t, rw.Create(ctx, p, db.WithOnConflict(personaOnConflict)))
-
-		session := &Session{
-			KeyringType:    p.KeyringType,
-			TokenName:      p.TokenName,
-			BoundaryAddr:   p.BoundaryAddr,
-			BoundaryUserId: p.UserId,
-			Id:             "s_1234567890",
-			Item:           "{id:'s_1234567890'}",
-		}
-		require.NoError(t, rw.Create(ctx, session))
-
-		newPersona := p.clone()
-		newPersona.AuthTokenId = "A New Id"
-		require.NoError(t, rw.Create(ctx, newPersona, db.WithOnConflict(personaOnConflict)))
-
-		lookSess := &Session{
-			KeyringType:    session.KeyringType,
-			TokenName:      session.TokenName,
-			BoundaryAddr:   session.BoundaryAddr,
-			BoundaryUserId: session.BoundaryUserId,
-			Id:             session.Id,
-		}
-		require.NoError(t, rw.LookupById(ctx, lookSess))
-
-		// cleanup the sessions
-		_, err := rw.Exec(ctx, "delete from cache_session", nil)
-		require.NoError(t, err)
 	})
 }

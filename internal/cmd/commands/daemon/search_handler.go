@@ -51,7 +51,6 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 		resource := r.URL.Query().Get(resourceKey)
 		tokenName := r.URL.Query().Get(tokenNameKey)
 		keyringType := r.URL.Query().Get(keyringTypeKey)
-		boundaryAddr := r.URL.Query().Get(boundaryAddrKey)
 		authTokenId := r.URL.Query().Get(authTokenIdKey)
 
 		switch {
@@ -64,17 +63,13 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 		case keyringType == "":
 			writeError(w, fmt.Sprintf("%s is a required field but was empty", keyringTypeKey), http.StatusBadRequest)
 			return
-		case boundaryAddr == "":
-			writeError(w, fmt.Sprintf("%s is a required field but was empty", boundaryAddrKey), http.StatusBadRequest)
-			return
 		case authTokenId == "":
 			writeError(w, fmt.Sprintf("%s is a required field but was empty", authTokenIdKey), http.StatusBadRequest)
 			return
 		}
 
-		p, err := repo.LookupPersona(ctx, tokenName, keyringType,
-			cache.WithBoundaryAddress(boundaryAddr), cache.WithAuthTokenId(authTokenId), cache.WithUpdateLastAccessedTime(true))
-		if err != nil || p == nil {
+		t, err := repo.LookupToken(ctx, tokenName, keyringType, cache.WithAuthTokenId(authTokenId), cache.WithUpdateLastAccessedTime(true))
+		if err != nil || t == nil {
 			writeError(w, "Forbidden", http.StatusForbidden)
 			return
 		}
@@ -84,9 +79,9 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 		var res *SearchResult
 		switch resource {
 		case "targets":
-			res, err = searchTargets(r.Context(), repo, p, query, filter)
+			res, err = searchTargets(r.Context(), repo, t, query, filter)
 		case "sessions":
-			res, err = searchSessions(r.Context(), repo, p, query, filter)
+			res, err = searchSessions(r.Context(), repo, t, query, filter)
 		default:
 			writeError(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
 			return
@@ -114,7 +109,7 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 	}, nil
 }
 
-func searchTargets(ctx context.Context, repo *cache.Repository, p *cache.Persona, query string, filter *handlers.Filter) (*SearchResult, error) {
+func searchTargets(ctx context.Context, repo *cache.Repository, p *cache.Token, query string, filter *handlers.Filter) (*SearchResult, error) {
 	var found []*targets.Target
 	var err error
 	switch query {
@@ -138,7 +133,7 @@ func searchTargets(ctx context.Context, repo *cache.Repository, p *cache.Persona
 	}, nil
 }
 
-func searchSessions(ctx context.Context, repo *cache.Repository, p *cache.Persona, query string, filter *handlers.Filter) (*SearchResult, error) {
+func searchSessions(ctx context.Context, repo *cache.Repository, p *cache.Token, query string, filter *handlers.Filter) (*SearchResult, error) {
 	var found []*sessions.Session
 	var err error
 	switch query {

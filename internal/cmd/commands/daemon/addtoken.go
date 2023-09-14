@@ -17,25 +17,25 @@ import (
 )
 
 var (
-	_ cli.Command             = (*AddPersonaCommand)(nil)
-	_ cli.CommandAutocomplete = (*AddPersonaCommand)(nil)
+	_ cli.Command             = (*AddTokenCommand)(nil)
+	_ cli.CommandAutocomplete = (*AddTokenCommand)(nil)
 )
 
-type AddPersonaCommand struct {
+type AddTokenCommand struct {
 	*base.Command
 }
 
-func (c *AddPersonaCommand) Synopsis() string {
-	return "Add a persona to a running boundary daemon"
+func (c *AddTokenCommand) Synopsis() string {
+	return "Add an auth token to a running boundary daemon"
 }
 
-func (c *AddPersonaCommand) Help() string {
+func (c *AddTokenCommand) Help() string {
 	helpText := `
-Usage: boundary daemon add-persona [options]
+Usage: boundary daemon add-token [options]
 
-  Add a persona to the daemon:
+  Add an auth token to the daemon:
 
-      $ boundary daemon add-persona
+      $ boundary daemon add-token
 
   For a full list of examples, please see the documentation.
 
@@ -43,20 +43,20 @@ Usage: boundary daemon add-persona [options]
 	return strings.TrimSpace(helpText)
 }
 
-func (c *AddPersonaCommand) Flags() *base.FlagSets {
+func (c *AddTokenCommand) Flags() *base.FlagSets {
 	set := c.FlagSet(base.FlagSetClient | base.FlagSetOutputFormat)
 	return set
 }
 
-func (c *AddPersonaCommand) AutocompleteArgs() complete.Predictor {
+func (c *AddTokenCommand) AutocompleteArgs() complete.Predictor {
 	return complete.PredictNothing
 }
 
-func (c *AddPersonaCommand) AutocompleteFlags() complete.Flags {
+func (c *AddTokenCommand) AutocompleteFlags() complete.Flags {
 	return c.Flags().Completions()
 }
 
-func (c *AddPersonaCommand) Run(args []string) int {
+func (c *AddTokenCommand) Run(args []string) int {
 	ctx := c.Context
 	f := c.Flags()
 	if err := f.Parse(args); err != nil {
@@ -77,7 +77,7 @@ func (c *AddPersonaCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *AddPersonaCommand) AddPersona(ctx context.Context) (*api.Error, error) {
+func (c *AddTokenCommand) AddPersona(ctx context.Context) (*api.Error, error) {
 	const op = "daemon.(AddPersonaCommand).AddPersona"
 	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 	if err != nil {
@@ -92,7 +92,7 @@ func (c *AddPersonaCommand) AddPersona(ctx context.Context) (*api.Error, error) 
 		return nil, err
 	}
 
-	pa := personaToAdd{
+	pa := userTokenToAdd{
 		KeyringType:  keyringType,
 		TokenName:    tokenName,
 		BoundaryAddr: client.Addr(),
@@ -104,10 +104,10 @@ func (c *AddPersonaCommand) AddPersona(ctx context.Context) (*api.Error, error) 
 		return nil, err
 	}
 
-	return addPersona(ctx, dotPath, &pa)
+	return addToken(ctx, dotPath, &pa)
 }
 
-func addPersona(ctx context.Context, daemonPath string, p *personaToAdd) (*api.Error, error) {
+func addToken(ctx context.Context, daemonPath string, p *userTokenToAdd) (*api.Error, error) {
 	const op = "daemon.addPersona"
 	client, err := api.NewClient(nil)
 	if err != nil {
@@ -125,7 +125,7 @@ func addPersona(ctx context.Context, daemonPath string, p *personaToAdd) (*api.E
 	// like the system keychain. Explicitly clear the token for now
 	client.SetToken("")
 
-	req, err := client.NewRequest(ctx, "POST", "/personas", p)
+	req, err := client.NewRequest(ctx, "POST", "/tokens", p)
 	if err != nil {
 		return nil, err
 	}
