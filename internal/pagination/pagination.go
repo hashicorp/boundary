@@ -198,25 +198,19 @@ func fillPage[T any, PbT ResponseItem](
 ) ([]PbT, bool, error) {
 	const op = "pagination.fillPage"
 
-	// Empty will be a nil pointer for pointer types of
-	// T, and a nil interface for interface types.
-	var empty T
-	page, err := listItemsFn(empty, refreshToken, limit)
-	if err != nil {
-		return nil, false, errors.Wrap(ctx, err, op)
-	}
-	finalItems := make([]PbT, 0, pageSize)
-	// If we got fewer results than requested, we're at the end.
-	completeListing := len(page) < limit
-	if len(page) > pageSize {
-		// Don't loop over the extra item
-		// we requested to see if we were at the end
-		page = page[:pageSize]
-	}
+	// Ensure we can fill pageSize+1 items
+	// so we know if we're at the end
+	finalItems := make([]PbT, 0, pageSize+1)
 	// Loop until we've filled the page
+	var lastItem T
 dbLoop:
 	for {
-		for i, item := range page {
+		// Request another page from the DB until we fill the final items
+		page, err := listItemsFn(lastItem, refreshToken, limit)
+		if err != nil {
+			return nil, false, errors.Wrap(ctx, err, op)
+		}
+		for _, item := range page {
 			pbItem, err := convertAndFilterFn(item)
 			if err != nil {
 				return nil, false, errors.Wrap(ctx, err, op)
@@ -224,32 +218,26 @@ dbLoop:
 			var zero PbT
 			if pbItem != zero {
 				finalItems = append(finalItems, pbItem)
-				if len(finalItems) == pageSize {
-					if completeListing && i != len(page)-1 {
-						completeListing = false
-					}
+				// If we filled the items after filtering,
+				// we're done.
+				if len(finalItems) == cap(finalItems) {
 					break dbLoop
 				}
 			}
 		}
-		if completeListing {
-			// No need to make more requests
+		// If the current page was shorter than the limit, stop iterating
+		if len(page) < limit {
 			break dbLoop
 		}
 
-		lastItem := page[len(page)-1]
-		// Request another result set from the DB until we fill the page
-		page, err = listItemsFn(lastItem, refreshToken, limit)
-		if err != nil {
-			return nil, false, errors.Wrap(ctx, err, op)
-		}
-		// If we got fewer results than requested, we're at the end.
-		completeListing = len(page) < limit
-		if len(page) > pageSize {
-			// Don't loop over the extra item
-			// we requested to see if we were at the end
-			page = page[:pageSize]
-		}
+		lastItem = page[len(page)-1]
+	}
+	// If we couldn't fill the items, it was a complete listing.
+	completeListing := len(finalItems) < cap(finalItems)
+	if !completeListing {
+		// Items is of size pageSize+1, so
+		// truncate if it was filled.
+		finalItems = finalItems[:pageSize]
 	}
 
 	return finalItems, completeListing, nil
