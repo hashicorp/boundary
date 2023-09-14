@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -306,7 +307,9 @@ func (r *Repository) LookupSSHCertificateCredentialLibrary(ctx context.Context, 
 }
 
 // ListSSHCertificateCredentialLibraries returns a slice of SSHCertificateCredentialLibraries for the
-// storeId. WithLimit is the only option supported.
+// storeId. Supports the following options:
+//   - WithLimit
+//   - WithStartPageAfterItem
 func (r *Repository) ListSSHCertificateCredentialLibraries(ctx context.Context, storeId string, opt ...Option) ([]*SSHCertificateCredentialLibrary, error) {
 	const op = "vault.(Repository).ListSSHCertificateCredentialLibraries"
 	if storeId == "" {
@@ -318,8 +321,28 @@ func (r *Repository) ListSSHCertificateCredentialLibraries(ctx context.Context, 
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
+	args := []any{sql.Named("store_id", storeId)}
+	whereClause := "store_id = @store_id"
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
+		)
+		whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+	}
 	var libs []*SSHCertificateCredentialLibrary
-	err := r.reader.SearchWhere(ctx, &libs, "store_id = ?", []any{storeId}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &libs, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

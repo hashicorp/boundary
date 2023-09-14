@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/boundary/globals"
@@ -18,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
@@ -44,6 +46,10 @@ const (
 	criticalOptionsField       = "attributes.critical_options"
 	extensionsField            = "attributes.extensions"
 	domain                     = "credential"
+
+	// The default max page size is used when one is not
+	// provided to NewService.
+	defaultMaxPageSize = 1000
 )
 
 // Credential mapping override attributes
@@ -109,14 +115,15 @@ func init() {
 type Service struct {
 	pbs.UnsafeCredentialLibraryServiceServer
 
-	iamRepoFn common.IamRepoFactory
-	repoFn    common.VaultCredentialRepoFactory
+	iamRepoFn   common.IamRepoFactory
+	repoFn      common.VaultCredentialRepoFactory
+	maxPageSize uint
 }
 
 var _ pbs.CredentialLibraryServiceServer = (*Service)(nil)
 
 // NewService returns a credential library service which handles credential library related requests to boundary.
-func NewService(ctx context.Context, repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "credentiallibraries.NewService"
 	if iamRepo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
@@ -124,42 +131,84 @@ func NewService(ctx context.Context, repo common.VaultCredentialRepoFactory, iam
 	if repo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing vault credential repository")
 	}
-	return Service{iamRepoFn: iamRepo, repoFn: repo}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
+	return Service{iamRepoFn: iamRepo, repoFn: repo, maxPageSize: maxPageSize}, nil
 }
 
 // ListCredentialLibraries implements the interface pbs.CredentialLibraryServiceServer
 func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCredentialLibrariesRequest) (*pbs.ListCredentialLibrariesResponse, error) {
+	const op = "credentiallibraries.(Service).ListCredentialLibraries"
 	if err := validateListRequest(ctx, req); err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	authResults := s.authResult(ctx, req.GetCredentialStoreId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
 
-	csl, err := s.listFromRepo(ctx, req.GetCredentialStoreId())
+	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
-	}
-	if len(csl) == 0 {
-		return &pbs.ListCredentialLibrariesResponse{}, nil
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	finalItems := make([]*pb.CredentialLibrary, 0, len(csl))
-	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.CredentialLibrary,
-		Pin:     req.GetCredentialStoreId(),
+
+	listCredentialLibrariesFn := func(prevPageLast credential.Library, refreshToken *pbs.ListRefreshToken, limit int) ([]credential.Library, error) {
+		opts := []vault.Option{
+			// Note that this is the limit sent to both repo functions,
+			// so we need to truncate the joined slice to this limit before returning.
+			vault.WithLimit(limit),
+		}
+		if prevPageLast == nil {
+			if refreshToken != nil {
+				opts = append(opts, vault.WithStartPageAfterItem(
+					refreshToken.GetLastItemId(),
+					refreshToken.GetLastItemUpdatedTime().AsTime()))
+			}
+		} else {
+			opts = append(opts, vault.WithStartPageAfterItem(prevPageLast.GetPublicId(), prevPageLast.GetUpdateTime().AsTime()))
+		}
+		genCsl, err := repo.ListCredentialLibraries(ctx, req.GetCredentialStoreId(), opts...)
+		if err != nil {
+			return nil, err
+		}
+		certCsl, err := repo.ListSSHCertificateCredentialLibraries(ctx, req.GetCredentialStoreId(), opts...)
+		if err != nil {
+			return nil, err
+		}
+
+		csl := make([]credential.Library, 0, len(genCsl)+len(certCsl))
+		for _, s := range genCsl {
+			csl = append(csl, s)
+		}
+		for _, s := range certCsl {
+			csl = append(csl, s)
+		}
+		// Sort slice after appending to ensure correct ordering
+		slices.SortFunc(csl, func(i, j credential.Library) int {
+			return i.GetUpdateTime().AsTime().Compare(j.GetUpdateTime().AsTime())
+		})
+		// Truncate slice to at most limit number of elements
+		if len(csl) < limit {
+			return csl, nil
+		}
+		return csl[:limit], nil
 	}
-	for _, item := range csl {
-		res.Id = item.GetPublicId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+	filterAndConvertFn := func(cl credential.Library) (*pb.CredentialLibrary, error) {
+		res := perms.Resource{
+			ScopeId: authResults.Scope.Id,
+			Type:    resource.CredentialLibrary,
+			Pin:     req.GetCredentialStoreId(),
+			Id:      cl.GetPublicId(),
+		}
+		authorizedActions := authResults.FetchActionSetForId(ctx, cl.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
 		if len(authorizedActions) == 0 {
-			continue
+			return nil, nil
 		}
 
 		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
@@ -172,7 +221,7 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 		}
 
-		item, err := toProto(ctx, item, outputOpts...)
+		item, err := toProto(ctx, cl, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
@@ -182,10 +231,41 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 			return nil, err
 		}
 		if filter.Match(filterable) {
-			finalItems = append(finalItems, item)
+			return item, nil
 		}
+		return nil, nil
 	}
-	return &pbs.ListCredentialLibrariesResponse{Items: finalItems}, nil
+
+	listResp, err := pagination.PaginateRequest(
+		ctx,
+		s.maxPageSize,
+		pbs.ResourceType_RESOURCE_TYPE_CREDENTIAL_LIBRARY,
+		req,
+		listCredentialLibrariesFn,
+		filterAndConvertFn,
+		&authResults,
+		repo,
+	)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+
+	resp := &pbs.ListCredentialLibrariesResponse{
+		Items:        listResp.Items,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+		RefreshToken: listResp.MarshaledRefreshToken,
+		RemovedIds:   listResp.DeletedIds,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+	}
+
+	return resp, nil
 }
 
 // GetCredentialLibrary implements the interface pbs.CredentialLibraryServiceServer.
@@ -341,31 +421,6 @@ func (s Service) DeleteCredentialLibrary(ctx context.Context, req *pbs.DeleteCre
 		return nil, err
 	}
 	return nil, nil
-}
-
-func (s Service) listFromRepo(ctx context.Context, storeId string) ([]credential.Library, error) {
-	const op = "credentiallibraries.(Service).listFromRepo"
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	genCsl, err := repo.ListCredentialLibraries(ctx, storeId)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	certCsl, err := repo.ListSSHCertificateCredentialLibraries(ctx, storeId)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	csl := make([]credential.Library, 0, len(genCsl)+len(certCsl))
-	for _, s := range genCsl {
-		csl = append(csl, s)
-	}
-	for _, s := range certCsl {
-		csl = append(csl, s)
-	}
-	return csl, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (credential.Library, error) {
