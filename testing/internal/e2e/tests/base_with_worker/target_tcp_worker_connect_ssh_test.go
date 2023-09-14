@@ -42,14 +42,6 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewTargetCli(
-		t,
-		ctx,
-		newProjectId,
-		c.TargetPort,
-		target.WithAddress("openssh-server"),
-		target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
-	)
 
 	// Configure vault
 	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
@@ -122,6 +114,16 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	require.NoError(t, err)
 	newCredentialLibraryId := newCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
+
+	// Create a target
+	newTargetId := boundary.CreateNewTargetCli(
+		t,
+		ctx,
+		newProjectId,
+		c.TargetPort,
+		target.WithAddress("openssh-server"),
+		target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
+	)
 
 	// Add brokered credentials to target
 	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
