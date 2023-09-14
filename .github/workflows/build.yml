@@ -172,11 +172,17 @@ jobs:
           repo: "hashicorp/boundary-ui"
           name: admin-ui-${{ needs.product-metadata.outputs.product-edition }}
           path: internal/ui/.tmp/boundary-ui/ui/admin/dist
-      # - name: Install cross-compiler
-      #   run: |
-      #     sudo apt update
-      #     sudo apt install libc6-armel-cross libc6-dev-armel-cross binutils-arm-linux-gnueabi libncurses5-dev build-essential bison flex libssl-dev bc
-      #     sudo apt install gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+      - name: Install cross-compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo apt-get update
+          sudo apt-get install -y \
+            binutils-aarch64-linux-gnu \
+            binutils-arm-linux-gnueabihf \
+            gcc-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabihf \
+            gcc-multilib-arm-linux-gnueabihf
       - name: Go Build
         env:
           CGO_ENABLED: "1"
