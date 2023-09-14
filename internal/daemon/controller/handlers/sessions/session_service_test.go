@@ -453,7 +453,7 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId()},
 			res: &pbs.ListSessionsResponse{
 				Items:        wantSession,
-				EstItemCount: 21,
+				EstItemCount: 10,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -466,7 +466,7 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), IncludeTerminated: true},
 			res: &pbs.ListSessionsResponse{
 				Items:        wantIncludeTerminatedSessions,
-				EstItemCount: 21,
+				EstItemCount: 11,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -478,7 +478,7 @@ func TestList(t *testing.T) {
 			name: "List No Sessions",
 			req:  &pbs.ListSessionsRequest{ScopeId: pNoSessions.GetPublicId()},
 			res: &pbs.ListSessionsResponse{
-				EstItemCount: 21,
+				EstItemCount: 0,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -491,7 +491,7 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListSessionsRequest{ScopeId: scope.Global.String(), Recursive: true},
 			res: &pbs.ListSessionsResponse{
 				Items:        wantSession,
-				EstItemCount: 21,
+				EstItemCount: 10,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -504,7 +504,7 @@ func TestList(t *testing.T) {
 			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantSession[4].Id)},
 			res: &pbs.ListSessionsResponse{
 				Items:        wantSession[4:5],
-				EstItemCount: 21,
+				EstItemCount: 1,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -520,7 +520,7 @@ func TestList(t *testing.T) {
 			},
 			res: &pbs.ListSessionsResponse{
 				Items:        wantSession,
-				EstItemCount: 21,
+				EstItemCount: 10,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
@@ -532,7 +532,6 @@ func TestList(t *testing.T) {
 			name: "Filter To Nothing",
 			req:  &pbs.ListSessionsRequest{ScopeId: pWithSessions.GetPublicId(), Filter: `"/item/id" == ""`},
 			res: &pbs.ListSessionsResponse{
-				EstItemCount: 21,
 				ResponseType: "complete",
 				SortBy:       "updated_time",
 				SortDir:      "asc",
