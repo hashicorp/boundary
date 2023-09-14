@@ -490,6 +490,9 @@ func (b *testMockBroker) StopTimeAt(t time.Time) {}
 func (b *testMockBroker) RegisterNode(id eventlogger.NodeID, node eventlogger.Node, opt ...eventlogger.Option) error {
 	return nil
 }
+func (b *testMockBroker) RemovePipelineAndNodes(ctx context.Context, t eventlogger.EventType, id eventlogger.PipelineID) (bool, error) {
+	return true, nil
+}
 
 func (b *testMockBroker) SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error {
 	return nil
