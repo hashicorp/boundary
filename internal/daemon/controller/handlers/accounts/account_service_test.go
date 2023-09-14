@@ -3501,6 +3501,10 @@ func TestListPagination(t *testing.T) {
 	deletedAccount := accounts[0]
 	accounts = accounts[1:]
 
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
 	// request updated results
 	req.RefreshToken = got.RefreshToken
 	got, err = s.ListAccounts(ctx, req)
