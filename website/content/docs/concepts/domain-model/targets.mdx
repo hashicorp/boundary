@@ -14,14 +14,17 @@ a [user][] can connect to
 and interact with
 through Boundary
 by way of a session.
+
 A target can only be defined within a [project][].
 A target can contain references to [host sets][] from [host catalogs][]
 which belong to the same project as the target.
 A target can contain references to [credential libraries][]
 from [credential stores][] which belong to the same project as the target.
+
 A target can contain an address
 which is used by a session to connect to a networked resource.
 A target cannot have an address and also reference host sources.
+
 A user must be assigned a [role][] with the `authorize-session` [permission][]
 for the target to
 establish a session with a networked resource by way of an address,
@@ -71,6 +74,17 @@ A target has the following configurable attributes:
   The default is 8 hours (28800 seconds).
   This value must be greater than 0.
 
+## Target types
+
+Boundary supports TCP and SSH target types.
+An SSH target **must** have at least one injected application credential.
+A TCP target **cannot** have any injected application credentials.
+Note the following target type requirements:
+
+- **To use brokered credentials to connect to a target that runs SSH**: you must use a `tcp` target type.
+- **To use injected application credentials to connect to a target that runs SSH**: you must use an `ssh` target type.
+- **To enable session recording for a target that runs SSH**: you must use injected application credentials and an `ssh` target type.
+
 ### TCP target attributes
 
 TCP targets have the following additional attribute:
@@ -80,9 +94,9 @@ TCP targets have the following additional attribute:
 
 ### SSH target attributes <sup>HCP/ENT</sup>
 
-SSH targets can source username/password or SSH private key credentials from Vault [credential libraries][] or static
-[credentials][]. Boundary then injects credentials into the SSH session between a client and end host. This allows users to
-securely connect to remote hosts using SSH, while never being in possession of a valid credential for that target host.
+SSH targets use injected application credentials to authenticate an SSH session between the client and end host.
+Injected credentials allow users to securely connect to remost hosts using SSH, while never being in the possession of a valid credential for that target host.
+The injected credentials can be a username/password or username/private key credential from Vault [credential libraries][] or they can be static [credentials][] or an SSH certificate from Vault SSH credential libraries.
 
 SSH targets have the following additional attributes:
 
