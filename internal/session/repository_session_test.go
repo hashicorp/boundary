@@ -1907,11 +1907,13 @@ func TestListDeletedIds(t *testing.T) {
 func TestGetTotalItems(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
+	ctx := context.Background()
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kmsRepo := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
-	ctx := context.Background()
 	repo, err := NewRepository(ctx, rw, rw, kmsRepo)
 	require.NoError(t, err)
 
@@ -1922,12 +1924,18 @@ func TestGetTotalItems(t *testing.T) {
 
 	// Create a session, expect 1 entries
 	s := TestDefaultSession(t, conn, wrapper, iamRepo)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 	numItems, err = repo.GetTotalItems(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, numItems)
 
 	// Delete the session, expect 0 again
 	_, err = repo.DeleteSession(ctx, s.PublicId)
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(t, err)
 	numItems, err = repo.GetTotalItems(ctx)
 	require.NoError(t, err)

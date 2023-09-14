@@ -362,10 +362,10 @@ func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]str
 	return authtokenIds, nil
 }
 
-// GetTotalItems returns the total number of items in the authtoken table.
+// GetTotalItems returns an estimate of the total number of items in the authtoken table.
 func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
 	const op = "authtoken.(Repository).GetTotalItems"
-	rows, err := r.reader.Query(ctx, "select count(*) from auth_token", nil)
+	rows, err := r.reader.Query(ctx, estimateCountAuthTokens, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
 	}

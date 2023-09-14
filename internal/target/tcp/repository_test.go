@@ -435,6 +435,8 @@ func TestGetTotalItems(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	wrapper := db.TestWrapper(t)
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
@@ -451,12 +453,18 @@ func TestGetTotalItems(t *testing.T) {
 
 	// Create a session, expect 1 entries
 	tg := tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), "target1")
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 	numItems, err = repo.GetTotalItems(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, numItems)
 
 	// Delete the session, expect 0 again
 	_, err = repo.DeleteTarget(ctx, tg.GetPublicId())
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(t, err)
 	numItems, err = repo.GetTotalItems(ctx)
 	require.NoError(t, err)

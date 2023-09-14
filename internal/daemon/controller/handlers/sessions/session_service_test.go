@@ -328,10 +328,12 @@ func sessionToProto(sess *session.Session, scope *iam.Scope, at *authtoken.AuthT
 }
 
 func TestList(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	ctx := context.Background()
 
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
@@ -439,6 +441,10 @@ func TestList(t *testing.T) {
 
 		wantIncludeTerminatedSessions = append(wantIncludeTerminatedSessions, expected)
 	}
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 
 	cases := []struct {
 		name          string
@@ -643,10 +649,12 @@ func TestList(t *testing.T) {
 
 func TestListPagination(t *testing.T) {
 	require, assert := require.New(t), assert.New(t)
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(err)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
-	ctx := context.Background()
 
 	iamRepo := iam.TestRepo(t, conn, wrap)
 
@@ -695,6 +703,10 @@ func TestListPagination(t *testing.T) {
 		session := sessionToProto(sess, pWithSessions, at)
 		allSessions = append(allSessions, session)
 	}
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(err)
 
 	s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn, 1000)
 	require.NoError(err, "Couldn't create new session service.")
@@ -804,6 +816,10 @@ func TestListPagination(t *testing.T) {
 	require.NoError(err)
 	deletedSession := allSessions[0]
 	allSessions = allSessions[1:]
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(err)
 
 	// Request updated results
 	req.RefreshToken = got.RefreshToken

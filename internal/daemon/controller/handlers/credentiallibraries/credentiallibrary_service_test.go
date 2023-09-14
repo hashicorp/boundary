@@ -2643,7 +2643,7 @@ func TestListPagination(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
-	sqlDb, err := conn.SqlDB(ctx)
+	sqlDB, err := conn.SqlDB(ctx)
 	require.NoError(err)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -2682,7 +2682,7 @@ func TestListPagination(t *testing.T) {
 	}
 
 	// Run analyze to update postgres meta tables
-	_, err = sqlDb.ExecContext(ctx, "analyze")
+	_, err = sqlDB.ExecContext(ctx, "analyze")
 	require.NoError(err)
 
 	authMethod := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
@@ -2795,6 +2795,10 @@ func TestListPagination(t *testing.T) {
 	allCredentialLibraries = allCredentialLibraries[1:]
 	pbNewCredLib := vaultCredentialLibraryToProto(newCredLib, prj)
 	allCredentialLibraries = append(allCredentialLibraries, pbNewCredLib)
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(err)
 
 	// Request updated results
 	req.RefreshToken = got.RefreshToken
