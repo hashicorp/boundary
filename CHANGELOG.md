@@ -29,6 +29,9 @@ Deny filter now filters coordination worker status from observation events by de
   list returns more than 10000 entries
   ([PR](https://github.com/hashicorp/boundary/pull/3644))
 
+### Deprecations/Changes
+* Targets: Removed Application Credentials ([PR](https://github.com/hashicorp/boundary/pull/3728), [deprecated changelog](#0100-20220810)).
+
 ## 0.13.1 (2023/07/10)
 
 ### New and Improved
