@@ -28,6 +28,8 @@ managers (like HashiCorp's own [Vault](https://www.vaultproject.io/)),
 Boundary fills a different niche, allowing the credential that is eventually
 used to be hidden entirely from the user.
 
+For more information, refer to "[What is Boundary?](https://developer.hashicorp.com/boundary/docs/overview/what-is-boundary)" on the Boundary website.
+
 Getting Started
 -------------------------------
 
