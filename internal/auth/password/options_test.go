@@ -5,6 +5,7 @@ package password
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,6 +67,17 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.withOrderByCreateTime = true
 		testOpts.ascending = true
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts := GetOpts(WithStartPageAfterItem("s_1", updateTime))
+		testOpts := getDefaultOptions()
+		testOpts.withStartPageAfterItem = &sortAccount{
+			publicId:   "s_1",
+			updateTime: updateTime,
+		}
 		assert.Equal(opts, testOpts)
 	})
 }

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 )
@@ -48,6 +49,7 @@ type options struct {
 	withPublicId             string
 	withDerefAliases         DerefAliasType
 	withMaximumPageSize      uint32
+	withStartPageAfterItem   *sortAccount
 }
 
 // Option - how options are passed as args
@@ -411,5 +413,17 @@ func (d DerefAliasType) IsValid(ctx context.Context) error {
 		return nil
 	default:
 		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%q is not a valid ldap dereference alias type", d))
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(publicId string, updateTime time.Time) Option {
+	return func(o *options) error {
+		o.withStartPageAfterItem = &sortAccount{
+			publicId:   publicId,
+			updateTime: updateTime,
+		}
+		return nil
 	}
 }
