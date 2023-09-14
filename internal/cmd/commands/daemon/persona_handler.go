@@ -10,16 +10,11 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
 )
-
-type tokenReader interface {
-	ReadTokenFromKeyring(string, string) *authtokens.AuthToken
-}
 
 type refresher interface {
 	refresh()
@@ -32,25 +27,11 @@ type personaToAdd struct {
 	AuthTokenId  string
 }
 
-func (p *personaToAdd) toPersona() *cache.Persona {
-	if p == nil {
-		return nil
-	}
-	return &cache.Persona{
-		KeyringType:  p.KeyringType,
-		TokenName:    p.TokenName,
-		BoundaryAddr: p.BoundaryAddr,
-		AuthTokenId:  p.AuthTokenId,
-	}
-}
-
-func newPersonaHandlerFunc(ctx context.Context, store *cache.Store, atReader tokenReader, refresher refresher) (http.HandlerFunc, error) {
+func newPersonaHandlerFunc(ctx context.Context, repo *cache.Repository, refresher refresher) (http.HandlerFunc, error) {
 	const op = "daemon.newPersonaHandlerFunc"
 	switch {
-	case util.IsNil(store):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "store is nil")
-	case util.IsNil(atReader):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "tokenReader is nil")
+	case util.IsNil(repo):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is nil")
 	case util.IsNil(refresher):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "refresher is nil")
 	}
@@ -92,31 +73,20 @@ func newPersonaHandlerFunc(ctx context.Context, store *cache.Store, atReader tok
 			return
 		}
 
-		at := atReader.ReadTokenFromKeyring(perReq.KeyringType, perReq.TokenName)
-		if at == nil || at.Id != perReq.AuthTokenId {
-			writeError(w, "stored auth token's id doesn't match the one provided", http.StatusBadRequest)
-			return
-		}
-
-		repo, err := cache.NewRepository(ctx, store)
-		if err != nil {
-			writeError(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		foundP, err := repo.LookupPersona(ctx, perReq.BoundaryAddr, perReq.KeyringType, perReq.TokenName)
+		p, err := repo.LookupPersona(ctx, perReq.TokenName, perReq.KeyringType)
 		if err != nil {
 			writeError(w, "error performing persona lookup", http.StatusInternalServerError)
 			return
 		}
 
-		if err = repo.AddPersona(ctx, perReq.toPersona()); err != nil {
+		if err = repo.AddPersona(ctx, perReq.BoundaryAddr, perReq.TokenName, perReq.KeyringType, perReq.AuthTokenId); err != nil {
 			writeError(w, "Failed to add a persona", http.StatusInternalServerError)
 			return
 		}
 
 		w.WriteHeader(http.StatusNoContent)
 
-		if foundP == nil || foundP.AuthTokenId != at.Id {
+		if p == nil || p.AuthTokenId != perReq.AuthTokenId {
 			// If this was a new persona or an updated auth token refresh the cache.
 			refresher.refresh()
 		}

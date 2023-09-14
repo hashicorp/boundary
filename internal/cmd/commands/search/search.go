@@ -147,6 +147,10 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, error) {
 		flagQuery:    c.flagQuery,
 		resource:     c.flagResource,
 	}
+	at := c.ReadTokenFromKeyring(keyringType, tokenName)
+	if at != nil {
+		tf.authTokenId = at.Id
+	}
 
 	dotPath, err := daemon.DefaultDotDirectory(ctx)
 	if err != nil {
@@ -181,6 +185,7 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response,
 	q.Add("token_name", fb.tokenName)
 	q.Add("keyring_type", fb.keyringType)
 	q.Add("boundary_addr", fb.boundaryAddr)
+	q.Add("auth_token_id", fb.authTokenId)
 	q.Add("resource", fb.resource)
 	q.Add("query", fb.flagQuery)
 	req.URL.RawQuery = q.Encode()
@@ -259,5 +264,6 @@ type filterBy struct {
 	tokenName    string
 	keyringType  string
 	boundaryAddr string
+	authTokenId  string
 	resource     string
 }

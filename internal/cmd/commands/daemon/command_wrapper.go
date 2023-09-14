@@ -18,7 +18,7 @@ import (
 // wrappableCommand defines the interface for the commands that can be wrapped.
 type wrappableCommand interface {
 	cli.Command
-	commander
+	Commander
 }
 
 // CommandWrapper starts the boundary daemon after the command was Run and attempts
