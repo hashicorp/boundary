@@ -166,7 +166,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		),
 	)
 	require.Error(t, output.Err)
-	require.Equal(t, output.ExitCode, 255)
+	require.Equal(t, 255, output.ExitCode)
 	t.Log("Successfully failed to connect to target with wrong worker filter")
 
 	// Try creating targets with an ingress worker filter. This should result in
