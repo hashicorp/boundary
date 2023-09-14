@@ -7,7 +7,7 @@
 
 <img alt="Boundary" src="boundary.png" alt="Image" width="500px"/>
 
-Boundary provides a secure way to access hosts and critical systems without the need to handle credentials, set up firewalls, or expose your network.
+Boundary provides a simple and secure way to access hosts and critical systems without the need to handle credentials, set up firewalls, or expose your network.
 
 With Boundary you can:
 
