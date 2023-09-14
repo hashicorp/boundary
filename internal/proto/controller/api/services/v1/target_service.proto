@@ -199,8 +199,8 @@ message ListTargetsRequest {
   bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
   // An opaque token used to continue an existing iteration or
-  // request updated items. If paginating, use this token in the
-  // next list request.
+  // request updated items. If not specified, pagination
+  // will start from the beginning.
   string refresh_token = 40 [json_name = "refresh_token"]; // @gotags: `class:"public"`
   // The maximum size of a page in this iteration.
   // If unset, the default page size configured will be used.
@@ -225,7 +225,7 @@ message ListTargetsResponse {
   // The direction of the sort, either "asc" or "desc".
   string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
   // A list of item IDs that have been removed since they were returned
-  // as part of an pagination. They should be dropped from any client cache.
+  // as part of a pagination. They should be dropped from any client cache.
   // This may contain items that are not known to the cache, if they were
   // created and deleted between listings.
   repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`

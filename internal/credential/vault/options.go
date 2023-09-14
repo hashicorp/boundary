@@ -3,7 +3,11 @@
 
 package vault
 
-import "github.com/hashicorp/boundary/internal/credential"
+import (
+	"time"
+
+	"github.com/hashicorp/boundary/internal/credential"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -19,18 +23,19 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName           string
-	withDescription    string
-	withLimit          int
-	withCACert         []byte
-	withNamespace      string
-	withTlsServerName  string
-	withTlsSkipVerify  bool
-	withWorkerFilter   string
-	withClientCert     *ClientCertificate
-	withMethod         Method
-	withRequestBody    []byte
-	withCredentialType credential.Type
+	withName               string
+	withDescription        string
+	withLimit              int
+	withCACert             []byte
+	withNamespace          string
+	withTlsServerName      string
+	withTlsSkipVerify      bool
+	withWorkerFilter       string
+	withClientCert         *ClientCertificate
+	withMethod             Method
+	withRequestBody        []byte
+	withCredentialType     credential.Type
+	withStartPageAfterItem *sortCredentialLibrary
 
 	withOverrideUsernameAttribute             string
 	withOverridePasswordAttribute             string
@@ -227,5 +232,16 @@ func WithCriticalOptions(s string) Option {
 func WithExtensions(s string) Option {
 	return func(o *options) {
 		o.withExtensions = s
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(publicId string, updateTime time.Time) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = &sortCredentialLibrary{
+			publicId:   publicId,
+			updateTime: updateTime,
+		}
 	}
 }
