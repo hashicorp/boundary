@@ -62,6 +62,7 @@ type broker interface {
 	RegisterNode(id eventlogger.NodeID, node eventlogger.Node, opt ...eventlogger.Option) error
 	SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error
 	RegisterPipeline(def eventlogger.Pipeline, opt ...eventlogger.Option) error
+	RemovePipelineAndNodes(ctx context.Context, t eventlogger.EventType, id eventlogger.PipelineID) (bool, error)
 }
 
 // queuedEvent stores an event and the context that was associated with it when

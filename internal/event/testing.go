@@ -330,6 +330,21 @@ func (b *testMockBroker) RegisterPipeline(def eventlogger.Pipeline, opt ...event
 	return nil
 }
 
+func (b *testMockBroker) RemovePipelineAndNodes(ctx context.Context, t eventlogger.EventType, id eventlogger.PipelineID) (bool, error) {
+	idx := -1
+	for i, p := range b.pipelines {
+		if p.PipelineID == id {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return true, nil
+	}
+	b.pipelines = append(b.pipelines[:idx], b.pipelines[idx+1:]...)
+	return true, nil
+}
+
 func (b *testMockBroker) Send(ctx context.Context, t eventlogger.EventType, payload any) (eventlogger.Status, error) {
 	if b.errorOnSend != nil {
 		return eventlogger.Status{}, b.errorOnSend
