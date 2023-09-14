@@ -1,32 +1,31 @@
 # Boundary
-![](boundary.png)
 
-----
+- Website: https://www.boundaryproject.io/
+- Forums: [HashiCorp Discuss](https://discuss.hashicorp.com/c/boundary/)
+- Documentation: [https://boundaryproject.io/docs](https://boundaryproject.io/docs)
+- Tutorials: [HashiCorp's Learn Platform](https://developer.hashicorp.com/boundary/tutorials)
 
-**Please note**: We take Boundary's security and our users' trust very
-seriously. If you believe you have found a security issue in Boundary,
-_please responsibly disclose_ by contacting us at
-[security@hashicorp.com](mailto:security@hashicorp.com).
+<img alt="Boundary" src="boundary.png" alt="Image" width="500px"/>
 
-----
-
-Boundary provides simple and secure access to hosts and services.
-
-Traditional approaches like SSH bastion hosts or VPNs require distributing and managing 
-credentials, configuring network controls like firewalls, and exposing the private 
-network. Boundary provides a secure way to access hosts and critical systems without 
+Boundary provides a secure way to access hosts and critical systems without 
 having to manage credentials or expose your network, and is entirely open source.
+
+Boundary provides secure access to hosts and critical systems without distributing and managing credentials, configuring firewalls, or exposing your private network. Traditionally, for users to access their resources, it's required that organizations establish and maintain SSH bastion hosts and VPNs.
+
+With Boundary you can:
+
+* Enable single sign-on to target services and applications via external identity providers
+* Provide Just-in-Time network access to resources, wherever they reside 
+* Enable passwordless access to machines with dynamic credentials via [HashiCorp Vault](https://www.vaultproject.io/)
+* Automate discovery of new target systems
+* Record and manage privileged sessions
+* Standardize your team's access workflow with a consistent experience for any type of infrastructure across any provider
+
 
 Boundary is designed to be straightforward to understand, highly scalable, and 
 resilient. It can run in clouds, on-prem, secure enclaves and more, and does not require
 an agent to be installed on every end host.
 
-Unlike firewalls, Boundary performs per-access authentication and
-authorization checks, allowing for much higher level mappings of users to
-services or hosts than at network layers. Although complementary to secrets
-managers (like HashiCorp's own [Vault](https://www.vaultproject.io/)),
-Boundary fills a different niche, allowing the credential that is eventually
-used to be hidden entirely from the user.
 
 Getting Started
 -------------------------------
@@ -210,6 +209,15 @@ could be taken in a production context:
 There are many, many more things that Boundary will do in the future in terms of
 integrations, features, and more. We have a long roadmap planned out, so stay
 tuned for information about new features and capabilities!
+
+----
+
+**Please note**: We take Boundary's security and our users' trust very
+seriously. If you believe you have found a security issue in Boundary,
+_please responsibly disclose_ by contacting us at
+[security@hashicorp.com](mailto:security@hashicorp.com).
+
+----
 
 ## Contributing
 
