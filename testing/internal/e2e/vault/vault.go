@@ -25,9 +25,9 @@ type CreateTokenResponse struct {
 
 // Setup verifies if appropriate credentials are set and adds the boundary controller
 // policy to vault. Returns the vault address.
-func Setup(t testing.TB) (boundaryPolicyName string, kvPolicyFilePath string) {
+func Setup(t testing.TB, boundaryControllerFilePath string) (boundaryPolicyName string, kvPolicyFilePath string) {
 	// Set up boundary policy
-	boundaryPolicyFilePath, err := filepath.Abs("testdata/boundary-controller-policy.hcl")
+	boundaryPolicyFilePath, err := filepath.Abs(boundaryControllerFilePath)
 	require.NoError(t, err)
 	boundaryPolicyName = WritePolicy(t, context.Background(), boundaryPolicyFilePath)
 

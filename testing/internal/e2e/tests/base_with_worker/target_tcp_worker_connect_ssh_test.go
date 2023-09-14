@@ -42,17 +42,9 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		require.NoError(t, output.Err, string(output.Stderr))
 	})
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
-	newTargetId := boundary.CreateNewTargetCli(
-		t,
-		ctx,
-		newProjectId,
-		c.TargetPort,
-		target.WithAddress("openssh-server"),
-		target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
-	)
 
 	// Configure vault
-	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -123,6 +115,16 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 	newCredentialLibraryId := newCredentialLibraryResult.Item.Id
 	t.Logf("Created Credential Library: %s", newCredentialLibraryId)
 
+	// Create a target
+	newTargetId := boundary.CreateNewTargetCli(
+		t,
+		ctx,
+		newProjectId,
+		c.TargetPort,
+		target.WithAddress("openssh-server"),
+		target.WithEgressWorkerFilter(fmt.Sprintf(`"%s" in "/tags/type"`, c.WorkerTagEgress)),
+	)
+
 	// Add brokered credentials to target
 	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialLibraryId)
 
@@ -166,7 +168,7 @@ func TestCliTcpTargetWorkerConnectTarget(t *testing.T) {
 		),
 	)
 	require.Error(t, output.Err)
-	require.Equal(t, output.ExitCode, 255)
+	require.Equal(t, 255, output.ExitCode)
 	t.Log("Successfully failed to connect to target with wrong worker filter")
 
 	// Try creating targets with an ingress worker filter. This should result in
