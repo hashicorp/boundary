@@ -365,10 +365,10 @@ func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]str
 	return targetIds, nil
 }
 
-// GetTotalItems returns the total number of items across all targets.
+// GetTotalItems returns an estimate of the total number of items across all targets.
 func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
 	const op = "target.(Repository).GetTotalItems"
-	rows, err := r.reader.Query(ctx, "select count(*) from "+targetsViewDefaultTable, nil)
+	rows, err := r.reader.Query(ctx, estimateCountTargets, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
 	}

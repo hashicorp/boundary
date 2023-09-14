@@ -284,7 +284,10 @@ func authTokenToProto(at *authtoken.AuthToken, scope *scopes.ScopeInfo, authoriz
 }
 
 func TestList(t *testing.T) {
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
@@ -320,6 +323,10 @@ func TestList(t *testing.T) {
 		atp := authTokenToProto(at, &scopes.ScopeInfo{Id: orgWithOtherTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()}, fullAuthorizedActions)
 		wantOtherTokens = append(wantOtherTokens, atp)
 	}
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 
 	allTokens := append(globalTokens, wantSomeTokens...)
 	allTokens = append(allTokens, wantOtherTokens...)
@@ -461,6 +468,8 @@ func TestList(t *testing.T) {
 func TestListPagination(t *testing.T) {
 	testCtx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(testCtx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
@@ -502,6 +511,10 @@ func TestListPagination(t *testing.T) {
 	masterToken, _ := tokenRepo.CreateAuthToken(testCtx, u, acct.GetPublicId())
 	mtp := authTokenToProto(masterToken, &scopes.ScopeInfo{Id: orgWithTokens.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()}, selfAuthorizedActions)
 	allTokens = append(allTokens, mtp)
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(testCtx, "analyze")
+	require.NoError(err)
 
 	requestInfo := authpb.RequestInfo{
 		TokenFormat: uint32(auth.AuthTokenTypeBearer),
@@ -595,6 +608,10 @@ func TestListPagination(t *testing.T) {
 	require.NoError(err)
 	deletedAuthToken := allTokens[0]
 	allTokens = allTokens[1:]
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(testCtx, "analyze")
+	require.NoError(err)
 
 	// request the changes
 	req.RefreshToken = got.RefreshToken

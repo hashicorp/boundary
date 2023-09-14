@@ -961,6 +961,8 @@ func TestGetTotalItems(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
 	rw := db.New(conn)
 	wrapper := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrapper)
@@ -978,12 +980,18 @@ func TestGetTotalItems(t *testing.T) {
 
 	// Create an auth token, expect 1 entries
 	at := TestAuthToken(t, conn, kms, org.GetPublicId())
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
 	numItems, err = repo.GetTotalItems(ctx)
 	require.NoError(err)
 	assert.Equal(1, numItems)
 
 	// Delete the auth token, expect 0 again
 	_, err = repo.DeleteAuthToken(ctx, at.PublicId)
+	require.NoError(err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
 	numItems, err = repo.GetTotalItems(ctx)
 	require.NoError(err)
