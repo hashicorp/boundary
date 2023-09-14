@@ -593,6 +593,7 @@ func newFmtFilterNode(serverName string, c SinkConfig, opt ...Option) (eventlogg
 func DefaultEventerConfig() *EventerConfig {
 	return &EventerConfig{
 		AuditEnabled:        false,
+		TelemetryEnabled:    false,
 		ObservationsEnabled: true,
 		SysEventsEnabled:    true,
 		Sinks:               []*SinkConfig{DefaultSink()},

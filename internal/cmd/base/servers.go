@@ -201,6 +201,9 @@ func (b *Server) SetupEventing(ctx context.Context, logger hclog.Logger, seriali
 		if opts.withEventFlags.SysEventsEnabled != nil {
 			opts.withEventerConfig.SysEventsEnabled = *opts.withEventFlags.SysEventsEnabled
 		}
+		if opts.withEventFlags.TelemetryEnabled != nil {
+			opts.withEventerConfig.TelemetryEnabled = *opts.withEventFlags.TelemetryEnabled
+		}
 		if len(opts.withEventFlags.AllowFilters) > 0 {
 			for i := 0; i < len(opts.withEventerConfig.Sinks); i++ {
 				opts.withEventerConfig.Sinks[i].AllowFilters = opts.withEventFlags.AllowFilters

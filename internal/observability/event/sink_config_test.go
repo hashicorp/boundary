@@ -208,6 +208,32 @@ func TestSinkConfig_Validate(t *testing.T) {
 			wantErrContains: `too many sink type config blocks`,
 		},
 		{
+			name: "invalid observation, telemetry type",
+			sc: SinkConfig{
+				Name:       "invalid observation, telemetry type",
+				EventTypes: []Type{TelemetryType, AuditType},
+				Type:       FileSink,
+				Format:     JSONSinkFormat,
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+			},
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: `telemetry event type requires observation event type to be specified`,
+		},
+		{
+			name: "valid-observation-telemetry-type",
+			sc: SinkConfig{
+				Name:       "valid",
+				EventTypes: []Type{ObservationType, TelemetryType, AuditType},
+				Type:       FileSink,
+				FileConfig: &FileSinkTypeConfig{
+					FileName: "tmp.file",
+				},
+				Format: JSONSinkFormat,
+			},
+		},
+		{
 			name: "valid",
 			sc: SinkConfig{
 				Name:       "valid",
