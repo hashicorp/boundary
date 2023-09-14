@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
@@ -349,5 +350,17 @@ func Test_getOpts(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(err, `"Invalid" is not a valid ldap dereference alias type`)
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "want err code: %q got: %q", errors.InvalidParameter, err)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts, err := getOpts(WithStartPageAfterItem("s_1", updateTime))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withStartPageAfterItem = &sortAccount{
+			publicId:   "s_1",
+			updateTime: updateTime,
+		}
+		assert.Equal(opts, testOpts)
 	})
 }
