@@ -182,7 +182,7 @@ jobs:
             binutils-arm-linux-gnueabihf \
             gcc-aarch64-linux-gnu \
             gcc-arm-linux-gnueabihf \
-            gcc-multilib-arm-linux-gnueabihf
+            gcc-multilib
       - name: Go Build
         env:
           CGO_ENABLED: "1"
