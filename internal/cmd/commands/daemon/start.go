@@ -40,7 +40,7 @@ var (
 
 type server interface {
 	setupLogging(context.Context, io.Writer) error
-	serve(context.Context, commander, net.Listener) error
+	serve(context.Context, Commander, net.Listener) error
 	shutdown() error
 }
 

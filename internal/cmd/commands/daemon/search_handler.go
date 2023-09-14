@@ -31,13 +31,14 @@ const (
 	tokenNameKey    = "token_name"
 	boundaryAddrKey = "boundary_addr"
 	keyringTypeKey  = "keyring_type"
+	authTokenIdKey  = "auth_token_id"
 )
 
-func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.HandlerFunc, error) {
+func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (http.HandlerFunc, error) {
 	const op = "daemon.newSearchTargetsHandlerFunc"
 	switch {
-	case util.IsNil(store):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "store is missing")
+	case util.IsNil(repo):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is missing")
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -51,6 +52,7 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.
 		tokenName := r.URL.Query().Get(tokenNameKey)
 		keyringType := r.URL.Query().Get(keyringTypeKey)
 		boundaryAddr := r.URL.Query().Get(boundaryAddrKey)
+		authTokenId := r.URL.Query().Get(authTokenIdKey)
 
 		switch {
 		case resource == "":
@@ -68,15 +70,13 @@ func newSearchTargetsHandlerFunc(ctx context.Context, store *cache.Store) (http.
 		case boundaryAddr == "":
 			writeError(w, fmt.Sprintf("%s is a required field but was empty", boundaryAddrKey), http.StatusBadRequest)
 			return
-		}
-
-		repo, err := cache.NewRepository(ctx, store)
-		if err != nil {
-			writeError(w, err.Error(), http.StatusInternalServerError)
+		case authTokenId == "":
+			writeError(w, fmt.Sprintf("%s is a required field but was empty", authTokenId), http.StatusBadRequest)
 			return
 		}
 
-		p, err := repo.LookupPersona(ctx, boundaryAddr, keyringType, tokenName, cache.WithUpdateLastAccessedTime(true))
+		p, err := repo.LookupPersona(ctx, tokenName, keyringType,
+			cache.WithBoundaryAddress(boundaryAddr), cache.WithAuthTokenId(authTokenId), cache.WithUpdateLastAccessedTime(true))
 		if err != nil || p == nil {
 			writeError(w, "Forbidden", http.StatusForbidden)
 			return
