@@ -61,12 +61,17 @@ func filterValue(fv reflect.Value, isObservable bool) {
 	return
 }
 
+// packageNameFromType extracts the package for a type for use with
+// core protobuf type checks.
 func packageNameFromType(field reflect.StructField) string {
 	typeSegments := strings.Split(field.Type.String(), ".")
 	pkg := strings.TrimLeft(typeSegments[0], "*")
 	return pkg
 }
 
+// recurseStructureWithProtoFilter will recursively traverse the data struct passed in, and run
+// a filter function (filterFunc) on struct fields to decide if they should be preserved or cleared.
+// isObservable specifies if the level the current value resides in is considered observable or not.
 func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter, isObservable bool) error {
 	kind := value.Kind()
 
@@ -118,8 +123,7 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 		}
 	case reflect.Struct:
 		fields := value.Type()
-		num := fields.NumField()
-		for i := 0; i < num; i++ {
+		for i := 0; i < fields.NumField(); i++ {
 			field := fields.Field(i)
 			v := value.Field(i)
 			if !field.IsExported() {
@@ -150,6 +154,9 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 	return nil
 }
 
+// filterProtoMessage recursively traverses the proto.Message passed in, applying the specified filter
+// to decide if it will clear or preserve fields. It operates on a clone of the supplied proto, so as to preserve
+// the original data.
 func filterProtoMessage(msg proto.Message, filterFunc protoFilter) (proto.Message, error) {
 	if msg == nil {
 		return nil, errors.New("nil message")
