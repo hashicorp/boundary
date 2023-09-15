@@ -183,7 +183,7 @@ could be taken in a production context:
 * Using a firewall or other means to restrict the set of hosts allowed to
   connect to a local service to only Boundary Worker nodes, thereby making
   Boundary the _only_ means of ingress to a host
-* Using the Boundary Terraform provider to easily integrate Boundary with your
+* Using the [Boundary Terraform provider](https://registry.terraform.io/providers/hashicorp/boundary/latest) to easily integrate Boundary with your
   existing code-based infrastructure
 * Pointing a BI tool (PowerBI, Tableau, etc.) at Boundary's session warehouse to
   generate insights and look for anomalies with respect to session access
