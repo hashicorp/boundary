@@ -76,10 +76,27 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 		value = value.Elem()
 		return recurseStructureWithProtoFilter(value, filterFunc, isObservable)
 	case reflect.Map:
-		for _, k := range value.MapKeys() {
-			mVal := value.MapIndex(k)
-			if err := recurseStructureWithProtoFilter(mVal, filterFunc, isObservable); err != nil {
-				return err
+		iter := value.MapRange()
+		for iter.Next() {
+			mVal := iter.Value()
+			k := iter.Key()
+			vKind := mVal.Kind()
+			if vKind == reflect.Ptr || vKind == reflect.Interface {
+				mVal = mVal.Elem()
+				vKind = mVal.Kind()
+			}
+			switch vKind {
+			case reflect.Struct, reflect.Array, reflect.Slice:
+				if err := recurseStructureWithProtoFilter(mVal, filterFunc, isObservable); err != nil {
+					return err
+				}
+				if mVal.IsValid() && mVal.IsZero() {
+					value.SetMapIndex(k, reflect.Value{})
+				}
+			default:
+				if !isObservable {
+					value.SetMapIndex(k, reflect.Value{})
+				}
 			}
 		}
 		return nil
@@ -96,7 +113,7 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 				}
 			}
 			// if slice is empty after processing, we can zero its length
-			if zeroCount == value.Len() && kind == reflect.Slice {
+			if zeroCount == value.Len() && kind == reflect.Slice && value.CanSet() {
 				value.SetLen(0)
 			}
 		}
