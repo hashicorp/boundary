@@ -38,6 +38,8 @@ const (
 	IdField          = "id"           // IdField in an event.
 	CreatedAtField   = "created_at"   // CreatedAtField in an event.
 	TypeField        = "type"         // TypeField in an event.
+	RequestField     = "request"      // Request field in an event.
+	ResponseField    = "response"     // Response field in an event.
 
 	auditPipeline       = "audit-pipeline"       // auditPipeline is a pipeline for audit events
 	observationPipeline = "observation-pipeline" // observationPipeline is a pipeline for observation events

@@ -112,7 +112,7 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 		}
 		if g.Request != nil {
 			msgReq := &Request{}
-			if v, ok := payload["request"]; ok {
+			if v, ok := payload[RequestField]; ok {
 				msgReq, ok = v.(*Request)
 				if !ok {
 					return "", nil, fmt.Errorf("%s: request %d is not an observation request: %w", op, i, eventlogger.ErrInvalidParameter)
@@ -134,11 +134,11 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 			if g.Request.DetailsUpstreamMessage != nil {
 				msgReq.DetailsUpstreamMessage = g.Request.DetailsUpstreamMessage
 			}
-			payload["request"] = msgReq
+			payload[RequestField] = msgReq
 		}
 		if g.Response != nil {
 			msgRes := &Response{}
-			if v, ok := payload["response"]; ok {
+			if v, ok := payload[ResponseField]; ok {
 				msgRes, ok = v.(*Response)
 				if !ok {
 					return "", nil, fmt.Errorf("%s: response %d is not an observation response: %w", op, i, eventlogger.ErrInvalidParameter)
@@ -157,7 +157,7 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 			if g.Response.DetailsUpstreamMessage != nil {
 				msgRes.DetailsUpstreamMessage = g.Response.DetailsUpstreamMessage
 			}
-			payload["response"] = msgRes
+			payload[ResponseField] = msgRes
 		}
 	}
 	return events[0].Type, payload, nil
