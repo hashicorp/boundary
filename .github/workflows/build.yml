@@ -124,7 +124,7 @@ jobs:
         #goos: [ freebsd, windows, netbsd, openbsd, solaris ]
         #goarch: [ "386", "amd64", "arm" ]
         goos: [ freebsd ]
-        goarch: [ amd64 ]
+        goarch: [ arm ]
         go: [ "${{ needs.product-metadata.outputs.go-version }}" ]
         exclude:
           - goos: solaris
