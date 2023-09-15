@@ -82,6 +82,8 @@ as writing some simple configuration files to tell the nodes how to reach their
 database and KMS. The steps below, along with the extra information needed
 for permanent installations, are detailed in our [Installation Guide](https://www.boundaryproject.io/docs/installing).
 
+> ⚠️  Do _not_ use the `main` branch except for dev or test cases. Boundary 0.10 introduced release branches which should be safe to track, however, migrations in `main` may be renumbered if needed. The Boundary team will not be able to provide assistance if running `main` over the long term results in migration breakages.
+
 ## Quickstart with Boundary Dev
 
 Boundary has a `dev` mode that can be used for testing. In this mode both a
@@ -92,8 +94,6 @@ following properties:
   This container will be shut down and removed (if possible) when the
   Controller is (gracefully) shut down.
 * The Controller will use an internal KMS with ephemeral keys
-
-**NOTE**: Do _not_ use the `main` branch except for dev or test cases. Boundary 0.10 introduced release branches which should be safe to track, however, migrations in `main` may be renumbered if needed. The Boundary team will not be able to provide assistance if running `main` over the long term results in migration breakages.
 
 If you have the following requirements met locally:
 - Golang v1.19 or greater
