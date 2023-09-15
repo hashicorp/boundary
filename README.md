@@ -185,7 +185,7 @@ could be taken in a production context:
   Boundary the _only_ means of ingress to a host
 * Using the [Boundary Terraform provider](https://registry.terraform.io/providers/hashicorp/boundary/latest) to easily integrate Boundary with your
   existing code-based infrastructure
-* Pointing a BI tool (PowerBI, Tableau, etc.) at Boundary's session warehouse to
+* Pointing a BI tool (PowerBI, Tableau, etc.) at Boundary's data warehouse to
   generate insights and look for anomalies with respect to session access
 
 There are many, many more things that Boundary will do in the future in terms of
