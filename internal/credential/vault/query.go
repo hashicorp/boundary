@@ -189,8 +189,4 @@ delete from credential_vault_credential
  where session_id is null
    and status not in ('active', 'revoke')
 `
-
-	estimateCountCredentialLibraries = `
-  select reltuples::bigint as estimate from pg_class where oid = (current_schema() || '.credential_library')::regclass
-`
 )

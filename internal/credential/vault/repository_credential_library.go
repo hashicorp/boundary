@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
@@ -495,52 +494,4 @@ func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return libs, nil
-}
-
-// ListDeletedIds lists the public IDs of any credential libraries deleted since the timestamp provided.
-// This includes both generic and ssh certificate credential libraries across all credential stores.
-func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
-	const op = "vault.(Repository).ListDeletedIds"
-	var deletedCredentialLibraries []*deletedCredentialLibrary
-	if err := r.reader.SearchWhere(ctx, &deletedCredentialLibraries, "delete_time >= ?", []any{since}); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credential libraries"))
-	}
-	var credentialLibraryIds []string
-	for _, cl := range deletedCredentialLibraries {
-		credentialLibraryIds = append(credentialLibraryIds, cl.PublicId)
-	}
-	return credentialLibraryIds, nil
-}
-
-// GetTotalItems returns an estimate of the total number of items in the credential library table.
-// This includes both generic and ssh certificate credential libraries.
-func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
-	const op = "vault.(Repository).GetTotalItems"
-	rows, err := r.reader.Query(ctx, estimateCountCredentialLibraries, nil)
-	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential libraries"))
-	}
-	var count int
-	for rows.Next() {
-		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
-			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential libraries"))
-		}
-	}
-	return count, nil
-}
-
-// Now returns the current timestamp in the DB.
-func (r *Repository) Now(ctx context.Context) (time.Time, error) {
-	const op = "vault.(Repository).Now"
-	rows, err := r.reader.Query(ctx, "select current_timestamp", nil)
-	if err != nil {
-		return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
-	}
-	var now time.Time
-	for rows.Next() {
-		if err := r.reader.ScanRows(ctx, rows, &now); err != nil {
-			return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
-		}
-	}
-	return now, nil
 }

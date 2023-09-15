@@ -115,26 +115,41 @@ func init() {
 type Service struct {
 	pbs.UnsafeCredentialLibraryServiceServer
 
-	iamRepoFn   common.IamRepoFactory
-	repoFn      common.VaultCredentialRepoFactory
-	maxPageSize uint
+	iamRepoFn                   common.IamRepoFactory
+	repoFn                      common.VaultCredentialRepoFactory
+	baseCredentialLibraryRepoFn common.BaseCredentialLibraryRepoFactory
+	maxPageSize                 uint
 }
 
 var _ pbs.CredentialLibraryServiceServer = (*Service)(nil)
 
 // NewService returns a credential library service which handles credential library related requests to boundary.
-func NewService(ctx context.Context, repo common.VaultCredentialRepoFactory, iamRepo common.IamRepoFactory, maxPageSize uint) (Service, error) {
+func NewService(
+	ctx context.Context,
+	iamRepoFn common.IamRepoFactory,
+	repoFn common.VaultCredentialRepoFactory,
+	baseCredentialLibraryRepoFn common.BaseCredentialLibraryRepoFactory,
+	maxPageSize uint,
+) (Service, error) {
 	const op = "credentiallibraries.NewService"
-	if iamRepo == nil {
+	if iamRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
-	if repo == nil {
+	if repoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing vault credential repository")
+	}
+	if baseCredentialLibraryRepoFn == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing generic credential library repository")
 	}
 	if maxPageSize == 0 {
 		maxPageSize = uint(defaultMaxPageSize)
 	}
-	return Service{iamRepoFn: iamRepo, repoFn: repo, maxPageSize: maxPageSize}, nil
+	return Service{
+		iamRepoFn:                   iamRepoFn,
+		repoFn:                      repoFn,
+		baseCredentialLibraryRepoFn: baseCredentialLibraryRepoFn,
+		maxPageSize:                 maxPageSize,
+	}, nil
 }
 
 // ListCredentialLibraries implements the interface pbs.CredentialLibraryServiceServer
@@ -149,6 +164,10 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 	}
 
 	repo, err := s.repoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	baseRepo, err := s.baseCredentialLibraryRepoFn()
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -244,7 +263,7 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 		listCredentialLibrariesFn,
 		filterAndConvertFn,
 		&authResults,
-		repo,
+		baseRepo,
 	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
