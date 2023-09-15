@@ -24,7 +24,10 @@ resilient. It can run in clouds, on-prem, secure enclaves and more, and does not
 an agent to be installed on every end host.
 
 
-[![Watch the video](https://img.youtube.com/vi/DCkDqZdATC0/0.jpg)](https://www.youtube.com/watch?v=DCkDqZdATC0)
+<a href="https://www.youtube.com/watch?v=DCkDqZdATC0">
+  <img src="https://www.boundaryproject.io/_next/image?url=https%3A%2F%2Fwww.datocms-assets.com%2F58478%2F1664218843-boundary-illustration-option2-1.png&w=3840&q=75" alt="Watch the video" width="320" height="180">
+</a>
+
 
 
 Getting Started
