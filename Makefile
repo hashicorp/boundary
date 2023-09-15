@@ -57,7 +57,7 @@ dev:
 build: BUILD_TAGS+=ui
 build: build-ui-ifne
 	@echo "==> Building Boundary with UI features enabled"
-	@CGO_ENABLED=$(CGO_ENABLED) CC=arm-linux-gnueabihf-gcc GOARM=6 BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
 .PHONY: install
 install: export BOUNDARY_INSTALL_BINARY=1
