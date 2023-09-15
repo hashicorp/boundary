@@ -1,6 +1,7 @@
 # Boundary
 
 - Website: https://www.boundaryproject.io/
+- What is Boundary: https://developer.hashicorp.com/boundary/docs/overview/what-is-boundary
 - Forums: [HashiCorp Discuss](https://discuss.hashicorp.com/c/boundary/)
 - Documentation: [https://boundaryproject.io/docs](https://boundaryproject.io/docs)
 - Tutorials: [HashiCorp's Learn Platform](https://developer.hashicorp.com/boundary/tutorials)
