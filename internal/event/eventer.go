@@ -60,6 +60,7 @@ type broker interface {
 	Reopen(ctx context.Context) error
 	StopTimeAt(now time.Time)
 	RegisterNode(id eventlogger.NodeID, node eventlogger.Node, opt ...eventlogger.Option) error
+	RemoveNode(ctx context.Context, id eventlogger.NodeID) error
 	SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error
 	RegisterPipeline(def eventlogger.Pipeline, opt ...eventlogger.Option) error
 	RemovePipelineAndNodes(ctx context.Context, t eventlogger.EventType, id eventlogger.PipelineID) (bool, error)
