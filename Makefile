@@ -71,7 +71,7 @@ install-no-plugins: install
 build-memprof: BUILD_TAGS+=memprofiler
 build-memprof:
 	@echo "==> Building Boundary with memory profiling enabled"
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+	@CGO_ENABLED=$(CGO_ENABLED) GOOS=freebsd GOARCH=386 BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
 # Format Go files, ignoring files marked as generated through the header defined at
 # https://pkg.go.dev/cmd/go#hdr-Generate_Go_files_by_processing_source
