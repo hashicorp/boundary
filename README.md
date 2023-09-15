@@ -75,7 +75,14 @@ file.
 Any cloud KMS or Vault's Transit Secrets Engine can be used to satisfy the KMS
 requirement. 
 
-## Quickstart 
+## Trying out Boundary
+
+Running Boundary in a more permanent context requires a few more steps, such
+as writing some simple configuration files to tell the nodes how to reach their
+database and KMS. The steps below, along with the extra information needed
+for permanent installations, are detailed in our [Installation Guide](https://www.boundaryproject.io/docs/installing).
+
+## Quickstart with Boundary Dev
 
 Boundary has a `dev` mode that can be used for testing. In this mode both a
 Controller and Worker are started with a single command, and they have the
@@ -85,15 +92,6 @@ following properties:
   This container will be shut down and removed (if possible) when the
   Controller is (gracefully) shut down.
 * The Controller will use an internal KMS with ephemeral keys
-
-## Trying out Boundary
-
-Running Boundary in a more permanent context requires a few more steps, such
-as writing some simple configuration files to tell the nodes how to reach their
-database and KMS. The steps below, along with the extra information needed
-for permanent installations, are detailed in our [Installation Guide](https://www.boundaryproject.io/docs/installing).
-
-### Build and Start Boundary in Dev Mode
 
 **NOTE**: Do _not_ use the `main` branch except for dev or test cases. Boundary 0.10 introduced release branches which should be safe to track, however, migrations in `main` may be renumbered if needed. The Boundary team will not be able to provide assistance if running `main` over the long term results in migration breakages.
 
@@ -123,31 +121,6 @@ Without doing so, you may encounter errors while running `make install`. It is i
 to also note that using `make tools` will install various tools used for Boundary
 development to the normal Go binary directory; this may overwrite or take precedence
 over tools that might already be installed on the system.
-
-#### Specify a UI Commitish at Build Time
-
-By default the UI will be built from a preselected commit ID from [the UI
-repo](https://github.com/hashicorp/boundary-ui). A different commitish from
-which to build UI assets may be specified via the UI_COMMITISH environment
-variable. For example:
-
-  ```UI_COMMITISH=feature-branch make build-ui```
-
-will update your local UI assets.
-
-#### UI Build Troubleshooting
-
-UI assets are built within a Docker container.  If you encounter issues with
-this build step, trying increasing memory and swap available to Docker.
-
-#### UI Development
-
-It would be impractical to rebuild the binary on every change when actively
-developing the UI. To make UI development more convenient, the binary supports a
-_passthrough directory_. This is an arbitrary local directory from which UI
-assets are served. Note this option is only available in dev mode. For example:
-
-  ```BOUNDARY_DEV_UI_PASSTHROUGH_DIR=/boundary-ui/ui/admin/dist ~/go/bin/boundary dev```
 
 ### Download and Run from Release Page
 
