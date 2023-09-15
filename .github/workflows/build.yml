@@ -117,14 +117,14 @@ jobs:
     needs:
       - product-metadata
       - set-product-version
-    # runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
-    runs-on: ubuntu-20.04
+    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    # runs-on: ubuntu-20.04
     strategy:
       matrix:
         #goos: [ freebsd, windows, netbsd, openbsd, solaris ]
         #goarch: [ "386", "amd64", "arm" ]
-        goos: [ freebsd ]
-        goarch: [ arm ]
+        goos: [ windows ]
+        goarch: [ 386 ]
         go: [ "${{ needs.product-metadata.outputs.go-version }}" ]
         exclude:
           - goos: solaris

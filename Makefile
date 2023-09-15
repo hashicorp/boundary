@@ -12,7 +12,7 @@ TEST_TIMEOUT ?= 30m
 CGO_ENABLED?=0
 GO_PATH = $(shell go env GOPATH)
 
-CC = ${CC_FOR_TARGET}
+CC = arm-linux-gnueabihf-gcc
 
 export GEN_BASEPATH := $(shell pwd)
 
@@ -57,7 +57,7 @@ dev:
 build: BUILD_TAGS+=ui
 build: build-ui-ifne
 	@echo "==> Building Boundary with UI features enabled"
-	@CGO_ENABLED=$(CGO_ENABLED) CC='arm-linux-gnueabihf-gcc' BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
 .PHONY: install
 install: export BOUNDARY_INSTALL_BINARY=1
