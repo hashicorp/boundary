@@ -24,6 +24,9 @@ resilient. It can run in clouds, on-prem, secure enclaves and more, and does not
 an agent to be installed on every end host.
 
 
+[![Watch the video](https://img.youtube.com/vi/DCkDqZdATC0/0.jpg)](https://www.youtube.com/watch?v=DCkDqZdATC0)
+
+
 Getting Started
 -------------------------------
 
