@@ -30,7 +30,7 @@ Getting Started
 Boundary consists of two server components: 
 
 * **Controller**, which serve the API and coordinate session requests
-* **Workers**, which perform session handling.
+* **Workers**, which perform session handling
 
 A real-world Boundary installation will likely consist of one or more
 Controllers paired with one or more Workers. A single Boundary binary can act
