@@ -48,28 +48,34 @@ and services.
 
 ## Requirements
 
-Boundary has two external dependencies: a SQL database, and one or more
-KMSes.  Both are readily available from cloud vendors, but can be satisfied by
-on-premises technologies as well.
+Boundary has two external dependencies: 
+- A SQL database
+- Atleast one KMS
 
-* The database contains Boundary's configuration and session information and
-  must be accessible by Controller nodes. Values that are secrets (such as
-  credentials) are encrypted in the database. Currently, PostgreSQL is supported
-  as a database and has been tested with Postgres 12 and above. Boundary uses
-  only common extensions and both hosted and self-run instances are supported.
-  In most instances all that is needed is a database endpoint and appropriate
-  credentials.
+##### SQL Database
+The database contains Boundary's configuration and session information. The 
+database must be accessible by Controller nodes. 
 
-* Any cloud KMS or Vault's Transit Secrets Engine can be used to satisfy the KMS
-  requirement. Currently, two keys within the KMS are required: one for
-  authenticating other cluster components, which must be accessible by both
-  Controllers and Workers; and one for encrypting secret values in the database,
-  which need only be accessible to Controllers. These keys can be changed over
-  time (so long as the original key remains available for any decryption needs),
-  and key derivation is used extensively to avoid key sprawl of these high-value
-  keys. If available, other keys can be used for other purposes, such as
-  recovery functionality and encryption of sensitive values in Boundary's config
-  file.
+Values that are secrets(e.g credentials) are encrypted in the database. Currently, PostgreSQL is supported as a database and has been tested with Postgres 12 and above.
+
+Boundary uses only common extensions and both hosted and self-run instances are supported.
+In most instances all that is needed is a database endpoint and appropriate credentials.
+
+##### KMS 
+Currently, two keys within the KMS are required: one for
+authenticating other cluster components, which must be accessible by both
+Controllers and Workers; and one for encrypting secret values in the database,
+which need only be accessible to Controllers. These keys can be changed over
+time (so long as the original key remains available for any decryption needs),
+and key derivation is used extensively to avoid key sprawl of these high-value
+keys. If available, other keys can be used for other purposes, such as
+recovery functionality and encryption of sensitive values in Boundary's config
+file.
+
+Any cloud KMS or Vault's Transit Secrets Engine can be used to satisfy the KMS
+requirement. 
+
+## Quickstart 
 
 Boundary has a `dev` mode that can be used for testing. In this mode both a
 Controller and Worker are started with a single command, and they have the
