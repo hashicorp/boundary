@@ -95,14 +95,14 @@ following properties:
   Controller is (gracefully) shut down.
 * The Controller will use an internal KMS with ephemeral keys
 
-If you have the following requirements met locally:
+If you have the following requirements met locally, you can get up and running with Boundary quickly:
 - Golang v1.19 or greater
 - Docker
 - Either the [Boundary UI Dependencies](https://github.com/hashicorp/boundary-ui#prerequisites)
   for locally building the ui assets
   or [gh cli](https://cli.github.com) for downloading pre-built ui assets.
 
-You can get up and running with Boundary quickly. Simply run:
+Simply run:
 
   ```make install```
 
