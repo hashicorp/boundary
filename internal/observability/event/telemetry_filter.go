@@ -31,7 +31,6 @@ type protoFilter func(field reflect.StructField) bool
 // telemetryFilter checks a struct field should be included in observation telemetry data
 func telemetryFilter(field reflect.StructField) bool {
 	if field.Tag.Get("eventstream") == "observation" {
-		// log.Printf("%s is allowed by Tags (%s:\"%s\")", name, tag, tagValue)
 		return true
 	}
 	return false
