@@ -117,7 +117,8 @@ jobs:
     needs:
       - product-metadata
       - set-product-version
-    runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    # runs-on: ${{ fromJSON(vars.BUILDER_LINUX) }}
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         #goos: [ freebsd, windows, netbsd, openbsd, solaris ]
@@ -181,7 +182,8 @@ jobs:
             binutils-aarch64-linux-gnu \
             binutils-arm-linux-gnueabihf \
             gcc-aarch64-linux-gnu \
-            gcc-arm-linux-gnueabihf
+            gcc-arm-linux-gnueabihf \
+            gcc-multilib-arm-linux-gnueabihf
       - name: Go Build
         env:
           CGO_ENABLED: "1"
