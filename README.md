@@ -39,6 +39,10 @@ in either of these two modes.
 Additionally, Boundary provides a Desktop client & CLI for end-users to request & establish 
 authorized sessions to resources across a network.
 
+<img src="boundary_desktop_example.gif" alt="Boundary Desktop GIF" width="66%" height="66%" loop="true">
+
+
+
 Boundary does _not_ require software to be installed on the endpoint hosts
 and services.
 
