@@ -314,7 +314,7 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 			sql.Named("after_item_update_time", opts.withStartPageAfterItem.UpdateTime),
 			sql.Named("after_item_id", opts.withStartPageAfterItem.PublicId),
 		)
-		whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+		whereClause += " and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
 
 	var limit string
