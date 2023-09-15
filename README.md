@@ -154,7 +154,7 @@ create:
 * A Target mapping the Host Set to a set of connection parameters, with a
   default port of `22` (e.g. SSH)
 
-You can of course go into Boundary's web UI or use its API to change these
+You can go into Boundary's web UI or use its API to change these
 default values, for instance if you want to connect to a different host or need
 to modify the port on which to to connect.
 
@@ -169,8 +169,7 @@ Next, let's actually make a connection to your local SSH daemon via Boundary:
 2. Run `boundary connect ssh -target-id ttcp_1234567890`. If you want to adjust
    the username, pass `-username <name>` to the command.
 
-A lot more is possible with Boundary, even at this early stage. Check out the
-possibilities for target configuration to test out limiting (or increasing) the
+Check out the possibilities for target configuration to test out limiting (or increasing) the
 number of connections per session or setting a maximum time limit; try canceling
 an active session from the sessions page or via `boundary sessions`, make your
 own commands with `boundary connect -exec`, and so on.
