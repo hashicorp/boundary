@@ -309,13 +309,14 @@ func (w *Worker) stopServersAndListeners() error {
 	mg.Go(w.stopClusterGrpcServer)
 
 	stopErrors := mg.Wait()
+	convertedStopErrors := stopErrors.ErrorOrNil()
 
 	err := w.stopAnyListeners()
 	if err != nil {
-		stopErrors = multierror.Append(stopErrors, err)
+		convertedStopErrors = stderrors.Join(convertedStopErrors, err)
 	}
 
-	return stopErrors.ErrorOrNil()
+	return convertedStopErrors
 }
 
 func (w *Worker) stopHttpServer() error {

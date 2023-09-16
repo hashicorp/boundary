@@ -5,13 +5,13 @@ package event
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"math"
 	"math/rand"
 	"time"
 
 	"github.com/hashicorp/eventlogger"
-	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -55,7 +55,7 @@ func (e *Eventer) retrySend(ctx context.Context, retries uint, backOff backoff, 
 ATTEMPTS:
 	for attempts := uint(1); ; attempts++ {
 		if attempts > retries+1 {
-			retryErrors = multierror.Append(retryErrors, fmt.Errorf("%s: reached max of %d: %w", op, retries, ErrMaxRetries))
+			retryErrors = stderrors.Join(retryErrors, fmt.Errorf("%s: reached max of %d: %w", op, retries, ErrMaxRetries))
 			return retryErrors
 		}
 		var err error
@@ -63,18 +63,18 @@ ATTEMPTS:
 		if len(attemptStatus.Warnings) > 0 {
 			var retryWarnings error
 			for _, w := range attemptStatus.Warnings {
-				retryWarnings = multierror.Append(retryWarnings, w)
+				retryWarnings = stderrors.Join(retryWarnings, w)
 			}
 			e.logger.Error("unable to send event", "operation", op, "warning", retryWarnings)
 		}
 		if err != nil {
-			retryErrors = multierror.Append(retryErrors, fmt.Errorf("%s: %w", op, err))
+			retryErrors = stderrors.Join(retryErrors, fmt.Errorf("%s: %w", op, err))
 			d := backOff.duration(attempts)
 			info.retries++
 			info.backoff = info.backoff + d
 			select {
 			case <-ctx.Done():
-				retryErrors = multierror.Append(retryErrors, ctx.Err())
+				retryErrors = stderrors.Join(retryErrors, ctx.Err())
 				break ATTEMPTS
 			case <-time.After(d):
 				continue
