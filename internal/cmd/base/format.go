@@ -5,6 +5,7 @@ package base
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -18,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
-	"github.com/pkg/errors"
 )
 
 // This is adapted from the code in the strings package for TrimSpace
