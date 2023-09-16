@@ -35,7 +35,7 @@ type options struct {
 	withMethod             Method
 	withRequestBody        []byte
 	withCredentialType     credential.Type
-	withStartPageAfterItem *sortCredentialLibrary
+	withStartPageAfterItem *sortItem
 
 	withOverrideUsernameAttribute             string
 	withOverridePasswordAttribute             string
@@ -239,7 +239,7 @@ func WithExtensions(s string) Option {
 // The next page will start after the provided item.
 func WithStartPageAfterItem(publicId string, updateTime time.Time) Option {
 	return func(o *options) {
-		o.withStartPageAfterItem = &sortCredentialLibrary{
+		o.withStartPageAfterItem = &sortItem{
 			publicId:   publicId,
 			updateTime: updateTime,
 		}

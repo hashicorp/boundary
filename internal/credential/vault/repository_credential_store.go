@@ -5,7 +5,9 @@ package vault
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -647,7 +649,9 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 }
 
 // ListCredentialStores returns a slice of CredentialStores for the
-// projectIds. WithLimit is the only option supported.
+// projectIds. Supports the following options:
+//   - WithLimit
+//   - WithStartPageAfterItem
 func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []string, opt ...Option) ([]*CredentialStore, error) {
 	const op = "vault.(Repository).ListCredentialStores"
 	if len(projectIds) == 0 {
@@ -659,8 +663,35 @@ func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []stri
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
+	var inClauses []string
+	var args []any
+	for i, projectId := range projectIds {
+		arg := "project_id_" + strconv.Itoa(i)
+		inClauses = append(inClauses, "@"+arg)
+		args = append(args, sql.Named(arg, projectId))
+	}
+	inClause := strings.Join(inClauses, ", ")
+	whereClause := "project_id in (" + inClause + ")"
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
+		)
+		whereClause += " and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
+	}
 	var credentialStores []*listLookupStore
-	err := r.reader.SearchWhere(ctx, &credentialStores, "project_id in (?)", []any{projectIds}, db.WithLimit(limit))
+	err := r.reader.SearchWhere(ctx, &credentialStores, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
