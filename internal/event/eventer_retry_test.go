@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/eventlogger"
-	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -113,24 +112,9 @@ func TestEventer_retrySend(t *testing.T) {
 			err := eventer.retrySend(tt.ctx, tt.retries, tt.backOff, tt.handler)
 			if tt.wantErrIs != nil {
 				require.Error(err)
-				multi, isMultiError := err.(*multierror.Error)
-				switch isMultiError {
-				case true:
-					matched := false
-					for _, e := range multi.WrappedErrors() {
-						if assert.ErrorIs(e, tt.wantErrIs) {
-							if tt.wantErrContain != "" {
-								assert.Contains(err.Error(), tt.wantErrContain)
-							}
-							matched = true
-						}
-					}
-					assert.True(matched)
-				default:
-					assert.ErrorIs(err, tt.wantErrIs)
-					if tt.wantErrContain != "" {
-						assert.Contains(err.Error(), tt.wantErrContain)
-					}
+				assert.ErrorIs(err, tt.wantErrIs)
+				if tt.wantErrContain != "" {
+					assert.Contains(err.Error(), tt.wantErrContain)
 				}
 				return
 			}

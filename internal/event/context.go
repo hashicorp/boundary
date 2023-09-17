@@ -130,7 +130,9 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 
 // WriteError will write an error event.  It will first check the
 // ctx for an eventer, then try event.SysEventer() and if no eventer can be
-// found an hclog.Logger will be created and used.
+// found an hclog.Logger will be created and used.  Note: any multierror errors
+// will be converted to a stdlib error (because multierror doesn't support json
+// marshaling).
 //
 // The options WithInfoMsg, WithInfo, WithId and WithRequestInfo are supported
 // and all other options are ignored.

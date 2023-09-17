@@ -312,10 +312,12 @@ func TestNode_Process(t *testing.T) {
 			tt.n.Predicate = tt.predicate
 
 			gotEvent, err := tt.n.Process(ctx, tt.e)
-			if tt.wantIsError != nil {
+			if tt.wantIsError != nil || tt.wantErrContains != "" {
 				require.Error(err)
 				assert.Nil(gotEvent)
-				assert.ErrorIs(err, tt.wantIsError)
+				if tt.wantIsError != nil {
+					assert.ErrorIs(err, tt.wantIsError)
+				}
 				if tt.wantErrContains != "" {
 					assert.Contains(err.Error(), tt.wantErrContains)
 				}

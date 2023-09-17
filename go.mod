@@ -63,7 +63,7 @@ require (
 	github.com/oligot/go-mod-upgrade v0.9.1
 	github.com/ory/dockertest/v3 v3.9.1
 	github.com/pires/go-proxyproto v0.7.0
-	github.com/pkg/errors v0.9.1
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.12.1
 	github.com/ryanuber/go-glob v1.0.0

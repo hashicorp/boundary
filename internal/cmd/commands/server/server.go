@@ -27,7 +27,6 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
@@ -807,19 +806,19 @@ func (c *Command) Reload(newConf *config.Config) error {
 	c.ReloadFuncsLock.RLock()
 	defer c.ReloadFuncsLock.RUnlock()
 
-	var reloadErrors *multierror.Error
+	var reloadErrors error
 
 	for _, relFunc := range c.ReloadFuncs["listeners"] {
 		if relFunc != nil {
 			if err := relFunc(); err != nil {
-				reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
+				reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
 			}
 		}
 	}
 
 	err := c.reloadControllerDatabase(newConf)
 	if err != nil {
-		reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
+		reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
 	}
 
 	if newConf != nil && c.worker != nil {
@@ -837,7 +836,7 @@ func (c *Command) Reload(newConf *config.Config) error {
 			return nil
 		}()
 		if workerReloadErr != nil {
-			reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
+			reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
 		}
 	}
 
@@ -850,7 +849,7 @@ func (c *Command) Reload(newConf *config.Config) error {
 		}
 	}
 
-	return reloadErrors.ErrorOrNil()
+	return reloadErrors
 }
 
 func verifyKmsSetup(dbase *db.DB) error {

@@ -25,7 +25,6 @@ import (
 	"github.com/hashicorp/eventlogger/sinks/writer"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-multierror"
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
@@ -784,7 +783,7 @@ func (e *Eventer) ReleaseGate() error {
 		return nil
 	}
 
-	var totalErrs *multierror.Error
+	var totalErrs error
 	for _, qe := range e.gatedQueue {
 		var writeErr error
 		if qe == nil {
@@ -804,11 +803,11 @@ func (e *Eventer) ReleaseGate() error {
 			writeErr = fmt.Errorf("unknown event type %T", t)
 		}
 		if writeErr != nil {
-			totalErrs = multierror.Append(fmt.Errorf("in %s, error sending queued %s event: %w", op, queuedOp, writeErr))
+			totalErrs = errors.Join(fmt.Errorf("in %s, error sending queued %s event: %w", op, queuedOp, writeErr))
 		}
 	}
 	e.gatedQueue = nil
-	return totalErrs.ErrorOrNil()
+	return totalErrs
 }
 
 // StandardLogger will create *log.Logger that will emit events through this
