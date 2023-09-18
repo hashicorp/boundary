@@ -401,7 +401,6 @@ func testWorkerStatusObservable(t testing.TB) *services.StatusRequest {
 		},
 		WorkerStatus: &servers.ServerWorkerStatus{
 			PublicId:         "testID",
-			Tags:             []*servers.TagPair{{}},
 			ReleaseVersion:   "Boundary v0.13.1",
 			OperationalState: "active",
 		},
