@@ -29,7 +29,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, sessions []*s
 
 	foundU := u.clone()
 	if err := r.rw.LookupById(ctx, foundU); err != nil {
-		// if this persona isn't known, error out.
+		// if this user isn't known, error out.
 		return errors.Wrap(ctx, err, op, errors.WithMsg("looking up user"))
 	}
 

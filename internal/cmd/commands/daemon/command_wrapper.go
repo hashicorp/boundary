@@ -74,6 +74,6 @@ func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
 func (w *CommandWrapper) addPersonaInCache(ctx context.Context) bool {
 	c := AddTokenCommand{Command: base.NewCommand(w.ui)}
 	c.Flags()
-	apiErr, err := c.AddPersona(ctx)
+	apiErr, err := c.Add(ctx)
 	return err == nil && apiErr == nil
 }

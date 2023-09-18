@@ -363,7 +363,7 @@ func TestSession(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("deleting the persona deletes the session", func(t *testing.T) {
+	t.Run("deleting the user deletes the session", func(t *testing.T) {
 		session := &Session{
 			UserId:   u.Id,
 			Id:       "s_1234567890",

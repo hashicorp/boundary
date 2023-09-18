@@ -64,21 +64,21 @@ func (c *AddTokenCommand) Run(args []string) int {
 		return base.CommandUserError
 	}
 
-	apiErr, err := c.AddPersona(ctx)
+	apiErr, err := c.Add(ctx)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
 	}
 	if apiErr != nil {
-		c.PrintApiError(apiErr, "Error from daemon when adding a persona")
+		c.PrintApiError(apiErr, "Error from daemon when adding a token")
 		return base.CommandApiError
 
 	}
 	return base.CommandSuccess
 }
 
-func (c *AddTokenCommand) AddPersona(ctx context.Context) (*api.Error, error) {
-	const op = "daemon.(AddPersonaCommand).AddPersona"
+func (c *AddTokenCommand) Add(ctx context.Context) (*api.Error, error) {
+	const op = "daemon.(AddTokenCommand).Add"
 	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func (c *AddTokenCommand) AddPersona(ctx context.Context) (*api.Error, error) {
 }
 
 func addToken(ctx context.Context, daemonPath string, p *userTokenToAdd) (*api.Error, error) {
-	const op = "daemon.addPersona"
+	const op = "daemon.addToken"
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
