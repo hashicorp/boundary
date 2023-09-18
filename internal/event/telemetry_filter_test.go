@@ -4,11 +4,14 @@
 package event
 
 import (
-	"google.golang.org/protobuf/types/known/fieldmaskpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 	"reflect"
 	"testing"
+
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/servers"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
@@ -60,7 +63,7 @@ func Test_OnlyObservationTaggedFieldsPopulated(t *testing.T) {
 	assert.Zero(output.WorkerStatus.Address)
 	assert.Zero(output.WorkerStatus.Description)
 	assert.Zero(output.WorkerStatus.KeyId)
-	assert.Len(output.WorkerStatus.Tags, 1)
+	assert.Len(output.WorkerStatus.Tags, 0)
 	assert.Len(output.Jobs, 1)
 }
 
@@ -197,4 +200,116 @@ func Test_coreProtoTypes(t *testing.T) {
 	assert.Equal(data.FieldmaskObs, &fieldmaskpb.FieldMask{
 		Paths: []string{"a", "b"},
 	})
+}
+
+func Test_mapStructPBValues(t *testing.T) {
+	assert := tassert.New(t)
+	type testType struct {
+		ListValueMap    map[string]*structpb.ListValue
+		ListValueMapObs map[string]*structpb.ListValue `eventstream:"observation"`
+	}
+	data := &testType{
+		ListValueMap: map[string]*structpb.ListValue{
+			"one": {Values: []*structpb.Value{
+				structpb.NewStringValue("one"),
+			}},
+			"two": {Values: []*structpb.Value{
+				structpb.NewStringValue("two"),
+			}},
+		},
+		ListValueMapObs: map[string]*structpb.ListValue{
+			"three": {Values: []*structpb.Value{
+				structpb.NewStringValue("three"),
+			}},
+			"four": {Values: []*structpb.Value{
+				structpb.NewStringValue("four"),
+			}},
+		},
+	}
+	err := recurseStructureWithProtoFilter(reflect.ValueOf(data), telemetryFilter, false)
+	assert.NoError(err)
+	assert.Len(data.ListValueMapObs, 2)
+	assert.True(
+		proto.Equal(
+			data.ListValueMapObs["three"],
+			&structpb.ListValue{
+				Values: []*structpb.Value{
+					structpb.NewStringValue("three"),
+				},
+			},
+		),
+	)
+	assert.True(
+		proto.Equal(
+			data.ListValueMapObs["four"],
+			&structpb.ListValue{
+				Values: []*structpb.Value{
+					structpb.NewStringValue("four"),
+				},
+			},
+		),
+	)
+	assert.Len(data.ListValueMap, 0)
+}
+
+func Test_sliceStructPBValues(t *testing.T) {
+	assert := tassert.New(t)
+	type testType struct {
+		ListValueSlice    []*structpb.ListValue
+		ListValueSliceObs []*structpb.ListValue `eventstream:"observation"`
+		ListValueArray    [2]*structpb.ListValue
+	}
+	data := &testType{
+		ListValueSlice: []*structpb.ListValue{
+			{Values: []*structpb.Value{
+				structpb.NewStringValue("one"),
+			}},
+			{Values: []*structpb.Value{
+				structpb.NewStringValue("two"),
+			}},
+		},
+		ListValueSliceObs: []*structpb.ListValue{
+			{Values: []*structpb.Value{
+				structpb.NewStringValue("three"),
+			}},
+			{Values: []*structpb.Value{
+				structpb.NewStringValue("four"),
+			}},
+		},
+		ListValueArray: [2]*structpb.ListValue{
+			{Values: []*structpb.Value{
+				structpb.NewStringValue("five"),
+			}},
+			{Values: []*structpb.Value{
+				structpb.NewStringValue("six"),
+			}},
+		},
+	}
+	err := recurseStructureWithProtoFilter(reflect.ValueOf(data), telemetryFilter, false)
+	assert.NoError(err)
+	assert.Len(data.ListValueSliceObs, 2)
+	assert.True(
+		proto.Equal(
+			data.ListValueSliceObs[0],
+			&structpb.ListValue{
+				Values: []*structpb.Value{
+					structpb.NewStringValue("three"),
+				},
+			},
+		),
+	)
+	assert.True(
+		proto.Equal(
+			data.ListValueSliceObs[1],
+			&structpb.ListValue{
+				Values: []*structpb.Value{
+					structpb.NewStringValue("four"),
+				},
+			},
+		),
+	)
+	assert.Len(data.ListValueSlice, 0)
+	assert.Len(data.ListValueArray, 2)
+	assert.Nil(data.ListValueArray[0])
+	assert.Nil(data.ListValueArray[1])
 }

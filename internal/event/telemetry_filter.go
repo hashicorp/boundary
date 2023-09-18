@@ -63,8 +63,8 @@ func filterValue(fv reflect.Value, isObservable bool) {
 
 // packageNameFromType extracts the package for a type for use with
 // core protobuf type checks.
-func packageNameFromType(field reflect.StructField) string {
-	typeSegments := strings.Split(field.Type.String(), ".")
+func packageNameFromType(fieldType reflect.Type) string {
+	typeSegments := strings.Split(fieldType.String(), ".")
 	pkg := strings.TrimLeft(typeSegments[0], "*")
 	return pkg
 }
@@ -89,6 +89,12 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 				mVal = mVal.Elem()
 				vKind = mVal.Kind()
 			}
+			if coreProtoPackages[packageNameFromType(mVal.Type())] {
+				if !isObservable {
+					value.SetMapIndex(k, reflect.Value{})
+				}
+				continue
+			}
 			switch vKind {
 			case reflect.Struct, reflect.Array, reflect.Slice:
 				if err := recurseStructureWithProtoFilter(mVal, filterFunc, isObservable); err != nil {
@@ -106,19 +112,36 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 		return nil
 	case reflect.Array, reflect.Slice:
 		if value.Len() > 0 {
+			sliceType := value.Index(0).Type()
+			isCoreProto := coreProtoPackages[packageNameFromType(sliceType)]
 			zeroCount := 0
-			for i := 0; i < value.Len(); i++ {
-				sVal := value.Index(i)
-				if err := recurseStructureWithProtoFilter(sVal, filterFunc, isObservable); err != nil {
-					return err
-				}
-				if sVal.IsValid() && sVal.IsZero() {
-					zeroCount++
+			if !isCoreProto {
+				for i := 0; i < value.Len(); i++ {
+					sVal := value.Index(i)
+					sKind := sVal.Kind()
+					if sKind == reflect.Ptr || sKind == reflect.Interface {
+						sVal = sVal.Elem()
+						sKind = sVal.Kind()
+					}
+					if err := recurseStructureWithProtoFilter(sVal, filterFunc, isObservable); err != nil {
+						return err
+					}
+					if sVal.IsValid() && sVal.IsZero() {
+						zeroCount++
+					}
 				}
 			}
 			// if slice is empty after processing, we can zero its length
-			if zeroCount == value.Len() && kind == reflect.Slice && value.CanSet() {
-				value.SetLen(0)
+			// if an array is empty, zero its contents
+			if (zeroCount == value.Len() || (isCoreProto && !isObservable)) && value.CanSet() {
+				switch kind {
+				case reflect.Slice:
+					value.SetLen(0)
+				case reflect.Array:
+					for i := 0; i < value.Len(); i++ {
+						value.Index(i).SetZero()
+					}
+				}
 			}
 		}
 	case reflect.Struct:
@@ -134,7 +157,7 @@ func recurseStructureWithProtoFilter(value reflect.Value, filterFunc protoFilter
 				isObservable = filterFunc(field)
 			}
 			// structures in core proto packages are not recursively filtered
-			if coreProtoPackages[packageNameFromType(field)] {
+			if coreProtoPackages[packageNameFromType(field.Type)] {
 				if !isObservable {
 					v.SetZero()
 				}
