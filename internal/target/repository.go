@@ -267,7 +267,7 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.updateTime),
 			sql.Named("after_item_id", opts.WithStartPageAfterItem.publicId),
 		)
-		whereClause += "and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+		whereClause += "and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
 
 	var foundTargets []*targetView
