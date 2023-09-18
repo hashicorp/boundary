@@ -4,13 +4,14 @@
 package event
 
 import (
+	"reflect"
+	"testing"
+
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	"reflect"
-	"testing"
 
 	"github.com/hashicorp/boundary/internal/gen/controller/servers"
 	"github.com/hashicorp/boundary/internal/gen/controller/servers/services"
