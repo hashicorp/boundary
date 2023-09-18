@@ -43,7 +43,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.4
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
-	github.com/hashicorp/go-sockaddr v1.0.2
+	github.com/hashicorp/go-sockaddr v1.0.5
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/hashicorp/hcl v1.0.0
 	github.com/hashicorp/vault/api v1.9.1
@@ -91,7 +91,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/creack/pty v1.1.18
-	github.com/hashicorp/cap/ldap v0.0.0-20230907231022-8e71bfc048ed
+	github.com/hashicorp/cap/ldap v0.0.0-20230918191608-899e3f8e8cd6
 	github.com/hashicorp/dbassert v0.0.0-20230622135851-cc4c0f18f4a7
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20230902160534-7a966e6313fd
 	github.com/hashicorp/go-version v1.6.0
@@ -135,13 +135,13 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
-	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
+	github.com/go-asn1-ber/asn1-ber v1.5.5 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.0 // indirect
-	github.com/go-ldap/ldap/v3 v3.4.5 // indirect
+	github.com/go-ldap/ldap/v3 v3.4.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/google/uuid v1.3.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.4 // indirect
 	github.com/hashicorp/go-plugin v1.4.9 // indirect
