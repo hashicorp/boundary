@@ -487,7 +487,7 @@ func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string
 			sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
 			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
 		)
-		whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+		whereClause += " and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
 	var libs []*CredentialLibrary
 	err := r.reader.SearchWhere(ctx, &libs, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))

@@ -183,7 +183,7 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 			sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
 			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
 		)
-		whereClause += " and update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id)"
+		whereClause += " and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
 
 	var accts []*Account
