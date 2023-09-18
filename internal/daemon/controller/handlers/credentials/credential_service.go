@@ -718,7 +718,7 @@ func toJsonStorageCredential(ctx context.Context, storeId string, in *pb.Credent
 		ctx,
 		storeId,
 		credential.JsonObject{
-			*object,
+			Struct: object,
 		},
 		opts...)
 	if err != nil {
