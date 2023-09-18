@@ -42,7 +42,7 @@ scenario "e2e_database" {
   }
 
   step "create_base_infra" {
-    module = module.infra
+    module = module.aws_vpc
     depends_on = [
       step.find_azs,
     ]
