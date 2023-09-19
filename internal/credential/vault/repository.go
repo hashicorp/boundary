@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -54,4 +55,11 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 		scheduler:    scheduler,
 		defaultLimit: opts.withLimit,
 	}, nil
+}
+
+// sortItem is used to encapsulate the information
+// needed for sorting and filtering for pagination.
+type sortItem struct {
+	publicId   string
+	updateTime time.Time
 }
