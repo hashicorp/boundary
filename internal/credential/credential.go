@@ -136,7 +136,7 @@ type PrivateKey []byte
 
 // JsonObject represents a JSON object that is serialized.
 type JsonObject struct {
-	structpb.Struct
+	*structpb.Struct
 }
 
 // UsernamePassword is a credential containing a username and a password.

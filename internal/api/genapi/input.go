@@ -965,11 +965,6 @@ var inputStructs = []*structInfo{
 				SkipDefault: true,
 			},
 			{
-				Name:      "ApplicationCredentialSourceIds",
-				ProtoName: "application_credential_source_ids",
-				FieldType: "[]string",
-			},
-			{
 				Name:      "BrokeredCredentialSourceIds",
 				ProtoName: "brokered_credential_source_ids",
 				FieldType: "[]string",

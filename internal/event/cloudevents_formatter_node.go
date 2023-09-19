@@ -70,11 +70,15 @@ func newCloudEventsFormatterFilter(source *url.URL, format cloudevents.Format, o
 			n.deny = append(n.deny, f)
 		}
 	}
-	defaultDenyFilters, err := defaultCloudEventsDenyFilters()
-	if err != nil {
-		return nil, err
+	// if the user does not specify any filter (allow/deny), we add default deny filter
+	if len(opts.withDeny) == 0 && len(opts.withAllow) == 0 {
+		defaultDenyFilters, err := defaultCloudEventsDenyFilters()
+		if err != nil {
+			return nil, err
+		}
+		n.deny = append(n.deny, defaultDenyFilters...)
 	}
-	n.deny = append(n.deny, defaultDenyFilters...)
+
 	n.Predicate = newPredicate(n.allow, n.deny)
 	return &n, nil
 }
@@ -83,7 +87,7 @@ func defaultCloudEventsDenyFilters() ([]*filter, error) {
 	const (
 		op = "event.defaultCloudEventsDenyFilters"
 		// denyWorkStatusEvents is a default filter for worker to controller API status requests
-		denyWorkStatusEvents = `"/Data/RequestInfo/Method" contains "ServerCoordinationService/Status"`
+		denyWorkStatusEvents = `"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Status"`
 	)
 	f, err := newFilter(denyWorkStatusEvents)
 	if err != nil {

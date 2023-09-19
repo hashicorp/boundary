@@ -257,7 +257,8 @@ func New(ctx context.Context, conf *Config) (*Worker, error) {
 			}
 		}
 
-		s, err := recordingStorageFactory(ctx, w.conf.RawConfig.Worker.RecordingStoragePath, plgClients, enableStorageLoopback)
+		// passing in an empty context so that storage can finish syncing during an emergency shutdown or interrupt
+		s, err := recordingStorageFactory(context.Background(), w.conf.RawConfig.Worker.RecordingStoragePath, plgClients, enableStorageLoopback)
 		if err != nil {
 			return nil, fmt.Errorf("error create recording storage: %w", err)
 		}

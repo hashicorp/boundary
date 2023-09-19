@@ -48,6 +48,7 @@ type options struct {
 	withFilterOperations AuditFilterOperations
 	withGating           bool
 	withNoGateLocking    bool
+	withTelemetry        bool
 
 	// These options are related to the hclog adapter
 	withHclogLevel hclog.Level
@@ -226,5 +227,12 @@ func WithGating(with bool) Option {
 func WithNoGateLocking(with bool) Option {
 	return func(o *options) {
 		o.withNoGateLocking = with
+	}
+}
+
+// WithTelemetry allows an optional telemetry option.
+func WithTelemetry() Option {
+	return func(o *options) {
+		o.withTelemetry = true
 	}
 }

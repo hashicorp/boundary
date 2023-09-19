@@ -16,10 +16,10 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 // Worker contains all fields related to a Worker resource
 message Worker {
   // Output only. The ID of the User.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope this resource is in.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -45,10 +45,10 @@ message Worker {
   ]; // @gotags: `class:"sensitive"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
@@ -67,7 +67,7 @@ message Worker {
   map<string, google.protobuf.ListValue> config_tags = 130 [json_name = "config_tags"]; // @gotags: `class:"public"`
 
   // Output only. The time this worker daemon last reported its status.
-  google.protobuf.Timestamp last_status_time = 140 [json_name = "last_status_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp last_status_time = 140 [json_name = "last_status_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // worker_generated_auth_token is input only. Supports the worker led node
   // enrollment flow where this credentials token is produced by a worker. This
@@ -80,7 +80,7 @@ message Worker {
   google.protobuf.StringValue controller_generated_activation_token = 151 [json_name = "controller_generated_activation_token"]; // @gotags: `class:"secret"`
 
   // Output only. The number of connections that this worker is currently handling.
-  google.protobuf.UInt32Value active_connection_count = 160 [json_name = "active_connection_count"]; // @gotags: `class:"public"`
+  google.protobuf.UInt32Value active_connection_count = 160 [json_name = "active_connection_count"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The type of the worker, denoted by how it authenticates: `pki`
   // or `kms`.
@@ -90,10 +90,10 @@ message Worker {
   map<string, google.protobuf.ListValue> api_tags = 180 [json_name = "api_tags"]; // @gotags: `class:"public"`
 
   // Output only. The version of the Boundary binary the worker is running.
-  string release_version = 190 [json_name = "release_version"]; // @gotags: `class:"public"`
+  string release_version = 190 [json_name = "release_version"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The ids of the workers directly connected to this worker.
-  repeated string directly_connected_downstream_workers = 200 [json_name = "directly_connected_downstream_workers"]; // @gotags: `class:"public"`
+  repeated string directly_connected_downstream_workers = 200 [json_name = "directly_connected_downstream_workers"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The available actions on this resource for the requester.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`

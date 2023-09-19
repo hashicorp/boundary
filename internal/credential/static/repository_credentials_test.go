@@ -47,7 +47,7 @@ func TestRepository_Retrieve(t *testing.T) {
 	assert.NoError(err)
 
 	secondObj := credential.JsonObject{
-		structpb.Struct{
+		Struct: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"username": structpb.NewStringValue("new-user"),
 				"password": structpb.NewStringValue("new-password"),

@@ -33,9 +33,9 @@ type Member struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the member.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The Scope ID of the member.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *Member) Reset() {
@@ -91,9 +91,9 @@ type Group struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Output only. The ID of the Group.
-	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,10,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// The ID of the scope of which this Group is a part.
-	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId string `protobuf:"bytes,20,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. Scope information for this Group.
 	Scope *scopes.ScopeInfo `protobuf:"bytes,30,opt,name=scope,proto3" json:"scope,omitempty"`
 	// Optional name for identification purposes.
@@ -101,14 +101,14 @@ type Group struct {
 	// Optional user-set descripton for identification purposes.
 	Description *wrapperspb.StringValue `protobuf:"bytes,50,opt,name=description,proto3" json:"description,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. The time this resource was created.
-	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	CreatedTime *timestamppb.Timestamp `protobuf:"bytes,60,opt,name=created_time,proto3" json:"created_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The time this resource was last updated.
-	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public"` // @gotags: `class:"public"`
+	UpdatedTime *timestamppb.Timestamp `protobuf:"bytes,70,opt,name=updated_time,proto3" json:"updated_time,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version uint32 `protobuf:"varint,80,opt,name=version,proto3" json:"version,omitempty" class:"public"` // @gotags: `class:"public"`
 	// Output only. Contains the list of member IDs in this Group.
-	MemberIds []string `protobuf:"bytes,90,rep,name=member_ids,proto3" json:"member_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	MemberIds []string `protobuf:"bytes,90,rep,name=member_ids,proto3" json:"member_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Output only. The members of this Group.
 	Members []*Member `protobuf:"bytes,100,rep,name=members,proto3" json:"members,omitempty"`
 	// Output only. The available actions on this resource for this user.

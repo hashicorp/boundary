@@ -1931,9 +1931,6 @@ func TestAddTargetCredentialSources(t *testing.T) {
 
 			assert.ElementsMatch(t, tc.resultSourceIds, got.GetItem().GetBrokeredCredentialSourceIds())
 			assert.Equal(t, len(tc.resultSourceIds), len(got.GetItem().GetBrokeredCredentialSources()))
-
-			assert.ElementsMatch(t, tc.resultSourceIds, got.GetItem().GetApplicationCredentialSourceIds())
-			assert.Equal(t, len(tc.resultSourceIds), len(got.GetItem().GetApplicationCredentialSources()))
 		})
 	}
 
@@ -2120,9 +2117,6 @@ func TestSetTargetCredentialSources(t *testing.T) {
 			require.NoError(t, err, "Got error: %v", s)
 			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetBrokeredCredentialSourceIds())
 			assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetBrokeredCredentialSources()))
-
-			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetApplicationCredentialSourceIds())
-			assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetApplicationCredentialSources()))
 		})
 	}
 
@@ -2339,9 +2333,6 @@ func TestRemoveTargetCredentialSources(t *testing.T) {
 
 			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetBrokeredCredentialSourceIds())
 			assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetBrokeredCredentialSources()))
-
-			assert.ElementsMatch(t, tc.resultCredentialSourceIds, got.GetItem().GetApplicationCredentialSourceIds())
-			assert.Equal(t, len(tc.resultCredentialSourceIds), len(got.GetItem().GetApplicationCredentialSources()))
 		})
 	}
 

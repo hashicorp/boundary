@@ -31,7 +31,7 @@ scenario "e2e_ui" {
   }
 
   step "find_azs" {
-    module = module.az_finder
+    module = module.aws_az_finder
 
     variables {
       instance_type = [
@@ -58,12 +58,13 @@ scenario "e2e_ui" {
     module = matrix.builder == "crt" ? module.build_crt : module.build_local
 
     variables {
-      path = local.build_path[matrix.builder]
+      path    = local.build_path[matrix.builder]
+      edition = var.boundary_edition
     }
   }
 
   step "create_base_infra" {
-    module = module.infra
+    module = module.aws_vpc
     depends_on = [
       step.find_azs,
     ]
@@ -75,7 +76,7 @@ scenario "e2e_ui" {
   }
 
   step "create_boundary_cluster" {
-    module = module.boundary
+    module = module.aws_boundary
     depends_on = [
       step.create_base_infra,
       step.create_db_password,
@@ -94,6 +95,7 @@ scenario "e2e_ui" {
       local_artifact_path      = step.build_boundary.artifact_path
       ubuntu_ami_id            = step.create_base_infra.ami_ids["ubuntu"]["amd64"]
       vpc_id                   = step.create_base_infra.vpc_id
+      vpc_tag_module           = step.create_base_infra.vpc_tag_module
       worker_count             = var.worker_count
       worker_instance_type     = var.worker_instance_type
     }
@@ -136,7 +138,7 @@ scenario "e2e_ui" {
   }
 
   step "create_targets_with_tag1" {
-    module     = module.target
+    module     = module.aws_target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -166,7 +168,7 @@ scenario "e2e_ui" {
   }
 
   step "create_targets_with_tag2" {
-    module     = module.target
+    module     = module.aws_target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -189,7 +191,7 @@ scenario "e2e_ui" {
   }
 
   step "iam_setup" {
-    module = module.iam_setup
+    module = module.aws_iam_setup
     depends_on = [
       step.create_base_infra,
       step.create_test_id

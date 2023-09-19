@@ -810,6 +810,7 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		DefaultPassword:                 tc.b.DevPassword,
 		DisableKmsKeyCreation:           true,
 		DisableAuthMethodCreation:       true,
+		DisableAutoStart:                opts.DisableAutoStart,
 		PublicClusterAddr:               opts.PublicClusterAddr,
 		WorkerStatusGracePeriodDuration: opts.WorkerStatusGracePeriodDuration,
 		LivenessTimeToStaleDuration:     opts.LivenessTimeToStaleDuration,

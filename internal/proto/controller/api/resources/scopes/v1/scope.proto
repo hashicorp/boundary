@@ -14,10 +14,10 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 
 message ScopeInfo {
   // Output only. The ID of the Scope.
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The type of the Scope.
-  string type = 2; // @gotags: `class:"public"`
+  string type = 2; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The name of the Scope, if any.
   string name = 3; // @gotags: `class:"public"`
@@ -26,16 +26,16 @@ message ScopeInfo {
   string description = 4; // @gotags: `class:"public"`
 
   // Output only. The ID of the parent Scope, if any. This field will be empty if this is the "global" scope.
-  string parent_scope_id = 5 [json_name = "parent_scope_id"]; // @gotags: `class:"public"`
+  string parent_scope_id = 5 [json_name = "parent_scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 // Scope contains all fields related to a Scope resource
 message Scope {
   // Output only. The ID of the Scope.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the Scope this resource is in. If this is the "global" Scope this field will be empty.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   ScopeInfo scope = 30;
@@ -59,17 +59,17 @@ message Scope {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // The type of the resource.
-  string type = 90; // @gotags: `class:"public"`
+  string type = 90; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the primary auth method for this scope.  A primary auth method
   // is allowed to vivify users when new accounts are created and is the source for the users account info
@@ -80,7 +80,7 @@ message Scope {
       this: "primary_auth_method_id"
       that: "PrimaryAuthMethodId"
     }
-  ]; // @gotags: `class:"public"`
+  ]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`

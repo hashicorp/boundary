@@ -112,7 +112,7 @@ service ScopeService {
 }
 
 message GetScopeRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetScopeResponse {
@@ -120,8 +120,8 @@ message GetScopeResponse {
 }
 
 message ListScopesRequest {
-  string scope_id = 1; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"public"`
 }
 
@@ -136,12 +136,12 @@ message CreateScopeRequest {
 }
 
 message CreateScopeResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.scopes.v1.Scope item = 2;
 }
 
 message UpdateScopeRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.scopes.v1.Scope item = 2;
   google.protobuf.FieldMask update_mask = 3 [json_name = "update_mask"];
 }
@@ -151,7 +151,7 @@ message UpdateScopeResponse {
 }
 
 message DeleteScopeRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message DeleteScopeResponse {}

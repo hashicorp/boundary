@@ -32,7 +32,7 @@ type GetRoleRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *GetRoleRequest) Reset() {
@@ -126,8 +126,8 @@ type ListRolesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"`     // @gotags: `class:"public"`
-	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"`     // @gotags: `class:"public" eventstream:"observation"`
+	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`        // @gotags: `class:"public"`
 }
 
@@ -338,7 +338,7 @@ type UpdateRoleRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item       *roles.Role            `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -448,7 +448,7 @@ type DeleteRoleRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *DeleteRoleRequest) Reset() {
@@ -533,11 +533,11 @@ type AddRolePrincipalsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version      uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`            // @gotags: `class:"public"`
-	PrincipalIds []string `protobuf:"bytes,3,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	PrincipalIds []string `protobuf:"bytes,3,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *AddRolePrincipalsRequest) Reset() {
@@ -645,11 +645,11 @@ type SetRolePrincipalsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version      uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`            // @gotags: `class:"public"`
-	PrincipalIds []string `protobuf:"bytes,3,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	PrincipalIds []string `protobuf:"bytes,3,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *SetRolePrincipalsRequest) Reset() {
@@ -757,11 +757,11 @@ type RemoveRolePrincipalsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Version is used to ensure this resource has not changed.
 	// The mutation will fail if the version does not match the latest known good version.
 	Version      uint32   `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty" class:"public"`            // @gotags: `class:"public"`
-	PrincipalIds []string `protobuf:"bytes,3,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public"` // @gotags: `class:"public"`
+	PrincipalIds []string `protobuf:"bytes,3,rep,name=principal_ids,proto3" json:"principal_ids,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *RemoveRolePrincipalsRequest) Reset() {

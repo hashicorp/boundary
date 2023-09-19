@@ -20,6 +20,10 @@ variable "cli_build_path" {
   type        = string
 }
 
+variable "edition" {
+  default = "oss"
+}
+
 resource "enos_local_exec" "get_git_sha" {
   inline = ["git rev-parse --short HEAD"]
 }
@@ -32,6 +36,7 @@ resource "enos_local_exec" "build_docker_image" {
   environment = {
     "IMAGE_NAME"    = local.image_name
     "ARTIFACT_PATH" = var.cli_build_path
+    "EDITION"       = var.edition
   }
   scripts = ["${path.module}/build.sh"]
 }

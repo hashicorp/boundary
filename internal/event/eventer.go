@@ -38,6 +38,8 @@ const (
 	IdField          = "id"           // IdField in an event.
 	CreatedAtField   = "created_at"   // CreatedAtField in an event.
 	TypeField        = "type"         // TypeField in an event.
+	RequestField     = "request"      // Request field in an event.
+	ResponseField    = "response"     // Response field in an event.
 
 	auditPipeline       = "audit-pipeline"       // auditPipeline is a pipeline for audit events
 	observationPipeline = "observation-pipeline" // observationPipeline is a pipeline for observation events
@@ -59,6 +61,7 @@ type broker interface {
 	Reopen(ctx context.Context) error
 	StopTimeAt(now time.Time)
 	RegisterNode(id eventlogger.NodeID, node eventlogger.Node, opt ...eventlogger.Option) error
+	RemoveNode(ctx context.Context, id eventlogger.NodeID) error
 	SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error
 	RegisterPipeline(def eventlogger.Pipeline, opt ...eventlogger.Option) error
 	RemovePipelineAndNodes(ctx context.Context, t eventlogger.EventType, id eventlogger.PipelineID) (bool, error)
@@ -600,6 +603,7 @@ func newFmtFilterNode(serverName string, c SinkConfig, opt ...Option) (eventlogg
 func DefaultEventerConfig() *EventerConfig {
 	return &EventerConfig{
 		AuditEnabled:        false,
+		TelemetryEnabled:    false,
 		ObservationsEnabled: true,
 		SysEventsEnabled:    true,
 		Sinks:               []*SinkConfig{DefaultSink()},

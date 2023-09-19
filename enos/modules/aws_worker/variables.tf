@@ -1,8 +1,8 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
-variable "vpc_name" {
-  description = "The name of the existing VPC to be used for this module"
+variable "vpc_id" {
+  description = "The id of the existing VPC to be used for this module"
   type        = string
 }
 

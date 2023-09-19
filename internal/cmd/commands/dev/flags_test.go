@@ -61,6 +61,7 @@ func TestCommand_Flags(t *testing.T) {
 	assert.Contains(completions, "-container-image")
 	assert.Contains(completions, "-event-format")
 	assert.Contains(completions, "-observation-events")
+	assert.Contains(completions, "-telemetry-events")
 	assert.Contains(completions, "-audit-events")
 	assert.Contains(completions, "-system-events")
 	assert.Contains(completions, "-audit-events")

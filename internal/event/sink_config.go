@@ -6,6 +6,7 @@ package event
 import (
 	"fmt"
 	"io"
+	"slices"
 	"time"
 )
 
@@ -77,6 +78,11 @@ func (sc *SinkConfig) Validate() error {
 	}
 	if len(sc.EventTypes) == 0 {
 		return fmt.Errorf("%s: missing event types: %w", op, ErrInvalidParameter)
+	}
+
+	// This checks if the telemetry event is specified in the sink but the observation event is not specified.
+	if !slices.Contains(sc.EventTypes, ObservationType) && slices.Contains(sc.EventTypes, TelemetryType) {
+		return fmt.Errorf("%s: telemetry event type requires observation event type to be specified: %w", op, ErrInvalidParameter)
 	}
 
 	for _, et := range sc.EventTypes {
