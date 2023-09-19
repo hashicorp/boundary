@@ -115,18 +115,13 @@ resource "aws_vpc_security_group_ingress_rule" "worker_to_controller" {
   ip_protocol       = "tcp"
 }
 
-data "aws_route_table" "default" {
-  vpc_id = var.vpc_name
-
-  filter {
-    name   = "tag:Name"
-    values = ["enos-vpc_route"]
-  }
+data "aws_vpc" "vpc" {
+  id = var.vpc_name
 }
 
 resource "aws_route_table_association" "worker_rta" {
   subnet_id      = aws_subnet.default.id
-  route_table_id = data.aws_route_table.default.id
+  route_table_id = data.aws_vpc.vpc.main_route_table_id
 }
 
 resource "aws_instance" "worker" {
