@@ -251,8 +251,8 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				workerReqInterceptor,
-				auditRequestInterceptor(c.baseContext),  // before we get started, audit the request
-				auditResponseInterceptor(c.baseContext), // as we finish, audit the response
+				eventsRequestInterceptor(c.baseContext),  // before we get started, send the required events with the request
+				eventsResponseInterceptor(c.baseContext), // as we finish, send the required events with the response
 			),
 		),
 	)
@@ -276,13 +276,13 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		}
 		go func() {
 			err := splitListener.Start()
-			if err != nil {
+			if err != nil && !errors.Is(err, net.ErrClosed) {
 				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("splitListener.Start() error"))
 			}
 		}()
 		go func() {
 			err := ln.GrpcServer.Serve(metric.InstrumentClusterTrackingListener(multiplexingAuthedListener, grpcListenerPurpose))
-			if err != nil {
+			if err != nil && !errors.Is(err, net.ErrClosed) {
 				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("multiplexingAuthedListener error"))
 			}
 		}()

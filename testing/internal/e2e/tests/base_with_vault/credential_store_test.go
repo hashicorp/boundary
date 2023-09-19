@@ -102,7 +102,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	// Create a credential library for the private key
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credential-libraries", "create", "vault",
+			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", newCredentialStoreId,
 			"-vault-path", c.VaultSecretPath+"/data/"+privateKeySecretName,
 			"-name", "e2e Automated Test Vault Credential Library - Private Key",
@@ -120,7 +120,7 @@ func TestCliVaultCredentialStore(t *testing.T) {
 	// Create a credential library for the password
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credential-libraries", "create", "vault",
+			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", newCredentialStoreId,
 			"-vault-path", c.VaultSecretPath+"/data/"+passwordSecretName,
 			"-name", "e2e Automated Test Vault Credential Library - Password",
@@ -259,7 +259,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 
 	// Create a credential library for the private key
 	clClient := credentiallibraries.NewClient(client)
-	newCredentialLibraryResult, err := clClient.Create(ctx, "vault", newCredentialStoreId,
+	newCredentialLibraryResult, err := clClient.Create(ctx, "vault-generic", newCredentialStoreId,
 		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+privateKeySecretName),
 		credentiallibraries.WithCredentialType("ssh_private_key"),
 	)
@@ -268,7 +268,7 @@ func TestApiVaultCredentialStore(t *testing.T) {
 	t.Logf("Created Credential Library: %s", newPrivateKeyCredentialLibraryId)
 
 	// Create a credential library for the password
-	newCredentialLibraryResult, err = clClient.Create(ctx, "vault", newCredentialStoreId,
+	newCredentialLibraryResult, err = clClient.Create(ctx, "vault-generic", newCredentialStoreId,
 		credentiallibraries.WithVaultCredentialLibraryPath(c.VaultSecretPath+"/data/"+passwordSecretName),
 		credentiallibraries.WithCredentialType("username_password"),
 	)

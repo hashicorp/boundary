@@ -12,13 +12,13 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 
 message SessionState {
   // The status of the Session, e.g. "pending", "active", "canceling", "terminated".
-  string status = 10; // @gotags: `class:"public"`
+  string status = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time the Session entered this state.
-  google.protobuf.Timestamp start_time = 20 [json_name = "start_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp start_time = 20 [json_name = "start_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time the Session stopped being in this state.
-  google.protobuf.Timestamp end_time = 30 [json_name = "end_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp end_time = 30 [json_name = "end_time"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 // Connection contains information about a specific connection in a session
@@ -55,43 +55,43 @@ message Session {
   reserved "worker_info";
 
   // Output only. The ID of the Session.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The ID of the Target that created this Session.
-  string target_id = 20 [json_name = "target_id"]; // @gotags: `class:"public"`
+  string target_id = 20 [json_name = "target_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this resource.
   resources.scopes.v1.ScopeInfo scope = 30;
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used when canceling this Session to ensure that the operation is acting on a known session state.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // Output only. Type of the Session (e.g. tcp).
-  string type = 90; // @gotags: `class:"public"`
+  string type = 90; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. After this time the connection will be expired, e.g. forcefully terminated.
-  google.protobuf.Timestamp expiration_time = 100 [json_name = "expiration_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp expiration_time = 100 [json_name = "expiration_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The ID of the Auth Token used to authenticate.
   string auth_token_id = 110 [json_name = "auth_token_id"]; // @gotags: `class:"public"`
 
   // Output only. The ID of the User that requested the Session.
-  string user_id = 120 [json_name = "user_id"]; // @gotags: `class:"public"`
+  string user_id = 120 [json_name = "user_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Host Set sourcing the Host for this Session.
-  string host_set_id = 130 [json_name = "host_set_id"]; // @gotags: `class:"public"`
+  string host_set_id = 130 [json_name = "host_set_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Host used by the Session.
-  string host_id = 140 [json_name = "host_id"]; // @gotags: `class:"public"`
+  string host_id = 140 [json_name = "host_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Scope of the Session.
-  string scope_id = 150 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 150 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The endpoint of the Session; that is, the address to which the worker is proxying data.
   string endpoint = 160; // @gotags: `class:"public"`
@@ -100,13 +100,13 @@ message Session {
   repeated SessionState states = 170;
 
   // Output only. The current status of this Session.
-  string status = 180; // @gotags: `class:"public"`
+  string status = 180; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The certificate generated for the session. Raw DER bytes.
   bytes certificate = 200; // @gotags: `class:"public"`
 
   // Output only. If the session is terminated, this provides a short description as to why.
-  string termination_reason = 210 [json_name = "termination_reason"]; // @gotags: `class:"public"`
+  string termination_reason = 210 [json_name = "termination_reason"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The available actions on this resource for this user.
   repeated string authorized_actions = 300 [json_name = "authorized_actions"]; // @gotags: `class:"public"`

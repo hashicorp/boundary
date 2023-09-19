@@ -125,6 +125,7 @@ jobs:
           # the terraform wrapper will break Terraform execution in enos because
           # it changes the output to text when we expect it to be JSON.
           terraform_wrapper: false
+          terraform_version: 1.5.7 # QT-623: pin to terraform 1.5.x until a tfjson bug is resolved
       - name: Import GPG key for Boundary pass keystore
         id: import_gpg
         uses: crazy-max/ghaction-import-gpg@72b6676b71ab476b77e676928516f6982eef7a41 # v5.3.0
@@ -254,6 +255,12 @@ jobs:
           name: test-e2e-output
           path: enos/test*.log
           retention-days: 5
+      - name: Get logs from postgres container
+        # Retrieve logs from the postgres container on a failed
+        # run to help diagnose a deadlock issue
+        if: contains(matrix.filter, 'e2e_docker') && steps.run.outcome == 'failure'
+        run: |
+          docker logs database
       - name: Upload e2e UI tests debug info
         if: matrix.filter == 'e2e_ui builder:crt' && steps.run.outcome == 'failure'
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2

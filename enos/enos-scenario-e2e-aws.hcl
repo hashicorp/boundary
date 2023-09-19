@@ -58,12 +58,13 @@ scenario "e2e_aws" {
     module = matrix.builder == "crt" ? module.build_crt : module.build_local
 
     variables {
-      path = local.build_path[matrix.builder]
+      path    = local.build_path[matrix.builder]
+      edition = var.boundary_edition
     }
   }
 
   step "create_base_infra" {
-    module = module.infra
+    module = module.aws_vpc
     depends_on = [
       step.find_azs,
     ]
@@ -187,7 +188,7 @@ scenario "e2e_aws" {
     module     = module.worker
     depends_on = [step.create_boundary_cluster]
     variables {
-      vpc_name                  = step.create_base_infra.vpc_id
+      vpc_id                    = step.create_base_infra.vpc_id
       availability_zones        = step.create_base_infra.availability_zone_names
       kms_key_arn               = step.create_base_infra.kms_key_arn
       ubuntu_ami_id             = step.create_base_infra.ami_ids["ubuntu"]["amd64"]

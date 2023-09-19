@@ -143,7 +143,7 @@ service WorkerService {
 }
 
 message GetWorkerRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 message GetWorkerResponse {
@@ -151,8 +151,8 @@ message GetWorkerResponse {
 }
 
 message ListWorkersRequest {
-  string scope_id = 1; // @gotags: `class:"public"`
-  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public"`
+  string scope_id = 1; // @gotags: `class:"public" eventstream:"observation"`
+  bool recursive = 20 [json_name = "recursive"]; // @gotags: `class:"public" eventstream:"observation"`
   string filter = 30 [json_name = "filter"]; // @gotags: `class:"sensitive"`
 }
 
@@ -165,7 +165,7 @@ message CreateWorkerLedRequest {
 }
 
 message CreateWorkerLedResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.workers.v1.Worker item = 2;
 }
 
@@ -174,7 +174,7 @@ message CreateControllerLedRequest {
 }
 
 message CreateControllerLedResponse {
-  string uri = 1; // @gotags: `class:"public"`
+  string uri = 1; // @gotags: `class:"public" eventstream:"observation"`
   resources.workers.v1.Worker item = 2;
 }
 
@@ -195,7 +195,7 @@ message DeleteWorkerRequest {
 message DeleteWorkerResponse {}
 
 message AddWorkerTagsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
@@ -207,7 +207,7 @@ message AddWorkerTagsResponse {
 }
 
 message SetWorkerTagsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
@@ -219,7 +219,7 @@ message SetWorkerTagsResponse {
 }
 
 message RemoveWorkerTagsRequest {
-  string id = 1; // @gotags: `class:"public"`
+  string id = 1; // @gotags: `class:"public" eventstream:"observation"`
   // Version is used to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`

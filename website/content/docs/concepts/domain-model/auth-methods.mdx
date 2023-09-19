@@ -45,7 +45,7 @@ The OIDC auth method has the following additional attributes:
   responses are allowed.
 
 - `api_url_prefix` (required) The API prefix to use when generating callback URLs
-  for the provider. You should set the value to an address that allows the provider to reach 
+  for the provider. You should set the value to an address that allows the provider to reach
   the controller.
 
 - `callback_url` (output read-only) The URL that should be provided to the IdP
@@ -58,7 +58,7 @@ The OIDC auth method has the following additional attributes:
   use with the provider.
 
 - `client-secret` (required) The corresponding client secret.
-  
+
 - `client_secret_hmac` (output read-only) The HMAC of the client secret that the Boundary controller
   returns. It is used for comparison to the value's initial setting.
 
@@ -83,8 +83,8 @@ The OIDC auth method has the following additional attributes:
 - `signing-algorithm` (required) The allowed signing algorithm. You can specify this attribute
   multiple times for multiple values.
 
-  
-### LDAP auth method attributes <sup>Beta</sup>
+
+### LDAP auth method attributes
 
 The ldap auth method has the following additional attributes:
 
@@ -179,7 +179,7 @@ The ldap auth method has the following additional attributes:
   - `maximum_page_size` - (optional) If set, it specifies a maximum ldap search
     result size to use when retrieving the authenticated user's group
     memberships. You can use this setting to avoid reaching the LDAP server's max result
-    size. 
+    size.
 
   - `dereference_aliases` - (optional) If set, it will control how aliases are
     dereferenced when you search.

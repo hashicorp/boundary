@@ -80,6 +80,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "ec2:CreateVPC",
       "ec2:DeleteInternetGateway",
       "ec2:DeleteKeyPair",
+      "ec2:DeleteRoute",
       "ec2:DeleteRouteTable",
       "ec2:DeleteSecurityGroup",
       "ec2:DeleteSubnet",
@@ -280,7 +281,7 @@ data "aws_iam_policy_document" "demo_user_policy_document" {
   }
 
   statement {
-    sid = "BoundarySessionS3OnlyMyAccount"
+    sid    = "BoundarySessionS3OnlyMyAccount"
     effect = "Allow"
     actions = [
       "s3:DeleteObject",
@@ -290,9 +291,9 @@ data "aws_iam_policy_document" "demo_user_policy_document" {
     ]
 
     condition {
-      test = "StringEquals"
+      test     = "StringEquals"
       variable = "s3:ResourceAccount"
-      values = [data.aws_caller_identity.current.account_id]
+      values   = [data.aws_caller_identity.current.account_id]
     }
 
     resources = ["*"]
@@ -324,6 +325,6 @@ data "aws_iam_policy_document" "demo_user_policy_document" {
       "s3:GetObject",
       "s3:GetObjectAttributes",
       "s3:PutObject",
-     ]
+    ]
   }
 }

@@ -34,9 +34,11 @@ func Test_newCloudEventsFormatterFilter(t *testing.T) {
 		wantDeny        []string
 	}{
 		{
-			name:   "no-opts",
-			source: testSource,
-			format: cloudevents.FormatJSON,
+			// default case should have default deny for filtering ServerCoordinationService/Status for observation events
+			name:     "no-opts",
+			source:   testSource,
+			format:   cloudevents.FormatJSON,
+			wantDeny: []string{`"/type" contains "observation" and "/data/request_info/method" contains "ServerCoordinationService/Status"`},
 		},
 		{
 			name:   "bad-allow-filter",
@@ -133,7 +135,7 @@ func Test_newCloudEventsFormatterFilter(t *testing.T) {
 			for _, f := range got.allow {
 				assert.Contains(tt.wantAllow, f.raw)
 			}
-			assert.Len(got.deny, len(tt.wantDeny)+1) // +1 since there's always a default deny
+			assert.Len(got.deny, len(tt.wantDeny))
 			defs, err := defaultCloudEventsDenyFilters()
 			require.NoError(err)
 			for _, f := range defs {

@@ -196,6 +196,13 @@ func Test_GetOpts(t *testing.T) {
 		opts := getOpts(WithNoGateLocking(true))
 		assert.True(opts.withNoGateLocking)
 	})
+	t.Run("WithTelemetry", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithTelemetry())
+		testOpts := getDefaultOptions()
+		testOpts.withTelemetry = true
+		assert.Equal(opts, testOpts)
+	})
 }
 
 // testWrapper initializes an AEAD wrapping.Wrapper for testing.  Note: this

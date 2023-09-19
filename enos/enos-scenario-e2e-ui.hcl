@@ -58,12 +58,13 @@ scenario "e2e_ui" {
     module = matrix.builder == "crt" ? module.build_crt : module.build_local
 
     variables {
-      path = local.build_path[matrix.builder]
+      path    = local.build_path[matrix.builder]
+      edition = var.boundary_edition
     }
   }
 
   step "create_base_infra" {
-    module = module.infra
+    module = module.aws_vpc
     depends_on = [
       step.find_azs,
     ]

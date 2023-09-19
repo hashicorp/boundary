@@ -77,6 +77,9 @@ type Writer interface {
 	// DoTx will wrap the TxHandler in a retryable transaction
 	DoTx(ctx context.Context, retries uint, backOff Backoff, Handler TxHandler) (RetryInfo, error)
 
+	// IsTx returns true if there's an existing transaction in progress
+	IsTx(ctx context.Context) bool
+
 	// Update an object in the db, fieldMask is required and provides
 	// field_mask.proto paths for fields that should be updated. The i interface
 	// parameter is the type the caller wants to update in the db and its
@@ -455,6 +458,11 @@ func (rw *Db) DoTx(ctx context.Context, retries uint, backOff Backoff, handler T
 		}
 		return info, nil // it all worked!!!
 	}
+}
+
+// IsTx returns true if there's an existing transaction in progress
+func (rw *Db) IsTx(_ context.Context) bool {
+	return dbw.New(rw.underlying.wrapped.Load()).IsTx()
 }
 
 // LookupByPublicId will lookup resource by its public_id or private_id, which

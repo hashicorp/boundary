@@ -105,8 +105,17 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 		}
 	}
 	opts := getOpts(opt...)
-	if opts.withDetails == nil && opts.withHeader == nil && !opts.withFlush {
-		return fmt.Errorf("%s: specify either header or details options for an event payload: %w", op, ErrInvalidParameter)
+	if opts.withDetails == nil && opts.withHeader == nil && !opts.withFlush && opts.withRequest == nil && opts.withResponse == nil {
+		return fmt.Errorf("%s: specify either header or details options or request or response for an event payload: "+
+			"%w", op, ErrInvalidParameter)
+	}
+	// For the case that the telemetry is not enabled, and we have events coming from interceptors.
+	if !eventer.conf.TelemetryEnabled && (opts.withRequest != nil || opts.withResponse != nil) {
+		return nil
+	}
+	// If telemetry is enabled, we add it to the options.
+	if eventer.conf.TelemetryEnabled {
+		opt = append(opt, WithTelemetry())
 	}
 	if opts.withRequestInfo == nil {
 		var err error

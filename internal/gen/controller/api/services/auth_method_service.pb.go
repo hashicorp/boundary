@@ -36,7 +36,7 @@ type GetAuthMethodRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *GetAuthMethodRequest) Reset() {
@@ -130,8 +130,8 @@ type ListAuthMethodsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public"`     // @gotags: `class:"public"`
-	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public"` // @gotags: `class:"public"`
+	ScopeId   string `protobuf:"bytes,1,opt,name=scope_id,proto3" json:"scope_id,omitempty" class:"public" eventstream:"observation"`     // @gotags: `class:"public" eventstream:"observation"`
+	Recursive bool   `protobuf:"varint,20,opt,name=recursive,proto3" json:"recursive,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Filter    string `protobuf:"bytes,30,opt,name=filter,proto3" json:"filter,omitempty" class:"public"`        // @gotags: `class:"public"`
 }
 
@@ -287,7 +287,7 @@ type CreateAuthMethodResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Uri  string                  `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public"` // @gotags: `class:"public"`
+	Uri  string                  `protobuf:"bytes,1,opt,name=uri,proto3" json:"uri,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item *authmethods.AuthMethod `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 }
 
@@ -342,7 +342,7 @@ type UpdateAuthMethodRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id         string                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	Item       *authmethods.AuthMethod `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
 	UpdateMask *fieldmaskpb.FieldMask  `protobuf:"bytes,3,opt,name=update_mask,proto3" json:"update_mask,omitempty"`
 }
@@ -452,7 +452,7 @@ type DeleteAuthMethodRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public"` // @gotags: `class:"public"`
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 }
 
 func (x *DeleteAuthMethodRequest) Reset() {
@@ -919,7 +919,7 @@ type AuthenticateRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The ID of the Auth Method in the system that should be used for authentication.
-	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public"` // @gotags: `class:"public"`
+	AuthMethodId string `protobuf:"bytes,1,opt,name=auth_method_id,proto3" json:"auth_method_id,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
 	// to keep it safe from rogue JS in the browser. Deprecated, use "type" instead.
 	//
@@ -927,7 +927,7 @@ type AuthenticateRequest struct {
 	TokenType string `protobuf:"bytes,2,opt,name=token_type,proto3" json:"token_type,omitempty" class:"public"` // @gotags: `class:"public"`
 	// This can be "cookie" or "token". If not provided, "token" will be used. "cookie" activates a split-cookie method where the token is split partially between http-only and regular cookies in order
 	// to keep it safe from rogue JS in the browser.
-	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Types that are assignable to Attrs:
 	//
 	//	*AuthenticateRequest_Attributes
@@ -1100,7 +1100,7 @@ type AuthenticateResponse struct {
 	unknownFields protoimpl.UnknownFields
 
 	// The type of the token returned. Either "cookie" or "token".
-	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty" class:"public"` // @gotags: `class:"public"`
+	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty" class:"public" eventstream:"observation"` // @gotags: `class:"public" eventstream:"observation"`
 	// Types that are assignable to Attrs:
 	//
 	//	*AuthenticateResponse_Attributes
