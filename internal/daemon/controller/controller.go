@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/census"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/credential"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
@@ -120,22 +121,23 @@ type Controller struct {
 	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
-	AuthTokenRepoFn           common.AuthTokenRepoFactory
-	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
-	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
-	IamRepoFn                 common.IamRepoFactory
-	OidcRepoFn                common.OidcAuthRepoFactory
-	LdapRepoFn                common.LdapAuthRepoFactory
-	PasswordAuthRepoFn        common.PasswordAuthRepoFactory
-	ServersRepoFn             common.ServersRepoFactory
-	SessionRepoFn             session.RepositoryFactory
-	ConnectionRepoFn          common.ConnectionRepoFactory
-	StaticHostRepoFn          common.StaticRepoFactory
-	PluginHostRepoFn          common.PluginHostRepoFactory
-	PluginStorageBucketRepoFn common.PluginStorageBucketRepoFactory
-	PluginRepoFn              common.PluginRepoFactory
-	TargetRepoFn              target.RepositoryFactory
-	WorkerAuthRepoStorageFn   common.WorkerAuthRepoStorageFactory
+	AuthTokenRepoFn                   common.AuthTokenRepoFactory
+	BaseCredentialLibraryRepositoryFn common.BaseCredentialLibraryRepoFactory
+	VaultCredentialRepoFn             common.VaultCredentialRepoFactory
+	StaticCredentialRepoFn            common.StaticCredentialRepoFactory
+	IamRepoFn                         common.IamRepoFactory
+	OidcRepoFn                        common.OidcAuthRepoFactory
+	LdapRepoFn                        common.LdapAuthRepoFactory
+	PasswordAuthRepoFn                common.PasswordAuthRepoFactory
+	ServersRepoFn                     common.ServersRepoFactory
+	SessionRepoFn                     session.RepositoryFactory
+	ConnectionRepoFn                  common.ConnectionRepoFactory
+	StaticHostRepoFn                  common.StaticRepoFactory
+	PluginHostRepoFn                  common.PluginHostRepoFactory
+	PluginStorageBucketRepoFn         common.PluginStorageBucketRepoFactory
+	PluginRepoFn                      common.PluginRepoFactory
+	TargetRepoFn                      target.RepositoryFactory
+	WorkerAuthRepoStorageFn           common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -388,6 +390,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return authtoken.NewRepository(ctx, dbase, dbase, c.kms,
 			authtoken.WithTokenTimeToLiveDuration(c.conf.RawConfig.Controller.AuthTokenTimeToLiveDuration),
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
+	}
+	c.BaseCredentialLibraryRepositoryFn = func() (*credential.CredentialLibraryRepository, error) {
+		return credential.NewCredentialLibraryRepository(ctx, dbase)
 	}
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler)
