@@ -16,6 +16,12 @@ An administrator can later view the recordings to investigate security issues, r
 Recorded sessions are stored in an external storage bucket that you create.
 Storing session recordings in a system external to Boundary means those recordings can be accessed, modified, deleted, and even restored independently of Boundary.
 You can view any sessions that Boundary recorded in your storage provider or via the CLI.
+By default, Boundary converts recorded sessions to an asciicast format for playback.
+
+Some SSH connection options are not captured by the asciicast playback format.
+If you use remote commands or an interactive shell, for example, these might not be viewable in the asciicast recorded output.
+Boundary does capture all user inputs, however, and you can view a complete audit trail of remote commands and interactive shell input in the [BSR file](/boundary/docs/concepts/auditing/#bsr-directory-structure).
+You can view the BSR file in the external storage bucket.
 
 For more information about working with recorded sessions, refer to the following topics:
 
