@@ -2999,6 +2999,9 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	baseCredentialLibraryRepoFn := func() (*credential.CredentialLibraryRepository, error) {
 		return credential.NewCredentialLibraryRepository(ctx, rw)
 	}
+	baseCredentialRepoFn := func() (*credential.CredentialRepository, error) {
+		return credential.NewCredentialRepository(context.Background(), rw)
+	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
 	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
@@ -3092,7 +3095,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	require.NoError(t, err)
 
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, proj.GetPublicId())
-	credService, err := credentials.NewService(ctx, staticCredRepoFn, iamRepoFn)
+	credService, err := credentials.NewService(ctx, iamRepoFn, staticCredRepoFn, baseCredentialRepoFn, 1000)
 	require.NoError(t, err)
 	upCredResp, err := credService.CreateCredential(ctx, &pbs.CreateCredentialRequest{Item: &credpb.Credential{
 		CredentialStoreId: staticStore.GetPublicId(),
