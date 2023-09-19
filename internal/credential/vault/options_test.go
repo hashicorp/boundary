@@ -137,7 +137,7 @@ func Test_GetOpts(t *testing.T) {
 		updateTime := time.Now()
 		opts := getOpts(WithStartPageAfterItem("s_1", updateTime))
 		testOpts := getDefaultOptions()
-		testOpts.withStartPageAfterItem = &sortCredentialLibrary{
+		testOpts.withStartPageAfterItem = &sortItem{
 			publicId:   "s_1",
 			updateTime: updateTime,
 		}

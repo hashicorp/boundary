@@ -5,6 +5,7 @@ package static
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -35,5 +36,16 @@ func Test_GetOpts(t *testing.T) {
 		assert.NotEqual(t, opts, testOpts)
 		testOpts.withPrivateKeyPassphrase = []byte("my-pass")
 		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts := getOpts(WithStartPageAfterItem("s_1", updateTime))
+		testOpts := getDefaultOptions()
+		testOpts.withStartPageAfterItem = &sortItem{
+			publicId:   "s_1",
+			updateTime: updateTime,
+		}
+		assert.Equal(opts, testOpts)
 	})
 }

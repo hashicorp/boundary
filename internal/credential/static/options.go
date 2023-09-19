@@ -3,6 +3,8 @@
 
 package static
 
+import "time"
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -22,6 +24,7 @@ type options struct {
 	withLimit                int
 	withPublicId             string
 	withPrivateKeyPassphrase []byte
+	withStartPageAfterItem   *sortItem
 }
 
 func getDefaultOptions() options {
@@ -62,5 +65,16 @@ func WithPublicId(name string) Option {
 func WithPrivateKeyPassphrase(with []byte) Option {
 	return func(o *options) {
 		o.withPrivateKeyPassphrase = with
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(publicId string, updateTime time.Time) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = &sortItem{
+			publicId:   publicId,
+			updateTime: updateTime,
+		}
 	}
 }

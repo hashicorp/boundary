@@ -21,6 +21,7 @@ import (
 
 type (
 	AuthTokenRepoFactory             = oidc.AuthTokenRepoFactory
+	BaseCredentialStoreRepoFactory   func() (*credential.CredentialStoreRepository, error)
 	BaseCredentialLibraryRepoFactory func() (*credential.CredentialLibraryRepository, error)
 	VaultCredentialRepoFactory       = func() (*vault.Repository, error)
 	StaticCredentialRepoFactory      = func() (*credstatic.Repository, error)
