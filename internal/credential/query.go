@@ -7,4 +7,8 @@ const (
 	estimateCountCredentialLibraries = `
   select reltuples::bigint as estimate from pg_class where oid = (current_schema() || '.credential_library')::regclass
 `
+
+	estimateCountCredentialStores = `
+  select reltuples::bigint as estimate from pg_class where oid = (current_schema() || '.credential_store')::regclass
+`
 )
