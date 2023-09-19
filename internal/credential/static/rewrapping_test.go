@@ -28,6 +28,9 @@ func TestRewrap_credStaticUsernamePasswordRewrapFn(t *testing.T) {
 		mock.ExpectQuery(
 			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		kmsCache := kms.TestKms(t, conn, wrapper)
 		rw := db.New(conn)
 		mock.ExpectQuery(
@@ -88,6 +91,9 @@ func TestRewrap_credStaticSshPrivKeyRewrapFn(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		mock.ExpectQuery(
 			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		kmsCache := kms.TestKms(t, conn, wrapper)
 		rw := db.New(conn)
@@ -193,6 +199,9 @@ func TestRewrap_credStaticJsonRewrapFn(t *testing.T) {
 		wrapper := db.TestWrapper(t)
 		mock.ExpectQuery(
 			`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
+		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+		mock.ExpectQuery(
+			`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
 		).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 		kmsCache := kms.TestKms(t, conn, wrapper)
 		rw := db.New(conn)

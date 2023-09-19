@@ -28,8 +28,8 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/db"
 	berrors "github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
@@ -38,7 +38,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
-	"github.com/hashicorp/go-multierror"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
@@ -722,13 +721,13 @@ func (b *Server) SetupKMSes(ctx context.Context, ui cli.Ui, config *config.Confi
 }
 
 func (b *Server) RunShutdownFuncs() error {
-	var mErr *multierror.Error
+	var mErr error
 	for _, f := range b.ShutdownFuncs {
 		if err := f(); err != nil {
-			mErr = multierror.Append(mErr, err)
+			mErr = errors.Join(mErr, err)
 		}
 	}
-	return mErr.ErrorOrNil()
+	return mErr
 }
 
 // OpenAndSetServerDatabase calls OpenDatabase and sets its result *db.DB to the Server's

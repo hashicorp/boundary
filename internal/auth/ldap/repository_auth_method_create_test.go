@@ -63,6 +63,8 @@ func TestRepository_CreateAuthMethod(t *testing.T) {
 		WithAccountAttributeMap(testCtx, map[string]AccountToAttribute{
 			"mail": ToEmailAttribute,
 		}),
+		WithDerefAliases(testCtx, DerefFindingBaseObj),
+		WithMaximumPageSize(testCtx, 10),
 	)
 	require.NoError(t, err)
 

@@ -10,10 +10,21 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   using the `boundary connect ssh` subcommand.
   ([Issue](https://github.com/hashicorp/boundary/issues/3631),
   [PR](https://github.com/hashicorp/boundary/pull/3633)).
+* feat: add API support for additional LDAP auth method fields:
+  maximum_page_size and dereference_aliases
+  ([PR](https://github.com/hashicorp/boundary/pull/3679)).
+* feat: add worker upstream connection status to ops health check
+  ([PR](https://github.com/hashicorp/boundary/pull/3650)).  
+* feat: allow HCP cluster id to be sourced from file or env variable
+    ([PR](https://github.com/hashicorp/boundary/pull/3709)).
 
 ### Bug Fixes
 
-* LDAP auth methods: allow bind-dn and bind-password to be updated independently. ([PR](https://github.com/hashicorp/boundary/pull/3511))
+* LDAP auth methods: allow bind-dn and bind-password to be updated
+  independently. ([PR](https://github.com/hashicorp/boundary/pull/3511))
+* targets: Fix address field not being populated if the number of targets on a
+  list returns more than 10000 entries
+  ([PR](https://github.com/hashicorp/boundary/pull/3644))
 
 ## 0.13.1 (2023/07/10)
 

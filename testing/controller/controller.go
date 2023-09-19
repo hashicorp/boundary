@@ -32,6 +32,7 @@ type option struct {
 	setRecoveryKms                 bool
 	setDatabaseUrl                 bool
 	setEnableTemplatedDatabase     bool
+	setEnableEventing              bool
 }
 
 type Option func(*option) error
@@ -211,6 +212,14 @@ func WithDatabaseUrl(url string) Option {
 func WithEnableTemplatedDatabase(enable bool) Option {
 	return func(c *option) error {
 		c.setEnableTemplatedDatabase = enable
+		return nil
+	}
+}
+
+func WithEnableEventing() Option {
+	return func(c *option) error {
+		c.setEnableEventing = true
+		c.tcOptions.EnableEventing = true
 		return nil
 	}
 }

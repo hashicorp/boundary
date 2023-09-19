@@ -77,6 +77,8 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 		BindDN:                am.BindDn,
 		BindPassword:          am.BindPassword,
 		RequestTimeout:        DefaultRequestTimeout,
+		DerefAliases:          am.DereferenceAliases,
+		MaximumPageSize:       int(am.MaximumPageSize),
 	})
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to initialize ldap client with auth method retrieved from database"))
@@ -117,7 +119,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 		acct.MemberOfGroups = string(encodedGroups)
 	}
 
-	databaseWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase)
+	oplogWrapper, err := r.kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeOplog)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -134,7 +136,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 			Target: db.Columns{"public_id"}, // id is predictable and uses both auth method id and login name for inputs
 			Action: db.SetColumns([]string{"full_name", "email", "dn", "member_of_groups"}),
 		}),
-		db.WithOplog(databaseWrapper, md),
+		db.WithOplog(oplogWrapper, md),
 	); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to create/update ldap account"))
 	}

@@ -179,6 +179,10 @@ scenario "e2e_aws" {
     }
   }
 
+  locals {
+    egress_tag = "egress"
+  }
+
   step "create_isolated_worker" {
     module     = module.worker
     depends_on = [step.create_boundary_cluster]
@@ -194,7 +198,7 @@ scenario "e2e_aws" {
       cluster_tag               = step.create_boundary_cluster.cluster_tag
       controller_addresses      = step.create_boundary_cluster.public_controller_addresses
       controller_sg_id          = step.create_boundary_cluster.controller_aux_sg_id
-      worker_type_tags          = ["worker_e2e_test"]
+      worker_type_tags          = [local.egress_tag]
       config_file_path          = "templates/worker.hcl"
     }
   }
@@ -246,8 +250,8 @@ scenario "e2e_aws" {
       aws_host_set_ips1        = step.create_targets_with_tag1.target_ips
       aws_host_set_filter2     = step.create_tag2_inputs.tag_string
       aws_host_set_ips2        = step.create_targets_with_tag2.target_ips
-      target_ip                = step.create_isolated_target.target_ips[0]
-      worker_tags              = step.create_isolated_worker.worker_tags
+      target_address           = step.create_isolated_target.target_ips[0]
+      worker_tag_egress        = local.egress_tag
     }
   }
 

@@ -52,8 +52,8 @@ variable "aws_ssh_private_key_path" {
   type        = string
   default     = ""
 }
-variable "target_ip" {
-  description = "IP address of target"
+variable "target_address" {
+  description = "Address of target"
   type        = string
   default     = ""
 }
@@ -128,23 +128,22 @@ locals {
 
 resource "enos_local_exec" "run_e2e_ui_test" {
   environment = {
-    BOUNDARY_ADDR                 = var.alb_boundary_api_addr,
-    E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id,
-    E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name,
-    E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password,
-    E2E_TARGET_IP                 = var.target_ip,
-    E2E_SSH_USER                  = var.target_user,
-    E2E_SSH_PORT                  = var.target_port,
-    E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path,
-    VAULT_ADDR                    = local.vault_addr,
-    VAULT_TOKEN                   = var.vault_root_token,
-    E2E_VAULT_ADDR                = local.vault_addr_internal,
-    E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id,
-    E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key,
-    E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1,
-    E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1,
-    E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2,
-    E2E_AWS_HOST_SET_IPS2         = local.aws_host_set_ips2
+    BOUNDARY_ADDR                 = var.alb_boundary_api_addr
+    E2E_PASSWORD_AUTH_METHOD_ID   = var.auth_method_id
+    E2E_PASSWORD_ADMIN_LOGIN_NAME = var.auth_login_name
+    E2E_PASSWORD_ADMIN_PASSWORD   = var.auth_password
+    E2E_TARGET_ADDRESS            = var.target_address
+    E2E_TARGET_PORT               = var.target_port
+    E2E_SSH_USER                  = var.target_user
+    E2E_SSH_KEY_PATH              = local.aws_ssh_private_key_path
+    VAULT_ADDR                    = local.vault_addr
+    VAULT_TOKEN                   = var.vault_root_token
+    E2E_VAULT_ADDR                = local.vault_addr_internal
+    E2E_AWS_ACCESS_KEY_ID         = var.aws_access_key_id
+    E2E_AWS_SECRET_ACCESS_KEY     = var.aws_secret_access_key
+    E2E_AWS_HOST_SET_FILTER       = var.aws_host_set_filter1
+    E2E_AWS_HOST_SET_IPS          = local.aws_host_set_ips1
+    E2E_AWS_HOST_SET_FILTER2      = var.aws_host_set_filter2
   }
 
   inline = var.debug_no_run ? [""] : ["set -o pipefail; PATH=\"${var.local_boundary_dir}:$PATH\" yarn --cwd ${var.local_boundary_ui_src_dir}/ui/admin run e2e 2>&1 | tee ${path.module}/../../test-e2e-ui.log"]

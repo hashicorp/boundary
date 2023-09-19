@@ -9,8 +9,8 @@ import (
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/nodeenrollment"
 	"google.golang.org/grpc/codes"

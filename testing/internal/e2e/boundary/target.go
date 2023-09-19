@@ -83,6 +83,9 @@ func CreateNewTargetCli(t testing.TB, ctx context.Context, projectId string, def
 	if opts.WithIngressWorkerFilter != "" {
 		args = append(args, "-ingress-worker-filter", opts.WithIngressWorkerFilter)
 	}
+	if opts.WithEgressWorkerFilter != "" {
+		args = append(args, "-egress-worker-filter", opts.WithEgressWorkerFilter)
+	}
 
 	output := e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs("targets", "create"),

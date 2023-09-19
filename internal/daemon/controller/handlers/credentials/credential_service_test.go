@@ -727,7 +727,7 @@ func TestCreate(t *testing.T) {
 				Type:              credential.JsonSubtype.String(),
 				Attrs: &pb.Credential_JsonAttributes{
 					JsonAttributes: &pb.JsonAttributes{
-						Object: &obj.Struct,
+						Object: obj.Struct,
 					},
 				},
 			}},

@@ -6,10 +6,10 @@ package base_with_vault_test
 import "github.com/kelseyhightower/envconfig"
 
 type config struct {
-	TargetIp         string `envconfig:"E2E_TARGET_IP" required:"true"`    // e.g. 192.168.0.1
-	TargetSshUser    string `envconfig:"E2E_SSH_USER" required:"true"`     // e.g. ubuntu
-	TargetSshKeyPath string `envconfig:"E2E_SSH_KEY_PATH" required:"true"` // e.g. /Users/username/key.pem
-	TargetPort       string `envconfig:"E2E_SSH_PORT" required:"true"`     // e.g. 22
+	TargetAddress    string `envconfig:"E2E_TARGET_ADDRESS" required:"true"` // e.g. 192.168.0.1
+	TargetSshUser    string `envconfig:"E2E_SSH_USER" required:"true"`       // e.g. ubuntu
+	TargetSshKeyPath string `envconfig:"E2E_SSH_KEY_PATH" required:"true"`   // e.g. /Users/username/key.pem
+	TargetPort       string `envconfig:"E2E_TARGET_PORT" required:"true"`    // e.g. 22
 	// Note: Key is base64 encoded
 	TargetCaKey string `envconfig:"E2E_SSH_CA_KEY" required:"true"`
 	// VaultAddr is the address that the Boundary server uses to interact with the running Vault instance

@@ -123,7 +123,6 @@ func TestWorkerAppendInitialUpstreams(t *testing.T) {
 	for {
 		select {
 		case <-time.After(500 * time.Millisecond):
-			break
 		case <-cancelCtx.Done():
 			require.FailNow("No worker found after 10 seconds")
 		}

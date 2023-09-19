@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	tg "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/tests/helper"
 	"github.com/hashicorp/dawdle"
 	"github.com/hashicorp/go-hclog"
@@ -22,8 +22,8 @@ import (
 
 func TestWorkerSessionProxyMultipleConnections(t *testing.T) {
 	const op = "cluster.TestWorkerSessionMultipleConnections"
-	t.Parallel()
 
+	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 
 	require := require.New(t)

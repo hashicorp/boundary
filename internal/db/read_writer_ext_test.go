@@ -20,7 +20,7 @@ import (
 func TestDb_Create_OnConflict(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestDBWrapper(t, conn, "oplog")
+	oplogWrapper := db.TestOplogWrapper(t, conn)
 	rw := db.New(conn)
 	db.TestCreateTables(t, conn)
 
@@ -172,7 +172,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 				"op-type":            []string{oplog.OpType_OP_TYPE_CREATE.String()},
 			}
 			var rowsAffected int64
-			opts := []db.Option{db.WithOnConflict(&tt.onConflict), db.WithOplog(wrapper, md), db.WithReturnRowsAffected(&rowsAffected)}
+			opts := []db.Option{db.WithOnConflict(&tt.onConflict), db.WithOplog(oplogWrapper, md), db.WithReturnRowsAffected(&rowsAffected)}
 			if tt.additionalOpts != nil {
 				opts = append(opts, tt.additionalOpts...)
 			}
@@ -222,7 +222,7 @@ func TestDb_Create_OnConflict(t *testing.T) {
 		users := []any{}
 		users = append(users, conflictUser)
 		var rowsAffected int64
-		err = rw.CreateItems(ctx, users, db.WithOnConflict(&onConflict), db.WithOplog(wrapper, md), db.WithReturnRowsAffected(&rowsAffected))
+		err = rw.CreateItems(ctx, users, db.WithOnConflict(&onConflict), db.WithOplog(oplogWrapper, md), db.WithReturnRowsAffected(&rowsAffected))
 		require.NoError(err)
 		foundUser, err := db_test.NewTestUser()
 		require.NoError(err)

@@ -42,7 +42,6 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	fm "github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-bexpr"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
@@ -965,7 +964,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 			deleteCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			_, err := sessionRepo.DeleteSession(deleteCtx, sess.PublicId)
-			retErr = multierror.Append(retErr, err)
+			retErr = stderrors.Join(retErr, err)
 		}
 	}()
 
@@ -996,7 +995,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 				deleteCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
 				defer cancel()
 				err := credRepo.Revoke(deleteCtx, sess.PublicId)
-				retErr = multierror.Append(retErr, err)
+				retErr = stderrors.Join(retErr, err)
 				// This leaves the credential in a state which will allow it to be cleaned up
 				// by the periodic credential cleanup job.
 			}
