@@ -710,7 +710,7 @@ func TestRepository_ListCredentials(t *testing.T) {
 			args: args{
 				storeId: store.PublicId,
 			},
-			wantCnt: defaultLimit * 3,
+			wantCnt: defaultLimit,
 		},
 		{
 			name: "custom-limit",
@@ -718,7 +718,7 @@ func TestRepository_ListCredentials(t *testing.T) {
 				storeId: store.PublicId,
 				opt:     []Option{WithLimit(3)},
 			},
-			wantCnt: 9,
+			wantCnt: 3,
 		},
 		{
 			name: "bad-store",
@@ -761,6 +761,47 @@ func TestRepository_ListCredentials(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_ListCredentials_Pagination(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	obj, _, err := TestJsonObject()
+	assert.NoError(err)
+	_ = TestJsonCredentials(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, 2)
+	_ = TestSshPrivateKeyCredentials(t, conn, wrapper, "username", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), 2)
+	_ = TestUsernamePasswordCredentials(t, conn, wrapper, "username", "testpassword", store.GetPublicId(), prj.GetPublicId(), 1)
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	page1, err := repo.ListCredentials(ctx, store.GetPublicId(), WithLimit(2))
+	require.NoError(err)
+	require.Len(page1, 2)
+	page2, err := repo.ListCredentials(ctx, store.GetPublicId(), WithLimit(2), WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].GetUpdateTime().AsTime()))
+	require.NoError(err)
+	require.Len(page2, 2)
+	for _, item := range page1 {
+		assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+		assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+	}
+	page3, err := repo.ListCredentials(ctx, store.GetPublicId(), WithLimit(2), WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].GetUpdateTime().AsTime()))
+	require.NoError(err)
+	require.Len(page3, 1)
+	for _, item := range append(page1, page2...) {
+		assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+	}
+	page4, err := repo.ListCredentials(ctx, store.GetPublicId(), WithLimit(2), WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].GetUpdateTime().AsTime()))
+	require.NoError(err)
+	require.Empty(page4)
 }
 
 func TestRepository_DeleteCredential(t *testing.T) {
