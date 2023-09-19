@@ -15,6 +15,7 @@ Example:
 events {
   observations_enabled = true
   sysevents_enabled = true
+  telemetry_enabled = true
   sink "stderr" {
     name = "all-events"
     description = "All events sent to stderr"
@@ -39,6 +40,9 @@ events {
 - `observations_enabled` - Specifies if observation events should be emitted.
 
 - `sysevents_enabled` - Specifies if system events should be emitted.
+
+- `telemetry_enabled` - Specifies if telemetry events should be emitted.
+To receive telemetry events, you must also set `observations_enabled` to `true`.
 
 - `sink` - Specifies the configuration of an event sink. Currently, two types of
   sink are supported: [file](/boundary/docs/configuration/events/file) and [stderr](/boundary/docs/configuration/events/stderr). If no sinks are configured then all
