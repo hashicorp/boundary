@@ -367,7 +367,7 @@ func isNil(i any) bool {
 func eventsRequestInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
-	const op = "controller.auditRequestInterceptor"
+	const op = "controller.eventsRequestInterceptor"
 	return func(interceptorCtx context.Context,
 		req any,
 		_ *grpc.UnaryServerInfo,
@@ -392,7 +392,7 @@ func eventsRequestInterceptor(
 func eventsResponseInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
-	const op = "controller.auditResponseInterceptor"
+	const op = "controller.eventsResponseInterceptor"
 	return func(interceptorCtx context.Context,
 		req any,
 		_ *grpc.UnaryServerInfo,
