@@ -71,12 +71,10 @@ module "iam_setup" {
   source = "./modules/iam_setup"
 }
 
-module "infra" {
-  source  = "app.terraform.io/hashicorp-qti/aws-infra/enos"
-  version = ">= 0.3.1"
+module "aws_vpc" {
+  source = "./modules/aws_vpc"
 
-  project_name = "qti-enos-boundary"
-  environment  = var.environment
+  environment = var.environment
   common_tags = {
     "Project" : "Enos",
     "Project Name" : "qti-enos-boundary",
