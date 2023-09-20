@@ -74,7 +74,7 @@ scenario "e2e_aws_base" {
   }
 
   step "create_boundary_cluster" {
-    module = module.boundary
+    module = module.aws_boundary
     depends_on = [
       step.create_base_infra,
       step.create_db_password,
