@@ -23,7 +23,7 @@ Currently Boundary supports converting the recording of an individual SSH channe
 The asciicast format is well suited for the playback of interactive shell activity.
 However, some aspects of the recording cannot be translated into asciicast.
 For example, if an SSH session uses the `RemoteCommand` option, or is used to `exec` a command, the command is not displayed in the asciicast.
-The output of the command may be displayed, however.
+The output of the command may be displayed, though.
 If you use SSH for something other than an interactive shell, such as for file transfer, X11 forwarding, or port forwarding, Boundary does not attempt to create an asciicast.
 In all cases, the SSH session is still recorded in the [BSR file](/boundary/docs/concepts/auditing/#bsr-directory-structure) and you can view the BSR file in the external storage bucket.
 
