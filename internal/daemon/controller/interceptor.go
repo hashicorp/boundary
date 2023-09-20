@@ -364,7 +364,7 @@ func isNil(i any) bool {
 	return false
 }
 
-func auditRequestInterceptor(
+func eventsRequestInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
 	const op = "controller.auditRequestInterceptor"
@@ -380,13 +380,16 @@ func auditRequestInterceptor(
 			if err := event.WriteAudit(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write request msg audit: %s", err)
 			}
+			if err := event.WriteObservation(interceptorCtx, op, event.WithRequest(&event.Request{Details: clonedMsg})); err != nil {
+				return req, status.Errorf(codes.Internal, "unable to write request msg observation: %s", err)
+			}
 		}
 
 		return handler(interceptorCtx, req)
 	}
 }
 
-func auditResponseInterceptor(
+func eventsResponseInterceptor(
 	_ context.Context,
 ) grpc.UnaryServerInterceptor {
 	const op = "controller.auditResponseInterceptor"
@@ -404,6 +407,9 @@ func auditResponseInterceptor(
 			clonedMsg := proto.Clone(msg)
 			if err := event.WriteAudit(interceptorCtx, op, event.WithResponse(&event.Response{Details: clonedMsg})); err != nil {
 				return req, status.Errorf(codes.Internal, "unable to write response msg audit: %s", err)
+			}
+			if err := event.WriteObservation(interceptorCtx, op, event.WithResponse(&event.Response{Details: clonedMsg})); err != nil {
+				return req, status.Errorf(codes.Internal, "unable to write response msg observation: %s", err)
 			}
 		}
 

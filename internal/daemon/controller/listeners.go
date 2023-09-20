@@ -250,8 +250,8 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				workerReqInterceptor,
-				auditRequestInterceptor(c.baseContext),  // before we get started, audit the request
-				auditResponseInterceptor(c.baseContext), // as we finish, audit the response
+				eventsRequestInterceptor(c.baseContext),  // before we get started, audit the request
+				eventsResponseInterceptor(c.baseContext), // as we finish, audit the response
 			),
 		),
 	)
