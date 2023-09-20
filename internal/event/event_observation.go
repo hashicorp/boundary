@@ -100,6 +100,9 @@ func (o *observation) ComposeFrom(events []*eventlogger.Event) (eventlogger.Even
 				payload[hdrK] = hdrV
 			}
 		}
+		if g.RequestInfo != nil {
+			payload[RequestInfoField] = g.RequestInfo
+		}
 		if g.Detail != nil {
 			if _, ok := payload[DetailsField]; !ok {
 				payload[DetailsField] = []gated.EventPayloadDetails{}
