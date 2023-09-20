@@ -99,8 +99,6 @@ func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token Ke
 			}
 		}
 
-		// TODO: Tokens are probably not the thing to limit here.  Do we want to limit users?
-		// Also, we can perform this check as an after create trigger on the user table
 		var users []*user
 		if err := reader.SearchWhere(ctx, &users, "true", []any{}, db.WithLimit(-1)); err != nil {
 			return errors.Wrap(ctx, err, op)
