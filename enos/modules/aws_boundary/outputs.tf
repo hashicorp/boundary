@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
 output "controller_ips" {
   description = "Public IPs of boundary controllers"
   value       = aws_instance.controller.*.public_ip

@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
 resource "aws_db_subnet_group" "boundary" {
   name       = "boundary-db-subnet-${random_string.cluster_id.result}"
   subnet_ids = data.aws_subnets.infra.ids

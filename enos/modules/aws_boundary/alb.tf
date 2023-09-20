@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
 resource "aws_alb" "boundary_alb" {
   name            = "boundary-alb-${random_string.cluster_id.result}"
   depends_on      = [aws_instance.controller]

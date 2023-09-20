@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: BUSL-1.1
+
 resource "aws_instance" "controller" {
   count         = var.controller_count
   ami           = var.ubuntu_ami_id
