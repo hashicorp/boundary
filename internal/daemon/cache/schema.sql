@@ -74,6 +74,8 @@ where
     id not in (select auth_token_id from keyring_token);
 end;
 
+-- target contains cached boundary target resource for a specific user and with
+-- specific fields extracted to facilitate searching over those fields
 create table if not exists target (
   -- the boundary user id of the user who has was able to read/list this target
   user_id text not null
@@ -93,6 +95,8 @@ create table if not exists target (
   primary key (user_id, id)
 );
 
+-- session contains cached boundary session resource for a specific user and
+-- with specific fields extracted to facilitate searching over those fields
 create table if not exists session (
   -- the boundary user id of the user who has was able to read/list this resource
   user_id text not null
