@@ -361,6 +361,10 @@ func (b *testMockBroker) RegisterNode(id eventlogger.NodeID, node eventlogger.No
 	return nil
 }
 
+func (b *testMockBroker) RemoveNode(ctx context.Context, id eventlogger.NodeID) error {
+	return nil
+}
+
 func (b *testMockBroker) SetSuccessThreshold(t eventlogger.EventType, successThreshold int) error {
 	if b.successThresholds == nil {
 		b.successThresholds = map[eventlogger.EventType]int{}
