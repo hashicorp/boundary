@@ -31,7 +31,7 @@ scenario "e2e_aws" {
   }
 
   step "find_azs" {
-    module = module.az_finder
+    module = module.aws_az_finder
 
     variables {
       instance_type = [
@@ -114,7 +114,7 @@ scenario "e2e_aws" {
   }
 
   step "create_targets_with_tag1" {
-    module     = module.target
+    module     = module.aws_target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -144,7 +144,7 @@ scenario "e2e_aws" {
   }
 
   step "create_targets_with_tag2" {
-    module     = module.target
+    module     = module.aws_target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -167,7 +167,7 @@ scenario "e2e_aws" {
   }
 
   step "iam_setup" {
-    module = module.iam_setup
+    module = module.aws_iam_setup
     depends_on = [
       step.create_base_infra,
       step.create_test_id
@@ -184,7 +184,7 @@ scenario "e2e_aws" {
   }
 
   step "create_isolated_worker" {
-    module     = module.worker
+    module     = module.aws_worker
     depends_on = [step.create_boundary_cluster]
     variables {
       vpc_id                    = step.create_base_infra.vpc_id
@@ -204,7 +204,7 @@ scenario "e2e_aws" {
   }
 
   step "create_isolated_target" {
-    module = module.target
+    module = module.aws_target
     depends_on = [
       step.create_base_infra,
       step.create_isolated_worker

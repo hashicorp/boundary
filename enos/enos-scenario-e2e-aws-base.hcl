@@ -30,7 +30,7 @@ scenario "e2e_aws_base" {
   }
 
   step "find_azs" {
-    module = module.az_finder
+    module = module.aws_az_finder
 
     variables {
       instance_type = [
@@ -99,7 +99,7 @@ scenario "e2e_aws_base" {
   }
 
   step "create_target" {
-    module     = module.target
+    module     = module.aws_target
     depends_on = [step.create_base_infra]
 
     variables {

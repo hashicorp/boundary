@@ -1,8 +1,8 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: BUSL-1.1
 
-module "az_finder" {
-  source = "./modules/az_finder"
+module "aws_az_finder" {
+  source = "./modules/aws_az_finder"
 }
 
 module "bats_deps" {
@@ -26,8 +26,8 @@ module "aws_boundary" {
   ssh_aws_keypair       = var.aws_ssh_keypair_name
 }
 
-module "worker" {
-  source = "./modules/worker"
+module "aws_worker" {
+  source = "./modules/aws_worker"
 
   common_tags = {
     "Project" : "Enos",
@@ -39,8 +39,8 @@ module "worker" {
   ssh_aws_keypair = var.aws_ssh_keypair_name
 }
 
-module "bucket" {
-  source = "./modules/bucket"
+module "aws_bucket" {
+  source = "./modules/aws_bucket"
 }
 
 module "build_crt" {
@@ -66,8 +66,8 @@ module "generate_aws_host_tag_vars" {
   source = "./modules/generate_aws_host_tag_vars"
 }
 
-module "iam_setup" {
-  source = "./modules/iam_setup"
+module "aws_iam_setup" {
+  source = "./modules/aws_iam_setup"
 }
 
 module "aws_vpc" {
@@ -94,8 +94,8 @@ module "map2list" {
   source = "./modules/map2list"
 }
 
-module "target" {
-  source       = "./modules/target"
+module "aws_target" {
+  source       = "./modules/aws_target"
   target_count = var.target_count
 
   project_name = "qti-enos-boundary"
