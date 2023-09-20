@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
@@ -180,52 +179,6 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return accts, nil
-}
-
-// ListDeletedIds lists the public IDs of any accounts deleted since the timestamp provided.
-func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
-	const op = "account.(Repository).ListDeletedIds"
-	var deletedAccounts []*deletedAccount
-	if err := r.reader.SearchWhere(ctx, &deletedAccounts, "delete_time >= ?", []any{since}); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted accounts"))
-	}
-	var accountIds []string
-	for _, acct := range deletedAccounts {
-		accountIds = append(accountIds, acct.PublicId)
-	}
-	return accountIds, nil
-}
-
-// GetTotalItems returns the total number of items in the accounts table.
-func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
-	const op = "account.(Repository).GetTotalItems"
-	rows, err := r.reader.Query(ctx, estimateCountAccounts, nil)
-	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total accounts"))
-	}
-	var count int
-	for rows.Next() {
-		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
-			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total accounts"))
-		}
-	}
-	return count, nil
-}
-
-// Now returns the current timestamp in the DB.
-func (r *Repository) Now(ctx context.Context) (time.Time, error) {
-	const op = "authtoken.(Repository).Now"
-	rows, err := r.reader.Query(ctx, "select current_timestamp", nil)
-	if err != nil {
-		return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
-	}
-	var now time.Time
-	for rows.Next() {
-		if err := r.reader.ScanRows(ctx, rows, &now); err != nil {
-			return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
-		}
-	}
-	return now, nil
 }
 
 // DeleteAccount deletes the account for the provided id from the repository returning a count of the

@@ -44,7 +44,4 @@ select *
         where public_id = @public_id
     );
 `
-	estimateCountAccounts = `
-select reltuples::bigint as estimate from pg_class where oid = (current_schema() || '.auth_account')::regclass
-`
 )

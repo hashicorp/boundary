@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -128,6 +129,7 @@ type Controller struct {
 	VaultCredentialRepoFn             common.VaultCredentialRepoFactory
 	StaticCredentialRepoFn            common.StaticCredentialRepoFactory
 	IamRepoFn                         common.IamRepoFactory
+	BaseAccountRepoFn                 common.BaseAccountRepoFactory
 	OidcRepoFn                        common.OidcAuthRepoFactory
 	LdapRepoFn                        common.LdapAuthRepoFactory
 	PasswordAuthRepoFn                common.PasswordAuthRepoFactory
@@ -410,6 +412,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
 		return server.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.BaseAccountRepoFn = func() (*auth.AccountRepository, error) {
+		return auth.NewAccountRepository(ctx, dbase)
 	}
 	c.OidcRepoFn = func() (*oidc.Repository, error) {
 		return oidc.NewRepository(ctx, dbase, dbase, c.kms)

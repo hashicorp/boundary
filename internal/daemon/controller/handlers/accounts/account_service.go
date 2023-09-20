@@ -118,9 +118,10 @@ func init() {
 type Service struct {
 	pbs.UnsafeAccountServiceServer
 
-	pwRepoFn   common.PasswordAuthRepoFactory
-	oidcRepoFn common.OidcAuthRepoFactory
-	ldapRepoFn common.LdapAuthRepoFactory
+	pwRepoFn          common.PasswordAuthRepoFactory
+	oidcRepoFn        common.OidcAuthRepoFactory
+	ldapRepoFn        common.LdapAuthRepoFactory
+	baseAccountRepoFn common.BaseAccountRepoFactory
 
 	maxPageSize uint
 }
@@ -128,7 +129,14 @@ type Service struct {
 var _ pbs.AccountServiceServer = (*Service)(nil)
 
 // NewService returns a account service which handles account related requests to boundary.
-func NewService(ctx context.Context, pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory, ldapRepo common.LdapAuthRepoFactory, maxPageSize uint) (Service, error) {
+func NewService(
+	ctx context.Context,
+	pwRepo common.PasswordAuthRepoFactory,
+	oidcRepo common.OidcAuthRepoFactory,
+	ldapRepo common.LdapAuthRepoFactory,
+	baseRepo common.BaseAccountRepoFactory,
+	maxPageSize uint,
+) (Service, error) {
 	const op = "accounts.NewService"
 	switch {
 	case pwRepo == nil:
@@ -137,15 +145,18 @@ func NewService(ctx context.Context, pwRepo common.PasswordAuthRepoFactory, oidc
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing oidc repository")
 	case ldapRepo == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing ldap repository")
+	case baseRepo == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing base account repository")
 	}
 	if maxPageSize == 0 {
 		maxPageSize = uint(defaultMaxPageSize)
 	}
 	return Service{
-		pwRepoFn:    pwRepo,
-		oidcRepoFn:  oidcRepo,
-		ldapRepoFn:  ldapRepo,
-		maxPageSize: maxPageSize,
+		pwRepoFn:          pwRepo,
+		oidcRepoFn:        oidcRepo,
+		ldapRepoFn:        ldapRepo,
+		baseAccountRepoFn: baseRepo,
+		maxPageSize:       maxPageSize,
 	}, nil
 }
 
@@ -164,6 +175,11 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
+	}
+
+	baseRepo, err := s.baseAccountRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	filterAndConvertFn := func(acct auth.Account) (*pb.Account, error) {
@@ -206,14 +222,14 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	}
 
 	var listAccountsFn func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error)
-	var repo pagination.Repository
+	// var repo pagination.Repository
 	switch subtypes.SubtypeFromId(domain, authMethodId) {
 	case ldap.Subtype:
 		ldapRepo, err := s.ldapRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		repo = ldapRepo
+		// repo = ldapRepo
 		listAccountsFn = func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error) {
 			opts := []ldap.Option{
 				ldap.WithLimit(ctx, limit),
@@ -242,7 +258,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		repo = oidcRepo
+		// repo = oidcRepo
 		listAccountsFn = func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error) {
 			opts := []oidc.Option{
 				oidc.WithLimit(limit),
@@ -271,7 +287,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		repo = pwRepo
+		// repo = pwRepo
 		listAccountsFn = func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error) {
 			opts := []password.Option{
 				password.WithLimit(limit),
@@ -305,7 +321,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 		listAccountsFn,
 		filterAndConvertFn,
 		&authResults,
-		repo,
+		baseRepo,
 	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

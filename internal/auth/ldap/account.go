@@ -10,7 +10,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"google.golang.org/protobuf/proto"
@@ -152,14 +151,4 @@ func (a *Account) oplog(ctx context.Context, opType oplog.OpType) (oplog.Metadat
 type sortAccount struct {
 	publicId   string
 	updateTime time.Time
-}
-
-type deletedAccount struct {
-	PublicId   string `gorm:"primary_key"`
-	DeleteTime *timestamp.Timestamp
-}
-
-// TableName returns the tablename to override the default gorm table name
-func (s *deletedAccount) TableName() string {
-	return "auth_account_deleted"
 }
