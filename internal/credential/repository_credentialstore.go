@@ -68,7 +68,7 @@ func (csr *CredentialStoreRepository) ListDeletedIds(ctx context.Context, since 
 	const op = "vault.(Repository).ListDeletedIds"
 	var deletedCredentialStore []*deletedCredentialStore
 	if err := csr.reader.SearchWhere(ctx, &deletedCredentialStore, "delete_time >= ?", []any{since}); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credential Storees"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credential stores"))
 	}
 	var credentialStoreIds []string
 	for _, cs := range deletedCredentialStore {

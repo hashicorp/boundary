@@ -47,34 +47,34 @@ func (csr *CredentialRepository) Now(ctx context.Context) (time.Time, error) {
 	return now, nil
 }
 
-// GetTotalItems returns an estimate of the total number of items in the root aggregate credential store table.
+// GetTotalItems returns an estimate of the total number of items in the root aggregate credential table.
 func (csr *CredentialRepository) GetTotalItems(ctx context.Context) (int, error) {
 	const op = "credential.(CredentialRepository).GetTotalItems"
 	rows, err := csr.reader.Query(ctx, estimateCountCredentials, nil)
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential stores"))
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credentials"))
 	}
 	var count int
 	for rows.Next() {
 		if err := csr.reader.ScanRows(ctx, rows, &count); err != nil {
-			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential stores"))
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credentials"))
 		}
 	}
 	return count, nil
 }
 
-// ListDeletedIds lists the public IDs of any credential stores deleted since the timestamp provided.
+// ListDeletedIds lists the public IDs of any credential deleted since the timestamp provided.
 func (csr *CredentialRepository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
 	const op = "vault.(Repository).ListDeletedIds"
 	var deletedCredential []*deletedCredential
 	if err := csr.reader.SearchWhere(ctx, &deletedCredential, "delete_time >= ?", []any{since}); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credential Storees"))
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credentials"))
 	}
-	var credentialStoreIds []string
+	var credentialIds []string
 	for _, cs := range deletedCredential {
-		credentialStoreIds = append(credentialStoreIds, cs.PublicId)
+		credentialIds = append(credentialIds, cs.PublicId)
 	}
-	return credentialStoreIds, nil
+	return credentialIds, nil
 }
 
 type deletedCredential struct {
