@@ -15,7 +15,7 @@ Example (not safe for production!):
 
 ```hcl
 worker {
-  auth_storage_path="/boundary/demo-worker-1"
+  auth_storage_path="/var/lib/boundary"
   initial_upstreams = ["10.0.0.1"]
 }
 ```
@@ -34,7 +34,7 @@ either directly or via an env var or file by using `env://` or `file://` syntax:
 
 ```hcl
 worker {
-  auth_storage_path="/boundary/demo-worker-1"
+  auth_storage_path="/var/lib/boundary"
   initial_upstreams = ["10.0.0.1"]
   controller_generated_activation_token = "neslat_........."
   # controller_generated_activation_token = "env://ACT_TOKEN"
@@ -88,7 +88,7 @@ Development example:
 
 ```hcl
 worker {
-  auth_storage_path="/boundary/demo-worker-1"
+  auth_storage_path="/var/lib/boundary"
   initial_upstreams = ["10.0.0.1"]
   recording_storage_path="/local/storage/directory"
 }
