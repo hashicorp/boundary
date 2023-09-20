@@ -22,16 +22,16 @@ import (
 )
 
 type testCommander struct {
-	t *testing.T
-	p *cache.Token
+	t  *testing.T
+	at *cache.AuthToken
 }
 
 func (r *testCommander) keyring() string {
-	return r.p.KeyringType
+	return r.at.Id
 }
 
 func (r *testCommander) tokenName() string {
-	return r.p.TokenName
+	return r.at.Id
 }
 
 func (r *testCommander) Client(opt ...base.Option) (*api.Client, error) {
@@ -46,22 +46,20 @@ func (r *testCommander) DiscoverKeyringTokenInfo() (string, string, error) {
 
 func (r *testCommander) ReadTokenFromKeyring(k, a string) *authtokens.AuthToken {
 	return &authtokens.AuthToken{
-		Id:           r.p.AuthTokenId,
+		Id:           r.at.Id,
 		AuthMethodId: "test_auth_method",
-		Token:        fmt.Sprintf("%s_restofthetoken", r.p.AuthTokenId),
-		UserId:       r.p.UserId,
+		Token:        fmt.Sprintf("%s_restofthetoken", r.at.Id),
+		UserId:       r.at.UserId,
 	}
 }
 
 func TestSearch(t *testing.T) {
 	ctx := context.Background()
-	p := &cache.Token{
-		UserId:      "u_1234567890",
-		TokenName:   "token1",
-		KeyringType: "keyring",
-		AuthTokenId: "at_authtokenid",
+	at := &cache.AuthToken{
+		UserId: "u_1234567890",
+		Id:     "at_authtokenid",
 	}
-	cmd := &testCommander{t: t, p: p}
+	cmd := &testCommander{t: t, at: at}
 
 	srv := daemon.NewTestServer(t, cmd)
 	var wg sync.WaitGroup
@@ -81,49 +79,23 @@ func TestSearch(t *testing.T) {
 		{
 			name: "no resource",
 			fb: filterBy{
-				keyringType: cmd.keyring(),
-				tokenName:   cmd.tokenName(),
 				flagQuery:   "name=name",
-				authTokenId: p.AuthTokenId,
+				authTokenId: at.Id,
 			},
 			apiErrContains: "resource is a required field but was empty",
 		},
 		{
 			name: "bad resource",
 			fb: filterBy{
-				keyringType: cmd.keyring(),
-				tokenName:   cmd.tokenName(),
-				authTokenId: p.AuthTokenId,
+				authTokenId: at.Id,
 				flagQuery:   "name=name",
 				resource:    "hosts",
 			},
 			apiErrContains: "doesn't support \"hosts\" resource",
 		},
 		{
-			name: "no keyring type",
+			name: "unknown auth token id",
 			fb: filterBy{
-				tokenName:   cmd.tokenName(),
-				authTokenId: p.AuthTokenId,
-				flagQuery:   "name=name",
-				resource:    "targets",
-			},
-			apiErrContains: "keyring_type is a required field but was empty",
-		},
-		{
-			name: "no token name",
-			fb: filterBy{
-				keyringType: cmd.keyring(),
-				authTokenId: p.AuthTokenId,
-				flagQuery:   "name=name",
-				resource:    "targets",
-			},
-			apiErrContains: "token_name is a required field but was empty",
-		},
-		{
-			name: "unknown persona",
-			fb: filterBy{
-				keyringType: "unrecognized",
-				tokenName:   "unrecognized",
 				authTokenId: "unknown",
 				flagQuery:   "description % tar",
 				resource:    "targets",
@@ -133,9 +105,7 @@ func TestSearch(t *testing.T) {
 		{
 			name: "query on unsupported column",
 			fb: filterBy{
-				keyringType: cmd.keyring(),
-				tokenName:   cmd.tokenName(),
-				authTokenId: p.AuthTokenId,
+				authTokenId: at.Id,
 				flagQuery:   "item % tar",
 				resource:    "targets",
 			},
@@ -157,9 +127,7 @@ func TestSearch(t *testing.T) {
 
 	t.Run("empty response from list", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
-			keyringType: cmd.keyring(),
-			tokenName:   cmd.tokenName(),
-			authTokenId: p.AuthTokenId,
+			authTokenId: at.Id,
 			resource:    "targets",
 		})
 		require.NoError(t, err)
@@ -173,9 +141,7 @@ func TestSearch(t *testing.T) {
 
 	t.Run("empty response from query", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
-			keyringType: cmd.keyring(),
-			tokenName:   cmd.tokenName(),
-			authTokenId: p.AuthTokenId,
+			authTokenId: at.Id,
 			flagQuery:   "name=name",
 			resource:    "targets",
 		})
@@ -188,7 +154,7 @@ func TestSearch(t *testing.T) {
 		assert.EqualValues(t, r, daemon.SearchResult{})
 	})
 
-	srv.AddResources(t, cmd.p, []*targets.Target{
+	srv.AddResources(t, cmd.at, []*targets.Target{
 		{Id: "ttcp_1234567890", Name: "name1", Description: "description1"},
 		{Id: "ttcp_0987654321", Name: "name2", Description: "description2"},
 	}, []*sessions.Session{
@@ -198,9 +164,7 @@ func TestSearch(t *testing.T) {
 
 	t.Run("target response from list", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
-			keyringType: cmd.keyring(),
-			tokenName:   cmd.tokenName(),
-			authTokenId: p.AuthTokenId,
+			authTokenId: at.Id,
 			resource:    "targets",
 		})
 		require.NoError(t, err)
@@ -213,9 +177,7 @@ func TestSearch(t *testing.T) {
 	})
 	t.Run("full target response from query", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
-			keyringType: cmd.keyring(),
-			tokenName:   cmd.tokenName(),
-			authTokenId: p.AuthTokenId,
+			authTokenId: at.Id,
 			flagQuery:   "id % ttcp",
 			resource:    "targets",
 		})
@@ -229,9 +191,7 @@ func TestSearch(t *testing.T) {
 	})
 	t.Run("partial target response from query", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
-			keyringType: cmd.keyring(),
-			tokenName:   cmd.tokenName(),
-			authTokenId: p.AuthTokenId,
+			authTokenId: at.Id,
 			flagQuery:   "id % ttcp_1234567890",
 			resource:    "targets",
 		})
@@ -247,9 +207,7 @@ func TestSearch(t *testing.T) {
 
 	t.Run("session response from list", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
-			keyringType: cmd.keyring(),
-			tokenName:   cmd.tokenName(),
-			authTokenId: p.AuthTokenId,
+			authTokenId: at.Id,
 			resource:    "sessions",
 		})
 		require.NoError(t, err)
@@ -263,9 +221,7 @@ func TestSearch(t *testing.T) {
 	})
 	t.Run("full session response from query", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
-			keyringType: cmd.keyring(),
-			tokenName:   cmd.tokenName(),
-			authTokenId: p.AuthTokenId,
+			authTokenId: at.Id,
 			flagQuery:   "id % sess",
 			resource:    "sessions",
 		})
@@ -279,9 +235,7 @@ func TestSearch(t *testing.T) {
 	})
 	t.Run("partial session response from query", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
-			keyringType: cmd.keyring(),
-			tokenName:   cmd.tokenName(),
-			authTokenId: p.AuthTokenId,
+			authTokenId: at.Id,
 			flagQuery:   "id % sess_1234567890",
 			resource:    "sessions",
 		})

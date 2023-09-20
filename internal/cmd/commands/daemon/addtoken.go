@@ -93,8 +93,10 @@ func (c *AddTokenCommand) Add(ctx context.Context) (*api.Error, error) {
 	}
 
 	pa := userTokenToAdd{
-		KeyringType:  keyringType,
-		TokenName:    tokenName,
+		Keyring: &keyringToken{
+			KeyringType: keyringType,
+			TokenName:   tokenName,
+		},
 		BoundaryAddr: client.Addr(),
 		AuthTokenId:  at.Id,
 	}

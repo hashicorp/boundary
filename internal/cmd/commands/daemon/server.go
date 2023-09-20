@@ -160,7 +160,7 @@ func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener) 
 			return
 		}
 		if at := cmd.ReadTokenFromKeyring(krType, tokName); at != nil {
-			if err := repo.AddToken(ctx, client.Addr(), tokName, krType, at.Id); err != nil {
+			if err := repo.AddKeyringToken(ctx, client.Addr(), cache.KeyringToken{KeyringType: krType, TokenName: tokName, AuthTokenId: at.Id}); err != nil {
 				event.WriteError(ctx, op, err)
 				return
 			}

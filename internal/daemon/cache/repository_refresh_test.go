@@ -39,14 +39,13 @@ func TestRefresh(t *testing.T) {
 	require.NoError(t, err)
 
 	boundaryAddr := "address"
-	p := &Token{
+	p := KeyringToken{
 		KeyringType: "keyring",
 		TokenName:   "token",
 	}
 	at := testAuthTokenLookup(p.KeyringType, p.TokenName)
-	p.UserId = at.UserId
 	p.AuthTokenId = at.Id
-	require.NoError(t, r.AddToken(ctx, boundaryAddr, p.TokenName, p.KeyringType, p.AuthTokenId))
+	require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, p))
 	u := &user{Id: at.UserId, Address: boundaryAddr}
 
 	t.Run("set targets", func(t *testing.T) {
@@ -63,7 +62,7 @@ func TestRefresh(t *testing.T) {
 				return retTargets, nil
 			})))
 
-		cachedTargets, err := r.ListTargets(ctx, p)
+		cachedTargets, err := r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, retTargets, cachedTargets)
 
@@ -76,7 +75,7 @@ func TestRefresh(t *testing.T) {
 					return nil, nil
 				})))
 
-			cachedTargets, err := r.ListTargets(ctx, p)
+			cachedTargets, err := r.ListTargets(ctx, at.Id)
 			assert.NoError(t, err)
 			assert.Empty(t, cachedTargets)
 		})
@@ -96,7 +95,7 @@ func TestRefresh(t *testing.T) {
 				return retSess, nil
 			})))
 
-		cachedSessions, err := r.ListSessions(ctx, p)
+		cachedSessions, err := r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, retSess, cachedSessions)
 
@@ -109,7 +108,7 @@ func TestRefresh(t *testing.T) {
 					return nil, nil
 				})))
 
-			cachedTargets, err := r.ListSessions(ctx, p)
+			cachedTargets, err := r.ListSessions(ctx, at.Id)
 			assert.NoError(t, err)
 			assert.Empty(t, cachedTargets)
 		})
@@ -141,7 +140,7 @@ func TestRefresh(t *testing.T) {
 		}
 		t.Cleanup(func() {
 			internalAuthTokenFn = testAuthTokenLookup
-			assert.NoError(t, r.AddToken(ctx, boundaryAddr, p.TokenName, p.KeyringType, p.AuthTokenId))
+			assert.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, p))
 		})
 
 		ps, err := r.listTokens(ctx, u)

@@ -6,6 +6,7 @@ package daemon
 import (
 	"context"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/sessions"
@@ -68,22 +69,20 @@ func (s *TestServer) Serve(t *testing.T) error {
 
 // AddResources adds targets to the cache for the provided address, token name,
 // and keyring type. They token info must already be known to the server.
-func (s *TestServer) AddResources(t *testing.T, p *cache.Token, tars []*targets.Target, sess []*sessions.Session) {
+func (s *TestServer) AddResources(t *testing.T, p *cache.AuthToken, tars []*targets.Target, sess []*sessions.Session) {
 	t.Helper()
 	ctx := context.Background()
 	r, err := cache.NewRepository(ctx, s.cacheServer.store, s.cmd.ReadTokenFromKeyring)
 	require.NoError(t, err)
 
 	tarFn := func(ctx context.Context, _, tok string) ([]*targets.Target, error) {
-		at := s.cmd.ReadTokenFromKeyring(p.KeyringType, p.TokenName)
-		if tok != at.Token {
+		if !strings.HasPrefix(tok, p.Id) {
 			return nil, nil
 		}
 		return tars, nil
 	}
 	sessFn := func(ctx context.Context, _, tok string) ([]*sessions.Session, error) {
-		at := s.cmd.ReadTokenFromKeyring(p.KeyringType, p.TokenName)
-		if tok != at.Token {
+		if !strings.HasPrefix(tok, p.Id) {
 			return nil, nil
 		}
 		return sess, nil

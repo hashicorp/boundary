@@ -28,9 +28,7 @@ const (
 	queryKey    = "query"
 	resourceKey = "resource"
 
-	tokenNameKey    = "token_name"
 	boundaryAddrKey = "boundary_addr"
-	keyringTypeKey  = "keyring_type"
 	authTokenIdKey  = "auth_token_id"
 )
 
@@ -49,26 +47,18 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 		}
 
 		resource := r.URL.Query().Get(resourceKey)
-		tokenName := r.URL.Query().Get(tokenNameKey)
-		keyringType := r.URL.Query().Get(keyringTypeKey)
 		authTokenId := r.URL.Query().Get(authTokenIdKey)
 
 		switch {
 		case resource == "":
 			writeError(w, "resource is a required field but was empty", http.StatusBadRequest)
 			return
-		case tokenName == "":
-			writeError(w, fmt.Sprintf("%s is a required field but was empty", tokenNameKey), http.StatusBadRequest)
-			return
-		case keyringType == "":
-			writeError(w, fmt.Sprintf("%s is a required field but was empty", keyringTypeKey), http.StatusBadRequest)
-			return
 		case authTokenId == "":
 			writeError(w, fmt.Sprintf("%s is a required field but was empty", authTokenIdKey), http.StatusBadRequest)
 			return
 		}
 
-		t, err := repo.LookupToken(ctx, tokenName, keyringType, cache.WithAuthTokenId(authTokenId), cache.WithUpdateLastAccessedTime(true))
+		t, err := repo.LookupToken(ctx, authTokenId, cache.WithUpdateLastAccessedTime(true))
 		if err != nil || t == nil {
 			writeError(w, "Forbidden", http.StatusForbidden)
 			return
@@ -79,9 +69,9 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 		var res *SearchResult
 		switch resource {
 		case "targets":
-			res, err = searchTargets(r.Context(), repo, t, query, filter)
+			res, err = searchTargets(r.Context(), repo, authTokenId, query, filter)
 		case "sessions":
-			res, err = searchSessions(r.Context(), repo, t, query, filter)
+			res, err = searchSessions(r.Context(), repo, authTokenId, query, filter)
 		default:
 			writeError(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
 			return
@@ -109,14 +99,14 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 	}, nil
 }
 
-func searchTargets(ctx context.Context, repo *cache.Repository, p *cache.Token, query string, filter *handlers.Filter) (*SearchResult, error) {
+func searchTargets(ctx context.Context, repo *cache.Repository, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error) {
 	var found []*targets.Target
 	var err error
 	switch query {
 	case "":
-		found, err = repo.ListTargets(ctx, p)
+		found, err = repo.ListTargets(ctx, authTokenId)
 	default:
-		found, err = repo.QueryTargets(ctx, p, query)
+		found, err = repo.QueryTargets(ctx, authTokenId, query)
 	}
 	if err != nil {
 		return nil, err
@@ -133,14 +123,14 @@ func searchTargets(ctx context.Context, repo *cache.Repository, p *cache.Token, 
 	}, nil
 }
 
-func searchSessions(ctx context.Context, repo *cache.Repository, p *cache.Token, query string, filter *handlers.Filter) (*SearchResult, error) {
+func searchSessions(ctx context.Context, repo *cache.Repository, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error) {
 	var found []*sessions.Session
 	var err error
 	switch query {
 	case "":
-		found, err = repo.ListSessions(ctx, p)
+		found, err = repo.ListSessions(ctx, authTokenId)
 	default:
-		found, err = repo.QuerySessions(ctx, p, query)
+		found, err = repo.QuerySessions(ctx, authTokenId, query)
 	}
 	if err != nil {
 		return nil, err

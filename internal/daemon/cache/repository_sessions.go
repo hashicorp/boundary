@@ -72,36 +72,24 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, sessions []*s
 	return nil
 }
 
-func (r *Repository) ListSessions(ctx context.Context, t *Token) ([]*sessions.Session, error) {
+func (r *Repository) ListSessions(ctx context.Context, authTokenId string) ([]*sessions.Session, error) {
 	const op = "cache.(Repository).ListSessions"
 	switch {
-	case util.IsNil(t):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token is nil")
-	case t.TokenName == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
-	case t.KeyringType == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "keyring type is missing")
-	case t.UserId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
+	case authTokenId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	}
-	ret, err := r.searchSessions(ctx, t, "true", nil)
+	ret, err := r.searchSessions(ctx, authTokenId, "true", nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) QuerySessions(ctx context.Context, t *Token, query string) ([]*sessions.Session, error) {
+func (r *Repository) QuerySessions(ctx context.Context, authTokenId, query string) ([]*sessions.Session, error) {
 	const op = "cache.(Repository).QuerySessions"
 	switch {
-	case util.IsNil(t):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token is nil")
-	case t.TokenName == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
-	case t.KeyringType == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "keyring type is missing")
-	case t.UserId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
+	case authTokenId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	case query == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "query is missing")
 	}
@@ -110,39 +98,33 @@ func (r *Repository) QuerySessions(ctx context.Context, t *Token, query string) 
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
-	ret, err := r.searchSessions(ctx, t, w.Condition, w.Args)
+	ret, err := r.searchSessions(ctx, authTokenId, w.Condition, w.Args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) searchSessions(ctx context.Context, t *Token, condition string, searchArgs []any) ([]*sessions.Session, error) {
+func (r *Repository) searchSessions(ctx context.Context, authTokenId, condition string, searchArgs []any) ([]*sessions.Session, error) {
 	const op = "cache.(Repository).searchSessions"
 	switch {
-	case t == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token is missing")
-	case t.UserId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
-	case t.TokenName == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
-	case t.KeyringType == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "keyring type is missing")
+	case authTokenId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	case condition == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "condition is missing")
 	}
 
-	condition = fmt.Sprintf("%s and user_id = ?", condition)
-	args := append(searchArgs, t.UserId)
+	condition = fmt.Sprintf("%s and user_id in (select user_id from auth_token where id = ?)", condition)
+	args := append(searchArgs, authTokenId)
 	var cachedSessions []*Session
 	if err := r.rw.SearchWhere(ctx, &cachedSessions, condition, args, db.WithLimit(-1)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	retSessions := make([]*sessions.Session, 0, len(cachedSessions))
-	for _, cachedTar := range cachedSessions {
+	for _, cachedSess := range cachedSessions {
 		var sess sessions.Session
-		if err := json.Unmarshal([]byte(cachedTar.Item), &sess); err != nil {
+		if err := json.Unmarshal([]byte(cachedSess.Item), &sess); err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		retSessions = append(retSessions, &sess)

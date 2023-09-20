@@ -71,34 +71,75 @@ func TestUser_NoMoreTokens(t *testing.T) {
 	}
 	require.NoError(t, rw.Create(ctx, u))
 
-	tok1 := &Token{
-		UserId:      u.Id,
-		KeyringType: "first",
-		TokenName:   "first",
-		AuthTokenId: "at_1234567890",
+	tok1 := &AuthToken{
+		UserId: u.Id,
+		Id:     "at_1",
 	}
 	require.NoError(t, rw.Create(ctx, tok1))
-	tok2 := &Token{
-		UserId:      u.Id,
-		KeyringType: "second",
-		TokenName:   "second",
-		AuthTokenId: "at_1234567890",
+	tok2 := &AuthToken{
+		UserId: u.Id,
+		Id:     "at_2",
 	}
 	require.NoError(t, rw.Create(ctx, tok2))
 	assert.NoError(t, rw.LookupById(ctx, u))
 
 	// deleting a single token doesn't remove the user
-	_, err = rw.Exec(ctx, "delete from token where (keyring_type, token_name) = (?, ?)", []any{tok1.KeyringType, tok1.TokenName})
+	_, err = rw.Exec(ctx, "delete from auth_token where id = ?", []any{tok1.Id})
 	require.NoError(t, err)
 	assert.NoError(t, rw.LookupById(ctx, u))
 
 	// deleting both tokens _does_ remove the user
-	_, err = rw.Exec(ctx, "delete from token", nil)
+	_, err = rw.Exec(ctx, "delete from auth_token", nil)
 	require.NoError(t, err)
 	assert.True(t, errors.IsNotFoundError(rw.LookupById(ctx, u)))
 }
 
-func TestToken(t *testing.T) {
+func TestAuthToken_NoMoreKeyringTokens(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+	rw := db.New(s.conn)
+
+	u := &user{
+		Id:      "userId",
+		Address: "address",
+	}
+	require.NoError(t, rw.Create(ctx, u))
+
+	at := &AuthToken{
+		UserId: u.Id,
+		Id:     "at_1234567890",
+	}
+	require.NoError(t, rw.Create(ctx, at))
+
+	kt1 := &KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "n1",
+		AuthTokenId: at.Id,
+	}
+	require.NoError(t, rw.Create(ctx, kt1))
+	kt2 := &KeyringToken{
+		KeyringType: "k2",
+		TokenName:   "n2",
+		AuthTokenId: at.Id,
+	}
+	require.NoError(t, rw.Create(ctx, kt2))
+	assert.NoError(t, rw.LookupById(ctx, u))
+
+	// deleting a single token doesn't remove the user
+	_, err = rw.Exec(ctx, "delete from keyring_token where (keyring_type, token_name) = (?, ?)", []any{kt1.KeyringType, kt1.TokenName})
+	require.NoError(t, err)
+	assert.NoError(t, rw.LookupById(ctx, at))
+	assert.NoError(t, rw.LookupById(ctx, u))
+
+	// deleting both tokens _does_ remove the user
+	_, err = rw.Exec(ctx, "delete from keyring_token", nil)
+	require.NoError(t, err)
+	assert.True(t, errors.IsNotFoundError(rw.LookupById(ctx, at)))
+	assert.True(t, errors.IsNotFoundError(rw.LookupById(ctx, u)))
+}
+
+func TestAuthToken(t *testing.T) {
 	ctx := context.Background()
 	s, err := Open(ctx)
 	require.NoError(t, err)
@@ -111,40 +152,26 @@ func TestToken(t *testing.T) {
 	}
 
 	t.Run("no user foreign key constraint", func(t *testing.T) {
-		tok := &Token{
-			UserId:      u.Id,
-			KeyringType: "keyring",
-			TokenName:   "default",
-			AuthTokenId: "at_1234567890",
+		tok := &AuthToken{
+			UserId: u.Id,
+			Id:     "at_1234567890",
 		}
 		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
 	})
 
 	require.NoError(t, rw.Create(ctx, u))
-	t.Run("missing auth token id", func(t *testing.T) {
-		tok := &Token{
-			UserId:      u.Id,
-			KeyringType: "keyring",
-			TokenName:   "default",
-		}
-		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
-	})
 
 	t.Run("no user id", func(t *testing.T) {
-		tok := &Token{
-			KeyringType: "keyring",
-			TokenName:   "default",
-			AuthTokenId: "at_1234567890",
+		tok := &AuthToken{
+			Id: "at_1234567890",
 		}
 		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
 	})
 
 	t.Run("create", func(t *testing.T) {
-		tok := &Token{
-			UserId:      u.Id,
-			KeyringType: "keyring",
-			TokenName:   "default",
-			AuthTokenId: "at_1234567890",
+		tok := &AuthToken{
+			UserId: u.Id,
+			Id:     "at_create",
 		}
 		before := time.Now().Truncate(1 * time.Millisecond)
 		require.NoError(t, rw.Create(ctx, tok))
@@ -153,16 +180,14 @@ func TestToken(t *testing.T) {
 	})
 
 	t.Run("update", func(t *testing.T) {
-		tok := &Token{
-			UserId:      u.Id,
-			KeyringType: "updated",
-			TokenName:   "default",
-			AuthTokenId: "at_1234567890",
+		tok := &AuthToken{
+			UserId: u.Id,
+			Id:     "at_update",
 		}
 		require.NoError(t, rw.Create(ctx, tok))
 
-		tok.AuthTokenId = "at_0987654321"
-		n, err := rw.Update(ctx, tok, []string{"AuthTokenId"}, nil)
+		tok.LastAccessedTime = time.Now().Add(-(24 * 365 * time.Hour))
+		n, err := rw.Update(ctx, tok, []string{"LastAccessedTime"}, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
@@ -174,11 +199,9 @@ func TestToken(t *testing.T) {
 		}
 		require.NoError(t, rw.Create(ctx, u))
 
-		tok := &Token{
-			UserId:      u.Id,
-			KeyringType: "deleteuser",
-			TokenName:   "default",
-			AuthTokenId: "at_1234567890",
+		tok := &AuthToken{
+			UserId: u.Id,
+			Id:     "at_deleted",
 		}
 		require.NoError(t, rw.Create(ctx, tok))
 
@@ -189,7 +212,110 @@ func TestToken(t *testing.T) {
 
 	// TODO: When gorm sqlite driver fixes it's delete, use rw.Delete instead of the Exec.
 	// n, err := rw.Delete(ctx, p)
-	_, err = rw.Exec(ctx, "delete from token", nil)
+	_, err = rw.Exec(ctx, "delete from auth_token", nil)
+	assert.NoError(t, err)
+}
+
+func TestKeyringToken(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+
+	rw := db.New(s.conn)
+
+	u := &user{
+		Id:      "userId",
+		Address: "address",
+	}
+	require.NoError(t, rw.Create(ctx, u))
+
+	at := &AuthToken{
+		Id:     "at_1",
+		UserId: u.Id,
+	}
+
+	t.Run("no token foreign key constraint", func(t *testing.T) {
+		kt := &KeyringToken{
+			KeyringType: "keyring",
+			TokenName:   "token",
+			AuthTokenId: at.Id,
+		}
+		require.ErrorContains(t, rw.Create(ctx, kt), "constraint failed")
+	})
+
+	require.NoError(t, rw.Create(ctx, at))
+
+	t.Run("no auth token id", func(t *testing.T) {
+		tok := &KeyringToken{
+			KeyringType: "keyring",
+			TokenName:   "token",
+		}
+		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
+	})
+
+	t.Run("create", func(t *testing.T) {
+		kt := &KeyringToken{
+			KeyringType: "keyring",
+			TokenName:   "create",
+			AuthTokenId: at.Id,
+		}
+		require.NoError(t, rw.Create(ctx, kt))
+		require.NoError(t, rw.LookupById(ctx, kt))
+	})
+
+	t.Run("delete user deletes keyring token", func(t *testing.T) {
+		u := &user{
+			Id:      "deletethis",
+			Address: "deleted",
+		}
+		require.NoError(t, rw.Create(ctx, u))
+
+		at := &AuthToken{
+			UserId: u.Id,
+			Id:     "at_deleted",
+		}
+		require.NoError(t, rw.Create(ctx, at))
+
+		kt := &KeyringToken{
+			KeyringType: "keyring",
+			TokenName:   "deleted",
+			AuthTokenId: at.Id,
+		}
+		require.NoError(t, rw.Create(ctx, kt))
+		require.NoError(t, rw.LookupById(ctx, kt))
+
+		_, err = rw.Exec(ctx, "delete from user where id = ?", []any{u.Id})
+		require.True(t, errors.IsNotFoundError(rw.LookupById(ctx, kt)))
+	})
+
+	t.Run("delete auth token deletes keyring token", func(t *testing.T) {
+		u := &user{
+			Id:      "deletethis",
+			Address: "deleted",
+		}
+		require.NoError(t, rw.Create(ctx, u))
+
+		at := &AuthToken{
+			UserId: u.Id,
+			Id:     "at_deleted",
+		}
+		require.NoError(t, rw.Create(ctx, at))
+
+		kt := &KeyringToken{
+			KeyringType: "keyring",
+			TokenName:   "deleted",
+			AuthTokenId: at.Id,
+		}
+		require.NoError(t, rw.Create(ctx, kt))
+		require.NoError(t, rw.LookupById(ctx, kt))
+
+		_, err = rw.Exec(ctx, "delete from auth_token where id = ?", []any{at.Id})
+		require.True(t, errors.IsNotFoundError(rw.LookupById(ctx, kt)))
+	})
+
+	// TODO: When gorm sqlite driver fixes it's delete, use rw.Delete instead of the Exec.
+	// n, err := rw.Delete(ctx, p)
+	_, err = rw.Exec(ctx, "delete from keyring_token", nil)
 	assert.NoError(t, err)
 }
 

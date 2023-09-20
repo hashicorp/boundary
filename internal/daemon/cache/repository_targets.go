@@ -72,36 +72,24 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, targets []*tar
 	return nil
 }
 
-func (r *Repository) ListTargets(ctx context.Context, t *Token) ([]*targets.Target, error) {
+func (r *Repository) ListTargets(ctx context.Context, authTokenId string) ([]*targets.Target, error) {
 	const op = "cache.(Repository).ListTargets"
 	switch {
-	case util.IsNil(t):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token is nil")
-	case t.TokenName == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
-	case t.KeyringType == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "keyring type is missing")
-	case t.UserId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
+	case authTokenId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	}
-	ret, err := r.searchTargets(ctx, t, "true", nil)
+	ret, err := r.searchTargets(ctx, authTokenId, "true", nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) QueryTargets(ctx context.Context, t *Token, query string) ([]*targets.Target, error) {
+func (r *Repository) QueryTargets(ctx context.Context, authTokenId, query string) ([]*targets.Target, error) {
 	const op = "cache.(Repository).QueryTargets"
 	switch {
-	case util.IsNil(t):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token is nil")
-	case t.TokenName == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
-	case t.KeyringType == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "keyring type is missing")
-	case t.UserId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
+	case authTokenId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	case query == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "query is missing")
 	}
@@ -110,26 +98,24 @@ func (r *Repository) QueryTargets(ctx context.Context, t *Token, query string) (
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
-	ret, err := r.searchTargets(ctx, t, w.Condition, w.Args)
+	ret, err := r.searchTargets(ctx, authTokenId, w.Condition, w.Args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) searchTargets(ctx context.Context, t *Token, condition string, searchArgs []any) ([]*targets.Target, error) {
+func (r *Repository) searchTargets(ctx context.Context, authTokenId, condition string, searchArgs []any) ([]*targets.Target, error) {
 	const op = "cache.(Repository).searchTargets"
 	switch {
-	case t == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token is missing")
-	case t.UserId == "":
+	case authTokenId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
 	case condition == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "condition is missing")
 	}
 
-	condition = fmt.Sprintf("%s and user_id = ?", condition)
-	args := append(searchArgs, t.UserId)
+	condition = fmt.Sprintf("%s and user_id in (select user_id from auth_token where id = ?)", condition)
+	args := append(searchArgs, authTokenId)
 	var cachedTargets []*Target
 	if err := r.rw.SearchWhere(ctx, &cachedTargets, condition, args, db.WithLimit(-1)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)

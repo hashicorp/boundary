@@ -68,8 +68,10 @@ func TestToken(t *testing.T) {
 
 	t.Run("missing keyring", func(t *testing.T) {
 		pa := &userTokenToAdd{
-			KeyringType:  "",
-			TokenName:    "default",
+			Keyring: &keyringToken{
+				KeyringType: "",
+				TokenName:   "default",
+			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  atReader.atId,
 		}
@@ -82,8 +84,10 @@ func TestToken(t *testing.T) {
 
 	t.Run("missing token name", func(t *testing.T) {
 		pa := &userTokenToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "",
+			Keyring: &keyringToken{
+				KeyringType: "akeyringtype",
+				TokenName:   "",
+			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  atReader.atId,
 		}
@@ -96,8 +100,10 @@ func TestToken(t *testing.T) {
 
 	t.Run("missing boundary address", func(t *testing.T) {
 		pa := &userTokenToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "default",
+			Keyring: &keyringToken{
+				KeyringType: "akeyringtype",
+				TokenName:   "default",
+			},
 			BoundaryAddr: "",
 			AuthTokenId:  atReader.atId,
 		}
@@ -110,8 +116,10 @@ func TestToken(t *testing.T) {
 
 	t.Run("missing auth token id", func(t *testing.T) {
 		pa := &userTokenToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "default",
+			Keyring: &keyringToken{
+				KeyringType: "akeyringtype",
+				TokenName:   "default",
+			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  "",
 		}
@@ -124,8 +132,10 @@ func TestToken(t *testing.T) {
 
 	t.Run("mismatched auth token id", func(t *testing.T) {
 		pa := &userTokenToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "default",
+			Keyring: &keyringToken{
+				KeyringType: "akeyringtype",
+				TokenName:   "default",
+			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  "at_doesntmatch",
 		}
@@ -138,8 +148,10 @@ func TestToken(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		pa := &userTokenToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "default",
+			Keyring: &keyringToken{
+				KeyringType: "akeyringtype",
+				TokenName:   "default",
+			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  atReader.atId,
 		}
@@ -151,10 +163,10 @@ func TestToken(t *testing.T) {
 		repo, err := cache.NewRepository(ctx, s, (&testAtReader{"at_1234"}).ReadTokenFromKeyring)
 		require.NoError(t, err)
 
-		p, err := repo.LookupToken(ctx, pa.TokenName, pa.KeyringType)
+		p, err := repo.LookupToken(ctx, pa.AuthTokenId)
 		require.NoError(t, err)
 		assert.NotNil(t, p)
-		assert.Equal(t, atReader.atId, p.AuthTokenId)
+		assert.Equal(t, atReader.atId, p.Id)
 	})
 	srv.Shutdown(ctx)
 	wg.Wait()

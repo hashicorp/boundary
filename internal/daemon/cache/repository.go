@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	tokensLimit         = 50
+	usersLimit          = 50
 	tokenStalenessLimit = 36 * time.Hour
 )
 

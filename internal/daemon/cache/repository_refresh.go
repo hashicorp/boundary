@@ -57,6 +57,38 @@ func defaultSessionFunc(ctx context.Context, addr, token string) ([]*sessions.Se
 	return l.Items, nil
 }
 
+// cleanAndPickAuthTokens removes from the cache all auth tokens which are
+// evicted from the cache or no longer stored in a keyring and returns the
+// remaining ones.
+// The returned auth tokens have not been validated against boundary
+func (r *Repository) cleanAndPickAuthTokens(ctx context.Context, u *user) (map[AuthToken]string, error) {
+	const op = "cache.(Repository).cleanAndPickAuthTokens"
+	ret := make(map[AuthToken]string)
+
+	tokens, err := r.listTokens(ctx, u)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	for _, t := range tokens {
+		keyringTokens, err := r.listKeyringTokens(ctx, t)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %v, auth token %q", u, t.Id))
+		}
+		for _, kt := range keyringTokens {
+			at := r.tokenLookupFn(kt.KeyringType, kt.TokenName)
+			switch {
+			case at == nil, at.Id != kt.AuthTokenId:
+				if err := r.deleteKeyringToken(ctx, *kt); err != nil {
+					return nil, errors.Wrap(ctx, err, op)
+				}
+			case at != nil:
+				ret[*t] = at.Token
+			}
+		}
+	}
+	return ret, nil
+}
+
 // Refresh iterates over all tokens in the cache, attempts to read the
 // resources for those tokens from boundary and updates the cache with
 // the values retrieved there.  Refresh accepts the options
@@ -86,27 +118,19 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 
 	var retErr error
 	for _, u := range us {
-		tokens, err := r.listTokens(ctx, u)
+		tokens, err := r.cleanAndPickAuthTokens(ctx, u)
 		if err != nil {
-			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for user %v", u)))
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op))
 			continue
 		}
 
 		// Find and use a token for retrieving targets
-		for _, t := range tokens {
-			at := r.tokenLookupFn(t.KeyringType, t.TokenName)
-			if at == nil || at.Id != t.AuthTokenId {
-				if err := r.deleteToken(ctx, t); err != nil {
-					retErr = stderrors.Join(retErr, err)
-				}
-				continue
-			}
-
-			resp, err := opts.withTargetRetrievalFunc(ctx, u.Address, at.Token)
+		for at, t := range tokens {
+			resp, err := opts.withTargetRetrievalFunc(ctx, u.Address, t)
 			if err != nil {
 				// TODO: If we get an error about the token no longer having
 				// permissions, remove it.
-				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %#v", u)))
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
 				continue
 			}
 
@@ -118,20 +142,12 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 		}
 
 		// Find and use a token for retrieving sessions
-		for _, t := range tokens {
-			at := r.tokenLookupFn(t.KeyringType, t.TokenName)
-			if at == nil || at.Id != t.AuthTokenId {
-				if err := r.deleteToken(ctx, t); err != nil {
-					retErr = stderrors.Join(retErr, err)
-				}
-				continue
-			}
-
-			resp, err := opts.withSessionRetrievalFunc(ctx, u.Address, at.Token)
+		for at, t := range tokens {
+			resp, err := opts.withSessionRetrievalFunc(ctx, u.Address, t)
 			if err != nil {
 				// TODO: If we get an error about the token no longer having
 				// permissions, remove it.
-				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %#v", u)))
+				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
 				continue
 			}
 
