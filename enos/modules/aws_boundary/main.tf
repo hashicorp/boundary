@@ -18,7 +18,7 @@ locals {
   db_name                  = coalesce(var.db_name, local.default_boundary_db_name)
   common_tags = merge(var.common_tags,
     {
-      Module = "terraform-enos-aws-boundary"
+      Module = "aws_boundary"
       Pet    = random_pet.default.id
     },
   )

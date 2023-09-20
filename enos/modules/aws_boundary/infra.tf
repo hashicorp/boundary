@@ -10,7 +10,7 @@ data "aws_subnets" "infra" {
 
   filter {
     name   = "tag:Module"
-    values = ["terraform-enos-aws-infra"]
+    values = ["aws_vpc"]
   }
 }
 

@@ -49,7 +49,7 @@ locals {
   common_tags = merge(
     var.common_tags,
     {
-      "Module" = "terraform-enos-aws-infra" // TODO:  Rename this once terraform-enos-aws-boundary is moved
+      "Module" = "aws_vpc"
     },
   )
 }
