@@ -6,6 +6,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### New and Improved
 
+* cli: Add support for specifying a command that will be executed on the remote host when
+  using the `boundary connect ssh` subcommand.
+  ([Issue](https://github.com/hashicorp/boundary/issues/3631),
+  [PR](https://github.com/hashicorp/boundary/pull/3633)).
 * feat: add API support for additional LDAP auth method fields:
   maximum_page_size and dereference_aliases
   ([PR](https://github.com/hashicorp/boundary/pull/3679)).
