@@ -276,13 +276,13 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		}
 		go func() {
 			err := splitListener.Start()
-			if err != nil {
+			if err != nil && !errors.Is(err, net.ErrClosed) {
 				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("splitListener.Start() error"))
 			}
 		}()
 		go func() {
 			err := ln.GrpcServer.Serve(metric.InstrumentClusterTrackingListener(multiplexingAuthedListener, grpcListenerPurpose))
-			if err != nil {
+			if err != nil && !errors.Is(err, net.ErrClosed) {
 				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("multiplexingAuthedListener error"))
 			}
 		}()
