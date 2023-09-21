@@ -107,7 +107,6 @@ pollFirstController:
 					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
 				default:
 					if !lastStatusTime.Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
-						lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
 						timeout.Stop()
 						break pollFirstController
 					}
@@ -178,8 +177,7 @@ pollSecondController:
 				case lastStatusTime.IsZero():
 					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
 				default:
-					if !lastStatusTime.Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
-						lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
+					if !lastStatusTime.Round(time.Second).Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
 						timeout.Stop()
 						break pollSecondController
 					}
