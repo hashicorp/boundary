@@ -46,14 +46,6 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withUpdateLastAccessedTime = true
 		assert.Equal(t, opts, testOpts)
 	})
-	t.Run("WithBoundaryAddress", func(t *testing.T) {
-		url := "something"
-		opts, err := getOpts(WithBoundaryAddress(url))
-		require.NoError(t, err)
-		testOpts := getDefaultOptions()
-		testOpts.withBoundaryAddress = url
-		assert.Equal(t, opts, testOpts)
-	})
 	t.Run("WithAuthTokenId", func(t *testing.T) {
 		id := "something"
 		opts, err := getOpts(WithAuthTokenId(id))

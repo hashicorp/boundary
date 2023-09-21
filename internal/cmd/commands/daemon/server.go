@@ -160,7 +160,7 @@ func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener) 
 			return
 		}
 		if at := cmd.ReadTokenFromKeyring(krType, tokName); at != nil {
-			if err := repo.AddPersona(ctx, client.Addr(), tokName, krType, at.Id); err != nil {
+			if err := repo.AddKeyringToken(ctx, client.Addr(), cache.KeyringToken{KeyringType: krType, TokenName: tokName, AuthTokenId: at.Id}); err != nil {
 				event.WriteError(ctx, op, err)
 				return
 			}
@@ -188,11 +188,11 @@ func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener) 
 	}
 	mux.HandleFunc("/v1/search", searchTargetsFn)
 
-	personaFn, err := newPersonaHandlerFunc(ctx, repo, tic)
+	tokenFn, err := newTokenHandlerFunc(ctx, repo, tic)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	mux.HandleFunc("/v1/personas", personaFn)
+	mux.HandleFunc("/v1/tokens", tokenFn)
 
 	stopFn, err := newStopHandlerFunc(ctx, s.conf.contextCancel)
 	if err != nil {
