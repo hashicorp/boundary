@@ -22,10 +22,10 @@ func TestRepository_refreshSessions(t *testing.T) {
 	require.NoError(t, err)
 
 	addr := "address"
-	keyringType := "keyring"
-	tokenName := "token"
-	at := testAuthTokenLookup(keyringType, tokenName)
-	require.NoError(t, r.AddPersona(ctx, addr, tokenName, keyringType, at.Id))
+	kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
+	at := testAuthTokenLookup(kt.KeyringType, kt.TokenName)
+	kt.AuthTokenId = at.Id
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
 
 	ss := []*sessions.Session{
 		{
@@ -49,29 +49,25 @@ func TestRepository_refreshSessions(t *testing.T) {
 	}
 	cases := []struct {
 		name          string
-		p             *Persona
+		u             *user
 		sess          []*sessions.Session
 		wantCount     int
 		errorContains string
 	}{
 		{
 			name: "Success",
-			p: &Persona{
-				KeyringType:  keyringType,
-				TokenName:    tokenName,
-				BoundaryAddr: addr,
-				UserId:       at.UserId,
+			u: &user{
+				Address: addr,
+				Id:      at.UserId,
 			},
 			sess:      ss,
 			wantCount: len(ss),
 		},
 		{
 			name: "repeated session with different values",
-			p: &Persona{
-				KeyringType:  keyringType,
-				TokenName:    tokenName,
-				BoundaryAddr: addr,
-				UserId:       at.UserId,
+			u: &user{
+				Address: addr,
+				Id:      at.UserId,
 			},
 			sess: append(ss, &sessions.Session{
 				Id:     ss[0].Id,
@@ -80,56 +76,24 @@ func TestRepository_refreshSessions(t *testing.T) {
 			wantCount: len(ss),
 		},
 		{
-			name:          "nil persona",
-			p:             nil,
+			name:          "nil user",
+			u:             nil,
 			sess:          ss,
-			errorContains: "persona is nil",
+			errorContains: "user is nil",
 		},
 		{
 			name: "missing user Id",
-			p: &Persona{
-				KeyringType:  keyringType,
-				TokenName:    tokenName,
-				BoundaryAddr: addr,
+			u: &user{
+				Address: addr,
 			},
 			sess:          ss,
 			errorContains: "user id is missing",
-		},
-		{
-			name: "missing boundary address",
-			p: &Persona{
-				KeyringType: keyringType,
-				TokenName:   tokenName,
-				UserId:      at.Id,
-			},
-			sess:          ss,
-			errorContains: "boundary address is missing",
-		},
-		{
-			name: "missing keyring type",
-			p: &Persona{
-				TokenName:    tokenName,
-				BoundaryAddr: addr,
-				UserId:       at.Id,
-			},
-			sess:          ss,
-			errorContains: "keyring type is missing",
-		},
-		{
-			name: "missing token name",
-			p: &Persona{
-				KeyringType:  keyringType,
-				BoundaryAddr: addr,
-				UserId:       at.Id,
-			},
-			sess:          ss,
-			errorContains: "token name is missing",
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := r.refreshCachedSessions(ctx, tc.p, tc.sess)
+			err := r.refreshSessions(ctx, tc.u, tc.sess)
 			if tc.errorContains == "" {
 				assert.NoError(t, err)
 				rw := db.New(s.conn)
@@ -151,82 +115,22 @@ func TestRepository_ListSessions(t *testing.T) {
 	r, err := NewRepository(ctx, s, testAuthTokenLookup)
 	require.NoError(t, err)
 
-	errorCases := []struct {
-		name        string
-		p           *Persona
-		errContains string
-	}{
-		{
-			name:        "nil persona",
-			p:           nil,
-			errContains: "persona is nil",
-		},
-		{
-			name: "address is missing",
-			p: &Persona{
-				TokenName:   "token",
-				KeyringType: "keyring",
-				UserId:      "user",
-			},
-			errContains: "address is missing",
-		},
-		{
-			name: "user id is missing",
-			p: &Persona{
-				TokenName:    "token",
-				KeyringType:  "keyring",
-				BoundaryAddr: "address",
-			},
-			errContains: "user id is missing",
-		},
-		{
-			name: "token name is missing",
-			p: &Persona{
-				KeyringType:  "keyring",
-				BoundaryAddr: "address",
-				UserId:       "user",
-			},
-			errContains: "token name is missing",
-		},
-		{
-			name: "keyring type is missing",
-			p: &Persona{
-				TokenName:    "token",
-				BoundaryAddr: "address",
-				UserId:       "user",
-			},
-			errContains: "keyring type is missing",
-		},
-	}
-
-	for _, tc := range errorCases {
-		t.Run(tc.name, func(t *testing.T) {
-			l, err := r.ListSessions(ctx, tc.p)
-			assert.Nil(t, l)
-			assert.ErrorContains(t, err, tc.errContains)
-		})
-	}
+	t.Run("auth token id is missing", func(t *testing.T) {
+		l, err := r.ListSessions(ctx, "")
+		assert.Nil(t, l)
+		assert.ErrorContains(t, err, "auth token id is missing")
+	})
 
 	addr := "address"
-	keyringType := "keyring"
-	tokenName := "token"
-	at := testAuthTokenLookup(keyringType, tokenName)
-	p1 := &Persona{
-		TokenName:    tokenName,
-		KeyringType:  keyringType,
-		BoundaryAddr: addr,
-		UserId:       at.UserId,
-		AuthTokenId:  at.Id,
-	}
-	require.NoError(t, r.AddPersona(ctx, p1.BoundaryAddr, p1.TokenName, p1.KeyringType, p1.AuthTokenId))
+	t1 := KeyringToken{KeyringType: "keyring", TokenName: "token"}
+	at := testAuthTokenLookup(t1.KeyringType, t1.TokenName)
+	t1.AuthTokenId = at.Id
+	require.NoError(t, r.AddKeyringToken(ctx, addr, t1))
 
-	p2 := p1.clone()
-	p2.BoundaryAddr = "address2"
-	p2.TokenName = "token2"
-	at2 := testAuthTokenLookup(p2.KeyringType, p2.TokenName)
-	p2.AuthTokenId = at2.Id
-	p2.UserId = at2.UserId
-	require.NoError(t, r.AddPersona(ctx, p2.BoundaryAddr, p2.TokenName, p2.KeyringType, p2.AuthTokenId))
+	t2 := KeyringToken{KeyringType: "keyring", TokenName: "token2"}
+	at2 := testAuthTokenLookup(t2.KeyringType, t2.TokenName)
+	t2.AuthTokenId = at2.Id
+	require.NoError(t, r.AddKeyringToken(ctx, addr, t2))
 
 	ss := []*sessions.Session{
 		{
@@ -248,15 +152,15 @@ func TestRepository_ListSessions(t *testing.T) {
 			Type:     "tcp",
 		},
 	}
-	require.NoError(t, r.refreshCachedSessions(ctx, &Persona{KeyringType: keyringType, TokenName: tokenName, BoundaryAddr: addr, UserId: at.UserId}, ss))
+	require.NoError(t, r.refreshSessions(ctx, &user{Address: addr, Id: at.UserId}, ss))
 
 	t.Run("wrong user gets no sessions", func(t *testing.T) {
-		l, err := r.ListSessions(ctx, p2)
+		l, err := r.ListSessions(ctx, t2.AuthTokenId)
 		assert.NoError(t, err)
 		assert.Empty(t, l)
 	})
-	t.Run("correct persona gets sessions", func(t *testing.T) {
-		l, err := r.ListSessions(ctx, p1)
+	t.Run("correct token gets sessions", func(t *testing.T) {
+		l, err := r.ListSessions(ctx, t1.AuthTokenId)
 		assert.NoError(t, err)
 		assert.Len(t, l, len(ss))
 		assert.ElementsMatch(t, l, ss)
@@ -275,96 +179,40 @@ func TestRepository_QuerySessions(t *testing.T) {
 
 	errorCases := []struct {
 		name        string
-		p           *Persona
+		t           string
 		query       string
 		errContains string
 	}{
 		{
-			name:        "nil persona",
-			p:           nil,
+			name:        "auth token id is missing",
+			t:           "",
 			query:       query,
-			errContains: "persona is nil",
+			errContains: "auth token id is missing",
 		},
 		{
-			name: "address is missing",
-			p: &Persona{
-				TokenName:   "token",
-				KeyringType: "keyring",
-				UserId:      "user",
-			},
-			query:       query,
-			errContains: "address is missing",
-		},
-		{
-			name: "user id is missing",
-			p: &Persona{
-				TokenName:    "token",
-				KeyringType:  "keyring",
-				BoundaryAddr: "address",
-			},
-			query:       query,
-			errContains: "user id is missing",
-		},
-		{
-			name: "token name is missing",
-			p: &Persona{
-				KeyringType:  "keyring",
-				BoundaryAddr: "address",
-				UserId:       "user",
-			},
-			query:       query,
-			errContains: "token name is missing",
-		},
-		{
-			name: "keyring type is missing",
-			p: &Persona{
-				TokenName:    "token",
-				BoundaryAddr: "address",
-				UserId:       "user",
-			},
-			query:       query,
-			errContains: "keyring type is missing",
-		},
-		{
-			name: "query is missing",
-			p: &Persona{
-				TokenName:    "token",
-				KeyringType:  "keyring",
-				BoundaryAddr: "address",
-				UserId:       "user",
-			},
+			name:        "query is missing",
+			t:           "token id",
 			errContains: "query is missing",
 		},
 	}
-
 	for _, tc := range errorCases {
 		t.Run(tc.name, func(t *testing.T) {
-			l, err := r.QuerySessions(ctx, tc.p, tc.query)
+			l, err := r.QuerySessions(ctx, tc.t, tc.query)
 			assert.Nil(t, l)
 			assert.ErrorContains(t, err, tc.errContains)
 		})
 	}
 
 	addr := "address"
-	keyringType := "keyring"
-	tokenName := "token"
-	at := testAuthTokenLookup(keyringType, tokenName)
-	p1 := &Persona{
-		TokenName:    tokenName,
-		KeyringType:  keyringType,
-		BoundaryAddr: addr,
-		UserId:       at.UserId,
-		AuthTokenId:  at.Id,
-	}
-	require.NoError(t, r.AddPersona(ctx, p1.BoundaryAddr, p1.TokenName, p1.KeyringType, p1.AuthTokenId))
+	kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
+	at := testAuthTokenLookup(kt.KeyringType, kt.TokenName)
+	kt.AuthTokenId = at.Id
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
 
-	p2 := p1.clone()
-	p2.BoundaryAddr = "address2"
-	p2.TokenName = "token2"
-	at2 := testAuthTokenLookup(p2.KeyringType, p2.TokenName)
-	p2.AuthTokenId = at2.Id
-	p2.UserId = at2.UserId
-	require.NoError(t, r.AddPersona(ctx, p2.BoundaryAddr, p2.TokenName, p2.KeyringType, p2.AuthTokenId))
+	kt2 := KeyringToken{KeyringType: "keyring", TokenName: "token2"}
+	at2 := testAuthTokenLookup(kt2.KeyringType, kt2.TokenName)
+	kt2.AuthTokenId = at2.Id
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
 
 	ss := []*sessions.Session{
 		{
@@ -386,15 +234,15 @@ func TestRepository_QuerySessions(t *testing.T) {
 			Type:     "tcp",
 		},
 	}
-	require.NoError(t, r.refreshCachedSessions(ctx, p1, ss))
+	require.NoError(t, r.refreshSessions(ctx, &user{Id: at.UserId, Address: addr}, ss))
 
-	t.Run("wrong persona gets no sessions", func(t *testing.T) {
-		l, err := r.QuerySessions(ctx, p2, query)
+	t.Run("wrong token gets no sessions", func(t *testing.T) {
+		l, err := r.QuerySessions(ctx, kt2.AuthTokenId, query)
 		assert.NoError(t, err)
 		assert.Empty(t, l)
 	})
-	t.Run("correct persona gets sessions", func(t *testing.T) {
-		l, err := r.QuerySessions(ctx, p1, query)
+	t.Run("correct token gets sessions", func(t *testing.T) {
+		l, err := r.QuerySessions(ctx, kt.AuthTokenId, query)
 		assert.NoError(t, err)
 		assert.Len(t, l, 2)
 		assert.ElementsMatch(t, l, ss[0:2])

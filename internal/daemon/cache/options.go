@@ -62,14 +62,6 @@ func WithUpdateLastAccessedTime(b bool) Option {
 	}
 }
 
-// WithBoundaryAddress provides an option for specifying a boundary address
-func WithBoundaryAddress(a string) Option {
-	return func(o *options) error {
-		o.withBoundaryAddress = a
-		return nil
-	}
-}
-
 // WithAuthTokenId provides an option for specifying an auth token id
 func WithAuthTokenId(id string) Option {
 	return func(o *options) error {

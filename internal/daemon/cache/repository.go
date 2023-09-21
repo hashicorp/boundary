@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	personaLimit          = 50
-	personaStalenessLimit = 36 * time.Hour
+	usersLimit          = 50
+	tokenStalenessLimit = 36 * time.Hour
 )
 
 // TokenLookupFn takes a keyring type and token name and returns the token
@@ -68,5 +68,5 @@ type ApiError struct {
 }
 
 func (*ApiError) TableName() string {
-	return "cache_api_error"
+	return "api_error"
 }

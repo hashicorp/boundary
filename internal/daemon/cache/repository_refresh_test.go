@@ -38,15 +38,15 @@ func TestRefresh(t *testing.T) {
 	r, err := NewRepository(ctx, s, atLookupFunc)
 	require.NoError(t, err)
 
-	p := &Persona{
-		KeyringType:  "keyring",
-		TokenName:    "token",
-		BoundaryAddr: "addr",
+	boundaryAddr := "address"
+	p := KeyringToken{
+		KeyringType: "keyring",
+		TokenName:   "token",
 	}
 	at := testAuthTokenLookup(p.KeyringType, p.TokenName)
-	p.UserId = at.UserId
 	p.AuthTokenId = at.Id
-	require.NoError(t, r.AddPersona(ctx, p.BoundaryAddr, p.TokenName, p.KeyringType, p.AuthTokenId))
+	require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, p))
+	u := &user{Id: at.UserId, Address: boundaryAddr}
 
 	t.Run("set targets", func(t *testing.T) {
 		retTargets := []*targets.Target{
@@ -54,30 +54,28 @@ func TestRefresh(t *testing.T) {
 			target("2"),
 			target("3"),
 		}
-		err := r.Refresh(ctx,
+		assert.NoError(t, r.Refresh(ctx,
 			WithSessionRetrievalFunc(noopRetrievalFn[*sessions.Session]),
 			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string) ([]*targets.Target, error) {
-				require.Equal(t, p.BoundaryAddr, addr)
+				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return retTargets, nil
-			}))
-		assert.NoError(t, err)
+			})))
 
-		cachedTargets, err := r.ListTargets(ctx, p)
+		cachedTargets, err := r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, retTargets, cachedTargets)
 
 		t.Run("empty response clears it out", func(t *testing.T) {
-			err := r.Refresh(ctx,
+			assert.NoError(t, r.Refresh(ctx,
 				WithSessionRetrievalFunc(noopRetrievalFn[*sessions.Session]),
 				WithTargetRetrievalFunc(func(ctx context.Context, addr, token string) ([]*targets.Target, error) {
-					require.Equal(t, p.BoundaryAddr, addr)
+					require.Equal(t, boundaryAddr, addr)
 					require.Equal(t, at.Token, token)
 					return nil, nil
-				}))
-			assert.NoError(t, err)
+				})))
 
-			cachedTargets, err := r.ListTargets(ctx, p)
+			cachedTargets, err := r.ListTargets(ctx, at.Id)
 			assert.NoError(t, err)
 			assert.Empty(t, cachedTargets)
 		})
@@ -89,30 +87,28 @@ func TestRefresh(t *testing.T) {
 			session("2"),
 			session("3"),
 		}
-		err := r.Refresh(ctx,
+		assert.NoError(t, r.Refresh(ctx,
 			WithTargetRetrievalFunc(noopRetrievalFn[*targets.Target]),
 			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
-				require.Equal(t, p.BoundaryAddr, addr)
+				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return retSess, nil
-			}))
-		assert.NoError(t, err)
+			})))
 
-		cachedSessions, err := r.ListSessions(ctx, p)
+		cachedSessions, err := r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, retSess, cachedSessions)
 
 		t.Run("empty response clears it out", func(t *testing.T) {
-			err := r.Refresh(ctx,
+			assert.NoError(t, r.Refresh(ctx,
 				WithTargetRetrievalFunc(noopRetrievalFn[*targets.Target]),
 				WithSessionRetrievalFunc(func(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
-					require.Equal(t, p.BoundaryAddr, addr)
+					require.Equal(t, boundaryAddr, addr)
 					require.Equal(t, at.Token, token)
 					return nil, nil
-				}))
-			assert.NoError(t, err)
+				})))
 
-			cachedTargets, err := r.ListSessions(ctx, p)
+			cachedTargets, err := r.ListSessions(ctx, at.Id)
 			assert.NoError(t, err)
 			assert.Empty(t, cachedTargets)
 		})
@@ -123,7 +119,7 @@ func TestRefresh(t *testing.T) {
 		err := r.Refresh(ctx,
 			WithSessionRetrievalFunc(noopRetrievalFn[*sessions.Session]),
 			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string) ([]*targets.Target, error) {
-				require.Equal(t, p.BoundaryAddr, addr)
+				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return nil, innerErr
 			}))
@@ -131,33 +127,42 @@ func TestRefresh(t *testing.T) {
 		err = r.Refresh(ctx,
 			WithTargetRetrievalFunc(noopRetrievalFn[*targets.Target]),
 			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
-				require.Equal(t, p.BoundaryAddr, addr)
+				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return nil, innerErr
 			}))
 		assert.ErrorContains(t, err, innerErr.Error())
 	})
 
-	t.Run("personas that are no longer in the ring is deleted", func(t *testing.T) {
+	t.Run("tokens that are no longer in the ring is deleted", func(t *testing.T) {
 		internalAuthTokenFn = func(k, t string) *authtokens.AuthToken {
 			return nil
 		}
 		t.Cleanup(func() {
 			internalAuthTokenFn = testAuthTokenLookup
-			assert.NoError(t, r.AddPersona(ctx, p.BoundaryAddr, p.TokenName, p.KeyringType, p.AuthTokenId))
+			assert.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, p))
 		})
 
-		ps, err := r.listPersonas(ctx)
+		ps, err := r.listTokens(ctx, u)
 		require.NoError(t, err)
 		assert.Len(t, ps, 1)
+
+		us, err := r.listUsers(ctx)
+		require.NoError(t, err)
+		assert.Len(t, us, 1)
 
 		r.Refresh(ctx,
 			WithSessionRetrievalFunc(noopRetrievalFn[*sessions.Session]),
 			WithTargetRetrievalFunc(noopRetrievalFn[*targets.Target]))
 
-		ps, err = r.listPersonas(ctx)
+		ps, err = r.listTokens(ctx, u)
 		require.NoError(t, err)
 		assert.Empty(t, ps)
+
+		// And since the last token was deleted, the user also was deleted
+		us, err = r.listUsers(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, us)
 	})
 }
 
