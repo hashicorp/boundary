@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -879,4 +881,88 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 	}
 
 	return rowsDeleted, nil
+}
+
+// GetTotalCredentials returns an estimate of the number of Vault credential stores
+func (r *Repository) GetTotalCredentials(ctx context.Context) (int, error) {
+	const op = "vault.(Repository).GetTotalCredentials"
+	rows, err := r.reader.Query(ctx, estimateCountCredentials, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential stores"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential stores"))
+		}
+	}
+	return count, nil
+}
+
+// ListDeletedCredentialIds lists the public IDs of any credential stores deleted since the timestamp provided.
+// Supported options:
+//   - credential.WithReaderWriter
+func (r *Repository) ListDeletedCredentialIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "vault.(Repository).ListDeletedCredentialIds"
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedJSONCredentials []*deletedJSONCredential
+	if err := rdr.SearchWhere(ctx, &deletedJSONCredentials, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted JSON credentials"))
+	}
+	var credentialStoreIds []string
+	for _, cl := range deletedJSONCredentials {
+		credentialStoreIds = append(credentialStoreIds, cl.PublicId)
+	}
+	var deletedUsernamePasswordCredentials []*deletedUsernamePasswordCredential
+	if err := rdr.SearchWhere(ctx, &deletedUsernamePasswordCredentials, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted username password credentials"))
+	}
+	for _, cl := range deletedUsernamePasswordCredentials {
+		credentialStoreIds = append(credentialStoreIds, cl.PublicId)
+	}
+	var deletedSSHPrivateKeyCredentials []*deletedSSHPrivateKeyCredential
+	if err := rdr.SearchWhere(ctx, &deletedSSHPrivateKeyCredentials, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted ssh private key credentials"))
+	}
+	for _, cl := range deletedSSHPrivateKeyCredentials {
+		credentialStoreIds = append(credentialStoreIds, cl.PublicId)
+	}
+	return credentialStoreIds, nil
+}
+
+type deletedJSONCredential struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedJSONCredential) TableName() string {
+	return "credential_static_json_credential_deleted"
+}
+
+type deletedUsernamePasswordCredential struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedUsernamePasswordCredential) TableName() string {
+	return "credential_static_username_password_credential_deleted"
+}
+
+type deletedSSHPrivateKeyCredential struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedSSHPrivateKeyCredential) TableName() string {
+	return "credential_static_ssh_private_key_credential_deleted"
 }

@@ -98,11 +98,11 @@ func init() {
 type Service struct {
 	pbs.UnsafeCredentialStoreServiceServer
 
-	iamRepoFn                 common.IamRepoFactory
-	vaultRepoFn               common.VaultCredentialRepoFactory
-	staticRepoFn              common.StaticCredentialRepoFactory
-	baseCredentialStoreRepoFn common.BaseCredentialStoreRepoFactory
-	maxPageSize               uint
+	iamRepoFn                common.IamRepoFactory
+	vaultRepoFn              common.VaultCredentialRepoFactory
+	staticRepoFn             common.StaticCredentialRepoFactory
+	credentialStoreServiceFn common.CredentialStoreServiceFactory
+	maxPageSize              uint
 }
 
 var _ pbs.CredentialStoreServiceServer = (*Service)(nil)
@@ -113,7 +113,7 @@ func NewService(
 	iamRepo common.IamRepoFactory,
 	vaultRepo common.VaultCredentialRepoFactory,
 	staticRepo common.StaticCredentialRepoFactory,
-	baseCredentialStoreRepoFn common.BaseCredentialStoreRepoFactory,
+	credentialStoreServiceFn common.CredentialStoreServiceFactory,
 	maxPageSize uint,
 ) (Service, error) {
 	const op = "credentialstores.NewService"
@@ -126,18 +126,18 @@ func NewService(
 	if staticRepo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
 	}
-	if baseCredentialStoreRepoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing base credential store repository")
+	if credentialStoreServiceFn == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing credential store service")
 	}
 	if maxPageSize == 0 {
 		maxPageSize = uint(defaultMaxPageSize)
 	}
 	return Service{
-		iamRepoFn:                 iamRepo,
-		vaultRepoFn:               vaultRepo,
-		staticRepoFn:              staticRepo,
-		baseCredentialStoreRepoFn: baseCredentialStoreRepoFn,
-		maxPageSize:               maxPageSize,
+		iamRepoFn:                iamRepo,
+		vaultRepoFn:              vaultRepo,
+		staticRepoFn:             staticRepo,
+		credentialStoreServiceFn: credentialStoreServiceFn,
+		maxPageSize:              maxPageSize,
 	}, nil
 }
 
@@ -146,7 +146,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 	const op = "credentialstores.(Service).ListCredentialStores"
 
 	if err := validateListRequest(ctx, req); err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
@@ -165,25 +165,25 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
 		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.CredentialStore, req.GetRecursive())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
 	vaultRepo, err := s.vaultRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	staticRepo, err := s.staticRepoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	baseRepo, err := s.baseCredentialStoreRepoFn()
+	service, err := s.credentialStoreServiceFn(vaultRepo, staticRepo)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	listCredentialStoresFn := func(prevPageLast credential.Store, refreshToken *pbs.ListRefreshToken, limit int) ([]credential.Store, error) {
 		vaultOpts := []vault.Option{
@@ -294,7 +294,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 		listCredentialStoresFn,
 		filterAndConvertFn,
 		&authResults,
-		baseRepo,
+		service,
 	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

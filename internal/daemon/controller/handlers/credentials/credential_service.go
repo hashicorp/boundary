@@ -97,16 +97,22 @@ func init() {
 type Service struct {
 	pbs.UnsafeCredentialServiceServer
 
-	iamRepoFn            common.IamRepoFactory
-	repoFn               common.StaticCredentialRepoFactory
-	baseCredentialRepoFn common.BaseCredentialRepoFactory
-	maxPageSize          uint
+	iamRepoFn           common.IamRepoFactory
+	repoFn              common.StaticCredentialRepoFactory
+	credentialServiceFn common.CredentialServiceFactory
+	maxPageSize         uint
 }
 
 var _ pbs.CredentialServiceServer = (*Service)(nil)
 
 // NewService returns a credential service which handles credential related requests to boundary.
-func NewService(ctx context.Context, iamRepo common.IamRepoFactory, repo common.StaticCredentialRepoFactory, baseCredentialRepoFn common.BaseCredentialRepoFactory, maxPageSize uint) (Service, error) {
+func NewService(
+	ctx context.Context,
+	iamRepo common.IamRepoFactory,
+	repo common.StaticCredentialRepoFactory,
+	credentialServiceFn common.CredentialServiceFactory,
+	maxPageSize uint,
+) (Service, error) {
 	const op = "credentials.NewService"
 	if iamRepo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
@@ -114,13 +120,13 @@ func NewService(ctx context.Context, iamRepo common.IamRepoFactory, repo common.
 	if repo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
 	}
-	if baseCredentialRepoFn == nil {
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing base credential repository")
+	if credentialServiceFn == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing credential service")
 	}
 	if maxPageSize == 0 {
 		maxPageSize = uint(defaultMaxPageSize)
 	}
-	return Service{iamRepoFn: iamRepo, repoFn: repo, baseCredentialRepoFn: baseCredentialRepoFn, maxPageSize: maxPageSize}, nil
+	return Service{iamRepoFn: iamRepo, repoFn: repo, credentialServiceFn: credentialServiceFn, maxPageSize: maxPageSize}, nil
 }
 
 // ListCredentials implements the interface pbs.CredentialServiceServer
@@ -137,7 +143,7 @@ func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRe
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	baseRepo, err := s.baseCredentialRepoFn()
+	service, err := s.credentialServiceFn(repo)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -209,7 +215,7 @@ func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRe
 		listCredentialsFn,
 		filterAndConvertFn,
 		&authResults,
-		baseRepo,
+		service,
 	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

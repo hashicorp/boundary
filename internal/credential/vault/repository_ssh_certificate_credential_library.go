@@ -8,9 +8,11 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -386,4 +388,54 @@ func (r *Repository) DeleteSSHCertificateCredentialLibrary(ctx context.Context, 
 	}
 
 	return rowsDeleted, nil
+}
+
+// EstimatedSSHCertificateLibraryCount returns an estimate of the number of SSH certificate credential libraries
+func (r *Repository) EstimatedSSHCertificateLibraryCount(ctx context.Context) (int, error) {
+	const op = "vault.(Repository).EstimatedSSHCertificateLibraryCount"
+	rows, err := r.reader.Query(ctx, estimateCountSSHCertificateCredentialLibraries, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault SSH certificate credential libraries"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault SSH certificate credential libraries"))
+		}
+	}
+	return count, nil
+}
+
+// ListDeletedSSHCertificateCredentialLibraryIds lists the public IDs of any SSH certificate credential libraries deleted since the timestamp provided.
+// Supported options:
+//   - credential.WithReaderWriter
+func (r *Repository) ListDeletedSSHCertificateCredentialLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "vault.(Repository).ListDeletedSSHCertificateCredentialLibraryIds"
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedSSHCertificateCredentialLibraries []*deletedSSHCertificateCredentialLibrary
+	if err := rdr.SearchWhere(ctx, &deletedSSHCertificateCredentialLibraries, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted SSH certificate credential libraries"))
+	}
+	var credentialLibraryIds []string
+	for _, cl := range deletedSSHCertificateCredentialLibraries {
+		credentialLibraryIds = append(credentialLibraryIds, cl.PublicId)
+	}
+	return credentialLibraryIds, nil
+}
+
+type deletedSSHCertificateCredentialLibrary struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedSSHCertificateCredentialLibrary) TableName() string {
+	return "credential_vault_ssh_cert_library_deleted"
 }

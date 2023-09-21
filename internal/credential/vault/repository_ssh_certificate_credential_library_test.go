@@ -1996,3 +1996,84 @@ func TestRepository_DeleteSSHCertificateCredentialLibrary(t *testing.T) {
 		}
 	}
 }
+
+func TestRepository_ListDeletedSSHCertificateCredentialLibraryIds(t *testing.T) {
+	t.Parallel()
+	_, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	sshLibs := TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedSSHCertificateCredentialLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Delete an ssh cert library
+	_, err = repo.DeleteSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), sshLibs[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect one entry
+	deletedIds, err = repo.ListDeletedSSHCertificateCredentialLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Equal([]string{sshLibs[0].GetPublicId()}, deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedSSHCertificateCredentialLibraryIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
+}
+
+func TestRepository_EstimatedSSHCertificateLibraryCount(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.EstimatedSSHCertificateLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Create some libraries
+	sshLibs := TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedSSHCertificateLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(2, numItems)
+
+	// Delete an ssh certificate library
+	_, err = repo.DeleteSSHCertificateCredentialLibrary(ctx, prj.GetPublicId(), sshLibs[0].GetPublicId())
+	require.NoError(err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedSSHCertificateLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(1, numItems)
+}

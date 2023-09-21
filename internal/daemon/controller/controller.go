@@ -121,25 +121,25 @@ type Controller struct {
 	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
-	AuthTokenRepoFn                   common.AuthTokenRepoFactory
-	BaseCredentialStoreRepositoryFn   common.BaseCredentialStoreRepoFactory
-	BaseCredentialLibraryRepositoryFn common.BaseCredentialLibraryRepoFactory
-	BaseCredentialRepositoryFn        common.BaseCredentialRepoFactory
-	VaultCredentialRepoFn             common.VaultCredentialRepoFactory
-	StaticCredentialRepoFn            common.StaticCredentialRepoFactory
-	IamRepoFn                         common.IamRepoFactory
-	OidcRepoFn                        common.OidcAuthRepoFactory
-	LdapRepoFn                        common.LdapAuthRepoFactory
-	PasswordAuthRepoFn                common.PasswordAuthRepoFactory
-	ServersRepoFn                     common.ServersRepoFactory
-	SessionRepoFn                     session.RepositoryFactory
-	ConnectionRepoFn                  common.ConnectionRepoFactory
-	StaticHostRepoFn                  common.StaticRepoFactory
-	PluginHostRepoFn                  common.PluginHostRepoFactory
-	PluginStorageBucketRepoFn         common.PluginStorageBucketRepoFactory
-	PluginRepoFn                      common.PluginRepoFactory
-	TargetRepoFn                      target.RepositoryFactory
-	WorkerAuthRepoStorageFn           common.WorkerAuthRepoStorageFactory
+	AuthTokenRepoFn            common.AuthTokenRepoFactory
+	VaultCredentialRepoFn      common.VaultCredentialRepoFactory
+	StaticCredentialRepoFn     common.StaticCredentialRepoFactory
+	CredentialLibraryServiceFn common.CredentialLibraryServiceFactory
+	CredentialStoreServiceFn   common.CredentialStoreServiceFactory
+	CredentialServiceFn        common.CredentialServiceFactory
+	IamRepoFn                  common.IamRepoFactory
+	OidcRepoFn                 common.OidcAuthRepoFactory
+	LdapRepoFn                 common.LdapAuthRepoFactory
+	PasswordAuthRepoFn         common.PasswordAuthRepoFactory
+	ServersRepoFn              common.ServersRepoFactory
+	SessionRepoFn              session.RepositoryFactory
+	ConnectionRepoFn           common.ConnectionRepoFactory
+	StaticHostRepoFn           common.StaticRepoFactory
+	PluginHostRepoFn           common.PluginHostRepoFactory
+	PluginStorageBucketRepoFn  common.PluginStorageBucketRepoFactory
+	PluginRepoFn               common.PluginRepoFactory
+	TargetRepoFn               target.RepositoryFactory
+	WorkerAuthRepoStorageFn    common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -393,20 +393,20 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			authtoken.WithTokenTimeToLiveDuration(c.conf.RawConfig.Controller.AuthTokenTimeToLiveDuration),
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
 	}
-	c.BaseCredentialLibraryRepositoryFn = func() (*credential.CredentialLibraryRepository, error) {
-		return credential.NewCredentialLibraryRepository(ctx, dbase)
-	}
-	c.BaseCredentialStoreRepositoryFn = func() (*credential.CredentialStoreRepository, error) {
-		return credential.NewCredentialStoreRepository(ctx, dbase)
-	}
-	c.BaseCredentialRepositoryFn = func() (*credential.CredentialRepository, error) {
-		return credential.NewCredentialRepository(ctx, dbase)
-	}
 	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler)
 	}
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.CredentialLibraryServiceFn = func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
+		return credential.NewCredentialLibraryService(ctx, dbase, repo)
+	}
+	c.CredentialStoreServiceFn = func(vaultRepo *vault.Repository, staticRepo *credstatic.Repository) (*credential.CredentialStoreService, error) {
+		return credential.NewCredentialStoreService(ctx, dbase, vaultRepo, staticRepo)
+	}
+	c.CredentialServiceFn = func(repo *credstatic.Repository) (*credential.CredentialService, error) {
+		return credential.NewCredentialService(ctx, dbase, repo)
 	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
 		return server.NewRepository(ctx, dbase, dbase, c.kms)
