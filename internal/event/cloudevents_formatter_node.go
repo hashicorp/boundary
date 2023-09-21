@@ -69,13 +69,16 @@ func newCloudEventsFormatterFilter(source *url.URL, format cloudevents.Format, o
 			}
 			n.deny = append(n.deny, f)
 		}
-	} else {
+	}
+	// if the user does not specify any filter (allow/deny), we add default deny filter
+	if len(opts.withDeny) == 0 && len(opts.withAllow) == 0 {
 		defaultDenyFilters, err := defaultCloudEventsDenyFilters()
 		if err != nil {
 			return nil, err
 		}
 		n.deny = append(n.deny, defaultDenyFilters...)
 	}
+
 	n.Predicate = newPredicate(n.allow, n.deny)
 	return &n, nil
 }
