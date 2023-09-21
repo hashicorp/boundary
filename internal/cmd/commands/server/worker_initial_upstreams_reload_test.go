@@ -105,11 +105,9 @@ pollFirstController:
 				switch {
 				case lastStatusTime.IsZero():
 					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
-					t.Log("recording initial last status time", lastStatusTime.Format(time.RFC3339))
 				default:
 					if !lastStatusTime.Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
 						lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
-						t.Log("recording updated last status time", lastStatusTime.Format(time.RFC3339Nano))
 						timeout.Stop()
 						break pollFirstController
 					}
@@ -144,7 +142,6 @@ pollForNoStatus:
 				switch {
 				case lastStatusTime.IsZero():
 					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
-					t.Log("recording no-status initial last status time", lastStatusTime.Format(time.RFC3339))
 				default:
 					if !lastStatusTime.Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
 						t.Fatal("found updated status times when not expected")
@@ -180,11 +177,9 @@ pollSecondController:
 				switch {
 				case lastStatusTime.IsZero():
 					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
-					t.Log("recording initial secondary last status time", lastStatusTime.Format(time.RFC3339))
 				default:
 					if !lastStatusTime.Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
 						lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
-						t.Log("recording updated secondary last status time", lastStatusTime.Format(time.RFC3339Nano))
 						timeout.Stop()
 						break pollSecondController
 					}
