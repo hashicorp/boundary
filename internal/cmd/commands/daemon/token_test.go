@@ -37,7 +37,7 @@ func (r *testAtReader) ReadTokenFromKeyring(k, a string) *authtokens.AuthToken {
 	}
 }
 
-func TestPersona(t *testing.T) {
+func TestToken(t *testing.T) {
 	ctx := context.Background()
 	s, _, err := openStore(ctx, "", true)
 	require.NoError(t, err)
@@ -47,11 +47,11 @@ func TestPersona(t *testing.T) {
 	require.NoError(t, err)
 
 	tr := &testRefresher{}
-	ph, err := newPersonaHandlerFunc(ctx, repo, tr)
+	ph, err := newTokenHandlerFunc(ctx, repo, tr)
 	require.NoError(t, err)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/personas", ph)
+	mux.HandleFunc("/v1/tokens", ph)
 
 	tmpdir := t.TempDir()
 	l, err := listener(ctx, tmpdir)
@@ -67,27 +67,31 @@ func TestPersona(t *testing.T) {
 	}()
 
 	t.Run("missing keyring", func(t *testing.T) {
-		pa := &personaToAdd{
-			KeyringType:  "",
-			TokenName:    "default",
+		pa := &userTokenToAdd{
+			Keyring: &keyringToken{
+				KeyringType: "",
+				TokenName:   "default",
+			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  atReader.atId,
 		}
-		apiErr, err := addPersona(ctx, tmpdir, pa)
+		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
-		assert.NotNil(t, apiErr)
+		require.NotNil(t, apiErr)
 		assert.Contains(t, apiErr.Message, "KeyringType is a required field but was empty")
 		assert.False(t, tr.called)
 	})
 
 	t.Run("missing token name", func(t *testing.T) {
-		pa := &personaToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "",
+		pa := &userTokenToAdd{
+			Keyring: &keyringToken{
+				KeyringType: "akeyringtype",
+				TokenName:   "",
+			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  atReader.atId,
 		}
-		apiErr, err := addPersona(ctx, tmpdir, pa)
+		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
 		assert.NotNil(t, apiErr)
 		assert.Contains(t, apiErr.Message, "TokenName is a required field but was empty")
@@ -95,13 +99,15 @@ func TestPersona(t *testing.T) {
 	})
 
 	t.Run("missing boundary address", func(t *testing.T) {
-		pa := &personaToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "default",
+		pa := &userTokenToAdd{
+			Keyring: &keyringToken{
+				KeyringType: "akeyringtype",
+				TokenName:   "default",
+			},
 			BoundaryAddr: "",
 			AuthTokenId:  atReader.atId,
 		}
-		apiErr, err := addPersona(ctx, tmpdir, pa)
+		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
 		assert.NotNil(t, apiErr)
 		assert.Contains(t, apiErr.Message, "BoundaryAddr is a required field but was empty")
@@ -109,13 +115,15 @@ func TestPersona(t *testing.T) {
 	})
 
 	t.Run("missing auth token id", func(t *testing.T) {
-		pa := &personaToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "default",
+		pa := &userTokenToAdd{
+			Keyring: &keyringToken{
+				KeyringType: "akeyringtype",
+				TokenName:   "default",
+			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  "",
 		}
-		apiErr, err := addPersona(ctx, tmpdir, pa)
+		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
 		assert.NotNil(t, apiErr)
 		assert.Contains(t, apiErr.Message, "AuthTokenId is a required field but was empty")
@@ -123,27 +131,31 @@ func TestPersona(t *testing.T) {
 	})
 
 	t.Run("mismatched auth token id", func(t *testing.T) {
-		pa := &personaToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "default",
+		pa := &userTokenToAdd{
+			Keyring: &keyringToken{
+				KeyringType: "akeyringtype",
+				TokenName:   "default",
+			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  "at_doesntmatch",
 		}
-		apiErr, err := addPersona(ctx, tmpdir, pa)
+		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
 		assert.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "Failed to add a persona")
+		assert.Contains(t, apiErr.Message, "Failed to add a token")
 		assert.False(t, tr.called)
 	})
 
 	t.Run("success", func(t *testing.T) {
-		pa := &personaToAdd{
-			KeyringType:  "akeyringtype",
-			TokenName:    "default",
+		pa := &userTokenToAdd{
+			Keyring: &keyringToken{
+				KeyringType: "akeyringtype",
+				TokenName:   "default",
+			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  atReader.atId,
 		}
-		apiErr, err := addPersona(ctx, tmpdir, pa)
+		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
 		assert.True(t, tr.called)
@@ -151,10 +163,10 @@ func TestPersona(t *testing.T) {
 		repo, err := cache.NewRepository(ctx, s, (&testAtReader{"at_1234"}).ReadTokenFromKeyring)
 		require.NoError(t, err)
 
-		p, err := repo.LookupPersona(ctx, pa.TokenName, pa.KeyringType)
+		p, err := repo.LookupToken(ctx, pa.AuthTokenId)
 		require.NoError(t, err)
 		assert.NotNil(t, p)
-		assert.Equal(t, atReader.atId, p.AuthTokenId)
+		assert.Equal(t, atReader.atId, p.Id)
 	})
 	srv.Shutdown(ctx)
 	wg.Wait()

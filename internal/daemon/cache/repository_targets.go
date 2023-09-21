@@ -18,31 +18,25 @@ import (
 	"github.com/hashicorp/mql"
 )
 
-func (r *Repository) refreshCachedTargets(ctx context.Context, p *Persona, targets []*targets.Target) error {
+func (r *Repository) refreshTargets(ctx context.Context, u *user, targets []*targets.Target) error {
 	const op = "cache.(Repository).refreshTargets"
 	switch {
-	case util.IsNil(p):
-		return errors.New(ctx, errors.InvalidParameter, op, "persona is nil")
-	case p.TokenName == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
-	case p.KeyringType == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "keyring type is missing")
-	case p.BoundaryAddr == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
-	case p.UserId == "":
+	case util.IsNil(u):
+		return errors.New(ctx, errors.InvalidParameter, op, "user is nil")
+	case u.Id == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
 	}
 
-	foundP := p.clone()
-	if err := r.rw.LookupById(ctx, foundP); err != nil {
-		// if this persona isn't known, error out.
-		return errors.Wrap(ctx, err, op, errors.WithMsg("looking up persona"))
+	foundU := u.clone()
+	if err := r.rw.LookupById(ctx, foundU); err != nil {
+		// if this user isn't known, error out.
+		return errors.Wrap(ctx, err, op, errors.WithMsg("looking up user"))
 	}
 
 	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		// TODO: Instead of deleting everything, use refresh tokens and apply the delta
-		if _, err := w.Exec(ctx, "delete from cache_target where boundary_addr = @boundary_addr and token_name = @token_name and keyring_type = @keyring_type and boundary_user_id = @boundary_user_id",
-			[]any{sql.Named("boundary_addr", foundP.BoundaryAddr), sql.Named("keyring_type", foundP.KeyringType), sql.Named("token_name", foundP.TokenName), sql.Named("boundary_user_id", foundP.UserId)}); err != nil {
+		if _, err := w.Exec(ctx, "delete from target where user_id = @user_id",
+			[]any{sql.Named("user_id", foundU.Id)}); err != nil {
 			return err
 		}
 
@@ -51,19 +45,16 @@ func (r *Repository) refreshCachedTargets(ctx context.Context, p *Persona, targe
 			if err != nil {
 				return err
 			}
-			newTarget := Target{
-				BoundaryAddr:   foundP.BoundaryAddr,
-				KeyringType:    foundP.KeyringType,
-				TokenName:      foundP.TokenName,
-				BoundaryUserId: foundP.UserId,
-				Id:             t.Id,
-				Name:           t.Name,
-				Description:    t.Description,
-				Address:        t.Address,
-				Item:           string(item),
+			newTarget := &Target{
+				UserId:      foundU.Id,
+				Id:          t.Id,
+				Name:        t.Name,
+				Description: t.Description,
+				Address:     t.Address,
+				Item:        string(item),
 			}
 			onConflict := db.OnConflict{
-				Target: db.Columns{"boundary_addr", "token_name", "keyring_type", "boundary_user_id", "id"},
+				Target: db.Columns{"user_id", "id"},
 				Action: db.UpdateAll(true),
 			}
 			if err := w.Create(ctx, newTarget, db.WithOnConflict(&onConflict)); err != nil {
@@ -81,74 +72,50 @@ func (r *Repository) refreshCachedTargets(ctx context.Context, p *Persona, targe
 	return nil
 }
 
-func (r *Repository) ListTargets(ctx context.Context, p *Persona) ([]*targets.Target, error) {
+func (r *Repository) ListTargets(ctx context.Context, authTokenId string) ([]*targets.Target, error) {
 	const op = "cache.(Repository).ListTargets"
 	switch {
-	case util.IsNil(p):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "persona is nil")
-	case p.TokenName == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
-	case p.KeyringType == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "keyring type is missing")
-	case p.BoundaryAddr == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
-	case p.UserId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
+	case authTokenId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	}
-	ret, err := r.searchTargets(ctx, p, "true", nil)
+	ret, err := r.searchTargets(ctx, authTokenId, "true", nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) QueryTargets(ctx context.Context, p *Persona, query string) ([]*targets.Target, error) {
+func (r *Repository) QueryTargets(ctx context.Context, authTokenId, query string) ([]*targets.Target, error) {
 	const op = "cache.(Repository).QueryTargets"
 	switch {
-	case util.IsNil(p):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "persona is nil")
-	case p.TokenName == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
-	case p.KeyringType == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "keyring type is missing")
-	case p.BoundaryAddr == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
-	case p.UserId == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
+	case authTokenId == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token id is missing")
 	case query == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "query is missing")
 	}
 
-	w, err := mql.Parse(query, Target{}, mql.WithIgnoredFields("BoundaryAddr", "KeyringType", "TokenName", "BoundaryUserId", "Item"))
+	w, err := mql.Parse(query, Target{}, mql.WithIgnoredFields("UserId", "Item"))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidParameter))
 	}
-	ret, err := r.searchTargets(ctx, p, w.Condition, w.Args)
+	ret, err := r.searchTargets(ctx, authTokenId, w.Condition, w.Args)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return ret, nil
 }
 
-func (r *Repository) searchTargets(ctx context.Context, p *Persona, condition string, searchArgs []any) ([]*targets.Target, error) {
+func (r *Repository) searchTargets(ctx context.Context, authTokenId, condition string, searchArgs []any) ([]*targets.Target, error) {
 	const op = "cache.(Repository).searchTargets"
 	switch {
-	case p == nil:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "persona is missing")
-	case p.UserId == "":
+	case authTokenId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
-	case p.TokenName == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "token name is missing")
-	case p.KeyringType == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "keyring type is missing")
-	case p.BoundaryAddr == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "boundary address is missing")
 	case condition == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "condition is missing")
 	}
 
-	condition = fmt.Sprintf("%s and ((keyring_type, token_name, boundary_addr, boundary_user_id) = (?, ?, ?, ?))", condition)
-	args := append(searchArgs, p.KeyringType, p.TokenName, p.BoundaryAddr, p.UserId)
+	condition = fmt.Sprintf("%s and user_id in (select user_id from auth_token where id = ?)", condition)
+	args := append(searchArgs, authTokenId)
 	var cachedTargets []*Target
 	if err := r.rw.SearchWhere(ctx, &cachedTargets, condition, args, db.WithLimit(-1)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -166,17 +133,14 @@ func (r *Repository) searchTargets(ctx context.Context, p *Persona, condition st
 }
 
 type Target struct {
-	BoundaryAddr   string `gorm:"primaryKey"`
-	KeyringType    string `gorm:"primaryKey"`
-	TokenName      string `gorm:"primaryKey"`
-	BoundaryUserId string `gorm:"primaryKey"`
-	Id             string `gorm:"primaryKey"`
-	Name           string
-	Description    string
-	Address        string
-	Item           string
+	UserId      string `gorm:"primaryKey"`
+	Id          string `gorm:"primaryKey"`
+	Name        string `gorm:"default:null"`
+	Description string `gorm:"default:null"`
+	Address     string `gorm:"default:null"`
+	Item        string `gorm:"default:null"`
 }
 
 func (*Target) TableName() string {
-	return "cache_target"
+	return "target"
 }

@@ -126,7 +126,7 @@ func (c *SearchCommand) Run(args []string) int {
 	}
 	switch base.Format(c.UI) {
 	case "json":
-		c.UI.Output(string(resp.Body.Bytes()))
+		c.UI.Output(resp.Body.String())
 	default:
 		switch {
 		case len(res.Targets) > 0:
@@ -145,17 +145,10 @@ func (c *SearchCommand) Search(ctx context.Context) (*api.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := c.Client()
-	if err != nil {
-		return nil, err
-	}
 
 	tf := filterBy{
-		boundaryAddr: client.Addr(),
-		tokenName:    tokenName,
-		keyringType:  keyringType,
-		flagQuery:    c.flagQuery,
-		resource:     c.flagResource,
+		flagQuery: c.flagQuery,
+		resource:  c.flagResource,
 	}
 	at := c.ReadTokenFromKeyring(keyringType, tokenName)
 	if at != nil {
@@ -192,9 +185,6 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response,
 	}
 	req.Header.Add(daemon.VersionHeaderKey, version.Get().VersionNumber())
 	q := url.Values{}
-	q.Add("token_name", fb.tokenName)
-	q.Add("keyring_type", fb.keyringType)
-	q.Add("boundary_addr", fb.boundaryAddr)
 	q.Add("auth_token_id", fb.authTokenId)
 	q.Add("resource", fb.resource)
 	q.Add("query", fb.flagQuery)
@@ -338,10 +328,7 @@ func printSessionListTable(items []*sessions.Session) string {
 }
 
 type filterBy struct {
-	flagQuery    string
-	tokenName    string
-	keyringType  string
-	boundaryAddr string
-	authTokenId  string
-	resource     string
+	flagQuery   string
+	authTokenId string
+	resource    string
 }
