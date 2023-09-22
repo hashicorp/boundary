@@ -35,33 +35,38 @@ func TestNewCredentialStoreService(t *testing.T) {
 	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
-		got, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, &fakeStoreRepository{})
+		got, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, &fakeStoreRepository{}, &fakeStoreRepository{})
 		require.NoError(t, err)
 		require.NotNil(t, got)
 	})
 	t.Run("nil-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialStoreService(ctx, nil, &fakeStoreRepository{})
+		_, err := credential.NewCredentialStoreService(ctx, nil, &fakeStoreRepository{}, &fakeStoreRepository{})
 		require.Error(t, err)
 	})
 	t.Run("nil-interface-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialStoreService(ctx, (*fakeWriter)(nil), &fakeStoreRepository{})
+		_, err := credential.NewCredentialStoreService(ctx, (*fakeWriter)(nil), &fakeStoreRepository{}, &fakeStoreRepository{})
 		require.Error(t, err)
 	})
-	t.Run("repos", func(t *testing.T) {
+	t.Run("nil-vault-repo", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialStoreService(ctx, &fakeWriter{})
+		_, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, nil, &fakeStoreRepository{})
 		require.Error(t, err)
 	})
-	t.Run("nil-repo", func(t *testing.T) {
+	t.Run("nil-vault-interface-repo", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, nil)
+		_, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, (*fakeStoreRepository)(nil), &fakeStoreRepository{})
 		require.Error(t, err)
 	})
-	t.Run("nil-interface-repo", func(t *testing.T) {
+	t.Run("nil-static-repo", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, (*fakeStoreRepository)(nil))
+		_, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, &fakeStoreRepository{}, nil)
+		require.Error(t, err)
+	})
+	t.Run("nil-static-interface-repo", func(t *testing.T) {
+		t.Parallel()
+		_, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, &fakeStoreRepository{}, (*fakeStoreRepository)(nil))
 		require.Error(t, err)
 	})
 }
@@ -76,11 +81,11 @@ func TestCredentialStoreService_EstimatedCount(t *testing.T) {
 				return 5, nil
 			},
 		}
-		service, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, repo)
+		service, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, repo, repo)
 		require.NoError(t, err)
 		num, err := service.EstimatedCount(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 5, num)
+		assert.Equal(t, 10, num)
 	})
 	t.Run("error-in-get-fn", func(t *testing.T) {
 		t.Parallel()
@@ -89,7 +94,7 @@ func TestCredentialStoreService_EstimatedCount(t *testing.T) {
 				return 0, errors.New("some error")
 			},
 		}
-		service, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, repo)
+		service, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, repo, repo)
 		require.NoError(t, err)
 		_, err = service.EstimatedCount(ctx)
 		require.ErrorContains(t, err, "some error")
@@ -117,13 +122,13 @@ func TestCredentialStoreService_ListDeletedIds(t *testing.T) {
 				return db.RetryInfo{}, err
 			},
 		}
-		service, err := credential.NewCredentialStoreService(ctx, writer, repo)
+		service, err := credential.NewCredentialStoreService(ctx, writer, repo, repo)
 		require.NoError(t, err)
 		ids, err := service.ListDeletedIds(ctx, timeSince)
 		require.NoError(t, err)
 		assert.Empty(
 			t,
-			cmp.Diff([]string{"a", "b"},
+			cmp.Diff([]string{"a", "b", "a", "b"},
 				ids,
 				cmpopts.SortSlices(func(i, j string) bool { return i < j })),
 		)
@@ -145,7 +150,7 @@ func TestCredentialStoreService_ListDeletedIds(t *testing.T) {
 				return db.RetryInfo{}, errors.New("some error")
 			},
 		}
-		service, err := credential.NewCredentialStoreService(ctx, writer, repo)
+		service, err := credential.NewCredentialStoreService(ctx, writer, repo, repo)
 		require.NoError(t, err)
 		_, err = service.ListDeletedIds(ctx, timeSince)
 		require.ErrorContains(t, err, "some error")
@@ -164,7 +169,7 @@ func TestCredentialStoreService_ListDeletedIds(t *testing.T) {
 				return db.RetryInfo{}, err
 			},
 		}
-		service, err := credential.NewCredentialStoreService(ctx, writer, repo)
+		service, err := credential.NewCredentialStoreService(ctx, writer, repo, repo)
 		require.NoError(t, err)
 		_, err = service.ListDeletedIds(ctx, timeSince)
 		require.ErrorContains(t, err, "some error")

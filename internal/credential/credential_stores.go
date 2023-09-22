@@ -20,21 +20,18 @@ type StoreRepository interface {
 }
 
 // NewCredentialStoreService returns a new credential store service.
-func NewCredentialStoreService(ctx context.Context, writer db.Writer, repos ...StoreRepository) (*CredentialStoreService, error) {
+func NewCredentialStoreService(ctx context.Context, writer db.Writer, vaultRepo StoreRepository, staticRepo StoreRepository) (*CredentialStoreService, error) {
 	const op = "credential.NewCredentialStoreService"
 	switch {
 	case util.IsNil(writer):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB writer")
-	case len(repos) == 0:
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential store repos")
-	}
-	for _, repo := range repos {
-		if util.IsNil(repo) {
-			return nil, errors.New(ctx, errors.InvalidParameter, op, "nil repo")
-		}
+	case util.IsNil(vaultRepo):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing vault repo")
+	case util.IsNil(staticRepo):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing vault repo")
 	}
 	return &CredentialStoreService{
-		repos:  repos,
+		repos:  []StoreRepository{vaultRepo, staticRepo},
 		writer: writer,
 	}, nil
 }
