@@ -115,7 +115,7 @@ func Test_scalarSliceFilterAllZeroVals(t *testing.T) {
 	assert := tassert.New(t)
 	type testType struct {
 		NonObservableStrings []string
-		ObservableInts       []int `eventstream:"observation"`
+		ObservableInts       []int `eventstream:"observation" class:"public"`
 	}
 	data := &testType{
 		NonObservableStrings: []string{"a", "b", "c"},
@@ -131,7 +131,7 @@ func Test_mapFilter(t *testing.T) {
 	assert := tassert.New(t)
 	type testType struct {
 		NonObservableMap map[string]int
-		ObservableMap    map[string]int `eventstream:"observation"`
+		ObservableMap    map[string]int `eventstream:"observation" class:"public"`
 	}
 	data := &testType{
 		NonObservableMap: map[string]int{
@@ -160,11 +160,11 @@ func Test_coreProtoTypes(t *testing.T) {
 	assert := tassert.New(t)
 	type testType struct {
 		Timestamp        *timestamppb.Timestamp
-		TimestampObs     *timestamppb.Timestamp `eventstream:"observation"`
+		TimestampObs     *timestamppb.Timestamp `eventstream:"observation" class:"public"`
 		WrappedString    *wrapperspb.StringValue
-		WrappedStringObs *wrapperspb.StringValue `eventstream:"observation"`
+		WrappedStringObs *wrapperspb.StringValue `eventstream:"observation" class:"public"`
 		Fieldmask        *fieldmaskpb.FieldMask
-		FieldmaskObs     *fieldmaskpb.FieldMask `eventstream:"observation"`
+		FieldmaskObs     *fieldmaskpb.FieldMask `eventstream:"observation" class:"public"`
 	}
 	data := &testType{
 		Timestamp: &timestamppb.Timestamp{
@@ -206,7 +206,7 @@ func Test_mapStructPBValues(t *testing.T) {
 	assert := tassert.New(t)
 	type testType struct {
 		ListValueMap    map[string]*structpb.ListValue
-		ListValueMapObs map[string]*structpb.ListValue `eventstream:"observation"`
+		ListValueMapObs map[string]*structpb.ListValue `eventstream:"observation" class:"public"`
 	}
 	data := &testType{
 		ListValueMap: map[string]*structpb.ListValue{
@@ -256,7 +256,7 @@ func Test_sliceStructPBValues(t *testing.T) {
 	assert := tassert.New(t)
 	type testType struct {
 		ListValueSlice    []*structpb.ListValue
-		ListValueSliceObs []*structpb.ListValue `eventstream:"observation"`
+		ListValueSliceObs []*structpb.ListValue `eventstream:"observation" class:"public"`
 		ListValueArray    [2]*structpb.ListValue
 	}
 	data := &testType{
@@ -312,4 +312,25 @@ func Test_sliceStructPBValues(t *testing.T) {
 	assert.Len(data.ListValueArray, 2)
 	assert.Nil(data.ListValueArray[0])
 	assert.Nil(data.ListValueArray[1])
+}
+
+func Test_onlyPublicTelemetryFields(t *testing.T) {
+	assert := tassert.New(t)
+	type testType struct {
+		NonObservableString       string
+		NonPublicObservableString string `eventstream:"observation"`
+		PublicObservableString    string `eventstream:"observation" class:"public"`
+		SecretObservableString    string `eventstream:"observation" class:"secret"`
+	}
+	data := &testType{
+		NonObservableString:       "empty",
+		NonPublicObservableString: "empty",
+		PublicObservableString:    "observable",
+		SecretObservableString:    "empty",
+	}
+	err := recurseStructureWithProtoFilter(reflect.ValueOf(data), telemetryFilter, false)
+	assert.NoError(err)
+	assert.Equal(&testType{
+		PublicObservableString: "observable",
+	}, data)
 }
