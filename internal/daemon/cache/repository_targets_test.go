@@ -5,12 +5,15 @@ package cache
 
 import (
 	"context"
+	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 )
 
 func TestRepository_refreshTargets(t *testing.T) {
@@ -18,15 +21,22 @@ func TestRepository_refreshTargets(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
-	require.NoError(t, err)
-
 	addr := "address"
-	keyringType := "keyring"
-	tokenName := "token"
-	kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-	at := testAuthTokenLookup(keyringType, tokenName)
-	kt.AuthTokenId = at.Id
+	u := user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k", "t"}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
 	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
 
 	ts := []*targets.Target{
@@ -116,25 +126,42 @@ func TestRepository_ListTargets(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	addr := "address"
+	u1 := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at1 := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u1.Id,
+	}
+	kt1 := KeyringToken{KeyringType: "k1", TokenName: "t1", AuthTokenId: at1.Id}
+
+	u2 := &user{
+		Id:      "u2",
+		Address: addr,
+	}
+	at2 := &authtokens.AuthToken{
+		Id:     "at_2",
+		Token:  "at_2_token",
+		UserId: u2.Id,
+	}
+	kt2 := KeyringToken{KeyringType: "k2", TokenName: "t2", AuthTokenId: at2.Id}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at1,
+		{"k2", "t2"}: at2,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
 	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt1))
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
 
 	t.Run("token is missing", func(t *testing.T) {
 		l, err := r.ListTargets(ctx, "")
 		assert.Nil(t, l)
 		assert.ErrorContains(t, err, "auth token id is missing")
 	})
-
-	addr := "address"
-	p1 := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-	at := testAuthTokenLookup(p1.KeyringType, p1.TokenName)
-	p1.AuthTokenId = at.Id
-	require.NoError(t, r.AddKeyringToken(ctx, addr, p1))
-
-	p2 := KeyringToken{KeyringType: "keyring", TokenName: "token2"}
-	at2 := testAuthTokenLookup(p2.KeyringType, p2.TokenName)
-	p2.AuthTokenId = at2.Id
-	require.NoError(t, r.AddKeyringToken(ctx, addr, p2))
 
 	ts := []*targets.Target{
 		{
@@ -159,15 +186,15 @@ func TestRepository_ListTargets(t *testing.T) {
 			SessionMaxSeconds: 333,
 		},
 	}
-	require.NoError(t, r.refreshTargets(ctx, &user{Id: at.UserId, Address: addr}, ts))
+	require.NoError(t, r.refreshTargets(ctx, u1, ts))
 
 	t.Run("wrong user gets no targets", func(t *testing.T) {
-		l, err := r.ListTargets(ctx, p2.AuthTokenId)
+		l, err := r.ListTargets(ctx, kt2.AuthTokenId)
 		assert.NoError(t, err)
 		assert.Empty(t, l)
 	})
 	t.Run("correct token gets targets", func(t *testing.T) {
-		l, err := r.ListTargets(ctx, p1.AuthTokenId)
+		l, err := r.ListTargets(ctx, kt1.AuthTokenId)
 		assert.NoError(t, err)
 		assert.Len(t, l, len(ts))
 		assert.ElementsMatch(t, l, ts)
@@ -179,8 +206,36 @@ func TestRepository_QueryTargets(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	addr := "address"
+	u1 := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at1 := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u1.Id,
+	}
+	kt1 := KeyringToken{KeyringType: "k1", TokenName: "t1", AuthTokenId: at1.Id}
+
+	u2 := &user{
+		Id:      "u2",
+		Address: addr,
+	}
+	at2 := &authtokens.AuthToken{
+		Id:     "at_2",
+		Token:  "at_2_token",
+		UserId: u2.Id,
+	}
+	kt2 := KeyringToken{KeyringType: "k2", TokenName: "t2", AuthTokenId: at2.Id}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at1,
+		{"k2", "t2"}: at2,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
 	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt1))
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
 
 	query := "name % name1 or name % name2"
 
@@ -211,17 +266,6 @@ func TestRepository_QueryTargets(t *testing.T) {
 		})
 	}
 
-	addr := "address"
-	kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-	at := testAuthTokenLookup(kt.KeyringType, kt.TokenName)
-	kt.AuthTokenId = at.Id
-	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
-
-	kt2 := KeyringToken{KeyringType: "keyring", TokenName: "token2"}
-	at2 := testAuthTokenLookup(kt2.KeyringType, kt2.TokenName)
-	kt2.AuthTokenId = at2.Id
-	require.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
-
 	ts := []*targets.Target{
 		{
 			Id:                "ttcp_1",
@@ -245,7 +289,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 			SessionMaxSeconds: 333,
 		},
 	}
-	require.NoError(t, r.refreshTargets(ctx, &user{Id: at.UserId, Address: addr}, ts))
+	require.NoError(t, r.refreshTargets(ctx, u1, ts))
 
 	t.Run("wrong token gets no targets", func(t *testing.T) {
 		l, err := r.QueryTargets(ctx, kt2.AuthTokenId, query)
@@ -253,7 +297,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 		assert.Empty(t, l)
 	})
 	t.Run("correct token gets targets", func(t *testing.T) {
-		l, err := r.QueryTargets(ctx, kt.AuthTokenId, query)
+		l, err := r.QueryTargets(ctx, kt1.AuthTokenId, query)
 		assert.NoError(t, err)
 		assert.Len(t, l, 2)
 		assert.ElementsMatch(t, l, ts[0:2])

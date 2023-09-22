@@ -79,26 +79,39 @@ func (c *AddTokenCommand) Run(args []string) int {
 
 func (c *AddTokenCommand) Add(ctx context.Context) (*api.Error, error) {
 	const op = "daemon.(AddTokenCommand).Add"
-	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
-	if err != nil {
-		return nil, err
-	}
-	at := c.ReadTokenFromKeyring(keyringType, tokenName)
-	if at == nil {
-		return nil, errors.New(ctx, errors.Conflict, op, "no auth token available to send to daemon")
-	}
 	client, err := c.Client()
 	if err != nil {
 		return nil, err
 	}
 
-	pa := userTokenToAdd{
-		Keyring: &keyringToken{
+	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	pa := upsertTokenRequest{
+		BoundaryAddr: client.Addr(),
+	}
+	switch keyringType {
+	case "", base.NoneKeyring:
+		keyringType = base.NoneKeyring
+		token := client.Token()
+		if parts := strings.SplitN(token, "_", 4); len(parts) == 3 {
+			pa.AuthTokenId = strings.Join(parts[:2], "_")
+		} else {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "found auth token is not in the proper format")
+		}
+		pa.AuthToken = token
+	default:
+		at := c.ReadTokenFromKeyring(keyringType, tokenName)
+		if at == nil {
+			return nil, errors.New(ctx, errors.Conflict, op, "no auth token available to send to daemon")
+		}
+		pa.Keyring = &keyringToken{
 			KeyringType: keyringType,
 			TokenName:   tokenName,
-		},
-		BoundaryAddr: client.Addr(),
-		AuthTokenId:  at.Id,
+		}
+		pa.AuthTokenId = at.Id
 	}
 
 	dotPath, err := DefaultDotDirectory(ctx)
@@ -109,7 +122,7 @@ func (c *AddTokenCommand) Add(ctx context.Context) (*api.Error, error) {
 	return addToken(ctx, dotPath, &pa)
 }
 
-func addToken(ctx context.Context, daemonPath string, p *userTokenToAdd) (*api.Error, error) {
+func addToken(ctx context.Context, daemonPath string, p *upsertTokenRequest) (*api.Error, error) {
 	const op = "daemon.addToken"
 	client, err := api.NewClient(nil)
 	if err != nil {

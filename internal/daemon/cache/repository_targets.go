@@ -64,7 +64,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, targets []*tar
 		return nil
 	})
 	if err != nil {
-		if saveErr := r.SaveError(ctx, resource.Target.String(), err); saveErr != nil {
+		if saveErr := r.SaveError(ctx, u, resource.Target.String(), err); saveErr != nil {
 			return stdErrors.Join(err, errors.Wrap(ctx, saveErr, op))
 		}
 		return errors.Wrap(ctx, err, op)

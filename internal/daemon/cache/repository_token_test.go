@@ -6,48 +6,39 @@ package cache
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 )
-
-// ringToken is a test struct used to group a keyring type and token name
-// so it can be used in an authtoken lookup function.
-type ringToken struct {
-	k string
-	t string
-}
-
-func mapBasedAuthTokenLookup(m map[ringToken]*authtokens.AuthToken) func(k, t string) *authtokens.AuthToken {
-	return func(k, t string) *authtokens.AuthToken {
-		return m[ringToken{k, t}]
-	}
-}
-
-func testAuthTokenLookup(k, t string) *authtokens.AuthToken {
-	return &authtokens.AuthToken{
-		Id:           fmt.Sprintf("at_%s", t),
-		Token:        fmt.Sprintf("at_%s_%s", t, k),
-		UserId:       fmt.Sprintf("u_%s", t),
-		AuthMethodId: fmt.Sprintf("ampw_%s", t),
-		AccountId:    fmt.Sprintf("acctpw_%s", t),
-	}
-}
 
 func TestRepository_AddKeyringToken(t *testing.T) {
 	ctx := context.Background()
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	addr := "address"
+	u := user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	keyring := "k"
+	tokenName := "t"
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{keyring, tokenName}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 	require.NoError(t, err)
-
-	keyring := "keyring"
-	tokenName := "token"
-	authTokenId := testAuthTokenLookup(keyring, tokenName).Id
 
 	errCases := []struct {
 		name          string
@@ -61,7 +52,7 @@ func TestRepository_AddKeyringToken(t *testing.T) {
 			kt: KeyringToken{
 				KeyringType: keyring,
 				TokenName:   tokenName,
-				AuthTokenId: authTokenId,
+				AuthTokenId: at.Id,
 			},
 			errorContains: "",
 		},
@@ -70,7 +61,7 @@ func TestRepository_AddKeyringToken(t *testing.T) {
 			kt: KeyringToken{
 				KeyringType: keyring,
 				TokenName:   tokenName,
-				AuthTokenId: authTokenId,
+				AuthTokenId: at.Id,
 			},
 			errorContains: "boundary address is empty",
 		},
@@ -79,7 +70,7 @@ func TestRepository_AddKeyringToken(t *testing.T) {
 			addr: "address",
 			kt: KeyringToken{
 				KeyringType: keyring,
-				AuthTokenId: authTokenId,
+				AuthTokenId: at.Id,
 			},
 			errorContains: "token name is empty",
 		},
@@ -88,7 +79,7 @@ func TestRepository_AddKeyringToken(t *testing.T) {
 			addr: "address",
 			kt: KeyringToken{
 				TokenName:   tokenName,
-				AuthTokenId: authTokenId,
+				AuthTokenId: at.Id,
 			},
 			errorContains: "keyring type is empty",
 		},
@@ -125,29 +116,111 @@ func TestRepository_AddKeyringToken(t *testing.T) {
 	}
 }
 
-func TestRepository_AddToken_EvictsOverLimit(t *testing.T) {
+func TestRepository_AddRawToken(t *testing.T) {
 	ctx := context.Background()
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: "u1",
+	}
+	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(map[ringToken]*authtokens.AuthToken{}), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+	require.NoError(t, err)
+
+	errCases := []struct {
+		name          string
+		addr          string
+		rawAt         string
+		errorContains string
+	}{
+		{
+			name:          "success",
+			addr:          "address",
+			rawAt:         at.Token,
+			errorContains: "",
+		},
+		{
+			name:          "missing address",
+			rawAt:         at.Token,
+			errorContains: "boundary address is empty",
+		},
+		{
+			name:          "missing token",
+			addr:          "address",
+			errorContains: "auth token is empty",
+		},
+		{
+			name:          "malformed auth token",
+			addr:          "address",
+			rawAt:         fmt.Sprintf("%s_extraunderscore", at.Token),
+			errorContains: "boundary auth token is is malformed",
+		},
+		{
+			name:          "not found in boundary",
+			addr:          "address",
+			rawAt:         "at_123_notfoundinboundary",
+			errorContains: "not found",
+		},
+	}
+
+	for _, tc := range errCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := r.AddRawToken(ctx, tc.addr, tc.rawAt)
+			if tc.errorContains == "" {
+				require.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, tc.errorContains)
+			}
+		})
+	}
+}
+
+func TestRepository_AddToken_EvictsOverLimitUsers(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+
+	boundaryAuthTokens := []*authtokens.AuthToken{
+		{
+			UserId: "user_base",
+			Id:     "at_base",
+			Token:  "at_base_token",
+		},
+	}
+	for i := 0; i < usersLimit; i++ {
+		iAt := &authtokens.AuthToken{
+			UserId: fmt.Sprintf("user%d", i),
+			Id:     fmt.Sprintf("at_%d", i),
+		}
+		iAt.Token = fmt.Sprintf("%s_token", iAt.Id)
+		boundaryAuthTokens = append(boundaryAuthTokens, iAt)
+	}
+
+	atMap := make(map[ringToken]*authtokens.AuthToken)
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 	require.NoError(t, err)
 
 	addr := "address"
-	kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-	at := testAuthTokenLookup(kt.KeyringType, kt.TokenName)
-	kt.AuthTokenId = at.Id
+	kt := KeyringToken{
+		KeyringType: "keyring",
+		TokenName:   "token",
+		AuthTokenId: boundaryAuthTokens[0].Id,
+	}
+	atMap[ringToken{kt.KeyringType, kt.TokenName}] = boundaryAuthTokens[0]
 
 	assert.NoError(t, r.AddKeyringToken(ctx, addr, kt))
 	assert.NoError(t, r.AddKeyringToken(ctx, addr, kt))
 
 	lastKtAdded := kt
-	for i := 0; i < usersLimit; i++ {
+	for i, at := range boundaryAuthTokens[1:] {
 		kr := fmt.Sprintf("%s%d", kt.KeyringType, i)
 		tn := fmt.Sprintf("%s%d", kt.TokenName, i)
-		ikt := KeyringToken{KeyringType: kr, TokenName: tn}
-		at := testAuthTokenLookup(kr, tn)
-		ikt.AuthTokenId = at.Id
+		ikt := KeyringToken{KeyringType: kr, TokenName: tn, AuthTokenId: at.Id}
+
+		atMap[ringToken{ikt.KeyringType, ikt.TokenName}] = at
 		assert.NoError(t, r.AddKeyringToken(ctx, addr, ikt))
 		lastKtAdded = ikt
 	}
@@ -163,37 +236,172 @@ func TestRepository_AddToken_EvictsOverLimit(t *testing.T) {
 	assert.NotEmpty(t, gotP)
 }
 
-func TestRepository_AddToken_AddingExistingUpdatesLastAccessedTime(t *testing.T) {
+func TestRepository_AddToken_EvictsOverLimit_Keyringless(t *testing.T) {
 	ctx := context.Background()
 	s, err := Open(ctx)
 	require.NoError(t, err)
-	addr := "someaddr"
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	boundaryAuthTokens := []*authtokens.AuthToken{
+		{
+			UserId: "user_base",
+			Id:     "at_base",
+			Token:  "at_base_token",
+		},
+	}
+	for i := 0; i < usersLimit; i++ {
+		iAt := &authtokens.AuthToken{
+			UserId: fmt.Sprintf("user%d", i),
+			Id:     fmt.Sprintf("at_%d", i),
+		}
+		iAt.Token = fmt.Sprintf("%s_token", iAt.Id)
+		boundaryAuthTokens = append(boundaryAuthTokens, iAt)
+	}
+
+	atMap := make(map[ringToken]*authtokens.AuthToken)
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 	require.NoError(t, err)
 
-	p1 := KeyringToken{
-		TokenName:   "default",
-		KeyringType: "keyring",
+	addr := "address"
+
+	assert.NoError(t, r.AddRawToken(ctx, addr, boundaryAuthTokens[0].Token))
+	assert.NoError(t, r.AddRawToken(ctx, addr, boundaryAuthTokens[0].Token))
+	for _, at := range boundaryAuthTokens[1:] {
+		assert.NoError(t, r.AddRawToken(ctx, addr, at.Token))
 	}
-	at1 := testAuthTokenLookup(p1.KeyringType, p1.TokenName)
-	p1.AuthTokenId = at1.Id
-	assert.NoError(t, r.AddKeyringToken(ctx, addr, p1))
-	p2 := KeyringToken{
-		TokenName:   "default2",
-		KeyringType: "keyring",
+	// Lookup the first persona added. It should have been evicted from the db
+	// for being used the least recently. It is only removed from the db once
+	// cleanAuthTokens is called.
+	gotP, err := r.LookupToken(ctx, boundaryAuthTokens[0].Id)
+	assert.NoError(t, err)
+	assert.Nil(t, gotP)
+	_, ok := r.idToKeyringlessAuthToken.Load(boundaryAuthTokens[0].Id)
+	assert.True(t, ok)
+
+	gotP, err = r.LookupToken(ctx, boundaryAuthTokens[len(boundaryAuthTokens)-1].Id)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, gotP)
+	_, ok = r.idToKeyringlessAuthToken.Load(boundaryAuthTokens[len(boundaryAuthTokens)-1].Id)
+	assert.True(t, ok)
+
+	assert.NoError(t, cleanKeyringlessAuthTokens(ctx, r.rw, r.idToKeyringlessAuthToken))
+	_, ok = r.idToKeyringlessAuthToken.Load(boundaryAuthTokens[0].Id)
+	assert.False(t, ok)
+}
+
+func TestRepository_CleanAuthTokens(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+
+	at := &authtokens.AuthToken{
+		UserId: "user_base",
+		Id:     "at_base",
+		Token:  "at_base_token",
 	}
-	at2 := testAuthTokenLookup(p2.KeyringType, p2.TokenName)
-	p2.AuthTokenId = at2.Id
-	assert.NoError(t, r.AddKeyringToken(ctx, addr, p2))
+	boundaryAuthTokens := []*authtokens.AuthToken{at}
+
+	atMap := make(map[ringToken]*authtokens.AuthToken)
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+	require.NoError(t, err)
+	assert.NoError(t, r.AddRawToken(ctx, "baddr", at.Token))
+	_, present := r.idToKeyringlessAuthToken.Load(at.Id)
+	assert.True(t, present)
+
+	_, err = r.rw.Delete(ctx, &user{Id: at.UserId})
+	require.NoError(t, err)
+
+	_, present = r.idToKeyringlessAuthToken.Load(at.Id)
+	assert.True(t, present)
+
+	assert.NoError(t, cleanKeyringlessAuthTokens(ctx, r.rw, r.idToKeyringlessAuthToken))
+
+	_, present = r.idToKeyringlessAuthToken.Load(at.Id)
+	assert.False(t, present)
+}
+
+func TestRepository_AddKeyringToken_AddingExistingUpdatesLastAccessedTime(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	at1 := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: "u_1",
+	}
+	kt1 := KeyringToken{
+		TokenName:   "t1",
+		KeyringType: "k1",
+		AuthTokenId: at1.Id,
+	}
+	at2 := &authtokens.AuthToken{
+		Id:     "at_2",
+		Token:  "at_2_token",
+		UserId: "u_2",
+	}
+	kt2 := KeyringToken{
+		TokenName:   "t2",
+		KeyringType: "k2",
+		AuthTokenId: "at_2",
+	}
+
+	boundaryAuthTokens := []*authtokens.AuthToken{at1, at2}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{kt1.KeyringType, kt1.TokenName}: at1,
+		{kt2.KeyringType, kt2.TokenName}: at2,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+	require.NoError(t, err)
+
+	assert.NoError(t, r.AddKeyringToken(ctx, addr, kt1))
+	assert.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
 
 	time.Sleep(10 * time.Millisecond)
-	assert.NoError(t, r.AddKeyringToken(ctx, addr, p1))
+	assert.NoError(t, r.AddKeyringToken(ctx, addr, kt1))
 
-	gotP1, err := r.LookupToken(ctx, p1.AuthTokenId)
+	gotP1, err := r.LookupToken(ctx, kt1.AuthTokenId)
 	require.NoError(t, err)
 	require.NotNil(t, gotP1)
-	gotP2, err := r.LookupToken(ctx, p2.AuthTokenId)
+	gotP2, err := r.LookupToken(ctx, kt2.AuthTokenId)
+	require.NoError(t, err)
+	require.NotNil(t, gotP2)
+
+	assert.Greater(t, gotP1.LastAccessedTime, gotP2.LastAccessedTime)
+}
+
+func TestRepository_AddRawToken_AddingExistingUpdatesLastAccessedTime(t *testing.T) {
+	ctx := context.Background()
+	s, err := Open(ctx)
+	require.NoError(t, err)
+
+	addr := "address"
+	at1 := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: "u_1",
+	}
+	at2 := &authtokens.AuthToken{
+		Id:     "at_2",
+		Token:  "at_2_token",
+		UserId: "u_2",
+	}
+
+	boundaryAuthTokens := []*authtokens.AuthToken{at1, at2}
+	atMap := map[ringToken]*authtokens.AuthToken{}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+	require.NoError(t, err)
+
+	assert.NoError(t, r.AddRawToken(ctx, addr, at1.Token))
+	assert.NoError(t, r.AddRawToken(ctx, addr, at2.Token))
+
+	time.Sleep(10 * time.Millisecond)
+	assert.NoError(t, r.AddRawToken(ctx, addr, at1.Token))
+
+	gotP1, err := r.LookupToken(ctx, at1.Id)
+	require.NoError(t, err)
+	require.NotNil(t, gotP1)
+	gotP2, err := r.LookupToken(ctx, at2.Id)
 	require.NoError(t, err)
 	require.NotNil(t, gotP2)
 
@@ -205,33 +413,42 @@ func TestRepository_ListTokens(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	addr := "address"
+	u := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+
+	atMap := make(map[ringToken]*authtokens.AuthToken)
+
+	ktTokenCount := 15
+	for i := 0; i < ktTokenCount; i++ {
+		k := fmt.Sprintf("k%d", i)
+		t := fmt.Sprintf("t%d", i)
+		atMap[ringToken{k, t}] = at
+	}
+
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
 	require.NoError(t, err)
 
-	addr := "address"
-	kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-	at := testAuthTokenLookup(kt.KeyringType, kt.TokenName)
-	kt.AuthTokenId = at.Id
-	u := &user{
-		Id:      at.UserId,
-		Address: addr,
+	for k, v := range atMap {
+		require.NoError(t, r.AddKeyringToken(ctx, addr, KeyringToken{
+			KeyringType: k.k,
+			TokenName:   k.t,
+			AuthTokenId: v.Id,
+		}))
 	}
 
 	t.Run("no token", func(t *testing.T) {
-		gotP, err := r.listTokens(ctx, u)
+		gotP, err := r.listTokens(ctx, &user{Id: "tokenless"})
 		assert.NoError(t, err)
 		assert.Empty(t, gotP)
 	})
-
-	ktTokenCount := 15
-
-	for i := 0; i < ktTokenCount; i++ {
-		thisKeyringType := fmt.Sprintf("%s%d", kt.KeyringType, i)
-		ikt := KeyringToken{KeyringType: thisKeyringType, TokenName: kt.TokenName}
-		at := testAuthTokenLookup(ikt.KeyringType, ikt.TokenName)
-		ikt.AuthTokenId = at.Id
-		require.NoError(t, r.AddKeyringToken(ctx, addr, ikt))
-	}
 
 	t.Run("many tokens", func(t *testing.T) {
 		gotAt, err := r.listTokens(ctx, u)
@@ -249,7 +466,23 @@ func TestRepository_DeleteKeyringToken(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	addr := "address"
+	at1 := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: "u_1",
+	}
+	kt1 := KeyringToken{
+		TokenName:   "t1",
+		KeyringType: "k1",
+		AuthTokenId: at1.Id,
+	}
+
+	boundaryAuthTokens := []*authtokens.AuthToken{at1}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{kt1.KeyringType, kt1.TokenName}: at1,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 	require.NoError(t, err)
 
 	t.Run("delete non existing", func(t *testing.T) {
@@ -257,18 +490,14 @@ func TestRepository_DeleteKeyringToken(t *testing.T) {
 	})
 
 	t.Run("delete existing", func(t *testing.T) {
-		addr := "address"
-		kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-		at := testAuthTokenLookup(kt.KeyringType, kt.TokenName)
-		kt.AuthTokenId = at.Id
-		assert.NoError(t, r.AddKeyringToken(ctx, addr, kt))
-		p, err := r.LookupToken(ctx, kt.AuthTokenId)
+		assert.NoError(t, r.AddKeyringToken(ctx, addr, kt1))
+		p, err := r.LookupToken(ctx, kt1.AuthTokenId)
 		require.NoError(t, err)
 		require.NotNil(t, p)
 
-		assert.NoError(t, r.deleteKeyringToken(ctx, kt))
+		assert.NoError(t, r.deleteKeyringToken(ctx, kt1))
 
-		got, err := r.LookupToken(ctx, kt.AuthTokenId)
+		got, err := r.LookupToken(ctx, kt1.AuthTokenId)
 		require.NoError(t, err)
 		require.Nil(t, got)
 	})
@@ -279,7 +508,23 @@ func TestRepository_LookupToken(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	addr := "address"
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: "u_1",
+	}
+	kt := KeyringToken{
+		TokenName:   "t1",
+		KeyringType: "k1",
+		AuthTokenId: at.Id,
+	}
+
+	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{kt.KeyringType, kt.TokenName}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 	require.NoError(t, err)
 
 	t.Run("empty token id", func(t *testing.T) {
@@ -293,11 +538,6 @@ func TestRepository_LookupToken(t *testing.T) {
 		assert.Nil(t, p)
 	})
 	t.Run("found", func(t *testing.T) {
-		addr := "address"
-		kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-		at := testAuthTokenLookup(kt.KeyringType, kt.TokenName)
-		kt.AuthTokenId = at.Id
-
 		assert.NoError(t, r.AddKeyringToken(ctx, addr, kt))
 		p, err := r.LookupToken(ctx, kt.AuthTokenId)
 		assert.NoError(t, err)
@@ -305,11 +545,6 @@ func TestRepository_LookupToken(t *testing.T) {
 	})
 
 	t.Run("withUpdateLastAccessedTime", func(t *testing.T) {
-		addr := "address"
-		kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-		at := testAuthTokenLookup(kt.KeyringType, kt.TokenName)
-		kt.AuthTokenId = at.Id
-
 		assert.NoError(t, r.AddKeyringToken(ctx, addr, kt))
 		time.Sleep(1 * time.Millisecond)
 
@@ -329,59 +564,66 @@ func TestRepository_RemoveStaleTokens(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	atMap := make(map[ringToken]*authtokens.AuthToken)
-	atLookupFn := mapBasedAuthTokenLookup(atMap)
-
-	r, err := NewRepository(ctx, s, atLookupFn)
-	require.NoError(t, err)
-
-	staleTime := time.Now().Add(-(tokenStalenessLimit + 1*time.Hour))
-	oldNotStaleTime := time.Now().Add(-(tokenStalenessLimit - 1*time.Hour))
-
-	userId := "userId"
-	addr := "address"
-	keyringType := "keyring"
-	tokenName := "token"
-	authTokenId := "authTokenId"
-	for i := 0; i < usersLimit; i++ {
-		iKeyringType := fmt.Sprintf("%s%d", keyringType, i)
-		iTokenName := fmt.Sprintf("%s%d", tokenName, i)
-		iAuthTokenId := fmt.Sprintf("%s%d", authTokenId, i)
-
-		kt := KeyringToken{
-			KeyringType: iKeyringType,
-			TokenName:   iTokenName,
-			AuthTokenId: iAuthTokenId,
-		}
-
-		atMap[ringToken{kt.KeyringType, kt.TokenName}] = &authtokens.AuthToken{
-			Id:     kt.AuthTokenId,
-			UserId: userId,
-			Token:  fmt.Sprintf("%s_sometokenvalue", kt.AuthTokenId),
-		}
-
-		assert.NoError(t, r.AddKeyringToken(ctx, addr, kt))
-		p := &AuthToken{
-			UserId: userId,
-			Id:     kt.AuthTokenId,
-		}
-		switch i % 3 {
-		case 0:
-			p.LastAccessedTime = staleTime
-			_, err := r.rw.Update(ctx, p, []string{"LastAccessedTime"}, nil)
-			require.NoError(t, err)
-		case 1:
-			p.LastAccessedTime = oldNotStaleTime
-			_, err := r.rw.Update(ctx, p, []string{"LastAccessedTime"}, nil)
-			require.NoError(t, err)
-		}
+	u := &user{
+		Id:      "user",
+		Address: "address",
+	}
+	at1 := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt1 := KeyringToken{
+		TokenName:   "t1",
+		KeyringType: "k1",
+		AuthTokenId: at1.Id,
+	}
+	at2 := &authtokens.AuthToken{
+		Id:     "at_2",
+		Token:  "at_2_token",
+		UserId: u.Id,
+	}
+	kt2 := KeyringToken{
+		TokenName:   "t2",
+		KeyringType: "k2",
+		AuthTokenId: "at_2",
 	}
 
-	assert.NoError(t, r.removeStaleTokens(ctx))
-	lAt, err := r.listTokens(ctx, &user{
-		Id:      userId,
-		Address: addr,
-	})
+	boundaryAuthTokens := []*authtokens.AuthToken{at1, at2}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{kt1.KeyringType, kt1.TokenName}: at1,
+		{kt2.KeyringType, kt2.TokenName}: at2,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+	require.NoError(t, err)
+	assert.NoError(t, r.AddKeyringToken(ctx, u.Address, kt1))
+	assert.NoError(t, r.AddKeyringToken(ctx, u.Address, kt2))
+
+	staleTime := time.Now().Add(-(tokenStalenessLimit + 1*time.Hour))
+	freshTime := time.Now().Add(-(tokenStalenessLimit - 1*time.Hour))
+
+	freshAt := &AuthToken{
+		Id:               at1.Id,
+		LastAccessedTime: freshTime,
+	}
+	_, err = r.rw.Update(ctx, freshAt, []string{"LastAccessedTime"}, nil)
+	require.NoError(t, err)
+
+	staleAt := &AuthToken{
+		Id:               at2.Id,
+		LastAccessedTime: staleTime,
+	}
+	_, err = r.rw.Update(ctx, staleAt, []string{"LastAccessedTime"}, nil)
+	require.NoError(t, err)
+
+	lAt, err := r.listTokens(ctx, u)
 	assert.NoError(t, err)
-	assert.Len(t, lAt, usersLimit*2/3)
+	assert.Len(t, lAt, 2)
+
+	assert.NoError(t, r.cleanOrphanedAuthTokens(ctx))
+
+	lAt, err = r.listTokens(ctx, u)
+	assert.NoError(t, err)
+	assert.Len(t, lAt, 1)
+	assert.Equal(t, lAt[0].Id, at1.Id)
 }

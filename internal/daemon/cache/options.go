@@ -8,8 +8,6 @@ import (
 )
 
 type options struct {
-	withBoundaryAddress        string
-	withAuthTokenId            string
 	withDebug                  bool
 	withUrl                    string
 	withUpdateLastAccessedTime bool
@@ -58,14 +56,6 @@ func WithDebug(debug bool) Option {
 func WithUpdateLastAccessedTime(b bool) Option {
 	return func(o *options) error {
 		o.withUpdateLastAccessedTime = b
-		return nil
-	}
-}
-
-// WithAuthTokenId provides an option for specifying an auth token id
-func WithAuthTokenId(id string) Option {
-	return func(o *options) error {
-		o.withAuthTokenId = id
 		return nil
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/go-dbw"
 	"github.com/stretchr/testify/assert"
@@ -46,14 +47,6 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withUpdateLastAccessedTime = true
 		assert.Equal(t, opts, testOpts)
 	})
-	t.Run("WithAuthTokenId", func(t *testing.T) {
-		id := "something"
-		opts, err := getOpts(WithAuthTokenId(id))
-		require.NoError(t, err)
-		testOpts := getDefaultOptions()
-		testOpts.withAuthTokenId = id
-		assert.Equal(t, opts, testOpts)
-	})
 	t.Run("WithTargetRetrievalFunc", func(t *testing.T) {
 		var f TargetRetrievalFunc = func(ctx context.Context, keyringstring, tokenName string) ([]*targets.Target, error) { return nil, nil }
 		opts, err := getOpts(WithTargetRetrievalFunc(f))
@@ -61,6 +54,19 @@ func Test_GetOpts(t *testing.T) {
 
 		assert.NotNil(t, opts.withTargetRetrievalFunc)
 		opts.withTargetRetrievalFunc = nil
+
+		testOpts := getDefaultOptions()
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithSessionRetrievalFunc", func(t *testing.T) {
+		var f SessionRetrievalFunc = func(ctx context.Context, keyringstring, tokenName string) ([]*sessions.Session, error) {
+			return nil, nil
+		}
+		opts, err := getOpts(WithSessionRetrievalFunc(f))
+		require.NoError(t, err)
+
+		assert.NotNil(t, opts.withSessionRetrievalFunc)
+		opts.withSessionRetrievalFunc = nil
 
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)

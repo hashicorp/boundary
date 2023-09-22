@@ -64,7 +64,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, sessions []*s
 		return nil
 	})
 	if err != nil {
-		if saveErr := r.SaveError(ctx, resource.Session.String(), err); saveErr != nil {
+		if saveErr := r.SaveError(ctx, u, resource.Session.String(), err); saveErr != nil {
 			return stdErrors.Join(err, errors.Wrap(ctx, saveErr, op))
 		}
 		return errors.Wrap(ctx, err, op)

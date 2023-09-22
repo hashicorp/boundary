@@ -5,7 +5,7 @@ package search
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -16,14 +16,13 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
-	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type testCommander struct {
 	t  *testing.T
-	at *cache.AuthToken
+	at *authtokens.AuthToken
 }
 
 func (r *testCommander) keyring() string {
@@ -45,19 +44,15 @@ func (r *testCommander) DiscoverKeyringTokenInfo() (string, string, error) {
 }
 
 func (r *testCommander) ReadTokenFromKeyring(k, a string) *authtokens.AuthToken {
-	return &authtokens.AuthToken{
-		Id:           r.at.Id,
-		AuthMethodId: "test_auth_method",
-		Token:        fmt.Sprintf("%s_restofthetoken", r.at.Id),
-		UserId:       r.at.UserId,
-	}
+	return r.at
 }
 
 func TestSearch(t *testing.T) {
 	ctx := context.Background()
-	at := &cache.AuthToken{
-		UserId: "u_1234567890",
-		Id:     "at_authtokenid",
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		UserId: "user_1",
+		Token:  "at_1_token",
 	}
 	cmd := &testCommander{t: t, at: at}
 
@@ -66,7 +61,12 @@ func TestSearch(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		srv.Serve(t)
+		srv.Serve(t, daemon.WithBoundaryTokenReaderFunc(ctx, func(ctx context.Context, addr, authToken string) (*authtokens.AuthToken, error) {
+			if authToken == at.Token {
+				return at, nil
+			}
+			return nil, errors.New("test not found error")
+		}))
 	}()
 	// Give the store some time to get initialized
 	time.Sleep(100 * time.Millisecond)
