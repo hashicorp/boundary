@@ -618,9 +618,10 @@ func TestRepository_RemoveStaleTokens(t *testing.T) {
 		Address: "address",
 	}
 	at1 := &authtokens.AuthToken{
-		Id:     "at_1",
-		Token:  "at_1_token",
-		UserId: u.Id,
+		Id:             "at_1",
+		Token:          "at_1_token",
+		UserId:         u.Id,
+		ExpirationTime: time.Now().Add(1 * time.Minute),
 	}
 	kt1 := KeyringToken{
 		TokenName:   "t1",
@@ -628,25 +629,40 @@ func TestRepository_RemoveStaleTokens(t *testing.T) {
 		AuthTokenId: at1.Id,
 	}
 	at2 := &authtokens.AuthToken{
-		Id:     "at_2",
-		Token:  "at_2_token",
-		UserId: u.Id,
+		Id:             "at_2",
+		Token:          "at_2_token",
+		UserId:         u.Id,
+		ExpirationTime: time.Now().Add(1 * time.Minute),
 	}
 	kt2 := KeyringToken{
 		TokenName:   "t2",
 		KeyringType: "k2",
 		AuthTokenId: "at_2",
 	}
+	// this auth token expired a minute ago
+	at3 := &authtokens.AuthToken{
+		Id:             "at_3",
+		Token:          "at_3_token",
+		UserId:         u.Id,
+		ExpirationTime: time.Now().Add(-(1 * time.Minute)),
+	}
+	kt3 := KeyringToken{
+		TokenName:   "t3",
+		KeyringType: "k3",
+		AuthTokenId: "at_3",
+	}
 
-	boundaryAuthTokens := []*authtokens.AuthToken{at1, at2}
+	boundaryAuthTokens := []*authtokens.AuthToken{at1, at2, at3}
 	atMap := map[ringToken]*authtokens.AuthToken{
 		{kt1.KeyringType, kt1.TokenName}: at1,
 		{kt2.KeyringType, kt2.TokenName}: at2,
+		{kt3.KeyringType, kt3.TokenName}: at3,
 	}
 	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 	require.NoError(t, err)
 	assert.NoError(t, r.AddKeyringToken(ctx, u.Address, kt1))
 	assert.NoError(t, r.AddKeyringToken(ctx, u.Address, kt2))
+	assert.NoError(t, r.AddKeyringToken(ctx, u.Address, kt3))
 
 	staleTime := time.Now().Add(-(tokenStalenessLimit + 1*time.Hour))
 	freshTime := time.Now().Add(-(tokenStalenessLimit - 1*time.Hour))
@@ -656,6 +672,12 @@ func TestRepository_RemoveStaleTokens(t *testing.T) {
 		LastAccessedTime: freshTime,
 	}
 	_, err = r.rw.Update(ctx, freshAt, []string{"LastAccessedTime"}, nil)
+	require.NoError(t, err)
+	anotherFreshAt := &AuthToken{
+		Id:               at3.Id,
+		LastAccessedTime: freshTime,
+	}
+	_, err = r.rw.Update(ctx, anotherFreshAt, []string{"LastAccessedTime"}, nil)
 	require.NoError(t, err)
 
 	staleAt := &AuthToken{
@@ -667,9 +689,9 @@ func TestRepository_RemoveStaleTokens(t *testing.T) {
 
 	lAt, err := r.listTokens(ctx, u)
 	assert.NoError(t, err)
-	assert.Len(t, lAt, 2)
+	assert.Len(t, lAt, 3)
 
-	assert.NoError(t, r.cleanOrphanedAuthTokens(ctx))
+	assert.NoError(t, r.cleanExpiredOrOrphanedAuthTokens(ctx))
 
 	lAt, err = r.listTokens(ctx, u)
 	assert.NoError(t, err)

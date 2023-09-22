@@ -62,10 +62,11 @@ func upsertUserAndAuthToken(ctx context.Context, reader db.Reader, writer db.Wri
 			Id:               at.Id,
 			UserId:           at.UserId,
 			LastAccessedTime: time.Now(),
+			ExpirationTime:   at.ExpirationTime,
 		}
 		onConflict := &db.OnConflict{
 			Target: db.Columns{"id"},
-			Action: db.SetColumns([]string{"last_accessed_time"}),
+			Action: db.SetColumns([]string{"last_accessed_time", "expiration_time"}),
 		}
 		if err := writer.Create(ctx, st, db.WithOnConflict(onConflict)); err != nil {
 			return errors.Wrap(ctx, err, op)
@@ -303,7 +304,7 @@ func (r *Repository) deleteKeyringToken(ctx context.Context, kt KeyringToken) er
 
 		switch n {
 		case 1:
-			if err := cleanOrphanedAuthTokens(ctx, writer, r.idToKeyringlessAuthToken); err != nil {
+			if err := cleanExpiredOrOrphanedAuthTokens(ctx, writer, r.idToKeyringlessAuthToken); err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
 			return nil
@@ -319,12 +320,12 @@ func (r *Repository) deleteKeyringToken(ctx context.Context, kt KeyringToken) er
 	return nil
 }
 
-// cleanAuthTokens removes all tokens which are older than the staleness limit
+// cleanExpiredOrOrphanedAuthTokens removes all tokens which are older than the staleness limit
 // or does not have either a keyring or keyringless reference to it.
-func (r *Repository) cleanOrphanedAuthTokens(ctx context.Context) error {
-	const op = "cache.Repository.cleanOrphanedAuthTokens"
+func (r *Repository) cleanExpiredOrOrphanedAuthTokens(ctx context.Context) error {
+	const op = "cache.Repository.cleanExpiredOrOrphanedAuthTokens"
 	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
-		if err := cleanOrphanedAuthTokens(ctx, writer, r.idToKeyringlessAuthToken); err != nil {
+		if err := cleanExpiredOrOrphanedAuthTokens(ctx, writer, r.idToKeyringlessAuthToken); err != nil {
 			return errors.Wrap(ctx, err, op)
 		}
 		return nil
@@ -332,10 +333,10 @@ func (r *Repository) cleanOrphanedAuthTokens(ctx context.Context) error {
 	return err
 }
 
-// cleanAuthTokens removes all tokens which are older than the staleness limit
+// cleanExpiredOrOrphanedAuthTokens removes all tokens which are older than the staleness limit
 // or does not have either a keyring or keyringless reference to it.
-func cleanOrphanedAuthTokens(ctx context.Context, writer db.Writer, idToKeyringlessAuthToken *sync.Map) error {
-	const op = "cache.cleanAuthTokens"
+func cleanExpiredOrOrphanedAuthTokens(ctx context.Context, writer db.Writer, idToKeyringlessAuthToken *sync.Map) error {
+	const op = "cache.cleanExpiredOrOrphanedAuthTokens"
 	switch {
 	// TODO: Add check here to see if a transaction is in flight.
 	case util.IsNil(writer):
@@ -354,6 +355,12 @@ func cleanOrphanedAuthTokens(ctx context.Context, writer db.Writer, idToKeyringl
 	delete from auth_token
 	where
 		last_accessed_time < @last_accessed_time
+	or
+		-- sqlite stores expiration_time as a string in a format that might not match
+		-- what is being used by current_timestamp.  Using datetime() makes the
+		-- formats match which allow the string comparison perfoemed here to work
+		-- the same as a time comparison.
+		datetime(expiration_time) < current_timestamp
 	or
 	%s
 	`
@@ -497,6 +504,7 @@ type AuthToken struct {
 	Id               string    `gorm:"primaryKey"`
 	UserId           string    `gorm:"default:null"`
 	LastAccessedTime time.Time `gorm:"default:(strftime('%Y-%m-%d %H:%M:%f','now'))"`
+	ExpirationTime   time.Time
 }
 
 func (*AuthToken) TableName() string {

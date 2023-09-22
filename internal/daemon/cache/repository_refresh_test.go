@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
@@ -36,26 +37,30 @@ func TestCleanAndPickTokens(t *testing.T) {
 	boundaryAddr := "address"
 	u1 := &user{Id: "u1", Address: boundaryAddr}
 	at1a := &authtokens.AuthToken{
-		Id:     "at_1a",
-		Token:  "at_1a_token",
-		UserId: u1.Id,
+		Id:             "at_1a",
+		Token:          "at_1a_token",
+		UserId:         u1.Id,
+		ExpirationTime: time.Now().Add(time.Minute),
 	}
 	at1b := &authtokens.AuthToken{
-		Id:     "at_1b",
-		Token:  "at_1b_token",
-		UserId: u1.Id,
+		Id:             "at_1b",
+		Token:          "at_1b_token",
+		UserId:         u1.Id,
+		ExpirationTime: time.Now().Add(time.Minute),
 	}
 
 	keyringOnlyUser := &user{Id: "keyringUser", Address: boundaryAddr}
 	keyringAuthToken1 := &authtokens.AuthToken{
-		Id:     "at_2a",
-		Token:  "at_2a_token",
-		UserId: keyringOnlyUser.Id,
+		Id:             "at_2a",
+		Token:          "at_2a_token",
+		UserId:         keyringOnlyUser.Id,
+		ExpirationTime: time.Now().Add(time.Minute),
 	}
 	keyringAuthToken2 := &authtokens.AuthToken{
-		Id:     "at_2b",
-		Token:  "at_2b_token",
-		UserId: keyringOnlyUser.Id,
+		Id:             "at_2b",
+		Token:          "at_2b_token",
+		UserId:         keyringOnlyUser.Id,
+		ExpirationTime: time.Now().Add(time.Minute),
 	}
 	boundaryAuthTokens := []*authtokens.AuthToken{at1a, keyringAuthToken1, at1b, keyringAuthToken2}
 	atMap := make(map[ringToken]*authtokens.AuthToken)
@@ -149,10 +154,10 @@ func TestRefresh(t *testing.T) {
 	boundaryAddr := "address"
 	u := &user{Id: "u1", Address: boundaryAddr}
 	at := &authtokens.AuthToken{
-		Id:           "at_1",
-		Token:        "at_1_token",
-		UserId:       u.Id,
-		AuthMethodId: "am_1",
+		Id:             "at_1",
+		Token:          "at_1_token",
+		UserId:         u.Id,
+		ExpirationTime: time.Now().Add(time.Minute),
 	}
 
 	boundaryAuthTokens := []*authtokens.AuthToken{at}

@@ -50,9 +50,10 @@ func (r *testCommander) ReadTokenFromKeyring(k, a string) *authtokens.AuthToken 
 func TestSearch(t *testing.T) {
 	ctx := context.Background()
 	at := &authtokens.AuthToken{
-		Id:     "at_1",
-		UserId: "user_1",
-		Token:  "at_1_token",
+		Id:             "at_1",
+		UserId:         "user_1",
+		Token:          "at_1_token",
+		ExpirationTime: time.Now().Add(time.Minute),
 	}
 	cmd := &testCommander{t: t, at: at}
 
