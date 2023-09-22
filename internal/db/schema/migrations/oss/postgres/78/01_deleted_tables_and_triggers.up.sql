@@ -205,4 +205,9 @@ begin;
     end loop;
   end;
   $$ language plpgsql;
+
+  -- These credential indices end up truncated by postgres, so we manually
+  -- rename them to something nicer.
+  alter index credential_static_username_password_credential_deleted_delete_t rename to credential_static_username_password_deleted_delete_time_idx;
+  alter index credential_static_ssh_private_key_credential_deleted_delete_tim rename to credential_static_ssh_private_key_deleted_delete_time_idx;
 commit;
