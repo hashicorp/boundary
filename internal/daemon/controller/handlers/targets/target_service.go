@@ -540,8 +540,7 @@ func (s Service) AddTargetCredentialSources(ctx context.Context, req *pbs.AddTar
 		return nil, authResults.Error
 	}
 
-	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
-	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), brokeredCredentialSources, req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
+	t, ts, cl, err := s.addCredentialSourcesInRepo(ctx, req.GetId(), req.GetBrokeredCredentialSourceIds(), req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -582,8 +581,7 @@ func (s Service) SetTargetCredentialSources(ctx context.Context, req *pbs.SetTar
 		return nil, authResults.Error
 	}
 
-	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
-	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), brokeredCredentialSources, req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
+	t, ts, cl, err := s.setCredentialSourcesInRepo(ctx, req.GetId(), req.GetBrokeredCredentialSourceIds(), req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -624,8 +622,7 @@ func (s Service) RemoveTargetCredentialSources(ctx context.Context, req *pbs.Rem
 		return nil, authResults.Error
 	}
 
-	brokeredCredentialSources := strutil.MergeSlices(req.GetApplicationCredentialSourceIds(), req.GetBrokeredCredentialSourceIds())
-	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), brokeredCredentialSources, req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
+	t, ts, cl, err := s.removeCredentialSourcesInRepo(ctx, req.GetId(), req.GetBrokeredCredentialSourceIds(), req.GetInjectedApplicationCredentialSourceIds(), req.GetVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -1625,13 +1622,6 @@ func toProto(ctx context.Context, in target.Target, opt ...handlers.Option) (*pb
 		}
 	}
 
-	// TODO: Application Credentials are deprecated, remove when field removed.
-	if outputFields.Has(globals.ApplicationCredentialSourceIdsField) {
-		out.ApplicationCredentialSourceIds = brokeredSourceIds
-	}
-	if outputFields.Has(globals.ApplicationCredentialSourcesField) {
-		out.ApplicationCredentialSources = brokeredSources
-	}
 	if outputFields.Has(globals.BrokeredCredentialSourceIdsField) {
 		out.BrokeredCredentialSourceIds = brokeredSourceIds
 	}
@@ -1906,21 +1896,9 @@ func validateAddCredentialSourcesRequest(req *pbs.AddTargetCredentialSourcesRequ
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetApplicationCredentialSourceIds())+len(req.GetBrokeredCredentialSourceIds())+len(req.GetInjectedApplicationCredentialSourceIds()) == 0 {
+	if len(req.GetBrokeredCredentialSourceIds())+len(req.GetInjectedApplicationCredentialSourceIds()) == 0 {
 		badFields[globals.BrokeredCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
 		badFields[globals.InjectedApplicationCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
-	}
-	// TODO: Application Credentials are deprecated, remove when field removed.
-	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl),
-			globals.VaultCredentialLibraryPrefix,
-			globals.UsernamePasswordCredentialPrefix,
-			globals.UsernamePasswordCredentialPreviousPrefix,
-			globals.SshPrivateKeyCredentialPrefix,
-			globals.JsonCredentialPrefix) {
-			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
-			break
-		}
 	}
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
@@ -1958,18 +1936,6 @@ func validateSetCredentialSourcesRequest(req *pbs.SetTargetCredentialSourcesRequ
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	// TODO: Application Credentials are deprecated, remove when field removed.
-	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl),
-			globals.VaultCredentialLibraryPrefix,
-			globals.UsernamePasswordCredentialPrefix,
-			globals.UsernamePasswordCredentialPreviousPrefix,
-			globals.SshPrivateKeyCredentialPrefix,
-			globals.JsonCredentialPrefix) {
-			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
-			break
-		}
-	}
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),
 			globals.VaultCredentialLibraryPrefix,
@@ -2006,21 +1972,9 @@ func validateRemoveCredentialSourcesRequest(req *pbs.RemoveTargetCredentialSourc
 	if req.GetVersion() == 0 {
 		badFields[globals.VersionField] = "Required field."
 	}
-	if len(req.GetApplicationCredentialSourceIds())+len(req.GetBrokeredCredentialSourceIds())+len(req.GetInjectedApplicationCredentialSourceIds()) == 0 {
+	if len(req.GetBrokeredCredentialSourceIds())+len(req.GetInjectedApplicationCredentialSourceIds()) == 0 {
 		badFields[globals.BrokeredCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
 		badFields[globals.InjectedApplicationCredentialSourceIdsField] = "Brokered or Injected Application Credential Source IDs must be provided."
-	}
-	// TODO: Application Credentials are deprecated, remove when field removed.
-	for _, cl := range req.GetApplicationCredentialSourceIds() {
-		if !handlers.ValidId(handlers.Id(cl),
-			globals.VaultCredentialLibraryPrefix,
-			globals.UsernamePasswordCredentialPrefix,
-			globals.UsernamePasswordCredentialPreviousPrefix,
-			globals.SshPrivateKeyCredentialPrefix,
-			globals.JsonCredentialPrefix) {
-			badFields[globals.ApplicationCredentialSourceIdsField] = fmt.Sprintf("Incorrectly formatted credential source identifier %q.", cl)
-			break
-		}
 	}
 	for _, cl := range req.GetBrokeredCredentialSourceIds() {
 		if !handlers.ValidId(handlers.Id(cl),

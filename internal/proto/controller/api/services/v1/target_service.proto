@@ -271,12 +271,6 @@ message AddTargetCredentialSourcesRequest {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
 
-  // Deprecated use brokered_credential_source_ids instead
-  repeated string application_credential_source_ids = 3 [
-    json_name = "application_credential_source_ids",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
-
   // Brokered credentials are returned to the user during session authorization.
   repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
 
@@ -288,6 +282,8 @@ message AddTargetCredentialSourcesRequest {
   // Deprecated fields
   reserved "egress_credential_source_ids";
   reserved 4;
+  reserved "application_credential_source_ids";
+  reserved 3;
 }
 
 message AddTargetCredentialSourcesResponse {
@@ -302,12 +298,6 @@ message SetTargetCredentialSourcesRequest {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
 
-  // Deprecated use brokered_credential_source_ids instead
-  repeated string application_credential_source_ids = 3 [
-    json_name = "application_credential_source_ids",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
-
   // Brokered credentials are returned to the user during session authorization.
   repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
 
@@ -319,6 +309,8 @@ message SetTargetCredentialSourcesRequest {
   // Deprecated fields
   reserved "egress_credential_source_ids";
   reserved 4;
+  reserved "application_credential_source_ids";
+  reserved 3;
 }
 
 message SetTargetCredentialSourcesResponse {
@@ -331,12 +323,6 @@ message RemoveTargetCredentialSourcesRequest {
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 2; // @gotags: `class:"public"`
 
-  // Deprecated use brokered_credential_source_ids instead
-  repeated string application_credential_source_ids = 3 [
-    json_name = "application_credential_source_id",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
-
   // Brokered credentials are returned to the user during session authorization.
   repeated string brokered_credential_source_ids = 10 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
 
@@ -348,6 +334,8 @@ message RemoveTargetCredentialSourcesRequest {
   // Deprecated fields
   reserved "egress_credential_source_ids";
   reserved 4;
+  reserved "application_credential_source_ids";
+  reserved 3;
 }
 
 message RemoveTargetCredentialSourcesResponse {

@@ -170,19 +170,6 @@ message Target {
     }
   ]; // @gotags: `class:"public"`
 
-  // Output only. The IDs of the application credential source ids associated with this Target.
-  // Deprecated use "brokered_credential_source_ids" instead.
-  repeated string application_credential_source_ids = 400 [
-    json_name = "application_credential_source_ids",
-    deprecated = true
-  ]; // @gotags: `class:"public"`
-  // Output only. The application credential sources associated with this Target.
-  // Deprecated use "brokered_credential_sources" instead.
-  repeated CredentialSource application_credential_sources = 410 [
-    json_name = "application_credential_sources",
-    deprecated = true
-  ];
-
   // Output only. The IDs of the brokered credential source ids associated with this Target.
   repeated string brokered_credential_source_ids = 440 [json_name = "brokered_credential_source_ids"]; // @gotags: `class:"public"`
   // Output only. The brokered credential sources associated with this Target.
@@ -231,6 +218,8 @@ message Target {
   reserved 500, 510;
   reserved "host_set_ids", "host_sets";
   reserved 100, 110;
+  reserved "application_credential_source_ids", "application_credential_sources";
+  reserved 400, 410;
 }
 
 // TcpTargetAttributes contains attributes relevant to Targets of type "tcp"
