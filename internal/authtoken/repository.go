@@ -349,17 +349,28 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 }
 
 // ListDeletedIds lists the public IDs of any auth tokens deleted since the timestamp provided.
-func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
+func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "authtoken.(Repository).ListDeletedIds"
 	var deletedAuthTokens []*deletedAuthToken
-	if err := r.reader.SearchWhere(ctx, &deletedAuthTokens, "delete_time >= ?", []any{since}); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted auth tokens"))
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedAuthTokens, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted auth tokens"))
+		}
+		var err error
+		transactionTimestamp, err = r.TransactionTimestamp(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
 	}
 	var authtokenIds []string
 	for _, tok := range deletedAuthTokens {
 		authtokenIds = append(authtokenIds, tok.PublicId)
 	}
-	return authtokenIds, nil
+	return authtokenIds, transactionTimestamp, nil
 }
 
 // EstimatedCount returns an estimate of the total number of items in the authtoken table.

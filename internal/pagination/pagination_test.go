@@ -316,9 +316,8 @@ type (
 		HashFn func() ([]byte, error)
 	}
 	testRepo struct {
-		DeletedIdsFn     func(time.Time) ([]string, error)
+		DeletedIdsFn     func(time.Time) ([]string, time.Time, error)
 		EstimatedCountFn func() (int, error)
-		NowFn            func() (time.Time, error)
 	}
 )
 
@@ -346,16 +345,12 @@ func (t *testGrantHasher) GrantsHash(context.Context) ([]byte, error) {
 	return t.HashFn()
 }
 
-func (t *testRepo) ListDeletedIds(_ context.Context, tm time.Time) ([]string, error) {
+func (t *testRepo) ListDeletedIds(_ context.Context, tm time.Time) ([]string, time.Time, error) {
 	return t.DeletedIdsFn(tm)
 }
 
 func (t *testRepo) EstimatedCount(context.Context) (int, error) {
 	return t.EstimatedCountFn()
-}
-
-func (t *testRepo) Now(context.Context) (time.Time, error) {
-	return t.NowFn()
 }
 
 func TestPaginateRequest(t *testing.T) {
@@ -500,50 +495,11 @@ func TestPaginateRequest(t *testing.T) {
 			},
 		}
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return nil, nil
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, nil
 			},
 			EstimatedCountFn: func() (int, error) {
 				return 100, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
-			},
-		}
-		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
-		require.ErrorContains(t, err, "some error")
-		assert.Empty(t, listResp)
-	})
-	t.Run("fails-when-now-fails", func(t *testing.T) {
-		t.Parallel()
-		maxPageSize := uint(1000)
-		resourceType := pbs.ResourceType_RESOURCE_TYPE_SESSION
-		req := &testRequest{
-			PageSize:     2,
-			RefreshToken: "",
-		}
-		listItemsFn := func(prevPageLast *testType, refreshToken *pbs.ListRefreshToken, limit int) ([]*testType, error) {
-			assert.Empty(t, prevPageLast)
-			assert.Empty(t, refreshToken)
-			return nil, nil
-		}
-		convertAndFilterFn := func(item *testType) (*testPbType, error) {
-			return nil, nil
-		}
-		grantsHasher := &testGrantHasher{
-			HashFn: func() ([]byte, error) {
-				return []byte("some hash"), nil
-			},
-		}
-		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return nil, nil
-			},
-			EstimatedCountFn: func() (int, error) {
-				return 100, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Time{}, stderrors.New("some error")
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -572,14 +528,11 @@ func TestPaginateRequest(t *testing.T) {
 			},
 		}
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return nil, nil
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, nil
 			},
 			EstimatedCountFn: func() (int, error) {
 				return 100, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -614,14 +567,11 @@ func TestPaginateRequest(t *testing.T) {
 			},
 		}
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return nil, nil
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, nil
 			},
 			EstimatedCountFn: func() (int, error) {
 				return 100, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -660,14 +610,11 @@ func TestPaginateRequest(t *testing.T) {
 			},
 		}
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return nil, stderrors.New("some error")
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, stderrors.New("some error")
 			},
 			EstimatedCountFn: func() (int, error) {
 				return 100, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -697,14 +644,11 @@ func TestPaginateRequest(t *testing.T) {
 			},
 		}
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return nil, nil
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, nil
 			},
 			EstimatedCountFn: func() (int, error) {
 				return 0, stderrors.New("some error")
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -735,14 +679,11 @@ func TestPaginateRequest(t *testing.T) {
 			},
 		}
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return nil, nil
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, nil
 			},
 			EstimatedCountFn: func() (int, error) {
 				return 0, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -776,14 +717,11 @@ func TestPaginateRequest(t *testing.T) {
 			},
 		}
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return nil, nil
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, nil
 			},
 			EstimatedCountFn: func() (int, error) {
 				return 0, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -817,14 +755,11 @@ func TestPaginateRequest(t *testing.T) {
 			},
 		}
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return nil, nil
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, nil
 			},
 			EstimatedCountFn: func() (int, error) {
 				return 100, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -875,15 +810,13 @@ func TestPaginateRequest(t *testing.T) {
 				return []byte("some hash"), nil
 			},
 		}
+		newTokenCreateTime := time.Now()
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return []string{"id1", "id2"}, nil
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return []string{"id1", "id2"}, newTokenCreateTime, nil
 			},
 			EstimatedCountFn: func() (int, error) {
 				return 100, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -895,10 +828,7 @@ func TestPaginateRequest(t *testing.T) {
 		assert.NotEmpty(t, listResp.MarshaledRefreshToken)
 		refreshToken2, err := parseRefreshToken(ctx, listResp.MarshaledRefreshToken)
 		require.NoError(t, err)
-		// Created time should be ~within 10 seconds of now
-		now := time.Now()
-		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(-10*time.Second).Before(now))
-		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(10*time.Second).After(now))
+		assert.True(t, refreshToken2.CreatedTime.AsTime().Equal(newTokenCreateTime))
 		assert.Equal(t, "some-id", refreshToken2.LastItemId)
 		assert.True(t, refreshToken2.LastItemUpdatedTime.AsTime().Equal((&testPbType{}).GetUpdatedTime().AsTime()))
 		assert.Equal(t, []byte("some hash"), refreshToken2.PermissionsHash)
@@ -935,15 +865,13 @@ func TestPaginateRequest(t *testing.T) {
 				return []byte("some hash"), nil
 			},
 		}
+		newTokenCreateTime := time.Now()
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return []string{"id1", "id2"}, nil
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return []string{"id1", "id2"}, newTokenCreateTime, nil
 			},
 			EstimatedCountFn: func() (int, error) {
 				return 100, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)
@@ -955,10 +883,7 @@ func TestPaginateRequest(t *testing.T) {
 		assert.NotEmpty(t, listResp.MarshaledRefreshToken)
 		refreshToken2, err := parseRefreshToken(ctx, listResp.MarshaledRefreshToken)
 		require.NoError(t, err)
-		// Created time should be ~within 10 seconds of now
-		now := time.Now()
-		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(-10*time.Second).Before(now))
-		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(10*time.Second).After(now))
+		assert.True(t, refreshToken2.CreatedTime.AsTime().Equal(newTokenCreateTime))
 		assert.Equal(t, refreshToken.LastItemId, refreshToken2.LastItemId)
 		assert.True(t, refreshToken2.LastItemUpdatedTime.AsTime().Equal(refreshToken.LastItemUpdatedTime.AsTime()))
 		assert.Equal(t, []byte("some hash"), refreshToken2.PermissionsHash)
@@ -987,15 +912,12 @@ func TestPaginateRequest(t *testing.T) {
 			},
 		}
 		repo := &testRepo{
-			DeletedIdsFn: func(time.Time) ([]string, error) {
-				return nil, nil
+			DeletedIdsFn: func(time.Time) ([]string, time.Time, error) {
+				return nil, time.Time{}, nil
 			},
 			EstimatedCountFn: func() (int, error) {
 				t.Error("Should not have called estimated totals function")
 				return 0, nil
-			},
-			NowFn: func() (time.Time, error) {
-				return time.Now(), nil
 			},
 		}
 		listResp, err := PaginateRequest(ctx, maxPageSize, resourceType, req, listItemsFn, convertAndFilterFn, grantsHasher, repo)

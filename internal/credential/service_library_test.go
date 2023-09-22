@@ -52,6 +52,11 @@ func (f *fakeWriter) DoTx(ctx context.Context, retries uint, backOff db.Backoff,
 
 type fakeReader struct {
 	db.Reader
+	TransactionTimestampFn func(context.Context) (time.Time, error)
+}
+
+func (f *fakeReader) TransactionTimestamp(ctx context.Context) (time.Time, error) {
+	return f.TransactionTimestampFn(ctx)
 }
 
 func TestNewLibraryService(t *testing.T) {
@@ -160,13 +165,18 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 		}
 		writer := &fakeWriter{
 			DoTxFn: func(ctx context.Context, retries uint, backoff db.Backoff, handler db.TxHandler) (db.RetryInfo, error) {
-				err := handler(&fakeReader{}, &fakeWriter{})
+				r := &fakeReader{
+					TransactionTimestampFn: func(ctx context.Context) (time.Time, error) {
+						return time.Now(), nil
+					},
+				}
+				err := handler(r, &fakeWriter{})
 				return db.RetryInfo{}, err
 			},
 		}
 		service, err := credential.NewLibraryService(ctx, writer, repo)
 		require.NoError(t, err)
-		ids, err := service.ListDeletedIds(ctx, timeSince)
+		ids, ttime, err := service.ListDeletedIds(ctx, timeSince)
 		require.NoError(t, err)
 		assert.Empty(
 			t,
@@ -174,6 +184,10 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 				ids,
 				cmpopts.SortSlices(func(i, j string) bool { return i < j })),
 		)
+		// Transaction time should be within ~10 seconds of now
+		now := time.Now()
+		assert.True(t, ttime.Add(-10*time.Second).Before(now))
+		assert.True(t, ttime.Add(10*time.Second).After(now))
 	})
 	t.Run("tx-error", func(t *testing.T) {
 		t.Parallel()
@@ -201,7 +215,7 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 		}
 		service, err := credential.NewLibraryService(ctx, writer, repo)
 		require.NoError(t, err)
-		_, err = service.ListDeletedIds(ctx, timeSince)
+		_, _, err = service.ListDeletedIds(ctx, timeSince)
 		require.ErrorContains(t, err, "some error")
 	})
 	t.Run("first-list-fails", func(t *testing.T) {
@@ -221,13 +235,18 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 		}
 		writer := &fakeWriter{
 			DoTxFn: func(ctx context.Context, retries uint, backoff db.Backoff, handler db.TxHandler) (db.RetryInfo, error) {
-				err := handler(&fakeReader{}, &fakeWriter{})
+				r := &fakeReader{
+					TransactionTimestampFn: func(ctx context.Context) (time.Time, error) {
+						return time.Now(), nil
+					},
+				}
+				err := handler(r, &fakeWriter{})
 				return db.RetryInfo{}, err
 			},
 		}
 		service, err := credential.NewLibraryService(ctx, writer, repo)
 		require.NoError(t, err)
-		_, err = service.ListDeletedIds(ctx, timeSince)
+		_, _, err = service.ListDeletedIds(ctx, timeSince)
 		require.ErrorContains(t, err, "some error")
 	})
 	t.Run("second-list-fails", func(t *testing.T) {
@@ -247,13 +266,18 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 		}
 		writer := &fakeWriter{
 			DoTxFn: func(ctx context.Context, retries uint, backoff db.Backoff, handler db.TxHandler) (db.RetryInfo, error) {
-				err := handler(&fakeReader{}, &fakeWriter{})
+				r := &fakeReader{
+					TransactionTimestampFn: func(ctx context.Context) (time.Time, error) {
+						return time.Now(), nil
+					},
+				}
+				err := handler(r, &fakeWriter{})
 				return db.RetryInfo{}, err
 			},
 		}
 		service, err := credential.NewLibraryService(ctx, writer, repo)
 		require.NoError(t, err)
-		_, err = service.ListDeletedIds(ctx, timeSince)
+		_, _, err = service.ListDeletedIds(ctx, timeSince)
 		require.ErrorContains(t, err, "some error")
 	})
 }

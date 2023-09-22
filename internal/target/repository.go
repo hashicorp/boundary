@@ -352,17 +352,28 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 }
 
 // ListDeletedIds lists the public IDs of any targets deleted since the timestamp provided.
-func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
+func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "target.(Repository).ListDeletedIds"
 	var deleteTargets []*deletedTarget
-	if err := r.reader.SearchWhere(ctx, &deleteTargets, "delete_time >= ?", []any{since}); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted targets"))
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		if err := r.SearchWhere(ctx, &deleteTargets, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted targets"))
+		}
+		var err error
+		transactionTimestamp, err = r.TransactionTimestamp(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
 	}
 	var targetIds []string
 	for _, t := range deleteTargets {
 		targetIds = append(targetIds, t.PublicId)
 	}
-	return targetIds, nil
+	return targetIds, transactionTimestamp, nil
 }
 
 // EstimatedCount returns an estimate of the total number of items across all targets.

@@ -52,25 +52,24 @@ func (s *CredentialService) EstimatedCount(ctx context.Context) (int, error) {
 }
 
 // ListDeletedIds lists all deleted credential IDs across all types
-func (s *CredentialService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
+func (s *CredentialService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "credential.(*CredentialService).ListDeletedIds"
 	var deletedIds []string
+	var transactionTime time.Time
 	_, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		deletedCredsIds, err := s.repo.ListDeletedCredentialIds(ctx, since, WithReaderWriter(r, w))
 		if err != nil {
 			return err
 		}
+		transactionTime, err = r.TransactionTimestamp(ctx)
+		if err != nil {
+			return err
+		}
 		deletedIds = append(deletedIds, deletedCredsIds...)
-		// TODO: Get transaction timestamp too
 		return nil
 	})
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, time.Time{}, errors.Wrap(ctx, err, op)
 	}
-	return deletedIds, nil
-}
-
-// Temporary - will be replaced once generic function is refactored
-func (s *CredentialService) Now(ctx context.Context) (time.Time, error) {
-	return time.Now(), nil
+	return deletedIds, transactionTime, nil
 }

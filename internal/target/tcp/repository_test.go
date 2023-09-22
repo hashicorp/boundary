@@ -411,9 +411,13 @@ func TestListDeletedIds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expect no entries at the start
-	deletedIds, err := repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, ttime, err := repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(t, err)
 	require.Empty(t, deletedIds)
+	// Transaction time should be within ~10 seconds of now
+	now := time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
 
 	// Delete a session
 	tg := tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), "deleteme")
@@ -421,14 +425,20 @@ func TestListDeletedIds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expect a single entry
-	deletedIds, err = repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, ttime, err = repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(t, err)
 	require.Equal(t, []string{tg.GetPublicId()}, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
 
 	// Try again with the time set to now, expect no entries
-	deletedIds, err = repo.ListDeletedIds(ctx, time.Now())
+	deletedIds, ttime, err = repo.ListDeletedIds(ctx, time.Now())
 	require.NoError(t, err)
 	require.Empty(t, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
 }
 
 func TestEstimatedCount(t *testing.T) {

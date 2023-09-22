@@ -352,17 +352,28 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 }
 
 // ListDeletedIds lists the public IDs of any sessions deleted since the timestamp provided.
-func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
+func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "session.(Repository).ListDeletedIds"
 	var deletedSessions []*deletedSession
-	if err := r.reader.SearchWhere(ctx, &deletedSessions, "delete_time >= ?", []any{since}); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted sessions"))
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedSessions, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted sessions"))
+		}
+		var err error
+		transactionTimestamp, err = r.TransactionTimestamp(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
 	}
 	var sessionIds []string
 	for _, sess := range deletedSessions {
 		sessionIds = append(sessionIds, sess.PublicId)
 	}
-	return sessionIds, nil
+	return sessionIds, transactionTimestamp, nil
 }
 
 // EstimatedCount returns an estimate of the total number of items in the session table.

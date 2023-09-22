@@ -108,13 +108,18 @@ func TestCredentialService_ListDeletedIds(t *testing.T) {
 		}
 		writer := &fakeWriter{
 			DoTxFn: func(ctx context.Context, retries uint, backoff db.Backoff, handler db.TxHandler) (db.RetryInfo, error) {
-				err := handler(&fakeReader{}, &fakeWriter{})
+				r := &fakeReader{
+					TransactionTimestampFn: func(ctx context.Context) (time.Time, error) {
+						return time.Now(), nil
+					},
+				}
+				err := handler(r, &fakeWriter{})
 				return db.RetryInfo{}, err
 			},
 		}
 		service, err := credential.NewCredentialService(ctx, writer, repo)
 		require.NoError(t, err)
-		ids, err := service.ListDeletedIds(ctx, timeSince)
+		ids, ttime, err := service.ListDeletedIds(ctx, timeSince)
 		require.NoError(t, err)
 		assert.Empty(
 			t,
@@ -122,6 +127,10 @@ func TestCredentialService_ListDeletedIds(t *testing.T) {
 				ids,
 				cmpopts.SortSlices(func(i, j string) bool { return i < j })),
 		)
+		// Transaction time should be within ~10 seconds of now
+		now := time.Now()
+		assert.True(t, ttime.Add(-10*time.Second).Before(now))
+		assert.True(t, ttime.Add(10*time.Second).After(now))
 	})
 	t.Run("tx-error", func(t *testing.T) {
 		t.Parallel()
@@ -142,7 +151,7 @@ func TestCredentialService_ListDeletedIds(t *testing.T) {
 		}
 		service, err := credential.NewCredentialService(ctx, writer, repo)
 		require.NoError(t, err)
-		_, err = service.ListDeletedIds(ctx, timeSince)
+		_, _, err = service.ListDeletedIds(ctx, timeSince)
 		require.ErrorContains(t, err, "some error")
 	})
 	t.Run("list-fails", func(t *testing.T) {
@@ -155,13 +164,18 @@ func TestCredentialService_ListDeletedIds(t *testing.T) {
 		}
 		writer := &fakeWriter{
 			DoTxFn: func(ctx context.Context, retries uint, backoff db.Backoff, handler db.TxHandler) (db.RetryInfo, error) {
-				err := handler(&fakeReader{}, &fakeWriter{})
+				r := &fakeReader{
+					TransactionTimestampFn: func(ctx context.Context) (time.Time, error) {
+						return time.Now(), nil
+					},
+				}
+				err := handler(r, &fakeWriter{})
 				return db.RetryInfo{}, err
 			},
 		}
 		service, err := credential.NewCredentialService(ctx, writer, repo)
 		require.NoError(t, err)
-		_, err = service.ListDeletedIds(ctx, timeSince)
+		_, _, err = service.ListDeletedIds(ctx, timeSince)
 		require.ErrorContains(t, err, "some error")
 	})
 }
