@@ -22,6 +22,20 @@ import (
 // allowed users it deletes the oldest one.
 func upsertUserAndAuthToken(ctx context.Context, reader db.Reader, writer db.Writer, bAddr string, at *authtokens.AuthToken) error {
 	const op = "cache.upsertUserAndAuthToken"
+	switch {
+	case util.IsNil(reader):
+		return errors.New(ctx, errors.InvalidParameter, op, "reader is nil")
+	case util.IsNil(writer):
+		return errors.New(ctx, errors.InvalidParameter, op, "writer is nil")
+	case util.IsNil(at):
+		return errors.New(ctx, errors.InvalidParameter, op, "auth token is nil")
+	case bAddr == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is empty")
+	case at.Id == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "auth token id is empty")
+	case at.UserId == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "auth token user id is empty")
+	}
 	{
 		// always make sure the user exists when adding a token
 		u := &user{
@@ -307,6 +321,12 @@ func (r *Repository) cleanOrphanedAuthTokens(ctx context.Context) error {
 // or does not have either a keyring or keyringless reference to it.
 func cleanOrphanedAuthTokens(ctx context.Context, writer db.Writer, idToKeyringlessAuthToken *sync.Map) error {
 	const op = "cache.cleanAuthTokens"
+	switch {
+	case util.IsNil(writer):
+		return errors.New(ctx, errors.InvalidParameter, op, "writer is nil")
+	case idToKeyringlessAuthToken == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "keyringless auth token map is nil")
+	}
 
 	var keyringlessAuthTokens []string
 	idToKeyringlessAuthToken.Range(func(key, _ any) bool {
@@ -393,6 +413,12 @@ func (r *Repository) listKeyringTokens(ctx context.Context, at *AuthToken) ([]*K
 // they are no longer represented in the db.
 func cleanKeyringlessAuthTokens(ctx context.Context, reader db.Reader, ringlessAuthTokens *sync.Map) error {
 	const op = "cache.cleanKeyringlessAuthTokens"
+	switch {
+	case util.IsNil(reader):
+		return errors.New(ctx, errors.InvalidParameter, op, "reader is nil")
+	case ringlessAuthTokens == nil:
+		return errors.New(ctx, errors.InvalidParameter, op, "keyringless auth token map is nil")
+	}
 	var ret []*AuthToken
 	if err := reader.SearchWhere(ctx, &ret, "true", nil); err != nil {
 		return errors.Wrap(ctx, err, op)
