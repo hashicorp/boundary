@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,7 +108,8 @@ func TestRepository_refreshTargets(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := r.refreshTargets(ctx, tc.u, tc.targets)
+			err := r.refreshTargets(ctx, tc.u, map[AuthToken]string{{Id: "id"}: "something"},
+				WithTargetRetrievalFunc(staticRetrievalFn(tc.targets)))
 			if tc.errorContains == "" {
 				assert.NoError(t, err)
 				rw := db.New(s.conn)
@@ -186,7 +188,8 @@ func TestRepository_ListTargets(t *testing.T) {
 			SessionMaxSeconds: 333,
 		},
 	}
-	require.NoError(t, r.refreshTargets(ctx, u1, ts))
+	require.NoError(t, r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
+		WithTargetRetrievalFunc(staticRetrievalFn(ts))))
 
 	t.Run("wrong user gets no targets", func(t *testing.T) {
 		l, err := r.ListTargets(ctx, kt2.AuthTokenId)
@@ -289,7 +292,8 @@ func TestRepository_QueryTargets(t *testing.T) {
 			SessionMaxSeconds: 333,
 		},
 	}
-	require.NoError(t, r.refreshTargets(ctx, u1, ts))
+	require.NoError(t, r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
+		WithTargetRetrievalFunc(staticRetrievalFn(ts))))
 
 	t.Run("wrong token gets no targets", func(t *testing.T) {
 		l, err := r.QueryTargets(ctx, kt2.AuthTokenId, query)
@@ -302,4 +306,22 @@ func TestRepository_QueryTargets(t *testing.T) {
 		assert.Len(t, l, 2)
 		assert.ElementsMatch(t, l, ts[0:2])
 	})
+}
+
+func TestDefaultTargetRetrievalFunc(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	tc.Client().SetToken(tc.Token().Token)
+	tarClient := targets.NewClient(tc.Client())
+
+	tar1, err := tarClient.Create(tc.Context(), "tcp", "p_1234567890", targets.WithName("tar1"), targets.WithTcpTargetDefaultPort(1))
+	require.NoError(t, err)
+	require.NotNil(t, tar1)
+	tar2, err := tarClient.Create(tc.Context(), "tcp", "p_1234567890", targets.WithName("tar2"), targets.WithTcpTargetDefaultPort(2))
+	require.NoError(t, err)
+	require.NotNil(t, tar2)
+
+	got, err := defaultTargetFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token)
+	assert.NoError(t, err)
+	assert.Contains(t, got, tar1.Item)
+	assert.Contains(t, got, tar2.Item)
 }

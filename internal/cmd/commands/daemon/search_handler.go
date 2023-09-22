@@ -38,6 +38,24 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 	case util.IsNil(repo):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is missing")
 	}
+
+	searchableResources := map[string]searcher{
+		"targets": &searchFns[*targets.Target]{
+			list:  repo.ListTargets,
+			query: repo.QueryTargets,
+			searchResult: func(t []*targets.Target) *SearchResult {
+				return &SearchResult{Targets: t}
+			},
+		},
+		"sessions": &searchFns[*sessions.Session]{
+			list:  repo.ListSessions,
+			query: repo.QuerySessions,
+			searchResult: func(s []*sessions.Session) *SearchResult {
+				return &SearchResult{Sessions: s}
+			},
+		},
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		filter, err := handlers.NewFilter(ctx, r.URL.Query().Get(filterKey))
@@ -66,17 +84,12 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 
 		query := r.URL.Query().Get(queryKey)
 
-		var res *SearchResult
-		switch resource {
-		case "targets":
-			res, err = searchTargets(r.Context(), repo, authTokenId, query, filter)
-		case "sessions":
-			res, err = searchSessions(r.Context(), repo, authTokenId, query, filter)
-		default:
+		rSearcher, ok := searchableResources[resource]
+		if !ok {
 			writeError(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
 			return
 		}
-
+		res, err := rSearcher.search(r.Context(), authTokenId, query, filter)
 		if err != nil {
 			switch {
 			case errors.Match(errors.T(errors.InvalidParameter), err):
@@ -99,50 +112,41 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 	}, nil
 }
 
-func searchTargets(ctx context.Context, repo *cache.Repository, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error) {
-	var found []*targets.Target
-	var err error
-	switch query {
-	case "":
-		found, err = repo.ListTargets(ctx, authTokenId)
-	default:
-		found, err = repo.QueryTargets(ctx, authTokenId, query)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	finalTars := make([]*targets.Target, 0, len(found))
-	for _, item := range found {
-		if filter.Match(item) {
-			finalTars = append(finalTars, item)
-		}
-	}
-	return &SearchResult{
-		Targets: finalTars,
-	}, nil
+type searcher interface {
+	search(ctx context.Context, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error)
 }
 
-func searchSessions(ctx context.Context, repo *cache.Repository, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error) {
-	var found []*sessions.Session
+// searchFns is a struct that collects all the functions needed to perform a search
+// on a specific resource type.
+type searchFns[T any] struct {
+	// list takes a context and an auth token and returns all resources for the
+	// user of that auth token.
+	list func(context.Context, string) ([]T, error)
+	// query takes a context, an auth token, and a query string and returns all
+	// resources for that auth token that matches the provided query parameter
+	query        func(context.Context, string, string) ([]T, error)
+	searchResult func([]T) *SearchResult
+}
+
+func (l *searchFns[T]) search(ctx context.Context, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error) {
+	const op = "daemon.(lookupFns).search"
+	var found []T
 	var err error
 	switch query {
 	case "":
-		found, err = repo.ListSessions(ctx, authTokenId)
+		found, err = l.list(ctx, authTokenId)
 	default:
-		found, err = repo.QuerySessions(ctx, authTokenId, query)
+		found, err = l.query(ctx, authTokenId, query)
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 
-	finalSess := make([]*sessions.Session, 0, len(found))
+	finalResults := make([]T, 0, len(found))
 	for _, item := range found {
 		if filter.Match(item) {
-			finalSess = append(finalSess, item)
+			finalResults = append(finalResults, item)
 		}
 	}
-	return &SearchResult{
-		Sessions: finalSess,
-	}, nil
+	return l.searchResult(finalResults), nil
 }

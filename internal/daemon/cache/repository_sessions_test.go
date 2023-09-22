@@ -10,10 +10,15 @@ import (
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
+	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/internal/daemon/controller"
+	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
+
+	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 )
 
 func TestRepository_refreshSessions(t *testing.T) {
@@ -109,7 +114,8 @@ func TestRepository_refreshSessions(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := r.refreshSessions(ctx, tc.u, tc.sess)
+			err := r.refreshSessions(ctx, tc.u, map[AuthToken]string{{Id: "id"}: "something"},
+				WithSessionRetrievalFunc(staticRetrievalFn(tc.sess)))
 			if tc.errorContains == "" {
 				assert.NoError(t, err)
 				rw := db.New(s.conn)
@@ -192,7 +198,8 @@ func TestRepository_ListSessions(t *testing.T) {
 			Type:     "tcp",
 		},
 	}
-	require.NoError(t, r.refreshSessions(ctx, u1, ss))
+	require.NoError(t, r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(staticRetrievalFn(ss))))
 
 	t.Run("wrong user gets no sessions", func(t *testing.T) {
 		l, err := r.ListSessions(ctx, kt2.AuthTokenId)
@@ -298,7 +305,8 @@ func TestRepository_QuerySessions(t *testing.T) {
 			Type:     "tcp",
 		},
 	}
-	require.NoError(t, r.refreshSessions(ctx, u1, ss))
+	require.NoError(t, r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(staticRetrievalFn(ss))))
 
 	t.Run("wrong token gets no sessions", func(t *testing.T) {
 		l, err := r.QuerySessions(ctx, kt2.AuthTokenId, query)
@@ -311,4 +319,24 @@ func TestRepository_QuerySessions(t *testing.T) {
 		assert.Len(t, l, 2)
 		assert.ElementsMatch(t, l, ss[0:2])
 	})
+}
+
+func TestDefaultSessionRetrievalFunc(t *testing.T) {
+	tc := controller.NewTestController(t, nil)
+	tc.Client().SetToken(tc.Token().Token)
+	tarClient := targets.NewClient(tc.Client())
+	_ = worker.NewTestWorker(t, &worker.TestWorkerOpts{
+		InitialUpstreams: tc.ClusterAddrs(),
+		WorkerAuthKms:    tc.Config().WorkerAuthKms,
+	})
+
+	tar1, err := tarClient.Create(tc.Context(), "tcp", "p_1234567890", targets.WithName("tar1"), targets.WithTcpTargetDefaultPort(1), targets.WithAddress("address"))
+	require.NoError(t, err)
+	require.NotNil(t, tar1)
+	_, err = tarClient.AuthorizeSession(tc.Context(), tar1.Item.Id)
+	assert.NoError(t, err)
+
+	got, err := defaultSessionFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token)
+	assert.NoError(t, err)
+	assert.Len(t, got, 1)
 }
