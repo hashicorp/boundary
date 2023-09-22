@@ -7,46 +7,99 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	stdErrors "errors"
+	stderrors "errors"
 	"fmt"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/mql"
 )
 
-func (r *Repository) refreshSessions(ctx context.Context, u *user, sessions []*sessions.Session) error {
+// SessionRetrievalFunc is a function that retrieves sessions
+// from the provided boundary addr using the provided token.
+type SessionRetrievalFunc func(ctx context.Context, addr, token string) ([]*sessions.Session, error)
+
+func defaultSessionFunc(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
+	const op = "cache.defaultSessionFunc"
+	client, err := api.NewClient(&api.Config{
+		Addr:  addr,
+		Token: token,
+	})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	sClient := sessions.NewClient(client)
+	l, err := sClient.List(ctx, "global", sessions.WithRecursive(true))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return l.Items, nil
+}
+
+func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
 	const op = "cache.(Repository).refreshSessions"
 	switch {
 	case util.IsNil(u):
 		return errors.New(ctx, errors.InvalidParameter, op, "user is nil")
 	case u.Id == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
+	case u.Address == "":
+		return errors.New(ctx, errors.InvalidParameter, op, "user boundary address is missing")
 	}
 
-	foundU := u.clone()
-	if err := r.rw.LookupById(ctx, foundU); err != nil {
-		// if this user isn't known, error out.
-		return errors.Wrap(ctx, err, op, errors.WithMsg("looking up user"))
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if opts.withSessionRetrievalFunc == nil {
+		opts.withSessionRetrievalFunc = defaultSessionFunc
 	}
 
-	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+	// Find and use a token for retrieving sessions
+	var gotResponse bool
+	var resp []*sessions.Session
+	var retErr error
+	for at, t := range tokens {
+		resp, err = opts.withSessionRetrievalFunc(ctx, u.Address, t)
+		if err != nil {
+			// TODO: If we get an error about the token no longer having
+			// permissions, remove it.
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
+			continue
+		}
+		gotResponse = true
+		break
+	}
+
+	if retErr != nil {
+		if saveErr := r.SaveError(ctx, u, resource.Session.String(), retErr); saveErr != nil {
+			return stderrors.Join(err, errors.Wrap(ctx, saveErr, op))
+		}
+	}
+	if !gotResponse {
+		return retErr
+	}
+
+	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d sessions for user %v", len(resp), u))
+	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		// TODO: Instead of deleting everything, use refresh tokens and apply the delta
 		if _, err := w.Exec(ctx, "delete from session where user_id = @user_id",
-			[]any{sql.Named("user_id", foundU.Id)}); err != nil {
+			[]any{sql.Named("user_id", u.Id)}); err != nil {
 			return err
 		}
 
-		for _, s := range sessions {
+		for _, s := range resp {
 			item, err := json.Marshal(s)
 			if err != nil {
 				return err
 			}
 			newSession := &Session{
-				UserId:   foundU.Id,
+				UserId:   u.Id,
 				Id:       s.Id,
 				Type:     s.Type,
 				Status:   s.Status,
@@ -64,9 +117,6 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, sessions []*s
 		return nil
 	})
 	if err != nil {
-		if saveErr := r.SaveError(ctx, u, resource.Session.String(), err); saveErr != nil {
-			return stdErrors.Join(err, errors.Wrap(ctx, saveErr, op))
-		}
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil

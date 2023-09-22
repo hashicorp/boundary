@@ -6,58 +6,13 @@ package cache
 import (
 	"context"
 	stderrors "errors"
-	"fmt"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
-	"github.com/hashicorp/boundary/api/sessions"
-	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 )
-
-// TargetRetrievalFunc is a function that retrieves targets
-// from the provided boundary addr using the provided token.
-type TargetRetrievalFunc func(ctx context.Context, addr, token string) ([]*targets.Target, error)
-
-func defaultTargetFunc(ctx context.Context, addr, token string) ([]*targets.Target, error) {
-	const op = "cache.defaultTargetFunc"
-	client, err := api.NewClient(&api.Config{
-		Addr:  addr,
-		Token: token,
-	})
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	tarClient := targets.NewClient(client)
-	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return l.Items, nil
-}
-
-// SessionRetrievalFunc is a function that retrieves sessions
-// from the provided boundary addr using the provided token.
-type SessionRetrievalFunc func(ctx context.Context, addr, token string) ([]*sessions.Session, error)
-
-func defaultSessionFunc(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
-	const op = "cache.defaultSessionFunc"
-	client, err := api.NewClient(&api.Config{
-		Addr:  addr,
-		Token: token,
-	})
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	sClient := sessions.NewClient(client)
-	l, err := sClient.List(ctx, "global", sessions.WithRecursive(true))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return l.Items, nil
-}
 
 // cleanAndPickAuthTokens removes from the cache all auth tokens which are
 // evicted from the cache or no longer stored in a keyring and returns the
@@ -139,22 +94,10 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 		return errors.Wrap(ctx, err, op)
 	}
 
-	opts, err := getOpts(opt...)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-
 	us, err := r.listUsers(ctx)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	if opts.withTargetRetrievalFunc == nil {
-		opts.withTargetRetrievalFunc = defaultTargetFunc
-	}
-	if opts.withSessionRetrievalFunc == nil {
-		opts.withSessionRetrievalFunc = defaultSessionFunc
-	}
-
 	var retErr error
 	for _, u := range us {
 		tokens, err := r.cleanAndPickAuthTokens(ctx, u)
@@ -163,35 +106,13 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 			continue
 		}
 
-		// Find and use a token for retrieving targets
-		for at, t := range tokens {
-			resp, err := opts.withTargetRetrievalFunc(ctx, u.Address, t)
-			if err != nil {
-				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
-				continue
-			}
-
-			event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for user %v", len(resp), u))
-			if err := r.refreshTargets(ctx, u, resp); err != nil {
-				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for user %v", u)))
-			}
-			break
+		if err := r.refreshTargets(ctx, u, tokens, opt...); err != nil {
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op))
+		}
+		if err := r.refreshSessions(ctx, u, tokens, opt...); err != nil {
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op))
 		}
 
-		// Find and use a token for retrieving sessions
-		for at, t := range tokens {
-			resp, err := opts.withSessionRetrievalFunc(ctx, u.Address, t)
-			if err != nil {
-				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
-				continue
-			}
-
-			event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d sessions for user %v", len(resp), u))
-			if err := r.refreshSessions(ctx, u, resp); err != nil {
-				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for user %v", u)))
-			}
-			break
-		}
 	}
 	return retErr
 }
