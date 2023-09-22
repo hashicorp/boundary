@@ -17,6 +17,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/3650)).  
 * feat: allow HCP cluster id to be sourced from file or env variable
     ([PR](https://github.com/hashicorp/boundary/pull/3709)).
+* feat: add support for telemetry events via flag or Boundary configuration (requires observation events to be enabled). 
+Deny filter now filters coordination worker status from observation events by default. (This behaviour is overridden by any user specified allow or deny filters) 
+  ([PR](https://github.com/hashicorp/boundary/pull/3753)).
 
 ### Bug Fixes
 
