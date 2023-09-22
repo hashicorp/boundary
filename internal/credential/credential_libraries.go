@@ -12,9 +12,9 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// CredentialLibraryRepository defines the interface expected
+// LibraryRepository defines the interface expected
 // to get the total number of credential libraries and deleted ids.
-type CredentialLibraryRepository interface {
+type LibraryRepository interface {
 	EstimatedLibraryCount(context.Context) (int, error)
 	EstimatedSSHCertificateLibraryCount(context.Context) (int, error)
 	ListDeletedCredentialLibraryIds(context.Context, time.Time, ...Option) ([]string, error)
@@ -22,7 +22,7 @@ type CredentialLibraryRepository interface {
 }
 
 // NewCredentialLibraryService returns a new credential library service.
-func NewCredentialLibraryService(ctx context.Context, writer db.Writer, repo CredentialLibraryRepository) (*CredentialLibraryService, error) {
+func NewCredentialLibraryService(ctx context.Context, writer db.Writer, repo LibraryRepository) (*CredentialLibraryService, error) {
 	const op = "credential.NewCredentialLibraryService"
 	switch {
 	case util.IsNil(writer):
@@ -39,13 +39,13 @@ func NewCredentialLibraryService(ctx context.Context, writer db.Writer, repo Cre
 // CredentialLibraryService coordinates calls to across different subtype repositories
 // to gather information about all credential libraries.
 type CredentialLibraryService struct {
-	repo   CredentialLibraryRepository
+	repo   LibraryRepository
 	writer db.Writer
 }
 
 // EstimatedCount gets an estimate of the total number of credential libraries across all types
 func (s *CredentialLibraryService) EstimatedCount(ctx context.Context) (int, error) {
-	const op = "credential.(*CredentialLibraryRepository).EstimatedCount"
+	const op = "credential.(*LibraryRepository).EstimatedCount"
 	numGenericLibs, err := s.repo.EstimatedLibraryCount(ctx)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
@@ -59,7 +59,7 @@ func (s *CredentialLibraryService) EstimatedCount(ctx context.Context) (int, err
 
 // ListDeletedIds lists all deleted credential library IDs across all types
 func (s *CredentialLibraryService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
-	const op = "credential.(*CredentialLibraryRepository).ListDeletedIds"
+	const op = "credential.(*LibraryRepository).ListDeletedIds"
 	var deletedIds []string
 	_, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		deletedLibIds, err := s.repo.ListDeletedCredentialLibraryIds(ctx, since, WithReaderWriter(r, w))

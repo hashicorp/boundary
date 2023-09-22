@@ -12,15 +12,15 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// CredentialStoreRepository defines the interface expected
+// StoreRepository defines the interface expected
 // to get the total number of credential stores and deleted ids.
-type CredentialStoreRepository interface {
+type StoreRepository interface {
 	EsimatedStoreCount(context.Context) (int, error)
 	ListDeletedCredentialStoreIds(context.Context, time.Time, ...Option) ([]string, error)
 }
 
 // NewCredentialStoreService returns a new credential store service.
-func NewCredentialStoreService(ctx context.Context, writer db.Writer, repos ...CredentialStoreRepository) (*CredentialStoreService, error) {
+func NewCredentialStoreService(ctx context.Context, writer db.Writer, repos ...StoreRepository) (*CredentialStoreService, error) {
 	const op = "credential.NewCredentialStoreService"
 	switch {
 	case util.IsNil(writer):
@@ -42,13 +42,13 @@ func NewCredentialStoreService(ctx context.Context, writer db.Writer, repos ...C
 // CredentialStoreService coordinates calls to across different subtype repositories
 // to gather information about all credential stores.
 type CredentialStoreService struct {
-	repos  []CredentialStoreRepository
+	repos  []StoreRepository
 	writer db.Writer
 }
 
 // EstimatedCount gets an estimate of the total number of credential stores across all types
 func (s *CredentialStoreService) EstimatedCount(ctx context.Context) (int, error) {
-	const op = "credential.(*CredentialStoreRepository).EstimatedCount"
+	const op = "credential.(*StoreRepository).EstimatedCount"
 	var totalNumStores int
 	for _, repo := range s.repos {
 		numStores, err := repo.EsimatedStoreCount(ctx)
@@ -62,7 +62,7 @@ func (s *CredentialStoreService) EstimatedCount(ctx context.Context) (int, error
 
 // ListDeletedIds lists all deleted credential store IDs across all types
 func (s *CredentialStoreService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
-	const op = "credential.(*CredentialStoreRepository).ListDeletedIds"
+	const op = "credential.(*StoreRepository).ListDeletedIds"
 	var deletedIds []string
 	_, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		for _, repo := range s.repos {

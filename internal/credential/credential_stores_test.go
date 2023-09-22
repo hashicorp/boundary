@@ -17,16 +17,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type fakeCredentialStoreRepository struct {
+type fakeStoreRepository struct {
 	EsimatedStoreCountFn            func(context.Context) (int, error)
 	ListDeletedCredentialStoreIdsFn func(context.Context, time.Time, ...credential.Option) ([]string, error)
 }
 
-func (f *fakeCredentialStoreRepository) EsimatedStoreCount(ctx context.Context) (int, error) {
+func (f *fakeStoreRepository) EsimatedStoreCount(ctx context.Context) (int, error) {
 	return f.EsimatedStoreCountFn(ctx)
 }
 
-func (f *fakeCredentialStoreRepository) ListDeletedCredentialStoreIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+func (f *fakeStoreRepository) ListDeletedCredentialStoreIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 	return f.ListDeletedCredentialStoreIdsFn(ctx, since, opt...)
 }
 
@@ -35,18 +35,18 @@ func TestNewCredentialStoreService(t *testing.T) {
 	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
-		got, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, &fakeCredentialStoreRepository{})
+		got, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, &fakeStoreRepository{})
 		require.NoError(t, err)
 		require.NotNil(t, got)
 	})
 	t.Run("nil-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialStoreService(ctx, nil, &fakeCredentialStoreRepository{})
+		_, err := credential.NewCredentialStoreService(ctx, nil, &fakeStoreRepository{})
 		require.Error(t, err)
 	})
 	t.Run("nil-interface-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialStoreService(ctx, (*fakeWriter)(nil), &fakeCredentialStoreRepository{})
+		_, err := credential.NewCredentialStoreService(ctx, (*fakeWriter)(nil), &fakeStoreRepository{})
 		require.Error(t, err)
 	})
 	t.Run("repos", func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestNewCredentialStoreService(t *testing.T) {
 	})
 	t.Run("nil-interface-repo", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, (*fakeCredentialStoreRepository)(nil))
+		_, err := credential.NewCredentialStoreService(ctx, &fakeWriter{}, (*fakeStoreRepository)(nil))
 		require.Error(t, err)
 	})
 }
@@ -71,7 +71,7 @@ func TestCredentialStoreService_EstimatedCount(t *testing.T) {
 	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
-		repo := &fakeCredentialStoreRepository{
+		repo := &fakeStoreRepository{
 			EsimatedStoreCountFn: func(ctx context.Context) (int, error) {
 				return 5, nil
 			},
@@ -84,7 +84,7 @@ func TestCredentialStoreService_EstimatedCount(t *testing.T) {
 	})
 	t.Run("error-in-get-fn", func(t *testing.T) {
 		t.Parallel()
-		repo := &fakeCredentialStoreRepository{
+		repo := &fakeStoreRepository{
 			EsimatedStoreCountFn: func(ctx context.Context) (int, error) {
 				return 0, errors.New("some error")
 			},
@@ -102,7 +102,7 @@ func TestCredentialStoreService_ListDeletedIds(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
-		repo := &fakeCredentialStoreRepository{
+		repo := &fakeStoreRepository{
 			ListDeletedCredentialStoreIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)
@@ -131,7 +131,7 @@ func TestCredentialStoreService_ListDeletedIds(t *testing.T) {
 	t.Run("tx-error", func(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
-		repo := &fakeCredentialStoreRepository{
+		repo := &fakeStoreRepository{
 			ListDeletedCredentialStoreIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)
@@ -153,7 +153,7 @@ func TestCredentialStoreService_ListDeletedIds(t *testing.T) {
 	t.Run("list-fails", func(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
-		repo := &fakeCredentialStoreRepository{
+		repo := &fakeStoreRepository{
 			ListDeletedCredentialStoreIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				return nil, errors.New("some error")
 			},
