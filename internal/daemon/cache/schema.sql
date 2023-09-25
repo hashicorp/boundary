@@ -58,22 +58,6 @@ create table if not exists keyring_token (
   primary key (keyring_type, token_name)
 );
 
--- *delete_orphaned_auth_tokens triggers deletes all auth tokens when it no
--- longer has any storage for the auth tokens in the db
-create trigger keyring_token_update_delete_orphaned_auth_tokens after update on keyring_token
-begin
-delete from auth_token
-where
-    id not in (select auth_token_id from keyring_token);
-end;
-
-create trigger keyring_token_delete_delete_orphaned_auth_tokens after delete on keyring_token
-begin
-delete from auth_token
-where
-    id not in (select auth_token_id from keyring_token);
-end;
-
 -- target contains cached boundary target resource for a specific user and with
 -- specific fields extracted to facilitate searching over those fields
 create table if not exists target (
@@ -119,11 +103,13 @@ create table if not exists session (
 -- contains errors from the last attempt to sync data from boundary for a
 -- specific resource type
 create table if not exists api_error (
-	user_id text not null,
-	resource_type text not null,
-	error text not null,
-	create_time timestamp not null default current_timestamp,
-	primary key (user_id, resource_type)
+  user_id text not null
+    references user(id)
+    on delete cascade,
+  resource_type text not null,
+  error text not null,
+  create_time timestamp not null default current_timestamp,
+  primary key (user_id, resource_type)
 );
 
 commit;

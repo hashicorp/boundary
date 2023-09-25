@@ -126,17 +126,11 @@ func TestAuthToken_NoMoreKeyringTokens(t *testing.T) {
 	require.NoError(t, rw.Create(ctx, kt2))
 	assert.NoError(t, rw.LookupById(ctx, u))
 
-	// deleting a single token doesn't remove the user
-	_, err = rw.Exec(ctx, "delete from keyring_token where (keyring_type, token_name) = (?, ?)", []any{kt1.KeyringType, kt1.TokenName})
+	// deleting the keyring tokens doesn't remove the user
+	_, err = rw.Exec(ctx, "delete from keyring_token", nil)
 	require.NoError(t, err)
 	assert.NoError(t, rw.LookupById(ctx, at))
 	assert.NoError(t, rw.LookupById(ctx, u))
-
-	// deleting both tokens _does_ remove the user
-	_, err = rw.Exec(ctx, "delete from keyring_token", nil)
-	require.NoError(t, err)
-	assert.True(t, errors.IsNotFoundError(rw.LookupById(ctx, at)))
-	assert.True(t, errors.IsNotFoundError(rw.LookupById(ctx, u)))
 }
 
 func TestAuthToken(t *testing.T) {

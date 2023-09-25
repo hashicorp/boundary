@@ -5,10 +5,13 @@ package daemon
 
 import (
 	"context"
+
+	"github.com/hashicorp/boundary/internal/daemon/cache"
 )
 
 type options struct {
-	withDebug bool
+	withDebug                   bool
+	withBoundaryTokenReaderFunc cache.BoundaryTokenReaderFn
 }
 
 // Option - how options are passed as args
@@ -33,6 +36,14 @@ func getOpts(opt ...Option) (options, error) {
 func WithDebug(_ context.Context, debug bool) Option {
 	return func(o *options) error {
 		o.withDebug = debug
+		return nil
+	}
+}
+
+// WithBoundaryTokenReaderFunc provides an option for specifying a BoundaryTokenReaderFn
+func WithBoundaryTokenReaderFunc(_ context.Context, fn cache.BoundaryTokenReaderFn) Option {
+	return func(o *options) error {
+		o.withBoundaryTokenReaderFunc = fn
 		return nil
 	}
 }
