@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## 0.14.0 (2023/09/25)
+## Next
 
 ### New and Improved
 
