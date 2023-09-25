@@ -25,7 +25,8 @@ create table if not exists auth_token (
   -- the last time this the auth token was used on this machine to access
   -- boundary outside of the context of the cache.
   last_accessed_time timestamp not null
-    default (strftime('%Y-%m-%d %H:%M:%f','now'))
+    default (strftime('%Y-%m-%d %H:%M:%f','now')),
+  expiration_time timestamp not null
 );
 
 -- *delete_orphaned_users triggers delete a user when it no longer has any
