@@ -17,12 +17,18 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
+// AuthTokenIdSegmentCount are the number of segments, delineated by "_", that
+// make up the auth token id inside an auth token.
+// For example, an authtoken format should look something like at_1234567890_sometokenpayload
+const AuthTokenIdSegmentCount = 2
+
 // upsertUserAndAuthToken upserts a user and authToken using the data in the provided authtoken.
 // If creating this user results in the number of users exceeding the limit of
 // allowed users it deletes the oldest one.
 func upsertUserAndAuthToken(ctx context.Context, reader db.Reader, writer db.Writer, bAddr string, at *authtokens.AuthToken) error {
 	const op = "cache.upsertUserAndAuthToken"
 	switch {
+	// TODO: add check for reader and writer being part of an inflight tx.
 	case util.IsNil(reader):
 		return errors.New(ctx, errors.InvalidParameter, op, "reader is nil")
 	case util.IsNil(writer):
@@ -109,11 +115,12 @@ func (r *Repository) AddRawToken(ctx context.Context, bAddr string, rawToken str
 		return errors.New(ctx, errors.InvalidParameter, op, "boundary address is empty")
 	}
 
+	// rawToken should look something like at_1234567890_someencryptedpayload
 	atIdParts := strings.SplitN(rawToken, "_", 4)
 	if len(atIdParts) != 3 {
 		return errors.New(ctx, errors.InvalidParameter, op, "boundary auth token is is malformed")
 	}
-	atId := strings.Join(atIdParts[:2], "_")
+	atId := strings.Join(atIdParts[:AuthTokenIdSegmentCount], "_")
 
 	var at *authtokens.AuthToken
 	{
@@ -137,7 +144,7 @@ func (r *Repository) AddRawToken(ctx context.Context, bAddr string, rawToken str
 			// if we don't know about it in the cache or we don't know about
 			// this auth token in memory, get it from boundary to sure up the
 			// cache information about this auth token.
-			at, err = r.tokenReadFn(ctx, bAddr, rawToken)
+			at, err = r.tokenReadFromBoundaryFn(ctx, bAddr, rawToken)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -168,10 +175,11 @@ func (r *Repository) AddRawToken(ctx context.Context, bAddr string, rawToken str
 	return nil
 }
 
-// AddKeyringToken adds a token to the repository.  If the token in the
+// AddKeyringToken adds a token to the repository.  If the token's id in the
 // keyring doesn't match the id provided an error is returned.
 // The token must be valid and present in boundary and be for a user that
-// has permission to send a Read request for itself to boundary.
+// has permission to send a self-Read request to boundary.  The user id
+// stored in the keyring must also match the user id returned from boundary.
 func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token KeyringToken) error {
 	const op = "cache.(Repository).AddKeyringToken"
 	switch {
@@ -203,7 +211,7 @@ func (r *Repository) AddKeyringToken(ctx context.Context, bAddr string, token Ke
 		case err != nil && !errors.IsNotFoundError(err):
 			return errors.Wrap(ctx, err, op)
 		case errors.IsNotFoundError(err):
-			at, err = r.tokenReadFn(ctx, bAddr, keyringStoredAt.Token)
+			at, err = r.tokenReadFromBoundaryFn(ctx, bAddr, keyringStoredAt.Token)
 			if err != nil {
 				return errors.Wrap(ctx, err, op)
 			}
@@ -314,7 +322,14 @@ func (r *Repository) deleteKeyringToken(ctx context.Context, kt KeyringToken) er
 // cleanAuthTokens removes all tokens which are older than the staleness limit
 // or does not have either a keyring or keyringless reference to it.
 func (r *Repository) cleanOrphanedAuthTokens(ctx context.Context) error {
-	return cleanOrphanedAuthTokens(ctx, r.rw, r.idToKeyringlessAuthToken)
+	const op = "cache.Repository.cleanOrphanedAuthTokens"
+	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
+		if err := cleanOrphanedAuthTokens(ctx, writer, r.idToKeyringlessAuthToken); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		return nil
+	})
+	return err
 }
 
 // cleanAuthTokens removes all tokens which are older than the staleness limit
@@ -322,6 +337,7 @@ func (r *Repository) cleanOrphanedAuthTokens(ctx context.Context) error {
 func cleanOrphanedAuthTokens(ctx context.Context, writer db.Writer, idToKeyringlessAuthToken *sync.Map) error {
 	const op = "cache.cleanAuthTokens"
 	switch {
+	// TODO: Add check here to see if a transaction is in flight.
 	case util.IsNil(writer):
 		return errors.New(ctx, errors.InvalidParameter, op, "writer is nil")
 	case idToKeyringlessAuthToken == nil:
@@ -409,10 +425,10 @@ func (r *Repository) listKeyringTokens(ctx context.Context, at *AuthToken) ([]*K
 	return ret, nil
 }
 
-// cleanKeyringlessAuthTokens removes the in memory storage of auth tokens if
+// syncKeyringlessTokensWithDb removes the in memory storage of auth tokens if
 // they are no longer represented in the db.
-func cleanKeyringlessAuthTokens(ctx context.Context, reader db.Reader, ringlessAuthTokens *sync.Map) error {
-	const op = "cache.cleanKeyringlessAuthTokens"
+func syncKeyringlessTokensWithDb(ctx context.Context, reader db.Reader, ringlessAuthTokens *sync.Map) error {
+	const op = "cache.syncKeyringlessTokensWithDb"
 	switch {
 	case util.IsNil(reader):
 		return errors.New(ctx, errors.InvalidParameter, op, "reader is nil")

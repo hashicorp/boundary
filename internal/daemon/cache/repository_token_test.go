@@ -31,14 +31,35 @@ func TestRepository_AddKeyringToken(t *testing.T) {
 		Token:  "at_1_token",
 		UserId: u.Id,
 	}
-	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	// used to test mismatched user ids between keyring and cache
+	mismatchingAt := &authtokens.AuthToken{
+		Id:     "at_mismatch",
+		Token:  "at_mismatch_token",
+		UserId: u.Id,
+	}
+	boundaryAuthTokens := []*authtokens.AuthToken{at, mismatchingAt}
 	keyring := "k"
 	tokenName := "t"
-	atMap := map[ringToken]*authtokens.AuthToken{
-		{keyring, tokenName}: at,
-	}
+	atMap := make(map[ringToken]*authtokens.AuthToken)
+	atMap[ringToken{keyring, tokenName}] = at
+	atMap[ringToken{"mismatch", "mismatch"}] = mismatchingAt
 	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 	require.NoError(t, err)
+
+	t.Run("userid mismatch between db and keyring", func(t *testing.T) {
+		require.NoError(t, r.AddKeyringToken(ctx, "address", KeyringToken{
+			KeyringType: "mismatch",
+			TokenName:   "mismatch",
+			AuthTokenId: mismatchingAt.Id,
+		}))
+
+		mismatchingAt.UserId = "changedToMismatch"
+		assert.ErrorContains(t, r.AddKeyringToken(ctx, "address", KeyringToken{
+			KeyringType: "mismatch",
+			TokenName:   "mismatch",
+			AuthTokenId: mismatchingAt.Id,
+		}), "user id doesn't match what is specified in the stored auth token")
+	})
 
 	errCases := []struct {
 		name          string
@@ -55,6 +76,16 @@ func TestRepository_AddKeyringToken(t *testing.T) {
 				AuthTokenId: at.Id,
 			},
 			errorContains: "",
+		},
+		{
+			name: "not in keyring",
+			addr: "address",
+			kt: KeyringToken{
+				KeyringType: keyring,
+				TokenName:   "unknowntokenname",
+				AuthTokenId: at.Id,
+			},
+			errorContains: "unable to find token in the keyring specified",
 		},
 		{
 			name: "missing address",
@@ -126,9 +157,27 @@ func TestRepository_AddRawToken(t *testing.T) {
 		Token:  "at_1_token",
 		UserId: "u1",
 	}
-	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	existingAt := &authtokens.AuthToken{
+		Id:     "at_existing",
+		Token:  "at_existing_token",
+		UserId: "u2",
+	}
+	boundaryAuthTokens := []*authtokens.AuthToken{at, existingAt}
 	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(map[ringToken]*authtokens.AuthToken{}), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 	require.NoError(t, err)
+
+	t.Run("mismatched userid between memory and db", func(t *testing.T) {
+		require.NoError(t, r.AddRawToken(ctx, "address", existingAt.Token))
+		loadedExistingV, loaded := r.idToKeyringlessAuthToken.Load(existingAt.Id)
+		require.True(t, loaded)
+		loadedExistingAt := loadedExistingV.(*authtokens.AuthToken)
+		loadedExistingAt.UserId = "mismatchingUserId"
+		r.idToKeyringlessAuthToken.Store(existingAt.Id, loadedExistingAt)
+
+		err := r.AddRawToken(ctx, "address", loadedExistingAt.Token)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "user id doesn't match what is specified in the stored auth token")
+	})
 
 	errCases := []struct {
 		name          string
@@ -283,7 +332,7 @@ func TestRepository_AddToken_EvictsOverLimit_Keyringless(t *testing.T) {
 	_, ok = r.idToKeyringlessAuthToken.Load(boundaryAuthTokens[len(boundaryAuthTokens)-1].Id)
 	assert.True(t, ok)
 
-	assert.NoError(t, cleanKeyringlessAuthTokens(ctx, r.rw, r.idToKeyringlessAuthToken))
+	assert.NoError(t, syncKeyringlessTokensWithDb(ctx, r.rw, r.idToKeyringlessAuthToken))
 	_, ok = r.idToKeyringlessAuthToken.Load(boundaryAuthTokens[0].Id)
 	assert.False(t, ok)
 }
@@ -313,7 +362,7 @@ func TestRepository_CleanAuthTokens(t *testing.T) {
 	_, present = r.idToKeyringlessAuthToken.Load(at.Id)
 	assert.True(t, present)
 
-	assert.NoError(t, cleanKeyringlessAuthTokens(ctx, r.rw, r.idToKeyringlessAuthToken))
+	assert.NoError(t, syncKeyringlessTokensWithDb(ctx, r.rw, r.idToKeyringlessAuthToken))
 
 	_, present = r.idToKeyringlessAuthToken.Load(at.Id)
 	assert.False(t, present)

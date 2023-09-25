@@ -32,9 +32,14 @@ import (
 // Commander is an interface that provides a way to get an apiClient
 // and retrieve the keyring and token information used by a command.
 type Commander interface {
-	Client(opt ...base.Option) (*api.Client, error)
+	ClientProvider
 	DiscoverKeyringTokenInfo() (string, string, error)
 	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
+}
+
+// ClientProvider is an interface that provides an api.Client
+type ClientProvider interface {
+	Client(opt ...base.Option) (*api.Client, error)
 }
 
 type cacheServer struct {
@@ -117,9 +122,13 @@ func (s *cacheServer) shutdown(ctx context.Context) error {
 	return shutdownErr
 }
 
-func defaultBoundaryTokenReader(cmd Commander) cache.BoundaryTokenReaderFn {
+func defaultBoundaryTokenReader(ctx context.Context, cp ClientProvider) (cache.BoundaryTokenReaderFn, error) {
+	const op = "daemon.defaultBoundaryTokenReader"
+	switch {
+	case util.IsNil(cp):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "client provider is nil")
+	}
 	return func(ctx context.Context, addr, tok string) (*authtokens.AuthToken, error) {
-		const op = "daemon.defaultAuthTokenRead"
 		switch {
 		case addr == "":
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "address is missing")
@@ -130,9 +139,9 @@ func defaultBoundaryTokenReader(cmd Commander) cache.BoundaryTokenReaderFn {
 		if len(atIdParts) != 3 {
 			return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token is malformed")
 		}
-		atId := strings.Join(atIdParts[0:2], "_")
+		atId := strings.Join(atIdParts[:cache.AuthTokenIdSegmentCount], "_")
 
-		c, err := cmd.Client()
+		c, err := cp.Client()
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +154,7 @@ func defaultBoundaryTokenReader(cmd Commander) cache.BoundaryTokenReaderFn {
 			return nil, errors.Wrap(ctx, err, op)
 		}
 		return at.GetItem(), nil
-	}
+	}, nil
 }
 
 // start will fire up the refresh goroutine and the caching API http server as a
@@ -163,7 +172,10 @@ func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener, 
 		return errors.Wrap(ctx, err, op)
 	}
 	if opts.withBoundaryTokenReaderFunc == nil {
-		opts.withBoundaryTokenReaderFunc = defaultBoundaryTokenReader(cmd)
+		opts.withBoundaryTokenReaderFunc, err = defaultBoundaryTokenReader(ctx, cmd)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
 	}
 
 	s.info["Listening address"] = l.Addr().String()
