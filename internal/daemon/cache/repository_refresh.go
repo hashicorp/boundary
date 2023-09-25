@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 )
 
 // TargetRetrievalFunc is a function that retrieves targets
@@ -102,7 +102,7 @@ func (r *Repository) cleanAndPickAuthTokens(ctx context.Context, u *user) (map[A
 // targets from a boundary address.
 func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 	const op = "cache.(Repository).Refresh"
-	if err := r.cleanOrphanedAuthTokens(ctx); err != nil {
+	if err := r.cleanExpiredOrOrphanedAuthTokens(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
