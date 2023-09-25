@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -75,13 +76,18 @@ func (r *Repository) cleanAndPickAuthTokens(ctx context.Context, u *user) (map[A
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("for user %v, auth token %q", u, t.Id))
 		}
 		for _, kt := range keyringTokens {
-			at := r.tokenLookupFn(kt.KeyringType, kt.TokenName)
+			at := r.tokenKeyringFn(kt.KeyringType, kt.TokenName)
 			switch {
 			case at == nil, at.Id != kt.AuthTokenId:
 				if err := r.deleteKeyringToken(ctx, *kt); err != nil {
 					return nil, errors.Wrap(ctx, err, op)
 				}
 			case at != nil:
+				ret[*t] = at.Token
+			}
+		}
+		if atv, ok := r.idToKeyringlessAuthToken.Load(t.Id); ok {
+			if at, ok := atv.(*authtokens.AuthToken); ok {
 				ret[*t] = at.Token
 			}
 		}
@@ -96,7 +102,7 @@ func (r *Repository) cleanAndPickAuthTokens(ctx context.Context, u *user) (map[A
 // targets from a boundary address.
 func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 	const op = "cache.(Repository).Refresh"
-	if err := r.removeStaleTokens(ctx); err != nil {
+	if err := r.cleanOrphanedAuthTokens(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 

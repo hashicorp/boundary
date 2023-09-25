@@ -5,16 +5,45 @@ package daemon
 
 import (
 	"context"
-	"fmt"
+	stdErrors "errors"
 	"net/http"
 	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// ringToken is a test struct used to group a keyring type and token name
+// so it can be used in an authtoken lookup function.
+type ringToken struct {
+	k string
+	t string
+}
+
+// mapBasedAuthTokenKeyringLookup provides a fake KeyringTokenLookupFn that uses
+// the provided map to perform lookups for the tokens
+func mapBasedAuthTokenKeyringLookup(m map[ringToken]*authtokens.AuthToken) cache.KeyringTokenLookupFn {
+	return func(k, t string) *authtokens.AuthToken {
+		return m[ringToken{k, t}]
+	}
+}
+
+// sliceBasedAuthTokenBoundaryReader provides a fake BoundaryTokenReaderFn that uses
+// the provided map to lookup an auth tokens information.
+func sliceBasedAuthTokenBoundaryReader(s []*authtokens.AuthToken) cache.BoundaryTokenReaderFn {
+	return func(ctx context.Context, addr, at string) (*authtokens.AuthToken, error) {
+		for _, v := range s {
+			if at == v.Token {
+				return v, nil
+			}
+		}
+		return nil, stdErrors.New("not found")
+	}
+}
 
 type testRefresher struct {
 	called bool
@@ -24,30 +53,27 @@ func (r *testRefresher) refresh() {
 	r.called = true
 }
 
-type testAtReader struct {
-	atId string
-}
-
-func (r *testAtReader) ReadTokenFromKeyring(k, a string) *authtokens.AuthToken {
-	return &authtokens.AuthToken{
-		Id:           r.atId,
-		AuthMethodId: "test_auth_method",
-		Token:        fmt.Sprintf("%s_%s", r.atId, a),
-		UserId:       r.atId,
-	}
-}
-
-func TestToken(t *testing.T) {
+func TestKeyringToken(t *testing.T) {
 	ctx := context.Background()
-	s, _, err := openStore(ctx, "", true)
+	s, _, err := openStore(ctx, "", false)
 	require.NoError(t, err)
 
-	atReader := &testAtReader{"at_1234567890"}
-	repo, err := cache.NewRepository(ctx, s, atReader.ReadTokenFromKeyring)
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: "user",
+	}
+	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	keyring := "k"
+	tokenName := "t"
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{keyring, tokenName}: at,
+	}
+	r, err := cache.NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
 	require.NoError(t, err)
 
 	tr := &testRefresher{}
-	ph, err := newTokenHandlerFunc(ctx, repo, tr)
+	ph, err := newTokenHandlerFunc(ctx, r, tr)
 	require.NoError(t, err)
 
 	mux := http.NewServeMux()
@@ -67,13 +93,13 @@ func TestToken(t *testing.T) {
 	}()
 
 	t.Run("missing keyring", func(t *testing.T) {
-		pa := &userTokenToAdd{
+		pa := &upsertTokenRequest{
 			Keyring: &keyringToken{
 				KeyringType: "",
-				TokenName:   "default",
+				TokenName:   tokenName,
 			},
 			BoundaryAddr: "http://127.0.0.1",
-			AuthTokenId:  atReader.atId,
+			AuthTokenId:  at.Id,
 		}
 		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
@@ -82,14 +108,30 @@ func TestToken(t *testing.T) {
 		assert.False(t, tr.called)
 	})
 
-	t.Run("missing token name", func(t *testing.T) {
-		pa := &userTokenToAdd{
+	t.Run("none keyring", func(t *testing.T) {
+		pa := &upsertTokenRequest{
 			Keyring: &keyringToken{
-				KeyringType: "akeyringtype",
+				KeyringType: base.NoneKeyring,
+				TokenName:   tokenName,
+			},
+			BoundaryAddr: "http://127.0.0.1",
+			AuthTokenId:  at.Id,
+		}
+		apiErr, err := addToken(ctx, tmpdir, pa)
+		assert.NoError(t, err)
+		require.NotNil(t, apiErr)
+		assert.Contains(t, apiErr.Message, "KeyringType is set to none which is not supported")
+		assert.False(t, tr.called)
+	})
+
+	t.Run("missing token name", func(t *testing.T) {
+		pa := &upsertTokenRequest{
+			Keyring: &keyringToken{
+				KeyringType: keyring,
 				TokenName:   "",
 			},
 			BoundaryAddr: "http://127.0.0.1",
-			AuthTokenId:  atReader.atId,
+			AuthTokenId:  at.Id,
 		}
 		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
@@ -99,13 +141,13 @@ func TestToken(t *testing.T) {
 	})
 
 	t.Run("missing boundary address", func(t *testing.T) {
-		pa := &userTokenToAdd{
+		pa := &upsertTokenRequest{
 			Keyring: &keyringToken{
-				KeyringType: "akeyringtype",
-				TokenName:   "default",
+				KeyringType: keyring,
+				TokenName:   tokenName,
 			},
 			BoundaryAddr: "",
-			AuthTokenId:  atReader.atId,
+			AuthTokenId:  at.Id,
 		}
 		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
@@ -115,10 +157,10 @@ func TestToken(t *testing.T) {
 	})
 
 	t.Run("missing auth token id", func(t *testing.T) {
-		pa := &userTokenToAdd{
+		pa := &upsertTokenRequest{
 			Keyring: &keyringToken{
-				KeyringType: "akeyringtype",
-				TokenName:   "default",
+				KeyringType: keyring,
+				TokenName:   tokenName,
 			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  "",
@@ -131,10 +173,10 @@ func TestToken(t *testing.T) {
 	})
 
 	t.Run("mismatched auth token id", func(t *testing.T) {
-		pa := &userTokenToAdd{
+		pa := &upsertTokenRequest{
 			Keyring: &keyringToken{
-				KeyringType: "akeyringtype",
-				TokenName:   "default",
+				KeyringType: keyring,
+				TokenName:   tokenName,
 			},
 			BoundaryAddr: "http://127.0.0.1",
 			AuthTokenId:  "at_doesntmatch",
@@ -142,31 +184,122 @@ func TestToken(t *testing.T) {
 		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
 		assert.NotNil(t, apiErr)
-		assert.Contains(t, apiErr.Message, "Failed to add a token")
+		assert.Contains(t, apiErr.Message, "Failed to add a keyring stored token")
 		assert.False(t, tr.called)
 	})
 
 	t.Run("success", func(t *testing.T) {
-		pa := &userTokenToAdd{
+		pa := &upsertTokenRequest{
 			Keyring: &keyringToken{
-				KeyringType: "akeyringtype",
-				TokenName:   "default",
+				KeyringType: keyring,
+				TokenName:   tokenName,
 			},
 			BoundaryAddr: "http://127.0.0.1",
-			AuthTokenId:  atReader.atId,
+			AuthTokenId:  at.Id,
 		}
 		apiErr, err := addToken(ctx, tmpdir, pa)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
 		assert.True(t, tr.called)
 
-		repo, err := cache.NewRepository(ctx, s, (&testAtReader{"at_1234"}).ReadTokenFromKeyring)
-		require.NoError(t, err)
-
-		p, err := repo.LookupToken(ctx, pa.AuthTokenId)
+		p, err := r.LookupToken(ctx, pa.AuthTokenId)
 		require.NoError(t, err)
 		assert.NotNil(t, p)
-		assert.Equal(t, atReader.atId, p.Id)
+		assert.Equal(t, at.Id, p.Id)
+	})
+	srv.Shutdown(ctx)
+	wg.Wait()
+}
+
+func TestKeyringlessToken(t *testing.T) {
+	ctx := context.Background()
+	s, _, err := openStore(ctx, "", false)
+	require.NoError(t, err)
+
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: "user",
+	}
+	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	atMap := map[ringToken]*authtokens.AuthToken{}
+	r, err := cache.NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+	require.NoError(t, err)
+
+	tr := &testRefresher{}
+	ph, err := newTokenHandlerFunc(ctx, r, tr)
+	require.NoError(t, err)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/tokens", ph)
+
+	tmpdir := t.TempDir()
+	l, err := listener(ctx, tmpdir)
+	require.NoError(t, err)
+	srv := &http.Server{
+		Handler: mux,
+	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		assert.ErrorIs(t, srv.Serve(l), http.ErrServerClosed)
+	}()
+
+	t.Run("missing boundary address", func(t *testing.T) {
+		pa := &upsertTokenRequest{
+			BoundaryAddr: "",
+			AuthTokenId:  at.Id,
+			AuthToken:    at.Token,
+		}
+		apiErr, err := addToken(ctx, tmpdir, pa)
+		assert.NoError(t, err)
+		assert.NotNil(t, apiErr)
+		assert.Contains(t, apiErr.Message, "BoundaryAddr is a required field but was empty")
+		assert.False(t, tr.called)
+	})
+
+	t.Run("missing auth token id", func(t *testing.T) {
+		pa := &upsertTokenRequest{
+			BoundaryAddr: "http://127.0.0.1",
+			AuthTokenId:  "",
+			AuthToken:    at.Token,
+		}
+		apiErr, err := addToken(ctx, tmpdir, pa)
+		assert.NoError(t, err)
+		assert.NotNil(t, apiErr)
+		assert.Contains(t, apiErr.Message, "AuthTokenId is a required field but was empty")
+		assert.False(t, tr.called)
+	})
+
+	t.Run("mismatched auth token id", func(t *testing.T) {
+		pa := &upsertTokenRequest{
+			BoundaryAddr: "http://127.0.0.1",
+			AuthTokenId:  "at_doesntmatch",
+			AuthToken:    at.Token,
+		}
+		apiErr, err := addToken(ctx, tmpdir, pa)
+		assert.NoError(t, err)
+		assert.NotNil(t, apiErr)
+		assert.Contains(t, apiErr.Message, "The auth token id doesn't match the auth token's prefix")
+		assert.False(t, tr.called)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		pa := &upsertTokenRequest{
+			BoundaryAddr: "http://127.0.0.1",
+			AuthTokenId:  at.Id,
+			AuthToken:    at.Token,
+		}
+		apiErr, err := addToken(ctx, tmpdir, pa)
+		assert.NoError(t, err)
+		assert.Nil(t, apiErr)
+		assert.True(t, tr.called)
+
+		p, err := r.LookupToken(ctx, pa.AuthTokenId)
+		require.NoError(t, err)
+		assert.NotNil(t, p)
+		assert.Equal(t, at.Id, p.Id)
 	})
 	srv.Shutdown(ctx)
 	wg.Wait()
