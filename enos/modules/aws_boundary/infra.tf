@@ -13,7 +13,7 @@ data "aws_subnets" "infra" {
 
   filter {
     name   = "tag:Module"
-    values = ["aws_vpc"]
+    values = [var.vpc_tag_module]
   }
 }
 

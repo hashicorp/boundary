@@ -10,7 +10,7 @@ module "bats_deps" {
 }
 
 module "aws_boundary" {
-  source  = "./modules/aws_boundary"
+  source = "./modules/aws_boundary"
 
   project_name = "qti-enos-boundary"
   environment  = var.environment

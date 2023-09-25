@@ -346,3 +346,9 @@ variable "aws_region" {
   type        = string
   default     = "us-east-1"
 }
+
+variable "vpc_tag_module" {
+  description = "Name of the Module Tag tied to the VPC"
+  type        = string
+  default     = "aws_vpc"
+}
