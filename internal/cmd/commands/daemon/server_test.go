@@ -86,7 +86,6 @@ func TestDefaultBoundaryTokenReader(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 type fakeClientProvider struct {
