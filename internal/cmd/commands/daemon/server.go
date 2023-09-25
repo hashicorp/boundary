@@ -32,9 +32,14 @@ import (
 // Commander is an interface that provides a way to get an apiClient
 // and retrieve the keyring and token information used by a command.
 type Commander interface {
-	Client(opt ...base.Option) (*api.Client, error)
+	ClientProvider
 	DiscoverKeyringTokenInfo() (string, string, error)
 	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
+}
+
+// ClientProvider is an interface that provides an api.Client
+type ClientProvider interface {
+	Client(opt ...base.Option) (*api.Client, error)
 }
 
 type cacheServer struct {
@@ -117,14 +122,60 @@ func (s *cacheServer) shutdown(ctx context.Context) error {
 	return shutdownErr
 }
 
+func defaultBoundaryTokenReader(ctx context.Context, cp ClientProvider) (cache.BoundaryTokenReaderFn, error) {
+	const op = "daemon.defaultBoundaryTokenReader"
+	switch {
+	case util.IsNil(cp):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "client provider is nil")
+	}
+	return func(ctx context.Context, addr, tok string) (*authtokens.AuthToken, error) {
+		switch {
+		case addr == "":
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "address is missing")
+		case tok == "":
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token is missing")
+		}
+		atIdParts := strings.SplitN(tok, "_", 4)
+		if len(atIdParts) != 3 {
+			return nil, errors.New(ctx, errors.InvalidParameter, op, "auth token is malformed")
+		}
+		atId := strings.Join(atIdParts[:cache.AuthTokenIdSegmentCount], "_")
+
+		c, err := cp.Client()
+		if err != nil {
+			return nil, err
+		}
+		c.SetAddr(addr)
+		c.SetToken(tok)
+		atClient := authtokens.NewClient(c)
+
+		at, err := atClient.Read(ctx, atId)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		return at.GetItem(), nil
+	}, nil
+}
+
 // start will fire up the refresh goroutine and the caching API http server as a
 // daemon.  The daemon bits are included so it's easy for CLI cmds to start the
 // a cache server
-func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener) error {
+func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener, opt ...Option) error {
 	const op = "daemon.(cacheServer).start"
 	switch {
 	case util.IsNil(ctx):
 		return errors.New(ctx, errors.InvalidParameter, op, "context is missing")
+	}
+
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if opts.withBoundaryTokenReaderFunc == nil {
+		opts.withBoundaryTokenReaderFunc, err = defaultBoundaryTokenReader(ctx, cmd)
+		if err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
 	}
 
 	s.info["Listening address"] = l.Addr().String()
@@ -132,7 +183,6 @@ func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener) 
 	s.info["Store debug"] = strconv.FormatBool(s.conf.flagStoreDebug)
 	s.infoKeys = append(s.infoKeys, "Store debug")
 
-	var err error
 	if s.store, s.storeUrl, err = openStore(ctx, s.conf.flagDatabaseUrl, s.conf.flagStoreDebug); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -141,7 +191,7 @@ func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener) 
 
 	s.printInfo(ctx)
 
-	repo, err := cache.NewRepository(ctx, s.store, cmd.ReadTokenFromKeyring)
+	repo, err := cache.NewRepository(ctx, s.store, &sync.Map{}, cmd.ReadTokenFromKeyring, opts.withBoundaryTokenReaderFunc)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}

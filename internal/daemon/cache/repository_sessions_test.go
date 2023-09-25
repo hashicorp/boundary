@@ -5,12 +5,15 @@ package cache
 
 import (
 	"context"
+	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 )
 
 func TestRepository_refreshSessions(t *testing.T) {
@@ -18,13 +21,26 @@ func TestRepository_refreshSessions(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
-	require.NoError(t, err)
-
 	addr := "address"
-	kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-	at := testAuthTokenLookup(kt.KeyringType, kt.TokenName)
-	kt.AuthTokenId = at.Id
+	u := user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u.Id,
+	}
+	kt := KeyringToken{
+		KeyringType: "keyring",
+		TokenName:   "token",
+		AuthTokenId: at.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{kt.KeyringType, kt.TokenName}: at,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
+	require.NoError(t, err)
 	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
 
 	ss := []*sessions.Session{
@@ -112,25 +128,49 @@ func TestRepository_ListSessions(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	addr := "address"
+	u1 := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at1 := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u1.Id,
+	}
+	kt1 := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at1.Id,
+	}
+	u2 := &user{
+		Id:      "u2",
+		Address: addr,
+	}
+	at2 := &authtokens.AuthToken{
+		Id:     "at_2",
+		Token:  "at_2_token",
+		UserId: u2.Id,
+	}
+	kt2 := KeyringToken{
+		KeyringType: "k2",
+		TokenName:   "t2",
+		AuthTokenId: at2.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at1,
+		{"k2", "t2"}: at2,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
 	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt1))
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
 
 	t.Run("auth token id is missing", func(t *testing.T) {
 		l, err := r.ListSessions(ctx, "")
 		assert.Nil(t, l)
 		assert.ErrorContains(t, err, "auth token id is missing")
 	})
-
-	addr := "address"
-	t1 := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-	at := testAuthTokenLookup(t1.KeyringType, t1.TokenName)
-	t1.AuthTokenId = at.Id
-	require.NoError(t, r.AddKeyringToken(ctx, addr, t1))
-
-	t2 := KeyringToken{KeyringType: "keyring", TokenName: "token2"}
-	at2 := testAuthTokenLookup(t2.KeyringType, t2.TokenName)
-	t2.AuthTokenId = at2.Id
-	require.NoError(t, r.AddKeyringToken(ctx, addr, t2))
 
 	ss := []*sessions.Session{
 		{
@@ -152,15 +192,15 @@ func TestRepository_ListSessions(t *testing.T) {
 			Type:     "tcp",
 		},
 	}
-	require.NoError(t, r.refreshSessions(ctx, &user{Address: addr, Id: at.UserId}, ss))
+	require.NoError(t, r.refreshSessions(ctx, u1, ss))
 
 	t.Run("wrong user gets no sessions", func(t *testing.T) {
-		l, err := r.ListSessions(ctx, t2.AuthTokenId)
+		l, err := r.ListSessions(ctx, kt2.AuthTokenId)
 		assert.NoError(t, err)
 		assert.Empty(t, l)
 	})
 	t.Run("correct token gets sessions", func(t *testing.T) {
-		l, err := r.ListSessions(ctx, t1.AuthTokenId)
+		l, err := r.ListSessions(ctx, kt1.AuthTokenId)
 		assert.NoError(t, err)
 		assert.Len(t, l, len(ss))
 		assert.ElementsMatch(t, l, ss)
@@ -172,8 +212,43 @@ func TestRepository_QuerySessions(t *testing.T) {
 	s, err := Open(ctx)
 	require.NoError(t, err)
 
-	r, err := NewRepository(ctx, s, testAuthTokenLookup)
+	addr := "address"
+	u1 := &user{
+		Id:      "u1",
+		Address: addr,
+	}
+	at1 := &authtokens.AuthToken{
+		Id:     "at_1",
+		Token:  "at_1_token",
+		UserId: u1.Id,
+	}
+	kt1 := KeyringToken{
+		KeyringType: "k1",
+		TokenName:   "t1",
+		AuthTokenId: at1.Id,
+	}
+	u2 := &user{
+		Id:      "u2",
+		Address: addr,
+	}
+	at2 := &authtokens.AuthToken{
+		Id:     "at_2",
+		Token:  "at_2_token",
+		UserId: u2.Id,
+	}
+	kt2 := KeyringToken{
+		KeyringType: "k2",
+		TokenName:   "t2",
+		AuthTokenId: at2.Id,
+	}
+	atMap := map[ringToken]*authtokens.AuthToken{
+		{"k1", "t1"}: at1,
+		{"k2", "t2"}: at2,
+	}
+	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(maps.Values(atMap)))
 	require.NoError(t, err)
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt1))
+	require.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
 
 	query := "status % status1 or status % status2"
 
@@ -203,17 +278,6 @@ func TestRepository_QuerySessions(t *testing.T) {
 		})
 	}
 
-	addr := "address"
-	kt := KeyringToken{KeyringType: "keyring", TokenName: "token"}
-	at := testAuthTokenLookup(kt.KeyringType, kt.TokenName)
-	kt.AuthTokenId = at.Id
-	require.NoError(t, r.AddKeyringToken(ctx, addr, kt))
-
-	kt2 := KeyringToken{KeyringType: "keyring", TokenName: "token2"}
-	at2 := testAuthTokenLookup(kt2.KeyringType, kt2.TokenName)
-	kt2.AuthTokenId = at2.Id
-	require.NoError(t, r.AddKeyringToken(ctx, addr, kt2))
-
 	ss := []*sessions.Session{
 		{
 			Id:       "ttcp_1",
@@ -234,7 +298,7 @@ func TestRepository_QuerySessions(t *testing.T) {
 			Type:     "tcp",
 		},
 	}
-	require.NoError(t, r.refreshSessions(ctx, &user{Id: at.UserId, Address: addr}, ss))
+	require.NoError(t, r.refreshSessions(ctx, u1, ss))
 
 	t.Run("wrong token gets no sessions", func(t *testing.T) {
 		l, err := r.QuerySessions(ctx, kt2.AuthTokenId, query)
@@ -242,7 +306,7 @@ func TestRepository_QuerySessions(t *testing.T) {
 		assert.Empty(t, l)
 	})
 	t.Run("correct token gets sessions", func(t *testing.T) {
-		l, err := r.QuerySessions(ctx, kt.AuthTokenId, query)
+		l, err := r.QuerySessions(ctx, kt1.AuthTokenId, query)
 		assert.NoError(t, err)
 		assert.Len(t, l, 2)
 		assert.ElementsMatch(t, l, ss[0:2])

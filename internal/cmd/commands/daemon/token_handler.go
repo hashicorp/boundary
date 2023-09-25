@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
@@ -29,11 +30,14 @@ type keyringToken struct {
 }
 
 // userTokenToAdd is the request body to this handler.
-type userTokenToAdd struct {
+type upsertTokenRequest struct {
 	// BoundaryAddr is a required field for all requests
 	BoundaryAddr string
 	// The id of the auth token asserted to be attempted to be added
 	AuthTokenId string
+	// The raw auth token for this user. Either this field or the Keyring field
+	// must be set but not both.
+	AuthToken string
 	// Keyring is the keyring info used when adding an auth token held in
 	// keyring to the daemon.
 	Keyring *keyringToken
@@ -54,7 +58,7 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 			writeError(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		var perReq userTokenToAdd
+		var perReq upsertTokenRequest
 
 		data, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -70,11 +74,11 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 		case perReq.BoundaryAddr == "":
 			writeError(w, "BoundaryAddr is a required field but was empty", http.StatusBadRequest)
 			return
-		case perReq.Keyring == nil:
-			writeError(w, "TokenName is a required field but was empty", http.StatusBadRequest)
-			return
 		case perReq.AuthTokenId == "":
 			writeError(w, "AuthTokenId is a required field but was empty", http.StatusBadRequest)
+			return
+		case perReq.Keyring == nil && perReq.AuthToken == "":
+			writeError(w, "Either keyring info or the authtoken must be provided but were empty", http.StatusBadRequest)
 			return
 		case perReq.Keyring != nil:
 			switch {
@@ -85,8 +89,13 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 				writeError(w, "KeyringType is a required field but was empty", http.StatusBadRequest)
 				return
 			case perReq.Keyring.KeyringType == base.NoneKeyring:
-				// TODO: Support personas that have tokens not stored in a keyring
 				writeError(w, fmt.Sprintf("KeyringType is set to %s which is not supported", perReq.Keyring.KeyringType), http.StatusBadRequest)
+				return
+			}
+		case perReq.AuthToken != "":
+			switch {
+			case !strings.HasPrefix(perReq.AuthToken, perReq.AuthTokenId):
+				writeError(w, "The auth token id doesn't match the auth token's prefix", http.StatusBadRequest)
 				return
 			}
 		}
@@ -97,21 +106,27 @@ func newTokenHandlerFunc(ctx context.Context, repo *cache.Repository, refresher 
 			return
 		}
 
-		kt := cache.KeyringToken{
-			KeyringType: perReq.Keyring.KeyringType,
-			TokenName:   perReq.Keyring.TokenName,
-			AuthTokenId: perReq.AuthTokenId,
-		}
-		if err = repo.AddKeyringToken(ctx, perReq.BoundaryAddr, kt); err != nil {
-			writeError(w, "Failed to add a token", http.StatusInternalServerError)
-			return
+		switch {
+		case perReq.Keyring != nil:
+			kt := cache.KeyringToken{
+				KeyringType: perReq.Keyring.KeyringType,
+				TokenName:   perReq.Keyring.TokenName,
+				AuthTokenId: perReq.AuthTokenId,
+			}
+			if err = repo.AddKeyringToken(ctx, perReq.BoundaryAddr, kt); err != nil {
+				writeError(w, "Failed to add a keyring stored token", http.StatusInternalServerError)
+				return
+			}
+		case perReq.AuthToken != "":
+			if err = repo.AddRawToken(ctx, perReq.BoundaryAddr, perReq.AuthToken); err != nil {
+				writeError(w, "Failed to add a raw token", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusNoContent)
 
-		// TODO: Figure out how to refresh only when the user id has changed
-		// and not every time the auth token changes.
-		if tok == nil || tok.Id != perReq.AuthTokenId {
+		if tok == nil {
 			refresher.refresh()
 		}
 	}, nil
