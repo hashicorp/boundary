@@ -358,7 +358,7 @@ func cleanExpiredOrOrphanedAuthTokens(ctx context.Context, writer db.Writer, idT
 	or
 		-- sqlite stores expiration_time as a string in a format that might not match
 		-- what is being used by current_timestamp.  Using datetime() makes the
-		-- formats match which allow the string comparison perfoemed here to work
+		-- formats match which allow the string comparison performed here to work
 		-- the same as a time comparison.
 		datetime(expiration_time) < current_timestamp
 	or
