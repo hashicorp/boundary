@@ -2,7 +2,7 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
-## Next
+## 0.14.0 (2023/10/10)
 
 ### Deprecations/Changes
 * Per the note in Boundary 0.12.0, the `vault` credential library subtype has now been
@@ -12,6 +12,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Per the note in Boundary 0.12.0, errors returned from the cli when using the
   `-format=json` option will now only use the `status_code` field. The `status`
   field has been removed.
+* Targets: Removed Application Credentials ([PR](https://github.com/hashicorp/boundary/pull/3728), [deprecated changelog](#0100-20220810)).
 
 ### New and Improved
 
@@ -37,9 +38,6 @@ Deny filter now filters coordination worker status from observation events by de
 * targets: Fix address field not being populated if the number of targets on a
   list returns more than 10000 entries
   ([PR](https://github.com/hashicorp/boundary/pull/3644))
-
-### Deprecations/Changes
-* Targets: Removed Application Credentials ([PR](https://github.com/hashicorp/boundary/pull/3728), [deprecated changelog](#0100-20220810)).
 
 ## 0.13.1 (2023/07/10)
 
