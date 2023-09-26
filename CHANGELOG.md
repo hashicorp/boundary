@@ -5,7 +5,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ## Next
 
 ### Deprecations/Changes
-* Per the note in Boundary 0.14.0, the `vault` credential library subtype has now been
+* Per the note in Boundary 0.12.0, the `vault` credential library subtype has now been
   removed in favor of `vault-generic`. For example, instead of `boundary
   credential-libraries create vault`, you must use `boundary
   credential-libraries create vault-generic`.
