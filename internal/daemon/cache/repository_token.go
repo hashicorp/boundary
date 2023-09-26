@@ -28,11 +28,12 @@ const AuthTokenIdSegmentCount = 2
 func upsertUserAndAuthToken(ctx context.Context, reader db.Reader, writer db.Writer, bAddr string, at *authtokens.AuthToken) error {
 	const op = "cache.upsertUserAndAuthToken"
 	switch {
-	// TODO: add check for reader and writer being part of an inflight tx.
 	case util.IsNil(reader):
 		return errors.New(ctx, errors.InvalidParameter, op, "reader is nil")
 	case util.IsNil(writer):
 		return errors.New(ctx, errors.InvalidParameter, op, "writer is nil")
+	case !writer.IsTx(ctx):
+		return errors.New(ctx, errors.InvalidParameter, op, "writer isn't part of an inflight transaction")
 	case util.IsNil(at):
 		return errors.New(ctx, errors.InvalidParameter, op, "auth token is nil")
 	case bAddr == "":
@@ -338,11 +339,12 @@ func (r *Repository) cleanExpiredOrOrphanedAuthTokens(ctx context.Context) error
 func cleanExpiredOrOrphanedAuthTokens(ctx context.Context, writer db.Writer, idToKeyringlessAuthToken *sync.Map) error {
 	const op = "cache.cleanExpiredOrOrphanedAuthTokens"
 	switch {
-	// TODO: Add check here to see if a transaction is in flight.
 	case util.IsNil(writer):
 		return errors.New(ctx, errors.InvalidParameter, op, "writer is nil")
 	case idToKeyringlessAuthToken == nil:
 		return errors.New(ctx, errors.InvalidParameter, op, "keyringless auth token map is nil")
+	case !writer.IsTx(ctx):
+		return errors.New(ctx, errors.InvalidParameter, op, "writer isn't part of an inflight transaction")
 	}
 
 	var keyringlessAuthTokens []string

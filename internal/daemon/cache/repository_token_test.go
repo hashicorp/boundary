@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
@@ -697,4 +698,124 @@ func TestRepository_RemoveStaleTokens(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, lAt, 1)
 	assert.Equal(t, lAt[0].Id, at1.Id)
+}
+
+func TestCleanExpiredOrOrphanedAuthTokens_Errors(t *testing.T) {
+	ctx := context.Background()
+
+	err := cleanExpiredOrOrphanedAuthTokens(ctx, nil, &sync.Map{})
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "writer is nil")
+
+	s, err := Open(ctx)
+	require.NoError(t, err)
+	rw := db.New(s.conn)
+
+	err = cleanExpiredOrOrphanedAuthTokens(ctx, rw, &sync.Map{})
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "writer isn't part of an inflight transaction")
+
+	rw.DoTx(ctx, 1, db.ExpBackoff{}, func(_ db.Reader, writer db.Writer) error {
+		err := cleanExpiredOrOrphanedAuthTokens(ctx, writer, nil)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "keyringless auth token map is nil")
+		return nil
+	})
+}
+
+func TestUpsertUserAndAuthToken(t *testing.T) {
+	ctx := context.Background()
+
+	s, err := Open(ctx)
+	require.NoError(t, err)
+	rw := db.New(s.conn)
+
+	defaultAt := &authtokens.AuthToken{
+		Id:     "at_123",
+		Token:  "at_123_token",
+		UserId: "u_123",
+	}
+
+	rw.DoTx(ctx, 1, db.ExpBackoff{}, func(txReader db.Reader, txWriter db.Writer) error {
+		errorCases := []struct {
+			name          string
+			reader        db.Reader
+			writer        db.Writer
+			addr          string
+			at            *authtokens.AuthToken
+			errorContains string
+		}{
+			{
+				name:          "nil reader",
+				reader:        nil,
+				writer:        txWriter,
+				addr:          "address",
+				at:            defaultAt,
+				errorContains: "reader is nil",
+			},
+			{
+				name:          "nil writer",
+				reader:        txReader,
+				writer:        nil,
+				addr:          "address",
+				at:            defaultAt,
+				errorContains: "writer is nil",
+			},
+			{
+				name:          "writer not in tx",
+				reader:        txReader,
+				writer:        rw,
+				addr:          "address",
+				at:            defaultAt,
+				errorContains: "writer isn't part of an inflight transaction",
+			},
+			{
+				name:          "empty address",
+				reader:        txReader,
+				writer:        txWriter,
+				addr:          "",
+				at:            defaultAt,
+				errorContains: "boundary address is empty",
+			},
+			{
+				name:          "auth token is nil",
+				reader:        txReader,
+				writer:        txWriter,
+				addr:          "address",
+				at:            nil,
+				errorContains: "auth token is nil",
+			},
+			{
+				name:   "auth token missing id",
+				reader: txReader,
+				writer: txWriter,
+				addr:   "address",
+				at: &authtokens.AuthToken{
+					Token:  "at_123_token",
+					UserId: "u_123",
+				},
+				errorContains: "auth token id is empty",
+			},
+			{
+				name:   "auth token missing user id",
+				reader: txReader,
+				writer: txWriter,
+				addr:   "address",
+				at: &authtokens.AuthToken{
+					Id:    "at_123",
+					Token: "at_123_token",
+				},
+				errorContains: "auth token user id is empty",
+			},
+		}
+
+		for _, tc := range errorCases {
+			t.Run(tc.name, func(t *testing.T) {
+				err := upsertUserAndAuthToken(ctx, tc.reader, tc.writer, tc.addr, tc.at)
+				assert.Error(t, err)
+				assert.ErrorContains(t, err, tc.errorContains)
+			})
+		}
+		return nil
+	})
 }
