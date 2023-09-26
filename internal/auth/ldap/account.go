@@ -6,7 +6,6 @@ package ldap
 import (
 	"context"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
@@ -144,11 +143,4 @@ func (a *Account) oplog(ctx context.Context, opType oplog.OpType) (oplog.Metadat
 		"auth-method-id":     []string{a.AuthMethodId},
 	}
 	return metadata, nil
-}
-
-// sortAccount is used to encapsulate the information
-// needed for sorting and filtering for pagination.
-type sortAccount struct {
-	publicId   string
-	updateTime time.Time
 }

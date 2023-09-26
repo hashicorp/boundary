@@ -8,9 +8,12 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -311,4 +314,54 @@ func (r *Repository) UpdateAccount(ctx context.Context, scopeId string, a *Accou
 	}
 
 	return returnedAccount, rowsUpdated, nil
+}
+
+// GetTotalAccounts returns an estimate of the number of oidc accounts
+func (r *Repository) GetTotalAccounts(ctx context.Context) (int, error) {
+	const op = "oidc.(Repository).GetTotalAccounts"
+	rows, err := r.reader.Query(ctx, estimateCountOidcAccounts, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total oidc accounts"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total oidc accounts"))
+		}
+	}
+	return count, nil
+}
+
+// ListDeletedAccountIds lists the public IDs of any oidc accounts deleted since the timestamp provided.
+// Supported options:
+//   - auth.WithReaderWriter
+func (r *Repository) ListDeletedAccountIds(ctx context.Context, since time.Time, opt ...auth.Option) ([]string, error) {
+	const op = "oidc.(Repository).ListDeletedAccountIds"
+	opts, err := auth.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedAccounts []*deletedAccount
+	if err := rdr.SearchWhere(ctx, &deletedAccounts, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted oidc accounts"))
+	}
+	var AccountIds []string
+	for _, a := range deletedAccounts {
+		AccountIds = append(AccountIds, a.PublicId)
+	}
+	return AccountIds, nil
+}
+
+type deletedAccount struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAccount) TableName() string {
+	return "auth_oidc_account_deleted"
 }

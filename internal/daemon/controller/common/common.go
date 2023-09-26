@@ -28,10 +28,10 @@ type (
 	VaultCredentialRepoFactory       = func() (*vault.Repository, error)
 	StaticCredentialRepoFactory      = func() (*credstatic.Repository, error)
 	IamRepoFactory                   = iam.IamRepoFactory
-	BaseAccountRepoFactory           func() (*auth.AccountRepository, error)
 	OidcAuthRepoFactory              = oidc.OidcRepoFactory
 	LdapAuthRepoFactory              = ldap.RepoFactory
 	PasswordAuthRepoFactory          func() (*password.Repository, error)
+	AccountServiceFactory            func(*ldap.Repository, *oidc.Repository, *password.Repository) (*auth.AccountService, error)
 	ServersRepoFactory               func() (*server.Repository, error)
 	StaticRepoFactory                func() (*static.Repository, error)
 	PluginHostRepoFactory            func() (*pluginhost.Repository, error)

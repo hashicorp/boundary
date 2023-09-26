@@ -118,10 +118,10 @@ func init() {
 type Service struct {
 	pbs.UnsafeAccountServiceServer
 
-	pwRepoFn          common.PasswordAuthRepoFactory
-	oidcRepoFn        common.OidcAuthRepoFactory
-	ldapRepoFn        common.LdapAuthRepoFactory
-	baseAccountRepoFn common.BaseAccountRepoFactory
+	pwRepoFn         common.PasswordAuthRepoFactory
+	oidcRepoFn       common.OidcAuthRepoFactory
+	ldapRepoFn       common.LdapAuthRepoFactory
+	accountServiceFn common.AccountServiceFactory
 
 	maxPageSize uint
 }
@@ -134,7 +134,7 @@ func NewService(
 	pwRepo common.PasswordAuthRepoFactory,
 	oidcRepo common.OidcAuthRepoFactory,
 	ldapRepo common.LdapAuthRepoFactory,
-	baseRepo common.BaseAccountRepoFactory,
+	accountServiceFn common.AccountServiceFactory,
 	maxPageSize uint,
 ) (Service, error) {
 	const op = "accounts.NewService"
@@ -145,18 +145,18 @@ func NewService(
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing oidc repository")
 	case ldapRepo == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing ldap repository")
-	case baseRepo == nil:
-		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing base account repository")
+	case accountServiceFn == nil:
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing account service")
 	}
 	if maxPageSize == 0 {
 		maxPageSize = uint(defaultMaxPageSize)
 	}
 	return Service{
-		pwRepoFn:          pwRepo,
-		oidcRepoFn:        oidcRepo,
-		ldapRepoFn:        ldapRepo,
-		baseAccountRepoFn: baseRepo,
-		maxPageSize:       maxPageSize,
+		pwRepoFn:         pwRepo,
+		oidcRepoFn:       oidcRepo,
+		ldapRepoFn:       ldapRepo,
+		accountServiceFn: accountServiceFn,
+		maxPageSize:      maxPageSize,
 	}, nil
 }
 
@@ -177,7 +177,20 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 		return nil, err
 	}
 
-	baseRepo, err := s.baseAccountRepoFn()
+	ldapRepo, err := s.ldapRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	oidcRepo, err := s.oidcRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	pwRepo, err := s.pwRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	service, err := s.accountServiceFn(ldapRepo, oidcRepo, pwRepo)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -222,14 +235,8 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 	}
 
 	var listAccountsFn func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error)
-	// var repo pagination.Repository
 	switch subtypes.SubtypeFromId(domain, authMethodId) {
 	case ldap.Subtype:
-		ldapRepo, err := s.ldapRepoFn()
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		// repo = ldapRepo
 		listAccountsFn = func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error) {
 			opts := []ldap.Option{
 				ldap.WithLimit(ctx, limit),
@@ -254,11 +261,6 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 			return authAccs, nil
 		}
 	case oidc.Subtype:
-		oidcRepo, err := s.oidcRepoFn()
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		// repo = oidcRepo
 		listAccountsFn = func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error) {
 			opts := []oidc.Option{
 				oidc.WithLimit(limit),
@@ -283,11 +285,6 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 			return authAccs, nil
 		}
 	case password.Subtype:
-		pwRepo, err := s.pwRepoFn()
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		// repo = pwRepo
 		listAccountsFn = func(prevPageLast auth.Account, refreshToken *pbs.ListRefreshToken, limit int) ([]auth.Account, error) {
 			opts := []password.Option{
 				password.WithLimit(limit),
@@ -321,7 +318,7 @@ func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest)
 		listAccountsFn,
 		filterAndConvertFn,
 		&authResults,
-		baseRepo,
+		service,
 	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

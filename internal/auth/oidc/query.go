@@ -15,4 +15,8 @@ const (
 			%s
 	returning public_id, version
        `
+
+	estimateCountOidcAccounts = `
+	select reltuples::bigint as estimate from pg_class where oid = (current_schema() || '.auth_oidc_account')::regclass
+	   `
 )
