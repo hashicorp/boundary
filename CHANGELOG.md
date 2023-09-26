@@ -4,6 +4,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+* Per the note in Boundary 0.14.0, the `vault` credential library subtype has now been
+  removed in favor of `vault-generic`. For example, instead of `boundary
+  credential-libraries create vault`, you must use `boundary
+  credential-libraries create vault-generic`.
+* Per the note in Boundary 0.12.0, errors returned from the cli when using the
+  `-format=json` option will now only use the `status_code` field. The `status`
+  field has been removed.
+
 ### New and Improved
 
 * cli: Add support for specifying a command that will be executed on the remote host when
@@ -14,11 +23,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   maximum_page_size and dereference_aliases
   ([PR](https://github.com/hashicorp/boundary/pull/3679)).
 * feat: add worker upstream connection status to ops health check
-  ([PR](https://github.com/hashicorp/boundary/pull/3650)).  
+  ([PR](https://github.com/hashicorp/boundary/pull/3650)).
 * feat: allow HCP cluster id to be sourced from file or env variable
     ([PR](https://github.com/hashicorp/boundary/pull/3709)).
-* feat: add support for telemetry events via flag or Boundary configuration (requires observation events to be enabled). 
-Deny filter now filters coordination worker status from observation events by default. (This behaviour is overridden by any user specified allow or deny filters) 
+* feat: add support for telemetry events via flag or Boundary configuration (requires observation events to be enabled).
+Deny filter now filters coordination worker status from observation events by default. (This behaviour is overridden by any user specified allow or deny filters)
   ([PR](https://github.com/hashicorp/boundary/pull/3753)).
 
 ### Bug Fixes
@@ -52,14 +61,14 @@ Deny filter now filters coordination worker status from observation events by de
 
 ### Bug Fixes
 
-* PKI worker authentication: A worker authentication record can be stored more than once, if it matches the 
+* PKI worker authentication: A worker authentication record can be stored more than once, if it matches the
   existing record for that worker auth key ID. Fixes an edge case where a worker attempted authorization
   and the controller successfully stored the worker auth record but went down before returning authorization
   details to the worker. ([PR](https://github.com/hashicorp/boundary/pull/3389))
 * LDAP managed groups: adding/setting/removing a principal to a role now works
   properly when it's an LDAP managed group.
   ([PR](https://github.com/hashicorp/boundary/pull/3361) and
-  [PR](https://github.com/hashicorp/boundary/pull/3363))  
+  [PR](https://github.com/hashicorp/boundary/pull/3363))
 
 ## 0.13.0 (2023/06/13)
 
@@ -134,12 +143,12 @@ Deny filter now filters coordination worker status from observation events by de
   incorrectly being generated for auth token resources, which do not support
   versioning. This is technically a breaking change, but it was a no-op option
   anyways that there was no reason to be using. It has now been removed.
-* Plugins: With the introduction of the storage plugin service, the Azure and AWS Host plugin 
-  repositories have been renamed to drop the `host` element of the repository name: 
+* Plugins: With the introduction of the storage plugin service, the Azure and AWS Host plugin
+  repositories have been renamed to drop the `host` element of the repository name:
 
    - https://github.com/hashicorp/boundary-plugin-host-aws -> https://github.com/hashicorp/boundary-plugin-aws
    - https://github.com/hashicorp/boundary-plugin-host-azure -> https://github.com/hashicorp/boundary-plugin-azure
-  
+
   Similarly the `plugins/host` package has been renamed to `plugins/boundary`
   ([PR1](https://github.com/hashicorp/boundary/pull/3262),
   [PR2](https://github.com/hashicorp/boundary-plugin-aws/pull/24),
@@ -253,14 +262,14 @@ open-source release of 0.12.3; the same fixes will be in 0.13.0 OSS.
 * metrics: Adds accepted connections and closed connections counters to keep track
   downstream connections for worker and controller servers.
   ([PR](https://github.com/hashicorp/boundary/pull/2668))
-* Egress and Ingress worker filters: The target `worker_filter` field has been deprecated and 
+* Egress and Ingress worker filters: The target `worker_filter` field has been deprecated and
  replaced with egress and ingress worker filters. Egress worker filters determine which workers are
- used to access targets. Ingress worker filters (HCP Boundary only) determine which workers are 
+ used to access targets. Ingress worker filters (HCP Boundary only) determine which workers are
  used to connect with a client to initiate a session. ([PR](https://github.com/hashicorp/boundary/pull/2654))
-* Multi-Hop Sessions (HCP Boundary only): Multi-hop PKI workers can communicate with each other to serve 
- 2 primary purposes: authentication and session proxying. This results in the ability to chain 
- multiple workers together to access services hidden under layers of network security. Multi-hop 
- workers can also establish a TCP session through multiple workers, with the ability to reverse 
+* Multi-Hop Sessions (HCP Boundary only): Multi-hop PKI workers can communicate with each other to serve
+ 2 primary purposes: authentication and session proxying. This results in the ability to chain
+ multiple workers together to access services hidden under layers of network security. Multi-hop
+ workers can also establish a TCP session through multiple workers, with the ability to reverse
  proxy and establish a connection.
 * Vault SSH certificate credential library: A new credential library that uses
   the vault ssh secret engine to generate ssh private key and certificates. The
