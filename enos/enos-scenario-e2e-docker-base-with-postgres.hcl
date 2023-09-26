@@ -41,6 +41,7 @@ scenario "e2e_docker_base_with_postgres" {
     variables {
       path           = matrix.builder == "crt" ? local.boundary_docker_image_file : ""
       cli_build_path = local.build_path[matrix.builder]
+      edition        = var.boundary_edition
     }
   }
 
