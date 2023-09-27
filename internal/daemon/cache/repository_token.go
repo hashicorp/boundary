@@ -434,26 +434,20 @@ func (r *Repository) listKeyringTokens(ctx context.Context, at *AuthToken) ([]*K
 
 // syncKeyringlessTokensWithDb removes the in memory storage of auth tokens if
 // they are no longer represented in the db.
-func syncKeyringlessTokensWithDb(ctx context.Context, reader db.Reader, ringlessAuthTokens *sync.Map) error {
-	const op = "cache.syncKeyringlessTokensWithDb"
-	switch {
-	case util.IsNil(reader):
-		return errors.New(ctx, errors.InvalidParameter, op, "reader is nil")
-	case ringlessAuthTokens == nil:
-		return errors.New(ctx, errors.InvalidParameter, op, "keyringless auth token map is nil")
-	}
+func (r *Repository) syncKeyringlessTokensWithDb(ctx context.Context) error {
+	const op = "cache.(Repository).syncKeyringlessTokensWithDb"
 	var ret []*AuthToken
-	if err := reader.SearchWhere(ctx, &ret, "true", nil); err != nil {
+	if err := r.rw.SearchWhere(ctx, &ret, "true", nil); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 	authTokenIds := make(map[string]struct{})
 	for _, at := range ret {
 		authTokenIds[at.Id] = struct{}{}
 	}
-	ringlessAuthTokens.Range(func(key, value any) bool {
+	r.idToKeyringlessAuthToken.Range(func(key, value any) bool {
 		k := key.(string)
 		if _, ok := authTokenIds[k]; !ok {
-			ringlessAuthTokens.Delete(key)
+			r.idToKeyringlessAuthToken.Delete(key)
 		}
 		return true
 	})

@@ -332,7 +332,7 @@ func TestRepository_AddToken_EvictsOverLimit_Keyringless(t *testing.T) {
 	_, ok = r.idToKeyringlessAuthToken.Load(boundaryAuthTokens[len(boundaryAuthTokens)-1].Id)
 	assert.True(t, ok)
 
-	assert.NoError(t, syncKeyringlessTokensWithDb(ctx, r.rw, r.idToKeyringlessAuthToken))
+	assert.NoError(t, r.syncKeyringlessTokensWithDb(ctx))
 	_, ok = r.idToKeyringlessAuthToken.Load(boundaryAuthTokens[0].Id)
 	assert.False(t, ok)
 }
@@ -362,7 +362,7 @@ func TestRepository_CleanAuthTokens(t *testing.T) {
 	_, present = r.idToKeyringlessAuthToken.Load(at.Id)
 	assert.True(t, present)
 
-	assert.NoError(t, syncKeyringlessTokensWithDb(ctx, r.rw, r.idToKeyringlessAuthToken))
+	assert.NoError(t, r.syncKeyringlessTokensWithDb(ctx))
 
 	_, present = r.idToKeyringlessAuthToken.Load(at.Id)
 	assert.False(t, present)

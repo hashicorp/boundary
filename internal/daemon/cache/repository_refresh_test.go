@@ -5,12 +5,14 @@ package cache
 
 import (
 	"context"
+	"errors"
 	stdErrors "errors"
 	"fmt"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
@@ -62,11 +64,33 @@ func TestCleanAndPickTokens(t *testing.T) {
 		UserId:         keyringOnlyUser.Id,
 		ExpirationTime: time.Now().Add(time.Minute),
 	}
+
 	boundaryAuthTokens := []*authtokens.AuthToken{at1a, keyringAuthToken1, at1b, keyringAuthToken2}
+	unauthorizedAuthTokens := []*authtokens.AuthToken{}
+	randomErrorAuthTokens := []*authtokens.AuthToken{}
+	fakeBoundaryLookupFn := func(ctx context.Context, addr, at string) (*authtokens.AuthToken, error) {
+		for _, v := range randomErrorAuthTokens {
+			if at == v.Token {
+				return nil, errors.New("test error")
+			}
+		}
+		for _, v := range unauthorizedAuthTokens {
+			if at == v.Token {
+				return nil, api.ErrUnauthorized
+			}
+		}
+		for _, v := range boundaryAuthTokens {
+			if at == v.Token {
+				return v, nil
+			}
+		}
+		return nil, stdErrors.New("not found")
+	}
+
 	atMap := make(map[ringToken]*authtokens.AuthToken)
 	r, err := NewRepository(ctx, s, &sync.Map{},
 		mapBasedAuthTokenKeyringLookup(atMap),
-		sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		fakeBoundaryLookupFn)
 	require.NoError(t, err)
 
 	t.Run("unknown user", func(t *testing.T) {
@@ -103,6 +127,102 @@ func TestCleanAndPickTokens(t *testing.T) {
 		got, err := r.cleanAndPickAuthTokens(ctx, u1)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, maps.Values(got), []string{at1a.Token, at1b.Token})
+	})
+
+	t.Run("boundary in memory auth token expires", func(t *testing.T) {
+		require.NoError(t, r.AddRawToken(ctx, boundaryAddr, at1a.Token))
+		require.NoError(t, r.AddRawToken(ctx, boundaryAddr, at1b.Token))
+
+		got, err := r.cleanAndPickAuthTokens(ctx, u1)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, maps.Values(got), []string{at1a.Token, at1b.Token})
+
+		t.Cleanup(func() {
+			unauthorizedAuthTokens = nil
+		})
+
+		unauthorizedAuthTokens = []*authtokens.AuthToken{at1b}
+		got, err = r.cleanAndPickAuthTokens(ctx, u1)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, maps.Values(got), []string{at1a.Token})
+	})
+
+	t.Run("boundary keyring auths token expires", func(t *testing.T) {
+		key1 := ringToken{"k1", "t1"}
+		atMap[key1] = keyringAuthToken1
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{
+			KeyringType: key1.k,
+			TokenName:   key1.t,
+			AuthTokenId: keyringAuthToken1.Id,
+		}))
+		key2 := ringToken{"k2", "t2"}
+		atMap[key2] = keyringAuthToken2
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{
+			KeyringType: key2.k,
+			TokenName:   key2.t,
+			AuthTokenId: keyringAuthToken2.Id,
+		}))
+
+		got, err := r.cleanAndPickAuthTokens(ctx, keyringOnlyUser)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, maps.Values(got), []string{keyringAuthToken1.Token, keyringAuthToken2.Token})
+
+		t.Cleanup(func() {
+			unauthorizedAuthTokens = nil
+		})
+
+		unauthorizedAuthTokens = []*authtokens.AuthToken{keyringAuthToken2}
+		got, err = r.cleanAndPickAuthTokens(ctx, keyringOnlyUser)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, maps.Values(got), []string{keyringAuthToken1.Token})
+	})
+
+	t.Run("boundary in memory auth token check errors", func(t *testing.T) {
+		require.NoError(t, r.AddRawToken(ctx, boundaryAddr, at1a.Token))
+		require.NoError(t, r.AddRawToken(ctx, boundaryAddr, at1b.Token))
+
+		got, err := r.cleanAndPickAuthTokens(ctx, u1)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, maps.Values(got), []string{at1a.Token, at1b.Token})
+
+		t.Cleanup(func() {
+			randomErrorAuthTokens = nil
+		})
+
+		randomErrorAuthTokens = []*authtokens.AuthToken{at1b}
+		got, err = r.cleanAndPickAuthTokens(ctx, u1)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, maps.Values(got), []string{at1a.Token})
+	})
+
+	t.Run("boundary keyring auths token check errors", func(t *testing.T) {
+		key1 := ringToken{"k1", "t1"}
+		atMap[key1] = keyringAuthToken1
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{
+			KeyringType: key1.k,
+			TokenName:   key1.t,
+			AuthTokenId: keyringAuthToken1.Id,
+		}))
+		key2 := ringToken{"k2", "t2"}
+		atMap[key2] = keyringAuthToken2
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{
+			KeyringType: key2.k,
+			TokenName:   key2.t,
+			AuthTokenId: keyringAuthToken2.Id,
+		}))
+
+		got, err := r.cleanAndPickAuthTokens(ctx, keyringOnlyUser)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, maps.Values(got), []string{keyringAuthToken1.Token, keyringAuthToken2.Token})
+
+		t.Cleanup(func() {
+			randomErrorAuthTokens = nil
+		})
+
+		randomErrorAuthTokens = []*authtokens.AuthToken{keyringAuthToken2}
+		got, err = r.cleanAndPickAuthTokens(ctx, keyringOnlyUser)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, maps.Values(got), []string{keyringAuthToken1.Token})
 	})
 
 	t.Run("2 keyring tokens", func(t *testing.T) {

@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/util"
 )
 
 // TargetRetrievalFunc is a function that retrieves targets
@@ -64,6 +65,10 @@ func defaultSessionFunc(ctx context.Context, addr, token string) ([]*sessions.Se
 // The returned auth tokens have not been validated against boundary
 func (r *Repository) cleanAndPickAuthTokens(ctx context.Context, u *user) (map[AuthToken]string, error) {
 	const op = "cache.(Repository).cleanAndPickAuthTokens"
+	switch {
+	case util.IsNil(u):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "user is nil")
+	}
 	ret := make(map[AuthToken]string)
 
 	tokens, err := r.listTokens(ctx, u)
@@ -78,16 +83,41 @@ func (r *Repository) cleanAndPickAuthTokens(ctx context.Context, u *user) (map[A
 		for _, kt := range keyringTokens {
 			at := r.tokenKeyringFn(kt.KeyringType, kt.TokenName)
 			switch {
-			case at == nil, at.Id != kt.AuthTokenId:
+			case at == nil, at.Id != kt.AuthTokenId, at.UserId != t.UserId:
+				// delete the keyring token if the auth token in the keyring
+				// has changed since it was stored in the cache.
 				if err := r.deleteKeyringToken(ctx, *kt); err != nil {
 					return nil, errors.Wrap(ctx, err, op)
 				}
 			case at != nil:
+				_, err := r.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
+				var apiErr *api.Error
+				switch {
+				case err != nil && api.ErrUnauthorized.Is(err):
+					if err := r.deleteKeyringToken(ctx, *kt); err != nil {
+						return nil, errors.Wrap(ctx, err, op)
+					}
+					continue
+				case err != nil && !errors.Is(err, apiErr):
+					event.WriteError(ctx, op, err, event.WithInfoMsg("validating keyring stored token against boundary", "auth token id", at.Id))
+					continue
+				}
 				ret[*t] = at.Token
 			}
 		}
 		if atv, ok := r.idToKeyringlessAuthToken.Load(t.Id); ok {
 			if at, ok := atv.(*authtokens.AuthToken); ok {
+				_, err := r.tokenReadFromBoundaryFn(ctx, u.Address, at.Token)
+				var apiErr *api.Error
+				switch {
+				case err != nil && api.ErrUnauthorized.Is(err):
+					r.idToKeyringlessAuthToken.Delete(t.Id)
+					continue
+				case err != nil && !errors.Is(err, apiErr):
+					event.WriteError(ctx, op, err, event.WithInfoMsg("validating in memory stored token against boundary", "auth token id", at.Id))
+					continue
+				}
+
 				ret[*t] = at.Token
 			}
 		}
@@ -103,6 +133,9 @@ func (r *Repository) cleanAndPickAuthTokens(ctx context.Context, u *user) (map[A
 func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 	const op = "cache.(Repository).Refresh"
 	if err := r.cleanExpiredOrOrphanedAuthTokens(ctx); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if err := r.syncKeyringlessTokensWithDb(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
 
@@ -134,8 +167,6 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 		for at, t := range tokens {
 			resp, err := opts.withTargetRetrievalFunc(ctx, u.Address, t)
 			if err != nil {
-				// TODO: If we get an error about the token no longer having
-				// permissions, remove it.
 				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
 				continue
 			}
@@ -151,8 +182,6 @@ func (r *Repository) Refresh(ctx context.Context, opt ...Option) error {
 		for at, t := range tokens {
 			resp, err := opts.withSessionRetrievalFunc(ctx, u.Address, t)
 			if err != nil {
-				// TODO: If we get an error about the token no longer having
-				// permissions, remove it.
 				retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
 				continue
 			}
