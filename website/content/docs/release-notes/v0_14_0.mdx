@@ -1,0 +1,179 @@
+---
+layout: docs
+page_title: v0.14.0
+description: |-
+  Boundary release notes for v0.14.0
+---
+
+# Boundary 0.14.0 release notes
+
+**GA date:** October 11, 2023
+
+@include 'release-notes/intro.mdx'
+
+## New features
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Feature</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Boundary Desktop embedded terminal
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     An embedded terminal has been added to the Boundary Desktop client for convenience. Now you can use the CLI directly from within Boundary Desktop.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/tutorials/oss-getting-started/oss-getting-started-desktop-app">Install Boundary Desktop tutorial</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      LDAP authorization method
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      The LDAP auth method is no longer in beta, it is now fully supported.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/auth-methods">Auth methods</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      AWS <code>AssumeRole</code> support
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      The Amazon Web Services (AWS) <code>AssumeRole</code> API is now supported for session recording.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/configuration/session-recording/create-storage-bucket">Create a storage bucket</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Remote pass-through commands for SSH
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      A new ssh flag, <code>remote-command</code> was introduced. It lets you run a remote command using pass-through arguments.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/commands/connect/ssh">connect ssh command</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Improved telemetry<sup>HCP only</sup>
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      Improved telemetry was added for HCP Boundary. You can enable telemetry to gather information about your Boundary cluster.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/configuration/events">events stanza</a>
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>
+
+## Known issues and breaking changes
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>Version</th>
+      <th style={{verticalAlign: 'middle'}}>Issue</th>
+      <th style={{verticalAligh: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Rotation of AWS access and secret keys during a session results in stale recordings
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    In Boundary version 0.13.0+, when you rotate a storage bucket's secrets, any new sessions use the new credentials. However, previously established sessions continue to use the old credentials.
+    <br /><br />
+    As a best practice, administrators should rotate credentials in a phased manner, ensuring that all previously established sessions are completed before revoking the stale credentials.
+    Otherwise, you may end up with recordings that aren't stored in the remote storage bucket, and are unable to be played back.
+    </td>
+  </tr>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+    0.13.0+
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    Unsupported recovery workflow during worker failure
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+    If a worker fails during a recording, there is no way to recover the recording. This could happen due to a network connectivity issue or because a worker is scaled down, for example.
+    <br /><br />
+    Learn more:&nbsp;
+    <a href="/boundary/docs/troubleshoot/troubleshoot-recorded-sessions#unsupported-recovery-workflow">Unsupported recovery workflow</a>
+    </td>
+  </tr>
+
+  </tbody>
+</table>
+
+## Feature deprecations and EOL
+
+<table>
+  <thead>
+    <tr>
+      <th style={{verticalAlign: 'middle'}}>EOL</th>
+      <th style={{verticalAlign: 'middle'}}>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>vault</code> credential library subtype
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     As noted in the <a href="/boundary/docs/release-notes/v0_12_0#deprecations-and-changes">v0.12.0 release notes</a>, the <code>vault</code> credential library subtype was renamed to <code>vault-generic</code>. The <code>vault</code> subtype is removed in this release, you must use <code>vault-generic</code> now.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/credential-libraries">Credential libraries</a>
+    </td>
+  </tr>
+
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      <code>status</code> field
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      As noted in the <a href="https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md#deprecationschanges-3">v0.12.0 changelog</a>, using the <code>-format=json</code> option with the CLI produced inconsistent results. The <code>status</code> field is removed in this release. The <code>status_code</code> field is now used for both successful requests and errors.
+    </td>
+  </tr>
+
+   <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Application credentials parameter
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+      As noted in the <a href="https://github.com/hashicorp/boundary/blob/main/CHANGELOG.md#deprecationschanges-6">v0.10.0 changelog</a>, the <code>target</code> subcommands for application credentials were renamed to brokered credentials. The application credentials subcommands are removed in this release. You must use the brokered credential subcommands instead.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/commands/targets">targets</a>
+    </td>
+  </tr>
+
+
+  </tbody>
+</table>
