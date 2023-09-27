@@ -223,7 +223,7 @@ begin;
     delete_time wt_timestamp not null
   );
   comment on table host_plugin_catalog_deleted is
-    'host_plugin_catalog_deleted holds the ID and delete_time of every deleted host catalog. '
+    'host_plugin_catalog_deleted holds the ID and delete_time of every deleted plugin host catalog. '
     'It is automatically trimmed of records older than 30 days by a job.';
 
   -- Host sets
@@ -232,7 +232,7 @@ begin;
     delete_time wt_timestamp not null
   );
   comment on table host_plugin_set_deleted is
-    'host_plugin_set_deleted holds the ID and delete_time of every deleted host set. '
+    'host_plugin_set_deleted holds the ID and delete_time of every deleted plugin host set. '
     'It is automatically trimmed of records older than 30 days by a job.';
 
   -- Hosts
@@ -241,7 +241,7 @@ begin;
     delete_time wt_timestamp not null
   );
   comment on table host_plugin_host_deleted is
-    'host_plugin_host_deleted holds the ID and delete_time of every deleted host. '
+    'host_plugin_host_deleted holds the ID and delete_time of every deleted plugin host. '
     'It is automatically trimmed of records older than 30 days by a job.';
 
   -- Storage buckets
@@ -250,7 +250,7 @@ begin;
     delete_time wt_timestamp not null
   );
   comment on table storage_plugin_storage_bucket_deleted is
-    'storage_plugin_storage_bucket_deleted holds the ID and delete_time of every storage bucket. '
+    'storage_plugin_storage_bucket_deleted holds the ID and delete_time of every deleted storage bucket. '
     'It is automatically trimmed of records older than 30 days by a job.';
 
   -- Session recordings
@@ -259,7 +259,7 @@ begin;
     delete_time wt_timestamp not null
   );
   comment on table recording_session_deleted is
-    'recording_session_deleted holds the ID and delete_time of every session recording. '
+    'recording_session_deleted holds the ID and delete_time of every deleted session recording. '
     'It is automatically trimmed of records older than 30 days by a job.';
 
   -- Workers
@@ -268,10 +268,10 @@ begin;
     delete_time wt_timestamp not null
   );
   comment on table server_worker_deleted is
-    'server_worker_deleted holds the ID and delete_time of every worker. '
+    'server_worker_deleted holds the ID and delete_time of every deleted worker. '
     'It is automatically trimmed of records older than 30 days by a job.';
 
-  create or replace function insert_deleted_id() returns trigger
+  create function insert_deleted_id() returns trigger
   as $$
   begin
     execute format('insert into %I (public_id, delete_time) values ($1, now()) on conflict (public_id) do update set delete_time = excluded.delete_time', tg_argv[0]) using old.public_id;
