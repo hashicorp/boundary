@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	targetspb "github.com/hashicorp/boundary/api/internal/pbs/controller/api/resources/targets"
+	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 )
 
 // ClientTlsConfig creates a TLS configuration from the session authorization

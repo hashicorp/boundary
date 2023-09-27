@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	targetspb "github.com/hashicorp/boundary/api/internal/pbs/controller/api/resources/targets"
+	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mr-tron/base58"

@@ -17,12 +17,12 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	proxypb "github.com/hashicorp/boundary/api/proxy/pb"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/commands/connect"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
+	"github.com/hashicorp/boundary/internal/proxy"
 	"github.com/hashicorp/boundary/internal/session"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/go-cleanhttp"
@@ -115,7 +115,7 @@ func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
 
 	var conn *websocket.Conn
 	var resp *http.Response
-	var handshakeResult proxypb.HandshakeResult
+	var handshakeResult proxy.HandshakeResult
 	// A retry was added here to mitigate some flakiness.
 	// Occasionally, `wspb.Read` would throw an error due to "received header with unexpected
 	// rsv bits set: false:false:true". It was unclear what the cause of this was, so we
@@ -151,7 +151,7 @@ func (s *TestSession) connect(ctx context.Context, t *testing.T) net.Conn {
 					return backoff.Permanent(errors.New("Error creating token"))
 				}
 			}
-			handshake := proxypb.ClientHandshake{TofuToken: s.tofuToken}
+			handshake := proxy.ClientHandshake{TofuToken: s.tofuToken}
 			t.Logf("Using token: %s", s.tofuToken)
 
 			err = wspb.Write(ctx, conn, &handshake)
