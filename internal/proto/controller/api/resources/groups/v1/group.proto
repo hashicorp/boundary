@@ -14,19 +14,19 @@ option go_package = "github.com/hashicorp/boundary/sdk/pbs/controller/api/resour
 
 message Member {
   // Output only. The ID of the member.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The Scope ID of the member.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 }
 
 // Group contains all fields related to a Group resource
 message Group {
   // Output only. The ID of the Group.
-  string id = 10; // @gotags: `class:"public"`
+  string id = 10; // @gotags: `class:"public" eventstream:"observation"`
 
   // The ID of the scope of which this Group is a part.
-  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public"`
+  string scope_id = 20 [json_name = "scope_id"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. Scope information for this Group.
   resources.scopes.v1.ScopeInfo scope = 30;
@@ -50,17 +50,17 @@ message Group {
   ]; // @gotags: `class:"public"`
 
   // Output only. The time this resource was created.
-  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp created_time = 60 [json_name = "created_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The time this resource was last updated.
-  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public"`
+  google.protobuf.Timestamp updated_time = 70 [json_name = "updated_time"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Version is used in mutation requests, after the initial creation, to ensure this resource has not changed.
   // The mutation will fail if the version does not match the latest known good version.
   uint32 version = 80; // @gotags: `class:"public"`
 
   // Output only. Contains the list of member IDs in this Group.
-  repeated string member_ids = 90 [json_name = "member_ids"]; // @gotags: `class:"public"`
+  repeated string member_ids = 90 [json_name = "member_ids"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The members of this Group.
   repeated Member members = 100;

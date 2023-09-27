@@ -4,7 +4,7 @@
 package base
 
 import (
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/sdk/pbs/plugin"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )

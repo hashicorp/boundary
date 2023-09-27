@@ -46,6 +46,8 @@ type options struct {
 	withMemberOfGroups       string
 	withUrls                 []string
 	withPublicId             string
+	withDerefAliases         DerefAliasType
+	withMaximumPageSize      uint32
 }
 
 // Option - how options are passed as args
@@ -367,5 +369,47 @@ func WithPublicId(ctx context.Context, publicId string) Option {
 	return func(o *options) error {
 		o.withPublicId = publicId
 		return nil
+	}
+}
+
+// WithMaximumPageSize provides an option for passing a max page size for group
+// searching to the operation
+func WithMaximumPageSize(ctx context.Context, max uint32) Option {
+	const op = "ldap.WithMaximumPageSize"
+	return func(o *options) error {
+		o.withMaximumPageSize = max
+		return nil
+	}
+}
+
+// WithDerefAliases provides an option for passing in how dereferencing aliases
+// should be handled
+func WithDerefAliases(ctx context.Context, derefAlias DerefAliasType) Option {
+	const op = "ldap.WithMaximumPageSize"
+	return func(o *options) error {
+		if err := derefAlias.IsValid(ctx); err != nil {
+			return errors.Wrap(ctx, err, op)
+		}
+		o.withDerefAliases = derefAlias
+		return nil
+	}
+}
+
+type DerefAliasType string
+
+const (
+	NeverDerefAliases   DerefAliasType = "NeverDerefAliases"
+	DerefInSearching    DerefAliasType = "DerefInSearching"
+	DerefFindingBaseObj DerefAliasType = "DerefFindingBaseObj"
+	DerefAlways         DerefAliasType = "DerefAlways"
+)
+
+func (d DerefAliasType) IsValid(ctx context.Context) error {
+	const op = "ldap.(DerefAliasType).IsValid"
+	switch d {
+	case NeverDerefAliases, DerefInSearching, DerefFindingBaseObj, DerefAlways:
+		return nil
+	default:
+		return errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("%q is not a valid ldap dereference alias type", d))
 	}
 }

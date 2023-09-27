@@ -24,10 +24,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
@@ -363,11 +362,15 @@ func (c *Command) Run(args []string) int {
 				c.UI.Error(fmt.Errorf("Initial upstreams and HCPB cluster ID are mutually exclusive fields").Error())
 				return base.CommandUserError
 			}
-			clusterId := c.Config.HcpbClusterId
+			clusterId, err := parseutil.ParsePath(c.Config.HcpbClusterId)
+			if err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+				c.UI.Error(fmt.Errorf("Failed to parse HCP Boundary cluster ID %q: %w", clusterId, err).Error())
+				return base.CommandUserError
+			}
 			if strings.HasPrefix(clusterId, "int-") {
 				clusterId = strings.TrimPrefix(clusterId, "int-")
 			}
-			_, err := uuid.ParseUUID(clusterId)
+			_, err = uuid.ParseUUID(clusterId)
 			if err != nil {
 				c.UI.Error(fmt.Errorf("Invalid HCP Boundary cluster ID %q: %w", clusterId, err).Error())
 				return base.CommandUserError
@@ -803,19 +806,19 @@ func (c *Command) Reload(newConf *config.Config) error {
 	c.ReloadFuncsLock.RLock()
 	defer c.ReloadFuncsLock.RUnlock()
 
-	var reloadErrors *multierror.Error
+	var reloadErrors error
 
 	for _, relFunc := range c.ReloadFuncs["listeners"] {
 		if relFunc != nil {
 			if err := relFunc(); err != nil {
-				reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
+				reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("error encountered reloading listener: %w", err))
 			}
 		}
 	}
 
 	err := c.reloadControllerDatabase(newConf)
 	if err != nil {
-		reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
+		reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
 	}
 
 	if newConf != nil && c.worker != nil {
@@ -833,7 +836,7 @@ func (c *Command) Reload(newConf *config.Config) error {
 			return nil
 		}()
 		if workerReloadErr != nil {
-			reloadErrors = multierror.Append(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
+			reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("error encountered reloading worker initial upstreams: %w", workerReloadErr))
 		}
 	}
 
@@ -846,7 +849,7 @@ func (c *Command) Reload(newConf *config.Config) error {
 		}
 	}
 
-	return reloadErrors.ErrorOrNil()
+	return reloadErrors
 }
 
 func verifyKmsSetup(dbase *db.DB) error {

@@ -79,7 +79,14 @@ func TestGetHealth(t *testing.T) {
 			resp := &opsservices.GetHealthResponse{}
 			require.NoError(t, healthCheckMarshaler.Unmarshal(b, resp))
 
-			assert.Empty(t, cmp.Diff(tt.expectedResponse, resp, protocmp.Transform()))
+			assert.Empty(t,
+				cmp.Diff(
+					tt.expectedResponse,
+					resp,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbhealth.HealthInfo{}, "upstream_connection_state"),
+				),
+			)
 		})
 	}
 }

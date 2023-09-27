@@ -38,7 +38,7 @@ jobs:
         with:
           fetch-depth: '0'
       - name: Set up Go
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -80,6 +80,8 @@ jobs:
           - filter: 'e2e_database'
           - filter: 'e2e_docker_base builder:crt'
           - filter: 'e2e_docker_base_with_vault builder:crt'
+          - filter: 'e2e_docker_base_with_postgres builder:crt'
+          - filter: 'e2e_docker_base_with_worker builder:crt'
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
@@ -102,7 +104,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
       - name: Set up Go
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version: ${{ inputs.go-version }}
           cache: false
@@ -183,7 +185,7 @@ jobs:
         run: |
           wget https://releases.hashicorp.com/vault/1.12.2/vault_1.12.2_linux_amd64.zip -O /tmp/test-deps/vault.zip
       - name: Install Vault CLI
-        if: matrix.filter == 'e2e_aws_base_with_vault builder:crt' || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui builder:crt' || matrix.filter == 'e2e_docker_base_with_vault builder:crt'
+        if: contains(matrix.filter, 'vault') || contains(matrix.filter, 'e2e_docker') || matrix.filter == 'e2e_database' || matrix.filter == 'e2e_ui builder:crt'
         run: |
           unzip /tmp/test-deps/vault.zip -d /usr/local/bin
       - name: GH fix for localhost resolution
@@ -215,7 +217,7 @@ jobs:
         run: |
           mv ${{ steps.download-docker.outputs.download-path }}/*.tar enos/support/boundary_docker_image.tar
       - name: Set up Node.js
-        uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
+        uses: actions/setup-node@5e21ff4d9bc1a8cf6de233a3057d20ec6b3fb69d # v3.8.1
         if: matrix.filter == 'e2e_ui builder:crt'
         with:
           node-version: '16.x'

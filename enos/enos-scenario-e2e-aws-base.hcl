@@ -62,7 +62,7 @@ scenario "e2e_aws_base" {
   }
 
   step "create_base_infra" {
-    module = module.infra
+    module = module.aws_vpc
     depends_on = [
       step.find_azs,
     ]
@@ -129,7 +129,7 @@ scenario "e2e_aws_base" {
       auth_password            = step.create_boundary_cluster.auth_password
       local_boundary_dir       = local.local_boundary_dir
       aws_ssh_private_key_path = local.aws_ssh_private_key_path
-      target_ip                = step.create_target.target_ips[0]
+      target_address           = step.create_target.target_ips[0]
       target_user              = "ubuntu"
       target_port              = "22"
     }

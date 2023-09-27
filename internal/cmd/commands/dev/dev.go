@@ -23,7 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -95,6 +95,7 @@ type Command struct {
 	flagEventFormat                      string
 	flagAudit                            string
 	flagObservations                     string
+	flagTelemetry                        string
 	flagSysEvents                        string
 	flagEveryEventAllowFilters           []string
 	flagEveryEventDenyFilters            []string
@@ -336,6 +337,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Target:     &c.flagObservations,
 		Completion: complete.PredictSet("true", "false"),
 		Usage:      `Emit observation events. Supported values are "true" and "false".`,
+	})
+	f.StringVar(&base.StringVar{
+		Name:       "telemetry-events",
+		Target:     &c.flagTelemetry,
+		Completion: complete.PredictSet("true", "false"),
+		Usage:      `Emit telemetry events. Supported values are "true" and "false".`,
 	})
 	f.StringVar(&base.StringVar{
 		Name:       "audit-events",
@@ -646,6 +653,7 @@ func (c *Command) Run(args []string) int {
 		Format:       c.flagEventFormat,
 		Audit:        c.flagAudit,
 		Observations: c.flagObservations,
+		Telemetry:    c.flagTelemetry,
 		SysEvents:    c.flagSysEvents,
 		Allow:        c.flagEveryEventAllowFilters,
 		Deny:         c.flagEveryEventDenyFilters,

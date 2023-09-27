@@ -41,13 +41,13 @@ func TestCliTcpTargetVaultConnectTarget(t *testing.T) {
 	newProjectId := boundary.CreateNewProjectCli(t, ctx, newOrgId)
 	newHostCatalogId := boundary.CreateNewHostCatalogCli(t, ctx, newProjectId)
 	newHostSetId := boundary.CreateNewHostSetCli(t, ctx, newHostCatalogId)
-	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetIp)
+	newHostId := boundary.CreateNewHostCli(t, ctx, newHostCatalogId, c.TargetAddress)
 	boundary.AddHostToHostSetCli(t, ctx, newHostSetId, newHostId)
 	newTargetId := boundary.CreateNewTargetCli(t, ctx, newProjectId, c.TargetPort)
 	boundary.AddHostSourceToTargetCli(t, ctx, newTargetId, newHostSetId)
 
 	// Configure vault
-	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
 	t.Cleanup(func() {
 		output := e2e.RunCommand(ctx, "vault",
 			e2e.WithArgs("policy", "delete", boundaryPolicyName),
@@ -103,7 +103,7 @@ func TestCliTcpTargetVaultConnectTarget(t *testing.T) {
 	// Create a credential library
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credential-libraries", "create", "vault",
+			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", newCredentialStoreId,
 			"-vault-path", fmt.Sprintf("%s/data/%s", c.VaultSecretPath, privateKeySecretName),
 			"-name", "e2e Automated Test Vault Credential Library",
@@ -171,6 +171,6 @@ func TestCliTcpTargetVaultConnectTarget(t *testing.T) {
 
 	parts := strings.Fields(string(output.Stdout))
 	hostIp := parts[len(parts)-1]
-	require.Equal(t, c.TargetIp, hostIp, "SSH session did not return expected output")
+	require.Equal(t, c.TargetAddress, hostIp, "SSH session did not return expected output")
 	t.Log("Successfully connected to target")
 }

@@ -27,11 +27,11 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/schema"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/gen/testing/interceptor"
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
@@ -810,6 +810,7 @@ func (tc *TestController) AddClusterControllerMember(t testing.TB, opts *TestCon
 		DefaultPassword:                 tc.b.DevPassword,
 		DisableKmsKeyCreation:           true,
 		DisableAuthMethodCreation:       true,
+		DisableAutoStart:                opts.DisableAutoStart,
 		PublicClusterAddr:               opts.PublicClusterAddr,
 		WorkerStatusGracePeriodDuration: opts.WorkerStatusGracePeriodDuration,
 		LivenessTimeToStaleDuration:     opts.LivenessTimeToStaleDuration,

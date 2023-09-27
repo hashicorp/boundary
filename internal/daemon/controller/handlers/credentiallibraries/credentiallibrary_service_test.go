@@ -781,49 +781,13 @@ func TestCreate(t *testing.T) {
 			name: "Create a valid vault CredentialLibrary with the 'vault' subtype",
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
-				Type:              vault.Subtype.String(),
+				Type:              vault.GenericLibrarySubtype.String(),
 				Attrs: &pb.CredentialLibrary_VaultCredentialLibraryAttributes{
 					VaultCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
 						Path: wrapperspb.String("something"),
 					},
 				},
 			}},
-			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
-			res: &pbs.CreateCredentialLibraryResponse{
-				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),
-				Item: &pb.CredentialLibrary{
-					Id:                store.GetPublicId(),
-					CredentialStoreId: store.GetPublicId(),
-					CreatedTime:       store.GetCreateTime().GetTimestamp(),
-					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
-					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
-					Version:           1,
-					Type:              vault.GenericLibrarySubtype.String(),
-					Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
-						VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
-							Path:       wrapperspb.String("something"),
-							HttpMethod: wrapperspb.String("GET"),
-						},
-					},
-					AuthorizedActions: testAuthorizedActions,
-				},
-			},
-		},
-		{
-			name: "Create a valid vault CredentialLibrary with no type set subtype",
-			req: &pbs.CreateCredentialLibraryRequest{
-				Item: &pb.CredentialLibrary{
-					CredentialStoreId: store.GetPublicId(),
-					Type:              "",
-					Attrs: &pb.CredentialLibrary_Attributes{
-						Attributes: &structpb.Struct{
-							Fields: map[string]*structpb.Value{
-								"path": structpb.NewStringValue("something"),
-							},
-						},
-					},
-				},
-			},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
 				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultCredentialLibraryPrefix),

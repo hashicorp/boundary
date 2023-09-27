@@ -95,6 +95,7 @@ func TestServer_ShutdownWorker(t *testing.T) {
 	require.NotNil(tgtR)
 
 	// Authorize and connect
+	// This prevents us from running tests in parallel.
 	tg.SetupSuiteTargetFilters(t)
 	sess := helper.NewTestSession(ctx, t, tcl, tgt.Id)
 	sConn := sess.Connect(ctx, t)

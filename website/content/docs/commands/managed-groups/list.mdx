@@ -1,0 +1,41 @@
+---
+layout: docs
+page_title: managed-groups list - Command
+description: |-
+  The "managed-groups list" command lists the managed groups within a given scope or resource.
+---
+
+# managed-groups list
+
+Command: `boundary managed-groups list`
+
+The `boundary managed-groups list` command lets you list the Boundary managed groups within a given scope or resource.
+
+## Example
+
+This example lists all managed groups within the scope `s_1234567890`:
+
+```shell-session
+$ boundary managed-groups list -scope-id s_1234567890
+```
+
+## Usage
+
+<CodeBlockConfig hideClipboard>
+
+```shell-session
+$ boundary managed-groups list [options] [args]
+```
+
+</CodeBlockConfig>
+
+### Command options
+
+- `auth-method-id=<string>` - The auth method resource to use for this operation.
+You can also specify the auth method using the **BOUNDARY_AUTH_METHOD_ID** environment variable.
+- `-filter=<string>` - If set, Boundary filters the list operation before the results are returned.
+The filter operates against each item in the list.
+We recommend that you use single quotes, because the filters contain double quotes.
+Refer to the [Filter resource listings documentation](/boundary/docs/concepts/filtering/resource-listing) for more details.
+
+@include 'cmd-option-note.mdx'

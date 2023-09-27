@@ -235,7 +235,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	boundary.AddBrokeredCredentialSourceToTargetCli(t, ctx, newTargetId, newCredentialsId)
 
 	// Create vault credentials
-	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t)
+	boundaryPolicyName, kvPolicyFilePath := vault.Setup(t, "testdata/boundary-controller-policy.hcl")
 	output := e2e.RunCommand(ctx, "vault",
 		e2e.WithArgs("secrets", "enable", "-path="+c.VaultSecretPath, "kv-v2"),
 	)
@@ -270,7 +270,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	// Create a credential library for the private key in vault
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credential-libraries", "create", "vault",
+			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", newVaultCredentialStoreId,
 			"-vault-path", c.VaultSecretPath+"/data/"+privateKeySecretName,
 			"-name", "e2e Automated Test Vault Credential Library",
@@ -288,7 +288,7 @@ func populateBoundaryDatabase(t testing.TB, ctx context.Context, c *config, te T
 	// Create a credential library for the password in vault
 	output = e2e.RunCommand(ctx, "boundary",
 		e2e.WithArgs(
-			"credential-libraries", "create", "vault",
+			"credential-libraries", "create", "vault-generic",
 			"-credential-store-id", newVaultCredentialStoreId,
 			"-vault-path", c.VaultSecretPath+"/data/"+passwordSecretName,
 			"-name", "e2e Automated Test Vault Credential Library - Password",

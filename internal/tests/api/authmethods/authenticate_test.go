@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	tests_api "github.com/hashicorp/boundary/internal/tests/api"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"

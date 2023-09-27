@@ -12,7 +12,7 @@ import (
 	"time"
 
 	berrors "github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/multihop"
 	"github.com/hashicorp/nodeenrollment/types"

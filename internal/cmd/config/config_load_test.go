@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	"github.com/hashicorp/boundary/internal/observability/event"
+	"github.com/hashicorp/boundary/internal/event"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/require"
