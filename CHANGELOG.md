@@ -12,7 +12,11 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * Per the note in Boundary 0.12.0, errors returned from the cli when using the
   `-format=json` option will now only use the `status_code` field. The `status`
   field has been removed.
-* Targets: Removed Application Credentials ([PR](https://github.com/hashicorp/boundary/pull/3728), [deprecated changelog](#0100-20220810)).
+* Per the note in Boundary 0.12.0, targets require a default port value. Ports defined as part of a host address
+  were ignored but allowed as part of a target definition; from 0.14.0 onwards, any port defined on a host address will 
+  now become an error.
+* Targets: Per the note in Boundary 0.10.10, target Application Credentials has been renamed to Brokered Credentials. 
+  `application-credential-source` has been removed as a field. `brokered-credential-source` should be used instead. ([PR](https://github.com/hashicorp/boundary/pull/3728), [deprecated changelog](#0100-20220810)).
 
 ### New and Improved
 
