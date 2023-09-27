@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/boundary/api/consts"
-	pb "github.com/hashicorp/boundary/api/proxy/pb"
+	pb "github.com/hashicorp/boundary/sdk/pbs/proxy"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wspb"
 )
