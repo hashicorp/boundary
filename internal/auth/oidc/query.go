@@ -17,6 +17,6 @@ const (
        `
 
 	estimateCountOidcAccounts = `
-	select reltuples::bigint as estimate from pg_class where oid = (current_schema() || '.auth_oidc_account')::regclass
-	   `
+select reltuples::bigint as estimate from pg_class where oid = (current_schema() || '.auth_oidc_account')::regclass
+`
 )

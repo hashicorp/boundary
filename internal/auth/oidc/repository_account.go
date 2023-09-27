@@ -349,11 +349,11 @@ func (r *Repository) ListDeletedAccountIds(ctx context.Context, since time.Time,
 	if err := rdr.SearchWhere(ctx, &deletedAccounts, "delete_time >= ?", []any{since}); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted oidc accounts"))
 	}
-	var AccountIds []string
+	var accountIds []string
 	for _, a := range deletedAccounts {
-		AccountIds = append(AccountIds, a.PublicId)
+		accountIds = append(accountIds, a.PublicId)
 	}
-	return AccountIds, nil
+	return accountIds, nil
 }
 
 type deletedAccount struct {

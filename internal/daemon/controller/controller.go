@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -420,6 +421,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.PasswordAuthRepoFn = func() (*password.Repository, error) {
 		return password.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.AccountServiceFn = func(ldapRepo *ldap.Repository, oidcRepo *oidc.Repository, pwRepo *password.Repository) (*auth.AccountService, error) {
+		return auth.NewAccountService(ctx, dbase, ldapRepo, oidcRepo, pwRepo)
 	}
 	c.TargetRepoFn = func(o ...target.Option) (*target.Repository, error) {
 		return target.NewRepository(ctx, dbase, dbase, c.kms, o...)
