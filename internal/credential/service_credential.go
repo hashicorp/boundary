@@ -51,17 +51,19 @@ func (s *CredentialService) EstimatedCount(ctx context.Context) (int, error) {
 	return numCreds, nil
 }
 
-// ListDeletedIds lists all deleted credential IDs across all types
+// ListDeletedIds lists all deleted credential IDs across all types,
+// and returns the timestamp of the transaction, to be used in other ListDeletedIds transactions.
+// This should ensure the correct list of deleted IDs is always returned.
 func (s *CredentialService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "credential.(*CredentialService).ListDeletedIds"
 	var deletedIds []string
-	var transactionTime time.Time
+	var now time.Time
 	_, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		deletedCredsIds, err := s.repo.ListDeletedCredentialIds(ctx, since, WithReaderWriter(r, w))
 		if err != nil {
 			return err
 		}
-		transactionTime, err = r.TransactionTimestamp(ctx)
+		now, err = r.Now(ctx)
 		if err != nil {
 			return err
 		}
@@ -71,5 +73,5 @@ func (s *CredentialService) ListDeletedIds(ctx context.Context, since time.Time)
 	if err != nil {
 		return nil, time.Time{}, errors.Wrap(ctx, err, op)
 	}
-	return deletedIds, transactionTime, nil
+	return deletedIds, now, nil
 }

@@ -3194,15 +3194,39 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 // 	}
 // }
 
-func TestDb_TransactionTimestamp(t *testing.T) {
+func TestDb_Now(t *testing.T) {
 	t.Parallel()
 	conn, _ := TestSetup(t, "postgres")
 	rw := New(conn)
 	ctx := context.Background()
-	now, err := rw.TransactionTimestamp(ctx)
+	now, err := rw.Now(ctx)
 	require.NoError(t, err)
+
 	// Check that it's within 1 second of now according to the system
 	// If this is flaky... just increase the limit 😬.
 	assert.True(t, now.Before(time.Now().Add(time.Second)))
 	assert.True(t, now.After(time.Now().Add(-time.Second)))
+
+	// wait a second...
+	time.Sleep(time.Second * 1)
+	differentFromNow, err := rw.Now(ctx)
+	require.NoError(t, err)
+	// make sure now and differentFromNow aren't equal
+	require.False(t, now.Equal(differentFromNow))
+
+	// checking to make sure the return is the same within the same transaction
+	_, err = rw.DoTx(ctx, 0, ExpBackoff{},
+		func(r Reader, w Writer) error {
+			nowFirst, err := r.Now(ctx)
+			require.NoError(t, err)
+
+			// sleep for a second
+			time.Sleep(time.Second * 1)
+			nowSecond, err := r.Now(ctx)
+			require.NoError(t, err)
+			require.True(t, nowFirst.Equal(nowSecond))
+			return nil
+		},
+	)
+	require.NoError(t, err)
 }

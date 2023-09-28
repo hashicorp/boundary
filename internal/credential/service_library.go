@@ -57,11 +57,13 @@ func (s *LibraryService) EstimatedCount(ctx context.Context) (int, error) {
 	return numGenericLibs + numSSHCertLibs, nil
 }
 
-// ListDeletedIds lists all deleted credential library IDs across all types
+// ListDeletedIds lists all deleted credential library IDs across all types,
+// and returns the timestamp of the transaction, to be used in other ListDeletedIds transactions.
+// This should ensure the correct list of deleted IDs is always returned.
 func (s *LibraryService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "credential.(*LibraryService).ListDeletedIds"
 	var deletedIds []string
-	var transactionTime time.Time
+	var now time.Time
 	_, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		deletedLibIds, err := s.repo.ListDeletedLibraryIds(ctx, since, WithReaderWriter(r, w))
 		if err != nil {
@@ -71,7 +73,7 @@ func (s *LibraryService) ListDeletedIds(ctx context.Context, since time.Time) ([
 		if err != nil {
 			return err
 		}
-		transactionTime, err = r.TransactionTimestamp(ctx)
+		now, err = r.Now(ctx)
 		if err != nil {
 			return err
 		}
@@ -81,5 +83,5 @@ func (s *LibraryService) ListDeletedIds(ctx context.Context, since time.Time) ([
 	if err != nil {
 		return nil, time.Time{}, errors.Wrap(ctx, err, op)
 	}
-	return deletedIds, transactionTime, nil
+	return deletedIds, now, nil
 }

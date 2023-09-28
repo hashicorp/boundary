@@ -52,11 +52,11 @@ func (f *fakeWriter) DoTx(ctx context.Context, retries uint, backOff db.Backoff,
 
 type fakeReader struct {
 	db.Reader
-	TransactionTimestampFn func(context.Context) (time.Time, error)
+	NowFn func(context.Context) (time.Time, error)
 }
 
-func (f *fakeReader) TransactionTimestamp(ctx context.Context) (time.Time, error) {
-	return f.TransactionTimestampFn(ctx)
+func (f *fakeReader) Now(ctx context.Context) (time.Time, error) {
+	return f.NowFn(ctx)
 }
 
 func TestNewLibraryService(t *testing.T) {
@@ -166,7 +166,7 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 		writer := &fakeWriter{
 			DoTxFn: func(ctx context.Context, retries uint, backoff db.Backoff, handler db.TxHandler) (db.RetryInfo, error) {
 				r := &fakeReader{
-					TransactionTimestampFn: func(ctx context.Context) (time.Time, error) {
+					NowFn: func(ctx context.Context) (time.Time, error) {
 						return time.Now(), nil
 					},
 				}
@@ -236,7 +236,7 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 		writer := &fakeWriter{
 			DoTxFn: func(ctx context.Context, retries uint, backoff db.Backoff, handler db.TxHandler) (db.RetryInfo, error) {
 				r := &fakeReader{
-					TransactionTimestampFn: func(ctx context.Context) (time.Time, error) {
+					NowFn: func(ctx context.Context) (time.Time, error) {
 						return time.Now(), nil
 					},
 				}
@@ -267,7 +267,7 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 		writer := &fakeWriter{
 			DoTxFn: func(ctx context.Context, retries uint, backoff db.Backoff, handler db.TxHandler) (db.RetryInfo, error) {
 				r := &fakeReader{
-					TransactionTimestampFn: func(ctx context.Context) (time.Time, error) {
+					NowFn: func(ctx context.Context) (time.Time, error) {
 						return time.Now(), nil
 					},
 				}

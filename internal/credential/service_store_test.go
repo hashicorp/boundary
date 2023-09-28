@@ -119,7 +119,7 @@ func TestStoreService_ListDeletedIds(t *testing.T) {
 		writer := &fakeWriter{
 			DoTxFn: func(ctx context.Context, retries uint, backoff db.Backoff, handler db.TxHandler) (db.RetryInfo, error) {
 				r := &fakeReader{
-					TransactionTimestampFn: func(ctx context.Context) (time.Time, error) {
+					NowFn: func(ctx context.Context) (time.Time, error) {
 						return time.Now(), nil
 					},
 				}
@@ -175,7 +175,7 @@ func TestStoreService_ListDeletedIds(t *testing.T) {
 		writer := &fakeWriter{
 			DoTxFn: func(ctx context.Context, retries uint, backoff db.Backoff, handler db.TxHandler) (db.RetryInfo, error) {
 				r := &fakeReader{
-					TransactionTimestampFn: func(ctx context.Context) (time.Time, error) {
+					NowFn: func(ctx context.Context) (time.Time, error) {
 						return time.Now(), nil
 					},
 				}

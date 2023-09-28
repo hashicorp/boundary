@@ -194,17 +194,19 @@ func (r *Repository) ListAccounts(ctx context.Context, withAuthMethodId string, 
 	return accts, nil
 }
 
-// ListDeletedIds lists the public IDs of any accounts deleted since the timestamp provided.
+// ListDeletedIds lists the public IDs of any accounts deleted since the timestamp provided,
+// and returns the timestamp of the transaction, to be used in other ListDeletedIds transactions.
+// This should ensure the correct list of deleted IDs is always returned.
 func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "account.(Repository).ListDeletedIds"
 	var deletedAccounts []*deletedAccount
-	var transactionTimestamp time.Time
+	var now time.Time
 	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		if err := r.SearchWhere(ctx, &deletedAccounts, "delete_time >= ?", []any{since}); err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted accounts"))
 		}
 		var err error
-		transactionTimestamp, err = r.TransactionTimestamp(ctx)
+		now, err = r.Now(ctx)
 		if err != nil {
 			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query transaction timestamp"))
 		}
@@ -216,7 +218,7 @@ func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]str
 	for _, acct := range deletedAccounts {
 		accountIds = append(accountIds, acct.PublicId)
 	}
-	return accountIds, transactionTimestamp, nil
+	return accountIds, now, nil
 }
 
 // EstimatedCount returns an estimate of the total number of items in the accounts table.
