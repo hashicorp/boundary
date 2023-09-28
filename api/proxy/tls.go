@@ -14,7 +14,7 @@ func (p *ClientProxy) clientTlsConfig() (*tls.Config, error) {
 		return p.clientTlsConf, nil
 	}
 
-	const op = "proxy.createClientTlsConfig"
+	const op = "proxy.clientTlsConfig"
 	if p.sessionAuthzData == nil {
 		return nil, fmt.Errorf("%s: nil session authorization data", op)
 	}
