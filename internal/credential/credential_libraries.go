@@ -44,8 +44,8 @@ type LibraryService struct {
 }
 
 // EstimatedCount gets an estimate of the total number of credential libraries across all types
-func (s *CredentialLibraryService) EstimatedCount(ctx context.Context) (int, error) {
-	const op = "credential.(*LibraryRepository).EstimatedCount"
+func (s *LibraryService) EstimatedCount(ctx context.Context) (int, error) {
+	const op = "credential.(*LibraryService).EstimatedCount"
 	numGenericLibs, err := s.repo.EstimatedLibraryCount(ctx)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
@@ -58,8 +58,8 @@ func (s *CredentialLibraryService) EstimatedCount(ctx context.Context) (int, err
 }
 
 // ListDeletedIds lists all deleted credential library IDs across all types
-func (s *CredentialLibraryService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
-	const op = "credential.(*LibraryRepository).ListDeletedIds"
+func (s *LibraryService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
+	const op = "credential.(*LibraryService).ListDeletedIds"
 	var deletedIds []string
 	_, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		deletedLibIds, err := s.repo.ListDeletedLibraryIds(ctx, since, WithReaderWriter(r, w))

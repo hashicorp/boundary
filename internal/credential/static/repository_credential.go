@@ -883,17 +883,17 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 	return rowsDeleted, nil
 }
 
-// GetTotalCredentials returns an estimate of the number of Vault credential stores
+// GetTotalCredentials returns an estimate of the number of static credential stores
 func (r *Repository) GetTotalCredentials(ctx context.Context) (int, error) {
-	const op = "vault.(Repository).GetTotalCredentials"
+	const op = "static.(Repository).GetTotalCredentials"
 	rows, err := r.reader.Query(ctx, estimateCountCredentials, nil)
 	if err != nil {
-		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential stores"))
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total static credential stores"))
 	}
 	var count int
 	for rows.Next() {
 		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
-			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential stores"))
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total static credential stores"))
 		}
 	}
 	return count, nil
@@ -903,7 +903,7 @@ func (r *Repository) GetTotalCredentials(ctx context.Context) (int, error) {
 // Supported options:
 //   - credential.WithReaderWriter
 func (r *Repository) ListDeletedCredentialIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
-	const op = "vault.(Repository).ListDeletedCredentialIds"
+	const op = "static.(Repository).ListDeletedCredentialIds"
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
