@@ -19,9 +19,9 @@ type AccountRepository interface {
 	ListDeletedAccountIds(context.Context, time.Time, ...Option) ([]string, error)
 }
 
-// NewAccountService returns a new credential store service.
+// NewAccountService returns a new account service.
 func NewAccountService(ctx context.Context, writer db.Writer, ldapRepo AccountRepository, oidcRepo AccountRepository, pwRepo AccountRepository) (*AccountService, error) {
-	const op = "credential.NewAccountService"
+	const op = "auth.NewAccountService"
 	switch {
 	case util.IsNil(writer):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB writer")
@@ -39,15 +39,15 @@ func NewAccountService(ctx context.Context, writer db.Writer, ldapRepo AccountRe
 }
 
 // AccountService coordinates calls to across different subtype repositories
-// to gather information about all credential stores.
+// to gather information about all accounts.
 type AccountService struct {
 	repos  []AccountRepository
 	writer db.Writer
 }
 
-// GetTotalItems gets an estimate of the total number of credential stores across all types
+// GetTotalItems gets an estimate of the total number of accounts across all types
 func (s *AccountService) GetTotalItems(ctx context.Context) (int, error) {
-	const op = "credential.(*AccountRepository).GetTotalItems"
+	const op = "auth.(*AccountService).GetTotalItems"
 	var totalNumAccounts int
 	for _, repo := range s.repos {
 		numAccounts, err := repo.GetTotalAccounts(ctx)
@@ -59,9 +59,9 @@ func (s *AccountService) GetTotalItems(ctx context.Context) (int, error) {
 	return totalNumAccounts, nil
 }
 
-// ListDeletedIds lists all deleted credential store IDs across all types
+// ListDeletedIds lists all deleted account IDs across all types
 func (s *AccountService) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
-	const op = "credential.(*AccountRepository).ListDeletedIds"
+	const op = "auth.(*AccountService).ListDeletedIds"
 	var deletedIds []string
 	_, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		for _, repo := range s.repos {
