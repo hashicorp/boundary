@@ -5,20 +5,32 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-
-	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"net"
+	"strings"
 )
 
-// ClientTlsConfig creates a TLS configuration from the session authorization
-// data and host
-func ClientTlsConfig(sessionAuthzData *targetspb.SessionAuthorizationData, host string) (*tls.Config, error) {
-	const op = "proxy.ClientTlsConfig"
-	if sessionAuthzData == nil {
+func (p *ClientProxy) clientTlsConfig() (*tls.Config, error) {
+	if p.clientTlsConf != nil {
+		return p.clientTlsConf, nil
+	}
+
+	const op = "proxy.createClientTlsConfig"
+	if p.sessionAuthzData == nil {
 		return nil, fmt.Errorf("%s: nil session authorization data", op)
 	}
-	parsedCert, err := x509.ParseCertificate(sessionAuthzData.Certificate)
+
+	workerHost, _, err := net.SplitHostPort(p.workerAddr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode mTLS certificate: %w", err)
+		if strings.Contains(err.Error(), "missing port") {
+			workerHost = p.workerAddr
+		} else {
+			return nil, fmt.Errorf("%s: error splitting worker adddress host/port: %w", op, err)
+		}
+	}
+
+	parsedCert, err := x509.ParseCertificate(p.sessionAuthzData.Certificate)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to decode mTLS certificate: %w", op, err)
 	}
 
 	certPool := x509.NewCertPool()
@@ -27,20 +39,20 @@ func ClientTlsConfig(sessionAuthzData *targetspb.SessionAuthorizationData, host 
 	tlsConf := &tls.Config{
 		Certificates: []tls.Certificate{
 			{
-				Certificate: [][]byte{sessionAuthzData.Certificate},
-				PrivateKey:  ed25519.PrivateKey(sessionAuthzData.PrivateKey),
+				Certificate: [][]byte{p.sessionAuthzData.Certificate},
+				PrivateKey:  ed25519.PrivateKey(p.sessionAuthzData.PrivateKey),
 				Leaf:        parsedCert,
 			},
 		},
-		ServerName: host,
+		ServerName: workerHost,
 		MinVersion: tls.VersionTLS13,
-		NextProtos: []string{"http/1.1", sessionAuthzData.SessionId},
+		NextProtos: []string{"http/1.1", p.sessionAuthzData.SessionId},
 
 		// This is set this way so we can make use of VerifyConnection, which we
 		// set on this TLS config below. We are not skipping verification!
 		InsecureSkipVerify: true,
 	}
-	if host == "" {
+	if workerHost == "" {
 		tlsConf.ServerName = parsedCert.DNSNames[0]
 	}
 
@@ -48,7 +60,7 @@ func ClientTlsConfig(sessionAuthzData *targetspb.SessionAuthorizationData, host 
 	// addresses for security and want to avoid issues with including localhost
 	// etc.
 	verifyOpts := x509.VerifyOptions{
-		DNSName: sessionAuthzData.SessionId,
+		DNSName: p.sessionAuthzData.SessionId,
 		Roots:   certPool,
 		KeyUsages: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageClientAuth,
@@ -65,5 +77,6 @@ func ClientTlsConfig(sessionAuthzData *targetspb.SessionAuthorizationData, host 
 		return err
 	}
 
+	p.clientTlsConf = tlsConf
 	return tlsConf, nil
 }

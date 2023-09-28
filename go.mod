@@ -1,12 +1,6 @@
 module github.com/hashicorp/boundary
 
-go 1.21
-
-replace github.com/hashicorp/boundary/api => ./api
-
-replace github.com/hashicorp/boundary/sdk => ./sdk
-
-//replace github.com/hashicorp/nodeenrollment => ../nodeenrollment
+go 1.21.1
 
 require (
 	github.com/fatih/color v1.15.0

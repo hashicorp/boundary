@@ -299,6 +299,10 @@ github.com/grpc-ecosystem/go-grpc-middleware v1.3.0/go.mod h1:z0ButlSOZa5vEBq9m2
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 h1:YBftPWNWd4WwGqtY2yeZL2ef8rHAxPBD8KFhJpmcqms=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0/go.mod h1:YN5jB8ie0yfIUg6VvR9Kz84aCaG7AsGZnLjhHbUqwPg=
+github.com/hashicorp/boundary/api v0.0.39 h1:ySzBcVhvA5uNeZmWJaJZuf+XW0wbpz9+0qUGFogAFrU=
+github.com/hashicorp/boundary/api v0.0.39/go.mod h1:WnI0eRlP03Kw3wlW+z5va2vvG1OAupZHPsPuEm4pLiQ=
+github.com/hashicorp/boundary/sdk v0.0.37 h1:efuNqw9+u+VsUY1/rBHBgQqTCmWsxMR4aa9k1Fh+aSs=
+github.com/hashicorp/boundary/sdk v0.0.37/go.mod h1:jn9j5mM8v2pOk8aLeJNIszdm7WBf4gRSP68iy8Iu5Q0=
 github.com/hashicorp/cap v0.3.3 h1:qSQs1o9chItmOdotp7b+Vu/LlHCgHxnRyLtYv01Q7VE=
 github.com/hashicorp/cap v0.3.3/go.mod h1:dHTmyMIVbzT981XxRoci5G//dfWmd/HhuNiCH6J5+IA=
 github.com/hashicorp/cap/ldap v0.0.0-20230918191608-899e3f8e8cd6 h1:m8tI0HwZu7XrscYAS/7sWhYJ/uwjY8sqJnyNFSzT2j0=

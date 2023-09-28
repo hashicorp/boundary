@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,9 +16,9 @@ import (
 	"nhooyr.io/websocket/wspb"
 )
 
-func (p *Client) getWsConn() (*websocket.Conn, error) {
+func (p *ClientProxy) getWsConn(ctx context.Context) (*websocket.Conn, error) {
 	conn, resp, err := websocket.Dial(
-		p.ctx,
+		ctx,
 		fmt.Sprintf("ws://%s/v1/proxy", p.workerAddr),
 		&websocket.DialOptions{
 			HTTPClient: &http.Client{
@@ -50,19 +51,23 @@ func (p *Client) getWsConn() (*websocket.Conn, error) {
 	return conn, nil
 }
 
-func (p *Client) sendSessionTeardown(wsConn *websocket.Conn) error {
+func (p *ClientProxy) sendSessionTeardown(ctx context.Context) error {
 	handshake := pb.ClientHandshake{
 		TofuToken: p.tofuToken,
 		Command:   pb.HANDSHAKECOMMAND_HANDSHAKECOMMAND_SESSION_CANCEL,
 	}
-	if err := wspb.Write(p.ctx, wsConn, &handshake); err != nil {
+	wsConn, err := p.getWsConn(ctx)
+	if err != nil {
+		return fmt.Errorf("error fetching connection to send session teardown request to worker: %w", err)
+	}
+	if err := wspb.Write(ctx, wsConn, &handshake); err != nil {
 		return fmt.Errorf("error sending teardown handshake to worker: %w", err)
 	}
 
 	return nil
 }
 
-func (p *Client) runTcpProxyV1(wsConn *websocket.Conn, listeningConn *net.TCPConn) error {
+func (p *ClientProxy) runTcpProxyV1(wsConn *websocket.Conn, listeningConn *net.TCPConn) error {
 	handshake := pb.ClientHandshake{TofuToken: p.tofuToken}
 	if err := wspb.Write(p.ctx, wsConn, &handshake); err != nil {
 		return fmt.Errorf("error sending handshake to worker: %w", err)
@@ -72,13 +77,15 @@ func (p *Client) runTcpProxyV1(wsConn *websocket.Conn, listeningConn *net.TCPCon
 		switch {
 		case strings.Contains(err.Error(), "unable to authorize connection"):
 			// There's no reason to think we'd be able to authorize any more
-			// connections after the first has failed
+			// connections after the first has failed. We don't cancel the
+			// context here as existing connections may be fine.
 			p.connsLeftCh <- 0
 			return errors.New("unable to authorize connection")
 		}
 		switch {
 		case strings.Contains(err.Error(), "tofu token not allowed"):
-			// Nothing will be able to be done here, so cancel the context too
+			// If our tofu token is not allowed something is wrong, and we
+			// should cancel anything we have going.
 			p.cancel()
 			return errors.New("session is already in use")
 		default:

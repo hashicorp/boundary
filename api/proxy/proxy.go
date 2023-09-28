@@ -7,67 +7,64 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
+	"net/netip"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mr-tron/base58"
-	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
 )
 
-type Client struct {
-	tofuToken         string
-	connectionsLeft   *atomic.Int32
-	connsLeftCh       chan int32
-	sessionAuthzData  *targetspb.SessionAuthorizationData
-	expiration        time.Time
-	ctx               context.Context
-	cancel            context.CancelFunc
-	transport         *http.Transport
-	workerAddr        string
-	listenIp          net.IP
-	listenPort        int64
-	listener          *net.TCPListener
-	listenerAddr      *net.TCPAddr
-	listenerCloseOnce *sync.Once
-	connWg            *sync.WaitGroup
+const sessionCancelTimeout = 10 * time.Second
+
+type ClientProxy struct {
+	tofuToken               string
+	cachedListenerAddrPort  *atomic.Pointer[netip.AddrPort]
+	connectionsLeft         *atomic.Int32
+	connsLeftCh             chan int32
+	callerConnectionsLeftCh chan int32
+	sessionAuthzData        *targetspb.SessionAuthorizationData
+	createTime              time.Time
+	expiration              time.Time
+	ctx                     context.Context
+	cancel                  context.CancelFunc
+	transport               *http.Transport
+	workerAddr              string
+	listenAddrPort          netip.AddrPort
+	listener                *atomic.Pointer[net.TCPListener]
+	listenerCloseOnce       *sync.Once
+	clientTlsConf           *tls.Config
+	connWg                  *sync.WaitGroup
 }
 
-func NewClient(ctx context.Context, authzToken string, opt ...Option) (*Client, error) {
+// New creates a new client proxy. The given context should be cancelable; once
+// the proxy is started, cancel the context to stop the proxy. The proxy may
+// also cancel on its own if the session expires or there are no connections
+// left.
+func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, error) {
 	opts, err := GetOpts(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse options: %w", err)
 	}
 
-	p := &Client{
-		listenerCloseOnce: new(sync.Once),
-		connWg:            new(sync.WaitGroup),
+	p := &ClientProxy{
+		cachedListenerAddrPort:  new(atomic.Pointer[netip.AddrPort]),
+		connsLeftCh:             make(chan int32),
+		connectionsLeft:         new(atomic.Int32),
+		listener:                new(atomic.Pointer[net.TCPListener]),
+		listenerCloseOnce:       new(sync.Once),
+		connWg:                  new(sync.WaitGroup),
+		listenAddrPort:          opts.WithListenAddr,
+		callerConnectionsLeftCh: opts.WithConnectionsLeftCh,
 	}
 
 	p.tofuToken, err = base62.Random(20)
 	if err != nil {
 		return nil, fmt.Errorf("could not derive random bytes for tofu token: %w", err)
-	}
-
-	p.connectionsLeft = atomic.NewInt32(0)
-	p.connsLeftCh = make(chan int32)
-
-	host, port, err := net.SplitHostPort(opts.WithListenAddress)
-	if err != nil {
-		return nil, fmt.Errorf("could not successfully split host/port for listen address: %w", err)
-	}
-	p.listenIp = net.ParseIP(host)
-	if p.listenIp == nil {
-		return nil, errors.New("host not successfully parsed as an ip address")
-	}
-	p.listenPort, err = strconv.ParseInt(port, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("port not successfully parsed: %w", err)
 	}
 
 	marshaled, err := base58.FastBase58Decoding(authzToken)
@@ -77,7 +74,6 @@ func NewClient(ctx context.Context, authzToken string, opt ...Option) (*Client, 
 	if len(marshaled) == 0 {
 		return nil, errors.New("zero-length authorization information after decoding")
 	}
-	// FIXME: Do we want this SDK dependency? Maybe also return the data in JSON format?
 	p.sessionAuthzData = new(targetspb.SessionAuthorizationData)
 	if err := proto.Unmarshal(marshaled, p.sessionAuthzData); err != nil {
 		return nil, fmt.Errorf("unable to unmarshal authorization data: %w", err)
@@ -86,21 +82,17 @@ func NewClient(ctx context.Context, authzToken string, opt ...Option) (*Client, 
 		return nil, errors.New("no workers found in authorization data")
 	}
 
+	if p.listenAddrPort.Port() == 0 {
+		p.listenAddrPort = netip.AddrPortFrom(p.listenAddrPort.Addr(), uint16(p.sessionAuthzData.DefaultClientPort))
+	}
 	p.connectionsLeft.Store(p.sessionAuthzData.ConnectionLimit)
 	p.workerAddr = p.sessionAuthzData.WorkerInfo[0].Address
-	workerHost, _, err := net.SplitHostPort(p.workerAddr)
-	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			workerHost = p.workerAddr
-		} else {
-			return nil, fmt.Errorf("error splitting worker adddress host/port: %w", err)
-		}
-	}
 
-	tlsConf, err := ClientTlsConfig(p.sessionAuthzData, workerHost)
+	tlsConf, err := p.clientTlsConfig()
 	if err != nil {
 		return nil, fmt.Errorf("error creating TLS configuration: %w", err)
 	}
+	p.createTime = p.sessionAuthzData.CreatedTime.AsTime()
 	p.expiration = tlsConf.Certificates[0].Leaf.NotAfter
 
 	// We don't _rely_ on client-side timeout verification but this prevents us
@@ -122,44 +114,49 @@ func NewClient(ctx context.Context, authzToken string, opt ...Option) (*Client, 
 	return p, nil
 }
 
-func (p *Client) Proxy() error {
+// Start starts the listener for client proxying. It ends, with any errors, when
+// the listener is closed and no connections are left. Cancel the client's proxy
+// to force this to happen early. Once call exits, it is not safe to call Start
+// again; create a new ClientProxy with New().
+func (p *ClientProxy) Start() (retErr error) {
 	defer p.cancel()
 
-	var err error
-	p.listener, err = net.ListenTCP("tcp", &net.TCPAddr{
-		IP:   p.listenIp,
-		Port: int(p.listenPort),
+	ln, err := net.ListenTCP("tcp", &net.TCPAddr{
+		IP:   p.listenAddrPort.Addr().AsSlice(),
+		Port: int(p.listenAddrPort.Port()),
 	})
 	if err != nil {
 		return fmt.Errorf("unable to start listening: %w", err)
 	}
+	p.listener.Store(ln)
 
 	listenerCloseFunc := func() {
 		// Forces the for loop to exit instead of spinning on errors
 		p.connectionsLeft.Store(0)
-		_ = p.listener.Close()
+		if err := p.listener.Load().Close(); err != nil && err != net.ErrClosed {
+			retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
+		}
 	}
 
-	// Ensure it runs on any other return condition
+	// Ensure closing the listener runs on any other return condition
 	defer func() {
 		p.listenerCloseOnce.Do(listenerCloseFunc)
 	}()
-
-	p.listenerAddr = p.listener.Addr().(*net.TCPAddr)
 
 	p.connWg.Add(1)
 	go func() {
 		defer p.connWg.Done()
 		for {
-			listeningConn, err := p.listener.AcceptTCP()
+			listeningConn, err := p.listener.Load().AcceptTCP()
 			if err != nil {
 				select {
 				case <-p.ctx.Done():
 					return
 				default:
-					// When this hits zero we trigger listener close so this
-					// isn't actually an error condition
-					if p.connectionsLeft.Load() == 0 {
+					if err == net.ErrClosed {
+						// Generally this will be because we canceled the
+						// context or ran out of session connections and are
+						// winding down. This will never revert, so return.
 						return
 					}
 					// TODO: Log/alert in some way?
@@ -170,35 +167,48 @@ func (p *Client) Proxy() error {
 			go func() {
 				defer listeningConn.Close()
 				defer p.connWg.Done()
-				wsConn, err := p.getWsConn()
+				wsConn, err := p.getWsConn(p.ctx)
 				if err != nil {
 					// TODO: Log/alert in some way?
-				} else {
-					if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
-						// TODO: Log/alert in some way?
-					}
+					return
+				}
+				if err := p.runTcpProxyV1(wsConn, listeningConn); err != nil {
+					// TODO: Log/alert in some way?
 				}
 			}()
 		}
 	}()
 
-	timer := time.NewTimer(time.Until(p.expiration))
 	p.connWg.Add(1)
 	go func() {
+		defer func() {
+			// Run a function (last, after connwg is done) just to ensure that
+			// we drain from this in case any connections starting as this
+			// number changes are trying to send the information down
+			for {
+				select {
+				case <-p.connsLeftCh:
+				default:
+					return
+				}
+			}
+		}()
 		defer p.connWg.Done()
 		defer p.listenerCloseOnce.Do(listenerCloseFunc)
 
 		for {
 			select {
 			case <-p.ctx.Done():
-				timer.Stop()
-				return
-			case <-timer.C:
 				return
 			case connsLeft := <-p.connsLeftCh:
 				p.connectionsLeft.Store(connsLeft)
+				if p.callerConnectionsLeftCh != nil {
+					p.callerConnectionsLeftCh <- connsLeft
+				}
 				// TODO: Surface this to caller
 				if connsLeft == 0 {
+					// Close the listener as we can't authorize any more
+					// connections
 					return
 				}
 			}
@@ -207,5 +217,84 @@ func (p *Client) Proxy() error {
 
 	p.connWg.Wait()
 
+	// Teardown. Only do it if we haven't expired or reached connection limit
+	// since we don't need to clean up in that case.
+	var sendSessionCancel bool
+	select {
+	case <-p.ctx.Done():
+		sendSessionCancel = true
+	default:
+		// If we're not after expiration, ensure there is a bit of buffer in
+		// case clocks are not quite the same between worker and this machine
+		if time.Now().Before(p.expiration.Add(-5 * time.Minute)) {
+			sendSessionCancel = true
+		}
+	}
+
+	if !sendSessionCancel {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
+	defer cancel()
+	if err := p.sendSessionTeardown(ctx); err != nil {
+		return fmt.Errorf("error sending session teardown request to worker: %w", err)
+	}
+
 	return nil
+}
+
+// ListenerAddr returns the address of the client proxy listener. Because the
+// listener is started with Start(), this could be called before listening
+// occurs. To avoid returning until we have a valid value, pass a context;
+// canceling the context, or passing a nil context when the listener has not yet
+// been started, will cause the function to return an empty AddrPort. Otherwise
+// the function will return when the address is available. In either case, test
+// the result with IsValid.
+//
+// Warning: a non-cancelable context will cause this call to block forever until
+// the listener's address can be determined.
+func (p *ClientProxy) ListenerAddr(ctx context.Context) netip.AddrPort {
+	switch {
+	case p.cachedListenerAddrPort.Load() != nil:
+		return *p.cachedListenerAddrPort.Load()
+	case p.listener.Load() != nil:
+		addrPort := p.listener.Load().Addr().(*net.TCPAddr).AddrPort()
+		p.cachedListenerAddrPort.Store(&addrPort)
+		return addrPort
+	case ctx == nil:
+		return netip.AddrPort{}
+	}
+	timer := time.NewTimer(0)
+	for {
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return netip.AddrPort{}
+		case <-timer.C:
+			if p.listener.Load() != nil {
+				timer.Stop()
+				addrPort := p.listener.Load().Addr().(*net.TCPAddr).AddrPort()
+				p.cachedListenerAddrPort.Store(&addrPort)
+				return addrPort
+			}
+			timer.Reset(10 * time.Millisecond)
+		}
+	}
+}
+
+// SessionCreation returns the creation time of the session
+func (p *ClientProxy) SessionCreation() time.Time {
+	return p.createTime
+}
+
+// SessionExpiration returns the expiration time of the session
+func (p *ClientProxy) SessionExpiration() time.Time {
+	return p.expiration
+}
+
+// ConnectionsLeft returns the number of connections left in the session, or -1
+// if unlimited
+func (p *ClientProxy) ConnectionsLeft() int32 {
+	return p.connectionsLeft.Load()
 }

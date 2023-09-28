@@ -1,0 +1,15 @@
+go 1.21.1
+
+use (
+	.
+	./api
+	./plugins/boundary/mains/aws
+	./plugins/boundary/mains/azure
+	./plugins/kms/mains/alicloudkms
+	./plugins/kms/mains/awskms
+	./plugins/kms/mains/azurekeyvault
+	./plugins/kms/mains/gcpckms
+	./plugins/kms/mains/ocikms
+	./plugins/kms/mains/transit
+	./sdk
+)
