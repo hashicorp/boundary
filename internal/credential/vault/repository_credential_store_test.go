@@ -1775,7 +1775,7 @@ group by store_id, status;
 	}
 }
 
-func TestRepository_ListDeletedCredentialStoreIds(t *testing.T) {
+func TestRepository_ListDeletedStoreIds(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 	ctx := context.Background()
@@ -1792,7 +1792,7 @@ func TestRepository_ListDeletedCredentialStoreIds(t *testing.T) {
 	require.NotNil(repo)
 
 	// Expect no entries at the start
-	deletedIds, err := repo.ListDeletedCredentialStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, err := repo.ListDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(err)
 	require.Empty(deletedIds)
 
@@ -1804,17 +1804,17 @@ func TestRepository_ListDeletedCredentialStoreIds(t *testing.T) {
 	require.NoError(err)
 
 	// Expect no entries
-	deletedIds, err = repo.ListDeletedCredentialStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, err = repo.ListDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(err)
 	require.Empty(deletedIds)
 
 	// Try again with the time set to now, expect no entries
-	deletedIds, err = repo.ListDeletedCredentialStoreIds(ctx, time.Now())
+	deletedIds, err = repo.ListDeletedStoreIds(ctx, time.Now())
 	require.NoError(err)
 	require.Empty(deletedIds)
 }
 
-func TestRepository_EsimatedStoreCount(t *testing.T) {
+func TestRepository_EstimatedStoreCount(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
@@ -1832,7 +1832,7 @@ func TestRepository_EsimatedStoreCount(t *testing.T) {
 	require.NotNil(repo)
 
 	// Check total entries at start, expect 0
-	numItems, err := repo.EsimatedStoreCount(ctx)
+	numItems, err := repo.EstimatedStoreCount(ctx)
 	require.NoError(err)
 	assert.Equal(0, numItems)
 
@@ -1842,7 +1842,7 @@ func TestRepository_EsimatedStoreCount(t *testing.T) {
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
 
-	numItems, err = repo.EsimatedStoreCount(ctx)
+	numItems, err = repo.EstimatedStoreCount(ctx)
 	require.NoError(err)
 	assert.Equal(2, numItems)
 

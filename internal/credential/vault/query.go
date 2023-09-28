@@ -191,14 +191,14 @@ delete from credential_vault_credential
 `
 
 	estimateCountCredentialStores = `
-select reltuples::bigint as estimate from pg_class where oid = (current_schema() || '.credential_vault_store')::regclass
+select reltuples::bigint as estimate from pg_class where oid in ('credential_vault_store'::regclass)
 `
 
 	estimateCountCredentialLibraries = `
-select reltuples::bigint as estimate from pg_class where oid = (current_schema() || '.credential_vault_library')::regclass
+select reltuples::bigint as estimate from pg_class where oid in ('credential_vault_library'::regclass)
 `
 
 	estimateCountSSHCertificateCredentialLibraries = `
-select reltuples::bigint as estimate from pg_class where oid = (current_schema() || '.credential_vault_ssh_cert_library')::regclass
+select reltuples::bigint as estimate from pg_class where oid in ('credential_vault_ssh_cert_library'::regclass)
 `
 )

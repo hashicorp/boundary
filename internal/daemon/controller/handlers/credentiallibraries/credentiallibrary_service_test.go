@@ -99,8 +99,8 @@ func TestList(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(ctx, rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prjNoLibs := iam.TestScopes(t, iamRepo)
@@ -268,8 +268,8 @@ func TestList_Attributes(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(ctx, rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(ctx, rw, repo)
 	}
 	_, prj := iam.TestScopes(t, iamRepo)
 
@@ -386,8 +386,8 @@ func TestCreate(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(ctx, rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -989,8 +989,8 @@ func TestGet(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(ctx, rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -1197,8 +1197,8 @@ func TestDelete(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(ctx, rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -1266,8 +1266,8 @@ func TestUpdate(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(testCtx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(testCtx, rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(testCtx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -2040,8 +2040,8 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(ctx, rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -2327,8 +2327,8 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(testCtx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(testCtx, rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(testCtx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -2723,8 +2723,8 @@ func TestListPagination(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(ctx, rw, rw, kms)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(ctx, rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(ctx, rw, repo)
 	}
 	vaultRepo, err := repoFn()
 	require.NoError(err)

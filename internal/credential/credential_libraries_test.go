@@ -32,12 +32,12 @@ func (f *fakeLibraryRepository) EstimatedSSHCertificateLibraryCount(ctx context.
 	return f.EstimatedSSHCertificateLibraryCountFn(ctx)
 }
 
-func (f *fakeLibraryRepository) ListDeletedCredentialLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
-	return f.ListDeletedCredentialLibraryIdsFn(ctx, since, opt...)
+func (f *fakeLibraryRepository) ListDeletedLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	return f.ListDeletedLibraryIdsFn(ctx, since, opt...)
 }
 
-func (f *fakeLibraryRepository) ListDeletedSSHCertificateCredentialLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
-	return f.ListDeletedSSHCertificateCredentialLibraryIdsFn(ctx, since, opt...)
+func (f *fakeLibraryRepository) ListDeletedSSHCertificateLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	return f.ListDeletedSSHCertificateLibraryIdsFn(ctx, since, opt...)
 }
 
 type fakeWriter struct {
@@ -54,33 +54,33 @@ type fakeReader struct {
 	db.Reader
 }
 
-func TestNewCredentialLibraryService(t *testing.T) {
+func TestNewLibraryService(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
-		got, err := credential.NewCredentialLibraryService(ctx, &fakeWriter{}, &fakeLibraryRepository{})
+		got, err := credential.NewLibraryService(ctx, &fakeWriter{}, &fakeLibraryRepository{})
 		require.NoError(t, err)
 		require.NotNil(t, got)
 	})
 	t.Run("nil-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialLibraryService(ctx, nil, &fakeLibraryRepository{})
+		_, err := credential.NewLibraryService(ctx, nil, &fakeLibraryRepository{})
 		require.Error(t, err)
 	})
 	t.Run("nil-interface-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialLibraryService(ctx, (*fakeWriter)(nil), &fakeLibraryRepository{})
+		_, err := credential.NewLibraryService(ctx, (*fakeWriter)(nil), &fakeLibraryRepository{})
 		require.Error(t, err)
 	})
 	t.Run("nil-repo", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialLibraryService(ctx, &fakeWriter{}, nil)
+		_, err := credential.NewLibraryService(ctx, &fakeWriter{}, nil)
 		require.Error(t, err)
 	})
 	t.Run("nil-interface-repo", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewCredentialLibraryService(ctx, &fakeWriter{}, (*fakeLibraryRepository)(nil))
+		_, err := credential.NewLibraryService(ctx, &fakeWriter{}, (*fakeLibraryRepository)(nil))
 		require.Error(t, err)
 	})
 }
@@ -98,7 +98,7 @@ func TestCredentialLibraryService_EstimatedCount(t *testing.T) {
 				return 3, nil
 			},
 		}
-		service, err := credential.NewCredentialLibraryService(ctx, &fakeWriter{}, repo)
+		service, err := credential.NewLibraryService(ctx, &fakeWriter{}, repo)
 		require.NoError(t, err)
 		num, err := service.EstimatedCount(ctx)
 		require.NoError(t, err)
@@ -114,7 +114,7 @@ func TestCredentialLibraryService_EstimatedCount(t *testing.T) {
 				return 3, nil
 			},
 		}
-		service, err := credential.NewCredentialLibraryService(ctx, &fakeWriter{}, repo)
+		service, err := credential.NewLibraryService(ctx, &fakeWriter{}, repo)
 		require.NoError(t, err)
 		_, err = service.EstimatedCount(ctx)
 		require.ErrorContains(t, err, "some error")
@@ -129,28 +129,28 @@ func TestCredentialLibraryService_EstimatedCount(t *testing.T) {
 				return 0, errors.New("some error")
 			},
 		}
-		service, err := credential.NewCredentialLibraryService(ctx, &fakeWriter{}, repo)
+		service, err := credential.NewLibraryService(ctx, &fakeWriter{}, repo)
 		require.NoError(t, err)
 		_, err = service.EstimatedCount(ctx)
 		require.ErrorContains(t, err, "some error")
 	})
 }
 
-func TestCredentialLibraryService_ListDeletedIds(t *testing.T) {
+func TestLibraryService_ListDeletedIds(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 		repo := &fakeLibraryRepository{
-			ListDeletedCredentialLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+			ListDeletedLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)
 				require.NoError(t, err)
 				assert.NotNil(t, opts.WithReader)
 				return []string{"a", "b"}, nil
 			},
-			ListDeletedSSHCertificateCredentialLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+			ListDeletedSSHCertificateLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)
 				require.NoError(t, err)
@@ -164,7 +164,7 @@ func TestCredentialLibraryService_ListDeletedIds(t *testing.T) {
 				return db.RetryInfo{}, err
 			},
 		}
-		service, err := credential.NewCredentialLibraryService(ctx, writer, repo)
+		service, err := credential.NewLibraryService(ctx, writer, repo)
 		require.NoError(t, err)
 		ids, err := service.ListDeletedIds(ctx, timeSince)
 		require.NoError(t, err)
@@ -179,14 +179,14 @@ func TestCredentialLibraryService_ListDeletedIds(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 		repo := &fakeLibraryRepository{
-			ListDeletedCredentialLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+			ListDeletedLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)
 				require.NoError(t, err)
 				assert.NotNil(t, opts.WithReader)
 				return []string{"a", "b"}, nil
 			},
-			ListDeletedSSHCertificateCredentialLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+			ListDeletedSSHCertificateLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)
 				require.NoError(t, err)
@@ -199,7 +199,7 @@ func TestCredentialLibraryService_ListDeletedIds(t *testing.T) {
 				return db.RetryInfo{}, errors.New("some error")
 			},
 		}
-		service, err := credential.NewCredentialLibraryService(ctx, writer, repo)
+		service, err := credential.NewLibraryService(ctx, writer, repo)
 		require.NoError(t, err)
 		_, err = service.ListDeletedIds(ctx, timeSince)
 		require.ErrorContains(t, err, "some error")
@@ -208,10 +208,10 @@ func TestCredentialLibraryService_ListDeletedIds(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 		repo := &fakeLibraryRepository{
-			ListDeletedCredentialLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+			ListDeletedLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				return nil, errors.New("some error")
 			},
-			ListDeletedSSHCertificateCredentialLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+			ListDeletedSSHCertificateLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)
 				require.NoError(t, err)
@@ -225,7 +225,7 @@ func TestCredentialLibraryService_ListDeletedIds(t *testing.T) {
 				return db.RetryInfo{}, err
 			},
 		}
-		service, err := credential.NewCredentialLibraryService(ctx, writer, repo)
+		service, err := credential.NewLibraryService(ctx, writer, repo)
 		require.NoError(t, err)
 		_, err = service.ListDeletedIds(ctx, timeSince)
 		require.ErrorContains(t, err, "some error")
@@ -234,14 +234,14 @@ func TestCredentialLibraryService_ListDeletedIds(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 		repo := &fakeLibraryRepository{
-			ListDeletedCredentialLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+			ListDeletedLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)
 				require.NoError(t, err)
 				assert.NotNil(t, opts.WithReader)
 				return []string{"a", "b"}, nil
 			},
-			ListDeletedSSHCertificateCredentialLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+			ListDeletedSSHCertificateLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				return nil, errors.New("some error")
 			},
 		}
@@ -251,7 +251,7 @@ func TestCredentialLibraryService_ListDeletedIds(t *testing.T) {
 				return db.RetryInfo{}, err
 			},
 		}
-		service, err := credential.NewCredentialLibraryService(ctx, writer, repo)
+		service, err := credential.NewLibraryService(ctx, writer, repo)
 		require.NoError(t, err)
 		_, err = service.ListDeletedIds(ctx, timeSince)
 		require.ErrorContains(t, err, "some error")

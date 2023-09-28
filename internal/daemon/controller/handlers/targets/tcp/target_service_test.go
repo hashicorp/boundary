@@ -2712,8 +2712,8 @@ func TestAuthorizeSession(t *testing.T) {
 	ldapAuthRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(context.Background(), rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(context.Background(), rw, repo)
 	}
 
 	plg := plugin.TestPlugin(t, conn, "test")
@@ -3005,8 +3005,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	pluginHostRepoFn := func() (*hostplugin.Repository, error) {
 		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(context.Background(), rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(context.Background(), rw, repo)
 	}
 	credServiceFn := func(repo *credstatic.Repository) (*credential.CredentialService, error) {
 		return credential.NewCredentialService(context.Background(), rw, repo)
@@ -3601,8 +3601,8 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(context.Background(), rw, repo)
+	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(context.Background(), rw, repo)
 	}
 	org, proj := iam.TestScopes(t, iamRepo)
 

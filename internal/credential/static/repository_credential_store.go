@@ -274,9 +274,9 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 	return rowsDeleted, nil
 }
 
-// EsimatedStoreCount returns an estimate of the number of static credential stores
-func (r *Repository) EsimatedStoreCount(ctx context.Context) (int, error) {
-	const op = "static.(Repository).EsimatedStoreCount"
+// EstimatedStoreCount returns an estimate of the number of static credential stores
+func (r *Repository) EstimatedStoreCount(ctx context.Context) (int, error) {
+	const op = "static.(Repository).EstimatedStoreCount"
 	rows, err := r.reader.Query(ctx, estimateCountCredentialStores, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total static credential stores"))
@@ -290,11 +290,11 @@ func (r *Repository) EsimatedStoreCount(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// ListDeletedCredentialStoreIds lists the public IDs of any credential stores deleted since the timestamp provided.
+// ListDeletedStoreIds lists the public IDs of any credential stores deleted since the timestamp provided.
 // Supported options:
 //   - credential.WithReaderWriter
-func (r *Repository) ListDeletedCredentialStoreIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
-	const op = "static.(Repository).ListDeletedCredentialStoreIds"
+func (r *Repository) ListDeletedStoreIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "static.(Repository).ListDeletedStoreIds"
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

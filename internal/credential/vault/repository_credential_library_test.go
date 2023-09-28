@@ -2245,7 +2245,7 @@ func TestRepository_ListCredentialLibraries_Pagination(t *testing.T) {
 	require.Empty(emptyPage)
 }
 
-func TestRepository_ListDeletedCredentialLibraryIds(t *testing.T) {
+func TestRepository_ListDeletedLibraryIds(t *testing.T) {
 	t.Parallel()
 	_, require := assert.New(t), require.New(t)
 	ctx := context.Background()
@@ -2263,7 +2263,7 @@ func TestRepository_ListDeletedCredentialLibraryIds(t *testing.T) {
 	require.NotNil(repo)
 
 	// Expect no entries at the start
-	deletedIds, err := repo.ListDeletedCredentialLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, err := repo.ListDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(err)
 	require.Empty(deletedIds)
 
@@ -2272,12 +2272,12 @@ func TestRepository_ListDeletedCredentialLibraryIds(t *testing.T) {
 	require.NoError(err)
 
 	// Expect a single entry
-	deletedIds, err = repo.ListDeletedCredentialLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, err = repo.ListDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(err)
 	require.Equal([]string{libs[0].GetPublicId()}, deletedIds)
 
 	// Try again with the time set to now, expect no entries
-	deletedIds, err = repo.ListDeletedCredentialLibraryIds(ctx, time.Now())
+	deletedIds, err = repo.ListDeletedLibraryIds(ctx, time.Now())
 	require.NoError(err)
 	require.Empty(deletedIds)
 }

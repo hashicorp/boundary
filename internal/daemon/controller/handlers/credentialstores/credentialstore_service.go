@@ -98,11 +98,11 @@ func init() {
 type Service struct {
 	pbs.UnsafeCredentialStoreServiceServer
 
-	iamRepoFn                common.IamRepoFactory
-	vaultRepoFn              common.VaultCredentialRepoFactory
-	staticRepoFn             common.StaticCredentialRepoFactory
-	credentialStoreServiceFn common.CredentialStoreServiceFactory
-	maxPageSize              uint
+	iamRepoFn      common.IamRepoFactory
+	vaultRepoFn    common.VaultCredentialRepoFactory
+	staticRepoFn   common.StaticCredentialRepoFactory
+	storeServiceFn common.StoreServiceFactory
+	maxPageSize    uint
 }
 
 var _ pbs.CredentialStoreServiceServer = (*Service)(nil)
@@ -113,7 +113,7 @@ func NewService(
 	iamRepo common.IamRepoFactory,
 	vaultRepo common.VaultCredentialRepoFactory,
 	staticRepo common.StaticCredentialRepoFactory,
-	credentialStoreServiceFn common.CredentialStoreServiceFactory,
+	storeServiceFn common.StoreServiceFactory,
 	maxPageSize uint,
 ) (Service, error) {
 	const op = "credentialstores.NewService"
@@ -126,18 +126,18 @@ func NewService(
 	if staticRepo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
 	}
-	if credentialStoreServiceFn == nil {
+	if storeServiceFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing credential store service")
 	}
 	if maxPageSize == 0 {
 		maxPageSize = uint(defaultMaxPageSize)
 	}
 	return Service{
-		iamRepoFn:                iamRepo,
-		vaultRepoFn:              vaultRepo,
-		staticRepoFn:             staticRepo,
-		credentialStoreServiceFn: credentialStoreServiceFn,
-		maxPageSize:              maxPageSize,
+		iamRepoFn:      iamRepo,
+		vaultRepoFn:    vaultRepo,
+		staticRepoFn:   staticRepo,
+		storeServiceFn: storeServiceFn,
+		maxPageSize:    maxPageSize,
 	}, nil
 }
 
@@ -181,7 +181,7 @@ func (s Service) ListCredentialStores(ctx context.Context, req *pbs.ListCredenti
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	service, err := s.credentialStoreServiceFn(vaultRepo, staticRepo)
+	service, err := s.storeServiceFn(vaultRepo, staticRepo)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

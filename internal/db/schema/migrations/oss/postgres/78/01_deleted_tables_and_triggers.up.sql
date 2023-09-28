@@ -304,7 +304,7 @@ begin;
   begin
     for deletion_table_name in select get_deletion_tables() loop
       table_name := split_part(deletion_table_name, '_deleted', 1);
-      execute format('create trigger trigger_insert_on_deletion before delete on %I for each row execute function insert_deleted_id(''%I'')', table_name, deletion_table_name);
+      execute format('create trigger insert_deleted_id before delete on %I for each row execute function insert_deleted_id(''%I'')', table_name, deletion_table_name);
       execute format('create index %I_delete_time_idx on %I (delete_time)', deletion_table_name, deletion_table_name);
     end loop;
   end;

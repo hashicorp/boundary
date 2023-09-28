@@ -406,11 +406,11 @@ func (r *Repository) EstimatedSSHCertificateLibraryCount(ctx context.Context) (i
 	return count, nil
 }
 
-// ListDeletedSSHCertificateCredentialLibraryIds lists the public IDs of any SSH certificate credential libraries deleted since the timestamp provided.
+// ListDeletedSSHCertificateLibraryIds lists the public IDs of any SSH certificate credential libraries deleted since the timestamp provided.
 // Supported options:
 //   - credential.WithReaderWriter
-func (r *Repository) ListDeletedSSHCertificateCredentialLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
-	const op = "vault.(Repository).ListDeletedSSHCertificateCredentialLibraryIds"
+func (r *Repository) ListDeletedSSHCertificateLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "vault.(Repository).ListDeletedSSHCertificateLibraryIds"
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

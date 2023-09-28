@@ -513,11 +513,11 @@ func (r *Repository) EstimatedLibraryCount(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// ListDeletedCredentialLibraryIds lists the public IDs of any credential libraries deleted since the timestamp provided.
+// ListDeletedLibraryIds lists the public IDs of any credential libraries deleted since the timestamp provided.
 // Supported options:
 //   - credential.WithReaderWriter
-func (r *Repository) ListDeletedCredentialLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
-	const op = "vault.(Repository).ListDeletedCredentialLibraryIds"
+func (r *Repository) ListDeletedLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "vault.(Repository).ListDeletedLibraryIds"
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

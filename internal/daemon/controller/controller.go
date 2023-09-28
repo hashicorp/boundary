@@ -121,25 +121,25 @@ type Controller struct {
 	apiGrpcGatewayTicket  string
 
 	// Repo factory methods
-	AuthTokenRepoFn            common.AuthTokenRepoFactory
-	VaultCredentialRepoFn      common.VaultCredentialRepoFactory
-	StaticCredentialRepoFn     common.StaticCredentialRepoFactory
-	CredentialLibraryServiceFn common.CredentialLibraryServiceFactory
-	CredentialStoreServiceFn   common.CredentialStoreServiceFactory
-	CredentialServiceFn        common.CredentialServiceFactory
-	IamRepoFn                  common.IamRepoFactory
-	OidcRepoFn                 common.OidcAuthRepoFactory
-	LdapRepoFn                 common.LdapAuthRepoFactory
-	PasswordAuthRepoFn         common.PasswordAuthRepoFactory
-	ServersRepoFn              common.ServersRepoFactory
-	SessionRepoFn              session.RepositoryFactory
-	ConnectionRepoFn           common.ConnectionRepoFactory
-	StaticHostRepoFn           common.StaticRepoFactory
-	PluginHostRepoFn           common.PluginHostRepoFactory
-	PluginStorageBucketRepoFn  common.PluginStorageBucketRepoFactory
-	PluginRepoFn               common.PluginRepoFactory
-	TargetRepoFn               target.RepositoryFactory
-	WorkerAuthRepoStorageFn    common.WorkerAuthRepoStorageFactory
+	AuthTokenRepoFn           common.AuthTokenRepoFactory
+	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
+	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
+	LibraryServiceFn          common.LibraryServiceFactory
+	StoreServiceFn            common.StoreServiceFactory
+	CredentialServiceFn       common.CredentialServiceFactory
+	IamRepoFn                 common.IamRepoFactory
+	OidcRepoFn                common.OidcAuthRepoFactory
+	LdapRepoFn                common.LdapAuthRepoFactory
+	PasswordAuthRepoFn        common.PasswordAuthRepoFactory
+	ServersRepoFn             common.ServersRepoFactory
+	SessionRepoFn             session.RepositoryFactory
+	ConnectionRepoFn          common.ConnectionRepoFactory
+	StaticHostRepoFn          common.StaticRepoFactory
+	PluginHostRepoFn          common.PluginHostRepoFactory
+	PluginStorageBucketRepoFn common.PluginStorageBucketRepoFactory
+	PluginRepoFn              common.PluginRepoFactory
+	TargetRepoFn              target.RepositoryFactory
+	WorkerAuthRepoStorageFn   common.WorkerAuthRepoStorageFactory
 
 	scheduler *scheduler.Scheduler
 
@@ -399,11 +399,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
 	}
-	c.CredentialLibraryServiceFn = func(repo *vault.Repository) (*credential.CredentialLibraryService, error) {
-		return credential.NewCredentialLibraryService(ctx, dbase, repo)
+	c.LibraryServiceFn = func(repo *vault.Repository) (*credential.LibraryService, error) {
+		return credential.NewLibraryService(ctx, dbase, repo)
 	}
-	c.CredentialStoreServiceFn = func(vaultRepo *vault.Repository, staticRepo *credstatic.Repository) (*credential.CredentialStoreService, error) {
-		return credential.NewCredentialStoreService(ctx, dbase, vaultRepo, staticRepo)
+	c.StoreServiceFn = func(vaultRepo *vault.Repository, staticRepo *credstatic.Repository) (*credential.StoreService, error) {
+		return credential.NewStoreService(ctx, dbase, vaultRepo, staticRepo)
 	}
 	c.CredentialServiceFn = func(repo *credstatic.Repository) (*credential.CredentialService, error) {
 		return credential.NewCredentialService(ctx, dbase, repo)

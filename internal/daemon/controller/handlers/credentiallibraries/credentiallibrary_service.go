@@ -115,10 +115,10 @@ func init() {
 type Service struct {
 	pbs.UnsafeCredentialLibraryServiceServer
 
-	iamRepoFn                  common.IamRepoFactory
-	repoFn                     common.VaultCredentialRepoFactory
-	credentialLibraryServiceFn common.CredentialLibraryServiceFactory
-	maxPageSize                uint
+	iamRepoFn        common.IamRepoFactory
+	repoFn           common.VaultCredentialRepoFactory
+	libraryServiceFn common.LibraryServiceFactory
+	maxPageSize      uint
 }
 
 var _ pbs.CredentialLibraryServiceServer = (*Service)(nil)
@@ -128,7 +128,7 @@ func NewService(
 	ctx context.Context,
 	iamRepoFn common.IamRepoFactory,
 	repoFn common.VaultCredentialRepoFactory,
-	credentialLibraryServiceFn common.CredentialLibraryServiceFactory,
+	libraryServiceFn common.LibraryServiceFactory,
 	maxPageSize uint,
 ) (Service, error) {
 	const op = "credentiallibraries.NewService"
@@ -138,17 +138,17 @@ func NewService(
 	if repoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing vault credential repository")
 	}
-	if credentialLibraryServiceFn == nil {
+	if libraryServiceFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing credential library service")
 	}
 	if maxPageSize == 0 {
 		maxPageSize = uint(defaultMaxPageSize)
 	}
 	return Service{
-		iamRepoFn:                  iamRepoFn,
-		repoFn:                     repoFn,
-		maxPageSize:                maxPageSize,
-		credentialLibraryServiceFn: credentialLibraryServiceFn,
+		iamRepoFn:        iamRepoFn,
+		repoFn:           repoFn,
+		maxPageSize:      maxPageSize,
+		libraryServiceFn: libraryServiceFn,
 	}, nil
 }
 
@@ -167,7 +167,7 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	service, err := s.credentialLibraryServiceFn(repo)
+	service, err := s.libraryServiceFn(repo)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}

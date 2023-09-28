@@ -21,24 +21,24 @@ type LibraryRepository interface {
 	ListDeletedSSHCertificateCredentialLibraryIds(context.Context, time.Time, ...Option) ([]string, error)
 }
 
-// NewCredentialLibraryService returns a new credential library service.
-func NewCredentialLibraryService(ctx context.Context, writer db.Writer, repo LibraryRepository) (*CredentialLibraryService, error) {
-	const op = "credential.NewCredentialLibraryService"
+// NewLibraryService returns a new credential library service.
+func NewLibraryService(ctx context.Context, writer db.Writer, repo LibraryRepository) (*LibraryService, error) {
+	const op = "credential.NewLibraryService"
 	switch {
 	case util.IsNil(writer):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB writer")
 	case util.IsNil(repo):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential library repo")
 	}
-	return &CredentialLibraryService{
+	return &LibraryService{
 		repo:   repo,
 		writer: writer,
 	}, nil
 }
 
-// CredentialLibraryService coordinates calls to across different subtype repositories
+// LibraryService coordinates calls to across different subtype repositories
 // to gather information about all credential libraries.
-type CredentialLibraryService struct {
+type LibraryService struct {
 	repo   LibraryRepository
 	writer db.Writer
 }
@@ -62,11 +62,11 @@ func (s *CredentialLibraryService) ListDeletedIds(ctx context.Context, since tim
 	const op = "credential.(*LibraryRepository).ListDeletedIds"
 	var deletedIds []string
 	_, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		deletedLibIds, err := s.repo.ListDeletedCredentialLibraryIds(ctx, since, WithReaderWriter(r, w))
+		deletedLibIds, err := s.repo.ListDeletedLibraryIds(ctx, since, WithReaderWriter(r, w))
 		if err != nil {
 			return err
 		}
-		deletedSSHCertLibIds, err := s.repo.ListDeletedSSHCertificateCredentialLibraryIds(ctx, since, WithReaderWriter(r, w))
+		deletedSSHCertLibIds, err := s.repo.ListDeletedSSHCertificateLibraryIds(ctx, since, WithReaderWriter(r, w))
 		if err != nil {
 			return err
 		}
@@ -81,6 +81,6 @@ func (s *CredentialLibraryService) ListDeletedIds(ctx context.Context, since tim
 }
 
 // Temporary - will be replaced once generic function is refactored
-func (s *CredentialLibraryService) Now(ctx context.Context) (time.Time, error) {
+func (s *LibraryService) Now(ctx context.Context) (time.Time, error) {
 	return time.Now(), nil
 }

@@ -1997,7 +1997,7 @@ func TestRepository_DeleteSSHCertificateCredentialLibrary(t *testing.T) {
 	}
 }
 
-func TestRepository_ListDeletedSSHCertificateCredentialLibraryIds(t *testing.T) {
+func TestRepository_ListDeletedSSHCertificateLibraryIds(t *testing.T) {
 	t.Parallel()
 	_, require := assert.New(t), require.New(t)
 	ctx := context.Background()
@@ -2015,7 +2015,7 @@ func TestRepository_ListDeletedSSHCertificateCredentialLibraryIds(t *testing.T) 
 	require.NotNil(repo)
 
 	// Expect no entries at the start
-	deletedIds, err := repo.ListDeletedSSHCertificateCredentialLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, err := repo.ListDeletedSSHCertificateLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(err)
 	require.Empty(deletedIds)
 
@@ -2024,12 +2024,12 @@ func TestRepository_ListDeletedSSHCertificateCredentialLibraryIds(t *testing.T) 
 	require.NoError(err)
 
 	// Expect one entry
-	deletedIds, err = repo.ListDeletedSSHCertificateCredentialLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, err = repo.ListDeletedSSHCertificateLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(err)
 	require.Equal([]string{sshLibs[0].GetPublicId()}, deletedIds)
 
 	// Try again with the time set to now, expect no entries
-	deletedIds, err = repo.ListDeletedSSHCertificateCredentialLibraryIds(ctx, time.Now())
+	deletedIds, err = repo.ListDeletedSSHCertificateLibraryIds(ctx, time.Now())
 	require.NoError(err)
 	require.Empty(deletedIds)
 }
