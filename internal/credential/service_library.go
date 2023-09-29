@@ -12,23 +12,23 @@ import (
 	"github.com/hashicorp/boundary/internal/util"
 )
 
-// LibraryRepository defines the interface expected
+// VaultLibraryRepository defines the interface expected
 // to get the total number of credential libraries and deleted ids.
-type LibraryRepository interface {
+type VaultLibraryRepository interface {
 	EstimatedLibraryCount(context.Context) (int, error)
 	EstimatedSSHCertificateLibraryCount(context.Context) (int, error)
-	ListDeletedCredentialLibraryIds(context.Context, time.Time, ...Option) ([]string, error)
-	ListDeletedSSHCertificateCredentialLibraryIds(context.Context, time.Time, ...Option) ([]string, error)
+	ListDeletedLibraryIds(context.Context, time.Time, ...Option) ([]string, error)
+	ListDeletedSSHCertificateLibraryIds(context.Context, time.Time, ...Option) ([]string, error)
 }
 
 // NewLibraryService returns a new credential library service.
-func NewLibraryService(ctx context.Context, writer db.Writer, repo LibraryRepository) (*LibraryService, error) {
+func NewLibraryService(ctx context.Context, writer db.Writer, repo VaultLibraryRepository) (*LibraryService, error) {
 	const op = "credential.NewLibraryService"
 	switch {
 	case util.IsNil(writer):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB writer")
 	case util.IsNil(repo):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing credential library repo")
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing vault credential library repo")
 	}
 	return &LibraryService{
 		repo:   repo,
@@ -39,7 +39,7 @@ func NewLibraryService(ctx context.Context, writer db.Writer, repo LibraryReposi
 // LibraryService coordinates calls to across different subtype repositories
 // to gather information about all credential libraries.
 type LibraryService struct {
-	repo   LibraryRepository
+	repo   VaultLibraryRepository
 	writer db.Writer
 }
 

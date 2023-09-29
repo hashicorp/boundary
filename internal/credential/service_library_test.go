@@ -17,26 +17,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type fakeLibraryRepository struct {
-	EstimatedLibraryCountFn                         func(context.Context) (int, error)
-	EstimatedSSHCertificateLibraryCountFn           func(context.Context) (int, error)
-	ListDeletedCredentialLibraryIdsFn               func(context.Context, time.Time, ...credential.Option) ([]string, error)
-	ListDeletedSSHCertificateCredentialLibraryIdsFn func(context.Context, time.Time, ...credential.Option) ([]string, error)
+type fakeVaultLibraryRepository struct {
+	EstimatedLibraryCountFn               func(context.Context) (int, error)
+	EstimatedSSHCertificateLibraryCountFn func(context.Context) (int, error)
+	ListDeletedLibraryIdsFn               func(context.Context, time.Time, ...credential.Option) ([]string, error)
+	ListDeletedSSHCertificateLibraryIdsFn func(context.Context, time.Time, ...credential.Option) ([]string, error)
 }
 
-func (f *fakeLibraryRepository) EstimatedLibraryCount(ctx context.Context) (int, error) {
+func (f *fakeVaultLibraryRepository) EstimatedLibraryCount(ctx context.Context) (int, error) {
 	return f.EstimatedLibraryCountFn(ctx)
 }
 
-func (f *fakeLibraryRepository) EstimatedSSHCertificateLibraryCount(ctx context.Context) (int, error) {
+func (f *fakeVaultLibraryRepository) EstimatedSSHCertificateLibraryCount(ctx context.Context) (int, error) {
 	return f.EstimatedSSHCertificateLibraryCountFn(ctx)
 }
 
-func (f *fakeLibraryRepository) ListDeletedLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+func (f *fakeVaultLibraryRepository) ListDeletedLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 	return f.ListDeletedLibraryIdsFn(ctx, since, opt...)
 }
 
-func (f *fakeLibraryRepository) ListDeletedSSHCertificateLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+func (f *fakeVaultLibraryRepository) ListDeletedSSHCertificateLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 	return f.ListDeletedSSHCertificateLibraryIdsFn(ctx, since, opt...)
 }
 
@@ -59,18 +59,18 @@ func TestNewLibraryService(t *testing.T) {
 	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
-		got, err := credential.NewLibraryService(ctx, &fakeWriter{}, &fakeLibraryRepository{})
+		got, err := credential.NewLibraryService(ctx, &fakeWriter{}, &fakeVaultLibraryRepository{})
 		require.NoError(t, err)
 		require.NotNil(t, got)
 	})
 	t.Run("nil-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewLibraryService(ctx, nil, &fakeLibraryRepository{})
+		_, err := credential.NewLibraryService(ctx, nil, &fakeVaultLibraryRepository{})
 		require.Error(t, err)
 	})
 	t.Run("nil-interface-writer", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewLibraryService(ctx, (*fakeWriter)(nil), &fakeLibraryRepository{})
+		_, err := credential.NewLibraryService(ctx, (*fakeWriter)(nil), &fakeVaultLibraryRepository{})
 		require.Error(t, err)
 	})
 	t.Run("nil-repo", func(t *testing.T) {
@@ -80,7 +80,7 @@ func TestNewLibraryService(t *testing.T) {
 	})
 	t.Run("nil-interface-repo", func(t *testing.T) {
 		t.Parallel()
-		_, err := credential.NewLibraryService(ctx, &fakeWriter{}, (*fakeLibraryRepository)(nil))
+		_, err := credential.NewLibraryService(ctx, &fakeWriter{}, (*fakeVaultLibraryRepository)(nil))
 		require.Error(t, err)
 	})
 }
@@ -90,7 +90,7 @@ func TestCredentialLibraryService_EstimatedCount(t *testing.T) {
 	ctx := context.Background()
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
-		repo := &fakeLibraryRepository{
+		repo := &fakeVaultLibraryRepository{
 			EstimatedLibraryCountFn: func(ctx context.Context) (int, error) {
 				return 5, nil
 			},
@@ -106,7 +106,7 @@ func TestCredentialLibraryService_EstimatedCount(t *testing.T) {
 	})
 	t.Run("error-in-generic-libs-fn", func(t *testing.T) {
 		t.Parallel()
-		repo := &fakeLibraryRepository{
+		repo := &fakeVaultLibraryRepository{
 			EstimatedLibraryCountFn: func(ctx context.Context) (int, error) {
 				return 0, errors.New("some error")
 			},
@@ -121,7 +121,7 @@ func TestCredentialLibraryService_EstimatedCount(t *testing.T) {
 	})
 	t.Run("error-in-ssh-cert-libs-fn", func(t *testing.T) {
 		t.Parallel()
-		repo := &fakeLibraryRepository{
+		repo := &fakeVaultLibraryRepository{
 			EstimatedLibraryCountFn: func(ctx context.Context) (int, error) {
 				return 5, nil
 			},
@@ -142,7 +142,7 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
-		repo := &fakeLibraryRepository{
+		repo := &fakeVaultLibraryRepository{
 			ListDeletedLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)
@@ -178,7 +178,7 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 	t.Run("tx-error", func(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
-		repo := &fakeLibraryRepository{
+		repo := &fakeVaultLibraryRepository{
 			ListDeletedLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)
@@ -207,7 +207,7 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 	t.Run("first-list-fails", func(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
-		repo := &fakeLibraryRepository{
+		repo := &fakeVaultLibraryRepository{
 			ListDeletedLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				return nil, errors.New("some error")
 			},
@@ -233,7 +233,7 @@ func TestLibraryService_ListDeletedIds(t *testing.T) {
 	t.Run("second-list-fails", func(t *testing.T) {
 		t.Parallel()
 		timeSince := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
-		repo := &fakeLibraryRepository{
+		repo := &fakeVaultLibraryRepository{
 			ListDeletedLibraryIdsFn: func(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 				assert.True(t, since.Equal(timeSince))
 				opts, err := credential.GetOpts(opt...)

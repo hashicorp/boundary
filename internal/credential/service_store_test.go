@@ -18,8 +18,8 @@ import (
 )
 
 type fakeStoreRepository struct {
-	EstimatedStoreCountFn           func(context.Context) (int, error)
-	ListDeletedCredentialStoreIdsFn func(context.Context, time.Time, ...credential.Option) ([]string, error)
+	EstimatedStoreCountFn func(context.Context) (int, error)
+	ListDeletedStoreIdsFn func(context.Context, time.Time, ...credential.Option) ([]string, error)
 }
 
 func (f *fakeStoreRepository) EstimatedStoreCount(ctx context.Context) (int, error) {

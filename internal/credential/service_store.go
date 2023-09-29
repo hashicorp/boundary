@@ -16,7 +16,7 @@ import (
 // to get the total number of credential stores and deleted ids.
 type StoreRepository interface {
 	EstimatedStoreCount(context.Context) (int, error)
-	ListDeletedCredentialStoreIds(context.Context, time.Time, ...Option) ([]string, error)
+	ListDeletedStoreIds(context.Context, time.Time, ...Option) ([]string, error)
 }
 
 // NewStoreService returns a new credential store service.
