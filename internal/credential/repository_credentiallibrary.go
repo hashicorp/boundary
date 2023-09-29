@@ -47,9 +47,9 @@ func (clr *CredentialLibraryRepository) Now(ctx context.Context) (time.Time, err
 	return now, nil
 }
 
-// GetTotalItems returns an estimate of the total number of items in the root aggregate credential library table.
-func (clr *CredentialLibraryRepository) GetTotalItems(ctx context.Context) (int, error) {
-	const op = "credential.(CredentialLibraryRepository).GetTotalItems"
+// EstimatedCount returns an estimate of the total number of items in the root aggregate credential library table.
+func (clr *CredentialLibraryRepository) EstimatedCount(ctx context.Context) (int, error) {
+	const op = "credential.(CredentialLibraryRepository).EstimatedCount"
 	rows, err := clr.reader.Query(ctx, estimateCountCredentialLibraries, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credential libraries"))

@@ -956,7 +956,7 @@ func TestListDeletedIds(t *testing.T) {
 	require.Empty(deletedIds)
 }
 
-func TestGetTotalItems(t *testing.T) {
+func TestEstimatedCount(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
@@ -974,7 +974,7 @@ func TestGetTotalItems(t *testing.T) {
 	require.NotNil(repo)
 
 	// Check total entries at start, expect 0
-	numItems, err := repo.GetTotalItems(ctx)
+	numItems, err := repo.EstimatedCount(ctx)
 	require.NoError(err)
 	assert.Equal(0, numItems)
 
@@ -983,7 +983,7 @@ func TestGetTotalItems(t *testing.T) {
 	// Run analyze to update estimate
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
-	numItems, err = repo.GetTotalItems(ctx)
+	numItems, err = repo.EstimatedCount(ctx)
 	require.NoError(err)
 	assert.Equal(1, numItems)
 
@@ -993,7 +993,7 @@ func TestGetTotalItems(t *testing.T) {
 	// Run analyze to update estimate
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
-	numItems, err = repo.GetTotalItems(ctx)
+	numItems, err = repo.EstimatedCount(ctx)
 	require.NoError(err)
 	assert.Equal(0, numItems)
 }

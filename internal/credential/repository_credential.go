@@ -47,9 +47,9 @@ func (csr *CredentialRepository) Now(ctx context.Context) (time.Time, error) {
 	return now, nil
 }
 
-// GetTotalItems returns an estimate of the total number of items in the root aggregate credential table.
-func (csr *CredentialRepository) GetTotalItems(ctx context.Context) (int, error) {
-	const op = "credential.(CredentialRepository).GetTotalItems"
+// EstimatedCount returns an estimate of the total number of items in the root aggregate credential table.
+func (csr *CredentialRepository) EstimatedCount(ctx context.Context) (int, error) {
+	const op = "credential.(CredentialRepository).EstimatedCount"
 	rows, err := csr.reader.Query(ctx, estimateCountCredentials, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total credentials"))

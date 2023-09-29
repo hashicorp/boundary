@@ -316,9 +316,9 @@ type (
 		HashFn func() ([]byte, error)
 	}
 	testRepo struct {
-		DeletedIdsFn          func(time.Time) ([]string, error)
-		EstimatedTotalItemsFn func() (int, error)
-		NowFn                 func() (time.Time, error)
+		DeletedIdsFn     func(time.Time) ([]string, error)
+		EstimatedCountFn func() (int, error)
+		NowFn            func() (time.Time, error)
 	}
 )
 
@@ -350,8 +350,8 @@ func (t *testRepo) ListDeletedIds(_ context.Context, tm time.Time) ([]string, er
 	return t.DeletedIdsFn(tm)
 }
 
-func (t *testRepo) GetTotalItems(context.Context) (int, error) {
-	return t.EstimatedTotalItemsFn()
+func (t *testRepo) EstimatedCount(context.Context) (int, error) {
+	return t.EstimatedCountFn()
 }
 
 func (t *testRepo) Now(context.Context) (time.Time, error) {
@@ -503,7 +503,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return nil, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 100, nil
 			},
 			NowFn: func() (time.Time, error) {
@@ -539,7 +539,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return nil, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 100, nil
 			},
 			NowFn: func() (time.Time, error) {
@@ -575,7 +575,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return nil, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 100, nil
 			},
 			NowFn: func() (time.Time, error) {
@@ -617,7 +617,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return nil, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 100, nil
 			},
 			NowFn: func() (time.Time, error) {
@@ -663,7 +663,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return nil, stderrors.New("some error")
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 100, nil
 			},
 			NowFn: func() (time.Time, error) {
@@ -700,7 +700,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return nil, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 0, stderrors.New("some error")
 			},
 			NowFn: func() (time.Time, error) {
@@ -738,7 +738,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return nil, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 0, nil
 			},
 			NowFn: func() (time.Time, error) {
@@ -779,7 +779,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return nil, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 0, nil
 			},
 			NowFn: func() (time.Time, error) {
@@ -820,7 +820,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return nil, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 100, nil
 			},
 			NowFn: func() (time.Time, error) {
@@ -879,7 +879,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return []string{"id1", "id2"}, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 100, nil
 			},
 			NowFn: func() (time.Time, error) {
@@ -939,7 +939,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return []string{"id1", "id2"}, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				return 100, nil
 			},
 			NowFn: func() (time.Time, error) {
@@ -990,7 +990,7 @@ func TestPaginateRequest(t *testing.T) {
 			DeletedIdsFn: func(time.Time) ([]string, error) {
 				return nil, nil
 			},
-			EstimatedTotalItemsFn: func() (int, error) {
+			EstimatedCountFn: func() (int, error) {
 				t.Error("Should not have called estimated totals function")
 				return 0, nil
 			},

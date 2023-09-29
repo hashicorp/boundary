@@ -71,7 +71,7 @@ func TestCredentialLibraryRepository_ListDeletedIds(t *testing.T) {
 	require.Empty(deletedIds)
 }
 
-func TestCredentialLibraryRepository_GetTotalItems(t *testing.T) {
+func TestCredentialLibraryRepository_EstimatedCount(t *testing.T) {
 	t.Parallel()
 	assert, require := assert.New(t), require.New(t)
 	ctx := context.Background()
@@ -92,7 +92,7 @@ func TestCredentialLibraryRepository_GetTotalItems(t *testing.T) {
 	require.NoError(err)
 
 	// Check total entries at start, expect 0
-	numItems, err := repo.GetTotalItems(ctx)
+	numItems, err := repo.EstimatedCount(ctx)
 	require.NoError(err)
 	assert.Equal(0, numItems)
 
@@ -107,7 +107,7 @@ func TestCredentialLibraryRepository_GetTotalItems(t *testing.T) {
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
 
-	numItems, err = repo.GetTotalItems(ctx)
+	numItems, err = repo.EstimatedCount(ctx)
 	require.NoError(err)
 	assert.Equal(8, numItems)
 
@@ -117,7 +117,7 @@ func TestCredentialLibraryRepository_GetTotalItems(t *testing.T) {
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
 
-	numItems, err = repo.GetTotalItems(ctx)
+	numItems, err = repo.EstimatedCount(ctx)
 	require.NoError(err)
 	assert.Equal(7, numItems)
 
@@ -127,7 +127,7 @@ func TestCredentialLibraryRepository_GetTotalItems(t *testing.T) {
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
 
-	numItems, err = repo.GetTotalItems(ctx)
+	numItems, err = repo.EstimatedCount(ctx)
 	require.NoError(err)
 	assert.Equal(6, numItems)
 }

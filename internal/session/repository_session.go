@@ -365,9 +365,9 @@ func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]str
 	return sessionIds, nil
 }
 
-// GetTotalItems returns an estimate of the total number of items in the session table.
-func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
-	const op = "session.(Repository).GetTotalItems"
+// EstimatedCount returns an estimate of the total number of items in the session table.
+func (r *Repository) EstimatedCount(ctx context.Context) (int, error) {
+	const op = "session.(Repository).EstimatedCount"
 	rows, err := r.reader.Query(ctx, estimateCountSessions, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))

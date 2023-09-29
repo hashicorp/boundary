@@ -196,9 +196,9 @@ func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]str
 	return accountIds, nil
 }
 
-// GetTotalItems returns the total number of items in the accounts table.
-func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
-	const op = "account.(Repository).GetTotalItems"
+// EstimatedCount returns an estimate of the total number of items in the accounts table.
+func (r *Repository) EstimatedCount(ctx context.Context) (int, error) {
+	const op = "account.(Repository).EstimatedCount"
 	rows, err := r.reader.Query(ctx, estimateCountAccounts, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total accounts"))

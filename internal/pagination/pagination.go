@@ -33,7 +33,7 @@ type ResponseItem interface {
 // extra metadata about the items in the DB.
 type Repository interface {
 	ListDeletedIds(ctx context.Context, since time.Time) ([]string, error)
-	GetTotalItems(ctx context.Context) (int, error)
+	EstimatedCount(ctx context.Context) (int, error)
 	Now(ctx context.Context) (time.Time, error)
 }
 
@@ -176,7 +176,7 @@ func PaginateRequest[T any, PbT ResponseItem](
 		// slice directly
 		resp.EstimatedItemCount = len(resp.Items)
 	} else {
-		resp.EstimatedItemCount, err = repo.GetTotalItems(ctx)
+		resp.EstimatedItemCount, err = repo.EstimatedCount(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
