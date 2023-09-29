@@ -296,7 +296,7 @@ begin;
     'get_deletion_tables returns a set containing all the deleted table names by looking for '
     'all tables that end in _deleted.';
 
-  -- Assign a "before delete" trigger on all deleted tables to run insert_deleted_id
+  -- Assign a "after delete" trigger on all deleted tables to run insert_deleted_id
   do $$
   declare
     deletion_table_name text;
@@ -304,7 +304,7 @@ begin;
   begin
     for deletion_table_name in select get_deletion_tables() loop
       table_name := split_part(deletion_table_name, '_deleted', 1);
-      execute format('create trigger insert_deleted_id before delete on %I for each row execute function insert_deleted_id(''%I'')', table_name, deletion_table_name);
+      execute format('create trigger insert_deleted_id after delete on %I for each row execute function insert_deleted_id(''%I'')', table_name, deletion_table_name);
       execute format('create index %I_delete_time_idx on %I (delete_time)', deletion_table_name, deletion_table_name);
     end loop;
   end;
