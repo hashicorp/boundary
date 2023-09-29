@@ -15,7 +15,7 @@ import (
 // CredentialRepository defines the interface expected
 // to get the total number of credentials and deleted ids.
 type CredentialRepository interface {
-	GetTotalCredentials(context.Context) (int, error)
+	EstimatedCredentialCount(context.Context) (int, error)
 	ListDeletedCredentialIds(context.Context, time.Time, ...Option) ([]string, error)
 }
 
@@ -44,7 +44,7 @@ type CredentialService struct {
 // EstimatedCount gets an estimate of the total number of credentials across all types
 func (s *CredentialService) EstimatedCount(ctx context.Context) (int, error) {
 	const op = "credential.(*CredentialService).EstimatedCount"
-	numCreds, err := s.repo.GetTotalCredentials(ctx)
+	numCreds, err := s.repo.EstimatedCredentialCount(ctx)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}

@@ -18,12 +18,12 @@ import (
 )
 
 type fakeCredentialRepository struct {
-	GetTotalCredentialsFn      func(context.Context) (int, error)
+	EsimatedCredentialCountFn  func(context.Context) (int, error)
 	ListDeletedCredentialIdsFn func(context.Context, time.Time, ...credential.Option) ([]string, error)
 }
 
-func (f *fakeCredentialRepository) GetTotalCredentials(ctx context.Context) (int, error) {
-	return f.GetTotalCredentialsFn(ctx)
+func (f *fakeCredentialRepository) EstimatedCredentialCount(ctx context.Context) (int, error) {
+	return f.EsimatedCredentialCountFn(ctx)
 }
 
 func (f *fakeCredentialRepository) ListDeletedCredentialIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
@@ -67,7 +67,7 @@ func TestCredentialService_EstimatedCount(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 		repo := &fakeCredentialRepository{
-			GetTotalCredentialsFn: func(ctx context.Context) (int, error) {
+			EsimatedCredentialCountFn: func(ctx context.Context) (int, error) {
 				return 5, nil
 			},
 		}
@@ -80,7 +80,7 @@ func TestCredentialService_EstimatedCount(t *testing.T) {
 	t.Run("error-in-get-fn", func(t *testing.T) {
 		t.Parallel()
 		repo := &fakeCredentialRepository{
-			GetTotalCredentialsFn: func(ctx context.Context) (int, error) {
+			EsimatedCredentialCountFn: func(ctx context.Context) (int, error) {
 				return 0, errors.New("some error")
 			},
 		}

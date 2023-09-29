@@ -883,9 +883,9 @@ func (r *Repository) DeleteCredential(ctx context.Context, projectId, id string,
 	return rowsDeleted, nil
 }
 
-// GetTotalCredentials returns an estimate of the number of static credential stores
-func (r *Repository) GetTotalCredentials(ctx context.Context) (int, error) {
-	const op = "static.(Repository).GetTotalCredentials"
+// EstimatedCredentialCount returns an estimate of the number of static credential stores
+func (r *Repository) EstimatedCredentialCount(ctx context.Context) (int, error) {
+	const op = "static.(Repository).EstimatedCredentialCount"
 	rows, err := r.reader.Query(ctx, estimateCountCredentials, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total static credential stores"))
