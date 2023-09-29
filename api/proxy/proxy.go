@@ -46,7 +46,7 @@ type ClientProxy struct {
 // also cancel on its own if the session expires or there are no connections
 // left.
 func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, error) {
-	opts, err := GetOpts(opt...)
+	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse options: %w", err)
 	}
@@ -88,7 +88,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	p.connectionsLeft.Store(p.sessionAuthzData.ConnectionLimit)
 	p.workerAddr = p.sessionAuthzData.WorkerInfo[0].Address
 
-	tlsConf, err := p.clientTlsConfig()
+	tlsConf, err := p.clientTlsConfig(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error creating TLS configuration: %w", err)
 	}

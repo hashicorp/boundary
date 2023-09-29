@@ -9,7 +9,11 @@ import (
 	"strings"
 )
 
-func (p *ClientProxy) clientTlsConfig() (*tls.Config, error) {
+// clientTlsConfig creates a TLS configuration to connect to a worker proxy, or
+// returns a cached config
+//
+// Supported options: WithWorkerHost
+func (p *ClientProxy) clientTlsConfig(opt ...Option) (*tls.Config, error) {
 	if p.clientTlsConf != nil {
 		return p.clientTlsConf, nil
 	}
@@ -19,12 +23,20 @@ func (p *ClientProxy) clientTlsConfig() (*tls.Config, error) {
 		return nil, fmt.Errorf("%s: nil session authorization data", op)
 	}
 
-	workerHost, _, err := net.SplitHostPort(p.workerAddr)
+	opts, err := getOpts(opt...)
 	if err != nil {
-		if strings.Contains(err.Error(), "missing port") {
-			workerHost = p.workerAddr
-		} else {
-			return nil, fmt.Errorf("%s: error splitting worker adddress host/port: %w", op, err)
+		return nil, fmt.Errorf("%s: error getting options: %w", op, err)
+	}
+
+	var workerHost string
+	if opts.WithWorkerHost == nil {
+		workerHost, _, err = net.SplitHostPort(p.workerAddr)
+		if err != nil {
+			if strings.Contains(err.Error(), "missing port") {
+				workerHost = p.workerAddr
+			} else {
+				return nil, fmt.Errorf("%s: error splitting worker adddress host/port: %w", op, err)
+			}
 		}
 	}
 
@@ -52,6 +64,7 @@ func (p *ClientProxy) clientTlsConfig() (*tls.Config, error) {
 		// set on this TLS config below. We are not skipping verification!
 		InsecureSkipVerify: true,
 	}
+
 	if workerHost == "" {
 		tlsConf.ServerName = parsedCert.DNSNames[0]
 	}

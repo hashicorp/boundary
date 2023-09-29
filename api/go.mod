@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/api
 go 1.19
 
 require (
-	github.com/hashicorp/boundary/sdk v0.0.37
+	github.com/hashicorp/boundary/sdk v0.0.38-0.20230928203337-0c371a6e869b
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.10-0.20230601143830-08d524b564ba
 	github.com/hashicorp/go-retryablehttp v0.7.2
@@ -14,7 +14,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.8.4
-	go.uber.org/atomic v1.11.0
 	golang.org/x/time v0.3.0
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0

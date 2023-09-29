@@ -5,8 +5,8 @@ import (
 	"net/netip"
 )
 
-// GetOpts iterates the inbound Options and returns a struct and any errors
-func GetOpts(opt ...Option) (*Options, error) {
+// getOpts iterates the inbound Options and returns a struct and any errors
+func getOpts(opt ...Option) (*Options, error) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		if o == nil {
@@ -25,6 +25,7 @@ func GetOpts(opt ...Option) (*Options, error) {
 type Options struct {
 	WithListenAddr        netip.AddrPort
 	WithConnectionsLeftCh chan int32
+	WithWorkerHost        *string
 }
 
 // Option is a function that takes in an options struct and sets values or
@@ -58,6 +59,16 @@ func WithConnectionsLeftCh(with chan int32) Option {
 			return errors.New("channel passed to WithConnectionsLeftCh is nil")
 		}
 		o.WithConnectionsLeftCh = with
+		return nil
+	}
+}
+
+// WithWorkerHost can be used to override the worker host read from the session
+// authorization data. This is mostly useful for tests.
+func WithWorkerHost(with string) Option {
+	return func(o *Options) error {
+		o.WithWorkerHost = new(string)
+		*o.WithWorkerHost = with
 		return nil
 	}
 }

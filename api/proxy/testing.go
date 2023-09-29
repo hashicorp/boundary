@@ -11,10 +11,10 @@ import (
 // TestClientTlsConfig is designed to allow tests to obtain the TLS
 // configuration that would be used by the proxy in order to make specific calls
 // to workers during tests.
-func TestClientTlsConfig(t *testing.T, authzToken string) *tls.Config {
-	proxyClient, err := New(context.Background(), authzToken)
+func TestClientTlsConfig(t *testing.T, authzToken string, opt ...Option) *tls.Config {
+	proxyClient, err := New(context.Background(), authzToken, opt...)
 	require.NoError(t, err)
-	tlsConf, err := proxyClient.clientTlsConfig()
+	tlsConf, err := proxyClient.clientTlsConfig(opt...)
 	require.NoError(t, err)
 	return tlsConf
 }
