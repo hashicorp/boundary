@@ -6,6 +6,10 @@ variable "path" {
   default = "/tmp"
 }
 
+variable "edition" {
+  default = "oss"
+}
+
 output "artifact_path" {
   value = var.path
 }

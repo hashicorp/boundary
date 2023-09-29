@@ -19,6 +19,10 @@ variable "cli_build_path" {
   type        = string
 }
 
+variable "edition" {
+  default = "oss"
+}
+
 resource "enos_local_exec" "load_docker_image" {
   inline = ["docker load -i ${var.path}"]
 }

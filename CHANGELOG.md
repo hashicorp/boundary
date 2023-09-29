@@ -25,7 +25,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([Issue](https://github.com/hashicorp/boundary/issues/3631),
   [PR](https://github.com/hashicorp/boundary/pull/3633)).
 * feat: add API support for additional LDAP auth method fields:
-  maximum_page_size and dereference_aliases
+  `maximum_page_size` and `dereference_aliases`
   ([PR](https://github.com/hashicorp/boundary/pull/3679)).
 * feat: add worker upstream connection status to ops health check
   ([PR](https://github.com/hashicorp/boundary/pull/3650)).
@@ -34,6 +34,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * feat: add support for telemetry events via flag or Boundary configuration (requires observation events to be enabled).
 Deny filter now filters coordination worker status from observation events by default. (This behaviour is overridden by any user specified allow or deny filters)
   ([PR](https://github.com/hashicorp/boundary/pull/3753)).
+* ui: Add full UI support for LDAP auth method
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1782))
+* ui: Add new attribute fields to storage bucket to support the assume role service in AWS.
+  ([PR](https://github.com/hashicorp/boundary-ui/pull/1901))
 
 ### Bug Fixes
 
