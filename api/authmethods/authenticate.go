@@ -79,7 +79,7 @@ func (a AuthenticateResult) GetAuthToken() (*authtokens.AuthToken, error) {
 //
 // Only some auth methods support multiple commands. If the documentation does
 // not specify what command to use when and with which attriubutes, use
-// "authenticate".
+// "login".
 func (c *Client) Authenticate(ctx context.Context, authMethodId, command string, attributes map[string]any, opt ...Option) (*AuthenticateResult, error) {
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client in Authenticate request")
