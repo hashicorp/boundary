@@ -6,6 +6,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,6 +18,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/tui"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
 )
@@ -172,6 +174,14 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	initCommands(ui, serverCmdUi, runOpts)
 
 	hiddenCommands := []string{"version"}
+
+	if useColor && len(args) > 0 && strings.EqualFold(args[0], "tui") {
+		if err := tui.ServeTui(context.Background()); err != nil {
+			fmt.Fprintf(runOpts.Stderr, "Error executing TUI: %s\n", err.Error())
+			return 1
+		}
+		return 0
+	}
 
 	cli := &cli.CLI{
 		Name:     "boundary",

@@ -171,6 +171,62 @@ func (c *Command) ReadTokenFromKeyring(keyringType, tokenName string) *authtoken
 	return nil
 }
 
+func (c *Command) SaveTokenToKeyring(token *authtokens.AuthToken) {
+	var gotErr bool
+	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error fetching keyring information: %s", err))
+		gotErr = true
+	} else if keyringType != "none" &&
+		tokenName != "none" &&
+		keyringType != "" &&
+		tokenName != "" {
+		marshaled, err := json.Marshal(token)
+		if err != nil {
+			c.UI.Error(fmt.Sprintf("Error marshaling auth token to save to keyring: %s", err))
+			gotErr = true
+		} else {
+			switch keyringType {
+			case "wincred", "keychain":
+				if err := zkeyring.Set(StoredTokenName, tokenName, base64.RawStdEncoding.EncodeToString(marshaled)); err != nil {
+					c.UI.Error(fmt.Sprintf("Error saving auth token to %q keyring: %s", keyringType, err))
+					gotErr = true
+				}
+
+			default:
+				krConfig := nkeyring.Config{
+					LibSecretCollectionName: "login",
+					PassPrefix:              "HashiCorp_Boundary",
+					AllowedBackends:         []nkeyring.BackendType{nkeyring.BackendType(keyringType)},
+				}
+
+				kr, err := nkeyring.Open(krConfig)
+				if err != nil {
+					c.UI.Error(fmt.Sprintf("Error opening %q keyring: %s", keyringType, err))
+					gotErr = true
+					break
+				}
+
+				if err := kr.Set(nkeyring.Item{
+					Key:  tokenName,
+					Data: []byte(base64.RawStdEncoding.EncodeToString(marshaled)),
+				}); err != nil {
+					c.UI.Error(fmt.Sprintf("Error storing token in %q keyring: %s", keyringType, err))
+					gotErr = true
+					break
+				}
+			}
+
+			if !gotErr {
+				c.UI.Output("\nThe token was successfully stored in the chosen keyring and is not displayed here.")
+			}
+		}
+	}
+	if gotErr {
+		c.UI.Warn(fmt.Sprintf("The token was not successfully saved to a system keyring. The token is:\n\n%s\n\nIt must be manually passed in via the BOUNDARY_TOKEN env var or -token flag. Storing the token can also be disabled via -keyring-type=none.", token.Token))
+	}
+}
+
 func TokenIdFromToken(token string) (string, error) {
 	split := strings.Split(token, "_")
 	if len(split) < 3 {
