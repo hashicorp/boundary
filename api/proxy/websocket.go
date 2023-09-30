@@ -67,7 +67,7 @@ func (p *ClientProxy) sendSessionTeardown(ctx context.Context) error {
 	return nil
 }
 
-func (p *ClientProxy) runTcpProxyV1(wsConn *websocket.Conn, listeningConn *net.TCPConn) error {
+func (p *ClientProxy) runTcpProxyV1(wsConn *websocket.Conn, listeningConn net.Conn) error {
 	handshake := pb.ClientHandshake{TofuToken: p.tofuToken}
 	if err := wspb.Write(p.ctx, wsConn, &handshake); err != nil {
 		return fmt.Errorf("error sending handshake to worker: %w", err)

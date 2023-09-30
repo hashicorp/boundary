@@ -67,7 +67,9 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 	switch strings.ToLower(s.flagSshStyle) {
 	case "ssh":
 		// Might want -t for ssh or -tt but seems fine without it for now...
-		args = append(args, "-p", port)
+		if port != "" {
+			args = append(args, "-p", port)
+		}
 
 		switch c.sessionAuthzData.GetType() {
 		case "tcp":
@@ -109,14 +111,18 @@ func (s *sshFlags) buildArgs(c *Command, port, ip, _ string, creds credentials) 
 		// when the using env-vars.
 		envs = append(envs, fmt.Sprintf("SSHPASS=%s", password))
 		args = append(args, "-e", "ssh")
-		args = append(args, "-p", port)
+		if port != "" {
+			args = append(args, "-p", port)
+		}
 
 		// sshpass cannot handle host key checking, disable localhost key verification
 		// to avoid error: 'SSHPASS detected host authentication prompt. Exiting.'
 		args = append(args, "-o", "NoHostAuthenticationForLocalhost=yes")
 
 	case "putty":
-		args = append(args, "-P", port)
+		if port != "" {
+			args = append(args, "-P", port)
+		}
 	}
 
 	// Check if we got credentials to attempt to use for ssh or putty,

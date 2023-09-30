@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"errors"
+	"net"
 	"net/netip"
 )
 
@@ -23,7 +24,8 @@ func getOpts(opt ...Option) (*Options, error) {
 // Options contains various options. The values are exported since the options
 // are parsed in various other packages.
 type Options struct {
-	WithListenAddr        netip.AddrPort
+	WithListener          net.Listener
+	WithListenAddrPort    netip.AddrPort
 	WithConnectionsLeftCh chan int32
 	WithWorkerHost        *string
 }
@@ -34,17 +36,31 @@ type Option func(*Options) error
 
 func getDefaultOptions() *Options {
 	return &Options{
-		WithListenAddr: netip.MustParseAddrPort("127.0.0.1:0"),
+		WithListenAddrPort: netip.MustParseAddrPort("127.0.0.1:0"),
 	}
 }
 
-// WithListenAddr allows overriding an address to listen on. It is _not_ an
+// WithListener allows passing a listener on which to accept connections. If
+// this and WithListenAddrPort are both specified, this will take precedence.
+func WithListener(with net.Listener) Option {
+	return func(o *Options) error {
+		if with == nil {
+			return errors.New("nil listener passed to WithListener")
+		}
+		o.WithListener = with
+		return nil
+	}
+}
+
+// WithListenAddrPort allows overriding an address to listen on. It is _not_ an
 // error to pass an invalid netip.AddrPort, e.g. from an allocated but unset
-// AddrPort; this will simply cause it to use the default.
-func WithListenAddr(with netip.AddrPort) Option {
+// AddrPort; this will simply cause it to use the default. Mutually exclusive
+// with WithListener; that option will take precedence. If you do not want a TCP
+// connection you must use WithListener.
+func WithListenAddrPort(with netip.AddrPort) Option {
 	return func(o *Options) error {
 		if with.IsValid() {
-			o.WithListenAddr = with
+			o.WithListenAddrPort = with
 		}
 		return nil
 	}

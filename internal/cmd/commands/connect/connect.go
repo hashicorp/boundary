@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/netip"
 	"os"
 	"strconv"
@@ -389,7 +390,7 @@ func (c *Command) Run(args []string) (retCode int) {
 	}
 
 	connsLeftCh := make(chan int32)
-	clientProxy, err := apiproxy.New(c.proxyCtx, authzString, apiproxy.WithListenAddr(listenAddr), apiproxy.WithConnectionsLeftCh(connsLeftCh))
+	clientProxy, err := apiproxy.New(c.proxyCtx, authzString, apiproxy.WithListenAddrPort(listenAddr), apiproxy.WithConnectionsLeftCh(connsLeftCh))
 	if err != nil {
 		c.PrintCliError(fmt.Errorf("Could not create client proxy: %w", err))
 		return base.CommandCliError
@@ -435,14 +436,31 @@ func (c *Command) Run(args []string) (retCode int) {
 			creds = c.sessionAuthz.Credentials
 		}
 
+		proxyAddr := clientProxy.ListenerAddr(context.Background())
+		var clientProxyHost, clientProxyPort string
+		clientProxyHost, clientProxyPort, err = net.SplitHostPort(proxyAddr)
+		if err != nil {
+			if strings.Contains(err.Error(), "missing port") {
+				clientProxyHost = proxyAddr
+			} else {
+				c.PrintCliError(fmt.Errorf("error splitting listener addr: %w", err))
+				return base.CommandCliError
+			}
+		}
 		sessInfo := SessionInfo{
 			Protocol:        c.sessionAuthzData.GetType(),
-			Address:         clientProxy.ListenerAddr(context.Background()).Addr().String(),
-			Port:            int(clientProxy.ListenerAddr(context.Background()).Port()),
+			Address:         clientProxyHost,
 			Expiration:      clientProxy.SessionExpiration(),
 			ConnectionLimit: c.sessionAuthzData.GetConnectionLimit(),
 			SessionId:       c.sessionAuthzData.GetSessionId(),
 			Credentials:     creds,
+		}
+		if clientProxyPort != "" {
+			sessInfo.Port, err = strconv.Atoi(clientProxyPort)
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("error parsing listener port: %w", err))
+				return base.CommandCliError
+			}
 		}
 		switch base.Format(c.UI) {
 		case "table":
@@ -542,7 +560,7 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 		case "json":
 			out, err := json.Marshal(&connInfo)
 			if err != nil {
-				c.PrintCliError(fmt.Errorf("error marshaling connection information: %w", err))
+				c.PrintCliError(fmt.Errorf("Error marshaling connection information: %w", err))
 			}
 			c.UI.Output(string(out))
 		}
@@ -552,10 +570,19 @@ func (c *Command) updateConnsLeft(connsLeft int32) {
 func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs []string) {
 	defer c.proxyCancel()
 
-	listenerAddr := clientProxy.ListenerAddr(context.Background())
-	port := strconv.Itoa(int(listenerAddr.Port()))
-	ip := listenerAddr.Addr().String()
-	addr := listenerAddr.String()
+	addr := clientProxy.ListenerAddr(context.Background())
+	var host, port string
+	var err error
+	host, port, err = net.SplitHostPort(addr)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port") {
+			host = addr
+		} else {
+			c.PrintCliError(fmt.Errorf("Error splitting listener addr: %w", err))
+			c.execCmdReturnValue.Store(int32(3))
+			return
+		}
+	}
 
 	var args []string
 	var envs []string
@@ -574,7 +601,7 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 
 	switch c.Func {
 	case "http":
-		httpArgs, err := c.httpFlags.buildArgs(c, port, ip, addr)
+		httpArgs, err := c.httpFlags.buildArgs(c, port, host, addr)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error parsing session args: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
@@ -583,7 +610,7 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		args = append(args, httpArgs...)
 
 	case "postgres":
-		pgArgs, pgEnvs, pgCreds, pgErr := c.postgresFlags.buildArgs(c, port, ip, addr, creds)
+		pgArgs, pgEnvs, pgCreds, pgErr := c.postgresFlags.buildArgs(c, port, host, addr, creds)
 		if pgErr != nil {
 			argsErr = pgErr
 			break
@@ -593,10 +620,10 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		creds = pgCreds
 
 	case "rdp":
-		args = append(args, c.rdpFlags.buildArgs(c, port, ip, addr)...)
+		args = append(args, c.rdpFlags.buildArgs(c, port, host, addr)...)
 
 	case "ssh":
-		sshArgs, sshEnvs, sshCreds, sshErr := c.sshFlags.buildArgs(c, port, ip, addr, creds)
+		sshArgs, sshEnvs, sshCreds, sshErr := c.sshFlags.buildArgs(c, port, host, addr, creds)
 		if sshErr != nil {
 			argsErr = sshErr
 			break
@@ -606,7 +633,7 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		creds = sshCreds
 
 	case "kube":
-		kubeArgs, err := c.kubeFlags.buildArgs(c, port, ip, addr)
+		kubeArgs, err := c.kubeFlags.buildArgs(c, port, host, addr)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error parsing session args: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
@@ -643,7 +670,8 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 
 	for i := range args {
 		args[i] = stringReplacer(args[i], "port", port)
-		args[i] = stringReplacer(args[i], "ip", ip)
+		args[i] = stringReplacer(args[i], "ip", host)
+		args[i] = stringReplacer(args[i], "host", host)
 		args[i] = stringReplacer(args[i], "addr", addr)
 	}
 
@@ -654,7 +682,8 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	// Add original and network related envs here
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("BOUNDARY_PROXIED_PORT=%s", port),
-		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", ip),
+		fmt.Sprintf("BOUNDARY_PROXIED_IP=%s", host),
+		fmt.Sprintf("BOUNDARY_PROXIED_HOST=%s", host),
 		fmt.Sprintf("BOUNDARY_PROXIED_ADDR=%s", addr),
 	)
 	// Envs that came from subcommand handling

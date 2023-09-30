@@ -16,6 +16,7 @@ import (
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mr-tron/base58"
+	ua "go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -23,7 +24,7 @@ const sessionCancelTimeout = 10 * time.Second
 
 type ClientProxy struct {
 	tofuToken               string
-	cachedListenerAddrPort  *atomic.Pointer[netip.AddrPort]
+	cachedListenerAddress   *ua.String
 	connectionsLeft         *atomic.Int32
 	connsLeftCh             chan int32
 	callerConnectionsLeftCh chan int32
@@ -35,7 +36,7 @@ type ClientProxy struct {
 	transport               *http.Transport
 	workerAddr              string
 	listenAddrPort          netip.AddrPort
-	listener                *atomic.Pointer[net.TCPListener]
+	listener                *atomic.Value
 	listenerCloseOnce       *sync.Once
 	clientTlsConf           *tls.Config
 	connWg                  *sync.WaitGroup
@@ -45,6 +46,13 @@ type ClientProxy struct {
 // the proxy is started, cancel the context to stop the proxy. The proxy may
 // also cancel on its own if the session expires or there are no connections
 // left.
+//
+// Supported options:
+//
+// * WithListenAddrPort - Specify a TCP address and port on which to listen
+//
+// * WithListener - Specify a custom listener on which to accept connections;
+// overrides WithListenAddrPort if both are set
 func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, error) {
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -52,15 +60,16 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	}
 
 	p := &ClientProxy{
-		cachedListenerAddrPort:  new(atomic.Pointer[netip.AddrPort]),
+		cachedListenerAddress:   ua.NewString(""),
 		connsLeftCh:             make(chan int32),
 		connectionsLeft:         new(atomic.Int32),
-		listener:                new(atomic.Pointer[net.TCPListener]),
+		listener:                new(atomic.Value),
 		listenerCloseOnce:       new(sync.Once),
 		connWg:                  new(sync.WaitGroup),
-		listenAddrPort:          opts.WithListenAddr,
+		listenAddrPort:          opts.WithListenAddrPort,
 		callerConnectionsLeftCh: opts.WithConnectionsLeftCh,
 	}
+	useListener := opts.WithListener != nil
 
 	p.tofuToken, err = base62.Random(20)
 	if err != nil {
@@ -82,8 +91,10 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		return nil, errors.New("no workers found in authorization data")
 	}
 
-	if p.listenAddrPort.Port() == 0 {
-		p.listenAddrPort = netip.AddrPortFrom(p.listenAddrPort.Addr(), uint16(p.sessionAuthzData.DefaultClientPort))
+	if !useListener {
+		if p.listenAddrPort.Port() == 0 {
+			p.listenAddrPort = netip.AddrPortFrom(p.listenAddrPort.Addr(), uint16(p.sessionAuthzData.DefaultClientPort))
+		}
 	}
 	p.connectionsLeft.Store(p.sessionAuthzData.ConnectionLimit)
 	p.workerAddr = p.sessionAuthzData.WorkerInfo[0].Address
@@ -121,19 +132,22 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 func (p *ClientProxy) Start() (retErr error) {
 	defer p.cancel()
 
-	ln, err := net.ListenTCP("tcp", &net.TCPAddr{
-		IP:   p.listenAddrPort.Addr().AsSlice(),
-		Port: int(p.listenAddrPort.Port()),
-	})
-	if err != nil {
-		return fmt.Errorf("unable to start listening: %w", err)
+	if p.listener.Load() == nil {
+		var err error
+		ln, err := net.ListenTCP("tcp", &net.TCPAddr{
+			IP:   p.listenAddrPort.Addr().AsSlice(),
+			Port: int(p.listenAddrPort.Port()),
+		})
+		if err != nil {
+			return fmt.Errorf("unable to start listening: %w", err)
+		}
+		p.listener.Store(ln)
 	}
-	p.listener.Store(ln)
 
 	listenerCloseFunc := func() {
 		// Forces the for loop to exit instead of spinning on errors
 		p.connectionsLeft.Store(0)
-		if err := p.listener.Load().Close(); err != nil && err != net.ErrClosed {
+		if err := p.listener.Load().(net.Listener).Close(); err != nil && err != net.ErrClosed {
 			retErr = errors.Join(retErr, fmt.Errorf("error closing proxy listener: %w", err))
 		}
 	}
@@ -147,7 +161,7 @@ func (p *ClientProxy) Start() (retErr error) {
 	go func() {
 		defer p.connWg.Done()
 		for {
-			listeningConn, err := p.listener.Load().AcceptTCP()
+			listeningConn, err := p.listener.Load().(net.Listener).Accept()
 			if err != nil {
 				select {
 				case <-p.ctx.Done():
@@ -254,29 +268,29 @@ func (p *ClientProxy) Start() (retErr error) {
 //
 // Warning: a non-cancelable context will cause this call to block forever until
 // the listener's address can be determined.
-func (p *ClientProxy) ListenerAddr(ctx context.Context) netip.AddrPort {
+func (p *ClientProxy) ListenerAddr(ctx context.Context) string {
 	switch {
-	case p.cachedListenerAddrPort.Load() != nil:
-		return *p.cachedListenerAddrPort.Load()
+	case p.cachedListenerAddress.Load() != "":
+		return p.cachedListenerAddress.Load()
 	case p.listener.Load() != nil:
-		addrPort := p.listener.Load().Addr().(*net.TCPAddr).AddrPort()
-		p.cachedListenerAddrPort.Store(&addrPort)
-		return addrPort
+		addr := p.listener.Load().(net.Listener).Addr().String()
+		p.cachedListenerAddress.Store(addr)
+		return addr
 	case ctx == nil:
-		return netip.AddrPort{}
+		return ""
 	}
 	timer := time.NewTimer(0)
 	for {
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			return netip.AddrPort{}
+			return ""
 		case <-timer.C:
 			if p.listener.Load() != nil {
 				timer.Stop()
-				addrPort := p.listener.Load().Addr().(*net.TCPAddr).AddrPort()
-				p.cachedListenerAddrPort.Store(&addrPort)
-				return addrPort
+				addr := p.listener.Load().(net.Listener).Addr().String()
+				p.cachedListenerAddress.Store(addr)
+				return addr
 			}
 			timer.Reset(10 * time.Millisecond)
 		}
