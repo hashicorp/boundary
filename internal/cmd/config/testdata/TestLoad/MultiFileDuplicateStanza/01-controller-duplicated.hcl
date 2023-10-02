@@ -8,4 +8,12 @@ controller {
   database {
     url = "env://LOAD_TEST_BOUNDARY_POSTGRES_URL"
   }
+
+  api_rate_limit {
+    resources = ["*"]
+    actions   = ["list"]
+    per       = "total"
+    limit     = 20
+    period    = "1m"
+  }
 }
