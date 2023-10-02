@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
 	"github.com/hashicorp/boundary/sdk/wrapper"
@@ -213,6 +214,9 @@ type Controller struct {
 	//
 	// TODO: This field is currently internal.
 	SchedulerRunJobInterval time.Duration `hcl:"-"`
+
+	ApiRateLimits            ratelimit.Configs `hcl:"-"`
+	ApiRateLimiterMaxEntries int               `hcl:"api_rate_limit_max_entries"`
 
 	// License is the license used by HCP builds
 	License string `hcl:"license"`
@@ -682,6 +686,15 @@ func Parse(d string) (*Config, error) {
 			}
 
 		}
+
+		result.Controller.ApiRateLimits, err = parseApiRateLimits(obj.Node)
+		if err != nil {
+			return nil, err
+		}
+
+		if result.Controller.ApiRateLimiterMaxEntries <= 0 {
+			result.Controller.ApiRateLimiterMaxEntries = ratelimit.DefaultLimiterMaxEntries
+		}
 	}
 
 	// Parse worker tags
@@ -942,6 +955,38 @@ func supportControllersRawConfig(initialUpstreamsRaw, controllersRaw any) (any, 
 		return nil, fmt.Errorf("both initial_upstreams and controllers fields are populated")
 	}
 	return initialUpstreamsRaw, nil
+}
+
+func parseApiRateLimits(node ast.Node) (ratelimit.Configs, error) {
+	list, ok := node.(*ast.ObjectList)
+	if !ok {
+		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
+	}
+	controllerList := list.Filter("controller")
+
+	configs := make(ratelimit.Configs, 0)
+	for _, item := range controllerList.Items {
+		controller, ok := item.Val.(*ast.ObjectType)
+		if !ok {
+			return nil, fmt.Errorf("error parsing: file doesn't contain controller object")
+		}
+		apiRateLimitsList := controller.List.Filter("api_rate_limit")
+
+		var err error
+		for i, item := range apiRateLimitsList.Items {
+			var a ratelimit.Config
+			if err := hcl.DecodeObject(&a, item.Val); err != nil {
+				return nil, fmt.Errorf("error decoding controller api_rate_limit entry %d", i)
+			}
+			a.Period, err = parseutil.ParseDurationSecond(a.PeriodHCL)
+			if err != nil {
+				return nil, fmt.Errorf("error decoding controller api_rate_limit period for entry %d", i)
+			}
+			configs = append(configs, &a)
+		}
+	}
+
+	return configs, nil
 }
 
 func parseWorkerUpstreams(c *Config) ([]string, error) {
