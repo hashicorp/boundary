@@ -46,11 +46,10 @@ variable "ami_architectures" {
 locals {
   // AWS AMIs standardized on the x86_64 label for 64bit x86 architectures, therefore amd64 should be rather x86_64.
   architecture_filters = [for arch in var.ami_architectures : (arch == "amd64" ? "x86_64" : arch)]
-  tag_module           = "aws_vpc"
   common_tags = merge(
     var.common_tags,
     {
-      "Module" = local.tag_module
+      "Module" = "terraform-enos-aws-infra" // TODO:  Rename this once terraform-enos-aws-boundary is moved
     },
   )
 }
@@ -237,8 +236,4 @@ output "ami_ids" {
     ubuntu = { for idx, arch in var.ami_architectures : arch => data.aws_ami.ubuntu[idx].id }
     rhel   = { for idx, arch in var.ami_architectures : arch => data.aws_ami.rhel[idx].id }
   }
-}
-
-output "vpc_tag_module" {
-  value = local.tag_module
 }

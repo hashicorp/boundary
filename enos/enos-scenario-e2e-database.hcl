@@ -31,7 +31,7 @@ scenario "e2e_database" {
   }
 
   step "find_azs" {
-    module = module.aws_az_finder
+    module = module.az_finder
 
     variables {
       instance_type = [
@@ -75,7 +75,7 @@ scenario "e2e_database" {
   }
 
   step "create_targets_with_tag" {
-    module     = module.aws_target
+    module     = module.target
     depends_on = [step.create_base_infra]
 
     variables {
@@ -98,7 +98,7 @@ scenario "e2e_database" {
   }
 
   step "iam_setup" {
-    module = module.aws_iam_setup
+    module = module.iam_setup
     depends_on = [
       step.create_base_infra,
       step.create_test_id

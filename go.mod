@@ -69,10 +69,10 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/zalando/go-keyring v0.2.3
 	go.uber.org/atomic v1.11.0
-	golang.org/x/crypto v0.14.0
+	golang.org/x/crypto v0.13.0
 	golang.org/x/sync v0.2.0
-	golang.org/x/sys v0.13.0
-	golang.org/x/term v0.13.0
+	golang.org/x/sys v0.12.0
+	golang.org/x/term v0.12.0
 	golang.org/x/tools v0.9.1
 	google.golang.org/genproto v0.0.0-20230526203410-71b5a4ffd15e
 	google.golang.org/grpc v1.55.0
@@ -95,7 +95,7 @@ require (
 	github.com/hashicorp/dbassert v0.0.0-20230622135851-cc4c0f18f4a7
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20230902160534-7a966e6313fd
 	github.com/hashicorp/go-version v1.6.0
-	github.com/hashicorp/nodeenrollment v0.2.7
+	github.com/hashicorp/nodeenrollment v0.2.6
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/jimlambrt/gldap v0.1.7
 	github.com/kelseyhightower/envconfig v1.4.0

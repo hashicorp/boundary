@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     if: ${{ github.actor != 'dependabot[bot]' || github.actor != 'hc-github-team-secure-boundary' }}
     steps:
-    - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
     - name: Determine Go version
       id: get-go-version
@@ -36,7 +36,7 @@ jobs:
         python-version: 3.x
 
     - name: Clone Security Scanner repo
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
       with:
         repository: hashicorp/security-scanner
         token: ${{ secrets.HASHIBOT_PRODSEC_GITHUB_TOKEN }}
@@ -76,7 +76,7 @@ jobs:
         repository: "$PWD"
 
     - name: Upload SARIF file
-      uses: github/codeql-action/upload-sarif@8e0b1c74b1d5a0077b04d064c76ee714d3da7637 # codeql-bundle-v2.14.6
+      uses: github/codeql-action/upload-sarif@f9a7c6738f28efb36e31d49c53a201a9c5d6a476 # codeql-bundle-v2.14.2
       with:
         sarif_file: results.sarif
 
