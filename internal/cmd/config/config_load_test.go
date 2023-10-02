@@ -9,9 +9,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/event"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/stretchr/testify/require"
@@ -416,6 +418,8 @@ func TestLoad(t *testing.T) {
 					GracefulShutdownWaitDuration:    0,
 					WorkerStatusGracePeriodDuration: 0,
 					LivenessTimeToStaleDuration:     0,
+					ApiRateLimits:                   make(ratelimit.Configs, 0),
+					ApiRateLimiterMaxEntries:        ratelimit.DefaultLimiterMaxEntries,
 				},
 				DevController:           false,
 				DevUiPassthroughDir:     "",
@@ -839,6 +843,8 @@ func TestLoad(t *testing.T) {
 					GracefulShutdownWaitDuration:    0,
 					WorkerStatusGracePeriodDuration: 0,
 					LivenessTimeToStaleDuration:     0,
+					ApiRateLimits:                   make(ratelimit.Configs, 0),
+					ApiRateLimiterMaxEntries:        ratelimit.DefaultLimiterMaxEntries,
 				},
 				DevController:           false,
 				DevUiPassthroughDir:     "",
@@ -1257,6 +1263,27 @@ func TestLoad(t *testing.T) {
 					GracefulShutdownWaitDuration:    0,
 					WorkerStatusGracePeriodDuration: 0,
 					LivenessTimeToStaleDuration:     0,
+					ApiRateLimits: ratelimit.Configs{
+						{
+							Resources: []string{"*"},
+							Actions:   []string{"*"},
+							Per:       "total",
+							Limit:     50,
+							PeriodHCL: "1m",
+							Period:    time.Minute,
+							Unlimited: false,
+						},
+						{
+							Resources: []string{"*"},
+							Actions:   []string{"list"},
+							Per:       "total",
+							Limit:     20,
+							PeriodHCL: "1m",
+							Period:    time.Minute,
+							Unlimited: false,
+						},
+					},
+					ApiRateLimiterMaxEntries: ratelimit.DefaultLimiterMaxEntries,
 				},
 				DevController:           false,
 				DevUiPassthroughDir:     "",
@@ -1675,6 +1702,8 @@ func TestLoad(t *testing.T) {
 					GracefulShutdownWaitDuration:    0,
 					WorkerStatusGracePeriodDuration: 0,
 					LivenessTimeToStaleDuration:     0,
+					ApiRateLimits:                   make(ratelimit.Configs, 0),
+					ApiRateLimiterMaxEntries:        ratelimit.DefaultLimiterMaxEntries,
 				},
 				DevController:           false,
 				DevUiPassthroughDir:     "",
@@ -1764,6 +1793,8 @@ func TestLoad(t *testing.T) {
 					GracefulShutdownWaitDuration:    0,
 					WorkerStatusGracePeriodDuration: 0,
 					LivenessTimeToStaleDuration:     0,
+					ApiRateLimits:                   make(ratelimit.Configs, 0),
+					ApiRateLimiterMaxEntries:        ratelimit.DefaultLimiterMaxEntries,
 				},
 				DevController:           false,
 				DevUiPassthroughDir:     "",
