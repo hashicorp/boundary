@@ -69,7 +69,10 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		listenAddrPort:          opts.WithListenAddrPort,
 		callerConnectionsLeftCh: opts.WithConnectionsLeftCh,
 	}
-	useListener := opts.WithListener != nil
+
+	if opts.WithListener != nil {
+		p.listener.Store(opts.WithListener)
+	}
 
 	p.tofuToken, err = base62.Random(20)
 	if err != nil {
@@ -91,7 +94,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		return nil, errors.New("no workers found in authorization data")
 	}
 
-	if !useListener {
+	if opts.WithListener == nil {
 		if p.listenAddrPort.Port() == 0 {
 			p.listenAddrPort = netip.AddrPortFrom(p.listenAddrPort.Addr(), uint16(p.sessionAuthzData.DefaultClientPort))
 		}
