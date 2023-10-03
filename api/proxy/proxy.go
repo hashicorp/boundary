@@ -253,11 +253,11 @@ func (p *ClientProxy) Start() (retErr error) {
 		return nil
 	}
 
-	log.Println("time now", time.Now().Format(time.RFC3339Nano), "cancel timeout", time.Now().Add(sessionCancelTimeout).Format(time.RFC3339Nano))
+	log.Println("\ntime now", time.Now().Format(time.RFC3339Nano), "\ncancel timeout", time.Now().Add(sessionCancelTimeout).Format(time.RFC3339Nano))
 	ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
 	defer cancel()
 	if err := p.sendSessionTeardown(ctx); err != nil {
-		return fmt.Errorf("error sending session teardown request to worker: %w", err)
+		return fmt.Errorf("error sending session teardown request to worker (%s): %w", time.Now().Format(time.RFC3339Nano), err)
 	}
 
 	return nil
