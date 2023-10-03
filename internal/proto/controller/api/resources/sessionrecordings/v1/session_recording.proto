@@ -410,6 +410,9 @@ message VaultSSHCertificateCredentialLibraryAttributes {
 
   // The extensions that the certificate should be signed for.
   map<string, string> extensions = 7; // @gotags: class:"public"
+
+  // Principals to be signed as "valid_principles" in addition to username.
+  repeated string additional_valid_principals = 8; // @gotags: class:"public"
 }
 
 // ValuesAtTime contain information about other Boundary resources as they

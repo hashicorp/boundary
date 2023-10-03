@@ -23,6 +23,9 @@ const (
 	// ExtensionsField represents the field mask indicating an extension
 	// update has been requested.
 	ExtensionsField = "Extensions"
+	// AdditionalValidPrincipalsField represents the field mask indicating a valid
+	// principal update has been requested.
+	AdditionalValidPrincipalsField = "AdditionalValidPrincipals"
 
 	certificateField    = "Certificate"
 	certificateKeyField = "CertificateKey"
