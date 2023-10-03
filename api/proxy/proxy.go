@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/netip"
@@ -21,7 +20,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const sessionCancelTimeout = 10 * time.Second
+// This can take more time than you might expect, especially if a lot of these
+// are sent at once, so the timeout is quite long. We could allow a custom
+// timeout to be an option if we wish.
+const sessionCancelTimeout = 30 * time.Second
 
 type ClientProxy struct {
 	tofuToken               string
@@ -253,11 +255,10 @@ func (p *ClientProxy) Start() (retErr error) {
 		return nil
 	}
 
-	log.Println("\ntime now", time.Now().Format(time.RFC3339Nano), "\ncancel timeout", time.Now().Add(sessionCancelTimeout).Format(time.RFC3339Nano))
 	ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
 	defer cancel()
 	if err := p.sendSessionTeardown(ctx); err != nil {
-		return fmt.Errorf("error sending session teardown request to worker (%s): %w", time.Now().Format(time.RFC3339Nano), err)
+		return fmt.Errorf("error sending session teardown request to worker: %w", err)
 	}
 
 	return nil
