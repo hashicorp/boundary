@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/netip"
@@ -252,6 +253,7 @@ func (p *ClientProxy) Start() (retErr error) {
 		return nil
 	}
 
+	log.Println("time now", time.Now().Format(time.RFC3339Nano), "cancel timeout", time.Now().Add(sessionCancelTimeout).Format(time.RFC3339Nano))
 	ctx, cancel := context.WithTimeout(context.Background(), sessionCancelTimeout)
 	defer cancel()
 	if err := p.sendSessionTeardown(ctx); err != nil {
