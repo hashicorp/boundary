@@ -150,8 +150,14 @@ The required fields for creating a storage bucket vary depending on whether you 
 1. Log in to Boundary.
 1. Use the following command to create a storage bucket in Boundary:
 
-   ```bash
-   boundary storage-buckets create -bucket-name mybucket1 -plugin-name aws -secrets ‘{“access_key_id”: “123456789” , “secret_access_key” : “123/456789/12345678”}’ -worker-filter ‘“dev” in “/tags/type”’ -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true}’ -scope-id o_1234567890
+   ```shell-session
+   boundary storage-buckets create \
+      -bucket-name mybucket1 \
+      -plugin-name aws \
+      -secrets ‘{“access_key_id”: “123456789” , “secret_access_key” : “123/456789/12345678”}’ \
+      -worker-filter ‘“dev” in “/tags/type”’ \
+      -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true}’ \
+      -scope-id o_1234567890
    ```
 
    Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
@@ -175,8 +181,13 @@ The required fields for creating a storage bucket vary depending on whether you 
 1. Log in to Boundary.
 1. Use the following command to create a storage bucket in Boundary:
 
-   ```bash
-   boundary storage-buckets create -bucket-name mybucket1 -plugin-name aws -worker-filter ‘“dev” in “/tags/type”’ -attributes ‘{“region”:”us-east-1”,"role_arn":"arn:aws:iam::123456789012:role/S3Access"}’ -scope-id o_1234567890
+   ```shell-session
+   boundary storage-buckets create \
+      -bucket-name mybucket1 \
+      -plugin-name aws \
+      -worker-filter ‘“dev” in “/tags/type”’ \
+      -attributes ‘{“region”:”us-east-1”,"role_arn":"arn:aws:iam::123456789012:role/S3Access"}’ \
+      -scope-id o_1234567890
    ```
 
    Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
