@@ -19,15 +19,11 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// noopRetrievalFn is a function that satisfies the Refresh's With*RetrievalFn
-// and returns nil, nil always
-func noopRetrievalFn[T any](context.Context, string, string) ([]T, error) {
-	return nil, nil
-}
-
-// staticRetrievalFn returns a function that satisfies the With*RetrievalFn
-// and returns the provided slice and a nil error always
-func staticRetrievalFn[T any](ret []T) func(context.Context, string, string) ([]T, error) {
+// testStaticResourceRetrievalFunc returns a function that always returns the
+// provided slice and a nil error. The returned function can be passed into the
+// options that provide a resource retrieval func such as
+// WithTargetRetrievalFunc and WithSessionRetrievalFunc.
+func testStaticResourceRetrievalFunc[T any](ret []T) func(context.Context, string, string) ([]T, error) {
 	return func(ctx context.Context, s1, s2 string) ([]T, error) {
 		return ret, nil
 	}
@@ -179,7 +175,7 @@ func TestRefresh(t *testing.T) {
 			target("3"),
 		}
 		assert.NoError(t, r.Refresh(ctx,
-			WithSessionRetrievalFunc(noopRetrievalFn[*sessions.Session]),
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](nil)),
 			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string) ([]*targets.Target, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
@@ -192,7 +188,7 @@ func TestRefresh(t *testing.T) {
 
 		t.Run("empty response clears it out", func(t *testing.T) {
 			assert.NoError(t, r.Refresh(ctx,
-				WithSessionRetrievalFunc(noopRetrievalFn[*sessions.Session]),
+				WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](nil)),
 				WithTargetRetrievalFunc(func(ctx context.Context, addr, token string) ([]*targets.Target, error) {
 					require.Equal(t, boundaryAddr, addr)
 					require.Equal(t, at.Token, token)
@@ -212,12 +208,8 @@ func TestRefresh(t *testing.T) {
 			session("3"),
 		}
 		assert.NoError(t, r.Refresh(ctx,
-			WithTargetRetrievalFunc(noopRetrievalFn[*targets.Target]),
-			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
-				require.Equal(t, boundaryAddr, addr)
-				require.Equal(t, at.Token, token)
-				return retSess, nil
-			})))
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](nil)),
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(retSess))))
 
 		cachedSessions, err := r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
@@ -225,12 +217,8 @@ func TestRefresh(t *testing.T) {
 
 		t.Run("empty response clears it out", func(t *testing.T) {
 			assert.NoError(t, r.Refresh(ctx,
-				WithTargetRetrievalFunc(noopRetrievalFn[*targets.Target]),
-				WithSessionRetrievalFunc(func(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
-					require.Equal(t, boundaryAddr, addr)
-					require.Equal(t, at.Token, token)
-					return nil, nil
-				})))
+				WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](nil)),
+				WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](nil))))
 
 			cachedTargets, err := r.ListSessions(ctx, at.Id)
 			assert.NoError(t, err)
@@ -241,7 +229,7 @@ func TestRefresh(t *testing.T) {
 	t.Run("error propogates up", func(t *testing.T) {
 		innerErr := stdErrors.New("test error")
 		err := r.Refresh(ctx,
-			WithSessionRetrievalFunc(noopRetrievalFn[*sessions.Session]),
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](nil)),
 			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string) ([]*targets.Target, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
@@ -249,7 +237,7 @@ func TestRefresh(t *testing.T) {
 			}))
 		assert.ErrorContains(t, err, innerErr.Error())
 		err = r.Refresh(ctx,
-			WithTargetRetrievalFunc(noopRetrievalFn[*targets.Target]),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](nil)),
 			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
@@ -273,8 +261,8 @@ func TestRefresh(t *testing.T) {
 		assert.Len(t, us, 1)
 
 		r.Refresh(ctx,
-			WithSessionRetrievalFunc(noopRetrievalFn[*sessions.Session]),
-			WithTargetRetrievalFunc(noopRetrievalFn[*targets.Target]))
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](nil)))
 
 		ps, err = r.listTokens(ctx, u)
 		require.NoError(t, err)

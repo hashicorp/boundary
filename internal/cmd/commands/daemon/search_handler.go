@@ -32,22 +32,22 @@ const (
 	authTokenIdKey  = "auth_token_id"
 )
 
-func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (http.HandlerFunc, error) {
-	const op = "daemon.newSearchTargetsHandlerFunc"
+func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository) (http.HandlerFunc, error) {
+	const op = "daemon.newSearchHandlerFunc"
 	switch {
 	case util.IsNil(repo):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is missing")
 	}
 
 	searchableResources := map[string]searcher{
-		"targets": &searchFns[*targets.Target]{
+		"targets": &resourceSearchFns[*targets.Target]{
 			list:  repo.ListTargets,
 			query: repo.QueryTargets,
 			searchResult: func(t []*targets.Target) *SearchResult {
 				return &SearchResult{Targets: t}
 			},
 		},
-		"sessions": &searchFns[*sessions.Session]{
+		"sessions": &resourceSearchFns[*sessions.Session]{
 			list:  repo.ListSessions,
 			query: repo.QuerySessions,
 			searchResult: func(s []*sessions.Session) *SearchResult {
@@ -112,24 +112,42 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 	}, nil
 }
 
+// searcher is an interface that only resourceSearchFns[T] is expected to satisfy.
+// Specifying this interface allows the code to have a map with searchFns values
+// which have different bound generic types.
 type searcher interface {
 	search(ctx context.Context, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error)
 }
 
-// searchFns is a struct that collects all the functions needed to perform a search
-// on a specific resource type.
-type searchFns[T any] struct {
+// resourceSearchFns is a struct that collects all the functions needed to
+// perform a search  on a specific resource type.
+type resourceSearchFns[T any] struct {
 	// list takes a context and an auth token and returns all resources for the
-	// user of that auth token.
+	// user of that auth token. If the provided auth token is not in the cache
+	// an empty slice and no error is returned.
 	list func(context.Context, string) ([]T, error)
 	// query takes a context, an auth token, and a query string and returns all
-	// resources for that auth token that matches the provided query parameter
-	query        func(context.Context, string, string) ([]T, error)
+	// resources for that auth token that matches the provided query parameter.
+	// If the provided auth token is not in the cache an empty slice and no
+	// error is returned.
+	query func(context.Context, string, string) ([]T, error)
+	// searchResult is a function which provides a SearchResult based on the
+	// type of T. SearchResult contains different fields for the different
+	// resource types returned, so for example if T is *targets.Target the
+	// returned SearchResult will have it's "Targets" field populated so the
+	// searchResult should take the passed in paramater and assign it to the
+	// appropriate field in the SearchResult.
 	searchResult func([]T) *SearchResult
 }
 
-func (l *searchFns[T]) search(ctx context.Context, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error) {
-	const op = "daemon.(lookupFns).search"
+// search will perform a query using the provided query string or a list if the
+// provided query string is empty and filter than based on the provided filter.
+// The results are tied to the user id associated with the provided auth token id.
+// If the auth token id or the associated user are not in the cache  no error
+// is returned and the returned SearchResults will be empty.
+// search implements searcher.
+func (l *resourceSearchFns[T]) search(ctx context.Context, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error) {
+	const op = "daemon.(resourceSearchFns).search"
 	var found []T
 	var err error
 	switch query {

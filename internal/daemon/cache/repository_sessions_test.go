@@ -115,7 +115,7 @@ func TestRepository_refreshSessions(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := r.refreshSessions(ctx, tc.u, map[AuthToken]string{{Id: "id"}: "something"},
-				WithSessionRetrievalFunc(staticRetrievalFn(tc.sess)))
+				WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(tc.sess)))
 			if tc.errorContains == "" {
 				assert.NoError(t, err)
 				rw := db.New(s.conn)
@@ -199,7 +199,7 @@ func TestRepository_ListSessions(t *testing.T) {
 		},
 	}
 	require.NoError(t, r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(staticRetrievalFn(ss))))
+		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(ss))))
 
 	t.Run("wrong user gets no sessions", func(t *testing.T) {
 		l, err := r.ListSessions(ctx, kt2.AuthTokenId)
@@ -306,7 +306,7 @@ func TestRepository_QuerySessions(t *testing.T) {
 		},
 	}
 	require.NoError(t, r.refreshSessions(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithSessionRetrievalFunc(staticRetrievalFn(ss))))
+		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(ss))))
 
 	t.Run("wrong token gets no sessions", func(t *testing.T) {
 		l, err := r.QuerySessions(ctx, kt2.AuthTokenId, query)

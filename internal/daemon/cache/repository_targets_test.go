@@ -109,7 +109,7 @@ func TestRepository_refreshTargets(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			err := r.refreshTargets(ctx, tc.u, map[AuthToken]string{{Id: "id"}: "something"},
-				WithTargetRetrievalFunc(staticRetrievalFn(tc.targets)))
+				WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(tc.targets)))
 			if tc.errorContains == "" {
 				assert.NoError(t, err)
 				rw := db.New(s.conn)
@@ -189,7 +189,7 @@ func TestRepository_ListTargets(t *testing.T) {
 		},
 	}
 	require.NoError(t, r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(staticRetrievalFn(ts))))
+		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(ts))))
 
 	t.Run("wrong user gets no targets", func(t *testing.T) {
 		l, err := r.ListTargets(ctx, kt2.AuthTokenId)
@@ -293,7 +293,7 @@ func TestRepository_QueryTargets(t *testing.T) {
 		},
 	}
 	require.NoError(t, r.refreshTargets(ctx, u1, map[AuthToken]string{{Id: "id"}: "something"},
-		WithTargetRetrievalFunc(staticRetrievalFn(ts))))
+		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(ts))))
 
 	t.Run("wrong token gets no targets", func(t *testing.T) {
 		l, err := r.QueryTargets(ctx, kt2.AuthTokenId, query)
