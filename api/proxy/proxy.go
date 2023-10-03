@@ -237,18 +237,11 @@ func (p *ClientProxy) Start() (retErr error) {
 
 	p.connWg.Wait()
 
-	// Teardown. Only do it if we haven't expired or reached connection limit
-	// since we don't need to clean up in that case.
 	var sendSessionCancel bool
-	select {
-	case <-p.ctx.Done():
+	// If we're not after expiration, ensure there is a bit of buffer in
+	// case clocks are not quite the same between worker and this machine
+	if time.Now().Before(p.expiration.Add(-5 * time.Minute)) {
 		sendSessionCancel = true
-	default:
-		// If we're not after expiration, ensure there is a bit of buffer in
-		// case clocks are not quite the same between worker and this machine
-		if time.Now().Before(p.expiration.Add(-5 * time.Minute)) {
-			sendSessionCancel = true
-		}
 	}
 
 	if !sendSessionCancel {
