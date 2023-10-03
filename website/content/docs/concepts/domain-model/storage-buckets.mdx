@@ -53,6 +53,8 @@ AWS S3 buckets have the following attributes:
 - `region` - (Required) The S3 region to configure the storage bucket in.
 - `disable_credential_rotation` - (Optional) If set to `true`, credential rotation is not performed.
 By default, the AWS plugin [rotates credentials](https://github.com/hashicorp/boundary-plugin-aws/blob/main/README.md#credential-rotation).
+- `role_arn` - (Optional) The ARN (Amazon Resource Name) role that is attached to the EC2 instance that the self-managed worker runs on.
+The Role ARN is required if the AWS S3 bucket is configured to use dynamic credentials using `AssumeRole`.
 - `role_external_id` - (Optional) A required value if you delegate third party access to your AWS resources.
 You can configure this value if your AWS S3 bucket is configured to use dynamic credentials.
 For more information, refer to the AWS documentation for [How to use an external ID when granting access to your AWS resources to a third party](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html).
@@ -72,8 +74,6 @@ AWS S3 buckets can have the following secrets:
 Access keys are required if the AWS S3 bucket is configured to use static credentials.
 - `secret_access_key` - (Optional) The secret access key for the IAM user to use with this storage bucket.
 Secret access keys are required if the AWS S3 bucket is configured to use static credentials.
-- `role_arn` - (Optional) The ARN (Amazon Resource Name) role that is attached to the EC2 instance that the self-managed worker runs on.
-The Role ARN is required if the AWS S3 bucket is configured to use dynamic credentials using `AssumeRole`.
 
 ## Referenced by
 

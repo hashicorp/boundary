@@ -170,9 +170,9 @@ The required fields for creating a storage bucket vary depending on whether you 
    - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
    - `shared_credentials_file`: (Optional) The shared credentials file to use.
    - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
-   - `disable_credential_rotation`: (Optional) Prevent the AWS plugin from automatically rotating credentials.
+   - `disable_credential_rotation`: (Optional) Prevents the AWS plugin from automatically rotating credentials.
 
-     Although credentials are stored encrypted within Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
+     By default, the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
 
 </Tab>
 
@@ -186,7 +186,7 @@ The required fields for creating a storage bucket vary depending on whether you 
       -bucket-name mybucket1 \
       -plugin-name aws \
       -worker-filter ‘“dev” in “/tags/type”’ \
-      -attributes ‘{“region”:”us-east-1”,"role_arn":"arn:aws:iam::123456789012:role/S3Access"}’ \
+      -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true,"role_arn":"arn:aws:iam::123456789012:role/S3Access"}’ \
       -scope-id o_1234567890
    ```
 
@@ -195,7 +195,7 @@ The required fields for creating a storage bucket vary depending on whether you 
    - `region`: (Required) The AWS region to use.
    - `bucket-name`: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
    - `role_arn`: (Required) The ARN (Amazon Resource Name) role that is attached to the EC2 instance that the self-managed worker runs on.
-   - `role_external_id` - (Optional) A required value if you delegate third party access to your AWS resources.
+   - `role_external_id`: (Optional) A required value if you delegate third party access to your AWS resources.
    For more information, refer to the AWS documentation for [How to use an external ID when granting access to your AWS resources to a third party](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html).
    - `role_session_name`: (Optional) A unique identifier for the AWS session.
    You can use this value to control how IAM principals and applications name their role sesions when they assume an IAM role.
@@ -206,9 +206,10 @@ The required fields for creating a storage bucket vary depending on whether you 
    - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
    - `shared_credentials_file`: (Optional) The shared credentials file to use.
    - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
-   - `disable_credential_rotation`: (Optional) Prevent the AWS plugin from automatically rotating credentials.
+   - `disable_credential_rotation`: (Required) Prevents the AWS plugin from automatically rotating credentials.
+   This option must be set to `true` if you use dynamic credentials.
 
-     Although credentials are stored encrypted within Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
+     By default, the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
 
 </Tab>
 </Tabs>
@@ -238,6 +239,12 @@ The required fields for creating a storage bucket vary depending on whether you 
 
    - **Access key ID**: (Required) The access key ID that AWS generates for the IAM user to use with the storage bucket.
    - **Secret access key**: (Required) The secret access key that AWS generates for the IAM user to use with this storage bucket.
+   - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - **Disable credential rotation**: (Optional) Prevents the AWS plugin from automatically rotating credentials.
+
+      By default, the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide.
+      The given credentials are used to create a new credential, and then the original credential is revoked.
+      After rotation, only Boundary knows the client secret the plugin uses.
 
    </Tab>
 
@@ -252,14 +259,17 @@ The required fields for creating a storage bucket vary depending on whether you 
    For more information, refer to the AWS documentation for [Logging IAM and AWS STS API calls with AWS CloudTrail](https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html).
    - **Role tags**: An object with key-value pair attributes that is passed when you assume an IAM role.
    For more information, refer to the AWS documentation for [Passing session tags in AWS STS](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html).
+   - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - **Disable credential rotation**: (Required) Prevents the AWS plugin from automatically rotating credentials.
+   This option is required if you use dynamic credentials.
+
+      By default, the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide.
+      The given credentials are used to create a new credential, and then the original credential is revoked.
+      After rotation, only Boundary knows the client secret the plugin uses.
 
    </Tab>
    </Tabs>
 
-   - **Worker filter** (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
-   - **Disable credential rotation** (Optional) Although credentials are stored encrypted within Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
-
-      Select this option to disable this behavior and prevent the automatic rotation of credentials.
 1. Select **Save**.
 
 </Tab>
