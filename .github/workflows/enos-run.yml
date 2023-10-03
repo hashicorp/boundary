@@ -289,6 +289,17 @@ jobs:
         run: |
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario destroy --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Get logs for aws dependencies error
+        # Retrieve logs from the terraform to help diagnose some aws cleanup issues
+        if: (contains(matrix.filter, 'e2e_aws') || matrix.filter == 'e2e_database') && steps.destroy.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          enos scenario exec --cmd graph --chdir ./enos ${{ matrix.filter }}
+          TF_DIR=$(find ./enos/.enos/ -type d -mindepth 1 -maxdepth 1  | tail -1)
+          pushd "${TF_DIR}"
+          terraform state list
+          terraform state show module.create_base_infra.aws_route.igw
+          popd
       - name: Destroy Enos scenario (Retry)
         if: ${{ always() && steps.destroy.outcome == 'failure' }}
         run: |
