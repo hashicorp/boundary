@@ -172,7 +172,7 @@ The required fields for creating a storage bucket vary depending on whether you 
    - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
    - `disable_credential_rotation`: (Optional) Prevents the AWS plugin from automatically rotating credentials.
 
-     By default, the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
+     Although credentials are stored encrypted in Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
 
 </Tab>
 
@@ -209,8 +209,6 @@ The required fields for creating a storage bucket vary depending on whether you 
    - `disable_credential_rotation`: (Required) Prevents the AWS plugin from automatically rotating credentials.
    This option must be set to `true` if you use dynamic credentials.
 
-     By default, the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
-
 </Tab>
 </Tabs>
 
@@ -242,7 +240,7 @@ The required fields for creating a storage bucket vary depending on whether you 
    - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
    - **Disable credential rotation**: (Optional) Prevents the AWS plugin from automatically rotating credentials.
 
-      By default, the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide.
+      Although credentials are stored encrypted in Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide.
       The given credentials are used to create a new credential, and then the original credential is revoked.
       After rotation, only Boundary knows the client secret the plugin uses.
 
@@ -262,10 +260,6 @@ The required fields for creating a storage bucket vary depending on whether you 
    - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
    - **Disable credential rotation**: (Required) Prevents the AWS plugin from automatically rotating credentials.
    This option is required if you use dynamic credentials.
-
-      By default, the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide.
-      The given credentials are used to create a new credential, and then the original credential is revoked.
-      After rotation, only Boundary knows the client secret the plugin uses.
 
    </Tab>
    </Tabs>
