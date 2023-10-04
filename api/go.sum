@@ -44,8 +44,8 @@ github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/
 github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
 github.com/gorilla/websocket v1.4.1 h1:q7AeDBpnBk8AogcD4DSag/Ukw/KV+YhzLj2bP5HvKCM=
 github.com/gorilla/websocket v1.4.1/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
-github.com/hashicorp/boundary/sdk v0.0.38-0.20230928203337-0c371a6e869b h1:/PweQKBMmLCSTnOtQnUsgr+pgyC8+f66X3BrtKC/Rx4=
-github.com/hashicorp/boundary/sdk v0.0.38-0.20230928203337-0c371a6e869b/go.mod h1:jn9j5mM8v2pOk8aLeJNIszdm7WBf4gRSP68iy8Iu5Q0=
+github.com/hashicorp/boundary/sdk v0.0.38-0.20231004161020-cfedd115adad h1:hkGPK9UJ4y6OA1t2RLAjUAORDG/gnoEsIVsMaLe4O48=
+github.com/hashicorp/boundary/sdk v0.0.38-0.20231004161020-cfedd115adad/go.mod h1:jn9j5mM8v2pOk8aLeJNIszdm7WBf4gRSP68iy8Iu5Q0=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY2I=
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
