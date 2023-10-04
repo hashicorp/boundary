@@ -51,8 +51,9 @@ You can configure static credentials using an access key and secret key or dynam
 AWS S3 buckets have the following attributes:
 
 - `region` - (Required) The S3 region to configure the storage bucket in.
-- `disable_credential_rotation` - (Optional) If set to `true`, credential rotation is not performed.
+- `disable_credential_rotation` - (Optional for static credentials, Required for dynamic credentials) If set to `true`, credential rotation is not performed.
 By default, the AWS plugin [rotates credentials](https://github.com/hashicorp/boundary-plugin-aws/blob/main/README.md#credential-rotation).
+Note that this attribute is required, if you use dynamic credentials.
 - `role_arn` - (Optional) The ARN (Amazon Resource Name) role that is attached to the EC2 instance that the self-managed worker runs on.
 The Role ARN is required if the AWS S3 bucket is configured to use dynamic credentials using `AssumeRole`.
 - `role_external_id` - (Optional) A required value if you delegate third party access to your AWS resources.
