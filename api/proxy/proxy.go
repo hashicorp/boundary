@@ -110,7 +110,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		return nil, fmt.Errorf("error creating TLS configuration: %w", err)
 	}
 	p.createTime = p.sessionAuthzData.CreatedTime.AsTime()
-	p.expiration = tlsConf.Certificates[0].Leaf.NotAfter
+	p.expiration = p.sessionAuthzData.Expiration.AsTime()
 
 	// We don't _rely_ on client-side timeout verification but this prevents us
 	// seeming to be ready for a connection that will immediately fail when we

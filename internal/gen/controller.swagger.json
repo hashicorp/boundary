@@ -6433,6 +6433,12 @@
           "description": "Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.",
           "readOnly": true
         },
+        "expiration": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The expiration time of the session.",
+          "readOnly": true
+        },
         "credentials": {
           "type": "array",
           "items": {

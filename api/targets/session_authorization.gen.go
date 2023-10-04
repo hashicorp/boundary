@@ -21,5 +21,6 @@ type SessionAuthorization struct {
 	Type               string               `json:"type,omitempty"`
 	AuthorizationToken string               `json:"authorization_token,omitempty"`
 	Endpoint           string               `json:"endpoint,omitempty"`
+	Expiration         time.Time            `json:"expiration,omitempty"`
 	Credentials        []*SessionCredential `json:"credentials,omitempty"`
 }
