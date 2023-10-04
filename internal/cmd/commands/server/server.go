@@ -60,6 +60,7 @@ type Command struct {
 	flagLogLevel    string
 	flagLogFormat   string
 	flagCombineLogs bool
+	flagSkipPlugins bool
 
 	reloadedCh                           chan struct{}  // for tests
 	startedCh                            chan struct{}  // for tests
@@ -135,6 +136,13 @@ func (c *Command) Flags() *base.FlagSets {
 	f.DurationVar(&base.DurationVar{
 		Name:   "worker-auth-ca-certificate-lifetime",
 		Target: &c.flagWorkerAuthCaCertificateLifetime,
+		Hidden: true,
+	})
+
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-plugins",
+		Target: &c.flagSkipPlugins,
+		Usage:  "Skip loading compiled-in plugins. This does not prevent loopback plugins from being loaded if enabled.",
 		Hidden: true,
 	})
 
@@ -254,6 +262,8 @@ func (c *Command) Run(args []string) int {
 				"systems where this call is supported. If you are running Boundary" +
 				"in a Docker container, provide the IPC_LOCK cap to the container."))
 	}
+
+	c.SkipPlugins = c.flagSkipPlugins
 
 	// Perform controller-specific listener checks here before setup
 	var clusterAddr string

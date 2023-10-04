@@ -101,6 +101,7 @@ type Command struct {
 	flagEveryEventDenyFilters            []string
 	flagCreateLoopbackPlugin             bool
 	flagPluginExecutionDir               string
+	flagSkipPlugins                      bool
 	flagWorkerAuthMethod                 string
 	flagWorkerAuthStorageDir             string
 	flagWorkerAuthStorageSkipCleanup     bool
@@ -373,6 +374,12 @@ func (c *Command) Flags() *base.FlagSets {
 		EnvVar: "BOUNDARY_DEV_PLUGIN_EXECUTION_DIR",
 		Usage:  "Specifies where Boundary should write plugins that it is executing; if not set defaults to system temp directory.",
 	})
+	f.BoolVar(&base.BoolVar{
+		Name:   "skip-plugins",
+		Target: &c.flagSkipPlugins,
+		Usage:  "Skip loading compiled-in plugins. This does not prevent loopback plugins from being loaded if enabled.",
+		Hidden: true,
+	})
 
 	f.StringVar(&base.StringVar{
 		Name:       "worker-auth-method",
@@ -569,6 +576,8 @@ func (c *Command) Run(args []string) int {
 	c.DevHostAddress = host
 
 	c.Config.DevUiPassthroughDir = c.flagUiPassthroughDir
+
+	c.SkipPlugins = c.flagSkipPlugins
 
 	for _, l := range c.Config.Listeners {
 		if len(l.Purpose) != 1 {
