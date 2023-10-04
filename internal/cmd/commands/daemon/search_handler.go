@@ -48,9 +48,13 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository) (http.Han
 		resource := r.URL.Query().Get(resourceKey)
 		authTokenId := r.URL.Query().Get(authTokenIdKey)
 
+		searchableResource := cache.ToSearchableResource(resource)
 		switch {
 		case resource == "":
 			writeError(w, "resource is a required field but was empty", http.StatusBadRequest)
+			return
+		case !searchableResource.Valid():
+			writeError(w, "provided resource is not a valid searchable resource", http.StatusBadRequest)
 			return
 		case authTokenId == "":
 			writeError(w, fmt.Sprintf("%s is a required field but was empty", authTokenIdKey), http.StatusBadRequest)
@@ -68,7 +72,7 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository) (http.Han
 
 		res, err := s.Search(ctx, cache.SearchParams{
 			AuthTokenId: authTokenId,
-			Resource:    resource,
+			Resource:    searchableResource,
 			Query:       query,
 			Filter:      filter,
 		})
@@ -79,9 +83,11 @@ func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository) (http.Han
 			default:
 				writeError(w, err.Error(), http.StatusInternalServerError)
 			}
+			return
 		}
 		if res == nil {
 			writeError(w, "nil SearchResult generated", http.StatusInternalServerError)
+			return
 		}
 
 		apiRes := toApiResult(res)

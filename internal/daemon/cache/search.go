@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
@@ -11,10 +12,36 @@ import (
 	"github.com/hashicorp/go-bexpr"
 )
 
-// SearchParams contains the paramaters for searching in the cache
+type SearchableResource string
+
+const (
+	Unknown  SearchableResource = "unknown"
+	Targets  SearchableResource = "targets"
+	Sessions SearchableResource = "sessions"
+)
+
+func (r SearchableResource) Valid() bool {
+	switch r {
+	case Targets, Sessions:
+		return true
+	}
+	return false
+}
+
+func ToSearchableResource(s string) SearchableResource {
+	switch {
+	case strings.EqualFold(s, string(Targets)):
+		return Targets
+	case strings.EqualFold(s, string(Sessions)):
+		return Sessions
+	}
+	return Unknown
+}
+
+// SearchParams contains the parameters for searching in the cache
 type SearchParams struct {
 	// the name of the resource. eg. "targets" or "sessions"
-	Resource string
+	Resource SearchableResource
 	// the auth token id for the user id that has resources synced to the cache
 	AuthTokenId string
 	// the optional mql query to use when searching the resources.
@@ -32,27 +59,34 @@ type SearchResult struct {
 // SearchService is a domain service that can search across all resources in the
 // cache.
 type SearchService struct {
-	repo                *Repository
-	searchableResources map[string]searcher
+	searchableResources map[SearchableResource]resourceSearcher
 }
 
-func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, error) {
+// queryAndLister defines the methods needed for listing an querying the
+// resources supported by the boundary frontend.
+type queryAndLister interface {
+	QueryTargets(context.Context, string, string) ([]*targets.Target, error)
+	ListTargets(context.Context, string) ([]*targets.Target, error)
+	QuerySessions(context.Context, string, string) ([]*sessions.Session, error)
+	ListSessions(context.Context, string) ([]*sessions.Session, error)
+}
+
+func NewSearchService(ctx context.Context, repo queryAndLister) (*SearchService, error) {
 	const op = "cache.NewSearchService"
 	switch {
 	case util.IsNil(repo):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "repo is nil")
 	}
 	return &SearchService{
-		repo: repo,
-		searchableResources: map[string]searcher{
-			"targets": &resourceSearchFns[*targets.Target]{
+		searchableResources: map[SearchableResource]resourceSearcher{
+			Targets: &resourceSearchFns[*targets.Target]{
 				list:  repo.ListTargets,
 				query: repo.QueryTargets,
 				searchResult: func(t []*targets.Target) *SearchResult {
 					return &SearchResult{Targets: t}
 				},
 			},
-			"sessions": &resourceSearchFns[*sessions.Session]{
+			Sessions: &resourceSearchFns[*sessions.Session]{
 				list:  repo.ListSessions,
 				query: repo.QuerySessions,
 				searchResult: func(s []*sessions.Session) *SearchResult {
@@ -70,10 +104,10 @@ func NewSearchService(ctx context.Context, repo *Repository) (*SearchService, er
 // SearchResult is returned. SearchResult will only have at most one field
 // populated.
 func (s *SearchService) Search(ctx context.Context, params SearchParams) (*SearchResult, error) {
-	const op = "cache.search"
+	const op = "cache.(SearchService).Search"
 	switch {
-	case params.Resource == "":
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing resource")
+	case !params.Resource.Valid():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid resource")
 	case params.AuthTokenId == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing auth token id")
 	}
@@ -81,7 +115,11 @@ func (s *SearchService) Search(ctx context.Context, params SearchParams) (*Searc
 	if !ok {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("resource name %q is not recognized", params.Resource))
 	}
-	return rSearcher.search(ctx, params)
+	resp, err := rSearcher.search(ctx, params)
+	if err != nil {
+		err = errors.Wrap(ctx, err, op)
+	}
+	return resp, err
 }
 
 // resourceSearchFns is a struct that collects all the functions needed to
@@ -105,10 +143,10 @@ type resourceSearchFns[T any] struct {
 	searchResult func([]T) *SearchResult
 }
 
-// searcher is an interface that only resourceSearchFns[T] is expected to satisfy.
-// Specifying this interface allows the code to have a map with searchFns values
-// which have different bound generic types.
-type searcher interface {
+// resourceSearcher is an interface that only resourceSearchFns[T] is expected
+// to satisfy. Specifying this interface allows the code to have a map with
+// resourceSearchFns values which have different bound generic types.
+type resourceSearcher interface {
 	search(ctx context.Context, p SearchParams) (*SearchResult, error)
 }
 

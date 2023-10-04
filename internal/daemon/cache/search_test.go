@@ -60,7 +60,7 @@ func TestSearch_Errors(t *testing.T) {
 				Resource:    "",
 				AuthTokenId: "at_1",
 			},
-			errorContains: "missing resource",
+			errorContains: "invalid resource",
 		},
 		{
 			name: "missing auth token id",
@@ -76,7 +76,7 @@ func TestSearch_Errors(t *testing.T) {
 				Resource:    "unknown",
 				AuthTokenId: "at_1",
 			},
-			errorContains: "resource name \"unknown\" is not recognized",
+			errorContains: "invalid resource",
 		},
 		{
 			name: "bad filter",
@@ -158,6 +158,17 @@ func TestSearch(t *testing.T) {
 		assert.EqualValues(t, &SearchResult{Targets: []*targets.Target{
 			{Id: "t_1", Name: "one"},
 		}}, got)
+	})
+
+	t.Run("query targets bad column", func(t *testing.T) {
+		got, err := ss.Search(ctx, SearchParams{
+			Resource:    "targets",
+			AuthTokenId: at.Id,
+			Query:       `item % "one"`,
+		})
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, `invalid column "item"`)
+		assert.Nil(t, got)
 	})
 
 	t.Run("Filter targets", func(t *testing.T) {
