@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/accountscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
@@ -14,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentiallibrariescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentialscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/credentialstorescmd"
-	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/commands/database"
 	"github.com/hashicorp/boundary/internal/cmd/commands/dev"
 	"github.com/hashicorp/boundary/internal/cmd/commands/groupscmd"
@@ -25,12 +26,12 @@ import (
 	"github.com/hashicorp/boundary/internal/cmd/commands/managedgroupscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/rolescmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/scopescmd"
-	"github.com/hashicorp/boundary/internal/cmd/commands/search"
 	"github.com/hashicorp/boundary/internal/cmd/commands/server"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionrecordingscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/sessionscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/storagebucketscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/targetscmd"
+	"github.com/hashicorp/boundary/internal/cmd/commands/unsupported"
 	"github.com/hashicorp/boundary/internal/cmd/commands/userscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/version"
 	"github.com/hashicorp/boundary/internal/cmd/commands/workerscmd"
@@ -63,19 +64,19 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"authenticate": daemon.Wrap(ui,
+		"authenticate": commandFactoryWrapper(ui,
 			&authenticate.Command{
 				Command: base.NewCommand(ui),
 			}),
-		"authenticate password": daemon.Wrap(ui,
+		"authenticate password": commandFactoryWrapper(ui,
 			&authenticate.PasswordCommand{
 				Command: base.NewCommand(ui),
 			}),
-		"authenticate oidc": daemon.Wrap(ui,
+		"authenticate oidc": commandFactoryWrapper(ui,
 			&authenticate.OidcCommand{
 				Command: base.NewCommand(ui),
 			}),
-		"authenticate ldap": daemon.Wrap(ui,
+		"authenticate ldap": commandFactoryWrapper(ui,
 			&authenticate.LdapCommand{
 				Command: base.NewCommand(ui),
 			}),
@@ -85,67 +86,67 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"accounts read": daemon.Wrap(ui,
+		"accounts read": commandFactoryWrapper(ui,
 			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"accounts delete": daemon.Wrap(ui,
+		"accounts delete": commandFactoryWrapper(ui,
 			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"accounts list": daemon.Wrap(ui,
+		"accounts list": commandFactoryWrapper(ui,
 			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"accounts set-password": daemon.Wrap(ui,
+		"accounts set-password": commandFactoryWrapper(ui,
 			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-password",
 			}),
-		"accounts change-password": daemon.Wrap(ui,
+		"accounts change-password": commandFactoryWrapper(ui,
 			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "change-password",
 			}),
-		"accounts create": daemon.Wrap(ui,
+		"accounts create": commandFactoryWrapper(ui,
 			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"accounts create password": daemon.Wrap(ui,
+		"accounts create password": commandFactoryWrapper(ui,
 			&accountscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"accounts create oidc": daemon.Wrap(ui,
+		"accounts create oidc": commandFactoryWrapper(ui,
 			&accountscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"accounts create ldap": daemon.Wrap(ui,
+		"accounts create ldap": commandFactoryWrapper(ui,
 			&accountscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"accounts update": daemon.Wrap(ui,
+		"accounts update": commandFactoryWrapper(ui,
 			&accountscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"accounts update password": daemon.Wrap(ui,
+		"accounts update password": commandFactoryWrapper(ui,
 			&accountscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"accounts update oidc": daemon.Wrap(ui,
+		"accounts update oidc": commandFactoryWrapper(ui,
 			&accountscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"accounts update ldap": daemon.Wrap(ui,
+		"accounts update ldap": commandFactoryWrapper(ui,
 			&accountscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
@@ -156,62 +157,62 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"auth-methods read": daemon.Wrap(ui,
+		"auth-methods read": commandFactoryWrapper(ui,
 			&authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"auth-methods delete": daemon.Wrap(ui,
+		"auth-methods delete": commandFactoryWrapper(ui,
 			&authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"auth-methods list": daemon.Wrap(ui,
+		"auth-methods list": commandFactoryWrapper(ui,
 			&authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"auth-methods create": daemon.Wrap(ui,
+		"auth-methods create": commandFactoryWrapper(ui,
 			&authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"auth-methods create password": daemon.Wrap(ui,
+		"auth-methods create password": commandFactoryWrapper(ui,
 			&authmethodscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"auth-methods create oidc": daemon.Wrap(ui,
+		"auth-methods create oidc": commandFactoryWrapper(ui,
 			&authmethodscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"auth-methods create ldap": daemon.Wrap(ui,
+		"auth-methods create ldap": commandFactoryWrapper(ui,
 			&authmethodscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"auth-methods update": daemon.Wrap(ui,
+		"auth-methods update": commandFactoryWrapper(ui,
 			&authmethodscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"auth-methods update password": daemon.Wrap(ui,
+		"auth-methods update password": commandFactoryWrapper(ui,
 			&authmethodscmd.PasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"auth-methods update oidc": daemon.Wrap(ui,
+		"auth-methods update oidc": commandFactoryWrapper(ui,
 			&authmethodscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"auth-methods update ldap": daemon.Wrap(ui,
+		"auth-methods update ldap": commandFactoryWrapper(ui,
 			&authmethodscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"auth-methods change-state oidc": daemon.Wrap(ui,
+		"auth-methods change-state oidc": commandFactoryWrapper(ui,
 			&authmethodscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "change-state",
@@ -222,17 +223,17 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"auth-tokens read": daemon.Wrap(ui,
+		"auth-tokens read": commandFactoryWrapper(ui,
 			&authtokenscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"auth-tokens delete": daemon.Wrap(ui,
+		"auth-tokens delete": commandFactoryWrapper(ui,
 			&authtokenscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"auth-tokens list": daemon.Wrap(ui,
+		"auth-tokens list": commandFactoryWrapper(ui,
 			&authtokenscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
@@ -280,32 +281,32 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"connect": daemon.Wrap(ui,
+		"connect": commandFactoryWrapper(ui,
 			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "connect",
 			}),
-		"connect http": daemon.Wrap(ui,
+		"connect http": commandFactoryWrapper(ui,
 			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "http",
 			}),
-		"connect kube": daemon.Wrap(ui,
+		"connect kube": commandFactoryWrapper(ui,
 			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "kube",
 			}),
-		"connect postgres": daemon.Wrap(ui,
+		"connect postgres": commandFactoryWrapper(ui,
 			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "postgres",
 			}),
-		"connect rdp": daemon.Wrap(ui,
+		"connect rdp": commandFactoryWrapper(ui,
 			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "rdp",
 			}),
-		"connect ssh": daemon.Wrap(ui,
+		"connect ssh": commandFactoryWrapper(ui,
 			&connect.Command{
 				Command: base.NewCommand(ui),
 				Func:    "ssh",
@@ -327,80 +328,62 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 			}, nil
 		},
 
-		"daemon start": func() (cli.Command, error) {
-			return &daemon.StartCommand{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-
-		"daemon stop": func() (cli.Command, error) {
-			return &daemon.StopCommand{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-
-		"daemon add-token": func() (cli.Command, error) {
-			return &daemon.AddTokenCommand{
-				Command: base.NewCommand(ui),
-			}, nil
-		},
-
 		"credential-libraries": func() (cli.Command, error) {
 			return &credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"credential-libraries read": daemon.Wrap(ui,
+		"credential-libraries read": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"credential-libraries delete": daemon.Wrap(ui,
+		"credential-libraries delete": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"credential-libraries list": daemon.Wrap(ui,
+		"credential-libraries list": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"credential-libraries create": daemon.Wrap(ui,
+		"credential-libraries create": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credential-libraries create vault": daemon.Wrap(ui,
+		"credential-libraries create vault": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.VaultCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credential-libraries create vault-generic": daemon.Wrap(ui,
+		"credential-libraries create vault-generic": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.VaultGenericCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credential-libraries create vault-ssh-certificate": daemon.Wrap(ui,
+		"credential-libraries create vault-ssh-certificate": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.VaultSshCertificateCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credential-libraries update": daemon.Wrap(ui,
+		"credential-libraries update": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"credential-libraries update vault": daemon.Wrap(ui,
+		"credential-libraries update vault": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.VaultGenericCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"credential-libraries update vault-generic": daemon.Wrap(ui,
+		"credential-libraries update vault-generic": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.VaultGenericCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"credential-libraries update vault-ssh-certificate": daemon.Wrap(ui,
+		"credential-libraries update vault-ssh-certificate": commandFactoryWrapper(ui,
 			&credentiallibrariescmd.VaultSshCertificateCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
@@ -411,47 +394,47 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"credential-stores read": daemon.Wrap(ui,
+		"credential-stores read": commandFactoryWrapper(ui,
 			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"credential-stores delete": daemon.Wrap(ui,
+		"credential-stores delete": commandFactoryWrapper(ui,
 			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"credential-stores list": daemon.Wrap(ui,
+		"credential-stores list": commandFactoryWrapper(ui,
 			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"credential-stores create": daemon.Wrap(ui,
+		"credential-stores create": commandFactoryWrapper(ui,
 			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credential-stores create vault": daemon.Wrap(ui,
+		"credential-stores create vault": commandFactoryWrapper(ui,
 			&credentialstorescmd.VaultCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credential-stores create static": daemon.Wrap(ui,
+		"credential-stores create static": commandFactoryWrapper(ui,
 			&credentialstorescmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credential-stores update": daemon.Wrap(ui,
+		"credential-stores update": commandFactoryWrapper(ui,
 			&credentialstorescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"credential-stores update vault": daemon.Wrap(ui,
+		"credential-stores update vault": commandFactoryWrapper(ui,
 			&credentialstorescmd.VaultCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"credential-stores update static": daemon.Wrap(ui,
+		"credential-stores update static": commandFactoryWrapper(ui,
 			&credentialstorescmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
@@ -462,103 +445,122 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"credentials read": daemon.Wrap(ui,
+		"credentials read": commandFactoryWrapper(ui,
 			&credentialscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"credentials delete": daemon.Wrap(ui,
+		"credentials delete": commandFactoryWrapper(ui,
 			&credentialscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"credentials list": daemon.Wrap(ui,
+		"credentials list": commandFactoryWrapper(ui,
 			&credentialscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"credentials create": daemon.Wrap(ui,
+		"credentials create": commandFactoryWrapper(ui,
 			&credentialscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credentials create username-password": daemon.Wrap(ui,
+		"credentials create username-password": commandFactoryWrapper(ui,
 			&credentialscmd.UsernamePasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credentials create ssh-private-key": daemon.Wrap(ui,
+		"credentials create ssh-private-key": commandFactoryWrapper(ui,
 			&credentialscmd.SshPrivateKeyCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credentials create json": daemon.Wrap(ui,
+		"credentials create json": commandFactoryWrapper(ui,
 			&credentialscmd.JsonCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"credentials update": daemon.Wrap(ui,
+		"credentials update": commandFactoryWrapper(ui,
 			&credentialscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"credentials update username-password": daemon.Wrap(ui,
+		"credentials update username-password": commandFactoryWrapper(ui,
 			&credentialscmd.UsernamePasswordCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"credentials update ssh-private-key": daemon.Wrap(ui,
+		"credentials update ssh-private-key": commandFactoryWrapper(ui,
 			&credentialscmd.SshPrivateKeyCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"credentials update json": daemon.Wrap(ui,
+		"credentials update json": commandFactoryWrapper(ui,
 			&credentialscmd.JsonCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
+
+		"daemon start": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui),
+				CommandName: "daemon",
+			}, nil
+		},
+		"daemon stop": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui),
+				CommandName: "daemon",
+			}, nil
+		},
+		"daemon add-token": func() (cli.Command, error) {
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui),
+				CommandName: "daemon",
+			}, nil
+		},
 
 		"groups": func() (cli.Command, error) {
 			return &groupscmd.Command{
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"groups create": daemon.Wrap(ui,
+		"groups create": commandFactoryWrapper(ui,
 			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"groups update": daemon.Wrap(ui,
+		"groups update": commandFactoryWrapper(ui,
 			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"groups read": daemon.Wrap(ui,
+		"groups read": commandFactoryWrapper(ui,
 			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"groups delete": daemon.Wrap(ui,
+		"groups delete": commandFactoryWrapper(ui,
 			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"groups list": daemon.Wrap(ui,
+		"groups list": commandFactoryWrapper(ui,
 			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"groups add-members": daemon.Wrap(ui,
+		"groups add-members": commandFactoryWrapper(ui,
 			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-members",
 			}),
-		"groups set-members": daemon.Wrap(ui,
+		"groups set-members": commandFactoryWrapper(ui,
 			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-members",
 			}),
-		"groups remove-members": daemon.Wrap(ui,
+		"groups remove-members": commandFactoryWrapper(ui,
 			&groupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-members",
@@ -569,47 +571,47 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"host-catalogs read": daemon.Wrap(ui,
+		"host-catalogs read": commandFactoryWrapper(ui,
 			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"host-catalogs delete": daemon.Wrap(ui,
+		"host-catalogs delete": commandFactoryWrapper(ui,
 			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"host-catalogs list": daemon.Wrap(ui,
+		"host-catalogs list": commandFactoryWrapper(ui,
 			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"host-catalogs create": daemon.Wrap(ui,
+		"host-catalogs create": commandFactoryWrapper(ui,
 			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"host-catalogs create static": daemon.Wrap(ui,
+		"host-catalogs create static": commandFactoryWrapper(ui,
 			&hostcatalogscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"host-catalogs create plugin": daemon.Wrap(ui,
+		"host-catalogs create plugin": commandFactoryWrapper(ui,
 			&hostcatalogscmd.PluginCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"host-catalogs update": daemon.Wrap(ui,
+		"host-catalogs update": commandFactoryWrapper(ui,
 			&hostcatalogscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"host-catalogs update static": daemon.Wrap(ui,
+		"host-catalogs update static": commandFactoryWrapper(ui,
 			&hostcatalogscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"host-catalogs update plugin": daemon.Wrap(ui,
+		"host-catalogs update plugin": commandFactoryWrapper(ui,
 			&hostcatalogscmd.PluginCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
@@ -620,62 +622,62 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"host-sets read": daemon.Wrap(ui,
+		"host-sets read": commandFactoryWrapper(ui,
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"host-sets delete": daemon.Wrap(ui,
+		"host-sets delete": commandFactoryWrapper(ui,
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"host-sets list": daemon.Wrap(ui,
+		"host-sets list": commandFactoryWrapper(ui,
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"host-sets create": daemon.Wrap(ui,
+		"host-sets create": commandFactoryWrapper(ui,
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"host-sets create static": daemon.Wrap(ui,
+		"host-sets create static": commandFactoryWrapper(ui,
 			&hostsetscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"host-sets create plugin": daemon.Wrap(ui,
+		"host-sets create plugin": commandFactoryWrapper(ui,
 			&hostsetscmd.PluginCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"host-sets update": daemon.Wrap(ui,
+		"host-sets update": commandFactoryWrapper(ui,
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"host-sets update static": daemon.Wrap(ui,
+		"host-sets update static": commandFactoryWrapper(ui,
 			&hostsetscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"host-sets update plugin": daemon.Wrap(ui,
+		"host-sets update plugin": commandFactoryWrapper(ui,
 			&hostsetscmd.PluginCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"host-sets add-hosts": daemon.Wrap(ui,
+		"host-sets add-hosts": commandFactoryWrapper(ui,
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-hosts",
 			}),
-		"host-sets remove-hosts": daemon.Wrap(ui,
+		"host-sets remove-hosts": commandFactoryWrapper(ui,
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-hosts",
 			}),
-		"host-sets set-hosts": daemon.Wrap(ui,
+		"host-sets set-hosts": commandFactoryWrapper(ui,
 			&hostsetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-hosts",
@@ -686,37 +688,37 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"hosts read": daemon.Wrap(ui,
+		"hosts read": commandFactoryWrapper(ui,
 			&hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"hosts delete": daemon.Wrap(ui,
+		"hosts delete": commandFactoryWrapper(ui,
 			&hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"hosts list": daemon.Wrap(ui,
+		"hosts list": commandFactoryWrapper(ui,
 			&hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"hosts create": daemon.Wrap(ui,
+		"hosts create": commandFactoryWrapper(ui,
 			&hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"hosts create static": daemon.Wrap(ui,
+		"hosts create static": commandFactoryWrapper(ui,
 			&hostscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"hosts update": daemon.Wrap(ui,
+		"hosts update": commandFactoryWrapper(ui,
 			&hostscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"hosts update static": daemon.Wrap(ui,
+		"hosts update static": commandFactoryWrapper(ui,
 			&hostscmd.StaticCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
@@ -733,47 +735,47 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"managed-groups read": daemon.Wrap(ui,
+		"managed-groups read": commandFactoryWrapper(ui,
 			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"managed-groups delete": daemon.Wrap(ui,
+		"managed-groups delete": commandFactoryWrapper(ui,
 			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"managed-groups list": daemon.Wrap(ui,
+		"managed-groups list": commandFactoryWrapper(ui,
 			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"managed-groups create": daemon.Wrap(ui,
+		"managed-groups create": commandFactoryWrapper(ui,
 			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"managed-groups create oidc": daemon.Wrap(ui,
+		"managed-groups create oidc": commandFactoryWrapper(ui,
 			&managedgroupscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"managed-groups create ldap": daemon.Wrap(ui,
+		"managed-groups create ldap": commandFactoryWrapper(ui,
 			&managedgroupscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"managed-groups update": daemon.Wrap(ui,
+		"managed-groups update": commandFactoryWrapper(ui,
 			&managedgroupscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"managed-groups update oidc": daemon.Wrap(ui,
+		"managed-groups update oidc": commandFactoryWrapper(ui,
 			&managedgroupscmd.OidcCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"managed-groups update ldap": daemon.Wrap(ui,
+		"managed-groups update ldap": commandFactoryWrapper(ui,
 			&managedgroupscmd.LdapCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
@@ -784,57 +786,57 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"roles create": daemon.Wrap(ui,
+		"roles create": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"roles update": daemon.Wrap(ui,
+		"roles update": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"roles read": daemon.Wrap(ui,
+		"roles read": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"roles delete": daemon.Wrap(ui,
+		"roles delete": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"roles list": daemon.Wrap(ui,
+		"roles list": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"roles add-principals": daemon.Wrap(ui,
+		"roles add-principals": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-principals",
 			}),
-		"roles set-principals": daemon.Wrap(ui,
+		"roles set-principals": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-principals",
 			}),
-		"roles remove-principals": daemon.Wrap(ui,
+		"roles remove-principals": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-principals",
 			}),
-		"roles add-grants": daemon.Wrap(ui,
+		"roles add-grants": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-grants",
 			}),
-		"roles set-grants": daemon.Wrap(ui,
+		"roles set-grants": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-grants",
 			}),
-		"roles remove-grants": daemon.Wrap(ui,
+		"roles remove-grants": commandFactoryWrapper(ui,
 			&rolescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-grants",
@@ -845,51 +847,52 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"scopes create": daemon.Wrap(ui,
+		"scopes create": commandFactoryWrapper(ui,
 			&scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"scopes read": daemon.Wrap(ui,
+		"scopes read": commandFactoryWrapper(ui,
 			&scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"scopes update": daemon.Wrap(ui,
+		"scopes update": commandFactoryWrapper(ui,
 			&scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"scopes delete": daemon.Wrap(ui,
+		"scopes delete": commandFactoryWrapper(ui,
 			&scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"scopes list": daemon.Wrap(ui,
+		"scopes list": commandFactoryWrapper(ui,
 			&scopescmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"scopes list-keys": daemon.Wrap(ui,
+		"scopes list-keys": commandFactoryWrapper(ui,
 			&scopescmd.ListKeysCommand{
 				Command: base.NewCommand(ui),
 			}),
-		"scopes rotate-keys": daemon.Wrap(ui,
+		"scopes rotate-keys": commandFactoryWrapper(ui,
 			&scopescmd.RotateKeysCommand{
 				Command: base.NewCommand(ui),
 			}),
-		"scopes list-key-version-destruction-jobs": daemon.Wrap(ui,
+		"scopes list-key-version-destruction-jobs": commandFactoryWrapper(ui,
 			&scopescmd.ListKeyVersionDestructionJobsCommand{
 				Command: base.NewCommand(ui),
 			}),
-		"scopes destroy-key-version": daemon.Wrap(ui,
+		"scopes destroy-key-version": commandFactoryWrapper(ui,
 			&scopescmd.DestroyKeyVersionCommand{
 				Command: base.NewCommand(ui),
 			}),
 
 		"search": func() (cli.Command, error) {
-			return &search.SearchCommand{
-				Command: base.NewCommand(ui),
+			return &unsupported.UnsupportedCommand{
+				Command:     base.NewCommand(ui),
+				CommandName: "search",
 			}, nil
 		},
 
@@ -898,17 +901,17 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"sessions read": daemon.Wrap(ui,
+		"sessions read": commandFactoryWrapper(ui,
 			&sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"sessions list": daemon.Wrap(ui,
+		"sessions list": commandFactoryWrapper(ui,
 			&sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"sessions cancel": daemon.Wrap(ui,
+		"sessions cancel": commandFactoryWrapper(ui,
 			&sessionscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "cancel",
@@ -919,17 +922,17 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"session-recordings read": daemon.Wrap(ui,
+		"session-recordings read": commandFactoryWrapper(ui,
 			&sessionrecordingscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"session-recordings list": daemon.Wrap(ui,
+		"session-recordings list": commandFactoryWrapper(ui,
 			&sessionrecordingscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"session-recordings download": daemon.Wrap(ui,
+		"session-recordings download": commandFactoryWrapper(ui,
 			&sessionrecordingscmd.DownloadCommand{
 				Command: base.NewCommand(ui),
 			}),
@@ -939,27 +942,27 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"storage-buckets read": daemon.Wrap(ui,
+		"storage-buckets read": commandFactoryWrapper(ui,
 			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"storage-buckets delete": daemon.Wrap(ui,
+		"storage-buckets delete": commandFactoryWrapper(ui,
 			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"storage-buckets list": daemon.Wrap(ui,
+		"storage-buckets list": commandFactoryWrapper(ui,
 			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"storage-buckets create": daemon.Wrap(ui,
+		"storage-buckets create": commandFactoryWrapper(ui,
 			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"storage-buckets update": daemon.Wrap(ui,
+		"storage-buckets update": commandFactoryWrapper(ui,
 			&storagebucketscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
@@ -970,82 +973,82 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"targets authorize-session": daemon.Wrap(ui,
+		"targets authorize-session": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "authorize-session",
 			}),
-		"targets read": daemon.Wrap(ui,
+		"targets read": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"targets delete": daemon.Wrap(ui,
+		"targets delete": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"targets list": daemon.Wrap(ui,
+		"targets list": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"targets create": daemon.Wrap(ui,
+		"targets create": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"targets create tcp": daemon.Wrap(ui,
+		"targets create tcp": commandFactoryWrapper(ui,
 			&targetscmd.TcpCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"targets create ssh": daemon.Wrap(ui,
+		"targets create ssh": commandFactoryWrapper(ui,
 			&targetscmd.SshCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"targets update": daemon.Wrap(ui,
+		"targets update": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"targets update tcp": daemon.Wrap(ui,
+		"targets update tcp": commandFactoryWrapper(ui,
 			&targetscmd.TcpCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"targets update ssh": daemon.Wrap(ui,
+		"targets update ssh": commandFactoryWrapper(ui,
 			&targetscmd.SshCommand{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"targets add-host-sources": daemon.Wrap(ui,
+		"targets add-host-sources": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-host-sources",
 			}),
-		"targets remove-host-sources": daemon.Wrap(ui,
+		"targets remove-host-sources": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-host-sources",
 			}),
-		"targets set-host-sources": daemon.Wrap(ui,
+		"targets set-host-sources": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-host-sources",
 			}),
-		"targets add-credential-sources": daemon.Wrap(ui,
+		"targets add-credential-sources": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-credential-sources",
 			}),
-		"targets remove-credential-sources": daemon.Wrap(ui,
+		"targets remove-credential-sources": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-credential-sources",
 			}),
-		"targets set-credential-sources": daemon.Wrap(ui,
+		"targets set-credential-sources": commandFactoryWrapper(ui,
 			&targetscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-credential-sources",
@@ -1056,42 +1059,42 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"users create": daemon.Wrap(ui,
+		"users create": commandFactoryWrapper(ui,
 			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"users read": daemon.Wrap(ui,
+		"users read": commandFactoryWrapper(ui,
 			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"users update": daemon.Wrap(ui,
+		"users update": commandFactoryWrapper(ui,
 			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"users delete": daemon.Wrap(ui,
+		"users delete": commandFactoryWrapper(ui,
 			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"users list": daemon.Wrap(ui,
+		"users list": commandFactoryWrapper(ui,
 			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"users add-accounts": daemon.Wrap(ui,
+		"users add-accounts": commandFactoryWrapper(ui,
 			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-accounts",
 			}),
-		"users set-accounts": daemon.Wrap(ui,
+		"users set-accounts": commandFactoryWrapper(ui,
 			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-accounts",
 			}),
-		"users remove-accounts": daemon.Wrap(ui,
+		"users remove-accounts": commandFactoryWrapper(ui,
 			&userscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-accounts",
@@ -1102,66 +1105,66 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Command: base.NewCommand(ui),
 			}, nil
 		},
-		"workers create": daemon.Wrap(ui,
+		"workers create": commandFactoryWrapper(ui,
 			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"workers create worker-led": daemon.Wrap(ui,
+		"workers create worker-led": commandFactoryWrapper(ui,
 			&workerscmd.WorkerLedCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"workers create controller-led": daemon.Wrap(ui,
+		"workers create controller-led": commandFactoryWrapper(ui,
 			&workerscmd.ControllerLedCommand{
 				Command: base.NewCommand(ui),
 				Func:    "create",
 			}),
-		"workers read": daemon.Wrap(ui,
+		"workers read": commandFactoryWrapper(ui,
 			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"workers update": daemon.Wrap(ui,
+		"workers update": commandFactoryWrapper(ui,
 			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "update",
 			}),
-		"workers delete": daemon.Wrap(ui,
+		"workers delete": commandFactoryWrapper(ui,
 			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "delete",
 			}),
-		"workers list": daemon.Wrap(ui,
+		"workers list": commandFactoryWrapper(ui,
 			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "list",
 			}),
-		"workers add-worker-tags": daemon.Wrap(ui,
+		"workers add-worker-tags": commandFactoryWrapper(ui,
 			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "add-worker-tags",
 			}),
-		"workers set-worker-tags": daemon.Wrap(ui,
+		"workers set-worker-tags": commandFactoryWrapper(ui,
 			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "set-worker-tags",
 			}),
-		"workers remove-worker-tags": daemon.Wrap(ui,
+		"workers remove-worker-tags": commandFactoryWrapper(ui,
 			&workerscmd.Command{
 				Command: base.NewCommand(ui),
 				Func:    "remove-worker-tags",
 			}),
-		"workers certificate-authority": daemon.Wrap(ui,
+		"workers certificate-authority": commandFactoryWrapper(ui,
 			&workerscmd.WorkerCACommand{
 				Command: base.NewCommand(ui),
 			}),
-		"workers certificate-authority read": daemon.Wrap(ui,
+		"workers certificate-authority read": commandFactoryWrapper(ui,
 			&workerscmd.WorkerCACommand{
 				Command: base.NewCommand(ui),
 				Func:    "read",
 			}),
-		"workers certificate-authority reinitialize": daemon.Wrap(ui,
+		"workers certificate-authority reinitialize": commandFactoryWrapper(ui,
 			&workerscmd.WorkerCACommand{
 				Command: base.NewCommand(ui),
 				Func:    "reinitialize",
@@ -1170,9 +1173,28 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 
 	for _, fn := range extraCommandsFuncs {
 		if fn != nil {
-			fn()
+			fn(ui, serverCmdUi, runOpts)
 		}
 	}
 }
 
-var extraCommandsFuncs []func()
+var extraCommandsFuncs []func(ui, serverCmdUi cli.Ui, runOpts *RunOptions)
+
+type clientAndTokenProvider interface {
+	Client(opt ...base.Option) (*api.Client, error)
+	DiscoverKeyringTokenInfo() (string, string, error)
+	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
+}
+
+type wrappableCommand interface {
+	cli.Command
+	clientAndTokenProvider
+}
+
+// commandFactoryWrapper wraps all short lived, non server, command factories.
+// The default func is a noop.
+var commandFactoryWrapper = func(ui cli.Ui, c wrappableCommand) cli.CommandFactory {
+	return func() (cli.Command, error) {
+		return c, nil
+	}
+}

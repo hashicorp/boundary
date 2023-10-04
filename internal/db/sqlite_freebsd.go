@@ -1,8 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-//go:build !cgo
-// +build !cgo
+//go:build amd64 || arm64
 
 package db
 
@@ -11,6 +10,10 @@ import (
 	"github.com/hashicorp/go-dbw"
 )
 
-func sqliteOpen(connectionUrl string) dbw.Dialector {
-	return sqlite.Open(connectionUrl)
+func init() {
+	sqliteOpen = supportedSqlite
+}
+
+func supportedSqlite(s string) (dbw.Dialector, error) {
+	return sqlite.Open(s), nil
 }
