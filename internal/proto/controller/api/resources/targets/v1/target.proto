@@ -315,6 +315,10 @@ message SessionAuthorizationData {
   // Output only. The connection limit being applied to this session. -1 means unlimited. This is not actually enforced on the client side but it provides for better listener handling by including it.
   int32 connection_limit = 90 [json_name = "connection_limit"];
 
+  // Output only. The endpoint port that will be connected to, either from a
+  // port directly on the target or from a service definition.
+  uint32 endpoint_port = 102 [json_name = "endpoint_port"]; // @gotags: `class:"public" eventstream:"observation"`
+
   // Output only. The expiration time of the session.
   google.protobuf.Timestamp expiration = 105; // @gotags: `class:"public" eventstream:"observation"`
 
@@ -368,6 +372,10 @@ message SessionAuthorization {
 
   // Output only. The endpoint address that the worker will connect to, useful for setting TLS parameters.
   string endpoint = 100; // @gotags: `class:"public"`
+
+  // Output only. The endpoint port that will be connected to, either from a
+  // port directly on the target or from a service definition.
+  uint32 endpoint_port = 102 [json_name = "endpoint_port"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // Output only. The expiration time of the session.
   google.protobuf.Timestamp expiration = 105; // @gotags: `class:"public" eventstream:"observation"`
