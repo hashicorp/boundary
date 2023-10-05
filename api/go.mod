@@ -3,7 +3,7 @@ module github.com/hashicorp/boundary/api
 go 1.19
 
 require (
-	github.com/hashicorp/boundary/sdk v0.0.38-0.20231004161020-cfedd115adad
+	github.com/hashicorp/boundary/sdk v0.0.38-0.20231005001254-a8d2267d28bc
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.10-0.20230601143830-08d524b564ba
 	github.com/hashicorp/go-retryablehttp v0.7.2
