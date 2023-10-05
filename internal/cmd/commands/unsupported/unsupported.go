@@ -12,9 +12,7 @@ import (
 	"github.com/mitchellh/cli"
 )
 
-var (
-	_ cli.Command = (*UnsupportedCommand)(nil)
-)
+var _ cli.Command = (*UnsupportedCommand)(nil)
 
 // UnsupportedCommand is a command that simply prints out a message indicating
 // the requested command is not supported on this platform.
