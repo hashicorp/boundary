@@ -17,6 +17,7 @@ type SessionAuthorizationData struct {
 	CreatedTime       time.Time         `json:"created_time,omitempty"`
 	Type              string            `json:"type,omitempty"`
 	ConnectionLimit   int32             `json:"connection_limit,omitempty"`
+	EndpointPort      uint32            `json:"endpoint_port,omitempty"`
 	Expiration        time.Time         `json:"expiration,omitempty"`
 	Certificate       []byte            `json:"certificate,omitempty"`
 	PrivateKey        []byte            `json:"private_key,omitempty"`
