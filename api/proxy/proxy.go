@@ -56,10 +56,17 @@ type ClientProxy struct {
 //
 // * WithListener - Specify a custom listener on which to accept connections;
 // overrides WithListenAddrPort if both are set
+//
+// * WithSessionAuthorizationData - Specify an already-unmarshaled session
+// authorization object. If set, authzToken can be empty.
 func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, error) {
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse options: %w", err)
+	}
+
+	if authzToken == "" && opts.WithSessionAuthorizationData == nil {
+		return nil, fmt.Errorf("empty session authorization token and object")
 	}
 
 	p := &ClientProxy{
@@ -82,6 +89,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 		return nil, fmt.Errorf("could not derive random bytes for tofu token: %w", err)
 	}
 
+	p.sessionAuthzData = opts.WithSessionAuthorizationData
 	marshaled, err := base58.FastBase58Decoding(authzToken)
 	if err != nil {
 		return nil, fmt.Errorf("unable to base58-decode authorization token: %w", err)

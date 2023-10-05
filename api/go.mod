@@ -16,8 +16,8 @@ require (
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/atomic v1.11.0
 	golang.org/x/time v0.3.0
-	google.golang.org/grpc v1.55.0
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/grpc v1.57.0
+	google.golang.org/protobuf v1.31.0
 	nhooyr.io/websocket v1.8.7
 )
 
@@ -29,7 +29,6 @@ require (
 	github.com/hashicorp/eventlogger v0.1.2-0.20230428153751-cca445805f24 // indirect
 	github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20230428153751-cca445805f24 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.10 // indirect
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
@@ -41,11 +40,8 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	go.uber.org/goleak v1.1.10 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
-	golang.org/x/tools v0.6.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20231002182017-d307bd883b97 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
