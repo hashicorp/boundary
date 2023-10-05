@@ -90,17 +90,20 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	}
 
 	p.sessionAuthzData = opts.WithSessionAuthorizationData
-	marshaled, err := base58.FastBase58Decoding(authzToken)
-	if err != nil {
-		return nil, fmt.Errorf("unable to base58-decode authorization token: %w", err)
+	if p.sessionAuthzData == nil {
+		marshaled, err := base58.FastBase58Decoding(authzToken)
+		if err != nil {
+			return nil, fmt.Errorf("unable to base58-decode authorization token: %w", err)
+		}
+		if len(marshaled) == 0 {
+			return nil, errors.New("zero-length authorization information after decoding")
+		}
+		p.sessionAuthzData = new(targetspb.SessionAuthorizationData)
+		if err := proto.Unmarshal(marshaled, p.sessionAuthzData); err != nil {
+			return nil, fmt.Errorf("unable to unmarshal authorization data: %w", err)
+		}
 	}
-	if len(marshaled) == 0 {
-		return nil, errors.New("zero-length authorization information after decoding")
-	}
-	p.sessionAuthzData = new(targetspb.SessionAuthorizationData)
-	if err := proto.Unmarshal(marshaled, p.sessionAuthzData); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal authorization data: %w", err)
-	}
+
 	if len(p.sessionAuthzData.WorkerInfo) == 0 {
 		return nil, errors.New("no workers found in authorization data")
 	}
