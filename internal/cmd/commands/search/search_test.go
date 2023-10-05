@@ -56,18 +56,19 @@ func TestSearch(t *testing.T) {
 		ExpirationTime: time.Now().Add(time.Minute),
 	}
 	cmd := &testCommander{t: t, at: at}
+	boundaryTokenReaderFn := func(ctx context.Context, addr, authToken string) (*authtokens.AuthToken, error) {
+		if authToken == at.Token {
+			return at, nil
+		}
+		return nil, errors.New("test not found error")
+	}
 
 	srv := daemon.NewTestServer(t, cmd)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		srv.Serve(t, daemon.WithBoundaryTokenReaderFunc(ctx, func(ctx context.Context, addr, authToken string) (*authtokens.AuthToken, error) {
-			if authToken == at.Token {
-				return at, nil
-			}
-			return nil, errors.New("test not found error")
-		}))
+		srv.Serve(t, daemon.WithBoundaryTokenReaderFunc(ctx, boundaryTokenReaderFn))
 	}()
 	// Give the store some time to get initialized
 	time.Sleep(100 * time.Millisecond)
@@ -161,7 +162,7 @@ func TestSearch(t *testing.T) {
 	}, []*sessions.Session{
 		{Id: "sess_1234567890", TargetId: "ttcp_1234567890", Status: "pending"},
 		{Id: "sess_0987654321", TargetId: "ttcp_0987654321", Status: "pending"},
-	})
+	}, boundaryTokenReaderFn)
 
 	t.Run("target response from list", func(t *testing.T) {
 		resp, err := search(ctx, srv.BaseSocketDir(), filterBy{
