@@ -16,6 +16,7 @@ func init() {
 	commandFactoryWrapper = daemonWrap
 
 	extraCommandsFuncs = append(extraCommandsFuncs, func(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
+		delete(Commands, "daemon")
 		Commands["daemon start"] = func() (cli.Command, error) {
 			return &daemon.StartCommand{
 				Command: base.NewCommand(ui),

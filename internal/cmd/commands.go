@@ -501,19 +501,7 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "update",
 			}),
 
-		"daemon start": func() (cli.Command, error) {
-			return &unsupported.UnsupportedCommand{
-				Command:     base.NewCommand(ui),
-				CommandName: "daemon",
-			}, nil
-		},
-		"daemon stop": func() (cli.Command, error) {
-			return &unsupported.UnsupportedCommand{
-				Command:     base.NewCommand(ui),
-				CommandName: "daemon",
-			}, nil
-		},
-		"daemon add-token": func() (cli.Command, error) {
+		"daemon": func() (cli.Command, error) {
 			return &unsupported.UnsupportedCommand{
 				Command:     base.NewCommand(ui),
 				CommandName: "daemon",

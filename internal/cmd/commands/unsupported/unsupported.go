@@ -6,7 +6,6 @@ package unsupported
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/mitchellh/cli"
@@ -30,16 +29,10 @@ func (c *UnsupportedCommand) Synopsis() string {
 }
 
 func (c *UnsupportedCommand) Help() string {
-	helpText := c.notice() + c.Flags().Help()
-	return strings.TrimSpace(helpText)
-}
-
-func (c *UnsupportedCommand) Flags() *base.FlagSets {
-	set := c.FlagSet(base.FlagSetClient | base.FlagSetOutputFormat)
-	return set
+	return c.notice()
 }
 
 func (c *UnsupportedCommand) Run(args []string) int {
-	c.PrintCliError(errors.New(c.notice()))
+	c.Command.PrintCliError(errors.New(c.notice()))
 	return base.CommandUserError
 }
