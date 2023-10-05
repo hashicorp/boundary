@@ -5,7 +5,6 @@ package daemon
 
 import (
 	"context"
-	stdErrors "errors"
 	"io"
 	"sync"
 	"testing"
@@ -71,10 +70,10 @@ func (s *TestServer) Serve(t *testing.T, opt ...Option) error {
 
 // AddResources adds targets to the cache for the provided address, token name,
 // and keyring type. They token info must already be known to the server.
-func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []*targets.Target, sess []*sessions.Session) {
+func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []*targets.Target, sess []*sessions.Session, atReadFn cache.BoundaryTokenReaderFn) {
 	t.Helper()
 	ctx := context.Background()
-	r, err := cache.NewRepository(ctx, s.cacheServer.store, &sync.Map{}, s.cmd.ReadTokenFromKeyring, unimplementedAuthTokenReader)
+	r, err := cache.NewRepository(ctx, s.cacheServer.store, &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
 	require.NoError(t, err)
 
 	tarFn := func(ctx context.Context, _, tok string) ([]*targets.Target, error) {
@@ -90,10 +89,4 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []
 		return sess, nil
 	}
 	require.NoError(t, r.Refresh(ctx, cache.WithTargetRetrievalFunc(tarFn), cache.WithSessionRetrievalFunc(sessFn)))
-}
-
-// unimplementedAuthTokenReader is an unimplemented function for reading auth
-// tokens from a provided boundary address.
-func unimplementedAuthTokenReader(ctx context.Context, addr string, authToken string) (*authtokens.AuthToken, error) {
-	return nil, stdErrors.New("unimplemented")
 }
