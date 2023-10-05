@@ -5,10 +5,15 @@ package targets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/scopes"
+	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"github.com/mr-tron/base58"
+	"go.starlark.net/lib/proto"
 )
 
 type SessionAuthorizationResult struct {
@@ -22,6 +27,60 @@ func (n SessionAuthorizationResult) GetItem() any {
 
 func (n SessionAuthorizationResult) GetResponse() *api.Response {
 	return n.response
+}
+
+func (n SessionAuthorizationResult) GetSessionAuthorization() (*SessionAuthorization, error) {
+	result, ok := n.GetItem().(*SessionAuthorization)
+	if !ok {
+		return nil, fmt.Errorf("unable to interpret session authorization result as session authorization data")
+	}
+	return result, nil
+}
+
+func (n SessionAuthorization) GetSessionAuthorizationData() (*SessionAuthorizationData, error) {
+	if n.AuthorizationToken == "" {
+		return nil, fmt.Errorf("authorization token is empty")
+	}
+	marshaled, err := base58.FastBase58Decoding(n.AuthorizationToken)
+	if err != nil {
+		return nil, fmt.Errorf("unable to base58-decode authorization token: %w", err)
+	}
+	if len(marshaled) == 0 {
+		return nil, errors.New("zero-length authorization information after decoding")
+	}
+	d := new(targetspb.SessionAuthorizationData)
+	if err := proto.Unmarshal(marshaled, d); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal authorization data: %w", err)
+	}
+	ret := &SessionAuthorizationData{
+		SessionId: d.SessionId,
+		TargetId:  d.TargetId,
+		Scope: &scopes.ScopeInfo{
+			Id:            d.Scope.Id,
+			Type:          d.Scope.Type,
+			Name:          d.Scope.Name,
+			Description:   d.Scope.Description,
+			ParentScopeId: d.Scope.ParentScopeId,
+		},
+		CreatedTime:       d.CreatedTime.AsTime(),
+		Type:              d.Type,
+		ConnectionLimit:   d.ConnectionLimit,
+		EndpointPort:      d.EndpointPort,
+		Expiration:        d.Expiration.AsTime(),
+		Certificate:       d.Certificate,
+		PrivateKey:        d.PrivateKey,
+		HostId:            d.HostId,
+		Endpoint:          d.Endpoint,
+		DefaultClientPort: d.DefaultClientPort,
+	}
+	ret.WorkerInfo = make([]*WorkerInfo, len(d.WorkerInfo))
+	for i, w := range d.WorkerInfo {
+		ret.WorkerInfo[i] = &WorkerInfo{
+			Address: w.Address,
+		}
+	}
+
+	return ret, nil
 }
 
 func (c *Client) AuthorizeSession(ctx context.Context, targetId string, opt ...Option) (*SessionAuthorizationResult, error) {
