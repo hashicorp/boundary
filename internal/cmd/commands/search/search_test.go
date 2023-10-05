@@ -93,7 +93,7 @@ func TestSearch(t *testing.T) {
 				flagQuery:   "name=name",
 				resource:    "hosts",
 			},
-			apiErrContains: "doesn't support \"hosts\" resource",
+			apiErrContains: "provided resource is not a valid searchable resource",
 		},
 		{
 			name: "unknown auth token id",
@@ -105,10 +105,10 @@ func TestSearch(t *testing.T) {
 			apiErrContains: "Forbidden",
 		},
 		{
-			name: "query on unsupported column",
+			name: "unsupported column",
 			fb: filterBy{
 				authTokenId: at.Id,
-				flagQuery:   "item % tar",
+				flagQuery:   "item % 'tar'",
 				resource:    "targets",
 			},
 			apiErrContains: "invalid column \"item\"",
