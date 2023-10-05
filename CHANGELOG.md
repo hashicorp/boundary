@@ -5,18 +5,23 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 ## 0.14.0 (2023/10/10)
 
 ### Deprecations/Changes
-* Per the note in Boundary 0.12.0, the `vault` credential library subtype has now been
-  removed in favor of `vault-generic`. For example, instead of `boundary
-  credential-libraries create vault`, you must use `boundary
+
+* Per the note in Boundary 0.12.0, the `vault` credential library subtype has
+  now been removed in favor of `vault-generic`. For example, instead of
+  `boundary credential-libraries create vault`, you must use `boundary
   credential-libraries create vault-generic`.
 * Per the note in Boundary 0.12.0, errors returned from the cli when using the
   `-format=json` option will now only use the `status_code` field. The `status`
   field has been removed.
-* Per the note in Boundary 0.12.0, targets require a default port value. Ports defined as part of a host address
-  were ignored but allowed as part of a target definition; from 0.14.0 onwards, any port defined on a host address will 
-  now become an error.
-* Targets: Per the note in Boundary 0.10.10, target Application Credentials has been renamed to Brokered Credentials. 
-  `application-credential-source` has been removed as a field. `brokered-credential-source` should be used instead. ([PR](https://github.com/hashicorp/boundary/pull/3728), [deprecated changelog](#0100-20220810)).
+* Per the note in Boundary 0.12.0, targets require a default port value. Ports
+  defined as part of a host address were ignored but allowed as part of a target
+  definition; from 0.14.0 onwards, any port defined on a host address will now
+  become an error.
+* Targets: Per the note in Boundary 0.10.10, target Application Credentials has
+  been renamed to Brokered Credentials. `application-credential-source` has been
+  removed as a field. `brokered-credential-source` should be used instead.
+  ([PR](https://github.com/hashicorp/boundary/pull/3728), [deprecated
+  changelog](#0100-20220810)).
 
 ### New and Improved
 
@@ -31,8 +36,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   ([PR](https://github.com/hashicorp/boundary/pull/3650)).
 * feat: allow HCP cluster id to be sourced from file or env variable
     ([PR](https://github.com/hashicorp/boundary/pull/3709)).
-* feat: add support for telemetry events via flag or Boundary configuration (requires observation events to be enabled).
-Deny filter now filters coordination worker status from observation events by default. (This behaviour is overridden by any user specified allow or deny filters)
+* feat: add support for telemetry events via flag or Boundary configuration
+  (requires observation events to be enabled). Deny filter now filters
+  coordination worker status from observation events by default. (This behavior
+  is overridden by any user specified allow or deny filters)
   ([PR](https://github.com/hashicorp/boundary/pull/3753)).
 * ui: Add full UI support for LDAP auth method
   ([PR](https://github.com/hashicorp/boundary-ui/pull/1782))
@@ -46,6 +53,9 @@ Deny filter now filters coordination worker status from observation events by de
 * targets: Fix address field not being populated if the number of targets on a
   list returns more than 10000 entries
   ([PR](https://github.com/hashicorp/boundary/pull/3644))
+* cli: Fix issue when using the `authenticate` command against a password auth
+  method on Windows where the password would be swallowed when the login name is
+  submitted ([PR](https://github.com/hashicorp/boundary/pull/3800))
 
 ## 0.13.1 (2023/07/10)
 
