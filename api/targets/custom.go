@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/api/scopes"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/mr-tron/base58"
-	"go.starlark.net/lib/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 type SessionAuthorizationResult struct {

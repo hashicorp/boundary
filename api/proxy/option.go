@@ -5,7 +5,7 @@ import (
 	"net"
 	"net/netip"
 
-	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"github.com/hashicorp/boundary/api/targets"
 )
 
 // getOpts iterates the inbound Options and returns a struct and any errors
@@ -30,7 +30,7 @@ type Options struct {
 	WithListenAddrPort           netip.AddrPort
 	WithConnectionsLeftCh        chan int32
 	WithWorkerHost               *string
-	WithSessionAuthorizationData *targetspb.SessionAuthorizationData
+	WithSessionAuthorizationData *targets.SessionAuthorizationData
 }
 
 // Option is a function that takes in an options struct and sets values or
@@ -92,8 +92,9 @@ func WithWorkerHost(with string) Option {
 	}
 }
 
-// WithSessionAuthorizationData can be used to provide already-unmarshaled session authorization instead of a string token.
-func WithSessionAuthorizationData(with *targetspb.SessionAuthorizationData) Option {
+// WithSessionAuthorizationData can be used to provide already-unmarshaled
+// session authorization instead of a string token.
+func WithSessionAuthorizationData(with *targets.SessionAuthorizationData) Option {
 	return func(o *Options) error {
 		o.WithSessionAuthorizationData = with
 		return nil

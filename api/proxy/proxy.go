@@ -12,12 +12,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
+	"github.com/hashicorp/boundary/api/targets"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/mr-tron/base58"
 	ua "go.uber.org/atomic"
-	"google.golang.org/protobuf/proto"
 )
 
 // This can take more time than you might expect, especially if a lot of these
@@ -31,7 +29,7 @@ type ClientProxy struct {
 	connectionsLeft         *atomic.Int32
 	connsLeftCh             chan int32
 	callerConnectionsLeftCh chan int32
-	sessionAuthzData        *targetspb.SessionAuthorizationData
+	sessionAuthzData        *targets.SessionAuthorizationData
 	createTime              time.Time
 	expiration              time.Time
 	ctx                     context.Context
@@ -91,17 +89,7 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 
 	p.sessionAuthzData = opts.WithSessionAuthorizationData
 	if p.sessionAuthzData == nil {
-		marshaled, err := base58.FastBase58Decoding(authzToken)
-		if err != nil {
-			return nil, fmt.Errorf("unable to base58-decode authorization token: %w", err)
-		}
-		if len(marshaled) == 0 {
-			return nil, errors.New("zero-length authorization information after decoding")
-		}
-		p.sessionAuthzData = new(targetspb.SessionAuthorizationData)
-		if err := proto.Unmarshal(marshaled, p.sessionAuthzData); err != nil {
-			return nil, fmt.Errorf("unable to unmarshal authorization data: %w", err)
-		}
+		p.sessionAuthzData, err = targets.SessionAuthorization{AuthorizationToken: authzToken}.GetSessionAuthorizationData()
 	}
 
 	if len(p.sessionAuthzData.WorkerInfo) == 0 {
@@ -120,8 +108,8 @@ func New(ctx context.Context, authzToken string, opt ...Option) (*ClientProxy, e
 	if err != nil {
 		return nil, fmt.Errorf("error creating TLS configuration: %w", err)
 	}
-	p.createTime = p.sessionAuthzData.CreatedTime.AsTime()
-	p.expiration = p.sessionAuthzData.Expiration.AsTime()
+	p.createTime = p.sessionAuthzData.CreatedTime
+	p.expiration = p.sessionAuthzData.Expiration
 
 	// We don't _rely_ on client-side timeout verification but this prevents us
 	// seeming to be ready for a connection that will immediately fail when we
