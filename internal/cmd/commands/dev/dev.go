@@ -102,6 +102,7 @@ type Command struct {
 	flagCreateLoopbackPlugin             bool
 	flagPluginExecutionDir               string
 	flagSkipPlugins                      bool
+	flagWorkerDnsServer                  string
 	flagWorkerAuthMethod                 string
 	flagWorkerAuthStorageDir             string
 	flagWorkerAuthStorageSkipCleanup     bool
@@ -380,6 +381,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Usage:  "Skip loading compiled-in plugins. This does not prevent loopback plugins from being loaded if enabled.",
 		Hidden: true,
 	})
+	f.StringVar(&base.StringVar{
+		Name:   "worker-dns-server",
+		Target: &c.flagWorkerDnsServer,
+		Usage:  "Use a custom DNS server when workers resolve endpoints.",
+		Hidden: true,
+	})
 
 	f.StringVar(&base.StringVar{
 		Name:       "worker-auth-method",
@@ -578,6 +585,7 @@ func (c *Command) Run(args []string) int {
 	c.Config.DevUiPassthroughDir = c.flagUiPassthroughDir
 
 	c.SkipPlugins = c.flagSkipPlugins
+	c.WorkerDnsServer = c.flagWorkerDnsServer
 
 	for _, l := range c.Config.Listeners {
 		if len(l.Purpose) != 1 {

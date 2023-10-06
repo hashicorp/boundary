@@ -55,12 +55,13 @@ type Command struct {
 	controller    *controller.Controller
 	worker        *worker.Worker
 
-	flagConfig      []string
-	flagConfigKms   string
-	flagLogLevel    string
-	flagLogFormat   string
-	flagCombineLogs bool
-	flagSkipPlugins bool
+	flagConfig          []string
+	flagConfigKms       string
+	flagLogLevel        string
+	flagLogFormat       string
+	flagCombineLogs     bool
+	flagSkipPlugins     bool
+	flagWorkerDnsServer string
 
 	reloadedCh                           chan struct{}  // for tests
 	startedCh                            chan struct{}  // for tests
@@ -143,6 +144,12 @@ func (c *Command) Flags() *base.FlagSets {
 		Name:   "skip-plugins",
 		Target: &c.flagSkipPlugins,
 		Usage:  "Skip loading compiled-in plugins. This does not prevent loopback plugins from being loaded if enabled.",
+		Hidden: true,
+	})
+	f.StringVar(&base.StringVar{
+		Name:   "worker-dns-server",
+		Target: &c.flagWorkerDnsServer,
+		Usage:  "Use a custom DNS server when workers resolve endpoints.",
 		Hidden: true,
 	})
 
@@ -264,6 +271,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	c.SkipPlugins = c.flagSkipPlugins
+	c.WorkerDnsServer = c.flagWorkerDnsServer
 
 	// Perform controller-specific listener checks here before setup
 	var clusterAddr string

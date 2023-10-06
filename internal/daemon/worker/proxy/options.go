@@ -25,6 +25,7 @@ func GetOpts(opt ...Option) Options {
 type Options struct {
 	WithInjectedApplicationCredentials []*serverpb.Credential
 	WithPostConnectionHook             func(net.Conn)
+	WithDnsServer                      string
 }
 
 func getDefaultOptions() Options {
@@ -49,5 +50,13 @@ func WithInjectedApplicationCredentials(creds []*serverpb.Credential) Option {
 func WithPostConnectionHook(fn func(net.Conn)) Option {
 	return func(o *Options) {
 		o.WithPostConnectionHook = fn
+	}
+}
+
+// WithDnsServer allows specifying lookup of the endpoint to happen via an
+// alternate DNS server. Must be in host:port form.
+func WithDnsServer(with string) Option {
+	return func(o *Options) {
+		o.WithDnsServer = with
 	}
 }
