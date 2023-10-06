@@ -204,3 +204,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/sqlite v1.5.3 // indirect
 )
+
+replace nhooyr.io/websocket => github.com/tmessi/websocket v0.0.0-20231006132118-662e2f7878ac
