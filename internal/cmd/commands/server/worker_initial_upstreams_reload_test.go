@@ -97,7 +97,7 @@ pollFirstController:
 	for {
 		select {
 		case <-timeout.C:
-			t.Fatalf("timeout wait for worker to connect to first controller")
+			t.Fatalf("timeout waiting for worker to connect to first controller")
 		case <-poll.C:
 			w, err = serversRepo.LookupWorkerByName(testController.Context(), "test")
 			require.NoError(err)
@@ -168,7 +168,7 @@ pollSecondController:
 	for {
 		select {
 		case <-timeout.C:
-			t.Fatalf("timeout wait for worker to connect to second controller")
+			t.Fatalf("timeout waiting for worker to connect to second controller")
 		case <-poll.C:
 			w, err = serversRepo.LookupWorkerByName(testController2.Context(), "test")
 			require.NoError(err)

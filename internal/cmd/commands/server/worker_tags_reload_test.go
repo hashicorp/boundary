@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/testing/controller"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
@@ -74,8 +75,13 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	rootWrapper, _ := wrapperWithKey(t)
 	recoveryWrapper, _ := wrapperWithKey(t)
 	workerAuthWrapper, key := wrapperWithKey(t)
-	testController := controller.NewTestController(t, controller.WithWorkerAuthKms(workerAuthWrapper), controller.WithRootKms(rootWrapper), controller.WithRecoveryKms(recoveryWrapper))
-	defer testController.Shutdown()
+	testController := controller.NewTestController(
+		t,
+		controller.WithWorkerAuthKms(workerAuthWrapper),
+		controller.WithRootKms(rootWrapper),
+		controller.WithRecoveryKms(recoveryWrapper),
+	)
+	t.Cleanup(testController.Shutdown)
 
 	wg := &sync.WaitGroup{}
 
@@ -94,7 +100,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatalf("timeout")
+		t.Fatalf("timeout waiting for worker start")
 	}
 
 	fetchWorkerTags := func(name string, key string, values []string) {
@@ -104,29 +110,88 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		w, err := serversRepo.LookupWorkerByName(testController.Context(), name)
 		require.NoError(err)
 		require.NotNil(w)
-		v, ok := w.CanonicalTags()[key]
-		require.True(ok)
+		tags := w.CanonicalTags()
+		v, ok := tags[key]
+		require.True(ok, fmt.Sprintf("EXPECTED: map[%s:%s], ACTUAL: %+v", key, values, tags))
 		require.ElementsMatch(values, v)
 	}
 
 	// Give time to populate up to the controller
-	time.Sleep(10 * time.Second)
+	// Wait until the worker has connected to the controller as seen via
+	// two status updates
+	timeout := time.NewTimer(15 * time.Second)
+	poll := time.NewTimer(0)
+	var w *server.Worker
+	var lastStatusTime time.Time
+	serversRepo, err := testController.Controller().ServersRepoFn()
+	require.NoError(err)
+pollController:
+	for {
+		select {
+		case <-timeout.C:
+			t.Fatalf("timeout waiting for worker to connect to controller")
+		case <-poll.C:
+			w, err = serversRepo.LookupWorkerByName(testController.Context(), "test")
+			require.NoError(err)
+			if w != nil {
+				switch {
+				case lastStatusTime.IsZero():
+					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
+				default:
+					if !lastStatusTime.Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
+						timeout.Stop()
+						break pollController
+					}
+				}
+			}
+			poll.Reset(time.Second)
+		}
+	}
+
 	fetchWorkerTags("test", "type", []string{"dev", "local"})
 
+	// Set new tags on worker
 	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, key, testController.ClusterAddrs()[0]))
-
 	cmd.SighupCh <- struct{}{}
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(15 * time.Second):
-		t.Fatalf("timeout")
+		t.Fatalf("timeout waiting for worker start")
 	}
 
-	time.Sleep(10 * time.Second)
+	// Give time to populate up to the controller
+	timeout.Reset(15 * time.Second)
+	poll.Reset(time.Second)
+	lastStatusTime = time.Time{}
+	startTime := time.Now()
+pollControllerAgain:
+	for {
+		select {
+		case <-timeout.C:
+			t.Fatalf("timeout waiting for worker to connect to controller")
+		case <-poll.C:
+			w, err = serversRepo.LookupWorkerByName(testController.Context(), "test")
+			require.NoError(err)
+			if w != nil {
+				switch {
+				case lastStatusTime.IsZero():
+					if w.GetLastStatusTime().AsTime().Round(time.Second).After(startTime) {
+						lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
+					}
+				default:
+					if !lastStatusTime.Round(time.Second).Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
+						timeout.Stop()
+						break pollControllerAgain
+					}
+				}
+			}
+			poll.Reset(time.Second)
+		}
+	}
+
 	fetchWorkerTags("test", "foo", []string{"bar", "baz"})
 
 	cmd.ShutdownCh <- struct{}{}
-
 	wg.Wait()
 }
 
