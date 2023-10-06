@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-multierror"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1099,6 +1100,14 @@ func Test_WriteError(t *testing.T) {
 			info:            info,
 			errSinkFileName: c.ErrorEvents.Name(),
 		},
+		{
+			name:            "multierror",
+			ctx:             testCtx,
+			e:               multierror.Append(stderrors.New("multierror")),
+			opt:             []event.Option{event.WithInfo("test", "info")},
+			info:            info,
+			errSinkFileName: c.ErrorEvents.Name(),
+		},
 	}
 
 	for _, tt := range tests {
@@ -1117,7 +1126,7 @@ func Test_WriteError(t *testing.T) {
 			event.WriteError(tt.ctx, event.Op(op), tt.e, tt.opt...)
 			if tt.errSinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.errSinkFileName, nil, 0o666) }()
-				b, err := ioutil.ReadFile(tt.errSinkFileName)
+				b, err := os.ReadFile(tt.errSinkFileName)
 				require.NoError(err)
 
 				if tt.noOutput {
