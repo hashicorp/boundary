@@ -56,6 +56,8 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 * cli: Fix issue when using the `authenticate` command against a password auth
   method on Windows where the password would be swallowed when the login name is
   submitted ([PR](https://github.com/hashicorp/boundary/pull/3800))
+* worker: Fix an issue that could cause intermittent startup issues on slow
+  systems ([PR](https://github.com/hashicorp/boundary/pull/3803))
 
 ## 0.13.1 (2023/07/10)
 
