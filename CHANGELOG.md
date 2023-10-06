@@ -58,6 +58,10 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
   submitted ([PR](https://github.com/hashicorp/boundary/pull/3800))
 * worker: Fix an issue that could cause intermittent startup issues on slow
   systems ([PR](https://github.com/hashicorp/boundary/pull/3803))
+* cli: Remove websocket max message size. This fixes issues where large message
+  sizes are sent to the client from a worker which resulted in the connection
+  being terminated, as is the case with an scp download when using an SSH
+  Target. ([PR](https://github.com/hashicorp/boundary/pull/3808))
 
 ## 0.13.1 (2023/07/10)
 
