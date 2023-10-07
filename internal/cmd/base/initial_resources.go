@@ -453,13 +453,13 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 		b.DevTargetAddress = "127.0.0.1"
 	}
 	opts := []target.Option{
-		target.WithName("Generated target with a direct address"),
+		target.WithName("www.hashicorp.com"),
 		target.WithDescription("Provides an initial target using an address in Boundary"),
-		target.WithDefaultPort(uint32(b.DevTargetDefaultPort)),
+		target.WithDefaultPort(443),
 		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
-		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
+		target.WithSessionConnectionLimit(5),
 		target.WithPublicId(b.DevTargetId),
-		target.WithAddress(b.DevTargetAddress),
+		target.WithAddress("www.hashicorp.com"),
 	}
 	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
 	if err != nil {
@@ -524,6 +524,7 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
 		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevSecondaryTargetId),
+		target.WithName("foo.boundary"),
 	}
 	t, err := target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
 	if err != nil {
@@ -539,6 +540,25 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	}
 	b.InfoKeys = append(b.InfoKeys, "generated target with host source id")
 	b.Info["generated target with host source id"] = b.DevSecondaryTargetId
+
+	opts = []target.Option{
+		target.WithName("Generated target to local postgres"),
+		target.WithDescription("Provides a target to a local postgres instance"),
+		target.WithDefaultPort(5432),
+		target.WithSessionMaxSeconds(28800),
+		target.WithSessionConnectionLimit(-1),
+		target.WithPublicId("ttcp_postgresdb"),
+		target.WithAddress("localhost"),
+		target.WithName("postgres.mine"),
+	}
+	t, err = target.New(ctx, tcp.Subtype, b.DevProjectId, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create target object: %w", err)
+	}
+	_, err = targetRepo.CreateTarget(ctx, t, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save target to the db: %w", err)
+	}
 
 	if b.DevUnprivilegedUserId != "" {
 		iamRepo, err := iam.NewRepository(ctx, rw, rw, kmsCache, iam.WithRandomReader(b.SecureRandomReader))
