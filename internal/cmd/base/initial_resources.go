@@ -456,8 +456,8 @@ func (b *Server) CreateInitialTargetWithAddress(ctx context.Context) (target.Tar
 		target.WithName("www.hashicorp.com"),
 		target.WithDescription("Provides an initial target using an address in Boundary"),
 		target.WithDefaultPort(443),
-		target.WithSessionMaxSeconds(uint32(b.DevTargetSessionMaxSeconds)),
-		target.WithSessionConnectionLimit(5),
+		target.WithSessionMaxSeconds(5),
+		target.WithSessionConnectionLimit(int32(b.DevTargetSessionConnectionLimit)),
 		target.WithPublicId(b.DevTargetId),
 		target.WithAddress("www.hashicorp.com"),
 	}
