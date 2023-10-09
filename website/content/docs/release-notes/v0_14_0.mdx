@@ -51,7 +51,7 @@ description: |-
       Dynamic credential support for storage buckets <sup>HCP/ENT</sup>
     </td>
     <td style={{verticalAlign: 'middle'}}>
-      You can now configure dynamic credentials for AWS S3 storage buckets using the Amazon Web Services (AWS) <code>AssumeRole</code> API.
+      You can now configure dynamic credentials for AWS S3 storage buckets using the Amazon Web Services (AWS) <code>AssumeRole</code> API. We recommend that you configure credentials using <code>AssumeRole</code> instead of access keys when possible.
       <br /><br />
       Learn more:&nbsp;
       <a href="/boundary/docs/configuration/session-recording/create-storage-bucket">Create a storage bucket</a>
@@ -63,7 +63,7 @@ description: |-
       Remote pass-through commands for SSH
     </td>
     <td style={{verticalAlign: 'middle'}}>
-      A new SSH flag, <code>remote-command</code> was introduced to the [boundary connect ssh helper](https://developer.hashicorp.com/boundary/docs/commands/connect/ssh). It lets you run the specified commands on the remote-machine using pass-through arguments.
+      A new SSH flag, <code>remote-command</code> was introduced to the <a href="/boundary/docs/commands/connect/ssh">boundary connect ssh helper</a>. It lets you run the specified commands on the remote-machine using pass-through arguments.
       <br /><br />
       Learn more:&nbsp;
       <a href="/boundary/docs/commands/connect/ssh">connect ssh command</a>
@@ -84,10 +84,10 @@ description: |-
 
   <tr>
     <td style={{verticalAlign: 'middle'}}>
-      Improved telemetry <sup>HCP only</sup>
+      Improved telemetry
     </td>
     <td style={{verticalAlign: 'middle'}}>
-      Improved telemetry was added for HCP Boundary. You can enable telemetry to gather information about your Boundary cluster.
+      Improved telemetry was added to Boundary. You can enable telemetry to gather information about your Boundary cluster.
       <br /><br />
       Learn more:&nbsp;
       <a href="/boundary/docs/configuration/events">events stanza</a>
