@@ -32,6 +32,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
@@ -633,6 +634,7 @@ func TestControllerConfig(t testing.TB, ctx context.Context, tc *TestController,
 		require.NoError(t, opts.Config.Controller.InitNameIfEmpty(ctxTest))
 	}
 	opts.Config.Controller.Scheduler.JobRunIntervalDuration = opts.SchedulerRunJobInterval
+	opts.Config.Controller.ApiRateLimiterMaxEntries = ratelimit.DefaultLimiterMaxEntries()
 
 	if opts.EnableEventing {
 		opts.Config.Eventing = &event.EventerConfig{

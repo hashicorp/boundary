@@ -693,7 +693,7 @@ func Parse(d string) (*Config, error) {
 		}
 
 		if result.Controller.ApiRateLimiterMaxEntries <= 0 {
-			result.Controller.ApiRateLimiterMaxEntries = ratelimit.DefaultLimiterMaxEntries
+			result.Controller.ApiRateLimiterMaxEntries = ratelimit.DefaultLimiterMaxEntries()
 		}
 	}
 
