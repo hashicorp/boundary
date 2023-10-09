@@ -50,6 +50,7 @@ import (
 	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-rate"
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 	"github.com/hashicorp/nodeenrollment"
@@ -118,6 +119,8 @@ type Controller struct {
 	apiGrpcServer         *grpc.Server
 	apiGrpcServerListener grpcServerListener
 	apiGrpcGatewayTicket  string
+
+	rateLimiter *rate.Limiter
 
 	// Repo factory methods
 	AuthTokenRepoFn           common.AuthTokenRepoFactory
@@ -244,6 +247,16 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("exactly one cluster listener is required")
 	}
 	c.clusterListener = clusterListeners[0]
+
+	rateLimits, err := conf.RawConfig.Controller.ApiRateLimits.Limits(c.baseContext)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing rate limit configuration: %w", err)
+	}
+
+	c.rateLimiter, err = rate.NewLimiter(rateLimits, conf.RawConfig.Controller.ApiRateLimiterMaxEntries)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing rate limiter: %w", err)
+	}
 
 	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
