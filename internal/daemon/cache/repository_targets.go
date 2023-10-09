@@ -7,18 +7,41 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	stdErrors "errors"
+	stderrors "errors"
 	"fmt"
 
+	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/mql"
 )
 
-func (r *Repository) refreshTargets(ctx context.Context, u *user, targets []*targets.Target) error {
+// TargetRetrievalFunc is a function that retrieves targets
+// from the provided boundary addr using the provided token.
+type TargetRetrievalFunc func(ctx context.Context, addr, token string) ([]*targets.Target, error)
+
+func defaultTargetFunc(ctx context.Context, addr, token string) ([]*targets.Target, error) {
+	const op = "cache.defaultTargetFunc"
+	client, err := api.NewClient(&api.Config{
+		Addr:  addr,
+		Token: token,
+	})
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	tarClient := targets.NewClient(client)
+	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true))
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return l.Items, nil
+}
+
+func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
 	const op = "cache.(Repository).refreshTargets"
 	switch {
 	case util.IsNil(u):
@@ -27,26 +50,53 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, targets []*tar
 		return errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
 	}
 
-	foundU := u.clone()
-	if err := r.rw.LookupById(ctx, foundU); err != nil {
-		// if this user isn't known, error out.
-		return errors.Wrap(ctx, err, op, errors.WithMsg("looking up user"))
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	if opts.withTargetRetrievalFunc == nil {
+		opts.withTargetRetrievalFunc = defaultTargetFunc
 	}
 
-	_, err := r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+	// Find and use a token for retrieving targets
+	var gotResponse bool
+	var resp []*targets.Target
+	var retErr error
+	for at, t := range tokens {
+		resp, err = opts.withTargetRetrievalFunc(ctx, u.Address, t)
+		if err != nil {
+			// TODO: If we get an error about the token no longer having
+			// permissions, remove it.
+			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
+			continue
+		}
+		gotResponse = true
+		break
+	}
+	if retErr != nil {
+		if saveErr := r.SaveError(ctx, u, resource.Target.String(), retErr); saveErr != nil {
+			return stderrors.Join(err, errors.Wrap(ctx, saveErr, op))
+		}
+	}
+	if !gotResponse {
+		return retErr
+	}
+
+	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for user %v", len(resp), u))
+	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
 		// TODO: Instead of deleting everything, use refresh tokens and apply the delta
 		if _, err := w.Exec(ctx, "delete from target where user_id = @user_id",
-			[]any{sql.Named("user_id", foundU.Id)}); err != nil {
+			[]any{sql.Named("user_id", u.Id)}); err != nil {
 			return err
 		}
 
-		for _, t := range targets {
+		for _, t := range resp {
 			item, err := json.Marshal(t)
 			if err != nil {
 				return err
 			}
 			newTarget := &Target{
-				UserId:      foundU.Id,
+				UserId:      u.Id,
 				Id:          t.Id,
 				Name:        t.Name,
 				Description: t.Description,
@@ -64,9 +114,6 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, targets []*tar
 		return nil
 	})
 	if err != nil {
-		if saveErr := r.SaveError(ctx, u, resource.Target.String(), err); saveErr != nil {
-			return stdErrors.Join(err, errors.Wrap(ctx, saveErr, op))
-		}
 		return errors.Wrap(ctx, err, op)
 	}
 	return nil

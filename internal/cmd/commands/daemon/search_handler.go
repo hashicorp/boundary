@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/daemon/cache"
-	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
 )
@@ -32,26 +31,30 @@ const (
 	authTokenIdKey  = "auth_token_id"
 )
 
-func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (http.HandlerFunc, error) {
-	const op = "daemon.newSearchTargetsHandlerFunc"
+func newSearchHandlerFunc(ctx context.Context, repo *cache.Repository) (http.HandlerFunc, error) {
+	const op = "daemon.newSearchHandlerFunc"
 	switch {
 	case util.IsNil(repo):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "repository is missing")
 	}
+
+	s, err := cache.NewSearchService(ctx, repo)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		filter, err := handlers.NewFilter(ctx, r.URL.Query().Get(filterKey))
-		if err != nil {
-			writeError(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
 		resource := r.URL.Query().Get(resourceKey)
 		authTokenId := r.URL.Query().Get(authTokenIdKey)
 
+		searchableResource := cache.ToSearchableResource(resource)
 		switch {
 		case resource == "":
 			writeError(w, "resource is a required field but was empty", http.StatusBadRequest)
+			return
+		case !searchableResource.Valid():
+			writeError(w, "provided resource is not a valid searchable resource", http.StatusBadRequest)
 			return
 		case authTokenId == "":
 			writeError(w, fmt.Sprintf("%s is a required field but was empty", authTokenIdKey), http.StatusBadRequest)
@@ -65,18 +68,14 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 		}
 
 		query := r.URL.Query().Get(queryKey)
+		filter := r.URL.Query().Get(filterKey)
 
-		var res *SearchResult
-		switch resource {
-		case "targets":
-			res, err = searchTargets(r.Context(), repo, authTokenId, query, filter)
-		case "sessions":
-			res, err = searchSessions(r.Context(), repo, authTokenId, query, filter)
-		default:
-			writeError(w, fmt.Sprintf("search doesn't support %q resource", resource), http.StatusBadRequest)
-			return
-		}
-
+		res, err := s.Search(ctx, cache.SearchParams{
+			AuthTokenId: authTokenId,
+			Resource:    searchableResource,
+			Query:       query,
+			Filter:      filter,
+		})
 		if err != nil {
 			switch {
 			case errors.Match(errors.T(errors.InvalidParameter), err):
@@ -84,12 +83,15 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 			default:
 				writeError(w, err.Error(), http.StatusInternalServerError)
 			}
+			return
 		}
 		if res == nil {
 			writeError(w, "nil SearchResult generated", http.StatusInternalServerError)
+			return
 		}
 
-		j, err := json.Marshal(res)
+		apiRes := toApiResult(res)
+		j, err := json.Marshal(apiRes)
 		if err != nil {
 			writeError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -99,50 +101,10 @@ func newSearchTargetsHandlerFunc(ctx context.Context, repo *cache.Repository) (h
 	}, nil
 }
 
-func searchTargets(ctx context.Context, repo *cache.Repository, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error) {
-	var found []*targets.Target
-	var err error
-	switch query {
-	case "":
-		found, err = repo.ListTargets(ctx, authTokenId)
-	default:
-		found, err = repo.QueryTargets(ctx, authTokenId, query)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	finalTars := make([]*targets.Target, 0, len(found))
-	for _, item := range found {
-		if filter.Match(item) {
-			finalTars = append(finalTars, item)
-		}
-	}
+// toApiResult converts a domain search result to an api search result
+func toApiResult(sr *cache.SearchResult) *SearchResult {
 	return &SearchResult{
-		Targets: finalTars,
-	}, nil
-}
-
-func searchSessions(ctx context.Context, repo *cache.Repository, authTokenId, query string, filter *handlers.Filter) (*SearchResult, error) {
-	var found []*sessions.Session
-	var err error
-	switch query {
-	case "":
-		found, err = repo.ListSessions(ctx, authTokenId)
-	default:
-		found, err = repo.QuerySessions(ctx, authTokenId, query)
+		Targets:  sr.Targets,
+		Sessions: sr.Sessions,
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	finalSess := make([]*sessions.Session, 0, len(found))
-	for _, item := range found {
-		if filter.Match(item) {
-			finalSess = append(finalSess, item)
-		}
-	}
-	return &SearchResult{
-		Sessions: finalSess,
-	}, nil
 }

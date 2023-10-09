@@ -232,7 +232,7 @@ func (s *cacheServer) serve(ctx context.Context, cmd Commander, l net.Listener, 
 	}()
 
 	mux := http.NewServeMux()
-	searchTargetsFn, err := newSearchTargetsHandlerFunc(ctx, repo)
+	searchTargetsFn, err := newSearchHandlerFunc(ctx, repo)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
