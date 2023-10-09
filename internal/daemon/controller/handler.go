@@ -46,6 +46,7 @@ import (
 	"github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	opsservices "github.com/hashicorp/boundary/internal/gen/ops/services"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-secure-stdlib/listenerutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -93,7 +94,8 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 		return nil, err
 	}
 
-	corsWrappedHandler := wrapHandlerWithCors(mux, props)
+	rateLimitedHandler := ratelimit.Handler(c.rateLimiter, mux)
+	corsWrappedHandler := wrapHandlerWithCors(rateLimitedHandler, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
 	printablePathCheckHandler := cleanhttp.PrintablePathCheckHandler(callbackInterceptingHandler, nil)
