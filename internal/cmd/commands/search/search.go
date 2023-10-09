@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
+	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
@@ -114,7 +115,7 @@ func (c *SearchCommand) Run(args []string) int {
 		c.PrintCliError(err)
 		return base.CommandCliError
 	}
-	res := &daemon.SearchResult{}
+	res := &cache.SearchResult{}
 	apiErr, err := resp.Decode(res)
 	if err != nil {
 		c.PrintCliError(err)
@@ -168,7 +169,7 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response,
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	addr := daemon.SocketAddress(daemonPath)
+	addr := cache.SocketAddress(daemonPath)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -183,7 +184,7 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response,
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("new client request error"))
 	}
-	req.Header.Add(daemon.VersionHeaderKey, version.Get().VersionNumber())
+	req.Header.Add(cache.VersionHeaderKey, version.Get().VersionNumber())
 	q := url.Values{}
 	q.Add("auth_token_id", fb.authTokenId)
 	q.Add("resource", fb.resource)

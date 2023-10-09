@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
@@ -89,7 +90,7 @@ func (c *AddTokenCommand) Add(ctx context.Context) (*api.Error, error) {
 		return nil, err
 	}
 
-	pa := upsertTokenRequest{
+	pa := cache.UpsertTokenRequest{
 		BoundaryAddr: client.Addr(),
 	}
 	switch keyringType {
@@ -107,7 +108,7 @@ func (c *AddTokenCommand) Add(ctx context.Context) (*api.Error, error) {
 		if at == nil {
 			return nil, errors.New(ctx, errors.Conflict, op, "no auth token available to send to daemon")
 		}
-		pa.Keyring = &keyringToken{
+		pa.Keyring = &cache.KeyringToken{
 			KeyringType: keyringType,
 			TokenName:   tokenName,
 		}
@@ -122,13 +123,13 @@ func (c *AddTokenCommand) Add(ctx context.Context) (*api.Error, error) {
 	return addToken(ctx, dotPath, &pa)
 }
 
-func addToken(ctx context.Context, daemonPath string, p *upsertTokenRequest) (*api.Error, error) {
+func addToken(ctx context.Context, daemonPath string, p *cache.UpsertTokenRequest) (*api.Error, error) {
 	const op = "daemon.addToken"
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	addr := SocketAddress(daemonPath)
+	addr := cache.SocketAddress(daemonPath)
 	_, err = os.Stat(strings.TrimPrefix(addr, "unix://"))
 	if strings.HasPrefix(addr, "unix://") && err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -144,7 +145,7 @@ func addToken(ctx context.Context, daemonPath string, p *upsertTokenRequest) (*a
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add(VersionHeaderKey, version.Get().VersionNumber())
+	req.Header.Add(cache.VersionHeaderKey, version.Get().VersionNumber())
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

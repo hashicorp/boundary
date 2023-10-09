@@ -4,25 +4,21 @@
 package cache
 
 import (
-	"github.com/hashicorp/go-dbw"
+	"context"
+
+	"github.com/hashicorp/boundary/internal/cache"
 )
 
 type options struct {
-	withDebug                  bool
-	withUrl                    string
-	withUpdateLastAccessedTime bool
-	withDbType                 dbw.DbType
-	withTargetRetrievalFunc    TargetRetrievalFunc
-	withSessionRetrievalFunc   SessionRetrievalFunc
+	withDebug                   bool
+	withBoundaryTokenReaderFunc cache.BoundaryTokenReaderFn
 }
 
 // Option - how options are passed as args
 type Option func(*options) error
 
 func getDefaultOptions() options {
-	return options{
-		withDbType: dbw.Sqlite,
-	}
+	return options{}
 }
 
 func getOpts(opt ...Option) (options, error) {
@@ -36,42 +32,18 @@ func getOpts(opt ...Option) (options, error) {
 	return opts, nil
 }
 
-// WithUrls provides optional url
-func WithUrl(url string) Option {
-	return func(o *options) error {
-		o.withUrl = url
-		return nil
-	}
-}
-
 // WithDebug provides an optional debug flag.
-func WithDebug(debug bool) Option {
+func WithDebug(_ context.Context, debug bool) Option {
 	return func(o *options) error {
 		o.withDebug = debug
 		return nil
 	}
 }
 
-// WithUpdateLastAccessedTime provides an option for updating the last access time
-func WithUpdateLastAccessedTime(b bool) Option {
+// WithBoundaryTokenReaderFunc provides an option for specifying a BoundaryTokenReaderFn
+func WithBoundaryTokenReaderFunc(_ context.Context, fn cache.BoundaryTokenReaderFn) Option {
 	return func(o *options) error {
-		o.withUpdateLastAccessedTime = b
-		return nil
-	}
-}
-
-// WithTargetRetrievalFunc provides an option for specifying a targetRetrievalFunc
-func WithTargetRetrievalFunc(fn TargetRetrievalFunc) Option {
-	return func(o *options) error {
-		o.withTargetRetrievalFunc = fn
-		return nil
-	}
-}
-
-// WithSessionRetrievalFunc provides an option for specifying a sessionRetrievalFunc
-func WithSessionRetrievalFunc(fn SessionRetrievalFunc) Option {
-	return func(o *options) error {
-		o.withSessionRetrievalFunc = fn
+		o.withBoundaryTokenReaderFunc = fn
 		return nil
 	}
 }

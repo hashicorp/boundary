@@ -15,25 +15,19 @@ import (
 	"github.com/mitchellh/cli"
 )
 
-// wrappableCommand defines the interface for the commands that can be wrapped.
-type wrappableCommand interface {
-	cli.Command
-	Commander
-}
-
 // CommandWrapper starts the boundary daemon after the command was Run and attempts
 // to send the current persona to any running daemon.
 type CommandWrapper struct {
-	wrappableCommand
+	cli.Command
 	ui cli.Ui
 }
 
 // Wrap returns a cli.CommandFactory that returns a command wrapped in the CommandWrapper.
-func Wrap(ui cli.Ui, wrapped wrappableCommand) cli.CommandFactory {
+func Wrap(ui cli.Ui, wrapped cli.Command) cli.CommandFactory {
 	return func() (cli.Command, error) {
 		return &CommandWrapper{
-			wrappableCommand: wrapped,
-			ui:               ui,
+			Command: wrapped,
+			ui:      ui,
 		}, nil
 	}
 }
@@ -41,7 +35,7 @@ func Wrap(ui cli.Ui, wrapped wrappableCommand) cli.CommandFactory {
 // Run runs the wrapped command and then attempts to start the boundary daemon and send
 // the current persona
 func (w *CommandWrapper) Run(args []string) int {
-	r := w.wrappableCommand.Run(args)
+	r := w.Command.Run(args)
 
 	ctx := context.Background()
 	if w.startDaemon(ctx) {

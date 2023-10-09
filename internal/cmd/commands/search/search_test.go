@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/boundary/api/sessions"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
+	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,12 +63,12 @@ func TestSearch(t *testing.T) {
 		return nil, errors.New("test not found error")
 	}
 
-	srv := daemon.NewTestServer(t, cmd)
+	srv := cache.NewTestServer(t, cmd)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		srv.Serve(t, daemon.WithBoundaryTokenReaderFunc(ctx, boundaryTokenReaderFn))
+		srv.Serve(t, cache.WithBoundaryTokenReaderFunc(ctx, boundaryTokenReaderFn))
 	}()
 	// Give the store some time to get initialized
 	time.Sleep(100 * time.Millisecond)
@@ -119,7 +119,7 @@ func TestSearch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, err := search(ctx, srv.BaseSocketDir(), tc.fb)
 			require.NoError(t, err)
-			r := daemon.SearchResult{}
+			r := cache.SearchResult{}
 			apiErr, err := resp.Decode(&r)
 			assert.NoError(t, err)
 			assert.NotNil(t, apiErr)
@@ -133,12 +133,12 @@ func TestSearch(t *testing.T) {
 			resource:    "targets",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
+		r := cache.SearchResult{}
 		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
 		assert.NotNil(t, r)
-		assert.EqualValues(t, r, daemon.SearchResult{})
+		assert.EqualValues(t, r, cache.SearchResult{})
 	})
 
 	t.Run("empty response from query", func(t *testing.T) {
@@ -148,12 +148,12 @@ func TestSearch(t *testing.T) {
 			resource:    "targets",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
+		r := cache.SearchResult{}
 		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
 		assert.NotNil(t, r)
-		assert.EqualValues(t, r, daemon.SearchResult{})
+		assert.EqualValues(t, r, cache.SearchResult{})
 	})
 
 	srv.AddResources(t, cmd.at, []*targets.Target{
@@ -170,7 +170,7 @@ func TestSearch(t *testing.T) {
 			resource:    "targets",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
+		r := cache.SearchResult{}
 		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
@@ -184,7 +184,7 @@ func TestSearch(t *testing.T) {
 			resource:    "targets",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
+		r := cache.SearchResult{}
 		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
@@ -198,7 +198,7 @@ func TestSearch(t *testing.T) {
 			resource:    "targets",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
+		r := cache.SearchResult{}
 		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
@@ -213,7 +213,7 @@ func TestSearch(t *testing.T) {
 			resource:    "sessions",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
+		r := cache.SearchResult{}
 		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
@@ -228,7 +228,7 @@ func TestSearch(t *testing.T) {
 			resource:    "sessions",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
+		r := cache.SearchResult{}
 		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)
@@ -242,7 +242,7 @@ func TestSearch(t *testing.T) {
 			resource:    "sessions",
 		})
 		require.NoError(t, err)
-		r := daemon.SearchResult{}
+		r := cache.SearchResult{}
 		apiErr, err := resp.Decode(&r)
 		assert.NoError(t, err)
 		assert.Nil(t, apiErr)

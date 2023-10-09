@@ -15,13 +15,12 @@ import (
 	"sync"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/daemon/cache"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-homedir"
 	"github.com/posener/complete"
 )
-
-const DefaultRefreshIntervalSeconds = 5 * 60
 
 const (
 	dotDirname  = ".boundary"
@@ -40,7 +39,7 @@ var (
 
 type server interface {
 	setupLogging(context.Context, io.Writer) error
-	serve(context.Context, Commander, net.Listener) error
+	serve(context.Context, cache.Commander, net.Listener) error
 	shutdown() error
 }
 
@@ -101,7 +100,7 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Target:  &c.flagRefreshIntervalSeconds,
 		Usage:   `If set, specifies the number of seconds between cache refreshes. Default: 5 minutes`,
 		Aliases: []string{"r"},
-		Default: DefaultRefreshIntervalSeconds,
+		Default: cache.DefaultRefreshIntervalSeconds,
 	})
 	f.BoolVar(&base.BoolVar{
 		Name:    "store-debug",
@@ -175,25 +174,20 @@ func (c *StartCommand) Run(args []string) int {
 	}
 	writers = append(writers, logFile)
 
-	cfg := &serverConfig{
-		contextCancel:          cancel,
-		refreshIntervalSeconds: c.flagRefreshIntervalSeconds,
-		flagDatabaseUrl:        c.flagDatabaseUrl,
-		flagStoreDebug:         c.flagStoreDebug,
-		flagLogLevel:           c.flagLogLevel,
-		flagLogFormat:          c.flagLogFormat,
-		logWriter:              io.MultiWriter(writers...),
+	cfg := &cache.Config{
+		ContextCancel:          cancel,
+		RefreshIntervalSeconds: c.flagRefreshIntervalSeconds,
+		DatabaseUrl:        c.flagDatabaseUrl,
+		StoreDebug:         c.flagStoreDebug,
+		LogLevel:           c.flagLogLevel,
+		LogFormat:          c.flagLogFormat,
+		LogWriter:              io.MultiWriter(writers...),
 	}
 
-	srv, err := newServer(ctx, cfg)
+	srv, err := cache.New(ctx, cfg)
 	if err != nil {
 		c.UI.Error(err.Error())
 		return base.CommandUserError
-	}
-	l, err := listener(ctx, dotDir)
-	if err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
 	}
 
 	var srvErr error
@@ -201,13 +195,13 @@ func (c *StartCommand) Run(args []string) int {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		srvErr = srv.serve(ctx, c, l)
+		srvErr = srv.Serve(ctx, c)
 	}()
 
 	// This is a blocking call. We rely on the c.ShutdownCh to cancel this
 	// context when sigterm or sigint is received.
 	<-ctx.Done()
-	if err := srv.shutdown(ctx); err != nil {
+	if err := srv.Shutdown(ctx); err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
 	}
