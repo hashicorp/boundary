@@ -174,7 +174,19 @@ description: |-
     </td>
   </tr>
 
-   <tr>
+  <tr>
+    <td style={{verticalAlign: 'middle'}}>
+      Default port value
+    </td>
+    <td style={{verticalAlign: 'middle'}}>
+     As noted in the <a href="/boundary/docs/release-notes/v0_12_0#deprecations-and-changes">v0.12.0 release notes</a>, targets now require a default port value. Previously, any ports that you defined as part of a host address were ignored, but allowed as part of the target definition. From this version on, if you define a port on a host address it results in an error.
+      <br /><br />
+      Learn more:&nbsp;
+      <a href="/boundary/docs/concepts/domain-model/targets">Targets</a>
+    </td>
+  </tr>
+
+  <tr>
     <td style={{verticalAlign: 'middle'}}>
       Application credentials parameter
     </td>
