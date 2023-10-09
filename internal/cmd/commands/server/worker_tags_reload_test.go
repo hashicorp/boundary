@@ -119,6 +119,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 	// Give time to populate up to the controller
 	// Wait until the worker has connected to the controller as seen via
 	// two status updates
+	t.Log("Waiting for worker to connect to controller...")
 	timeout := time.NewTimer(15 * time.Second)
 	poll := time.NewTimer(0)
 	var w *server.Worker
@@ -151,6 +152,7 @@ pollController:
 	fetchWorkerTags("test", "type", []string{"dev", "local"})
 
 	// Set new tags on worker
+	t.Log("Restart worker with new tags...")
 	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, key, testController.ClusterAddrs()[0]))
 	cmd.SighupCh <- struct{}{}
 	select {
@@ -160,10 +162,11 @@ pollController:
 	}
 
 	// Give time to populate up to the controller
+	t.Log("Waiting for worker to connect to controller again...")
 	timeout.Reset(15 * time.Second)
 	poll.Reset(time.Second)
 	lastStatusTime = time.Time{}
-	startTime := time.Now()
+	i := 0
 pollControllerAgain:
 	for {
 		select {
@@ -175,13 +178,18 @@ pollControllerAgain:
 			if w != nil {
 				switch {
 				case lastStatusTime.IsZero():
-					if w.GetLastStatusTime().AsTime().Round(time.Second).After(startTime) {
-						lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
-					}
+					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
+					t.Log(lastStatusTime)
 				default:
+					t.Log(w.GetLastStatusTime().AsTime().Round(time.Second))
+
 					if !lastStatusTime.Round(time.Second).Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
-						timeout.Stop()
-						break pollControllerAgain
+						if i == 3 {
+							timeout.Stop()
+							break pollControllerAgain
+						} else {
+							i += 1
+						}
 					}
 				}
 			}
