@@ -57,7 +57,7 @@ Boundary has two external dependencies:
 - A SQL database
 - At least one KMS
 
-##### SQL Database
+### SQL database
 The database contains Boundary's configuration and session information. The 
 database must be accessible by Controller nodes. 
 
