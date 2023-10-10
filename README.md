@@ -42,7 +42,7 @@ A real-world Boundary installation will likely consist of one or more
 controllers paired with one or more workers. A single Boundary binary can act
 in either of these two modes.
 
-Additionally, Boundary provides a Desktop client & CLI for end-users to request & establish 
+Additionally, Boundary provides a Desktop client and CLI for end-users to request and establish 
 authorized sessions to resources across a network.
 
 <img src="boundary_desktop_example.gif" alt="Boundary Desktop GIF" width="66%" height="66%" loop="true">
