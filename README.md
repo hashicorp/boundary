@@ -69,8 +69,8 @@ In most instances all that is needed is a database endpoint and appropriate cred
 ### KMS 
 Currently, two keys within the KMS are required: one for
 authenticating other cluster components, which must be accessible by both
-Controllers and Workers; and one for encrypting secret values in the database,
-which need only be accessible to Controllers. These keys can be changed over
+controllers and workers; and one for encrypting secret values in the database,
+which only needs to be accessible to controllers. You can change these keys over
 time,
 and key derivation is used extensively to avoid key sprawl of these high-value
 keys. If available, other keys can be used for other purposes, such as
