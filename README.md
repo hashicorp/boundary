@@ -92,7 +92,7 @@ for permanent installations, are detailed in our [Installation Guide](https://de
 ## Quickstart with Boundary Dev
 
 Boundary has a `dev` mode that you can use for testing. In this mode both a
-Controller and Worker are started with a single command, and they have the
+controller and worker are started with a single command, and they have the
 following properties:
 
 * The controller starts a PostgreSQL Docker container to use as storage.
