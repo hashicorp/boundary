@@ -351,23 +351,33 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 	return where, args
 }
 
-// ListDeletedIds lists the public IDs of any targets deleted since the timestamp provided.
-func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
+// ListDeletedIds lists the public IDs of any targets deleted since the timestamp provided,
+// and the timestamp of the transcation within which the targets were listed.
+func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "target.(Repository).ListDeletedIds"
 	var deleteTargets []*deletedTarget
-	if err := r.reader.SearchWhere(ctx, &deleteTargets, "delete_time >= ?", []any{since}); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted targets"))
-	}
+	var transactionTimestamp time.Time
+	r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deleteTargets, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted targets"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	})
 	var targetIds []string
 	for _, t := range deleteTargets {
 		targetIds = append(targetIds, t.PublicId)
 	}
-	return targetIds, nil
+	return targetIds, transactionTimestamp, nil
 }
 
-// GetTotalItems returns an estimate of the total number of items across all targets.
-func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
-	const op = "target.(Repository).GetTotalItems"
+// EstimatedCount returns an estimate of the total number of items across all targets.
+func (r *Repository) EstimatedCount(ctx context.Context) (int, error) {
+	const op = "target.(Repository).EstimatedCount"
 	rows, err := r.reader.Query(ctx, estimateCountTargets, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))

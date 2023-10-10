@@ -411,9 +411,13 @@ func TestListDeletedIds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expect no entries at the start
-	deletedIds, err := repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, ttime, err := repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(t, err)
 	require.Empty(t, deletedIds)
+	// Transaction time should be within ~10 seconds of now
+	now := time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
 
 	// Delete a session
 	tg := tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), "deleteme")
@@ -421,17 +425,23 @@ func TestListDeletedIds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Expect a single entry
-	deletedIds, err = repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, ttime, err = repo.ListDeletedIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(t, err)
 	require.Equal(t, []string{tg.GetPublicId()}, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
 
 	// Try again with the time set to now, expect no entries
-	deletedIds, err = repo.ListDeletedIds(ctx, time.Now())
+	deletedIds, ttime, err = repo.ListDeletedIds(ctx, time.Now())
 	require.NoError(t, err)
 	require.Empty(t, deletedIds)
+	now = time.Now()
+	assert.True(t, ttime.Add(-10*time.Second).Before(now))
+	assert.True(t, ttime.Add(10*time.Second).After(now))
 }
 
-func TestGetTotalItems(t *testing.T) {
+func TestEstimatedItemCount(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -447,7 +457,7 @@ func TestGetTotalItems(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check total entries at start, expect 0
-	numItems, err := repo.GetTotalItems(ctx)
+	numItems, err := repo.EstimatedCount(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 0, numItems)
 
@@ -456,7 +466,7 @@ func TestGetTotalItems(t *testing.T) {
 	// Run analyze to update estimate
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(t, err)
-	numItems, err = repo.GetTotalItems(ctx)
+	numItems, err = repo.EstimatedCount(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, numItems)
 
@@ -466,7 +476,7 @@ func TestGetTotalItems(t *testing.T) {
 	// Run analyze to update estimate
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(t, err)
-	numItems, err = repo.GetTotalItems(ctx)
+	numItems, err = repo.EstimatedCount(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 0, numItems)
 }

@@ -29,8 +29,8 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/session"
@@ -234,87 +234,115 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		return &pbs.ListTargetsResponse{}, nil
 	}
 
-	repo, err := s.repoFn(target.WithPermissions(userPerms))
-	if err != nil {
-		return nil, err
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
 	}
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
-	listTargetsFn := func(prevPageLast target.Target, refreshToken *pbs.ListRefreshToken, limit int) ([]target.Target, error) {
-		opts := []target.Option{
-			target.WithLimit(limit),
-		}
-		if prevPageLast == nil {
-			if refreshToken != nil {
-				opts = append(opts, target.WithStartPageAfterItem(
-					refreshToken.GetLastItemId(),
-					refreshToken.GetLastItemUpdatedTime().AsTime(),
-				))
-			}
-		} else {
-			opts = append(opts, target.WithStartPageAfterItem(prevPageLast.GetPublicId(), prevPageLast.GetUpdateTime().AsTime()))
-		}
-		return repo.ListTargets(ctx, opts...)
+
+	repo, err := s.repoFn(target.WithPermissions(userPerms))
+	if err != nil {
+		return nil, err
 	}
-	filterAndConvertFn := func(item target.Target) (*pb.Target, error) {
-		pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target}
-		outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserId)
-
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(authzScopes[item.GetProjectId()]))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&pr)).Strings()
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-
-		pbItem, err := toProto(ctx, item, outputOpts...)
+	filterItemFn := func(item target.Target) (bool, error) {
+		pbItem, err := toProto(ctx, item, newOutputOpts(ctx, item, authResults, authzScopes)...)
 		if err != nil {
-			return nil, err
+			return false, err
 		}
 
 		filterable, err := subtypes.Filterable(pbItem)
 		if err != nil {
+			return false, err
+		}
+		return filter.Match(filterable), nil
+	}
+
+	var listResp *target.ListResponse
+	if req.GetRefreshToken() == "" {
+		listResp, err = target.List(ctx, repo, &authResults, pageSize, filterItemFn)
+		if err != nil {
 			return nil, err
 		}
-		if filter.Match(filterable) {
-			return pbItem, nil
+	} else {
+		rt, err := parseRefreshToken(ctx, req.GetRefreshToken())
+		if err != nil {
+			return nil, err
 		}
-		return nil, nil
+		var domainResourceType refreshtoken.ResourceType
+		switch rt.ResourceType {
+		case pbs.ResourceType_RESOURCE_TYPE_TARGET:
+			domainResourceType = refreshtoken.ResourceTypeTarget
+		// TODO: Add more when generalizing this
+		default:
+			domainResourceType = refreshtoken.ResourceTypeUnknown
+		}
+		// We're doing the conversion from the protobuf types to the
+		// domain types here rather than in the domain so that the domain
+		// doesn't need to know about the protobuf types.
+		domainRefreshToken := &refreshtoken.RefreshToken{
+			CreatedTime:         rt.CreatedTime.AsTime(),
+			ResourceType:        domainResourceType,
+			PermissionsHash:     rt.PermissionsHash,
+			LastItemId:          rt.LastItemId,
+			LastItemUpdatedTime: rt.LastItemUpdatedTime.AsTime(),
+		}
+		err = refreshtoken.ValidateRefreshToken(
+			ctx,
+			domainRefreshToken,
+			refreshtoken.ResourceTypeTarget,
+			&authResults,
+		)
+		if err != nil {
+			return nil, err
+		}
+		listResp, err = target.ListMore(ctx, domainRefreshToken, repo, &authResults, pageSize, filterItemFn)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	listResp, err := pagination.PaginateRequest(
-		ctx,
-		s.maxPageSize,
-		pbs.ResourceType_RESOURCE_TYPE_TARGET,
-		req,
-		listTargetsFn,
-		filterAndConvertFn,
-		&authResults,
-		repo,
-	)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+	finalItems := make([]*pb.Target, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		item, err := toProto(ctx, item, newOutputOpts(ctx, item, authResults, authzScopes)...)
+		if err != nil {
+			return nil, err
+		}
+		finalItems = append(finalItems, item)
 	}
-
 	respType := "delta"
 	if listResp.CompleteListing {
 		respType = "complete"
 	}
 	resp := &pbs.ListTargetsResponse{
-		Items:        listResp.Items,
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedTotalItems),
+		RemovedIds:   listResp.DeletedIds,
 		ResponseType: respType,
 		SortBy:       "updated_time",
 		SortDir:      "asc",
-		RefreshToken: listResp.MarshaledRefreshToken,
-		RemovedIds:   listResp.DeletedIds,
-		EstItemCount: uint32(listResp.EstimatedItemCount),
 	}
+
+	if listResp.RefreshToken != nil {
+		if listResp.RefreshToken.ResourceType != refreshtoken.ResourceTypeTarget {
+			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
+		}
+		resp.RefreshToken, err = marshalRefreshToken(ctx, &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
+			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_TARGET,
+			PermissionsHash:     listResp.RefreshToken.PermissionsHash,
+			LastItemId:          listResp.RefreshToken.LastItemId,
+			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return resp, nil
 }
 
@@ -1856,6 +1884,51 @@ func validateListRequest(ctx context.Context, req *pbs.ListTargetsRequest) error
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
+}
+
+func newOutputOpts(ctx context.Context, item target.Target, authResults auth.VerifyResults, authzScopes map[string]*scopes.ScopeInfo) []handlers.Option {
+	pr := perms.Resource{Id: item.GetPublicId(), ScopeId: item.GetProjectId(), Type: resource.Target}
+	outputFields := authResults.FetchOutputFields(pr, action.List).SelfOrDefaults(authResults.UserId)
+
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authzScopes[item.GetProjectId()]))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&pr)).Strings()
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+	return outputOpts
+}
+
+// parseRefreshToken parses a refresh token from the input, returning
+// an error if the parsing fails.
+func parseRefreshToken(ctx context.Context, token string) (*pbs.ListRefreshToken, error) {
+	const op = "list.parseRefreshToken"
+	marshaled, err := base58.Decode(token)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	var tok pbs.ListRefreshToken
+	if err := proto.Unmarshal(marshaled, &tok); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return &tok, nil
+}
+
+// marshalRefreshToken marshals a refresh token to its string representation.
+func marshalRefreshToken(ctx context.Context, token *pbs.ListRefreshToken) (string, error) {
+	const op = "list.marshalRefreshToken"
+	if token == nil {
+		return "", errors.New(ctx, errors.InvalidParameter, op, "token is required")
+	}
+	marshaled, err := proto.Marshal(token)
+	if err != nil {
+		return "", errors.Wrap(ctx, err, op)
+	}
+	return base58.Encode(marshaled), nil
 }
 
 func validateAddHostSourcesRequest(req *pbs.AddTargetHostSourcesRequest) error {

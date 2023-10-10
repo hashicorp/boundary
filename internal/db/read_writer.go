@@ -70,6 +70,9 @@ type Reader interface {
 
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(ctx context.Context, rows *sql.Rows, result any) error
+
+	// Now returns the current transaction timestamp.
+	Now(ctx context.Context) (time.Time, error)
 }
 
 // Writer interface defines create, update and retryable transaction handlers
@@ -531,6 +534,22 @@ func (rw *Db) SearchWhere(ctx context.Context, resources any, where string, args
 		return wrapError(ctx, err, op)
 	}
 	return nil
+}
+
+// Now returns the current transaction timestamp.
+func (rw *Db) Now(ctx context.Context) (time.Time, error) {
+	const op = "db.(*Db).Now"
+	rows, err := rw.Query(ctx, "select current_timestamp", nil)
+	if err != nil {
+		return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+	}
+	var now time.Time
+	for rows.Next() {
+		if err := rw.ScanRows(ctx, rows, &now); err != nil {
+			return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+		}
+	}
+	return now, nil
 }
 
 func isNil(i any) bool {
