@@ -66,7 +66,7 @@ Values that are secrets (e.g credentials) are encrypted in the database. Current
 Boundary uses only common extensions and both hosted and self-managed instances are supported.
 In most instances all that is needed is a database endpoint and appropriate credentials.
 
-##### KMS 
+### KMS 
 Currently, two keys within the KMS are required: one for
 authenticating other cluster components, which must be accessible by both
 Controllers and Workers; and one for encrypting secret values in the database,
