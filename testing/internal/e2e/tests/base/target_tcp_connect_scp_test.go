@@ -5,7 +5,10 @@ package base_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -64,17 +67,15 @@ func TestCliTcpTargetConnectTargetAndScp(t *testing.T) {
 	testDir := t.TempDir()
 	t.Log("Creating text file...")
 	fileSource := fmt.Sprintf("%s/%s_src.txt", testDir, t.Name())
-	output := e2e.RunCommand(ctx, "openssl",
-		e2e.WithArgs(
-			"rand",
-			"-base64",
-			"-out", fileSource,
-			"256000",
-		),
-	)
-	require.NoError(t, output.Err, string(output.Stderr))
+	f, err := os.Create(fileSource)
+	require.NoError(t, err)
+	io.CopyN(f, rand.Reader, 256000)
 
-	output = e2e.RunCommand(ctx, "cksum", e2e.WithArgs(fileSource))
+	fi, err := f.Stat()
+	require.NoError(t, err)
+	require.Greater(t, fi.Size(), int64(16000), "Generated file is not larger than 16K")
+
+	output := e2e.RunCommand(ctx, "cksum", e2e.WithArgs(fileSource))
 	require.NoError(t, output.Err, string(output.Stderr))
 	parts := strings.Fields(string(output.Stdout))
 	cksumSource := parts[0]
