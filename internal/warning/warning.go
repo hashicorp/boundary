@@ -1,5 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: BUSL-1.1
 
 package warning
 
@@ -8,13 +8,12 @@ import (
 	"sync"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/hashicorp/boundary/internal/observability/event"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbwarnings "github.com/hashicorp/boundary/internal/gen/controller/api"
 )
 
@@ -61,12 +60,11 @@ func convertToGrpcHeaders(ctx context.Context) error {
 	w.l.Lock()
 	defer w.l.Unlock()
 
+	if len(w.warnings) == 0 {
+		return nil
+	}
 	pbWar := &pbwarnings.WarningResponse{
 		Warnings: w.warnings,
-	}
-	if proto.Equal(pbWar, &pbwarnings.Warning{}) {
-		// no warnings included
-		return nil
 	}
 	var buf []byte
 	var err error

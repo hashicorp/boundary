@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/internal/warning"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
@@ -31,11 +32,28 @@ func (r *Repository) DeleteWorker(ctx context.Context, publicId string, _ ...Opt
 	if publicId == "" {
 		return db.NoRowsAffected, errors.New(ctx, errors.InvalidParameter, op, "missing public id")
 	}
+
+	// If it's a KMS-PKI worker we should warn the user that deleting the
+	// worker may not persist as the worker can be auto recreated. If the
+	// public ID is predictably generated in the KMS fashion, it's a KMS-PKI
+	// worker.
+	wAgg := &workerAggregate{PublicId: publicId}
+	if err := r.reader.LookupById(ctx, wAgg); err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
+	}
+	workerId, err := NewWorkerIdFromScopeAndName(ctx, wAgg.ScopeId, wAgg.Name)
+	if err != nil {
+		return db.NoRowsAffected, errors.Wrap(ctx, err, op, errors.WithMsg("error generating worker id in kms-pki name check case"))
+	}
+	if workerId == publicId {
+		warning.Warn(ctx, warning.DeletingKmsLedWorkersMayNotBePermanent)
+	}
+
 	worker := allocWorker()
 	worker.Worker.PublicId = publicId
 
 	var rowsDeleted int
-	_, err := r.writer.DoTx(
+	_, err = r.writer.DoTx(
 		ctx,
 		db.StdRetryCnt,
 		db.ExpBackoff{},
