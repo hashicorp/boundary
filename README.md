@@ -77,7 +77,7 @@ keys. If other keys are available, you can use them for other purposes, such as
 recovery functionality and encryption of sensitive values in Boundary's config
 file.
 
-Any cloud KMS or Vault's Transit Secrets Engine can be used to satisfy the KMS
+You can use any cloud KMS or Vault's Transit Secrets Engine to satisfy the KMS
 requirement. 
 
 ## Trying out Boundary
