@@ -72,7 +72,7 @@ authenticating other cluster components, which must be accessible by both
 controllers and workers; and one for encrypting secret values in the database,
 which only needs to be accessible to controllers. You can change these keys over
 time,
-and key derivation is used extensively to avoid key sprawl of these high-value
+and Boundary uses key derivation extensively to avoid key sprawl of these high-value
 keys. If available, other keys can be used for other purposes, such as
 recovery functionality and encryption of sensitive values in Boundary's config
 file.
