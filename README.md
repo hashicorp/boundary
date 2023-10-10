@@ -31,8 +31,7 @@ an agent to be installed on every end host.
 
 
 
-Getting Started
--------------------------------
+## Getting started
 
 Boundary consists of two server components: 
 
