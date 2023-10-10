@@ -39,7 +39,7 @@ Boundary consists of two server components:
 * **Workers**, which perform session handling
 
 A real-world Boundary installation will likely consist of one or more
-Controllers paired with one or more Workers. A single Boundary binary can act
+controllers paired with one or more workers. A single Boundary binary can act
 in either of these two modes.
 
 Additionally, Boundary provides a Desktop client & CLI for end-users to request & establish 
