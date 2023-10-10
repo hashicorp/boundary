@@ -72,7 +72,7 @@ Currently, two keys within the KMS are required: one for
 authenticating other cluster components, which must be accessible by both
 Controllers and Workers; and one for encrypting secret values in the database,
 which need only be accessible to Controllers. These keys can be changed over
-time (so long as the original key remains available for any decryption needs),
+time,
 and key derivation is used extensively to avoid key sprawl of these high-value
 keys. If available, other keys can be used for other purposes, such as
 recovery functionality and encryption of sensitive values in Boundary's config
