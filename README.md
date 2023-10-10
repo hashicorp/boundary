@@ -56,7 +56,7 @@ Boundary does _not_ require software to be installed on your hosts and services.
 
 Boundary has two external dependencies: 
 - A SQL database
-- Atleast one KMS
+- At least one KMS
 
 ##### SQL Database
 The database contains Boundary's configuration and session information. The 
