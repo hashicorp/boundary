@@ -95,10 +95,10 @@ Boundary has a `dev` mode that can be used for testing. In this mode both a
 Controller and Worker are started with a single command, and they have the
 following properties:
 
-* The Controller will start a PostgreSQL Docker container to use as storage.
-  This container will be shut down and removed (if possible) when the
-  Controller is (gracefully) shut down.
-* The Controller will use an internal KMS with ephemeral keys
+* The controller starts a PostgreSQL Docker container to use as storage.
+  This container will be shut down and removed, if possible, when the
+  controller is shut down gracefully.
+* The controller will use an internal KMS with ephemeral keys
 
 If you have the following requirements met locally, you can get up and running with Boundary quickly:
 - Golang v1.19 or greater
