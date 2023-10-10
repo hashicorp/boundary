@@ -101,7 +101,7 @@ following properties:
 * The controller will use an internal KMS with ephemeral keys
 
 If you have the following requirements met locally, you can get up and running with Boundary quickly:
-- Golang v1.19 or greater
+- Go v1.21 or greater
 - Docker
 - Either the [Boundary UI Dependencies](https://github.com/hashicorp/boundary-ui#prerequisites)
   for locally building the ui assets
