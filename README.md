@@ -73,7 +73,7 @@ controllers and workers; and one for encrypting secret values in the database,
 which only needs to be accessible to controllers. You can change these keys over
 time,
 and Boundary uses key derivation extensively to avoid key sprawl of these high-value
-keys. If available, other keys can be used for other purposes, such as
+keys. If other keys are available, you can use them for other purposes, such as
 recovery functionality and encryption of sensitive values in Boundary's config
 file.
 
