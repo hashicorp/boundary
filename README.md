@@ -63,7 +63,7 @@ database must be accessible by Controller nodes.
 
 Values that are secrets (e.g credentials) are encrypted in the database. Currently, PostgreSQL is supported as a database and has been tested with Postgres 12 and above.
 
-Boundary uses only common extensions and both hosted and self-run instances are supported.
+Boundary uses only common extensions and both hosted and self-managed instances are supported.
 In most instances all that is needed is a database endpoint and appropriate credentials.
 
 ##### KMS 
