@@ -13,5 +13,5 @@ type ListResponse struct {
 	DeletedIds          []string
 	EstimatedTotalItems int
 	CompleteListing     bool
-	RefreshToken        *refreshtoken.RefreshToken
+	RefreshToken        *refreshtoken.Token
 }

@@ -14,7 +14,7 @@ import (
 
 func ListRefresh(
 	ctx context.Context,
-	tok *refreshtoken.RefreshToken,
+	tok *refreshtoken.Token,
 	repo *Repository,
 	grantsHash []byte,
 	pageSize int,
@@ -84,7 +84,7 @@ dbLoop:
 		DeletedIds:          deletedIds,
 		EstimatedTotalItems: totalItems,
 		CompleteListing:     completeListing,
-		RefreshToken: &refreshtoken.RefreshToken{
+		RefreshToken: &refreshtoken.Token{
 			// Use the timestamp of the deleted IDs transaction with a
 			// buffer to account for overlapping transactions. It is okay
 			// to return a deleted ID more than once. The buffer corresponds

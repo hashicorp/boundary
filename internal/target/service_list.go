@@ -82,7 +82,7 @@ dbLoop:
 	}
 
 	if len(targets) > 0 {
-		resp.RefreshToken = &refreshtoken.RefreshToken{
+		resp.RefreshToken = &refreshtoken.Token{
 			CreatedTime:         time.Now(),
 			ResourceType:        resource.Target,
 			GrantsHash:          grantsHash,

@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
-// A RefreshToken is returned in list endpoints for the purposes of pagination
-type RefreshToken struct {
+// A Token is returned in list endpoints for the purposes of pagination
+type Token struct {
 	CreatedTime         time.Time
 	ResourceType        resource.Type
 	GrantsHash          []byte
@@ -21,13 +21,16 @@ type RefreshToken struct {
 	LastItemUpdatedTime time.Time
 }
 
-// ValidateRefreshToken validates a refresh token.
-func (rt *RefreshToken) Validate(
+// Validate validates the refresh token.
+func (rt *Token) Validate(
 	ctx context.Context,
 	expectedResourceType resource.Type,
 	expectedGrantsHash []byte,
 ) error {
-	const op = "refreshtoken.ValidateRefreshToken"
+	const op = "refreshtoken.Validate"
+	if rt == nil {
+		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was missing")
+	}
 	if len(rt.GrantsHash) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was missing its permission hash")
 	}

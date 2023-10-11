@@ -288,7 +288,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		// We're doing the conversion from the protobuf types to the
 		// domain types here rather than in the domain so that the domain
 		// doesn't need to know about the protobuf types.
-		domainRefreshToken := &refreshtoken.RefreshToken{
+		domainRefreshToken := &refreshtoken.Token{
 			CreatedTime:         rt.CreatedTime.AsTime(),
 			ResourceType:        domainResourceType,
 			GrantsHash:          rt.GrantsHash,
