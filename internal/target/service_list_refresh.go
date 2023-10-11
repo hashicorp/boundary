@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
-func ListUpdatedSince(
+func ListRefresh(
 	ctx context.Context,
 	tok *refreshtoken.RefreshToken,
 	repo *Repository,

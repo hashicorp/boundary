@@ -303,7 +303,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		if err != nil {
 			return nil, err
 		}
-		listResp, err = target.ListUpdatedSince(ctx, domainRefreshToken, repo, grantsHash, pageSize, filterItemFn)
+		listResp, err = target.ListRefresh(ctx, domainRefreshToken, repo, grantsHash, pageSize, filterItemFn)
 		if err != nil {
 			return nil, err
 		}
