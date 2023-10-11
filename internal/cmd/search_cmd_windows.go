@@ -40,7 +40,7 @@ func init() {
 	})
 }
 
-// daemonWrap wrapps the provided wrappableCommand with a daemon writer which
+// daemonWrap wraps the provided wrappableCommand with a daemon writer which
 // conditionally starts the client side daemon after the command completes
 func daemonWrap(ui cli.Ui, c wrappableCommand) cli.CommandFactory {
 	return daemon.Wrap(ui, c)
