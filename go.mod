@@ -90,7 +90,6 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/creack/pty v1.1.18
-	github.com/glebarez/go-sqlite v1.21.2
 	github.com/glebarez/sqlite v1.9.0
 	github.com/golang/protobuf v1.5.3
 	github.com/hashicorp/cap/ldap v0.0.0-20230918191608-899e3f8e8cd6
@@ -108,7 +107,6 @@ require (
 	golang.org/x/net v0.15.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc
 	gopkg.in/square/go-jose.v2 v2.5.1
-	gorm.io/driver/sqlite v1.5.3
 )
 
 require (
@@ -121,7 +119,11 @@ require (
 	modernc.org/sqlite v1.23.1 // indirect
 )
 
-require github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
+require (
+	github.com/glebarez/go-sqlite v1.21.2 // indirect
+	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
+	gorm.io/driver/sqlite v1.5.3 // indirect
+)
 
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
