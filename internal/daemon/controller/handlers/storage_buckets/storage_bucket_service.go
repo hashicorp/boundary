@@ -10,6 +10,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -31,6 +32,11 @@ var (
 		action.List,
 	)
 )
+
+func init() {
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.StorageBucket, IdActions, CollectionActions)
+}
 
 // NewServiceFn returns a storage bucket service which is not implemented in OSS
 var NewServiceFn = func(ctx context.Context,

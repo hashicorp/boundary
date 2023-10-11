@@ -42,6 +42,11 @@ var (
 	)
 )
 
+func init() {
+	// TODO: refactor to remove IdActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.AuthToken, IdActions, CollectionActions)
+}
+
 // Service handles request as described by the pbs.AuthTokenServiceServer interface.
 type Service struct {
 	pbs.UnsafeAuthTokenServiceServer

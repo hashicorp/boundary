@@ -28,6 +28,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostsets"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -83,6 +84,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove idActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.HostSet, action.Union(maps.Values(idActionsTypeMap)...), CollectionActions)
 }
 
 type Service struct {

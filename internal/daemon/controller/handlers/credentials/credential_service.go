@@ -86,6 +86,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove IdActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.Credential, IdActions, CollectionActions)
 }
 
 // Service handles request as described by the pbs.CredentialServiceServer interface.

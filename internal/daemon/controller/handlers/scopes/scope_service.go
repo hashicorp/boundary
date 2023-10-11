@@ -67,6 +67,7 @@ var (
 		action.DestroyScopeKeyVersion,
 	)
 
+	// TODO: get this from action registry
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
 		scope.Global.String(): {
 			resource.AuthMethod:       authmethods.CollectionActions,
@@ -117,6 +118,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.Scope, IdActions, CollectionActions)
 }
 
 // Service handles requests as described by the pbs.ScopeServiceServer interface.

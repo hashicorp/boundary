@@ -44,6 +44,11 @@ var (
 	)
 )
 
+func init() {
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.Session, IdActions, CollectionActions)
+}
+
 // Service handles request as described by the pbs.SessionServiceServer interface.
 type Service struct {
 	pbs.UnsafeSessionServiceServer
