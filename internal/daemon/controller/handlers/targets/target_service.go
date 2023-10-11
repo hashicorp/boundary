@@ -273,7 +273,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 			return nil, err
 		}
 	} else {
-		rt, err := parseRefreshToken(ctx, req.GetRefreshToken())
+		rt, err := handlers.ParseRefreshToken(ctx, req.GetRefreshToken())
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +303,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		if err != nil {
 			return nil, err
 		}
-		listResp, err = target.ListMore(ctx, domainRefreshToken, repo, grantsHash, pageSize, filterItemFn)
+		listResp, err = target.ListUpdatedSince(ctx, domainRefreshToken, repo, grantsHash, pageSize, filterItemFn)
 		if err != nil {
 			return nil, err
 		}
@@ -334,7 +334,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		if listResp.RefreshToken.ResourceType != resource.Target {
 			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
 		}
-		resp.RefreshToken, err = marshalRefreshToken(ctx, &pbs.ListRefreshToken{
+		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
 			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
 			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_TARGET,
 			GrantsHash:          listResp.RefreshToken.GrantsHash,
@@ -1904,34 +1904,6 @@ func newOutputOpts(ctx context.Context, item target.Target, authResults auth.Ver
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
 	}
 	return outputOpts
-}
-
-// parseRefreshToken parses a refresh token from the input, returning
-// an error if the parsing fails.
-func parseRefreshToken(ctx context.Context, token string) (*pbs.ListRefreshToken, error) {
-	const op = "list.parseRefreshToken"
-	marshaled, err := base58.Decode(token)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	var tok pbs.ListRefreshToken
-	if err := proto.Unmarshal(marshaled, &tok); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	return &tok, nil
-}
-
-// marshalRefreshToken marshals a refresh token to its string representation.
-func marshalRefreshToken(ctx context.Context, token *pbs.ListRefreshToken) (string, error) {
-	const op = "list.marshalRefreshToken"
-	if token == nil {
-		return "", errors.New(ctx, errors.InvalidParameter, op, "token is required")
-	}
-	marshaled, err := proto.Marshal(token)
-	if err != nil {
-		return "", errors.Wrap(ctx, err, op)
-	}
-	return base58.Encode(marshaled), nil
 }
 
 func validateAddHostSourcesRequest(req *pbs.AddTargetHostSourcesRequest) error {
