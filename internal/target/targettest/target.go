@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/targettest/store"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -180,6 +181,11 @@ func (t *Target) SetName(name string) {
 
 func (t *Target) SetDescription(description string) {
 	t.Description = description
+}
+
+// GetResourceType returns the resource type of the Target
+func (t *Target) GetResourceType() resource.Type {
+	return resource.Target
 }
 
 func (t *Target) SetVersion(v uint32) {

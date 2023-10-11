@@ -5,19 +5,21 @@ package target
 
 import (
 	"context"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/refreshtoken"
-	"github.com/hashicorp/boundary/internal/types/resource"
 )
+
+// This function is a callback passed down from the application service layer
+// used to filter out protobuf targets that don't match any user-supplied filter.
+type ListFilterFunc func(Target) (bool, error)
 
 func List(
 	ctx context.Context,
 	repo *Repository,
 	grantsHash []byte,
 	pageSize int,
-	filterItemFn func(Target) (bool, error),
+	filterItemFn ListFilterFunc,
 ) (*ListResponse, error) {
 	const op = "target.List"
 
@@ -26,7 +28,6 @@ func List(
 		WithLimit(limit),
 	}
 
-	// pagination magic
 	targets := make([]Target, 0, limit)
 dbLoop:
 	for {
@@ -82,13 +83,7 @@ dbLoop:
 	}
 
 	if len(targets) > 0 {
-		resp.RefreshToken = &refreshtoken.Token{
-			CreatedTime:         time.Now(),
-			ResourceType:        resource.Target,
-			GrantsHash:          grantsHash,
-			LastItemId:          targets[len(targets)-1].GetPublicId(),
-			LastItemUpdatedTime: targets[len(targets)-1].GetUpdateTime().AsTime(),
-		}
+		resp.RefreshToken = refreshtoken.New(targets[len(targets)-1], grantsHash)
 	}
 
 	return resp, nil

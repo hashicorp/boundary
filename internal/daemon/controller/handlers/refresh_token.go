@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/mr-tron/base58"
 	"google.golang.org/protobuf/proto"
 )
@@ -38,4 +39,22 @@ func MarshalRefreshToken(ctx context.Context, token *pbs.ListRefreshToken) (stri
 		return "", errors.Wrap(ctx, err, op)
 	}
 	return base58.Encode(marshaled), nil
+}
+
+func RefreshTokenResourceToResource(rt pbs.ResourceType) resource.Type {
+	switch rt {
+	case pbs.ResourceType_RESOURCE_TYPE_TARGET:
+		return resource.Target
+	case pbs.ResourceType_RESOURCE_TYPE_SESSION:
+		return resource.Session
+	case pbs.ResourceType_RESOURCE_TYPE_HOST,
+		pbs.ResourceType_RESOURCE_TYPE_SESSION_RECORDING,
+		pbs.ResourceType_RESOURCE_TYPE_AUTH_TOKEN,
+		pbs.ResourceType_RESOURCE_TYPE_ACCOUNT,
+		pbs.ResourceType_RESOURCE_TYPE_CREDENTIAL_LIBRARY,
+		pbs.ResourceType_RESOURCE_TYPE_CREDENTIAL_STORE:
+		return resource.Unknown
+	default:
+		return resource.Unknown
+	}
 }

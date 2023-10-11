@@ -277,30 +277,17 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		if err != nil {
 			return nil, err
 		}
-		var domainResourceType resource.Type
-		switch rt.ResourceType {
-		case pbs.ResourceType_RESOURCE_TYPE_TARGET:
-			domainResourceType = resource.Target
-		// TODO: Add more when generalizing this
-		default:
-			domainResourceType = resource.Unknown
-		}
 		// We're doing the conversion from the protobuf types to the
 		// domain types here rather than in the domain so that the domain
 		// doesn't need to know about the protobuf types.
 		domainRefreshToken := &refreshtoken.Token{
 			CreatedTime:         rt.CreatedTime.AsTime(),
-			ResourceType:        domainResourceType,
+			ResourceType:        handlers.RefreshTokenResourceToResource(rt.ResourceType),
 			GrantsHash:          rt.GrantsHash,
 			LastItemId:          rt.LastItemId,
 			LastItemUpdatedTime: rt.LastItemUpdatedTime.AsTime(),
 		}
-		err = domainRefreshToken.Validate(
-			ctx,
-			resource.Target,
-			grantsHash,
-		)
-		if err != nil {
+		if err := domainRefreshToken.Validate(ctx, resource.Target, grantsHash); err != nil {
 			return nil, err
 		}
 		listResp, err = target.ListRefresh(ctx, domainRefreshToken, repo, grantsHash, pageSize, filterItemFn)

@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -120,6 +121,11 @@ func (c *HostCatalog) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (c *HostCatalog) SetTableName(n string) {
 	c.tableName = n
+}
+
+// GetResourceType returns the resource type of the HostCatalog
+func (c *HostCatalog) GetResourceType() resource.Type {
+	return resource.HostCatalog
 }
 
 func (s *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {

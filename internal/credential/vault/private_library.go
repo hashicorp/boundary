@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/util/template"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
@@ -267,6 +268,11 @@ func (pl *genericIssuingCredentialLibrary) CredentialType() credential.Type {
 	}
 }
 
+// GetResourceType returns the resource type of the CredentialLibrary
+func (pl *genericIssuingCredentialLibrary) GetResourceType() resource.Type {
+	return resource.CredentialLibrary
+}
+
 func (pl *genericIssuingCredentialLibrary) client(ctx context.Context) (vaultClient, error) {
 	const op = "vault.(genericIssuingCredentialLibrary).client"
 	clientConfig := &clientConfig{
@@ -492,6 +498,11 @@ type privateCredentialLibraryAllTypes struct {
 }
 
 func (pl *privateCredentialLibraryAllTypes) GetPublicId() string { return pl.PublicId }
+
+// GetResourceType returns the resource type of the CredentialLibrary
+func (pl *privateCredentialLibraryAllTypes) GetResourceType() resource.Type {
+	return resource.CredentialLibrary
+}
 
 func (pl *privateCredentialLibraryAllTypes) decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "vault.(privateCredentialLibraryAllTypes).decrypt"
@@ -745,6 +756,11 @@ func (lib *sshCertIssuingCredentialLibrary) CredentialType() credential.Type {
 	default:
 		return credential.Type(ct)
 	}
+}
+
+// GetResourceType returns the resource type of the CredentialLibrary
+func (lib *sshCertIssuingCredentialLibrary) GetResourceType() resource.Type {
+	return resource.CredentialLibrary
 }
 
 func (lib *sshCertIssuingCredentialLibrary) client(ctx context.Context) (vaultClient, error) {

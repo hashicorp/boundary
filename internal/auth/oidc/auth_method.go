@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	kvbuilder "github.com/hashicorp/go-secure-stdlib/kv-builder"
@@ -188,6 +189,11 @@ func (a *AuthMethod) TableName() string {
 // SetTableName sets the table name.
 func (a *AuthMethod) SetTableName(n string) {
 	a.tableName = n
+}
+
+// GetResourceType returns the resource type of the AuthMethod
+func (a *AuthMethod) GetResourceType() resource.Type {
+	return resource.AuthMethod
 }
 
 // oplog will create oplog metadata for the AuthMethod.

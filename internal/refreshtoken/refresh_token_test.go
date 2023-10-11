@@ -28,6 +28,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			name: "valid token",
 			token: &refreshtoken.Token{
 				CreatedTime:         fiveDaysAgo,
+				UpdatedTime:         fiveDaysAgo.AddDate(0, 0, 1),
 				ResourceType:        resource.Session,
 				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
@@ -48,6 +49,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			name: "no permissions hash",
 			token: &refreshtoken.Token{
 				CreatedTime:         fiveDaysAgo,
+				UpdatedTime:         fiveDaysAgo.AddDate(0, 0, 1),
 				ResourceType:        resource.Session,
 				GrantsHash:          nil,
 				LastItemId:          "s_1234567890",
@@ -62,6 +64,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			name: "changed permissions hash",
 			token: &refreshtoken.Token{
 				CreatedTime:         fiveDaysAgo,
+				UpdatedTime:         fiveDaysAgo.AddDate(0, 0, 1),
 				ResourceType:        resource.Session,
 				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
@@ -76,6 +79,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			name: "created in the future",
 			token: &refreshtoken.Token{
 				CreatedTime:         time.Now().AddDate(1, 0, 0),
+				UpdatedTime:         fiveDaysAgo.AddDate(0, 0, 1),
 				ResourceType:        resource.Session,
 				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
@@ -90,6 +94,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			name: "expired",
 			token: &refreshtoken.Token{
 				CreatedTime:         time.Now().AddDate(0, 0, -31),
+				UpdatedTime:         fiveDaysAgo.AddDate(0, 0, 1),
 				ResourceType:        resource.Session,
 				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
@@ -101,9 +106,40 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			wantErrCode:   errors.InvalidParameter,
 		},
 		{
+			name: "updated before created",
+			token: &refreshtoken.Token{
+				CreatedTime:         fiveDaysAgo,
+				UpdatedTime:         fiveDaysAgo.AddDate(0, 0, -1),
+				ResourceType:        resource.Session,
+				GrantsHash:          []byte("some hash"),
+				LastItemId:          "s_1234567890",
+				LastItemUpdatedTime: fiveDaysAgo,
+			},
+			grantsHash:    []byte("some hash"),
+			resourceType:  resource.Session,
+			wantErrString: "refresh token was updated before its creation time",
+			wantErrCode:   errors.InvalidParameter,
+		},
+		{
+			name: "updated after now",
+			token: &refreshtoken.Token{
+				CreatedTime:         fiveDaysAgo,
+				UpdatedTime:         time.Now().AddDate(0, 0, 1),
+				ResourceType:        resource.Session,
+				GrantsHash:          []byte("some hash"),
+				LastItemId:          "s_1234567890",
+				LastItemUpdatedTime: fiveDaysAgo,
+			},
+			grantsHash:    []byte("some hash"),
+			resourceType:  resource.Session,
+			wantErrString: "refresh token was updated in the future",
+			wantErrCode:   errors.InvalidParameter,
+		},
+		{
 			name: "resource type mismatch",
 			token: &refreshtoken.Token{
 				CreatedTime:         fiveDaysAgo,
+				UpdatedTime:         fiveDaysAgo.AddDate(0, 0, 1),
 				ResourceType:        resource.Session,
 				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
@@ -118,6 +154,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			name: "last item ID unset",
 			token: &refreshtoken.Token{
 				CreatedTime:         fiveDaysAgo,
+				UpdatedTime:         fiveDaysAgo.AddDate(0, 0, 1),
 				ResourceType:        resource.Session,
 				GrantsHash:          []byte("some hash"),
 				LastItemId:          "",
@@ -132,6 +169,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			name: "last item ID unset",
 			token: &refreshtoken.Token{
 				CreatedTime:         fiveDaysAgo,
+				UpdatedTime:         fiveDaysAgo.AddDate(0, 0, 1),
 				ResourceType:        resource.Session,
 				GrantsHash:          []byte("some hash"),
 				LastItemId:          "",
@@ -146,6 +184,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			name: "updated in the future",
 			token: &refreshtoken.Token{
 				CreatedTime:         fiveDaysAgo,
+				UpdatedTime:         fiveDaysAgo.AddDate(0, 0, 1),
 				ResourceType:        resource.Session,
 				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",

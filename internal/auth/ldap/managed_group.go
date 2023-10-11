@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -78,6 +79,11 @@ func (mg *ManagedGroup) TableName() string {
 // SetTableName sets the table name.
 func (mg *ManagedGroup) SetTableName(n string) {
 	mg.tableName = n
+}
+
+// GetResourceType returns the resource type of the ManagedGroup
+func (mg *ManagedGroup) GetResourceType() resource.Type {
+	return resource.ManagedGroup
 }
 
 // oplog will create oplog metadata for the ManagedGroup.

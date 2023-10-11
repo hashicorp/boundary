@@ -9,7 +9,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/refreshtoken"
-	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func ListRefresh(
@@ -20,7 +19,7 @@ func ListRefresh(
 	pageSize int,
 	filterItemFn func(Target) (bool, error),
 ) (*ListResponse, error) {
-	const op = "target.ListMore"
+	const op = "target.ListRefresh"
 
 	deletedIds, transactionTimestamp, err := repo.listDeletedIds(ctx, tok.CreatedTime)
 	if err != nil {
@@ -33,7 +32,6 @@ func ListRefresh(
 		WithStartPageAfterItem(tok.LastItemId, tok.LastItemUpdatedTime),
 	}
 
-	// pagination magic
 	targets := make([]Target, 0, pageSize+1)
 dbLoop:
 	for {
@@ -84,22 +82,17 @@ dbLoop:
 		DeletedIds:          deletedIds,
 		EstimatedTotalItems: totalItems,
 		CompleteListing:     completeListing,
-		RefreshToken: &refreshtoken.Token{
-			// Use the timestamp of the deleted IDs transaction with a
-			// buffer to account for overlapping transactions. It is okay
-			// to return a deleted ID more than once. The buffer corresponds
-			// to Postgres' default transaction timeout.
-			CreatedTime:         transactionTimestamp.Add(-30 * time.Second),
-			ResourceType:        resource.Target,
-			GrantsHash:          grantsHash,
-			LastItemId:          tok.LastItemId,
-			LastItemUpdatedTime: tok.LastItemUpdatedTime,
-		},
 	}
 
+	// Use the timestamp of the deleted IDs transaction with a
+	// buffer to account for overlapping transactions. It is okay
+	// to return a deleted ID more than once. The buffer corresponds
+	// to Postgres' default transaction timeout.
+	updatedTime := transactionTimestamp.Add(-30 * time.Second)
 	if len(targets) > 0 {
-		resp.RefreshToken.LastItemId = targets[len(targets)-1].GetPublicId()
-		resp.RefreshToken.LastItemUpdatedTime = targets[len(targets)-1].GetUpdateTime().AsTime()
+		resp.RefreshToken = tok.RefreshLastItem(targets[len(targets)-1], updatedTime)
+	} else {
+		resp.RefreshToken = tok.Refresh(updatedTime)
 	}
 
 	return resp, nil
