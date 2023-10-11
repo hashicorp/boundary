@@ -116,6 +116,13 @@ func (c *DestroyKeyVersionCommand) Run(args []string) int {
 			return base.CommandCliError
 		}
 	default:
+		warnings, err := result.GetResponse().Warnings()
+		if err != nil {
+			c.PrintCliError(fmt.Errorf("Error getting warnings: %w", err))
+		}
+		for _, w := range warnings {
+			c.PrintWarning(w)
+		}
 		switch result.State {
 		case "completed":
 			c.UI.Output("The key version was successfully destroyed.")

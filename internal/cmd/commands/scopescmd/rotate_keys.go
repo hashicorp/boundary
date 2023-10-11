@@ -113,6 +113,13 @@ func (c *RotateKeysCommand) Run(args []string) int {
 		}
 
 	default:
+		warnings, err := result.GetResponse().Warnings()
+		if err != nil {
+			c.PrintCliError(fmt.Errorf("Error getting warnings: %w", err))
+		}
+		for _, w := range warnings {
+			c.PrintWarning(w)
+		}
 		c.UI.Output("The rotate operation completed successfully.")
 	}
 

@@ -382,6 +382,13 @@ func (c *Command) Run(args []string) int {
 			}
 
 		case "table":
+			warnings, err := resp.Warnings()
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("Error getting warnings: %w", err))
+			}
+			for _, w := range warnings {
+				c.PrintWarning(w)
+			}
 			c.UI.Output("The delete operation completed successfully.")
 		}
 
@@ -395,6 +402,13 @@ func (c *Command) Run(args []string) int {
 			}
 
 		case "table":
+			warnings, err := resp.Warnings()
+			if err != nil {
+				c.PrintCliError(fmt.Errorf("Error getting warnings: %w", err))
+			}
+			for _, w := range warnings {
+				c.PrintWarning(w)
+			}
 			c.UI.Output(c.printListTable(items))
 		}
 
@@ -404,6 +418,13 @@ func (c *Command) Run(args []string) int {
 
 	switch base.Format(c.UI) {
 	case "table":
+		warnings, err := resp.Warnings()
+		if err != nil {
+			c.PrintCliError(fmt.Errorf("Error getting warnings: %w", err))
+		}
+		for _, w := range warnings {
+			c.PrintWarning(w)
+		}
 		c.UI.Output(printItemTable(item, resp))
 
 	case "json":
