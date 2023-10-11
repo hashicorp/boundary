@@ -280,12 +280,17 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		// We're doing the conversion from the protobuf types to the
 		// domain types here rather than in the domain so that the domain
 		// doesn't need to know about the protobuf types.
-		domainRefreshToken := &refreshtoken.Token{
-			CreatedTime:         rt.CreatedTime.AsTime(),
-			ResourceType:        handlers.RefreshTokenResourceToResource(rt.ResourceType),
-			GrantsHash:          rt.GrantsHash,
-			LastItemId:          rt.LastItemId,
-			LastItemUpdatedTime: rt.LastItemUpdatedTime.AsTime(),
+		domainRefreshToken, err := refreshtoken.New(
+			ctx,
+			rt.CreatedTime.AsTime(),
+			rt.UpdatedTime.AsTime(),
+			handlers.RefreshTokenResourceToResource(rt.ResourceType),
+			rt.GrantsHash,
+			rt.LastItemId,
+			rt.LastItemUpdatedTime.AsTime(),
+		)
+		if err != nil {
+			return nil, err
 		}
 		if err := domainRefreshToken.Validate(ctx, resource.Target, grantsHash); err != nil {
 			return nil, err
@@ -323,6 +328,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		}
 		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
 			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
+			UpdatedTime:         timestamppb.New(listResp.RefreshToken.UpdatedTime),
 			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_TARGET,
 			GrantsHash:          listResp.RefreshToken.GrantsHash,
 			LastItemId:          listResp.RefreshToken.LastItemId,

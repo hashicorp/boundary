@@ -23,8 +23,44 @@ type Token struct {
 	LastItemUpdatedTime time.Time
 }
 
-// New creates a new refresh token from a resource and grants hash
-func New(res boundary.Resource, grantsHash []byte) *Token {
+// New creates a new refresh token from a createdTime, resource type, grants hash, and last item information
+func New(ctx context.Context, createdTime time.Time, updatedTime time.Time, typ resource.Type, grantsHash []byte, lastItemId string, lastItemUpdatedTime time.Time) (*Token, error) {
+	const op = "refreshtoken.New"
+
+	if len(grantsHash) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants hash")
+	}
+	if createdTime.After(time.Now()) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "created time is in the future")
+	}
+	if createdTime.Before(time.Now().AddDate(0, 0, -30)) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "created time is too old")
+	}
+	if updatedTime.Before(createdTime) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "updated time is older than created time")
+	}
+	if updatedTime.After(time.Now()) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "updated time is in the future")
+	}
+	if lastItemId == "" {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing last item ID")
+	}
+	if lastItemUpdatedTime.After(time.Now()) {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "last item updated time is in the future")
+	}
+
+	return &Token{
+		CreatedTime:         createdTime,
+		UpdatedTime:         updatedTime,
+		ResourceType:        typ,
+		GrantsHash:          grantsHash,
+		LastItemId:          lastItemId,
+		LastItemUpdatedTime: lastItemUpdatedTime,
+	}, nil
+}
+
+// FromResource creates a new refresh token from a resource and grants hash
+func FromResource(res boundary.Resource, grantsHash []byte) *Token {
 	t := time.Now()
 	return &Token{
 		CreatedTime:         t,
@@ -61,7 +97,7 @@ func (rt *Token) Validate(
 		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was missing")
 	}
 	if len(rt.GrantsHash) == 0 {
-		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was missing its permission hash")
+		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was missing its grants hash")
 	}
 	if !bytes.Equal(rt.GrantsHash, expectedGrantsHash) {
 		return errors.New(ctx, errors.InvalidParameter, op, "grants have changed since refresh token was issued")

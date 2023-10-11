@@ -11,6 +11,11 @@ import (
 	"github.com/hashicorp/boundary/internal/refreshtoken"
 )
 
+// ListRefresh lists targets according to the page size
+// and refresh token, filtering out entries that do not
+// pass the filter item fn. It returns a new refresh token
+// based on the old one, the grants hash, and the returned
+// targets.
 func ListRefresh(
 	ctx context.Context,
 	tok *refreshtoken.Token,
@@ -89,6 +94,11 @@ dbLoop:
 	// to return a deleted ID more than once. The buffer corresponds
 	// to Postgres' default transaction timeout.
 	updatedTime := transactionTimestamp.Add(-30 * time.Second)
+	if updatedTime.Before(tok.CreatedTime) {
+		// Ensure updated time isn't before created time due
+		// to the buffer.
+		updatedTime = tok.CreatedTime
+	}
 	if len(targets) > 0 {
 		resp.RefreshToken = tok.RefreshLastItem(targets[len(targets)-1], updatedTime)
 	} else {

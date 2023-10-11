@@ -12,22 +12,24 @@ option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/s
 // ListRefreshToken is used to create refresh
 // tokens for list endpoints.
 message ListRefreshToken {
-  // When the refresh token was created
-  google.protobuf.Timestamp created_time = 10;
+  // When the refresh token was created.
+  google.protobuf.Timestamp created_time = 1;
+  // When the refresh token was last used.
+  google.protobuf.Timestamp updated_time = 2;
   // The resource type listed. Used to ensure
   // refresh tokens are not used between list methods.
-  ResourceType resource_type = 20;
+  ResourceType resource_type = 3;
   // A hash of the users grants
   // at the time of the refresh token issuing.
-  bytes grants_hash = 30;
+  bytes grants_hash = 4;
   // The ID of the last item returned on the
   // previous page.
-  string last_item_id = 40;
+  string last_item_id = 5;
   // The updated_time of the last item returned on
   // the previous page. This is needed
   // in addition to the ID since it can change after
   // the creation of the refresh token.
-  google.protobuf.Timestamp last_item_updated_time = 50;
+  google.protobuf.Timestamp last_item_updated_time = 6;
 }
 
 // ResourceType represents the different list

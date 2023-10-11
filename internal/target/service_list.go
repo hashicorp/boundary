@@ -14,6 +14,10 @@ import (
 // used to filter out protobuf targets that don't match any user-supplied filter.
 type ListFilterFunc func(Target) (bool, error)
 
+// List lists targets according to the page size,
+// filtering out entries that do not
+// pass the filter item fn. It returns a new refresh token
+// based on the grants hash and the returned targets.
 func List(
 	ctx context.Context,
 	repo *Repository,
@@ -83,7 +87,7 @@ dbLoop:
 	}
 
 	if len(targets) > 0 {
-		resp.RefreshToken = refreshtoken.New(targets[len(targets)-1], grantsHash)
+		resp.RefreshToken = refreshtoken.FromResource(targets[len(targets)-1], grantsHash)
 	}
 
 	return resp, nil

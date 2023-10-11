@@ -352,7 +352,7 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 }
 
 // listDeletedIds lists the public IDs of any targets deleted since the timestamp provided,
-// and the timestamp of the transcation within which the targets were listed.
+// and the timestamp of the transaction within which the targets were listed.
 func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
 	const op = "target.(Repository).listDeletedIds"
 	var deleteTargets []*deletedTarget
