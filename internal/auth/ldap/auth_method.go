@@ -114,7 +114,7 @@ func (am *AuthMethod) SetTableName(n string) {
 }
 
 // GetResourceType returns the resource type of the AuthMethod
-func (a *AuthMethod) GetResourceType() resource.Type {
+func (am *AuthMethod) GetResourceType() resource.Type {
 	return resource.AuthMethod
 }
 
