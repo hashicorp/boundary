@@ -156,7 +156,7 @@ func PaginateRequest[T any, PbT ResponseItem](
 		newRefreshToken := &pbs.ListRefreshToken{
 			CreatedTime:         timestamppb.New(newRefreshTokenCreateTime),
 			ResourceType:        resourceType,
-			PermissionsHash:     grantsHash,
+			GrantsHash:          grantsHash,
 			LastItemId:          refreshToken.GetLastItemId(),
 			LastItemUpdatedTime: refreshToken.GetLastItemUpdatedTime(),
 		}
@@ -278,10 +278,10 @@ func validateRefreshToken(ctx context.Context, token *pbs.ListRefreshToken, gran
 	if token == nil {
 		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was nil")
 	}
-	if len(token.GetPermissionsHash()) == 0 {
+	if len(token.GetGrantsHash()) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was missing its permission hash")
 	}
-	if !bytes.Equal(token.GetPermissionsHash(), grantsHash) {
+	if !bytes.Equal(token.GetGrantsHash(), grantsHash) {
 		return errors.New(ctx, errors.InvalidParameter, op, "permissions have changed since refresh token was issued")
 	}
 	if !token.GetCreatedTime().IsValid() {

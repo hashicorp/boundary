@@ -9,48 +9,30 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
-
-type ResourceType int
-
-const (
-	ResourceTypeUnknown ResourceType = iota
-	ResourceTypeSession
-	ResourceTypeTarget
-)
-
-// GrantsHasher defines the interface used
-// to retrieve a hash of a users grants.
-type GrantsHasher interface {
-	GrantsHash(ctx context.Context) ([]byte, error)
-}
 
 // A RefreshToken is returned in list endpoints for the purposes of pagination
 type RefreshToken struct {
 	CreatedTime         time.Time
-	ResourceType        ResourceType
-	PermissionsHash     []byte
+	ResourceType        resource.Type
+	GrantsHash          []byte
 	LastItemId          string
 	LastItemUpdatedTime time.Time
 }
 
 // ValidateRefreshToken validates a refresh token.
-func ValidateRefreshToken(
+func (rt *RefreshToken) Validate(
 	ctx context.Context,
-	rt *RefreshToken,
-	expectedResourceType ResourceType,
-	grantsHasher GrantsHasher,
+	expectedResourceType resource.Type,
+	expectedGrantsHash []byte,
 ) error {
 	const op = "refreshtoken.ValidateRefreshToken"
-	if len(rt.PermissionsHash) == 0 {
+	if len(rt.GrantsHash) == 0 {
 		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was missing its permission hash")
 	}
-	grantsHash, err := grantsHasher.GrantsHash(ctx)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-	if !bytes.Equal(rt.PermissionsHash, grantsHash) {
-		return errors.New(ctx, errors.InvalidParameter, op, "permissions have changed since refresh token was issued")
+	if !bytes.Equal(rt.GrantsHash, expectedGrantsHash) {
+		return errors.New(ctx, errors.InvalidParameter, op, "grants have changed since refresh token was issued")
 	}
 	if rt.CreatedTime.After(time.Now()) {
 		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was created in the future")

@@ -9,12 +9,13 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/refreshtoken"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func List(
 	ctx context.Context,
 	repo *Repository,
-	grantsHasher refreshtoken.GrantsHasher,
+	grantsHash []byte,
 	pageSize int,
 	filterItemFn func(Target) (bool, error),
 ) (*ListResponse, error) {
@@ -68,7 +69,7 @@ dbLoop:
 		// If this was not a complete listing, get an estimate
 		// of the total items from the DB.
 		var err error
-		totalItems, err = repo.EstimatedCount(ctx)
+		totalItems, err = repo.estimatedCount(ctx)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -81,15 +82,10 @@ dbLoop:
 	}
 
 	if len(targets) > 0 {
-		grantsHash, err := grantsHasher.GrantsHash(ctx)
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-
 		resp.RefreshToken = &refreshtoken.RefreshToken{
 			CreatedTime:         time.Now(),
-			ResourceType:        refreshtoken.ResourceTypeTarget,
-			PermissionsHash:     grantsHash,
+			ResourceType:        resource.Target,
+			GrantsHash:          grantsHash,
 			LastItemId:          targets[len(targets)-1].GetPublicId(),
 			LastItemUpdatedTime: targets[len(targets)-1].GetUpdateTime().AsTime(),
 		}

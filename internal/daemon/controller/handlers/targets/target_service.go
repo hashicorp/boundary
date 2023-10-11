@@ -261,10 +261,14 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		}
 		return filter.Match(filterable), nil
 	}
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	var listResp *target.ListResponse
 	if req.GetRefreshToken() == "" {
-		listResp, err = target.List(ctx, repo, &authResults, pageSize, filterItemFn)
+		listResp, err = target.List(ctx, repo, grantsHash, pageSize, filterItemFn)
 		if err != nil {
 			return nil, err
 		}
@@ -273,13 +277,13 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		if err != nil {
 			return nil, err
 		}
-		var domainResourceType refreshtoken.ResourceType
+		var domainResourceType resource.Type
 		switch rt.ResourceType {
 		case pbs.ResourceType_RESOURCE_TYPE_TARGET:
-			domainResourceType = refreshtoken.ResourceTypeTarget
+			domainResourceType = resource.Target
 		// TODO: Add more when generalizing this
 		default:
-			domainResourceType = refreshtoken.ResourceTypeUnknown
+			domainResourceType = resource.Unknown
 		}
 		// We're doing the conversion from the protobuf types to the
 		// domain types here rather than in the domain so that the domain
@@ -287,20 +291,19 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		domainRefreshToken := &refreshtoken.RefreshToken{
 			CreatedTime:         rt.CreatedTime.AsTime(),
 			ResourceType:        domainResourceType,
-			PermissionsHash:     rt.PermissionsHash,
+			GrantsHash:          rt.GrantsHash,
 			LastItemId:          rt.LastItemId,
 			LastItemUpdatedTime: rt.LastItemUpdatedTime.AsTime(),
 		}
-		err = refreshtoken.ValidateRefreshToken(
+		err = domainRefreshToken.Validate(
 			ctx,
-			domainRefreshToken,
-			refreshtoken.ResourceTypeTarget,
-			&authResults,
+			resource.Target,
+			grantsHash,
 		)
 		if err != nil {
 			return nil, err
 		}
-		listResp, err = target.ListMore(ctx, domainRefreshToken, repo, &authResults, pageSize, filterItemFn)
+		listResp, err = target.ListMore(ctx, domainRefreshToken, repo, grantsHash, pageSize, filterItemFn)
 		if err != nil {
 			return nil, err
 		}
@@ -328,13 +331,13 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	}
 
 	if listResp.RefreshToken != nil {
-		if listResp.RefreshToken.ResourceType != refreshtoken.ResourceTypeTarget {
+		if listResp.RefreshToken.ResourceType != resource.Target {
 			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
 		}
 		resp.RefreshToken, err = marshalRefreshToken(ctx, &pbs.ListRefreshToken{
 			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
 			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_TARGET,
-			PermissionsHash:     listResp.RefreshToken.PermissionsHash,
+			GrantsHash:          listResp.RefreshToken.GrantsHash,
 			LastItemId:          listResp.RefreshToken.LastItemId,
 			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
 		})

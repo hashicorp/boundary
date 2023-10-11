@@ -9,20 +9,20 @@ import (
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/refreshtoken"
-	rt "github.com/hashicorp/boundary/internal/refreshtoken"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 func ListMore(
 	ctx context.Context,
-	tok *rt.RefreshToken,
+	tok *refreshtoken.RefreshToken,
 	repo *Repository,
-	grantsHasher rt.GrantsHasher,
+	grantsHash []byte,
 	pageSize int,
 	filterItemFn func(Target) (bool, error),
 ) (*ListResponse, error) {
 	const op = "target.ListMore"
 
-	deletedIds, transactionTimestamp, err := repo.ListDeletedIds(ctx, tok.CreatedTime)
+	deletedIds, transactionTimestamp, err := repo.listDeletedIds(ctx, tok.CreatedTime)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -74,12 +74,7 @@ dbLoop:
 		targets = targets[:pageSize]
 	}
 
-	totalItems, err := repo.EstimatedCount(ctx)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	grantsHash, err := grantsHasher.GrantsHash(ctx)
+	totalItems, err := repo.estimatedCount(ctx)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -95,8 +90,8 @@ dbLoop:
 			// to return a deleted ID more than once. The buffer corresponds
 			// to Postgres' default transaction timeout.
 			CreatedTime:         transactionTimestamp.Add(-30 * time.Second),
-			ResourceType:        refreshtoken.ResourceTypeTarget,
-			PermissionsHash:     grantsHash,
+			ResourceType:        resource.Target,
+			GrantsHash:          grantsHash,
 			LastItemId:          tok.LastItemId,
 			LastItemUpdatedTime: tok.LastItemUpdatedTime,
 		},
