@@ -80,6 +80,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.Worker, IdActions, CollectionActions)
 }
 
 func emptyDownstreamWorkers(context.Context, string, common.Downstreamers) []string {

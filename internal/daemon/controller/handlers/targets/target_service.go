@@ -102,6 +102,11 @@ var (
 	WorkerFilterDeprecationMessage   = fmt.Sprintf("This field is deprecated. Use %s instead.", globals.EgressWorkerFilterField)
 )
 
+func init() {
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.Target, IdActions, CollectionActions)
+}
+
 func IngressWorkerFilterUnsupported(string) error {
 	return fmt.Errorf("Ingress Worker Filter field is not supported in OSS")
 }

@@ -89,6 +89,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove idActionsMap and CollectionActions package variables
+	action.RegisterResource(resource.HostCatalog, IdActions, CollectionActions)
 }
 
 type Service struct {
