@@ -141,6 +141,31 @@ type structInfo struct {
 
 var inputStructs = []*structInfo{
 	{
+		inProto:     &api.WarningResponse{},
+		outFile:     "warning_response.gen.go",
+		skipOptions: true,
+	},
+	{
+		inProto:     &api.Warning{},
+		outFile:     "warning.gen.go",
+		skipOptions: true,
+	},
+	{
+		inProto:     &api.FieldWarning{},
+		outFile:     "field_warning.gen.go",
+		skipOptions: true,
+	},
+	{
+		inProto:     &api.BehaviorWarning{},
+		outFile:     "behavior_warning.gen.go",
+		skipOptions: true,
+	},
+	{
+		inProto:     &api.ActionWarning{},
+		outFile:     "action_warning.gen.go",
+		skipOptions: true,
+	},
+	{
 		inProto:     &api.Error{},
 		outFile:     "error.gen.go",
 		skipOptions: true,
