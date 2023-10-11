@@ -30,7 +30,10 @@ At this time, the only supported storage is AWS S3.
 - An AWS S3 storage bucket
 
    You must associate the Boundary storage bucket with an AWS S3 storage bucket.
-   An AWS S3 storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket, such as the access and secret key.
+   An AWS S3 storage bucket contains the bucket name, region, and optional prefix, as well as any credentials needed to access the bucket.
+
+   The AWS S3 storage bucket can use static or dynamic credentials.
+   You can configure static credentials using an access key and secret key or dynamic credentials using the AWS [`AssumeRole` API](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole).
 - An AWS IAM role policy with the following statement:
    ```json
     {
@@ -139,23 +142,75 @@ Complete the following steps to create a storage bucket in Boundary for session 
 <Tabs>
 <Tab heading="CLI">
 
+The required fields for creating a storage bucket vary depending on whether you configured the AWS S3 bucket with static or dynamic credentials:
+
+<Tabs>
+<Tab heading="Static credentials">
+
 1. Log in to Boundary.
 1. Use the following command to create a storage bucket in Boundary:
 
-    ```bash
-    boundary storage-buckets create -bucket-name mybucket1 -plugin-name aws -secrets ‘{“access_key_id”: “123456789” , “secret_access_key” : “123/456789/12345678”}’ -worker-filter ‘“dev” in “/tags/type”’ -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true}’ -scope-id o_1234567890
-    ```
+   ```shell-session
+   boundary storage-buckets create \
+      -bucket-name mybucket1 \
+      -plugin-name aws \
+      -secrets ‘{“access_key_id”: “123456789” , “secret_access_key” : “123/456789/12345678”}’ \
+      -worker-filter ‘“dev” in “/tags/type”’ \
+      -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true}’ \
+      -scope-id o_1234567890
+   ```
 
-    Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
+   Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
 
-    - `region`: (Required) The AWS region to use.
-    - `bucket-name`: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
-    - `access_key_id`: (Required) The AWS access key to use.
-    - `secret_access_key_id`: (Required) The AWS secret access key to use.
+   - `region`: (Required) The AWS region to use.
+   - `bucket-name`: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
+   - `access_key_id`: (Required) The AWS access key to use.
+   - `secret_access_key_id`: (Required) The AWS secret access key to use.
     This attribute contains the secret access key for static credentials.
-    - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
-    - `shared_credentials_file`: (Optional) The shared credentials file to use.
-    - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
+   - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - `shared_credentials_file`: (Optional) The shared credentials file to use.
+   - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
+   - `disable_credential_rotation`: (Optional) Prevents the AWS plugin from automatically rotating credentials.
+
+     Although credentials are stored encrypted in Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
+
+</Tab>
+
+<Tab heading="Dynamic credentials">
+
+1. Log in to Boundary.
+1. Use the following command to create a storage bucket in Boundary:
+
+   ```shell-session
+   boundary storage-buckets create \
+      -bucket-name mybucket1 \
+      -plugin-name aws \
+      -worker-filter ‘“dev” in “/tags/type”’ \
+      -attributes ‘{“region”:”us-east-1”,”disable_credential_rotation”:true,"role_arn":"arn:aws:iam::123456789012:role/S3Access"}’ \
+      -scope-id o_1234567890
+   ```
+
+   Replace the values above with the following required AWS secrets and any optional [attributes](/boundary/docs/concepts/domain-model/storage-buckets) you want to associate with the Boundary storage bucket:
+
+   - `region`: (Required) The AWS region to use.
+   - `bucket-name`: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
+   - `role_arn`: (Required) The ARN (Amazon Resource Name) role that is attached to the EC2 instance that the self-managed worker runs on.
+   - `role_external_id`: (Optional) A required value if you delegate third party access to your AWS resources.
+   For more information, refer to the AWS documentation for [How to use an external ID when granting access to your AWS resources to a third party](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html).
+   - `role_session_name`: (Optional) A unique identifier for the AWS session.
+   You can use this value to control how IAM principals and applications name their role sesions when they assume an IAM role.
+   By providing a session name, you enable tracking session actions in AWS CloudTrail logs.
+   For more information, refer to the AWS documentation for [Logging IAM and AWS STS API calls with AWS CloudTrail](https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html).
+   - `role_tags`: (Optional) An object with key-value pair attributes that is passed when you assume an IAM role.
+   For more information, refer to the AWS documentation for [Passing session tags in AWS STS](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html).
+   - `worker-filter`: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - `shared_credentials_file`: (Optional) The shared credentials file to use.
+   - `shared_credentials_profile`: (Optional) The profile name to use in the shared credentials file.
+   - `disable_credential_rotation`: (Required) Prevents the AWS plugin from automatically rotating credentials.
+   This option must be set to `true` if you use dynamic credentials.
+
+</Tab>
+</Tabs>
 
 </Tab>
 
@@ -172,12 +227,42 @@ Complete the following steps to create a storage bucket in Boundary for session 
    - **Bucket name**: (Required) Name of the AWS bucket you want to associate with the Boundary storage bucket.
    - **Bucket prefix**: (Optional) A base path where session recordings are stored.
    - **Region**: (Required) The AWS region to use.
+   - **Credential type**: (Required) The type of credential you want to use to authenticate to the external storage.
+   The required fields for creating a storage bucket vary depending on whether you configured the AWS S3 bucket with static or dynamic credentials:
+      - **Static**: Authenticates to the storage bucket using an access key that AWS generates.
+      - **Dynamic**: Authenticates to the storage bucket using credentials that were generated by AWS `AssumeRole`.
+
+   <Tabs>
+   <Tab heading="Static credentials">
+
    - **Access key ID**: (Required) The access key ID that AWS generates for the IAM user to use with the storage bucket.
    - **Secret access key**: (Required) The secret access key that AWS generates for the IAM user to use with this storage bucket.
-   - **Worker filter** (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
-   - **Disable credential rotation** (Optional) Although credentials are stored encrypted within Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide. The given credentials are used to create a new credential, and then the original credential is revoked. After rotation, only Boundary knows the client secret the plugin uses.
+   - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - **Disable credential rotation**: (Optional) Prevents the AWS plugin from automatically rotating credentials.
 
-      Select this option to disable this behavior and prevent the automatic rotation of credentials.
+      Although credentials are stored encrypted in Boundary, by default the [AWS plugin](https://github.com/hashicorp/boundary-plugin-aws) attempts to rotate the credentials you provide.
+      The given credentials are used to create a new credential, and then the original credential is revoked.
+      After rotation, only Boundary knows the client secret the plugin uses.
+
+   </Tab>
+
+   <Tab heading="Dynamic credentials">
+
+   - **Role ARN**: (Required) The ARN (Amazon Resource Name) role that is attached to the EC2 instance that the self-managed worker runs on.
+   - **Role external ID**: (Optional) A required value if you delegate third party access to your AWS resources.
+   For more information, refer to the AWS documentation for [How to use an external ID when granting access to your AWS resources to a third party](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html).
+   - **Role session name**: (Optional) A unique identifier for the AWS session.
+   You can use this value to control how IAM principals and applications name their role sesions when they assume an IAM role.
+   By providing a session name, you enable tracking session actions in AWS CloudTrail logs.
+   For more information, refer to the AWS documentation for [Logging IAM and AWS STS API calls with AWS CloudTrail](https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html).
+   - **Role tags**: An object with key-value pair attributes that is passed when you assume an IAM role.
+   For more information, refer to the AWS documentation for [Passing session tags in AWS STS](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html).
+   - **Worker filter**: (Required) A filter that indicates which Boundary workers have access to the storage. The filter must match an existing worker in order to create a Boundary storage bucket.
+   - **Disable credential rotation**: (Required) Prevents the AWS plugin from automatically rotating credentials.
+   This option is required if you use dynamic credentials.
+
+   </Tab>
+   </Tabs>
 
 1. Select **Save**.
 
@@ -185,4 +270,7 @@ Complete the following steps to create a storage bucket in Boundary for session 
 </Tabs>
 
 Boundary creates the storage bucket resource and provides you with the bucket's ID.
-Once the storage bucket is created in Boundary, you can use the bucket's ID to [enable session recording on targets](/boundary/docs/configuration/session-recording/enable-session-recording).
+
+## Next steps
+
+After the storage bucket is created in Boundary, you can use the bucket's ID to [enable session recording on targets](/boundary/docs/configuration/session-recording/enable-session-recording).
