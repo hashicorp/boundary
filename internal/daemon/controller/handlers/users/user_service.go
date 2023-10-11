@@ -59,6 +59,8 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.User, IdActions, CollectionActions)
 }
 
 // Service handles request as described by the pbs.UserServiceServer interface.

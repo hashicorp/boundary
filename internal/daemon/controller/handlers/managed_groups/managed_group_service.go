@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/managedgroups"
 	"github.com/hashicorp/go-bexpr"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -83,6 +84,9 @@ func init() {
 	); err != nil {
 		panic(err)
 	}
+
+	// TODO: refactor to remove IdActions and CollectionActions package variables
+	action.RegisterResource(resource.ManagedGroup, action.Union(maps.Values(IdActions)...), CollectionActions)
 }
 
 // Service handles request as described by the pbs.ManagedGroupServiceServer interface.
