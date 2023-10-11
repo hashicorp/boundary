@@ -14,12 +14,19 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/go-dbw"
 	_ "github.com/jackc/pgx/v5"
+
 	"gorm.io/driver/postgres"
 )
 
 func init() {
 	dbw.InitNonCreatableFields([]string{"CreateTime", "UpdateTime"})
 	dbw.InitNonUpdatableFields([]string{"PublicId", "CreateTime", "UpdateTime"})
+}
+
+// sqliteOpen is a function used to get the dbw.Dialector for sqlite. It returns
+// an error if there is any problem opening it.
+var sqliteOpen = func(string) (dbw.Dialector, error) {
+	return nil, fmt.Errorf("sqlite is not supported on this platform")
 }
 
 type DbType int
@@ -153,7 +160,11 @@ func Open(ctx context.Context, dbType DbType, connectionUrl string, opt ...Optio
 		},
 		)
 	case Sqlite:
-		dialect = sqliteOpen(connectionUrl)
+		var err error
+		dialect, err = sqliteOpen(connectionUrl)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
 	default:
 		return nil, fmt.Errorf("unable to open %s database type", dbType)
 	}
