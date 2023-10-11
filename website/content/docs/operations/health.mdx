@@ -45,7 +45,7 @@ a string that is parseable by
 
 ## API
 
-The new controller health service introduces a single read-only endpoint:
+The controller health service introduces a single read-only endpoint:
 
 | Status        | Description                                                    |
 |--------------|----------------------------------------------------------------|
@@ -54,6 +54,38 @@ The new controller health service introduces a single read-only endpoint:
 | `503`        | `GET /health` returns HTTP status `503 Service Unavailable` status if the controller is shutting down |
 
 All responses return empty bodies. `GET /health` does not support any input.
+
+## Example response
+
+When you check the health endpoint, Boundary returns a response with the following worker information:
+
+```json
+❯ curl "worker:9403/health?worker_info=1"
+
+{
+   "worker_process_info":{
+      "state":"active",
+      "active_session_count":0,
+      "upstream_connection_state":"READY"
+   }
+}
+```
+The response contains the following fields:
+
+- `state` - The operational state of the worker.
+Possible worker states include active, shutdown, and unknown.
+- `active_session_count` - The number of active sessions on the worker.
+- `upstream_connection_state` - The connection state of the worker.
+This value indicates whether the worker can connect to an upstream address or connection.
+It can be any of the following states:
+   - `CONNECTING` - The channel is trying to make a connection and is waiting for name resolution or the connection establishment.
+   - `READY` - The channel has successfully established a connection, and any attempts to communicate have succeeded.
+   - `TRANSIENT_FAILURE` - The channel suffered a transient failure such as a time out or socket error.
+   A channel in this state will switch to the `CONNECTING` state and try to establish a connection.
+   - `IDLE` - The channel is not attempting to create a connection because there are no calls.
+   - `SHUTDOWN` - The channel is shutting down.
+   Any new calls fail immediately.
+   Pending calls may continue running until Boundary cancels them.
 
 ## Example configuration
 
