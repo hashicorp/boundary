@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/version"
@@ -68,7 +69,7 @@ func (s *StopCommand) stop(ctx context.Context) error {
 func stopThroughHandler(ctx context.Context, dotPath string) (*api.Error, error) {
 	const op = "daemon.stopThroughHandler"
 
-	sockAddr := SocketAddress(dotPath)
+	sockAddr := daemon.SocketAddress(dotPath)
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -84,7 +85,7 @@ func stopThroughHandler(ctx context.Context, dotPath string) (*api.Error, error)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add(VersionHeaderKey, version.Get().VersionNumber())
+	req.Header.Add(daemon.VersionHeaderKey, version.Get().VersionNumber())
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
