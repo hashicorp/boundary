@@ -65,8 +65,7 @@ Boundary uses only common extensions and both hosted and self-managed instances 
 ### KMS 
 Boundary uses KMS keys for various purposes, such as protecting secrets, as a possible authentication mechanism for workers, recovery needs, encryption of values in Boundary’s configuration, and more.Boundary uses key derivation extensively to avoid key sprawl of these high-value keys.
 
-You can use any cloud KMS or Vault's Transit Secrets Engine to satisfy the KMS
-requirement. 
+You can use [any cloud KMS or Vault's Transit Secrets Engine to satisfy the KMS requirement](https://developer.hashicorp.com/boundary/docs/configuration/kms). 
 
 ## Trying out Boundary
 
