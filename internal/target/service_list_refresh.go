@@ -21,7 +21,7 @@ func ListRefresh(
 ) (*ListResponse, error) {
 	const op = "target.ListRefresh"
 
-	deletedIds, transactionTimestamp, err := repo.listDeletedIds(ctx, tok.CreatedTime)
+	deletedIds, transactionTimestamp, err := repo.listDeletedIds(ctx, tok.UpdatedTime)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
