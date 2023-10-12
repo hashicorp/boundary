@@ -34,7 +34,7 @@ an agent to be installed on every end host, making it suitable for access to man
 
 Boundary consists of two server components: 
 
-* **Controller**, which serve the API and coordinate session requests
+* **Controller**, which serves the API and coordinate session requests
 * **Workers**, which perform session handling
 
 A real-world Boundary installation will likely consist of one or more
