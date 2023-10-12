@@ -4,6 +4,7 @@
 package authmethods_test
 
 import (
+	stdcmp "cmp"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -11,6 +12,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -32,7 +34,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
-	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -351,13 +352,8 @@ func TestList(t *testing.T) {
 		})
 	}
 
-	sorterFn := func(a *pb.AuthMethod, b *pb.AuthMethod) bool {
-		switch {
-		case a.GetId() > b.GetId():
-			return true
-		default:
-			return false
-		}
+	sorterFn := func(a *pb.AuthMethod, b *pb.AuthMethod) int {
+		return stdcmp.Compare(a.GetId(), b.GetId())
 	}
 	cpSorted := func(ams []*pb.AuthMethod) []*pb.AuthMethod {
 		cp := make([]*pb.AuthMethod, 0, len(ams))
