@@ -128,13 +128,13 @@ func (c *HostCatalog) GetResourceType() resource.Type {
 	return resource.HostCatalog
 }
 
-func (s *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {
+func (c *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
 		"resource-public-id": []string{s.PublicId},
 		"resource-type":      []string{"plugin-host-catalog"},
 		"op-type":            []string{op.String()},
 	}
-	if s.ProjectId != "" {
+	if c.ProjectId != "" {
 		metadata["project-id"] = []string{s.ProjectId}
 	}
 	return metadata
