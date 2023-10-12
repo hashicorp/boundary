@@ -7,7 +7,8 @@ import (
 	"github.com/hashicorp/boundary/internal/refreshtoken"
 )
 
-// will likely eventually become a generic response and moved from target
+// ListResponse holds the information returned from List and ListRefresh
+// TODO(johanbrandhorst): Move this into a shared struct when refactoring.
 type ListResponse struct {
 	Items               []Target
 	DeletedIds          []string

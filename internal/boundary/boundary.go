@@ -25,7 +25,7 @@ type Aggregate interface {
 	GetUpdateTime() *timestamp.Timestamp
 }
 
-// A Resource is an aggregate with a name and description.
+// A Resource is an aggregate with a name, description, and resource type.
 type Resource interface {
 	Aggregate
 	GetName() string

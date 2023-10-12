@@ -1,6 +1,10 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
+// The refreshtoken package encapsulates domain logic surrounding
+// list endpoint refresh tokens. Refresh tokens are used when users
+// paginate through results in our list endpoints, and also to
+// allow users to request new, updated and deleted resources.
 package refreshtoken
 
 import (
