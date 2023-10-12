@@ -90,7 +90,7 @@ following properties:
 * The controller starts a PostgreSQL Docker container to use as storage.
   This container will be shut down and removed, if possible, when the
   controller is shut down gracefully.
-* The controller will use an internal KMS with ephemeral keys
+* The controller uses an internal KMS with ephemeral keys
 
 ### Building from Source
 If you meet the following local requirements, you can quickly get up and running with Boundary:
