@@ -351,23 +351,35 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 	return where, args
 }
 
-// ListDeletedIds lists the public IDs of any targets deleted since the timestamp provided.
-func (r *Repository) ListDeletedIds(ctx context.Context, since time.Time) ([]string, error) {
-	const op = "target.(Repository).ListDeletedIds"
+// listDeletedIds lists the public IDs of any targets deleted since the timestamp provided,
+// and the timestamp of the transaction within which the targets were listed.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "target.(Repository).listDeletedIds"
 	var deleteTargets []*deletedTarget
-	if err := r.reader.SearchWhere(ctx, &deleteTargets, "delete_time >= ?", []any{since}); err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted targets"))
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deleteTargets, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted targets"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
 	}
 	var targetIds []string
 	for _, t := range deleteTargets {
 		targetIds = append(targetIds, t.PublicId)
 	}
-	return targetIds, nil
+	return targetIds, transactionTimestamp, nil
 }
 
-// GetTotalItems returns an estimate of the total number of items across all targets.
-func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
-	const op = "target.(Repository).GetTotalItems"
+// estimatedCount returns an estimate of the total number of items across all targets.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "target.(Repository).estimatedCount"
 	rows, err := r.reader.Query(ctx, estimateCountTargets, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
@@ -379,22 +391,6 @@ func (r *Repository) GetTotalItems(ctx context.Context) (int, error) {
 		}
 	}
 	return count, nil
-}
-
-// Now returns the current timestamp in the DB.
-func (r *Repository) Now(ctx context.Context) (time.Time, error) {
-	const op = "target.(Repository).Now"
-	rows, err := r.reader.Query(ctx, "select current_timestamp", nil)
-	if err != nil {
-		return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
-	}
-	var now time.Time
-	for rows.Next() {
-		if err := r.reader.ScanRows(ctx, rows, &now); err != nil {
-			return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
-		}
-	}
-	return now, nil
 }
 
 // DeleteTarget will delete a target from the repository.

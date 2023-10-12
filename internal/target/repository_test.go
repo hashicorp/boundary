@@ -6,13 +6,17 @@ package target
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
+	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -311,4 +315,109 @@ func TestRepositoryListPermissionWhereClauses(t *testing.T) {
 			require.ElementsMatch(t, tt.expArgs, args)
 		})
 	}
+}
+
+func Test_listDeletedIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, mock := db.TestSetupWithMock(t)
+	wrapper := db.TestWrapper(t)
+	mock.ExpectQuery(
+		`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
+	).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+	mock.ExpectQuery(
+		`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
+	).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+	testKms := kms.TestKms(t, conn, wrapper)
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+	now := time.Now().Truncate(time.Microsecond)
+	before := now.AddDate(-1, 0, 0)
+
+	t.Run("returns no entries when no entries in db", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectQuery(
+			`SELECT`,
+		).WithArgs(before).WillReturnRows(sqlmock.NewRows([]string{"public_id", "delete_time"}))
+		mock.ExpectQuery(
+			`select current_timestamp`,
+		).WillReturnRows(sqlmock.NewRows([]string{"current_timestamp"}).AddRow(now))
+		mock.ExpectCommit()
+		deletedIds, ttime, err := repo.listDeletedIds(ctx, before)
+		require.NoError(t, err)
+		require.Empty(t, deletedIds)
+		assert.True(t, ttime.Equal(now))
+	})
+
+	t.Run("returns 1 entry when 1 entry in db", func(t *testing.T) {
+		id := "tcp_1234567890"
+		mock.ExpectBegin()
+		mock.ExpectQuery(
+			`SELECT`,
+		).WithArgs(before).WillReturnRows(sqlmock.NewRows([]string{"public_id", "delete_time"}).AddRow(id, now.Add(-time.Hour)))
+		mock.ExpectQuery(
+			`select current_timestamp`,
+		).WillReturnRows(sqlmock.NewRows([]string{"current_timestamp"}).AddRow(now))
+		mock.ExpectCommit()
+		deletedIds, ttime, err := repo.listDeletedIds(ctx, before)
+		require.NoError(t, err)
+		require.Equal(t, []string{id}, deletedIds)
+		assert.True(t, ttime.Equal(now))
+	})
+
+	t.Run("errors when query errors", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectQuery(
+			`SELECT`,
+		).WithArgs(before).WillReturnError(fmt.Errorf("query error"))
+		mock.ExpectRollback()
+		_, _, err = repo.listDeletedIds(ctx, before)
+		require.ErrorContains(t, err, "query error")
+	})
+}
+
+func Test_estimatedCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, mock := db.TestSetupWithMock(t)
+	wrapper := db.TestWrapper(t)
+	mock.ExpectQuery(
+		`SELECT \* FROM "kms_schema_version" WHERE 1=1 ORDER BY "kms_schema_version"\."version" LIMIT 1`,
+	).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+	mock.ExpectQuery(
+		`SELECT \* FROM "kms_oplog_schema_version" WHERE 1=1 ORDER BY "kms_oplog_schema_version"."version" LIMIT 1`,
+	).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+	testKms := kms.TestKms(t, conn, wrapper)
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	t.Run("returns 0 when db returns 0", func(t *testing.T) {
+		mock.ExpectQuery(
+			`select`,
+		).WillReturnRows(sqlmock.NewRows([]string{"estimate"}).AddRow(0))
+		numItems, err := repo.estimatedCount(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 0, numItems)
+	})
+
+	t.Run("returns 1 when db returns 1", func(t *testing.T) {
+		mock.ExpectQuery(
+			`select`,
+		).WillReturnRows(sqlmock.NewRows([]string{"estimate"}).AddRow(1))
+		numItems, err := repo.estimatedCount(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 1, numItems)
+	})
+
+	t.Run("errors when query errors", func(t *testing.T) {
+		mock.ExpectQuery(
+			`select`,
+		).WillReturnError(fmt.Errorf("query error"))
+		_, err = repo.estimatedCount(ctx)
+		require.ErrorContains(t, err, "query error")
+	})
 }

@@ -24,7 +24,7 @@ func Test_parseRefreshToken(t *testing.T) {
 	testToken := &pbs.ListRefreshToken{
 		CreatedTime:         timestamppb.New(time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)),
 		ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-		PermissionsHash:     []byte("some hash"),
+		GrantsHash:          []byte("some hash"),
 		LastItemId:          "s_1234567890",
 		LastItemUpdatedTime: timestamppb.New(time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)),
 	}
@@ -76,7 +76,7 @@ func Test_marshalRefreshToken(t *testing.T) {
 	testToken := &pbs.ListRefreshToken{
 		CreatedTime:         timestamppb.New(time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)),
 		ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-		PermissionsHash:     []byte("some hash"),
+		GrantsHash:          []byte("some hash"),
 		LastItemId:          "s_1234567890",
 		LastItemUpdatedTime: timestamppb.New(time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)),
 	}
@@ -129,7 +129,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     []byte("some hash"),
+				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
 				LastItemUpdatedTime: fiveDaysAgo,
 			},
@@ -149,7 +149,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     nil,
+				GrantsHash:          nil,
 				LastItemId:          "s_1234567890",
 				LastItemUpdatedTime: fiveDaysAgo,
 			},
@@ -163,7 +163,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     []byte("some hash"),
+				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
 				LastItemUpdatedTime: fiveDaysAgo,
 			},
@@ -177,7 +177,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         nil,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     []byte("some hash"),
+				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
 				LastItemUpdatedTime: fiveDaysAgo,
 			},
@@ -191,7 +191,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         timestamppb.New(time.Now().AddDate(1, 0, 0)),
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     []byte("some hash"),
+				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
 				LastItemUpdatedTime: fiveDaysAgo,
 			},
@@ -205,7 +205,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         timestamppb.New(time.Now().AddDate(0, 0, -31)),
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     []byte("some hash"),
+				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
 				LastItemUpdatedTime: fiveDaysAgo,
 			},
@@ -219,7 +219,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     []byte("some hash"),
+				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
 				LastItemUpdatedTime: fiveDaysAgo,
 			},
@@ -233,7 +233,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     []byte("some hash"),
+				GrantsHash:          []byte("some hash"),
 				LastItemId:          "",
 				LastItemUpdatedTime: fiveDaysAgo,
 			},
@@ -247,7 +247,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     []byte("some hash"),
+				GrantsHash:          []byte("some hash"),
 				LastItemId:          "",
 				LastItemUpdatedTime: fiveDaysAgo,
 			},
@@ -261,7 +261,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     []byte("some hash"),
+				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
 				LastItemUpdatedTime: nil,
 			},
@@ -275,7 +275,7 @@ func Test_validateRefreshToken(t *testing.T) {
 			token: &pbs.ListRefreshToken{
 				CreatedTime:         fiveDaysAgo,
 				ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-				PermissionsHash:     []byte("some hash"),
+				GrantsHash:          []byte("some hash"),
 				LastItemId:          "s_1234567890",
 				LastItemUpdatedTime: timestamppb.New(time.Now().AddDate(1, 0, 0)),
 			},
@@ -591,7 +591,7 @@ func TestPaginateRequest(t *testing.T) {
 		maxPageSize := uint(1000)
 		resourceType := pbs.ResourceType_RESOURCE_TYPE_SESSION
 		refreshToken := &pbs.ListRefreshToken{
-			PermissionsHash: []byte("some other hash"),
+			GrantsHash: []byte("some other hash"),
 			// Missing required fields
 		}
 		marshaledToken, err := marshalRefreshToken(ctx, refreshToken)
@@ -637,7 +637,7 @@ func TestPaginateRequest(t *testing.T) {
 			ResourceType:        resourceType,
 			LastItemId:          "some-id",
 			LastItemUpdatedTime: timestamppb.New(time.Now().Add(-2 * time.Hour)),
-			PermissionsHash:     []byte("some hash"),
+			GrantsHash:          []byte("some hash"),
 		}
 		marshaledToken, err := marshalRefreshToken(ctx, refreshToken)
 		require.NoError(t, err)
@@ -842,7 +842,7 @@ func TestPaginateRequest(t *testing.T) {
 		assert.True(t, refreshToken.CreatedTime.AsTime().Add(10*time.Second).After(now))
 		assert.Equal(t, "some-id", refreshToken.LastItemId)
 		assert.True(t, refreshToken.LastItemUpdatedTime.AsTime().Equal((&testPbType{}).GetUpdatedTime().AsTime()))
-		assert.Equal(t, []byte("some hash"), refreshToken.PermissionsHash)
+		assert.Equal(t, []byte("some hash"), refreshToken.GrantsHash)
 		assert.Equal(t, resourceType, refreshToken.ResourceType)
 	})
 	t.Run("some-rows-and-request-token", func(t *testing.T) {
@@ -854,7 +854,7 @@ func TestPaginateRequest(t *testing.T) {
 			ResourceType:        resourceType,
 			LastItemId:          "some-id",
 			LastItemUpdatedTime: timestamppb.New(time.Now().Add(-2 * time.Hour)),
-			PermissionsHash:     []byte("some hash"),
+			GrantsHash:          []byte("some hash"),
 		}
 		marshaledToken, err := marshalRefreshToken(ctx, refreshToken)
 		require.NoError(t, err)
@@ -901,7 +901,7 @@ func TestPaginateRequest(t *testing.T) {
 		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(10*time.Second).After(now))
 		assert.Equal(t, "some-id", refreshToken2.LastItemId)
 		assert.True(t, refreshToken2.LastItemUpdatedTime.AsTime().Equal((&testPbType{}).GetUpdatedTime().AsTime()))
-		assert.Equal(t, []byte("some hash"), refreshToken2.PermissionsHash)
+		assert.Equal(t, []byte("some hash"), refreshToken2.GrantsHash)
 		assert.Equal(t, resourceType, refreshToken2.ResourceType)
 	})
 	t.Run("no-rows-and-request-token", func(t *testing.T) {
@@ -913,7 +913,7 @@ func TestPaginateRequest(t *testing.T) {
 			ResourceType:        resourceType,
 			LastItemId:          "some-id",
 			LastItemUpdatedTime: timestamppb.New(time.Now().Add(-2 * time.Hour)),
-			PermissionsHash:     []byte("some hash"),
+			GrantsHash:          []byte("some hash"),
 		}
 		marshaledToken, err := marshalRefreshToken(ctx, refreshToken)
 		require.NoError(t, err)
@@ -961,7 +961,7 @@ func TestPaginateRequest(t *testing.T) {
 		assert.True(t, refreshToken2.CreatedTime.AsTime().Add(10*time.Second).After(now))
 		assert.Equal(t, refreshToken.LastItemId, refreshToken2.LastItemId)
 		assert.True(t, refreshToken2.LastItemUpdatedTime.AsTime().Equal(refreshToken.LastItemUpdatedTime.AsTime()))
-		assert.Equal(t, []byte("some hash"), refreshToken2.PermissionsHash)
+		assert.Equal(t, []byte("some hash"), refreshToken2.GrantsHash)
 		assert.Equal(t, resourceType, refreshToken2.ResourceType)
 	})
 	t.Run("does-not-call-estimate-count-on-single-page-result", func(t *testing.T) {
@@ -1013,7 +1013,7 @@ func TestPaginateRequest(t *testing.T) {
 		assert.True(t, refreshToken.CreatedTime.AsTime().Add(10*time.Second).After(now))
 		assert.Equal(t, "some-id", refreshToken.LastItemId)
 		assert.True(t, refreshToken.LastItemUpdatedTime.AsTime().Equal((&testPbType{}).GetUpdatedTime().AsTime()))
-		assert.Equal(t, []byte("some hash"), refreshToken.PermissionsHash)
+		assert.Equal(t, []byte("some hash"), refreshToken.GrantsHash)
 		assert.Equal(t, resourceType, refreshToken.ResourceType)
 	})
 }
@@ -1024,7 +1024,7 @@ func Test_fillPage(t *testing.T) {
 	refreshToken := &pbs.ListRefreshToken{
 		CreatedTime:         timestamppb.Now(),
 		ResourceType:        pbs.ResourceType_RESOURCE_TYPE_SESSION,
-		PermissionsHash:     []byte("some bytes"),
+		GrantsHash:          []byte("some bytes"),
 		LastItemId:          "last_id",
 		LastItemUpdatedTime: timestamppb.New(time.Now().Add(-time.Hour)),
 	}

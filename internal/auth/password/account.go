@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -70,6 +71,11 @@ func (a *Account) TableName() string {
 // SetTableName sets the table name.
 func (a *Account) SetTableName(n string) {
 	a.tableName = n
+}
+
+// GetResourceType returns the resource type of the Account
+func (a *Account) GetResourceType() resource.Type {
+	return resource.Account
 }
 
 // GetEmail returns the email, which will always be empty as this type doesn't

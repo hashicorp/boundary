@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -49,6 +50,11 @@ func (s *HostSet) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (s *HostSet) SetTableName(n string) {
 	s.tableName = n
+}
+
+// GetResourceType returns the resource type of the HostSet
+func (s *HostSet) GetResourceType() resource.Type {
+	return resource.HostSet
 }
 
 func allocHostSet() *HostSet {
