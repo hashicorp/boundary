@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
@@ -494,4 +495,44 @@ func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return libs, nil
+}
+
+// estimatedLibraryCount returns an estimate of the number of Vault credential libraries
+func (r *Repository) estimatedLibraryCount(ctx context.Context) (int, error) {
+	const op = "vault.(Repository).estimatedLibraryCount"
+	rows, err := r.reader.Query(ctx, estimateCountCredentialLibraries, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential libraries"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential libraries"))
+		}
+	}
+	return count, nil
+}
+
+// listDeletedLibraryIds lists the public IDs of any credential libraries deleted since the timestamp provided.
+// Supported options:
+//   - credential.WithReaderWriter
+func (r *Repository) listDeletedLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "vault.(Repository).listDeletedLibraryIds"
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedCredentialLibraries []*deletedCredentialLibrary
+	if err := rdr.SearchWhere(ctx, &deletedCredentialLibraries, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credential libraries"))
+	}
+	var credentialLibraryIds []string
+	for _, cl := range deletedCredentialLibraries {
+		credentialLibraryIds = append(credentialLibraryIds, cl.PublicId)
+	}
+	return credentialLibraryIds, nil
 }

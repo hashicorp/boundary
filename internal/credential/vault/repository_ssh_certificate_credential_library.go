@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
@@ -386,4 +387,44 @@ func (r *Repository) DeleteSSHCertificateCredentialLibrary(ctx context.Context, 
 	}
 
 	return rowsDeleted, nil
+}
+
+// estimatedSSHCertificateLibraryCount returns an estimate of the number of SSH certificate credential libraries
+func (r *Repository) estimatedSSHCertificateLibraryCount(ctx context.Context) (int, error) {
+	const op = "vault.(Repository).estimatedSSHCertificateLibraryCount"
+	rows, err := r.reader.Query(ctx, estimateCountSSHCertificateCredentialLibraries, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault SSH certificate credential libraries"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault SSH certificate credential libraries"))
+		}
+	}
+	return count, nil
+}
+
+// listDeletedSSHCertificateLibraryIds lists the public IDs of any SSH certificate credential libraries deleted since the timestamp provided.
+// Supported options:
+//   - credential.WithReaderWriter
+func (r *Repository) listDeletedSSHCertificateLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "vault.(Repository).listDeletedSSHCertificateLibraryIds"
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedSSHCertificateCredentialLibraries []*deletedSSHCertificateCredentialLibrary
+	if err := rdr.SearchWhere(ctx, &deletedSSHCertificateCredentialLibraries, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted SSH certificate credential libraries"))
+	}
+	var credentialLibraryIds []string
+	for _, cl := range deletedSSHCertificateCredentialLibraries {
+		credentialLibraryIds = append(credentialLibraryIds, cl.PublicId)
+	}
+	return credentialLibraryIds, nil
 }

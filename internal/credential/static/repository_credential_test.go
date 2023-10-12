@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static/store"
@@ -2486,4 +2488,151 @@ func TestRepository_UpdateJsonCredential(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_listDeletedCredentialIds(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+	obj, _, err := TestJsonObject()
+	assert.NoError(err)
+	jsonCreds := TestJsonCredentials(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, 2)
+	sshCreds := TestSshPrivateKeyCredentials(t, conn, wrapper, "username", TestSshPrivateKeyPem, store.GetPublicId(), prj.GetPublicId(), 2)
+	pwCreds := TestUsernamePasswordCredentials(t, conn, wrapper, "username", "testpassword", store.GetPublicId(), prj.GetPublicId(), 2)
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+	staticRepo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.listDeletedCredentialIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Delete a json credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), jsonCreds[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect one entry
+	deletedIds, err = repo.listDeletedCredentialIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	assert.Empty(
+		cmp.Diff(
+			[]string{jsonCreds[0].GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+
+	// Delete a ssh credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), sshCreds[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect two entries
+	deletedIds, err = repo.listDeletedCredentialIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	assert.Empty(
+		cmp.Diff(
+			[]string{jsonCreds[0].GetPublicId(), sshCreds[0].GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+
+	// Delete a pw credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), pwCreds[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect three entries
+	deletedIds, err = repo.listDeletedCredentialIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	assert.Empty(
+		cmp.Diff(
+			[]string{jsonCreds[0].GetPublicId(), sshCreds[0].GetPublicId(), pwCreds[0].GetPublicId()},
+			deletedIds,
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+		),
+	)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.listDeletedCredentialIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
+}
+
+func TestRepository_estimatedCredentialCount(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	staticStore := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
+
+	repo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+	require.NotNil(repo)
+	staticRepo, err := NewRepository(ctx, rw, rw, kms)
+	require.NoError(err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedCredentialCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Create some credentials
+	obj, _, err := TestJsonObject()
+	assert.NoError(err)
+	jsonCreds := TestJsonCredentials(t, conn, wrapper, staticStore.GetPublicId(), prj.GetPublicId(), obj, 2)
+	sshCreds := TestSshPrivateKeyCredentials(t, conn, wrapper, "username", TestSshPrivateKeyPem, staticStore.GetPublicId(), prj.GetPublicId(), 2)
+	pwCreds := TestUsernamePasswordCredentials(t, conn, wrapper, "username", "testpassword", staticStore.GetPublicId(), prj.GetPublicId(), 2)
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.estimatedCredentialCount(ctx)
+	require.NoError(err)
+	assert.Equal(6, numItems)
+
+	// Delete a json credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), jsonCreds[0].GetPublicId())
+	require.NoError(err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.estimatedCredentialCount(ctx)
+	require.NoError(err)
+	assert.Equal(5, numItems)
+
+	// Delete a ssh credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), sshCreds[0].GetPublicId())
+	require.NoError(err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.estimatedCredentialCount(ctx)
+	require.NoError(err)
+	assert.Equal(4, numItems)
+
+	// Delete a pw credential
+	_, err = staticRepo.DeleteCredential(ctx, prj.GetPublicId(), pwCreds[0].GetPublicId())
+	require.NoError(err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.estimatedCredentialCount(ctx)
+	require.NoError(err)
+	assert.Equal(3, numItems)
 }

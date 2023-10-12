@@ -4,6 +4,10 @@
 package credential
 
 import (
+	"errors"
+
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/internal/util/template"
 )
 
@@ -27,6 +31,8 @@ type Option func(*options) error
 // options = how options are represented
 type options struct {
 	WithTemplateData template.Data
+	WithReader       db.Reader
+	WithWriter       db.Writer
 }
 
 func getDefaultOptions() *options {
@@ -37,6 +43,23 @@ func getDefaultOptions() *options {
 func WithTemplateData(with template.Data) Option {
 	return func(o *options) error {
 		o.WithTemplateData = with
+		return nil
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) error {
+		switch {
+		case util.IsNil(r):
+			return errors.New("nil reader")
+		case util.IsNil(w):
+			return errors.New("nil writer")
+		}
+		o.WithReader = r
+		o.WithWriter = w
 		return nil
 	}
 }

@@ -1774,3 +1774,79 @@ group by store_id, status;
 		})
 	}
 }
+
+func TestRepository_listDeletedStoreIds(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.listDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Delete the credential store
+	// NOTE: Deleting a vault credential store doesn't immediately
+	// delete it, so testing this behaviour for a vault credential store
+	// is kept out of the scope of this test.
+	_, err = repo.DeleteCredentialStore(ctx, store.GetPublicId())
+	require.NoError(err)
+
+	// Expect no entries
+	deletedIds, err = repo.listDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.listDeletedStoreIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
+}
+
+func TestRepository_estimatedStoreCount(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedStoreCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Create some credential stores
+	_ = TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.estimatedStoreCount(ctx)
+	require.NoError(err)
+	assert.Equal(2, numItems)
+
+	// NOTE: Deleting a vault credential store doesn't immediately
+	// delete it, so testing this behaviour for a vault credential store
+	// is kept out of the scope of this test.
+}

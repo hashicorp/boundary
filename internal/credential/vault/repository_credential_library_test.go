@@ -2244,3 +2244,84 @@ func TestRepository_ListCredentialLibraries_Pagination(t *testing.T) {
 	require.NoError(err)
 	require.Empty(emptyPage)
 }
+
+func TestRepository_listDeletedLibraryIds(t *testing.T) {
+	t.Parallel()
+	_, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	libs := TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.listDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Delete a vault library
+	_, err = repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), libs[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect a single entry
+	deletedIds, err = repo.listDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Equal([]string{libs[0].GetPublicId()}, deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.listDeletedLibraryIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
+}
+
+func TestRepository_estimatedLibraryCount(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Create some libraries
+	libs := TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.estimatedLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(2, numItems)
+
+	// Delete a library
+	_, err = repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), libs[0].GetPublicId())
+	require.NoError(err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.estimatedLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(1, numItems)
+}

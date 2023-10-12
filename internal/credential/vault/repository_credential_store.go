@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -768,4 +770,44 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, credentialStoreCleanupJobName, 0, scheduler.WithRunNow(true))
 	}
 	return rows, nil
+}
+
+// estimatedStoreCount returns an estimate of the number of Vault credential stores
+func (r *Repository) estimatedStoreCount(ctx context.Context) (int, error) {
+	const op = "vault.(Repository) estimatedStoreCount"
+	rows, err := r.reader.Query(ctx, estimateCountCredentialStores, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential stores"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential stores"))
+		}
+	}
+	return count, nil
+}
+
+// listDeletedStoreIds lists the public IDs of any credential stores deleted since the timestamp provided.
+// Supported options:
+//   - credential.WithReaderWriter
+func (r *Repository) listDeletedStoreIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "vault.(Repository).listDeletedStoreIds"
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedCredentialStores []*deletedCredentialStore
+	if err := rdr.SearchWhere(ctx, &deletedCredentialStores, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credential stores"))
+	}
+	var credentialStoreIds []string
+	for _, cl := range deletedCredentialStores {
+		credentialStoreIds = append(credentialStoreIds, cl.PublicId)
+	}
+	return credentialStoreIds, nil
 }
