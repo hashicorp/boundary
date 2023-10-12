@@ -6,7 +6,7 @@ begin;
   select wtt_load('widgets', 'iam');
 
   -- insert storage policy.
-  insert into storage_policy
+  insert into policy_storage_policy
     (public_id,      scope_id,       retention_days, name,      description)
   values
     ('sp____policy', 'o_____widget', -1, 'Test Storage Policy', 'This is a test storage policy');
@@ -19,18 +19,18 @@ begin;
   scope_id = 'o_____widget';
 
   -- update a storage policy.
-  update storage_policy set retention_days = 1
+  update policy_storage_policy set retention_days = 1
   where
   public_id = 'sp____policy' and
   scope_id = 'o_____widget';
 
-  select is(retention_days, 1::integer) from storage_policy
+  select is(retention_days, 1::integer) from policy_storage_policy
   where
   public_id = 'sp____policy' and
   scope_id = 'o_____widget';
 
   -- delete a storage policy.
-  delete from storage_policy
+  delete from policy_storage_policy
   where
   public_id = 'sp____policy' and
   scope_id = 'o_____widget';
