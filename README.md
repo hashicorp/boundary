@@ -16,7 +16,7 @@ With Boundary you can:
 * Provide just-in-time network access to network resources, wherever they reside 
 * Manage session credentials via a native static credential store, or dynamically generate unique per-session credentials by integrating with HashiCorp Vault
 * Automate discovery of new endpoints
-* Manage privileged sessions using Boundary’s Session Controls
+* Manage privileged sessions using Boundary’s session controls
 * Standardize your team's access workflow with a consistent experience for any type of infrastructure across any provider
 
 
