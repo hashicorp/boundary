@@ -96,7 +96,7 @@ following properties:
 If you meet the following local requirements, you can quickly get up and running with Boundary:
 - Go v1.21 or greater
 - Docker
-- Either the [Boundary UI Dependencies](https://github.com/hashicorp/boundary-ui#prerequisites)
+- Either the [Boundary UI dependencies](https://github.com/hashicorp/boundary-ui#prerequisites)
   for locally building the ui assets
   or [gh cli](https://cli.github.com) for downloading pre-built ui assets.
 
