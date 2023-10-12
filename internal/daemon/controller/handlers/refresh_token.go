@@ -41,6 +41,8 @@ func MarshalRefreshToken(ctx context.Context, token *pbs.ListRefreshToken) (stri
 	return base58.Encode(marshaled), nil
 }
 
+// RefreshTokenResourceToResource translates a protobuf refresh token resource type
+// into a useable domain layer boundary resource type.
 func RefreshTokenResourceToResource(rt pbs.ResourceType) resource.Type {
 	switch rt {
 	case pbs.ResourceType_RESOURCE_TYPE_TARGET:

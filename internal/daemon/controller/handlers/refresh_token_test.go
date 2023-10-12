@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -107,6 +108,36 @@ func Test_MarshalRefreshToken(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+			require.Empty(t, cmp.Diff(got, tt.want, protocmp.Transform()))
+		})
+	}
+}
+
+func TestRefreshTokenResourceToResource(t *testing.T) {
+	tests := []struct {
+		name string
+		rt   pbs.ResourceType
+		want resource.Type
+	}{
+		{
+			name: "valid known",
+			rt:   pbs.ResourceType_RESOURCE_TYPE_TARGET,
+			want: resource.Target,
+		},
+		{
+			name: "valid unknown",
+			rt:   pbs.ResourceType_RESOURCE_TYPE_HOST,
+			want: resource.Unknown,
+		},
+		{
+			name: "default unknown",
+			rt:   0,
+			want: resource.Unknown,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := handlers.RefreshTokenResourceToResource(tt.rt)
 			require.Empty(t, cmp.Diff(got, tt.want, protocmp.Transform()))
 		})
 	}
