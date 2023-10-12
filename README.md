@@ -14,7 +14,7 @@ With Boundary you can:
 
 * Integrate with your IdP of choice using OpenID Connect, enabling users to securely sign-in to their Boundary Environment
 * Provide Just-in-Time network access to network resources, wherever they reside 
-* Manage session credentials via a native static credential store, or dynamically generate unique per-session credentials by integrating with HashiCorp Vault.
+* Manage session credentials via a native static credential store, or dynamically generate unique per-session credentials by integrating with HashiCorp Vault
 * Automate discovery of new endpoints
 * Manage privileged sessions using Boundary’s Session Controls
 * Standardize your team's access workflow with a consistent experience for any type of infrastructure across any provider
