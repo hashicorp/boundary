@@ -56,7 +56,7 @@ Boundary has two external dependencies:
 
 ### SQL database
 The database contains Boundary's configuration and session information. The 
-database must be accessible by Controller nodes. 
+controller nodes must be able to access the database. 
 
 Values that are secrets (e.g credentials) are encrypted in the database. Currently, PostgreSQL is supported as a database and has been tested with Postgres 12 and above.
 
