@@ -60,7 +60,7 @@ controller nodes must be able to access the database.
 
 Values that are secrets (e.g credentials) are encrypted in the database. Currently, PostgreSQL is supported as a database and has been tested with Postgres 12 and above.
 
-Boundary uses only common extensions and both hosted and self-managed instances are supported.In most instances all that is needed is a database endpoint and appropriate credentials.
+Boundary uses only common extensions and both hosted and self-managed instances are supported. In most instances, all that you need is a database endpoint and the appropriate credentials.
 
 ### KMS 
 Boundary uses KMS keys for various purposes, such as protecting secrets, as a possible authentication mechanism for workers, recovery needs, encryption of values in Boundary’s configuration, and more.Boundary uses key derivation extensively to avoid key sprawl of these high-value keys.
