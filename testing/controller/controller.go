@@ -124,8 +124,8 @@ func DisableDatabaseCreation() Option {
 	}
 }
 
-// DisableDatabaseCreation skips creating a database in docker and allows one to
-// be provided through a tcOptions.
+// DisableDatabaseDestruction skips destoying the database in docker and allows
+// it to be examined after-the-fact
 func DisableDatabaseDestruction() Option {
 	return func(c *option) error {
 		c.setDisableDatabaseDestruction = true
