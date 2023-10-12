@@ -83,8 +83,8 @@ client(s) from our [downloads page](https://developer.hashicorp.com/boundary/dow
 
 ## Quickstart with Boundary Dev
 
-Boundary has a `dev` mode that you can use for testing. In this mode both a
-controller and worker are started with a single command, and they have the
+Boundary has a `dev` mode that you can use for testing. In `dev` mode, you can start both a
+controller and worker with a single command, and they have the
 following properties:
 
 * The controller starts a PostgreSQL Docker container to use as storage.
