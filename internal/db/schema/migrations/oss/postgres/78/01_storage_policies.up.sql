@@ -15,7 +15,7 @@ create table policy_storage_policy (
   scope_id wt_scope_id not null,
   retention_days integer not null,
   name wt_name,
-  description wt_description,
+  description text,
   create_time wt_timestamp,
   update_time wt_timestamp,
   version wt_version,
