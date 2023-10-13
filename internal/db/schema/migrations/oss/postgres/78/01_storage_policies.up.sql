@@ -157,4 +157,10 @@ comment on function policy_assigned_storage_policy_scope_id_valid is
 create trigger policy_assigned_storage_policy_scope_id_valid before insert on policy_assigned_storage_policy
   for each row execute procedure policy_assigned_storage_policy_scope_id_valid();
 
+insert into oplog_ticket (name, version)
+values
+  ('policy', 1);
+  ('policy_storage_policy', 1);
+  ('policy_assigned_storage_policy', 1);
+
 commit;
