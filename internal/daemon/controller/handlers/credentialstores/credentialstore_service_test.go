@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -22,9 +23,12 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentialstores"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -58,6 +62,73 @@ var (
 		},
 	}
 )
+
+func TestAnonAuth(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	vaultRepoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(ctx, rw, rw, kms, sche)
+	}
+	staticRepoFn := func() (*credstatic.Repository, error) {
+		return credstatic.NewRepository(ctx, rw, rw, kms)
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+
+	ar := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, ar.GetPublicId(), globals.AnonymousUserId)
+	_ = iam.TestRoleGrant(t, conn, ar.GetPublicId(), "id=*;type=*;actions=*")
+
+	s, err := NewService(ctx, vaultRepoFn, staticRepoFn, iamRepoFn)
+	require.NoError(t, err)
+
+	authedReqInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	authedReqCtx := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	authedCtx := auth.NewVerifierContext(authedReqCtx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &authedReqInfo)
+
+	anonReqInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeUnknown),
+	}
+	anonReqCtx := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	anonCtx := auth.NewVerifierContext(anonReqCtx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &anonReqInfo)
+
+	_, err = s.ListCredentialStores(authedCtx, &pbs.ListCredentialStoresRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.NoError(t, err)
+
+	_, err = s.ListCredentialStores(anonCtx, &pbs.ListCredentialStoresRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, handlers.UnauthenticatedError())
+}
 
 func TestList(t *testing.T) {
 	ctx := context.Background()

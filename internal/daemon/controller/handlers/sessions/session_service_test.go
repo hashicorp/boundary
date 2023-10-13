@@ -163,6 +163,81 @@ func TestGetSession(t *testing.T) {
 	}
 }
 
+func TestAnonAuth(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	sessRepoFn := func(opt ...session.Option) (*session.Repository, error) {
+		return session.NewRepository(ctx, rw, rw, kms, opt...)
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+
+	ar := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, ar.GetPublicId(), globals.AnonymousUserId)
+	_ = iam.TestRoleGrant(t, conn, ar.GetPublicId(), "id=*;type=*;actions=*")
+
+	tar := tcp.TestTarget(context.Background(), t, conn, proj.GetPublicId(), "test", target.WithAddress("address"))
+
+	// By default a user can read/cancel their own sessions.
+	session.TestSession(t, conn, wrapper, session.ComposedOf{
+		UserId:      at.GetIamUserId(),
+		TargetId:    tar.GetPublicId(),
+		AuthTokenId: at.GetPublicId(),
+		ProjectId:   proj.GetPublicId(),
+		Endpoint:    "tcp://address",
+	})
+
+	s, err := sessions.NewService(ctx, sessRepoFn, iamRepoFn)
+	require.NoError(t, err)
+
+	authedReqInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	authedReqCtx := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	authedCtx := auth.NewVerifierContext(authedReqCtx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &authedReqInfo)
+
+	anonReqInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeUnknown),
+	}
+	anonReqCtx := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	anonCtx := auth.NewVerifierContext(anonReqCtx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &anonReqInfo)
+
+	_, err = s.ListSessions(authedCtx, &pbs.ListSessionsRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.NoError(t, err)
+
+	_, err = s.ListSessions(anonCtx, &pbs.ListSessionsRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, handlers.UnauthenticatedError())
+}
+
 func TestList_Self(t *testing.T) {
 	conn, _ := db.TestSetup(t, "postgres")
 	wrap := db.TestWrapper(t)

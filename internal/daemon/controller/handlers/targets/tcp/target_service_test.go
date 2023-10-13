@@ -246,6 +246,68 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestAnonAuth(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+
+	ar := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, ar.GetPublicId(), globals.AnonymousUserId)
+	_ = iam.TestRoleGrant(t, conn, ar.GetPublicId(), "id=*;type=target;actions=*")
+
+	_ = tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "name", target.WithAddress("thisaddress"))
+	s, err := testService(t, context.Background(), conn, kms, wrapper)
+	require.NoError(t, err)
+
+	authedReqInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	authedReqCtx := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	authedCtx := auth.NewVerifierContext(authedReqCtx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &authedReqInfo)
+
+	anonReqInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeUnknown),
+	}
+	anonReqCtx := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	anonCtx := auth.NewVerifierContext(anonReqCtx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &anonReqInfo)
+
+	_, err = s.ListTargets(authedCtx, &pbs.ListTargetsRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.NoError(t, err)
+
+	_, err = s.ListTargets(anonCtx, &pbs.ListTargetsRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, handlers.UnauthenticatedError())
+}
+
 func TestList(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -402,13 +464,7 @@ func TestList(t *testing.T) {
 			_, gErr = s.ListTargets(ctx, tc.req)
 			require.Error(gErr)
 
-			// For now, due to how recursive checks the additional scopes,
-			// it gets a 403 while a non-recursive expects a 401
-			if tc.req.GetRecursive() {
-				assert.ErrorIs(gErr, handlers.ForbiddenError())
-			} else {
-				assert.ErrorIs(gErr, handlers.UnauthenticatedError())
-			}
+			assert.ErrorIs(gErr, handlers.UnauthenticatedError())
 		})
 	}
 }

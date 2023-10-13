@@ -15,18 +15,22 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/host_catalogs"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
@@ -283,6 +287,79 @@ func TestGet_Plugin(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetHostCatalog(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
+}
+
+func TestAnonAuth(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	pluginHostRepo := func() (*hostplugin.Repository, error) {
+		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
+	}
+	pluginRepo := func() (*plugin.Repository, error) {
+		return plugin.NewRepository(ctx, rw, rw, kms)
+	}
+	repoFn := func() (*static.Repository, error) {
+		return static.NewRepository(ctx, rw, rw, kms)
+	}
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+
+	ar := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, ar.GetPublicId(), globals.AnonymousUserId)
+	_ = iam.TestRoleGrant(t, conn, ar.GetPublicId(), "id=*;type=*;actions=*")
+
+	static.TestCatalogs(t, conn, proj.GetPublicId(), 1)
+
+	s, err := host_catalogs.NewService(ctx, repoFn, pluginHostRepo, pluginRepo, iamRepoFn)
+	require.NoError(t, err)
+
+	authedReqInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	authedReqCtx := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	authedCtx := auth.NewVerifierContext(authedReqCtx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &authedReqInfo)
+
+	anonReqInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeUnknown),
+	}
+	anonReqCtx := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	anonCtx := auth.NewVerifierContext(anonReqCtx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &anonReqInfo)
+
+	_, err = s.ListHostCatalogs(authedCtx, &pbs.ListHostCatalogsRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.NoError(t, err)
+
+	_, err = s.ListHostCatalogs(anonCtx, &pbs.ListHostCatalogsRequest{
+		ScopeId:   "global",
+		Recursive: true,
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, handlers.UnauthenticatedError())
 }
 
 func TestList(t *testing.T) {
