@@ -96,7 +96,7 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
 	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53
-	golang.org/x/net v0.15.0
+	golang.org/x/net v0.17.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc
 	gopkg.in/square/go-jose.v2 v2.5.1
 )

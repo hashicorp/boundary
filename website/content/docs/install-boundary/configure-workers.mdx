@@ -98,7 +98,7 @@ listener "tcp" {
 worker {
   public_addr = "<worker_public_addr>"
   initial_upstreams = ["<controller_lb_address>:9201"]
-  auth_storage_path = "/etc/boundary.d/auth_storage/"
+  auth_storage_path = "/var/lib/boundary"
   tags {
     type = ["worker1", "upstream"]
   }
@@ -167,7 +167,7 @@ listener "tcp" {
 worker {
   public_addr = "<worker_public_addr>"
   initial_upstreams = ["<ingress_worker_address>:9202"]
-  auth_storage_path = "/etc/boundary.d/auth_storage/"
+  auth_storage_path = "/var/lib/boundary"
   tags {
     type = ["worker2", "intermediate"]
   }
@@ -236,7 +236,7 @@ listener "tcp" {
 worker {
   public_addr = "<worker_public_addr>"
   initial_upstreams = ["<intermediate_worker_address>:9202"]
-  auth_storage_path = "/etc/boundary.d/auth_storage/"
+  auth_storage_path = "/var/lib/boundary"
   tags {
     type = ["worker3", "egress"]
   }
@@ -350,7 +350,7 @@ listener "tcp" {
 worker {
   public_addr = "<worker_public_addr>"
   initial_upstreams = ["<controller_lb_address>:9201"]
-  auth_storage_path = "/etc/boundary.d/auth_storage/"
+  auth_storage_path = "/var/lib/boundary"
   tags {
     type = ["worker", "egress"]
   }
