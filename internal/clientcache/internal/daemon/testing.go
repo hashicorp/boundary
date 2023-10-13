@@ -75,17 +75,17 @@ func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []
 	r, err := cache.NewRepository(ctx, s.CacheServer.store, &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
 	require.NoError(t, err)
 
-	tarFn := func(ctx context.Context, _, tok string) ([]*targets.Target, error) {
+	tarFn := func(ctx context.Context, _, tok, _ string) ([]*targets.Target, []string, string, error) {
 		if tok != p.Token {
-			return nil, nil
+			return nil, nil, "", nil
 		}
-		return tars, nil
+		return tars, nil, "", nil
 	}
-	sessFn := func(ctx context.Context, _, tok string) ([]*sessions.Session, error) {
+	sessFn := func(ctx context.Context, _, tok, _ string) ([]*sessions.Session, []string, string, error) {
 		if tok != p.Token {
-			return nil, nil
+			return nil, nil, "", nil
 		}
-		return sess, nil
+		return sess, nil, "", nil
 	}
 	rs, err := cache.NewRefreshService(ctx, r)
 	require.NoError(t, err)

@@ -134,6 +134,112 @@ func TestAuthToken_NoMoreKeyringTokens(t *testing.T) {
 	assert.NoError(t, rw.LookupById(ctx, u))
 }
 
+func TestRefreshToken(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	rw := db.New(s)
+
+	u := &user{
+		Id:      "userId",
+		Address: "address",
+	}
+
+	t.Run("no user foreign key constraint", func(t *testing.T) {
+		tok := &refreshToken{
+			UserId:       u.Id,
+			ResourceType: targetResourceType,
+			RefreshToken: "something",
+		}
+		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
+	})
+
+	require.NoError(t, rw.Create(ctx, u))
+
+	t.Run("no user id", func(t *testing.T) {
+		tok := &refreshToken{
+			ResourceType: targetResourceType,
+			RefreshToken: "something",
+		}
+		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
+	})
+
+	t.Run("unknown resource type", func(t *testing.T) {
+		tok := &refreshToken{
+			UserId:       u.Id,
+			ResourceType: "thisisntknown",
+			RefreshToken: "something",
+		}
+		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
+	})
+
+	t.Run("empty refresh token", func(t *testing.T) {
+		tok := &refreshToken{
+			UserId:       u.Id,
+			ResourceType: "thisisntknown",
+		}
+		require.ErrorContains(t, rw.Create(ctx, tok), "constraint failed")
+	})
+
+	t.Run("create", func(t *testing.T) {
+		tok := &refreshToken{
+			UserId:       u.Id,
+			ResourceType: targetResourceType,
+			RefreshToken: "something",
+		}
+		before := time.Now().Truncate(1 * time.Millisecond)
+		require.NoError(t, rw.Create(ctx, tok))
+		require.NoError(t, rw.LookupById(ctx, tok))
+		assert.GreaterOrEqual(t, tok.LastAccessedTime, before)
+		assert.NotEmpty(t, tok.RefreshToken)
+	})
+
+	t.Run("update", func(t *testing.T) {
+		u := &user{
+			Id:      "updatethis",
+			Address: "updated",
+		}
+		require.NoError(t, rw.Create(ctx, u))
+
+		tok := &refreshToken{
+			UserId:       u.Id,
+			ResourceType: targetResourceType,
+			RefreshToken: "updated",
+		}
+		require.NoError(t, rw.Create(ctx, tok))
+
+		tok.LastAccessedTime = time.Now().Add(-(24 * 365 * time.Hour))
+		n, err := rw.Update(ctx, tok, []string{"LastAccessedTime"}, nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, n)
+	})
+
+	t.Run("delete user deletes token", func(t *testing.T) {
+		u := &user{
+			Id:      "deletethis",
+			Address: "deleted",
+		}
+		require.NoError(t, rw.Create(ctx, u))
+
+		tok := &refreshToken{
+			UserId:       u.Id,
+			ResourceType: targetResourceType,
+			RefreshToken: "deleted_soon",
+		}
+		require.NoError(t, rw.Create(ctx, tok))
+
+		_, err = rw.Exec(ctx, "delete from user where id = ?", []any{u.Id})
+
+		require.True(t, errors.IsNotFoundError(rw.LookupById(ctx, tok)))
+	})
+
+	// TODO: When gorm sqlite driver fixes it's delete, use rw.Delete instead of the Exec.
+	// n, err := rw.Delete(ctx, p)
+	_, err = rw.Exec(ctx, "delete from refresh_token", nil)
+	assert.NoError(t, err)
+}
+
 func TestAuthToken(t *testing.T) {
 	ctx := context.Background()
 	s, err := cachedb.Open(ctx)

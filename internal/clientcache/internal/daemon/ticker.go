@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DefaultRefreshIntervalSeconds = 5 * 60
+	DefaultRefreshIntervalSeconds = 15
 	defaultRefreshInterval        = DefaultRefreshIntervalSeconds * time.Second
 )
 

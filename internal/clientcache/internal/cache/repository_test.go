@@ -54,7 +54,7 @@ func TestRepository_SaveError(t *testing.T) {
 		sliceBasedAuthTokenBoundaryReader(nil))
 	require.NoError(t, err)
 
-	testResource := "test_resource_type"
+	testResource := targetResourceType
 	testErr := fmt.Errorf("test error for %q", testResource)
 
 	u := &user{

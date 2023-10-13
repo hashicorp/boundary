@@ -56,7 +56,7 @@ func NewRepository(ctx context.Context, conn *db.DB, idToAuthToken *sync.Map, ke
 	}, nil
 }
 
-func (r *Repository) SaveError(ctx context.Context, u *user, resourceType string, err error) error {
+func (r *Repository) SaveError(ctx context.Context, u *user, resourceType resourceType, err error) error {
 	const op = "cache.(Repository).StoreError"
 	switch {
 	case resourceType == "":
@@ -70,7 +70,7 @@ func (r *Repository) SaveError(ctx context.Context, u *user, resourceType string
 	}
 	apiErr := &ApiError{
 		UserId:       u.Id,
-		ResourceType: resourceType,
+		ResourceType: string(resourceType),
 		Error:        err.Error(),
 	}
 	onConflict := db.OnConflict{
