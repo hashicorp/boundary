@@ -159,8 +159,8 @@ create trigger policy_assigned_storage_policy_scope_id_valid before insert on po
 
 insert into oplog_ticket (name, version)
 values
-  ('policy', 1);
-  ('policy_storage_policy', 1);
+  ('policy', 1),
+  ('policy_storage_policy', 1),
   ('policy_assigned_storage_policy', 1);
 
 commit;
