@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
@@ -249,7 +250,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	if err != nil {
 		return nil, err
 	}
-	filterItemFn := func(item target.Target) (bool, error) {
+	filterItemFn := func(ctx context.Context, item target.Target) (bool, error) {
 		pbItem, err := toProto(ctx, item, newOutputOpts(ctx, item, authResults, authzScopes)...)
 		if err != nil {
 			return false, err
@@ -266,7 +267,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		return nil, err
 	}
 
-	var listResp *target.ListResponse
+	var listResp *pagination.ListResponse2[target.Target]
 	if req.GetRefreshToken() == "" {
 		listResp, err = target.List(ctx, grantsHash, pageSize, filterItemFn, repo)
 		if err != nil {
@@ -315,7 +316,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 	}
 	resp := &pbs.ListTargetsResponse{
 		Items:        finalItems,
-		EstItemCount: uint32(listResp.EstimatedTotalItems),
+		EstItemCount: uint32(listResp.EstimatedItemCount),
 		RemovedIds:   listResp.DeletedIds,
 		ResponseType: respType,
 		SortBy:       "updated_time",
