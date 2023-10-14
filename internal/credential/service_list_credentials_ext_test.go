@@ -78,7 +78,7 @@ func Test_List(t *testing.T) {
 	}
 
 	t.Run("simple pagination", func(t *testing.T) {
-		filterFunc := func(credential.Static) (bool, error) {
+		filterFunc := func(context.Context, credential.Static) (bool, error) {
 			return true, nil
 		}
 		resp, err := credential.List(ctx, []byte("some hash"), 1, filterFunc, repo, credStore.GetPublicId())
@@ -86,7 +86,7 @@ func Test_List(t *testing.T) {
 		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp.CompleteListing)
-		require.Equal(t, resp.EstimatedTotalItems, 5)
+		require.Equal(t, resp.EstimatedItemCount, 5)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
 
@@ -96,7 +96,7 @@ func Test_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp2.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp2.CompleteListing)
-		require.Equal(t, resp2.EstimatedTotalItems, 5)
+		require.Equal(t, resp2.EstimatedItemCount, 5)
 		require.Empty(t, resp2.DeletedIds)
 		require.Len(t, resp2.Items, 1)
 		require.Empty(t, cmp.Diff(resp2.Items[0], creds[1], cmpOpts...))
@@ -105,7 +105,7 @@ func Test_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp3.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp3.CompleteListing)
-		require.Equal(t, resp3.EstimatedTotalItems, 5)
+		require.Equal(t, resp3.EstimatedItemCount, 5)
 		require.Empty(t, resp3.DeletedIds)
 		require.Len(t, resp3.Items, 1)
 		require.Empty(t, cmp.Diff(resp3.Items[0], creds[2], cmpOpts...))
@@ -114,7 +114,7 @@ func Test_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp4.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp4.CompleteListing)
-		require.Equal(t, resp4.EstimatedTotalItems, 5)
+		require.Equal(t, resp4.EstimatedItemCount, 5)
 		require.Empty(t, resp4.DeletedIds)
 		require.Len(t, resp4.Items, 1)
 		require.Empty(t, cmp.Diff(resp4.Items[0], creds[3], cmpOpts...))
@@ -123,7 +123,7 @@ func Test_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp5.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)
-		require.Equal(t, resp5.EstimatedTotalItems, 5)
+		require.Equal(t, resp5.EstimatedItemCount, 5)
 		require.Empty(t, resp5.DeletedIds)
 		require.Len(t, resp5.Items, 1)
 		require.Empty(t, cmp.Diff(resp5.Items[0], creds[4], cmpOpts...))
@@ -132,21 +132,21 @@ func Test_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp6.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp6.CompleteListing)
-		require.Equal(t, resp6.EstimatedTotalItems, 5)
+		require.Equal(t, resp6.EstimatedItemCount, 5)
 		require.Empty(t, resp6.DeletedIds)
 		require.Empty(t, resp6.Items)
 	})
 
 	t.Run("simple pagination with aggressive filtering", func(t *testing.T) {
-		filterFunc := func(l credential.Static) (bool, error) {
-			return l.GetPublicId() == creds[len(creds)-1].GetPublicId(), nil
+		filterFunc := func(ctx context.Context, c credential.Static) (bool, error) {
+			return c.GetPublicId() == creds[len(creds)-1].GetPublicId(), nil
 		}
 		resp, err := credential.List(ctx, []byte("some hash"), 1, filterFunc, repo, credStore.GetPublicId())
 		require.NoError(t, err)
 		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp.CompleteListing)
-		require.Equal(t, resp.EstimatedTotalItems, 1)
+		require.Equal(t, resp.EstimatedItemCount, 1)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], creds[4], cmpOpts...))
@@ -157,13 +157,13 @@ func Test_List(t *testing.T) {
 		require.True(t, resp2.CompleteListing)
 		// Note: this might be surprising, but there isn't any way for the refresh
 		// call to know that the last call got a different number.
-		require.Equal(t, resp2.EstimatedTotalItems, 5)
+		require.Equal(t, resp2.EstimatedItemCount, 5)
 		require.Empty(t, resp2.DeletedIds)
 		require.Empty(t, resp2.Items)
 	})
 
 	t.Run("simple pagination with deletion", func(t *testing.T) {
-		filterFunc := func(l credential.Static) (bool, error) {
+		filterFunc := func(context.Context, credential.Static) (bool, error) {
 			return true, nil
 		}
 		deletedCredentialId := creds[0].GetPublicId()
@@ -180,7 +180,7 @@ func Test_List(t *testing.T) {
 		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp.CompleteListing)
-		require.Equal(t, resp.EstimatedTotalItems, 4)
+		require.Equal(t, resp.EstimatedItemCount, 4)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], creds[0], cmpOpts...))
@@ -189,7 +189,7 @@ func Test_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp2.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp2.CompleteListing)
-		require.Equal(t, resp2.EstimatedTotalItems, 4)
+		require.Equal(t, resp2.EstimatedItemCount, 4)
 		require.Empty(t, resp2.DeletedIds)
 		require.Len(t, resp2.Items, 1)
 		require.Empty(t, cmp.Diff(resp2.Items[0], creds[1], cmpOpts...))
@@ -207,7 +207,7 @@ func Test_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp3.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp3.CompleteListing)
-		require.Equal(t, resp3.EstimatedTotalItems, 3)
+		require.Equal(t, resp3.EstimatedItemCount, 3)
 		require.Contains(t, resp3.DeletedIds, deletedCredentialId)
 		require.Len(t, resp3.Items, 1)
 		require.Empty(t, cmp.Diff(resp3.Items[0], creds[1], cmpOpts...))
@@ -216,7 +216,7 @@ func Test_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp4.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp4.CompleteListing)
-		require.Equal(t, resp4.EstimatedTotalItems, 3)
+		require.Equal(t, resp4.EstimatedItemCount, 3)
 		require.Len(t, resp4.Items, 1)
 		require.Empty(t, cmp.Diff(resp4.Items[0], creds[2], cmpOpts...))
 
@@ -224,7 +224,7 @@ func Test_List(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, resp5.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)
-		require.Equal(t, resp5.EstimatedTotalItems, 3)
+		require.Equal(t, resp5.EstimatedItemCount, 3)
 		require.Empty(t, resp5.Items)
 	})
 }

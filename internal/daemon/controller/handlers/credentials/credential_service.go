@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
@@ -154,7 +155,7 @@ func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRe
 		pageSize = int(req.GetPageSize())
 	}
 
-	filterItemFn := func(item credential.Static) (bool, error) {
+	filterItemFn := func(ctx context.Context, item credential.Static) (bool, error) {
 		outputOpts, ok := newOutputOpts(ctx, item, req.CredentialStoreId, authResults)
 		if !ok {
 			return ok, nil
@@ -171,7 +172,7 @@ func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRe
 		return filter.Match(filterable), nil
 	}
 
-	var listResp *credential.ListCredentialsResponse
+	var listResp *pagination.ListResponse2[credential.Static]
 	if req.GetRefreshToken() == "" {
 		var err error
 		listResp, err = credential.List(ctx, grantsHash, pageSize, filterItemFn, repo, req.GetCredentialStoreId())
@@ -225,7 +226,7 @@ func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRe
 	}
 	resp := &pbs.ListCredentialsResponse{
 		Items:        finalItems,
-		EstItemCount: uint32(listResp.EstimatedTotalItems),
+		EstItemCount: uint32(listResp.EstimatedItemCount),
 		RemovedIds:   listResp.DeletedIds,
 		ResponseType: respType,
 		SortBy:       "updated_time",
