@@ -24,7 +24,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Note: this file imports the TCP target package. The only
+// Note: this file imports the targettest package. The only
 // reason this doesn't cause an import cycle is because this is
 // an "external" test package.
 func TestService_List(t *testing.T) {

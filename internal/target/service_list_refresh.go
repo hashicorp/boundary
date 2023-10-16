@@ -40,7 +40,7 @@ func ListRefresh(
 dbLoop:
 	for {
 		// Request another page from the DB until we fill the final items
-		page, err := repo.ListTargets(ctx, opts...)
+		page, err := repo.listTargets(ctx, opts...)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

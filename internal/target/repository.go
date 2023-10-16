@@ -228,14 +228,14 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, pro
 	return targetsMap, nil
 }
 
-// ListTargets lists targets in a project based on the data in the WithPermissions option
+// listTargets lists targets in a project based on the data in the WithPermissions option
 // provided to the Repository constructor. If no permissions are available, this function
 // is a no-op.
 // Supported options:
 //   - WithLimit which overrides the limit set in the Repository object
 //   - WithStartPageAfterItem which sets where to start listing from
-func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
-	const op = "target.(Repository).ListTargets"
+func (r *Repository) listTargets(ctx context.Context, opt ...Option) ([]Target, error) {
+	const op = "target.(Repository).listTargets"
 
 	if len(r.permissions) == 0 {
 		return []Target{}, nil

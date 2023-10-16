@@ -44,9 +44,12 @@ func (h hooks) VetCredentialSources(ctx context.Context, cls []*target.Credentia
 	return targettest.VetCredentialSources(ctx, cls, creds)
 }
 
+func init() {
+	target.Register(targettest.Subtype, hooks{}, globals.TcpTargetPrefix)
+}
+
 func TestRepository_SetTargetCredentialSources(t *testing.T) {
 	ctx := context.Background()
-	target.Register(targettest.Subtype, hooks{}, globals.TcpTargetPrefix)
 
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
