@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -144,4 +145,14 @@ func (c *JsonCredential) hmacObject(ctx context.Context, cipher wrapping.Wrapper
 	}
 	c.ObjectHmac = []byte(hm)
 	return nil
+}
+
+type deletedJSONCredential struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedJSONCredential) TableName() string {
+	return "credential_static_json_credential_deleted"
 }

@@ -7,6 +7,7 @@ package credential
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -153,4 +154,12 @@ type SshPrivateKey interface {
 	Username() string
 	PrivateKey() PrivateKey
 	PrivateKeyPassphrase() []byte
+}
+
+// SortResource defines a struct used to hold information
+// relating to a resource that is being used for sorting and
+// paginating.
+type SortResource struct {
+	PublicId   string
+	UpdateTime time.Time
 }
