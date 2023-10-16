@@ -176,13 +176,11 @@ pollControllerAgain:
 			w, err = serversRepo.LookupWorkerByName(testController.Context(), "test")
 			require.NoError(err)
 			if w != nil {
+				t.Logf("%s, %+v", w.GetLastStatusTime().AsTime().Round(time.Second), w.GetConfigTags())
 				switch {
 				case lastStatusTime.IsZero():
 					lastStatusTime = w.GetLastStatusTime().AsTime().Round(time.Second)
-					t.Log(lastStatusTime)
 				default:
-					t.Log(w.GetLastStatusTime().AsTime().Round(time.Second))
-
 					if !lastStatusTime.Round(time.Second).Equal(w.GetLastStatusTime().AsTime().Round(time.Second)) {
 						if i == 3 {
 							timeout.Stop()
