@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: BUSL-1.1
 
-package tcp_test
+package target_test
 
 import (
 	"context"
@@ -16,14 +16,17 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target"
-	"github.com/hashicorp/boundary/internal/target/tcp"
-	"github.com/hashicorp/boundary/internal/target/tcp/store"
+	"github.com/hashicorp/boundary/internal/target/targettest"
+	"github.com/hashicorp/boundary/internal/target/targettest/store"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// Note: this file imports the TCP target package. The only
+// reason this doesn't cause an import cycle is because this is
+// an "external" test package.
 func TestService_List(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -38,7 +41,7 @@ func TestService_List(t *testing.T) {
 	total := 5
 	var targets []target.Target
 	for i := 0; i < total; i++ {
-		targets = append(targets, tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), fmt.Sprintf("proj1-%d", i)))
+		targets = append(targets, targettest.TestNewTestTarget(ctx, t, conn, proj1.GetPublicId(), fmt.Sprintf("proj1-%d", i)))
 	}
 
 	// Run analyze to update target estimate
@@ -64,12 +67,13 @@ func TestService_List(t *testing.T) {
 		}
 		resp, err := target.List(ctx, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
+		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp.CompleteListing)
 		require.Equal(t, resp.EstimatedTotalItems, 5)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
-		require.Empty(t, cmp.Diff(resp.Items[0], targets[0], cmpopts.IgnoreUnexported(tcp.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+		require.Empty(t, cmp.Diff(resp.Items[0], targets[0], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
 		resp2, err := target.ListRefresh(ctx, resp.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
@@ -78,7 +82,7 @@ func TestService_List(t *testing.T) {
 		require.Equal(t, resp2.EstimatedTotalItems, 5)
 		require.Empty(t, resp2.DeletedIds)
 		require.Len(t, resp2.Items, 1)
-		require.Empty(t, cmp.Diff(resp2.Items[0], targets[1], cmpopts.IgnoreUnexported(tcp.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+		require.Empty(t, cmp.Diff(resp2.Items[0], targets[1], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
 		resp3, err := target.ListRefresh(ctx, resp2.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
@@ -87,7 +91,7 @@ func TestService_List(t *testing.T) {
 		require.Equal(t, resp3.EstimatedTotalItems, 5)
 		require.Empty(t, resp3.DeletedIds)
 		require.Len(t, resp3.Items, 1)
-		require.Empty(t, cmp.Diff(resp3.Items[0], targets[2], cmpopts.IgnoreUnexported(tcp.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+		require.Empty(t, cmp.Diff(resp3.Items[0], targets[2], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
 		resp4, err := target.ListRefresh(ctx, resp3.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
@@ -96,7 +100,7 @@ func TestService_List(t *testing.T) {
 		require.Equal(t, resp4.EstimatedTotalItems, 5)
 		require.Empty(t, resp4.DeletedIds)
 		require.Len(t, resp4.Items, 1)
-		require.Empty(t, cmp.Diff(resp4.Items[0], targets[3], cmpopts.IgnoreUnexported(tcp.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+		require.Empty(t, cmp.Diff(resp4.Items[0], targets[3], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
 		resp5, err := target.ListRefresh(ctx, resp4.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
@@ -105,7 +109,7 @@ func TestService_List(t *testing.T) {
 		require.Equal(t, resp5.EstimatedTotalItems, 5)
 		require.Empty(t, resp5.DeletedIds)
 		require.Len(t, resp5.Items, 1)
-		require.Empty(t, cmp.Diff(resp5.Items[0], targets[4], cmpopts.IgnoreUnexported(tcp.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+		require.Empty(t, cmp.Diff(resp5.Items[0], targets[4], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
 		resp6, err := target.ListRefresh(ctx, resp5.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
@@ -122,12 +126,13 @@ func TestService_List(t *testing.T) {
 		}
 		resp, err := target.List(ctx, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
+		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp.CompleteListing)
 		require.Equal(t, resp.EstimatedTotalItems, 1)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
-		require.Empty(t, cmp.Diff(resp.Items[0], targets[4], cmpopts.IgnoreUnexported(tcp.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+		require.Empty(t, cmp.Diff(resp.Items[0], targets[4], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
 		resp2, err := target.ListRefresh(ctx, resp.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
@@ -155,12 +160,13 @@ func TestService_List(t *testing.T) {
 
 		resp, err := target.List(ctx, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
+		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp.CompleteListing)
 		require.Equal(t, resp.EstimatedTotalItems, 4)
 		require.Empty(t, resp.DeletedIds)
 		require.Len(t, resp.Items, 1)
-		require.Empty(t, cmp.Diff(resp.Items[0], targets[0], cmpopts.IgnoreUnexported(tcp.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+		require.Empty(t, cmp.Diff(resp.Items[0], targets[0], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
 		resp2, err := target.ListRefresh(ctx, resp.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
@@ -169,7 +175,7 @@ func TestService_List(t *testing.T) {
 		require.Equal(t, resp2.EstimatedTotalItems, 4)
 		require.Empty(t, resp2.DeletedIds)
 		require.Len(t, resp2.Items, 1)
-		require.Empty(t, cmp.Diff(resp2.Items[0], targets[1], cmpopts.IgnoreUnexported(tcp.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+		require.Empty(t, cmp.Diff(resp2.Items[0], targets[1], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
 		deletedTargetId = targets[0].GetPublicId()
 		_, err = repo.DeleteTarget(ctx, deletedTargetId)
@@ -187,7 +193,7 @@ func TestService_List(t *testing.T) {
 		require.Equal(t, resp3.EstimatedTotalItems, 3)
 		require.Contains(t, resp3.DeletedIds, deletedTargetId)
 		require.Len(t, resp3.Items, 1)
-		require.Empty(t, cmp.Diff(resp3.Items[0], targets[1], cmpopts.IgnoreUnexported(tcp.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+		require.Empty(t, cmp.Diff(resp3.Items[0], targets[1], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
 		resp4, err := target.ListRefresh(ctx, resp3.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
@@ -195,7 +201,7 @@ func TestService_List(t *testing.T) {
 		require.True(t, resp4.CompleteListing)
 		require.Equal(t, resp4.EstimatedTotalItems, 3)
 		require.Len(t, resp4.Items, 1)
-		require.Empty(t, cmp.Diff(resp4.Items[0], targets[2], cmpopts.IgnoreUnexported(tcp.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
+		require.Empty(t, cmp.Diff(resp4.Items[0], targets[2], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
 		resp5, err := target.ListRefresh(ctx, resp4.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
 		require.NoError(t, err)
