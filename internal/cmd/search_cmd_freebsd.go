@@ -6,9 +6,9 @@
 package cmd
 
 import (
+	"github.com/hashicorp/boundary/internal/clientcache/cmd/daemon"
+	"github.com/hashicorp/boundary/internal/clientcache/cmd/search"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/commands/daemon"
-	"github.com/hashicorp/boundary/internal/cmd/commands/search"
 	"github.com/mitchellh/cli"
 )
 
