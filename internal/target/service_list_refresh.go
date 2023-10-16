@@ -5,7 +5,6 @@ package target
 
 import (
 	"context"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/refreshtoken"
@@ -89,20 +88,10 @@ dbLoop:
 		CompleteListing:     completeListing,
 	}
 
-	// Use the timestamp of the deleted IDs transaction with a
-	// buffer to account for overlapping transactions. It is okay
-	// to return a deleted ID more than once. The buffer corresponds
-	// to Postgres' default transaction timeout.
-	updatedTime := transactionTimestamp.Add(-30 * time.Second)
-	if updatedTime.Before(tok.CreatedTime) {
-		// Ensure updated time isn't before created time due
-		// to the buffer.
-		updatedTime = tok.CreatedTime
-	}
 	if len(targets) > 0 {
-		resp.RefreshToken = tok.RefreshLastItem(targets[len(targets)-1], updatedTime)
+		resp.RefreshToken = tok.RefreshLastItem(targets[len(targets)-1], transactionTimestamp)
 	} else {
-		resp.RefreshToken = tok.Refresh(updatedTime)
+		resp.RefreshToken = tok.Refresh(transactionTimestamp)
 	}
 
 	return resp, nil
