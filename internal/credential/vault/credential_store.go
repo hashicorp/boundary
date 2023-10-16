@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -206,4 +207,14 @@ func (cs *CredentialStore) softDeleteQuery() (query string, queryValues []any) {
 		cs.PublicId,
 	}
 	return
+}
+
+type deletedCredentialStore struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedCredentialStore) TableName() string {
+	return "credential_vault_store_deleted"
 }

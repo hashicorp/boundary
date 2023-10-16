@@ -205,5 +205,5 @@ type deletedTarget struct {
 
 // TableName returns the tablename to override the default gorm table name
 func (s *deletedTarget) TableName() string {
-	return "target_deleted"
+	return "target_all_subtypes_deleted_view"
 }
