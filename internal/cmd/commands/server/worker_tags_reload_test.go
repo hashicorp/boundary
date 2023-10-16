@@ -80,6 +80,7 @@ func TestServer_ReloadWorkerTags(t *testing.T) {
 		controller.WithWorkerAuthKms(workerAuthWrapper),
 		controller.WithRootKms(rootWrapper),
 		controller.WithRecoveryKms(recoveryWrapper),
+		controller.WithEnableEventing(),
 	)
 	t.Cleanup(testController.Shutdown)
 
@@ -154,6 +155,7 @@ pollController:
 	// Set new tags on worker
 	t.Log("Restart worker with new tags...")
 	cmd.presetConfig.Store(fmt.Sprintf(workerBaseConfig+tag2Config, key, testController.ClusterAddrs()[0]))
+	t.Logf("%s", workerBaseConfig+tag2Config)
 	cmd.SighupCh <- struct{}{}
 	select {
 	case <-cmd.reloadedCh:
