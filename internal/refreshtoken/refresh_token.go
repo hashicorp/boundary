@@ -18,8 +18,8 @@ import (
 )
 
 // UpdatedTimeBuffer is used to automatically adjust the updated
-// time of a refresh token to account for delays between database
-// transactions.
+// time of a refresh token to account for delays between overalapping
+// database transactions.
 const UpdatedTimeBuffer = 30 * time.Second
 
 // A Token is returned in list endpoints for the purposes of pagination
@@ -81,8 +81,8 @@ func FromResource(res boundary.Resource, grantsHash []byte) *Token {
 	}
 }
 
-// Refresh refreshes a token's updated time. It accounts for database
-// transaction inaccuracies by subtracting UpdatedTimeBuffer from the
+// Refresh refreshes a token's updated time. It accounts for overlapping
+// database transactions by subtracting UpdatedTimeBuffer from the
 // provided timestamp while ensuring that the updated time is never
 // before the created time of the token.
 func (rt *Token) Refresh(updatedTime time.Time) *Token {
@@ -94,7 +94,7 @@ func (rt *Token) Refresh(updatedTime time.Time) *Token {
 }
 
 // RefreshLastItem refreshes a token's updated time and last item.
-// It accounts for database transaction inaccuracies by subtracting
+// It accounts for overlapping database transactions by subtracting
 // UpdatedTimeBuffer from the provided timestamp while ensuring that
 // the updated time is never before the created time of the token.
 func (rt *Token) RefreshLastItem(res boundary.Resource, updatedTime time.Time) *Token {
