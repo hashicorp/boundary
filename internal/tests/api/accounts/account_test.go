@@ -11,9 +11,9 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/accounts"
 	"github.com/hashicorp/boundary/api/authmethods"
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

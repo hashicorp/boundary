@@ -6,7 +6,7 @@ package perms
 import (
 	"sort"
 
-	"github.com/hashicorp/boundary/api/globals"
+	"github.com/hashicorp/boundary/sdk/globals"
 )
 
 // OutputFields is used to store information about allowed output fields in

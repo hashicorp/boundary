@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/go-wordwrap"
 )

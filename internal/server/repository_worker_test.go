@@ -13,7 +13,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -22,7 +21,8 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
 	"github.com/hashicorp/boundary/internal/session"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	"github.com/hashicorp/nodeenrollment/rotation"

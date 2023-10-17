@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/api/workers"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/sdk/globals"
 )
 
 func init() {

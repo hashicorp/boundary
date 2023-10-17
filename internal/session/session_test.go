@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"

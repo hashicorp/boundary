@@ -16,7 +16,6 @@ import (
 	atm "sync/atomic"
 	"time"
 
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/cmd/ops"
@@ -26,7 +25,8 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/globals"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment"

@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/globals"
+	"github.com/hashicorp/boundary/sdk/types/resource"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )

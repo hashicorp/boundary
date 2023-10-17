@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	iam_store "github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

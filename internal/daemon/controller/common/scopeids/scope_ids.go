@@ -14,10 +14,10 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/sdk/types/action"
+	"github.com/hashicorp/boundary/sdk/types/resource"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 )
 
 type authzProtectedEntityProvider interface {

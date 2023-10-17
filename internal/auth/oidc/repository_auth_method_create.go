@@ -7,11 +7,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/sdk/globals"
 )
 
 // CreateAuthMethod creates am (*AuthMethod) in the repo along with its

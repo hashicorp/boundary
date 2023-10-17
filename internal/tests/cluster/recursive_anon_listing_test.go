@@ -10,7 +10,7 @@ import (
 	amapi "github.com/hashicorp/boundary/api/authmethods"
 	rolesapi "github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/stretchr/testify/require"
 )
 

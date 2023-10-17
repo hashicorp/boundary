@@ -16,9 +16,9 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/boundary/sdk/types/action"
+	"github.com/hashicorp/boundary/sdk/types/resource"
 )
 
 // Clonable provides a cloning interface

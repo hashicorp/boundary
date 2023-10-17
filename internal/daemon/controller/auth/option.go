@@ -6,8 +6,8 @@ package auth
 import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/sdk/types/action"
+	"github.com/hashicorp/boundary/sdk/types/resource"
 )
 
 func getOpts(opt ...Option) options {

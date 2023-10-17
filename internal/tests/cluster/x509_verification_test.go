@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
@@ -23,6 +22,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/tests/helper"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 	"nhooyr.io/websocket"

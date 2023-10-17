@@ -19,11 +19,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"

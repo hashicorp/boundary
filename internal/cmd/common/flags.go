@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/posener/complete"
 )

@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/api/scopes"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
 )

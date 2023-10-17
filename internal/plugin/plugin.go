@@ -6,7 +6,7 @@ package plugin
 import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/plugin/store"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 

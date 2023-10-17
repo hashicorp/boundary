@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/sdk/globals"
 )
 
 type Nonce struct {

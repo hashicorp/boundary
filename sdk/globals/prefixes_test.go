@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/sdk/types/resource"
 	"github.com/stretchr/testify/assert"
 )
 

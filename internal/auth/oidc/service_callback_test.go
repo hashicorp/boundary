@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
 	authStore "github.com/hashicorp/boundary/internal/auth/store"
 	"github.com/hashicorp/boundary/internal/authtoken"
@@ -23,6 +22,7 @@ import (
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/stretchr/testify/assert"

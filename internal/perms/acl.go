@@ -6,10 +6,10 @@ package perms
 import (
 	"strings"
 
-	"github.com/hashicorp/boundary/api/globals"
-	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
+	"github.com/hashicorp/boundary/sdk/types/action"
+	"github.com/hashicorp/boundary/sdk/types/resource"
 )
 
 // AclGrant is used to decouple API-based grants from those we utilize for ACLs.

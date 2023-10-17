@@ -19,8 +19,8 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/globals"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/hashicorp/boundary/sdk/wrapper"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"

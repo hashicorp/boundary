@@ -8,7 +8,7 @@ package metric
 import (
 	"runtime"
 
-	"github.com/hashicorp/boundary/api/globals"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/hashicorp/boundary/version"
 	"github.com/prometheus/client_golang/prometheus"
 )

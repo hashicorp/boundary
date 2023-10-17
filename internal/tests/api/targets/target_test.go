@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/api/credentiallibraries"
 	"github.com/hashicorp/boundary/api/credentials"
 	"github.com/hashicorp/boundary/api/credentialstores"
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/api/hostcatalogs"
 	"github.com/hashicorp/boundary/api/hosts"
 	"github.com/hashicorp/boundary/api/hostsets"
@@ -24,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/iam"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

@@ -17,12 +17,12 @@ import (
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
-	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/sessions"
+	"github.com/hashicorp/boundary/sdk/types/action"
+	"github.com/hashicorp/boundary/sdk/types/resource"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"google.golang.org/grpc/codes"
 )
 

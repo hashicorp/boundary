@@ -13,7 +13,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/cmd/base/internal/docker"
@@ -22,7 +21,8 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/globals"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/hashicorp/boundary/testing/dbtest"
 	capoidc "github.com/hashicorp/cap/oidc"
 	"github.com/jimlambrt/gldap"

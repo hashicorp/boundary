@@ -6,7 +6,7 @@ package globals
 import (
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/sdk/types/resource"
 )
 
 // This set of consts is intended to be a place to collect commonly-used

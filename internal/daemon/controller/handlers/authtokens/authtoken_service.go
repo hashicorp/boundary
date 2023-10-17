@@ -16,11 +16,11 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/requests"
-	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
-	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/globals"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/sdk/types/action"
+	"github.com/hashicorp/boundary/sdk/types/resource"
+	"github.com/hashicorp/boundary/sdk/types/scope"
 	"google.golang.org/grpc/codes"
 )
 

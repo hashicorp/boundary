@@ -6,10 +6,10 @@ package plugin
 import (
 	"context"
 
-	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/sdk/globals"
 )
 
 const StorageDomain = "storage"

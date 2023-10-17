@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/sdk/types/resource"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/iancoleman/strcase"
 )

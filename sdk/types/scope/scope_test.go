@@ -6,7 +6,7 @@ package scope
 import (
 	"testing"
 
-	"github.com/hashicorp/boundary/api/globals"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/stretchr/testify/assert"
 )
 
