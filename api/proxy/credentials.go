@@ -7,31 +7,45 @@ import (
 	"errors"
 
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/mitchellh/mapstructure"
 )
 
+type CredentialType string
+
+const (
+	UsernamePasswordCredentialType CredentialType = "username_password"
+	SshPrivateKeyCredentialType    CredentialType = "ssh_private_key"
+)
+
+// UsernamePassword contains username and password credentials
 type UsernamePassword struct {
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
 
-	Raw      *targets.SessionCredential
+	Raw *targets.SessionCredential
+	// Consumed can be set by the caller to indicate that the credential has
+	// been used, e.g. displayed to the user
 	Consumed bool
 }
 
+// SshPrivateKey contains the username and private key with optional passphrase
+// for the key
 type SshPrivateKey struct {
 	Username   string `mapstructure:"username"`
 	PrivateKey string `mapstructure:"private_key"`
 	Passphrase string `mapstructure:"private_key_passphrase"`
 
-	Raw      *targets.SessionCredential
+	Raw *targets.SessionCredential
+	// Consumed can be set by the caller to indicate that the credential has
+	// been used, e.g. displayed to the user
 	Consumed bool
 }
 
 type Credentials struct {
 	UsernamePassword []UsernamePassword
 	SshPrivateKey    []SshPrivateKey
-	Unspecified      []*targets.SessionCredential
+	// Unspecified are credentials that do not match one of the types above
+	Unspecified []*targets.SessionCredential
 }
 
 func (c Credentials) UnconsumedSessionCredentials() []*targets.SessionCredential {
@@ -65,8 +79,8 @@ func ParseCredentials(creds []*targets.SessionCredential) (Credentials, error) {
 
 		var upCred UsernamePassword
 		var spkCred SshPrivateKey
-		switch globals.CredentialType(cred.CredentialSource.CredentialType) {
-		case globals.UsernamePasswordCredentialType:
+		switch CredentialType(cred.CredentialSource.CredentialType) {
+		case UsernamePasswordCredentialType:
 			// Decode attributes from credential struct
 			if err := mapstructure.Decode(cred.Credential, &upCred); err != nil {
 				return Credentials{}, err
@@ -78,7 +92,7 @@ func ParseCredentials(creds []*targets.SessionCredential) (Credentials, error) {
 				continue
 			}
 
-		case globals.SshPrivateKeyCredentialType:
+		case SshPrivateKeyCredentialType:
 			// Decode attributes from credential struct
 			if err := mapstructure.Decode(cred.Credential, &spkCred); err != nil {
 				return Credentials{}, err

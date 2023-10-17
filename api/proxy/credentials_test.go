@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +21,7 @@ const (
 var (
 	typedUsernamePassword = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			CredentialType: string(globals.UsernamePasswordCredentialType),
+			CredentialType: string(UsernamePasswordCredentialType),
 		},
 		Credential: map[string]any{
 			"username": "user",
@@ -32,7 +31,7 @@ var (
 
 	typedSshPrivateKey = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			CredentialType: string(globals.SshPrivateKeyCredentialType),
+			CredentialType: string(SshPrivateKeyCredentialType),
 		},
 		Credential: map[string]any{
 			"username":    "user",
