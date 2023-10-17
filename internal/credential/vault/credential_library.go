@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -115,12 +116,12 @@ func (l *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
 }
 
 // CredentialType returns the type of credential the library retrieves.
-func (l *CredentialLibrary) CredentialType() credential.Type {
+func (l *CredentialLibrary) CredentialType() globals.CredentialType {
 	switch ct := l.GetCredentialType(); ct {
 	case "":
-		return credential.UnspecifiedType
+		return globals.UnspecifiedCredentialType
 	default:
-		return credential.Type(ct)
+		return globals.CredentialType(ct)
 	}
 }
 

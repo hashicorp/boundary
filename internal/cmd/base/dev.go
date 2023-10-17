@@ -13,7 +13,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/cmd/base/internal/docker"

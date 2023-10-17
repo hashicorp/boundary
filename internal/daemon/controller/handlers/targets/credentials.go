@@ -16,6 +16,7 @@ import (
 	serverpb "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
+	"github.com/hashicorp/boundary/sdk/globals"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -98,7 +99,7 @@ func dynamicToSessionCredential(ctx context.Context, cred credential.Dynamic) (*
 
 	var credType string
 	var credData *structpb.Struct
-	if l.CredentialType() != credential.UnspecifiedType {
+	if l.CredentialType() != globals.UnspecifiedCredentialType {
 		credType = string(l.CredentialType())
 
 		switch c := cred.(type) {
@@ -194,7 +195,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 	switch c := cred.(type) {
 	case *credstatic.UsernamePasswordCredential:
 		var err error
-		credType = string(credential.UsernamePasswordType)
+		credType = string(globals.UsernamePasswordCredentialType)
 		credData, err = handlers.ProtoToStruct(
 			&pb.UsernamePasswordCredential{
 				Username: c.GetUsername(),
@@ -211,7 +212,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 
 	case *credstatic.SshPrivateKeyCredential:
 		var err error
-		credType = string(credential.SshPrivateKeyType)
+		credType = string(globals.SshPrivateKeyCredentialType)
 		credData, err = handlers.ProtoToStruct(
 			&pb.SshPrivateKeyCredential{
 				Username:             c.GetUsername(),
@@ -232,7 +233,7 @@ func staticToSessionCredential(ctx context.Context, cred credential.Static) (*pb
 
 	case *credstatic.JsonCredential:
 		var err error
-		credType = string(credential.JsonType)
+		credType = string(globals.JsonCredentialType)
 		object := map[string]any{}
 		err = json.Unmarshal(c.GetObject(), &object)
 		if err != nil {

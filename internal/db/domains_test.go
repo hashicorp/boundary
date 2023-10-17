@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golang-sql/civil"
-	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/api/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

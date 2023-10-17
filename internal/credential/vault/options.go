@@ -3,7 +3,7 @@
 
 package vault
 
-import "github.com/hashicorp/boundary/internal/credential"
+import "github.com/hashicorp/boundary/sdk/globals"
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -30,7 +30,7 @@ type options struct {
 	withClientCert     *ClientCertificate
 	withMethod         Method
 	withRequestBody    []byte
-	withCredentialType credential.Type
+	withCredentialType globals.CredentialType
 
 	withOverrideUsernameAttribute             string
 	withOverridePasswordAttribute             string
@@ -139,7 +139,7 @@ func WithRequestBody(b []byte) Option {
 
 // WithCredentialType provides an optional credential type to associate
 // with a credential library.
-func WithCredentialType(t credential.Type) Option {
+func WithCredentialType(t globals.CredentialType) Option {
 	return func(o *options) {
 		o.withCredentialType = t
 	}

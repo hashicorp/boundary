@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 )
@@ -384,7 +384,7 @@ func (pl *listLookupLibrary) toCredentialLibrary() *CredentialLibrary {
 	cl.CredentialLibrary.CredentialType = pl.CredentialType
 
 	switch pl.CredentialType {
-	case string(credential.UsernamePasswordType):
+	case string(globals.UsernamePasswordCredentialType):
 		if pl.UsernameAttribute != "" || pl.PasswordAttribute != "" {
 			up := allocUsernamePasswordOverride()
 			up.LibraryId = pl.PublicId
@@ -393,7 +393,7 @@ func (pl *listLookupLibrary) toCredentialLibrary() *CredentialLibrary {
 			up.sanitize()
 			cl.MappingOverride = up
 		}
-	case string(credential.SshPrivateKeyType):
+	case string(globals.SshPrivateKeyCredentialType):
 		if pl.UsernameAttribute != "" || pl.PrivateKeyAttribute != "" || pl.PrivateKeyPassphraseAttribute != "" {
 			pk := allocSshPrivateKeyOverride()
 			pk.LibraryId = pl.PublicId

@@ -4,23 +4,23 @@
 package vault
 
 import (
-	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db/sanitize"
 	"github.com/hashicorp/boundary/internal/db/sentinel"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"google.golang.org/protobuf/proto"
 )
 
 // validMappingOverride reports whether the given mapping override is valid
 // for the given credential type.
-func validMappingOverride(m MappingOverride, ct credential.Type) bool {
+func validMappingOverride(m MappingOverride, ct globals.CredentialType) bool {
 	switch m.(type) {
 	case nil:
 		return true // it is always valid to not specify a mapping override
 	case *UsernamePasswordOverride:
-		return ct == credential.UsernamePasswordType
+		return ct == globals.UsernamePasswordCredentialType
 	case *SshPrivateKeyOverride:
-		return ct == credential.SshPrivateKeyType
+		return ct == globals.SshPrivateKeyCredentialType
 	default:
 		return false // an unknown mapping override type is never valid
 	}

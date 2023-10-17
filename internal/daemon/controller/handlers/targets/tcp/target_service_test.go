@@ -17,7 +17,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -46,6 +45,7 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
 	"github.com/hashicorp/boundary/internal/types/scope"
+	"github.com/hashicorp/boundary/sdk/globals"
 	credlibpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	credpb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentials"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -3009,7 +3009,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespUsernamePassword.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.UsernamePasswordType),
+					CredentialType:    string(globals.UsernamePasswordCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3035,7 +3035,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespUsernamePasswordWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.UsernamePasswordType),
+					CredentialType:    string(globals.UsernamePasswordCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3061,7 +3061,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       upCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
 					Type:              credstatic.Subtype.String(),
-					CredentialType:    string(credential.UsernamePasswordType),
+					CredentialType:    string(globals.UsernamePasswordCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3087,7 +3087,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       sshPkCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
 					Type:              credstatic.Subtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3113,7 +3113,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKey.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3139,7 +3139,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKeyWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3165,7 +3165,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       sshPkWithPassCredResp.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: staticStore.GetPublicId(),
 					Type:              credstatic.Subtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3192,7 +3192,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKeyWithPass.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{
@@ -3219,7 +3219,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:       clsRespSshPrivateKeyWithPassWithMapping.GetItem().GetDescription().GetValue(),
 					CredentialStoreId: vaultStore.GetPublicId(),
 					Type:              vault.GenericLibrarySubtype.String(),
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 				},
 				Credential: func() *structpb.Struct {
 					data := map[string]any{

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	credstore "github.com/hashicorp/boundary/internal/credential/static/store"

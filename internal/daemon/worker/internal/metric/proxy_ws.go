@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

@@ -588,10 +588,10 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 	var envs []string
 	var argsErr error
 
-	var creds credentials
+	var creds apiproxy.Credentials
 	if c.sessionAuthz != nil {
 		var err error
-		creds, err = parseCredentials(c.sessionAuthz.Credentials)
+		creds, err = apiproxy.ParseCredentials(c.sessionAuthz.Credentials)
 		if err != nil {
 			c.PrintCliError(fmt.Errorf("Error interpreting secret: %w", err))
 			c.execCmdReturnValue.Store(int32(3))
@@ -648,7 +648,7 @@ func (c *Command) handleExec(clientProxy *apiproxy.ClientProxy, passthroughArgs 
 		return
 	}
 
-	if err := c.printCredentials(creds.unconsumedSessionCredentials()); err != nil {
+	if err := c.printCredentials(creds.UnconsumedSessionCredentials()); err != nil {
 		c.PrintCliError(fmt.Errorf("Failed to print credentials: %w", err))
 		c.execCmdReturnValue.Store(int32(2))
 		return

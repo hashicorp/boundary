@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/metric"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

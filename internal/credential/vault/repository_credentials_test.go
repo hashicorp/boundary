@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
+	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -228,7 +229,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 		libPath := path.Join("database", "creds", "opened")
 		opts := []vault.Option{
-			vault.WithCredentialType(credential.UsernamePasswordType),
+			vault.WithCredentialType(globals.UsernamePasswordCredentialType),
 		}
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
 		assert.NoError(t, err)
@@ -241,7 +242,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 		libPath := path.Join("database", "creds", "opened")
 		opts := []vault.Option{
-			vault.WithCredentialType(credential.UsernamePasswordType),
+			vault.WithCredentialType(globals.UsernamePasswordCredentialType),
 			vault.WithMappingOverride(vault.NewUsernamePasswordOverride(
 				vault.WithOverrideUsernameAttribute("test-username"),
 				vault.WithOverridePasswordAttribute("test-password"),
@@ -258,7 +259,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 		libPath := path.Join("secret", "data", "my-up-secret")
 		opts := []vault.Option{
-			vault.WithCredentialType(credential.UsernamePasswordType),
+			vault.WithCredentialType(globals.UsernamePasswordCredentialType),
 		}
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
 		assert.NoError(t, err)
@@ -271,7 +272,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 		libPath := path.Join("secret", "data", "my-sshpk-secret")
 		opts := []vault.Option{
-			vault.WithCredentialType(credential.SshPrivateKeyType),
+			vault.WithCredentialType(globals.SshPrivateKeyCredentialType),
 		}
 		libIn, err := vault.NewCredentialLibrary(origStore.GetPublicId(), libPath, opts...)
 		assert.NoError(t, err)
@@ -284,7 +285,7 @@ func TestRepository_IssueCredentials(t *testing.T) {
 	{
 		libPath := path.Join("secret", "data", "my-up-secret")
 		opts := []vault.Option{
-			vault.WithCredentialType(credential.UsernamePasswordType),
+			vault.WithCredentialType(globals.UsernamePasswordCredentialType),
 		}
 		libIn, err := vault.NewCredentialLibrary(expStore.GetPublicId(), libPath, opts...)
 		assert.NoError(t, err)
@@ -473,14 +474,14 @@ func TestRepository_IssueCredentials(t *testing.T) {
 			assert.NotZero(len(got))
 			for _, dc := range got {
 				switch dc.Library().CredentialType() {
-				case credential.UsernamePasswordType:
+				case globals.UsernamePasswordCredentialType:
 					if upc, ok := dc.(credential.UsernamePassword); ok {
 						assert.NotEmpty(upc.Username())
 						assert.NotEmpty(upc.Password())
 						break
 					}
 					assert.Fail("want UsernamePassword credential from library with credential type UsernamePassword")
-				case credential.UnspecifiedType:
+				case globals.UnspecifiedCredentialType:
 					if _, ok := dc.(credential.UsernamePassword); ok {
 						assert.Fail("do not want UsernamePassword credential from library with credential type Unspecified")
 					}

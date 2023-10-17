@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/util/template"
+	"github.com/hashicorp/boundary/sdk/globals"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	vault "github.com/hashicorp/vault/api"
@@ -56,9 +57,9 @@ func (bc *baseCred) isRevokable() bool             { return bc.ExternalId != sen
 // UnspecifiedType.
 func convert(ctx context.Context, bc *baseCred) (dynamicCred, error) {
 	switch bc.Library().CredentialType() {
-	case credential.UsernamePasswordType:
+	case globals.UsernamePasswordCredentialType:
 		return baseToUsrPass(ctx, bc)
-	case credential.SshPrivateKeyType:
+	case globals.SshPrivateKeyCredentialType:
 		return baseToSshPriKey(ctx, bc)
 	}
 	return bc, nil
@@ -81,7 +82,7 @@ func baseToUsrPass(ctx context.Context, bc *baseCred) (*usrPassCred, error) {
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred"))
 	case bc.lib == nil:
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred.lib"))
-	case bc.Library().CredentialType() != credential.UsernamePasswordType:
+	case bc.Library().CredentialType() != globals.UsernamePasswordCredentialType:
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
 	}
 
@@ -128,7 +129,7 @@ func baseToSshPriKey(ctx context.Context, bc *baseCred) (*sshPrivateKeyCred, err
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred"))
 	case bc.lib == nil:
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("nil baseCred.lib"))
-	case bc.Library().CredentialType() != credential.SshPrivateKeyType:
+	case bc.Library().CredentialType() != globals.SshPrivateKeyCredentialType:
 		return nil, errors.E(ctx, errors.WithCode(errors.InvalidParameter), errors.WithMsg("invalid credential type"))
 	}
 
@@ -258,12 +259,12 @@ func (pl *genericIssuingCredentialLibrary) GetCreateTime() *timestamp.Timestamp 
 func (pl *genericIssuingCredentialLibrary) GetUpdateTime() *timestamp.Timestamp { return pl.UpdateTime }
 func (pl *genericIssuingCredentialLibrary) GetPurpose() credential.Purpose      { return pl.Purpose }
 
-func (pl *genericIssuingCredentialLibrary) CredentialType() credential.Type {
+func (pl *genericIssuingCredentialLibrary) CredentialType() globals.CredentialType {
 	switch ct := pl.CredType; ct {
 	case "":
-		return credential.UnspecifiedType
+		return globals.UnspecifiedCredentialType
 	default:
-		return credential.Type(ct)
+		return globals.CredentialType(ct)
 	}
 }
 
@@ -738,12 +739,12 @@ func (lib *sshCertIssuingCredentialLibrary) GetUpdateTime() *timestamp.Timestamp
 	return lib.UpdateTime
 }
 
-func (lib *sshCertIssuingCredentialLibrary) CredentialType() credential.Type {
+func (lib *sshCertIssuingCredentialLibrary) CredentialType() globals.CredentialType {
 	switch ct := lib.CredType; ct {
 	case "":
-		return credential.UnspecifiedType
+		return globals.UnspecifiedCredentialType
 	default:
-		return credential.Type(ct)
+		return globals.CredentialType(ct)
 	}
 }
 

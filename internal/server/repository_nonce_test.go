@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/api/globals"
 	"github.com/hashicorp/boundary/api/recovery"
 	"github.com/hashicorp/boundary/api/roles"
-	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/server"
