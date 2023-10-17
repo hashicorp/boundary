@@ -10,6 +10,8 @@ import (
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	credstatic "github.com/hashicorp/boundary/internal/credential/static"
+	credstore "github.com/hashicorp/boundary/internal/credential/static/store"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static"
@@ -541,6 +543,29 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	b.InfoKeys = append(b.InfoKeys, "generated target with host source id")
 	b.Info["generated target with host source id"] = b.DevSecondaryTargetId
 
+	credsRepo, err := credstatic.NewRepository(ctx, rw, rw, kmsCache)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create creds repository: %w", err)
+	}
+	cs, err := credsRepo.CreateCredentialStore(ctx,
+		&credstatic.CredentialStore{
+			CredentialStore: &credstore.CredentialStore{
+				ProjectId: b.DevProjectId,
+			},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cred store: %w", err)
+	}
+	cred, err := credstatic.NewUsernamePasswordCredential(cs.PublicId, "admin", "password")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cred: %w", err)
+	}
+	upCred, err := credsRepo.CreateUsernamePasswordCredential(ctx, b.DevProjectId, cred)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store cred: %w", err)
+	}
+
 	opts = []target.Option{
 		target.WithName("Generated target to local postgres"),
 		target.WithDescription("Provides a target to a local postgres instance"),
@@ -555,9 +580,20 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	if err != nil {
 		return nil, fmt.Errorf("failed to create target object: %w", err)
 	}
-	_, err = targetRepo.CreateTarget(ctx, t, opts...)
+	t, err = targetRepo.CreateTarget(ctx, t, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to save target to the db: %w", err)
+	}
+	_, err = targetRepo.AddTargetCredentialSources(
+		ctx,
+		t.GetPublicId(),
+		t.GetVersion(),
+		target.CredentialSources{
+			BrokeredCredentialIds: []string{upCred.PublicId},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to associate cred to target: %w", err)
 	}
 
 	if b.DevUnprivilegedUserId != "" {
