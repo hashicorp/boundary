@@ -59,8 +59,7 @@ select public_id, project_id from target
 ;
 `
 
-	// Note that targets don't have a root aggregate table, so we list each target table explicitly
 	estimateCountTargets = `
-select sum(reltuples::bigint) as estimate from pg_class where (oid = (current_schema() || '.target_tcp')::regclass or oid = (current_schema() || '.target_ssh')::regclass)
+select sum(reltuples::bigint) as estimate from pg_class where oid in ('target_tcp'::regclass, 'target_ssh'::regclass)
 `
 )
