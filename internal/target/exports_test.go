@@ -7,4 +7,7 @@ package target
 var (
 	AllocTargetView         = allocTargetView
 	TargetsViewDefaultTable = targetsViewDefaultTable
+	ListDeletedIds          = (*Repository).listDeletedIds
+	EstimatedCount          = (*Repository).estimatedCount
+	ListTargets             = (*Repository).listTargets
 )
