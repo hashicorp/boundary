@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -1345,23 +1346,23 @@ func TestRepository_ListCredentialStores_Pagination(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(repo)
 
-	page1, err := repo.ListCredentialStores(ctx, []string{prj.PublicId}, WithLimit(2))
+	page1, err := repo.ListCredentialStores(ctx, []string{prj.PublicId}, credential.WithLimit(2))
 	require.NoError(err)
 	require.Len(page1, 2)
-	page2, err := repo.ListCredentialStores(ctx, []string{prj.PublicId}, WithLimit(2), WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].UpdateTime.AsTime()))
+	page2, err := repo.ListCredentialStores(ctx, []string{prj.PublicId}, credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].GetUpdateTime().AsTime()))
 	require.NoError(err)
 	require.Len(page2, 2)
 	for _, item := range page1 {
 		assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
 		assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
 	}
-	page3, err := repo.ListCredentialStores(ctx, []string{prj.PublicId}, WithLimit(2), WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].UpdateTime.AsTime()))
+	page3, err := repo.ListCredentialStores(ctx, []string{prj.PublicId}, credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].GetUpdateTime().AsTime()))
 	require.NoError(err)
 	require.Len(page3, 1)
 	for _, item := range append(page1, page2...) {
 		assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
 	}
-	page4, err := repo.ListCredentialStores(ctx, []string{prj.PublicId}, WithLimit(2), WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].UpdateTime.AsTime()))
+	page4, err := repo.ListCredentialStores(ctx, []string{prj.PublicId}, credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].GetUpdateTime().AsTime()))
 	require.NoError(err)
 	require.Empty(page4)
 }
@@ -1773,4 +1774,80 @@ group by store_id, status;
 			}
 		})
 	}
+}
+
+func TestRepository_ListDeletedStoreIds(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Delete the credential store
+	// NOTE: Deleting a vault credential store doesn't immediately
+	// delete it, so testing this behaviour for a vault credential store
+	// is kept out of the scope of this test.
+	_, err = repo.DeleteCredentialStore(ctx, store.GetPublicId())
+	require.NoError(err)
+
+	// Expect no entries
+	deletedIds, err = repo.ListDeletedStoreIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedStoreIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
+}
+
+func TestRepository_EstimatedStoreCount(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	kms := kms.TestKms(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.EstimatedStoreCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Create some credential stores
+	_ = TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedStoreCount(ctx)
+	require.NoError(err)
+	assert.Equal(2, numItems)
+
+	// NOTE: Deleting a vault credential store doesn't immediately
+	// delete it, so testing this behaviour for a vault credential store
+	// is kept out of the scope of this test.
 }

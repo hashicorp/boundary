@@ -40,4 +40,17 @@ from credential_static_json_credential json
 where store.project_id = ?
   and json.key_id = ?;
 `
+
+	estimateCountCredentialStores = `
+select reltuples::bigint as estimate from pg_class where oid in ('credential_static_store'::regclass)
+`
+
+	estimateCountCredentials = `
+select sum(reltuples::bigint) as estimate
+  from pg_class
+ where oid in (
+  'credential_static_json_credential'::regclass,
+  'credential_static_username_password_credential'::regclass,
+  'credential_static_ssh_private_key_credential'::regclass
+ )`
 )

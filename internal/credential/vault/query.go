@@ -189,4 +189,16 @@ delete from credential_vault_credential
  where session_id is null
    and status not in ('active', 'revoke')
 `
+
+	estimateCountCredentialStores = `
+select reltuples::bigint as estimate from pg_class where oid in ('credential_vault_store'::regclass)
+`
+
+	estimateCountCredentialLibraries = `
+select reltuples::bigint as estimate from pg_class where oid in ('credential_vault_library'::regclass)
+`
+
+	estimateCountSSHCertificateCredentialLibraries = `
+select reltuples::bigint as estimate from pg_class where oid in ('credential_vault_ssh_cert_library'::regclass)
+`
 )

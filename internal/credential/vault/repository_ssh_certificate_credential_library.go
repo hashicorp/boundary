@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
@@ -310,16 +311,19 @@ func (r *Repository) LookupSSHCertificateCredentialLibrary(ctx context.Context, 
 // storeId. Supports the following options:
 //   - WithLimit
 //   - WithStartPageAfterItem
-func (r *Repository) ListSSHCertificateCredentialLibraries(ctx context.Context, storeId string, opt ...Option) ([]*SSHCertificateCredentialLibrary, error) {
+func (r *Repository) ListSSHCertificateCredentialLibraries(ctx context.Context, storeId string, opt ...credential.Option) ([]credential.Library, error) {
 	const op = "vault.(Repository).ListSSHCertificateCredentialLibraries"
 	if storeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
 	}
-	opts := getOpts(opt...)
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	limit := r.defaultLimit
-	if opts.withLimit != 0 {
+	if opts.WithLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
+		limit = opts.WithLimit
 	}
 	args := []any{sql.Named("store_id", storeId)}
 	whereClause := "store_id = @store_id"
@@ -329,22 +333,25 @@ func (r *Repository) ListSSHCertificateCredentialLibraries(ctx context.Context, 
 	// We need to further order by public_id to distinguish items
 	// with identical update times.
 	withOrder := "update_time asc, public_id asc"
-	if opts.withStartPageAfterItem != nil {
+	if opts.WithStartPageAfterItem != nil {
 		// Now that the order is defined, we can use a simple where
 		// clause to only include items updated since the specified
 		// start of the page. We use greater than or equal for the update
 		// time as there may be items with identical update_times. We
 		// then use PublicId as a tiebreaker.
 		args = append(args,
-			sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
-			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
+			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.UpdateTime),
+			sql.Named("after_item_id", opts.WithStartPageAfterItem.PublicId),
 		)
 		whereClause += " and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
-	var libs []*SSHCertificateCredentialLibrary
-	err := r.reader.SearchWhere(ctx, &libs, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))
-	if err != nil {
+	var sshLibs []*SSHCertificateCredentialLibrary
+	if err := r.reader.SearchWhere(ctx, &sshLibs, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
+	}
+	var libs []credential.Library
+	for _, lib := range sshLibs {
+		libs = append(libs, lib)
 	}
 	return libs, nil
 }
@@ -386,4 +393,44 @@ func (r *Repository) DeleteSSHCertificateCredentialLibrary(ctx context.Context, 
 	}
 
 	return rowsDeleted, nil
+}
+
+// EstimatedSSHCertificateLibraryCount returns an estimate of the number of SSH certificate credential libraries
+func (r *Repository) EstimatedSSHCertificateLibraryCount(ctx context.Context) (int, error) {
+	const op = "vault.(Repository).EstimatedSSHCertificateLibraryCount"
+	rows, err := r.reader.Query(ctx, estimateCountSSHCertificateCredentialLibraries, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault SSH certificate credential libraries"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault SSH certificate credential libraries"))
+		}
+	}
+	return count, nil
+}
+
+// ListDeletedSSHCertificateLibraryIds lists the public IDs of any SSH certificate credential libraries deleted since the timestamp provided.
+// Supported options:
+//   - credential.WithReaderWriter
+func (r *Repository) ListDeletedSSHCertificateLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "vault.(Repository).ListDeletedSSHCertificateLibraryIds"
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedSSHCertificateCredentialLibraries []*deletedSSHCertificateCredentialLibrary
+	if err := rdr.SearchWhere(ctx, &deletedSSHCertificateCredentialLibraries, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted SSH certificate credential libraries"))
+	}
+	var credentialLibraryIds []string
+	for _, cl := range deletedSSHCertificateCredentialLibraries {
+		credentialLibraryIds = append(credentialLibraryIds, cl.PublicId)
+	}
+	return credentialLibraryIds, nil
 }

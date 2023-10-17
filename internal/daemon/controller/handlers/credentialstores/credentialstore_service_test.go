@@ -123,8 +123,8 @@ func TestList(t *testing.T) {
 	staticRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
-	baseCredentialStoreRepoFn := func() (*credential.CredentialStoreRepository, error) {
-		return credential.NewCredentialStoreRepository(ctx, rw)
+	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreService, error) {
+		return credential.NewStoreService(context.Background(), rw, vaultRepo, staticRepo)
 	}
 
 	_, prjNoStores := iam.TestScopes(t, iamRepo)
@@ -276,7 +276,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, baseCredentialStoreRepoFn, 1000)
+			s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreServiceFn, 1000)
 			require.NoError(t, err, "Couldn't create new host set service.")
 
 			// Test non-anonymous listing
@@ -333,8 +333,8 @@ func TestCreateVault(t *testing.T) {
 	staticRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
-	baseCredentialStoreRepoFn := func() (*credential.CredentialStoreRepository, error) {
-		return credential.NewCredentialStoreRepository(ctx, rw)
+	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreService, error) {
+		return credential.NewStoreService(context.Background(), rw, vaultRepo, staticRepo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -647,7 +647,7 @@ func TestCreateVault(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, baseCredentialStoreRepoFn, 1000)
+			s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreServiceFn, 1000)
 			require.NoError(err, "Error when getting new credential store service.")
 			defer cleanup(s)
 
@@ -717,8 +717,8 @@ func TestCreateStatic(t *testing.T) {
 	staticRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
-	baseCredentialStoreRepoFn := func() (*credential.CredentialStoreRepository, error) {
-		return credential.NewCredentialStoreRepository(ctx, rw)
+	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreService, error) {
+		return credential.NewStoreService(context.Background(), rw, vaultRepo, staticRepo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -827,7 +827,7 @@ func TestCreateStatic(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, baseCredentialStoreRepoFn, 1000)
+			s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreServiceFn, 1000)
 			require.NoError(err, "Error when getting new credential store service.")
 			defer cleanup(s)
 
@@ -886,8 +886,8 @@ func TestGet(t *testing.T) {
 	staticRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
-	baseCredentialStoreRepoFn := func() (*credential.CredentialStoreRepository, error) {
-		return credential.NewCredentialStoreRepository(ctx, rw)
+	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreService, error) {
+		return credential.NewStoreService(context.Background(), rw, vaultRepo, staticRepo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -895,7 +895,7 @@ func TestGet(t *testing.T) {
 	vaultStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 	staticStorePrev := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId(), credstatic.WithPublicId(fmt.Sprintf("%s_1234567890", globals.StaticCredentialStorePreviousPrefix)))
-	s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, baseCredentialStoreRepoFn, 1000)
+	s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreServiceFn, 1000)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -1023,15 +1023,15 @@ func TestDelete(t *testing.T) {
 	staticRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, rw, rw, kms)
 	}
-	baseCredentialStoreRepoFn := func() (*credential.CredentialStoreRepository, error) {
-		return credential.NewCredentialStoreRepository(ctx, rw)
+	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreService, error) {
+		return credential.NewStoreService(context.Background(), rw, vaultRepo, staticRepo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	vaultStore := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)[0]
 	staticStore := credstatic.TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
-	s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, baseCredentialStoreRepoFn, 1000)
+	s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreServiceFn, 1000)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -1101,14 +1101,14 @@ func TestUpdateVault(t *testing.T) {
 	staticRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(testCtx, rw, rw, kms)
 	}
-	baseCredentialStoreRepoFn := func() (*credential.CredentialStoreRepository, error) {
-		return credential.NewCredentialStoreRepository(testCtx, rw)
+	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreService, error) {
+		return credential.NewStoreService(context.Background(), rw, vaultRepo, staticRepo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, baseCredentialStoreRepoFn, 1000)
+	s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreServiceFn, 1000)
 	require.NoError(t, err)
 
 	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {
@@ -1438,14 +1438,14 @@ func TestUpdateStatic(t *testing.T) {
 	staticRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(testCtx, rw, rw, kms)
 	}
-	baseCredentialStoreRepoFn := func() (*credential.CredentialStoreRepository, error) {
-		return credential.NewCredentialStoreRepository(testCtx, rw)
+	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreService, error) {
+		return credential.NewStoreService(context.Background(), rw, vaultRepo, staticRepo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, baseCredentialStoreRepoFn, 1000)
+	s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreServiceFn, 1000)
 	require.NoError(t, err)
 
 	fieldmask := func(paths ...string) *fieldmaskpb.FieldMask {
@@ -1627,8 +1627,8 @@ func TestListPagination(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(ctx, rw, rw, kms)
 	}
-	baseCredentialStoreRepoFn := func() (*credential.CredentialStoreRepository, error) {
-		return credential.NewCredentialStoreRepository(ctx, rw)
+	credStoreServiceFn := func(vaultRepo *vault.Repository, staticRepo *static.Repository) (*credential.StoreService, error) {
+		return credential.NewStoreService(context.Background(), rw, vaultRepo, staticRepo)
 	}
 	staticRepo, err := staticRepoFn()
 	require.NoError(err)
@@ -1673,7 +1673,7 @@ func TestListPagination(t *testing.T) {
 	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
 	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 
-	s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, baseCredentialStoreRepoFn, 1000)
+	s, err := NewService(ctx, iamRepoFn, vaultRepoFn, staticRepoFn, credStoreServiceFn, 1000)
 	require.NoError(err)
 
 	// Start paginating, recursively
