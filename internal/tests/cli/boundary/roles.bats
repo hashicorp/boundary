@@ -6,7 +6,7 @@ load _roles
 load _helpers
 
 export NEW_ROLE='test'
-export NEW_GRANT='id=*;type=*;actions=create,read,update,delete,list'
+export NEW_GRANT='ids=*;type=*;actions=create,read,update,delete,list'
 
 @test "boundary/login: can login as default principal" {
   run login $DEFAULT_LOGIN
