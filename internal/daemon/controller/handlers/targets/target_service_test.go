@@ -15,8 +15,8 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/target/targettest"
 	"github.com/hashicorp/boundary/internal/target/targettest/store"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
-	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

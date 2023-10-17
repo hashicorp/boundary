@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // CreatePlugin inserts p into the repository and returns a new

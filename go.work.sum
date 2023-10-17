@@ -16,6 +16,7 @@ cloud.google.com/go/apigeeconnect v1.5.0/go.mod h1:KFaCqvBRU6idyhSNyn3vlHXc8VMDJ
 cloud.google.com/go/apigeeconnect v1.6.1/go.mod h1:C4awq7x0JpLtrlQCr8AzVIzAaYgngRqWf9S5Uhg+wWs=
 cloud.google.com/go/apigeeregistry v0.6.0/go.mod h1:BFNzW7yQVLZ3yj0TKcwzb8n25CFBri51GVGOEUcgQsc=
 cloud.google.com/go/apigeeregistry v0.7.1/go.mod h1:1XgyjZye4Mqtw7T9TsY4NW10U7BojBvG4RMD+vRDrIw=
+cloud.google.com/go/apikeys v0.5.0/go.mod h1:5aQfwY4D+ewMMWScd3hm2en3hCj+BROlyrt3ytS7KLI=
 cloud.google.com/go/apikeys v0.6.0/go.mod h1:kbpXu5upyiAlGkKrJgQl8A0rKNNJ7dQ377pdroRSSi8=
 cloud.google.com/go/appengine v1.7.1/go.mod h1:IHLToyb/3fKutRysUlFO0BPt5j7RiQ45nrzEJmKTo6E=
 cloud.google.com/go/appengine v1.8.1/go.mod h1:6NJXGLVhZCN9aQ/AEDvmfzKEfoYBlfB80/BHiKVputY=
@@ -212,7 +213,9 @@ cloud.google.com/go/securitycenter v1.23.0/go.mod h1:8pwQ4n+Y9WCWM278R8W3nF65QtY
 cloud.google.com/go/servicecontrol v1.11.1/go.mod h1:aSnNNlwEFBY+PWGQ2DoM0JJ/QUXqV5/ZD9DOLB7SnUk=
 cloud.google.com/go/servicedirectory v1.9.0/go.mod h1:29je5JjiygNYlmsGz8k6o+OZ8vd4f//bQLtvzkPPT/s=
 cloud.google.com/go/servicedirectory v1.11.0/go.mod h1:Xv0YVH8s4pVOwfM/1eMTl0XJ6bzIOSLDt8f8eLaGOxQ=
+cloud.google.com/go/servicemanagement v1.6.0/go.mod h1:aWns7EeeCOtGEX4OvZUWCCJONRZeFKiptqKf1D0l/Jc=
 cloud.google.com/go/servicemanagement v1.8.0/go.mod h1:MSS2TDlIEQD/fzsSGfCdJItQveu9NXnUniTrq/L8LK4=
+cloud.google.com/go/serviceusage v1.5.0/go.mod h1:w8U1JvqUqwJNPEOTQjrMHkw3IaIFLoLsPLvsE3xueec=
 cloud.google.com/go/serviceusage v1.6.0/go.mod h1:R5wwQcbOWsyuOfbP9tGdAnCAc6B9DRwPG1xtWMDeuPA=
 cloud.google.com/go/shell v1.6.0/go.mod h1:oHO8QACS90luWgxP3N9iZVuEiSF84zNyLytb+qE2f9A=
 cloud.google.com/go/shell v1.7.1/go.mod h1:u1RaM+huXFaTojTbW4g9P5emOrrmLE69KrxqQahKn4g=

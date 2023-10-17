@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/servers/services"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/globals"
-	"github.com/hashicorp/boundary/sdk/types/action"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

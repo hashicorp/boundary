@@ -25,7 +25,7 @@ import (
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"
 	"github.com/hashicorp/nodeenrollment/rotation"

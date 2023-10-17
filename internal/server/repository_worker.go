@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server/store"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/nodeenrollment"
 	"github.com/hashicorp/nodeenrollment/registration"

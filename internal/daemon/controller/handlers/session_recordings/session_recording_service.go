@@ -11,7 +11,7 @@ import (
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/sdk/types/action"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

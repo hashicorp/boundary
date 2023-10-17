@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/globals"
 )
 

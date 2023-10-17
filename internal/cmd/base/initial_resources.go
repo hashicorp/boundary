@@ -19,10 +19,10 @@ import (
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/sdk/globals"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
-	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 )
 

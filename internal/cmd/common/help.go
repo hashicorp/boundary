@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/sdk/types/resource"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/mitchellh/go-wordwrap"
 )
 

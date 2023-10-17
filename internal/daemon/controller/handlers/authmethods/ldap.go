@@ -17,8 +17,8 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
-	"github.com/hashicorp/boundary/sdk/types/action"
 	"google.golang.org/grpc/codes"
 )
 

@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/common"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/cap/util"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"

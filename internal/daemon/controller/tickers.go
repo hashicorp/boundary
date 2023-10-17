@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // In the future we could make this configurable

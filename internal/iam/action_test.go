@@ -6,7 +6,7 @@ package iam
 import (
 	"testing"
 
-	"github.com/hashicorp/boundary/sdk/types/action"
+	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/stretchr/testify/assert"
 )
 

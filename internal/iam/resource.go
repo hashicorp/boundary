@@ -9,9 +9,9 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/sdk/types/action"
-	"github.com/hashicorp/boundary/sdk/types/resource"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 )
 
 // IamRepoFactory is a factory function that returns a repository and any error

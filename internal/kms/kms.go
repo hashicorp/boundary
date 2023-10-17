@@ -15,7 +15,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	wrappingKms "github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"

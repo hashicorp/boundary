@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/kms"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/go-dbw"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -21,7 +21,7 @@ import (
 	_ "github.com/hashicorp/boundary/internal/daemon/controller/handlers/targets/tcp"
 	"github.com/hashicorp/boundary/internal/session"
 	"github.com/hashicorp/boundary/internal/tests/helper"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/testing/controller"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"

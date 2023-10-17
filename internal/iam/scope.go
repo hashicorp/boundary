@@ -11,9 +11,9 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam/store"
-	"github.com/hashicorp/boundary/sdk/types/action"
-	"github.com/hashicorp/boundary/sdk/types/resource"
-	"github.com/hashicorp/boundary/sdk/types/scope"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"google.golang.org/protobuf/proto"
 )
 

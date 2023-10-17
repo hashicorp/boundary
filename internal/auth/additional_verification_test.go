@@ -20,10 +20,10 @@ import (
 	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/server"
+	"github.com/hashicorp/boundary/internal/types/action"
+	"github.com/hashicorp/boundary/internal/types/resource"
+	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/sdk/globals"
-	"github.com/hashicorp/boundary/sdk/types/action"
-	"github.com/hashicorp/boundary/sdk/types/resource"
-	"github.com/hashicorp/boundary/sdk/types/scope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
