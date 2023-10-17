@@ -2,7 +2,17 @@
 
 Canonical reference for changes, improvements, and bugfixes for Boundary.
 
- ## Next
+## Next
+
+## 0.14.1 (2023/10/17)
+
+### Security
+
+* deps: Bump Go version to v1.21.3; gRPC to v1.58.3; golang.org/x/net to
+  v0.17.0. This is to address a security vulnerability in the HTTP stack where a
+  malicious HTTP/2 client which rapidly creates requests and immediately resets
+  them can cause excessive server resource consumption.
+
 ## 0.14.0 (2023/10/10)
 
 ### Deprecations/Changes
