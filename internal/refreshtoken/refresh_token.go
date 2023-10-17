@@ -19,7 +19,7 @@ import (
 
 // UpdatedTimeBuffer is used to automatically adjust the updated
 // time of a refresh token to account for delays between database
-// transactions. The buffer corresponds to Postgres' default transaction timeout.
+// transactions.
 const UpdatedTimeBuffer = 30 * time.Second
 
 // A Token is returned in list endpoints for the purposes of pagination
