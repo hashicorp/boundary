@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -18,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/targettest/store"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
-	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )

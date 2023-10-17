@@ -7,7 +7,7 @@ import (
 	"errors"
 
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/sdk/globals"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/mitchellh/mapstructure"
 )
 

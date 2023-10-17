@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
@@ -21,7 +22,6 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/tests/api"
-	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/hashicorp/eventlogger/filters/encrypt"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"

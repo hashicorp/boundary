@@ -3,7 +3,7 @@
 
 package vault
 
-import "github.com/hashicorp/boundary/sdk/globals"
+import "github.com/hashicorp/boundary/globals"
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {

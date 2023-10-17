@@ -3,7 +3,7 @@
 
 package scope
 
-import "github.com/hashicorp/boundary/sdk/globals"
+import "github.com/hashicorp/boundary/globals"
 
 // Type defines the possible types for Scopes
 type Type uint

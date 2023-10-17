@@ -4,10 +4,10 @@
 package vault
 
 import (
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/sdk/globals"
 	"google.golang.org/protobuf/proto"
 )
 

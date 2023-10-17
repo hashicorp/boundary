@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/sshprivatekey"
 	"github.com/hashicorp/boundary/internal/credential/vault/internal/usernamepassword"
@@ -28,7 +29,6 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/util/template"
-	"github.com/hashicorp/boundary/sdk/globals"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	vault "github.com/hashicorp/vault/api"

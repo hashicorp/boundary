@@ -7,8 +7,8 @@ import (
 	"context"
 	"net"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/daemon/metric"
-	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

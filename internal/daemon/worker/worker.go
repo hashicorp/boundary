@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
@@ -31,7 +32,6 @@ import (
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/storage"
 	boundary_plugin_assets "github.com/hashicorp/boundary/plugins/boundary"
-	"github.com/hashicorp/boundary/sdk/globals"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	external_plugins "github.com/hashicorp/boundary/sdk/plugins"
 	"github.com/hashicorp/go-hclog"

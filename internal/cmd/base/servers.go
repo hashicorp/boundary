@@ -22,6 +22,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base/internal/metric"
 	"github.com/hashicorp/boundary/internal/cmd/base/logging"
 	"github.com/hashicorp/boundary/internal/cmd/config"
@@ -32,7 +33,6 @@ import (
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
 	kms_plugin_assets "github.com/hashicorp/boundary/plugins/kms"
-	"github.com/hashicorp/boundary/sdk/globals"
 	plgpb "github.com/hashicorp/boundary/sdk/pbs/plugin"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/go-hclog"

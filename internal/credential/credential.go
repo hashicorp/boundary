@@ -8,8 +8,8 @@ package credential
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/boundary"
-	"github.com/hashicorp/boundary/sdk/globals"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 

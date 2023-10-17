@@ -6,9 +6,9 @@ package server
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
-	"github.com/hashicorp/boundary/sdk/globals"
 )
 
 func newWorkerId(ctx context.Context) (string, error) {

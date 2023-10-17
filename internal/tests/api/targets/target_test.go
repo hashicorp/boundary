@@ -19,11 +19,11 @@ import (
 	"github.com/hashicorp/boundary/api/hostsets"
 	"github.com/hashicorp/boundary/api/roles"
 	"github.com/hashicorp/boundary/api/targets"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller"
 	"github.com/hashicorp/boundary/internal/daemon/worker"
 	"github.com/hashicorp/boundary/internal/iam"
-	"github.com/hashicorp/boundary/sdk/globals"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
