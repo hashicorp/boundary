@@ -49,12 +49,16 @@ func RefreshTokenResourceToResource(rt pbs.ResourceType) resource.Type {
 		return resource.Target
 	case pbs.ResourceType_RESOURCE_TYPE_SESSION:
 		return resource.Session
+	case pbs.ResourceType_RESOURCE_TYPE_CREDENTIAL:
+		return resource.Credential
+	case pbs.ResourceType_RESOURCE_TYPE_CREDENTIAL_STORE:
+		return resource.CredentialStore
+	case pbs.ResourceType_RESOURCE_TYPE_CREDENTIAL_LIBRARY:
+		return resource.CredentialLibrary
 	case pbs.ResourceType_RESOURCE_TYPE_HOST,
 		pbs.ResourceType_RESOURCE_TYPE_SESSION_RECORDING,
 		pbs.ResourceType_RESOURCE_TYPE_AUTH_TOKEN,
-		pbs.ResourceType_RESOURCE_TYPE_ACCOUNT,
-		pbs.ResourceType_RESOURCE_TYPE_CREDENTIAL_LIBRARY,
-		pbs.ResourceType_RESOURCE_TYPE_CREDENTIAL_STORE:
+		pbs.ResourceType_RESOURCE_TYPE_ACCOUNT:
 		return resource.Unknown
 	default:
 		return resource.Unknown
