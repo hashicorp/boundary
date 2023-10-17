@@ -172,7 +172,7 @@ func (p *ClientProxy) Start() (retErr error) {
 				case <-p.ctx.Done():
 					return
 				default:
-					if err == net.ErrClosed {
+					if errors.Is(err, net.ErrClosed) {
 						// Generally this will be because we canceled the
 						// context or ran out of session connections and are
 						// winding down. This will never revert, so return.

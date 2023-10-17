@@ -557,7 +557,7 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cred store: %w", err)
 	}
-	cred, err := credstatic.NewUsernamePasswordCredential(cs.PublicId, "admin", "password")
+	cred, err := credstatic.NewUsernamePasswordCredential(cs.PublicId, "postgres", "password")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cred: %w", err)
 	}
@@ -571,7 +571,7 @@ func (b *Server) CreateInitialTargetWithHostSources(ctx context.Context) (target
 		target.WithDescription("Provides a target to a local postgres instance"),
 		target.WithDefaultPort(5432),
 		target.WithSessionMaxSeconds(28800),
-		target.WithSessionConnectionLimit(-1),
+		target.WithSessionConnectionLimit(2),
 		target.WithPublicId("ttcp_postgresdb"),
 		target.WithAddress("localhost"),
 		target.WithName("postgres.mine"),
