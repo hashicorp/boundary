@@ -6,9 +6,11 @@ package authmethods
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/boundary/api"
+	"github.com/hashicorp/boundary/api/authtokens"
 )
 
 type AuthenticateResult struct {
@@ -51,15 +53,33 @@ func (a *AuthenticateResult) UnmarshalJSON(inBytes []byte) error {
 	return nil
 }
 
-func (n AuthenticateResult) GetRawAttributes() json.RawMessage {
-	return n.attributesRaw
+func (a AuthenticateResult) GetRawAttributes() json.RawMessage {
+	return a.attributesRaw
 }
 
-func (n AuthenticateResult) GetResponse() *api.Response {
-	return n.response
+func (a AuthenticateResult) GetResponse() *api.Response {
+	return a.response
 }
 
-// Authenticate is a generic authenticate API call that returns a generic result.
+// GetAuthToken converts this AuthenticateResult into an AuthToken struct
+func (a AuthenticateResult) GetAuthToken() (*authtokens.AuthToken, error) {
+	if a.attributesRaw == nil {
+		return nil, errors.New("AuthenticateResult does not have a populated raw attributes field")
+	}
+	token := new(authtokens.AuthToken)
+	if err := json.Unmarshal(a.GetRawAttributes(), token); err != nil {
+		return nil, err
+	}
+	return token, nil
+}
+
+// Authenticate is a generic authenticate API call that returns a generic
+// result. See the documentation for the attributes required for any given auth
+// method.
+//
+// Only some auth methods support multiple commands. If the documentation does
+// not specify what command to use when and with which attriubutes, use
+// "login".
 func (c *Client) Authenticate(ctx context.Context, authMethodId, command string, attributes map[string]any, opt ...Option) (*AuthenticateResult, error) {
 	if c.client == nil {
 		return nil, fmt.Errorf("nil client in Authenticate request")
