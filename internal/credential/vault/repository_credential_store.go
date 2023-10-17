@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -652,16 +654,19 @@ func (r *Repository) UpdateCredentialStore(ctx context.Context, cs *CredentialSt
 // projectIds. Supports the following options:
 //   - WithLimit
 //   - WithStartPageAfterItem
-func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []string, opt ...Option) ([]*CredentialStore, error) {
+func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []string, opt ...credential.Option) ([]credential.Store, error) {
 	const op = "vault.(Repository).ListCredentialStores"
 	if len(projectIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no projectIds")
 	}
-	opts := getOpts(opt...)
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	limit := r.defaultLimit
-	if opts.withLimit != 0 {
+	if opts.WithLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
+		limit = opts.WithLimit
 	}
 	var inClauses []string
 	var args []any
@@ -678,28 +683,27 @@ func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []stri
 	// We need to further order by public_id to distinguish items
 	// with identical update times.
 	withOrder := "update_time asc, public_id asc"
-	if opts.withStartPageAfterItem != nil {
+	if opts.WithStartPageAfterItem != nil {
 		// Now that the order is defined, we can use a simple where
 		// clause to only include items updated since the specified
 		// start of the page. We use greater than or equal for the update
 		// time as there may be items with identical update_times. We
 		// then use PublicId as a tiebreaker.
 		args = append(args,
-			sql.Named("after_item_update_time", opts.withStartPageAfterItem.updateTime),
-			sql.Named("after_item_id", opts.withStartPageAfterItem.publicId),
+			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.UpdateTime),
+			sql.Named("after_item_id", opts.WithStartPageAfterItem.PublicId),
 		)
 		whereClause += " and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
 	var credentialStores []*listLookupStore
-	err := r.reader.SearchWhere(ctx, &credentialStores, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))
-	if err != nil {
+	if err := r.reader.SearchWhere(ctx, &credentialStores, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	var out []*CredentialStore
+	var stores []credential.Store
 	for _, ca := range credentialStores {
-		out = append(out, ca.toCredentialStore())
+		stores = append(stores, ca.toCredentialStore())
 	}
-	return out, nil
+	return stores, nil
 }
 
 // DeleteCredentialStore deletes publicId from the repository and returns
@@ -768,4 +772,44 @@ func (r *Repository) DeleteCredentialStore(ctx context.Context, publicId string,
 		_ = r.scheduler.UpdateJobNextRunInAtLeast(ctx, credentialStoreCleanupJobName, 0, scheduler.WithRunNow(true))
 	}
 	return rows, nil
+}
+
+// EstimatedStoreCount returns an estimate of the number of Vault credential stores
+func (r *Repository) EstimatedStoreCount(ctx context.Context) (int, error) {
+	const op = "vault.(Repository).EstimatedStoreCount"
+	rows, err := r.reader.Query(ctx, estimateCountCredentialStores, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential stores"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential stores"))
+		}
+	}
+	return count, nil
+}
+
+// ListDeletedStoreIds lists the public IDs of any credential stores deleted since the timestamp provided.
+// Supported options:
+//   - credential.WithReaderWriter
+func (r *Repository) ListDeletedStoreIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+	const op = "vault.(Repository).ListDeletedStoreIds"
+	opts, err := credential.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedCredentialStores []*deletedCredentialStore
+	if err := rdr.SearchWhere(ctx, &deletedCredentialStores, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted credential stores"))
+	}
+	var credentialStoreIds []string
+	for _, cl := range deletedCredentialStores {
+		credentialStoreIds = append(credentialStoreIds, cl.PublicId)
+	}
+	return credentialStoreIds, nil
 }

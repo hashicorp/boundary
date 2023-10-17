@@ -101,8 +101,7 @@ func Test_TestJsonCredential(t *testing.T) {
 
 	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
-	obj, objBytes, err := TestJsonObject()
-	assert.NoError(err)
+	obj, objBytes := TestJsonObject(t)
 
 	cred := TestJsonCredential(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, WithName("my-name"), WithDescription("my-description"))
 	require.NotNil(cred)
@@ -130,8 +129,7 @@ func Test_TestJsonCredentials(t *testing.T) {
 
 	store := TestCredentialStore(t, conn, wrapper, prj.GetPublicId())
 
-	obj, _, err := TestJsonObject()
-	assert.NoError(err)
+	obj, _ := TestJsonObject(t)
 
 	count := 3
 	creds := TestJsonCredentials(t, conn, wrapper, store.GetPublicId(), prj.GetPublicId(), obj, count)

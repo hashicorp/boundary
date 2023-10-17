@@ -4,6 +4,11 @@
 package credential
 
 import (
+	"errors"
+	"time"
+
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/internal/util/template"
 )
 
@@ -26,7 +31,11 @@ type Option func(*options) error
 
 // options = how options are represented
 type options struct {
-	WithTemplateData template.Data
+	WithTemplateData       template.Data
+	WithReader             db.Reader
+	WithWriter             db.Writer
+	WithLimit              int
+	WithStartPageAfterItem *SortResource
 }
 
 func getDefaultOptions() *options {
@@ -37,6 +46,45 @@ func getDefaultOptions() *options {
 func WithTemplateData(with template.Data) Option {
 	return func(o *options) error {
 		o.WithTemplateData = with
+		return nil
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) error {
+		switch {
+		case util.IsNil(r):
+			return errors.New("nil reader")
+		case util.IsNil(w):
+			return errors.New("nil writer")
+		}
+		o.WithReader = r
+		o.WithWriter = w
+		return nil
+	}
+}
+
+// WithLimit provides an option to provide a limit.  Intentionally allowing
+// negative integers.   If WithLimit < 0, then unlimited results are returned.
+// If WithLimit == 0, then default limits are used for results.
+func WithLimit(l int) Option {
+	return func(o *options) error {
+		o.WithLimit = l
+		return nil
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(publicId string, updateTime time.Time) Option {
+	return func(o *options) error {
+		o.WithStartPageAfterItem = &SortResource{
+			PublicId:   publicId,
+			UpdateTime: updateTime,
+		}
 		return nil
 	}
 }

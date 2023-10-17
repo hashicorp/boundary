@@ -8,11 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -20,6 +23,7 @@ import (
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestRepository_CreateCredentialLibrary(t *testing.T) {
@@ -2083,14 +2087,20 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		got, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId())
 		assert.NoError(err)
 		require.Len(got, 1)
-		got1 := got[0]
-		assert.Equal(orig.GetPublicId(), got1.GetPublicId())
-		assert.Equal(orig.GetStoreId(), got1.GetStoreId())
-		assert.Equal(orig.GetHttpMethod(), got1.GetHttpMethod())
-		assert.Equal(orig.GetVaultPath(), got1.GetVaultPath())
-		assert.Equal(orig.GetName(), got1.GetName())
-		assert.Equal(orig.GetCredentialType(), got1.GetCredentialType())
-		assert.Empty(got1.MappingOverride)
+		require.Empty(cmp.Diff(
+			orig,
+			got[0],
+			cmpopts.IgnoreUnexported(
+				CredentialLibrary{},
+				store.CredentialLibrary{},
+				timestamp.Timestamp{},
+				timestamppb.Timestamp{},
+			),
+			cmpopts.IgnoreFields(
+				CredentialLibrary{},
+				"MappingOverride",
+			),
+		))
 	})
 
 	t.Run("with-no-credential-store-id", func(t *testing.T) {
@@ -2142,7 +2152,7 @@ func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
 	tests := []struct {
 		name     string
 		repoOpts []Option
-		listOpts []Option
+		listOpts []credential.Option
 		wantLen  int
 	}{
 		{
@@ -2161,24 +2171,24 @@ func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
 		},
 		{
 			name:     "with-list-limit",
-			listOpts: []Option{WithLimit(3)},
+			listOpts: []credential.Option{credential.WithLimit(3)},
 			wantLen:  3,
 		},
 		{
 			name:     "with-negative-list-limit",
-			listOpts: []Option{WithLimit(-1)},
+			listOpts: []credential.Option{credential.WithLimit(-1)},
 			wantLen:  count,
 		},
 		{
 			name:     "with-repo-smaller-than-list-limit",
 			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6)},
+			listOpts: []credential.Option{credential.WithLimit(6)},
 			wantLen:  6,
 		},
 		{
 			name:     "with-repo-larger-than-list-limit",
 			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2)},
+			listOpts: []credential.Option{credential.WithLimit(2)},
 			wantLen:  2,
 		},
 	}
@@ -2219,28 +2229,109 @@ func TestRepository_ListCredentialLibraries_Pagination(t *testing.T) {
 	require.NotNil(repo)
 
 	for _, cs := range css[:2] {
-		page1, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), WithLimit(2))
+		page1, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2))
 		require.NoError(err)
 		require.Len(page1, 2)
-		page2, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), WithLimit(2), WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].UpdateTime.AsTime()))
+		page2, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].GetUpdateTime().AsTime()))
 		require.NoError(err)
 		require.Len(page2, 2)
 		for _, item := range page1 {
 			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
 			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
 		}
-		page3, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), WithLimit(2), WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].UpdateTime.AsTime()))
+		page3, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].GetUpdateTime().AsTime()))
 		require.NoError(err)
 		require.Len(page3, 1)
 		for _, item := range append(page1, page2...) {
 			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
 		}
-		page4, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), WithLimit(2), WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].UpdateTime.AsTime()))
+		page4, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].GetUpdateTime().AsTime()))
 		require.NoError(err)
 		require.Empty(page4)
 	}
 
-	emptyPage, err := repo.ListCredentialLibraries(ctx, css[2].GetPublicId(), WithLimit(2))
+	emptyPage, err := repo.ListCredentialLibraries(ctx, css[2].GetPublicId(), credential.WithLimit(2))
 	require.NoError(err)
 	require.Empty(emptyPage)
+}
+
+func TestRepository_ListDeletedLibraryIds(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	libs := TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Empty(deletedIds)
+
+	// Delete a vault library
+	_, err = repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), libs[0].GetPublicId())
+	require.NoError(err)
+
+	// Expect a single entry
+	deletedIds, err = repo.ListDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(err)
+	require.Equal([]string{libs[0].GetPublicId()}, deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedLibraryIds(ctx, time.Now())
+	require.NoError(err)
+	require.Empty(deletedIds)
+}
+
+func TestRepository_EstimatedLibraryCount(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
+	store := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+
+	repo, err := NewRepository(ctx, rw, rw, kms, sche)
+	require.NoError(err)
+	require.NotNil(repo)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.EstimatedLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(0, numItems)
+
+	// Create some libraries
+	libs := TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 2)
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(2, numItems)
+
+	// Delete a library
+	_, err = repo.DeleteCredentialLibrary(ctx, prj.GetPublicId(), libs[0].GetPublicId())
+	require.NoError(err)
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	numItems, err = repo.EstimatedLibraryCount(ctx)
+	require.NoError(err)
+	assert.Equal(1, numItems)
 }
