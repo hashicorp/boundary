@@ -6,7 +6,7 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## 0.14.1 (2023/10/17)
 
-### Bug Fixes
+### Security
 
 * deps: Bump Go version to v1.21.3; gRPC to v1.58.3; golang.org/x/net to
   v0.17.0. This is to address a security vulnerability in the HTTP stack where a
