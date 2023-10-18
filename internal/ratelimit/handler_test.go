@@ -4,11 +4,15 @@
 package ratelimit_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/daemon/common"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -18,10 +22,14 @@ import (
 )
 
 func TestHandler(t *testing.T) {
+	ctx := context.Background()
+
 	cases := []struct {
 		name          string
 		limiter       *rate.Limiter
 		req           func(uri string) *http.Request
+		ip            string
+		authtoken     string
 		expectCode    int
 		expectHeaders http.Header
 	}{
@@ -37,6 +45,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -46,6 +70,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusOK,
 			http.Header{},
 		},
@@ -61,6 +87,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.Create.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.Create.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -70,6 +112,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusOK,
 			http.Header{},
 		},
@@ -85,6 +129,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.Read.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.Read.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -94,6 +154,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusOK,
 			http.Header{},
 		},
@@ -109,6 +171,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.Update.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.Update.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -118,6 +196,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusOK,
 			http.Header{},
 		},
@@ -133,6 +213,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.Delete.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.Delete.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -142,6 +238,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusOK,
 			http.Header{},
 		},
@@ -157,6 +255,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 10,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.AuthorizeSession.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.AuthorizeSession.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 10,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -166,6 +280,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusOK,
 			http.Header{},
 		},
@@ -181,9 +297,25 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
-				_, q, err := r.Allow("target", "list")
+				_, q, err := r.Allow("target", "list", "", "")
 				require.NoError(t, err)
 
 				// consume all of the quota
@@ -198,6 +330,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusTooManyRequests,
 			http.Header{
 				"Retry-After": []string{"60"},
@@ -223,10 +357,42 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
-				}, 1)
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.Read.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.Read.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+				}, 3)
 				require.NoError(t, err)
 				// use up all of the capacity for the limiter
-				_, _, err = r.Allow("target", "read")
+				_, _, err = r.Allow("target", "read", "", "")
 				require.NoError(t, err)
 				return r
 			}(),
@@ -235,6 +401,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusServiceUnavailable,
 			http.Header{
 				"Retry-After": []string{"1"},
@@ -252,6 +420,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -261,6 +445,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusInternalServerError,
 			http.Header{},
 		},
@@ -276,6 +462,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -285,6 +487,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusNotFound,
 			http.Header{},
 		},
@@ -300,6 +504,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -309,6 +529,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusBadRequest,
 			http.Header{},
 		},
@@ -324,6 +546,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -333,6 +571,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusMethodNotAllowed,
 			http.Header{},
 		},
@@ -348,6 +588,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -357,6 +613,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusMethodNotAllowed,
 			http.Header{},
 		},
@@ -372,6 +630,22 @@ func TestHandler(t *testing.T) {
 						MaxRequests: 2,
 						Period:      time.Minute,
 					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerIPAddress,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
+					{
+						Resource:    resource.Target.String(),
+						Action:      action.List.String(),
+						Per:         rate.LimitPerAuthToken,
+						Unlimited:   false,
+						MaxRequests: 2,
+						Period:      time.Minute,
+					},
 				}, 10)
 				require.NoError(t, err)
 				return r
@@ -381,6 +655,8 @@ func TestHandler(t *testing.T) {
 				require.NoError(t, err)
 				return r
 			},
+			"127.0.0.1",
+			"authtoken",
 			http.StatusMethodNotAllowed,
 			http.Header{},
 		},
@@ -388,10 +664,29 @@ func TestHandler(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			server := httptest.NewServer(ratelimit.Handler(tc.limiter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-				return
-			})))
+			server := httptest.NewServer(
+				func(next http.Handler) http.Handler {
+					return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+						ctx := req.Context()
+						id, err := event.NewId(event.IdPrefix)
+						require.NoError(t, err)
+						ctx, err = event.NewRequestInfoContext(ctx, &event.RequestInfo{
+							Id:       id,
+							EventId:  common.GeneratedTraceId(ctx),
+							ClientIp: tc.ip,
+						})
+						require.NoError(t, err)
+						ctx = context.WithValue(ctx, globals.ContextAuthTokenPublicIdKey, tc.authtoken)
+
+						req = req.Clone(ctx)
+
+						next.ServeHTTP(rw, req)
+					})
+				}(ratelimit.Handler(ctx, tc.limiter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+					return
+				}))),
+			)
 			req := tc.req(server.URL)
 			client := &http.Client{}
 			res, err := client.Do(req)
@@ -400,6 +695,107 @@ func TestHandler(t *testing.T) {
 			for key, value := range tc.expectHeaders {
 				assert.Equal(t, value[0], res.Header.Get(key))
 			}
+		})
+	}
+}
+
+func TestHandlerErrors(t *testing.T) {
+	ctx := context.Background()
+
+	cases := []struct {
+		name       string
+		ctxFn      func(context.Context) context.Context
+		expectCode int
+	}{
+		{
+			"NoRequestInfo",
+			func(ctx context.Context) context.Context {
+				ctx = context.WithValue(ctx, globals.ContextAuthTokenPublicIdKey, "auth-token")
+				return ctx
+			},
+			http.StatusInternalServerError,
+		},
+		{
+			"ClientIpEmptyString",
+			func(ctx context.Context) context.Context {
+				id, err := event.NewId(event.IdPrefix)
+				require.NoError(t, err)
+				ctx, err = event.NewRequestInfoContext(ctx, &event.RequestInfo{
+					Id:       id,
+					EventId:  common.GeneratedTraceId(ctx),
+					ClientIp: "",
+				})
+				require.NoError(t, err)
+				ctx = context.WithValue(ctx, globals.ContextAuthTokenPublicIdKey, "auth-token")
+				return ctx
+			},
+			http.StatusInternalServerError,
+		},
+		{
+			"NoAuthToken",
+			func(ctx context.Context) context.Context {
+				id, err := event.NewId(event.IdPrefix)
+				require.NoError(t, err)
+				ctx, err = event.NewRequestInfoContext(ctx, &event.RequestInfo{
+					Id:       id,
+					EventId:  common.GeneratedTraceId(ctx),
+					ClientIp: "127.0.0.1",
+				})
+				require.NoError(t, err)
+				return ctx
+			},
+			http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r, err := rate.NewLimiter([]*rate.Limit{
+				{
+					Resource:    resource.Target.String(),
+					Action:      action.List.String(),
+					Per:         rate.LimitPerTotal,
+					Unlimited:   false,
+					MaxRequests: 10,
+					Period:      time.Minute,
+				},
+				{
+					Resource:    resource.Target.String(),
+					Action:      action.List.String(),
+					Per:         rate.LimitPerIPAddress,
+					Unlimited:   false,
+					MaxRequests: 10,
+					Period:      time.Minute,
+				},
+				{
+					Resource:    resource.Target.String(),
+					Action:      action.List.String(),
+					Per:         rate.LimitPerAuthToken,
+					Unlimited:   false,
+					MaxRequests: 10,
+					Period:      time.Minute,
+				},
+			}, 10)
+			require.NoError(t, err)
+			server := httptest.NewServer(
+				func(next http.Handler) http.Handler {
+					return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+						ctx := tc.ctxFn(req.Context())
+						req = req.Clone(ctx)
+
+						next.ServeHTTP(rw, req)
+					})
+				}(ratelimit.Handler(ctx, r, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+					return
+				}))),
+			)
+			req, err := http.NewRequest(http.MethodGet, server.URL+"/v1/targets", nil)
+			require.NoError(t, err)
+			client := &http.Client{}
+			res, err := client.Do(req)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectCode, res.StatusCode)
 		})
 	}
 }
