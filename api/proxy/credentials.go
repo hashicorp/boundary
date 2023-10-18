@@ -10,11 +10,9 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-type CredentialType string
-
 const (
-	UsernamePasswordCredentialType CredentialType = "username_password"
-	SshPrivateKeyCredentialType    CredentialType = "ssh_private_key"
+	usernamePasswordCredentialType = "username_password"
+	sshPrivateKeyCredentialType    = "ssh_private_key"
 )
 
 // UsernamePassword contains username and password credentials
@@ -79,8 +77,8 @@ func ParseCredentials(creds []*targets.SessionCredential) (Credentials, error) {
 
 		var upCred UsernamePassword
 		var spkCred SshPrivateKey
-		switch CredentialType(cred.CredentialSource.CredentialType) {
-		case UsernamePasswordCredentialType:
+		switch cred.CredentialSource.CredentialType {
+		case usernamePasswordCredentialType:
 			// Decode attributes from credential struct
 			if err := mapstructure.Decode(cred.Credential, &upCred); err != nil {
 				return Credentials{}, err
@@ -92,7 +90,7 @@ func ParseCredentials(creds []*targets.SessionCredential) (Credentials, error) {
 				continue
 			}
 
-		case SshPrivateKeyCredentialType:
+		case sshPrivateKeyCredentialType:
 			// Decode attributes from credential struct
 			if err := mapstructure.Decode(cred.Credential, &spkCred); err != nil {
 				return Credentials{}, err

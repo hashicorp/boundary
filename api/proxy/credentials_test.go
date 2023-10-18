@@ -21,7 +21,7 @@ const (
 var (
 	typedUsernamePassword = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			CredentialType: string(UsernamePasswordCredentialType),
+			CredentialType: usernamePasswordCredentialType,
 		},
 		Credential: map[string]any{
 			"username": "user",
@@ -31,7 +31,7 @@ var (
 
 	typedSshPrivateKey = &targets.SessionCredential{
 		CredentialSource: &targets.CredentialSource{
-			CredentialType: string(SshPrivateKeyCredentialType),
+			CredentialType: sshPrivateKeyCredentialType,
 		},
 		Credential: map[string]any{
 			"username":    "user",
