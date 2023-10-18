@@ -81,6 +81,17 @@ func FromResource(res boundary.Resource, grantsHash []byte) *Token {
 	}
 }
 
+// ToPartialResource returns a value that can
+// be used as a resource for the purposes of getting
+// the public ID, updated time and resource type.
+func (rt *Token) ToPartialResource() *partialResource {
+	return &partialResource{
+		publicId:     rt.LastItemId,
+		updateTime:   rt.LastItemUpdatedTime,
+		resourceType: rt.ResourceType,
+	}
+}
+
 // Refresh refreshes a token's updated time. It accounts for overlapping
 // database transactions by subtracting UpdatedTimeBuffer from the
 // provided timestamp while ensuring that the updated time is never
