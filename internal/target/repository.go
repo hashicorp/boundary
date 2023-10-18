@@ -264,8 +264,8 @@ func (r *Repository) listTargets(ctx context.Context, opt ...Option) ([]Target, 
 		// time as there may be items with identical update_times. We
 		// then use public_id as a tiebreaker.
 		args = append(args,
-			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.updateTime),
-			sql.Named("after_item_id", opts.WithStartPageAfterItem.publicId),
+			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.WithStartPageAfterItem.GetPublicId()),
 		)
 		whereClause += "and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
