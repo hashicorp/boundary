@@ -35,6 +35,9 @@ func defaultSessionFunc(ctx context.Context, addr, authTok, refreshTok string) (
 	sClient := sessions.NewClient(client)
 	l, err := sClient.List(ctx, "global", sessions.WithRecursive(true), sessions.WithRefreshToken(refreshTok))
 	if err != nil {
+		if api.ErrInvalidRefreshToken.Is(err) {
+			return nil, nil, "", err
+		}
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
 	return l.Items, l.RemovedIds, l.RefreshToken, nil
@@ -72,6 +75,14 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	var retErr error
 	for at, t := range tokens {
 		resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, oldRefreshToken)
+		if api.ErrInvalidRefreshToken.Is(err) {
+			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			// try again without the refresh token
+			oldRefreshToken = ""
+			resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, "")
+		}
 		if err != nil {
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
 			continue
@@ -126,10 +137,8 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 			}
 		}
 
-		if newRefreshToken != "" || oldRefreshToken != "" {
-			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
-				return err
-			}
+		if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
+			return err
 		}
 		return nil
 	})

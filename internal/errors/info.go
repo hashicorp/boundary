@@ -343,4 +343,8 @@ var errorCodeInfo = map[Code]Info{
 		Message: "checksum mismatch",
 		Kind:    Integrity,
 	},
+	InvalidRefreshToken: {
+		Message: "invalid refresh token",
+		Kind:    Parameter,
+	},
 }

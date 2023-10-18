@@ -101,32 +101,32 @@ func (rt *Token) Validate(
 		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was missing")
 	}
 	if len(rt.GrantsHash) == 0 {
-		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was missing its grants hash")
+		return errors.New(ctx, errors.InvalidRefreshToken, op, "refresh token was missing its grants hash")
 	}
 	if !bytes.Equal(rt.GrantsHash, expectedGrantsHash) {
-		return errors.New(ctx, errors.InvalidParameter, op, "grants have changed since refresh token was issued")
+		return errors.New(ctx, errors.InvalidRefreshToken, op, "grants have changed since refresh token was issued")
 	}
 	if rt.CreatedTime.After(time.Now()) {
-		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was created in the future")
+		return errors.New(ctx, errors.InvalidRefreshToken, op, "refresh token was created in the future")
 	}
 	// Tokens older than 30 days have expired
 	if rt.CreatedTime.Before(time.Now().AddDate(0, 0, -30)) {
-		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was expired")
+		return errors.New(ctx, errors.InvalidRefreshToken, op, "refresh token was expired")
 	}
 	if rt.UpdatedTime.Before(rt.CreatedTime) {
-		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was updated before its creation time")
+		return errors.New(ctx, errors.InvalidRefreshToken, op, "refresh token was updated before its creation time")
 	}
 	if rt.UpdatedTime.After(time.Now()) {
-		return errors.New(ctx, errors.InvalidParameter, op, "refresh token was updated in the future")
+		return errors.New(ctx, errors.InvalidRefreshToken, op, "refresh token was updated in the future")
 	}
 	if rt.LastItemId == "" {
-		return errors.New(ctx, errors.InvalidParameter, op, "refresh token missing last item ID")
+		return errors.New(ctx, errors.InvalidRefreshToken, op, "refresh token missing last item ID")
 	}
 	if rt.LastItemUpdatedTime.After(time.Now()) {
-		return errors.New(ctx, errors.InvalidParameter, op, "refresh token last item was updated in the future")
+		return errors.New(ctx, errors.InvalidRefreshToken, op, "refresh token last item was updated in the future")
 	}
 	if rt.ResourceType != expectedResourceType {
-		return errors.New(ctx, errors.InvalidParameter, op, "refresh token resource type does not match expected resource type")
+		return errors.New(ctx, errors.InvalidRefreshToken, op, "refresh token resource type does not match expected resource type")
 	}
 
 	return nil

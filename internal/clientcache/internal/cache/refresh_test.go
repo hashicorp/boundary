@@ -52,6 +52,18 @@ func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][
 	}
 }
 
+// testErroringForRefreshTokenRetrievalFunc returns a refresh token error when
+// the refresh token is not empty.  This is useful for testing behavior when
+// the refresh token has expired or is otherwise invalid.
+func testErroringForRefreshTokenRetrievalFunc[T any](t *testing.T, ret []T) func(context.Context, string, string, string) ([]T, []string, string, error) {
+	return func(ctx context.Context, s1, s2, refToken string) ([]T, []string, string, error) {
+		if refToken != "" {
+			return nil, nil, "", api.ErrInvalidRefreshToken
+		}
+		return ret, nil, "1", nil
+	}
+}
+
 func TestCleanAndPickTokens(t *testing.T) {
 	ctx := context.Background()
 	s, err := db.Open(ctx)

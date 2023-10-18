@@ -35,6 +35,9 @@ func defaultTargetFunc(ctx context.Context, addr, authTok, refreshTok string) ([
 	tarClient := targets.NewClient(client)
 	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true), targets.WithRefreshToken(refreshTok))
 	if err != nil {
+		if api.ErrInvalidRefreshToken.Is(err) {
+			return nil, nil, "", err
+		}
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
 	return l.Items, l.RemovedIds, l.RefreshToken, nil
@@ -69,7 +72,16 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	var newRefreshToken string
 	var retErr error
 	for at, t := range tokens {
+
 		resp, removedIds, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, oldRefreshToken)
+		if api.ErrInvalidRefreshToken.Is(err) {
+			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			// try again without the refresh token
+			oldRefreshToken = ""
+			resp, removedIds, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, "")
+		}
 		if err != nil {
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
 			continue

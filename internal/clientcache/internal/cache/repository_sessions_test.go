@@ -208,6 +208,25 @@ func TestRepository_RefreshSessions_withRefreshTokens(t *testing.T) {
 	got, err = r.ListSessions(ctx, at.Id)
 	require.NoError(t, err)
 	assert.Len(t, got, 3)
+
+	// Refreshing again wont return any more resources, but also none should be
+	// removed
+	require.NoError(t, r.refreshSessions(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(t, ss, [][]string{nil, nil}))))
+	assert.NoError(t, err)
+
+	got, err = r.ListSessions(ctx, at.Id)
+	require.NoError(t, err)
+	assert.Len(t, got, 3)
+
+	// Refresh again with the refresh token being reported as invalid.
+	require.NoError(t, r.refreshSessions(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithSessionRetrievalFunc(testErroringForRefreshTokenRetrievalFunc(t, ss[0]))))
+	assert.NoError(t, err)
+
+	got, err = r.ListSessions(ctx, at.Id)
+	require.NoError(t, err)
+	assert.Len(t, got, 2)
 }
 
 func TestRepository_ListSessions(t *testing.T) {

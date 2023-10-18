@@ -153,6 +153,25 @@ func InvalidArgumentErrorf(msg string, fields map[string]string) *ApiError {
 	return apiErr
 }
 
+func invalidRefreshTokenError(err error) *ApiError {
+	const op = "handlers.invalidRefreshTokenError"
+	ctx := context.TODO()
+
+	var domainErr *errors.Err
+	if !errors.As(err, &domainErr) {
+		event.WriteError(ctx, op, err, event.WithInfoMsg("Unable to build invalid argument api error."))
+	}
+
+	return &ApiError{
+		Status: http.StatusBadRequest,
+		Inner: &pb.Error{
+			Kind:    domainErr.Info().Message,
+			Op:      string(domainErr.Op),
+			Message: domainErr.Msg,
+		},
+	}
+}
+
 // ConflictErrorf generates an ApiErr when a pre-conditional check is violated.
 // Note, this deliberately doesn't translate to the similarly named '412
 // Precondition Failed' HTTP response status. The ApiErr returned is a 400 bad
@@ -199,6 +218,8 @@ func backendErrorToApiError(inErr error) *ApiError {
 		return NotFoundErrorf(genericNotFoundMsg)
 	case errors.Match(errors.T(errors.AccountAlreadyAssociated), inErr):
 		return InvalidArgumentErrorf(inErr.Error(), nil)
+	case errors.Match(errors.T(errors.InvalidRefreshToken), inErr):
+		return invalidRefreshTokenError(inErr)
 	case errors.Match(errors.T(errors.InvalidFieldMask), inErr), errors.Match(errors.T(errors.EmptyFieldMask), inErr):
 		return InvalidArgumentErrorf("Error in provided request", map[string]string{"update_mask": "Invalid update mask provided."})
 	case errors.IsUniqueError(inErr):

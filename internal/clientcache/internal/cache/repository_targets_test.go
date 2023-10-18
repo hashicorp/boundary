@@ -203,6 +203,25 @@ func TestRepository_RefreshTargets_withRefreshTokens(t *testing.T) {
 	got, err = r.ListTargets(ctx, at.Id)
 	require.NoError(t, err)
 	assert.Len(t, got, 3)
+
+	// Refreshing again wont return any more resources, but also none should be
+	// removed
+	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithTargetRetrievalFunc(testStaticResourceRetrievalFunc(t, ts, [][]string{nil, nil}))))
+	assert.NoError(t, err)
+
+	got, err = r.ListTargets(ctx, at.Id)
+	require.NoError(t, err)
+	assert.Len(t, got, 3)
+
+	// Refresh again with the refresh token being reported as invalid.
+	require.NoError(t, r.refreshTargets(ctx, &u, map[AuthToken]string{{Id: "id"}: "something"},
+		WithTargetRetrievalFunc(testErroringForRefreshTokenRetrievalFunc(t, ts[0]))))
+	assert.NoError(t, err)
+
+	got, err = r.ListTargets(ctx, at.Id)
+	require.NoError(t, err)
+	assert.Len(t, got, 2)
 }
 
 func TestRepository_ListTargets(t *testing.T) {

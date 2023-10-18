@@ -101,6 +101,9 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 	if err := r.repo.syncKeyringlessTokensWithDb(ctx); err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
+	if err := r.repo.clearExpiredRefreshTokens(ctx); err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 
 	us, err := r.repo.listUsers(ctx)
 	if err != nil {

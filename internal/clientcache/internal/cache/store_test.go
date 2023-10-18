@@ -191,7 +191,8 @@ func TestRefreshToken(t *testing.T) {
 		before := time.Now().Truncate(1 * time.Millisecond)
 		require.NoError(t, rw.Create(ctx, tok))
 		require.NoError(t, rw.LookupById(ctx, tok))
-		assert.GreaterOrEqual(t, tok.LastAccessedTime, before)
+		assert.GreaterOrEqual(t, tok.UpdateTime, before)
+		assert.GreaterOrEqual(t, tok.CreateTime, before)
 		assert.NotEmpty(t, tok.RefreshToken)
 	})
 
@@ -209,8 +210,8 @@ func TestRefreshToken(t *testing.T) {
 		}
 		require.NoError(t, rw.Create(ctx, tok))
 
-		tok.LastAccessedTime = time.Now().Add(-(24 * 365 * time.Hour))
-		n, err := rw.Update(ctx, tok, []string{"LastAccessedTime"}, nil)
+		tok.UpdateTime = time.Now().Add(-(24 * 365 * time.Hour))
+		n, err := rw.Update(ctx, tok, []string{"UpdateTime"}, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
