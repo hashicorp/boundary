@@ -30,14 +30,14 @@ import (
 // incrementing integer. This integer is the index into the provided return
 // values and once it reaches the length of the provided slice it returns an
 // empty slice and the same refresh token repeatedly.
-func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][]string) func(context.Context, string, string, string) ([]T, []string, string, error) {
+func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][]string) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 	t.Helper()
 	require.Equal(t, len(ret), len(removed), "returned slice and removed slice must be the same length")
-	return func(ctx context.Context, s1, s2, refToken string) ([]T, []string, string, error) {
+	return func(ctx context.Context, s1, s2 string, refToken RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 		index := 0
 		if refToken != "" {
 			var err error
-			index, err = strconv.Atoi(refToken)
+			index, err = strconv.Atoi(string(refToken))
 			require.NoError(t, err)
 		}
 
@@ -45,9 +45,9 @@ func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][
 		case len(ret) == 0:
 			return nil, nil, "", nil
 		case index > 0 && index >= len(ret):
-			return []T{}, []string{}, fmt.Sprintf("%d", index), nil
+			return []T{}, []string{}, RefreshTokenValue(fmt.Sprintf("%d", index)), nil
 		default:
-			return ret[index], removed[index], fmt.Sprintf("%d", index+1), nil
+			return ret[index], removed[index], RefreshTokenValue(fmt.Sprintf("%d", index+1)), nil
 		}
 	}
 }
@@ -55,8 +55,8 @@ func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][
 // testErroringForRefreshTokenRetrievalFunc returns a refresh token error when
 // the refresh token is not empty.  This is useful for testing behavior when
 // the refresh token has expired or is otherwise invalid.
-func testErroringForRefreshTokenRetrievalFunc[T any](t *testing.T, ret []T) func(context.Context, string, string, string) ([]T, []string, string, error) {
-	return func(ctx context.Context, s1, s2, refToken string) ([]T, []string, string, error) {
+func testErroringForRefreshTokenRetrievalFunc[T any](t *testing.T, ret []T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+	return func(ctx context.Context, s1, s2 string, refToken RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
 		if refToken != "" {
 			return nil, nil, "", api.ErrInvalidRefreshToken
 		}
@@ -394,7 +394,7 @@ func TestRefresh(t *testing.T) {
 		innerErr := errors.New("test error")
 		err := rs.Refresh(ctx,
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
-			WithTargetRetrievalFunc(func(ctx context.Context, addr, token, refreshTok string) ([]*targets.Target, []string, string, error) {
+			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return nil, nil, "", innerErr
@@ -402,7 +402,7 @@ func TestRefresh(t *testing.T) {
 		assert.ErrorContains(t, err, innerErr.Error())
 		err = rs.Refresh(ctx,
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
-			WithSessionRetrievalFunc(func(ctx context.Context, addr, token, refreshTok string) ([]*sessions.Session, []string, string, error) {
+			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
 				return nil, nil, "", innerErr

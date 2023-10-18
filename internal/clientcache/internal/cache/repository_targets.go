@@ -21,9 +21,9 @@ import (
 
 // TargetRetrievalFunc is a function that retrieves targets
 // from the provided boundary addr using the provided token.
-type TargetRetrievalFunc func(ctx context.Context, addr, authTok, refreshTok string) (ret []*targets.Target, removedIds []string, refreshToken string, err error)
+type TargetRetrievalFunc func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) (ret []*targets.Target, removedIds []string, refreshToken RefreshTokenValue, err error)
 
-func defaultTargetFunc(ctx context.Context, addr, authTok, refreshTok string) ([]*targets.Target, []string, string, error) {
+func defaultTargetFunc(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 	const op = "cache.defaultTargetFunc"
 	client, err := api.NewClient(&api.Config{
 		Addr:  addr,
@@ -33,14 +33,14 @@ func defaultTargetFunc(ctx context.Context, addr, authTok, refreshTok string) ([
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
 	tarClient := targets.NewClient(client)
-	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true), targets.WithRefreshToken(refreshTok))
+	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true), targets.WithRefreshToken(string(refreshTok)))
 	if err != nil {
 		if api.ErrInvalidRefreshToken.Is(err) {
 			return nil, nil, "", err
 		}
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
-	return l.Items, l.RemovedIds, l.RefreshToken, nil
+	return l.Items, l.RemovedIds, RefreshTokenValue(l.RefreshToken), nil
 }
 
 func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
@@ -69,7 +69,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	var gotResponse bool
 	var resp []*targets.Target
 	var removedIds []string
-	var newRefreshToken string
+	var newRefreshToken RefreshTokenValue
 	var retErr error
 	for at, t := range tokens {
 

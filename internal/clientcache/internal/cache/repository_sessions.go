@@ -21,9 +21,9 @@ import (
 
 // SessionRetrievalFunc is a function that retrieves sessions
 // from the provided boundary addr using the provided token.
-type SessionRetrievalFunc func(ctx context.Context, addr, authTok, refreshTok string) (ret []*sessions.Session, removedIds []string, refreshToken string, err error)
+type SessionRetrievalFunc func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) (ret []*sessions.Session, removedIds []string, refreshToken RefreshTokenValue, err error)
 
-func defaultSessionFunc(ctx context.Context, addr, authTok, refreshTok string) ([]*sessions.Session, []string, string, error) {
+func defaultSessionFunc(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
 	const op = "cache.defaultSessionFunc"
 	client, err := api.NewClient(&api.Config{
 		Addr:  addr,
@@ -33,14 +33,14 @@ func defaultSessionFunc(ctx context.Context, addr, authTok, refreshTok string) (
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
 	sClient := sessions.NewClient(client)
-	l, err := sClient.List(ctx, "global", sessions.WithRecursive(true), sessions.WithRefreshToken(refreshTok))
+	l, err := sClient.List(ctx, "global", sessions.WithRecursive(true), sessions.WithRefreshToken(string(refreshTok)))
 	if err != nil {
 		if api.ErrInvalidRefreshToken.Is(err) {
 			return nil, nil, "", err
 		}
 		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
-	return l.Items, l.RemovedIds, l.RefreshToken, nil
+	return l.Items, l.RemovedIds, RefreshTokenValue(l.RefreshToken), nil
 }
 
 func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
@@ -70,7 +70,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	// Find and use a token for retrieving sessions
 	var gotResponse bool
 	var resp []*sessions.Session
-	var newRefreshToken string
+	var newRefreshToken RefreshTokenValue
 	var removedIds []string
 	var retErr error
 	for at, t := range tokens {

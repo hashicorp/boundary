@@ -5,7 +5,6 @@ package cache
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
@@ -14,13 +13,13 @@ import (
 	"github.com/hashicorp/go-dbw"
 )
 
-// defaultRefreshTokenMaxAge is the amount of time we will ignore a refresh token
-// since it was created when cleaning up expired ones.
-const defaultRefreshTokenMaxAge time.Duration = 30 * 24 * time.Hour
+// RefreshTokenValue is the the type for the actual refresh token value handled
+// by the client cache.
+type RefreshTokenValue string
 
 // lookupRefreshToken returns the refresh token stored in the db unless it is
 // to old in which case it does not return a refresh token.
-func (r *Repository) lookupRefreshToken(ctx context.Context, u *user, resourceType resourceType) (string, error) {
+func (r *Repository) lookupRefreshToken(ctx context.Context, u *user, resourceType resourceType) (RefreshTokenValue, error) {
 	const op = "cache.(Repsoitory).lookupRefreshToken"
 	switch {
 	case util.IsNil(u):
@@ -77,34 +76,7 @@ func (r *Repository) deleteRefreshToken(ctx context.Context, u *user, rType reso
 	return nil
 }
 
-// clearExpiredRefreshTokens removes any refresh tokens which were created
-// longer than 30 days ago.  WithDuration is the only Option allowed and, if not
-// zero, will overwrite the 30 day expiration time.
-func (r *Repository) clearExpiredRefreshTokens(ctx context.Context, opt ...Option) error {
-	const op = "cache.(Repository).clearExpiredRefreshTokens"
-	opts, err := getOpts(opt...)
-	if err != nil {
-		return errors.Wrap(ctx, err, op)
-	}
-
-	if opts.withDuration == 0 {
-		opts.withDuration = defaultRefreshTokenMaxAge
-	}
-	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		_, err := w.Exec(ctx, "delete from refresh_token where datetime(create_time) < datetime(@earliest)",
-			[]any{sql.Named("earliest", time.Now().Add(-opts.withDuration))}, db.WithDebug(true))
-		if err != nil {
-			return errors.Wrap(ctx, err, op)
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func upsertRefreshToken(ctx context.Context, writer db.Writer, u *user, rt resourceType, tok string) error {
+func upsertRefreshToken(ctx context.Context, writer db.Writer, u *user, rt resourceType, tok RefreshTokenValue) error {
 	const op = "cache.upsertRefreshToken"
 	switch {
 	case util.IsNil(writer):
@@ -162,7 +134,7 @@ func (r resourceType) valid() bool {
 type refreshToken struct {
 	UserId       string       `gorm:"primaryKey"`
 	ResourceType resourceType `gorm:"primaryKey"`
-	RefreshToken string
+	RefreshToken RefreshTokenValue
 	UpdateTime   time.Time `gorm:"default:(strftime('%Y-%m-%d %H:%M:%f','now'))"`
 	CreateTime   time.Time `gorm:"default:(strftime('%Y-%m-%d %H:%M:%f','now'))"`
 }

@@ -206,12 +206,13 @@ func TestRefreshToken(t *testing.T) {
 		tok := &refreshToken{
 			UserId:       u.Id,
 			ResourceType: targetResourceType,
-			RefreshToken: "updated",
+			RefreshToken: "started",
 		}
 		require.NoError(t, rw.Create(ctx, tok))
 
 		tok.UpdateTime = time.Now().Add(-(24 * 365 * time.Hour))
-		n, err := rw.Update(ctx, tok, []string{"UpdateTime"}, nil)
+		tok.RefreshToken = "updated"
+		n, err := rw.Update(ctx, tok, []string{"UpdateTime", "RefreshToken"}, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, n)
 	})
