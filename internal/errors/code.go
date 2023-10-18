@@ -67,7 +67,7 @@ const (
 	Closed                   = 134 // Closed represents an error when an operation cannot be completed because the thing being operated on is closed
 	ChecksumMismatch         = 135 // ChecksumMismatch represents an error when a checksum is mismatched
 
-	InvalidRefreshToken = 136 // InvalidRefreshToken represents an error where the provided refresh token is invalid
+	InvalidRefreshToken Code = 136 // InvalidRefreshToken represents an error where the provided refresh token is invalid
 
 	AuthAttemptExpired Code = 198 // AuthAttemptExpired represents an expired authentication attempt
 	AuthMethodInactive Code = 199 // AuthMethodInactive represents an error that means the auth method is not active.
