@@ -12,8 +12,8 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
-	github.com/hashicorp/boundary/api v0.0.42-0.20231017080827-cc3e15599ccb
-	github.com/hashicorp/boundary/sdk v0.0.38-0.20231017070437-81b1ecb7da97
+	github.com/hashicorp/boundary/api v0.0.42-0.20231018184317-b7046ac4bee0
+	github.com/hashicorp/boundary/sdk v0.0.38-0.20231018071814-b1413e72fee0
 	github.com/hashicorp/cap v0.3.3
 	github.com/hashicorp/dawdle v0.4.0
 	github.com/hashicorp/eventlogger v0.2.5
