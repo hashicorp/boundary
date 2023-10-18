@@ -2232,20 +2232,20 @@ func TestRepository_ListCredentialLibraries_Pagination(t *testing.T) {
 		page1, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2))
 		require.NoError(err)
 		require.Len(page1, 2)
-		page2, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].GetUpdateTime().AsTime()))
+		page2, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1]))
 		require.NoError(err)
 		require.Len(page2, 2)
 		for _, item := range page1 {
 			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
 			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
 		}
-		page3, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].GetUpdateTime().AsTime()))
+		page3, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1]))
 		require.NoError(err)
 		require.Len(page3, 1)
 		for _, item := range append(page1, page2...) {
 			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
 		}
-		page4, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].GetUpdateTime().AsTime()))
+		page4, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0]))
 		require.NoError(err)
 		require.Empty(page4)
 	}
