@@ -56,11 +56,11 @@ func NewRepository(ctx context.Context, conn *db.DB, idToAuthToken *sync.Map, ke
 	}, nil
 }
 
-func (r *Repository) SaveError(ctx context.Context, u *user, resourceType resourceType, err error) error {
-	const op = "cache.(Repository).StoreError"
+func (r *Repository) saveError(ctx context.Context, u *user, resourceType resourceType, err error) error {
+	const op = "cache.(Repository).saveError"
 	switch {
-	case resourceType == "":
-		return errors.New(ctx, errors.InvalidParameter, op, "resource type is empty")
+	case !resourceType.valid():
+		return errors.New(ctx, errors.InvalidParameter, op, "resource type is invalid")
 	case err == nil:
 		return errors.New(ctx, errors.InvalidParameter, op, "error is nil")
 	case u == nil:
@@ -68,9 +68,9 @@ func (r *Repository) SaveError(ctx context.Context, u *user, resourceType resour
 	case u.Id == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "user id is empty")
 	}
-	apiErr := &ApiError{
+	apiErr := &apiError{
 		UserId:       u.Id,
-		ResourceType: string(resourceType),
+		ResourceType: resourceType,
 		Error:        err.Error(),
 	}
 	onConflict := db.OnConflict{
@@ -83,13 +83,37 @@ func (r *Repository) SaveError(ctx context.Context, u *user, resourceType resour
 	return nil
 }
 
-type ApiError struct {
-	UserId       string `gorm:"primaryKey"`
-	ResourceType string `gorm:"primaryKey"`
+func (r *Repository) lookupError(ctx context.Context, u *user, resourceType resourceType) (*apiError, error) {
+	const op = "cache.(Repository).lookupError"
+	switch {
+	case !resourceType.valid():
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "resource type is invalid")
+	case u == nil:
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "user is nil")
+	case u.Id == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is empty")
+	}
+	apiErr := &apiError{
+		UserId:       u.Id,
+		ResourceType: resourceType,
+	}
+	err := r.rw.LookupById(ctx, apiErr)
+	if err != nil {
+		if errors.IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return apiErr, nil
+}
+
+type apiError struct {
+	UserId       string       `gorm:"primaryKey"`
+	ResourceType resourceType `gorm:"primaryKey"`
 	Error        string
 	CreateTime   time.Time
 }
 
-func (*ApiError) TableName() string {
+func (*apiError) TableName() string {
 	return "api_error"
 }

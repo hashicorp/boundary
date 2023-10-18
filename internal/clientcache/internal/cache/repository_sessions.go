@@ -95,7 +95,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	}
 
 	if retErr != nil {
-		if saveErr := r.SaveError(ctx, u, resourceType, retErr); saveErr != nil {
+		if saveErr := r.saveError(ctx, u, resourceType, retErr); saveErr != nil {
 			return stderrors.Join(err, errors.Wrap(ctx, saveErr, op))
 		}
 	}

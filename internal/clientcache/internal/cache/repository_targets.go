@@ -92,7 +92,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 		break
 	}
 	if retErr != nil {
-		if saveErr := r.SaveError(ctx, u, resourceType, retErr); saveErr != nil {
+		if saveErr := r.saveError(ctx, u, resourceType, retErr); saveErr != nil {
 			return stderrors.Join(err, errors.Wrap(ctx, saveErr, op))
 		}
 	}
