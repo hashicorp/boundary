@@ -29,11 +29,11 @@ func ListRefresh(
 		}
 		if lastPageItem != nil {
 			opts = append(opts,
-				WithStartPageAfterItem(lastPageItem.GetPublicId(), lastPageItem.GetUpdateTime().AsTime()),
+				WithStartPageAfterItem(lastPageItem),
 			)
 		} else {
 			opts = append(opts,
-				WithStartPageAfterItem(tok.LastItemId, tok.LastItemUpdatedTime),
+				WithStartPageAfterItem(tok.ToPartialResource()),
 			)
 		}
 		return repo.listTargets(ctx, opts...)

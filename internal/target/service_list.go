@@ -26,7 +26,7 @@ func List(
 		}
 		if lastPageItem != nil {
 			opts = append(opts,
-				WithStartPageAfterItem(lastPageItem.GetPublicId(), lastPageItem.GetUpdateTime().AsTime()),
+				WithStartPageAfterItem(lastPageItem),
 			)
 		}
 		return repo.listTargets(ctx, opts...)

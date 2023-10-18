@@ -181,7 +181,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			repo,
 			context.Background(),
 			target.WithLimit(2),
-			target.WithStartPageAfterItem(page1[1].GetPublicId(), page1[1].GetUpdateTime().AsTime()),
+			target.WithStartPageAfterItem(page1[1]),
 		)
 		require.NoError(err)
 		require.Len(page2, 2)
@@ -193,7 +193,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			repo,
 			context.Background(),
 			target.WithLimit(2),
-			target.WithStartPageAfterItem(page2[1].GetPublicId(), page2[1].GetUpdateTime().AsTime()),
+			target.WithStartPageAfterItem(page2[1]),
 		)
 		require.NoError(err)
 		require.Len(page3, 1)
@@ -204,7 +204,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			repo,
 			context.Background(),
 			target.WithLimit(2),
-			target.WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].GetUpdateTime().AsTime()),
+			target.WithStartPageAfterItem(page3[0]),
 		)
 		require.NoError(err)
 		require.Empty(page4)
@@ -217,7 +217,7 @@ func TestRepository_ListTargets(t *testing.T) {
 			repo,
 			context.Background(),
 			target.WithLimit(2),
-			target.WithStartPageAfterItem(page3[0].GetPublicId(), page3[0].GetUpdateTime().AsTime()),
+			target.WithStartPageAfterItem(page3[0]),
 		)
 		require.NoError(err)
 		require.Len(page5, 1)

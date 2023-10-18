@@ -5,13 +5,28 @@ package target
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/assert"
 )
+
+type fakePartialResource struct {
+	publicId   string
+	updateTime time.Time
+}
+
+func (p *fakePartialResource) GetPublicId() string {
+	return p.publicId
+}
+
+func (p *fakePartialResource) GetUpdateTime() *timestamp.Timestamp {
+	return timestamp.New(p.updateTime)
+}
 
 // Test_GetOpts provides unit tests for GetOpts and all the options
 func Test_GetOpts(t *testing.T) {
@@ -232,5 +247,12 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		testOpts.WithEnableSessionRecording = true
 		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts := GetOpts(WithStartPageAfterItem(&fakePartialResource{"s_1", updateTime}))
+		assert.Equal(opts.WithStartPageAfterItem.GetPublicId(), "s_1")
+		assert.Equal(opts.WithStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
 	})
 }
