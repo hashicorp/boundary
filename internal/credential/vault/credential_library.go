@@ -5,7 +5,6 @@ package vault
 
 import (
 	"context"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
@@ -133,13 +132,6 @@ func (l *CredentialLibrary) CredentialType() credential.Type {
 }
 
 var _ credential.Library = (*CredentialLibrary)(nil)
-
-// sortCredentialLibrary is used to encapsulate the information
-// needed for sorting and filtering for pagination.
-type sortCredentialLibrary struct {
-	publicId   string
-	updateTime time.Time
-}
 
 type deletedCredentialLibrary struct {
 	PublicId   string `gorm:"primary_key"`

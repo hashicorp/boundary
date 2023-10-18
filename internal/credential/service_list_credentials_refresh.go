@@ -33,7 +33,7 @@ func ListRefresh(
 	limit := pageSize + 1
 	opts := []Option{
 		WithLimit(limit),
-		WithStartPageAfterItem(tok.LastItemId, tok.LastItemUpdatedTime),
+		WithStartPageAfterItem(tok.ToPartialResource()),
 	}
 
 	credentials := make([]Static, 0, limit)
@@ -65,7 +65,7 @@ dbLoop:
 
 		opts = []Option{
 			WithLimit(limit),
-			WithStartPageAfterItem(page[len(page)-1].GetPublicId(), page[len(page)-1].GetUpdateTime().AsTime()),
+			WithStartPageAfterItem(page[len(page)-1]),
 		}
 	}
 	// If we couldn't fill the items, it was a complete listing.

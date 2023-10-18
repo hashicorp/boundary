@@ -217,8 +217,8 @@ func (r *Repository) ListCredentialStores(ctx context.Context, projectIds []stri
 		// time as there may be items with identical update_times. We
 		// then use PublicId as a tiebreaker.
 		args = append(args,
-			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.UpdateTime),
-			sql.Named("after_item_id", opts.WithStartPageAfterItem.PublicId),
+			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.WithStartPageAfterItem.GetPublicId()),
 		)
 		whereClause += " and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}

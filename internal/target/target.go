@@ -7,7 +7,6 @@ import (
 	"context"
 	goerrs "errors"
 	"fmt"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
@@ -189,13 +188,6 @@ func (t *targetView) targetSubtype(ctx context.Context, address string) (Target,
 	tt.SetEnableSessionRecording(t.EnableSessionRecording)
 	tt.SetStorageBucketId(t.StorageBucketId)
 	return tt, nil
-}
-
-// sortTarget is used to encapsulate the information
-// needed for sorting and filtering for pagination.
-type sortTarget struct {
-	publicId   string
-	updateTime time.Time
 }
 
 type deletedTarget struct {

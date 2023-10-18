@@ -5,12 +5,19 @@ package credential
 
 import (
 	"errors"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/internal/util/template"
 )
+
+// PartialResource defines the interface used to
+// sort and paginate resources.
+type PartialResource interface {
+	GetPublicId() string
+	GetUpdateTime() *timestamp.Timestamp
+}
 
 // GetOpts - iterate the inbound Options and return a struct
 func GetOpts(opt ...Option) (*options, error) {
@@ -35,7 +42,7 @@ type options struct {
 	WithReader             db.Reader
 	WithWriter             db.Writer
 	WithLimit              int
-	WithStartPageAfterItem *SortResource
+	WithStartPageAfterItem PartialResource
 }
 
 func getDefaultOptions() *options {
@@ -79,12 +86,9 @@ func WithLimit(l int) Option {
 
 // WithStartPageAfterItem is used to paginate over the results.
 // The next page will start after the provided item.
-func WithStartPageAfterItem(publicId string, updateTime time.Time) Option {
+func WithStartPageAfterItem(item PartialResource) Option {
 	return func(o *options) error {
-		o.WithStartPageAfterItem = &SortResource{
-			PublicId:   publicId,
-			UpdateTime: updateTime,
-		}
+		o.WithStartPageAfterItem = item
 		return nil
 	}
 }
