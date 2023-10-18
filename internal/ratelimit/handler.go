@@ -4,11 +4,14 @@
 package ratelimit
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/http"
 	"regexp"
 
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/go-rate"
@@ -112,12 +115,23 @@ func extractResourceAction(path, method string) (res, act string, err error) {
 // using the provided rate limiter. If the request is allowed, the next handler
 // is called. Otherwise a 429 is returned with the Retry-After response header
 // set to the number of seconds the client should wait to make it's next request.
-func Handler(l *rate.Limiter, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		path := req.URL.Path
-		method := req.Method
+func Handler(ctx context.Context, l *rate.Limiter, next http.Handler) http.Handler {
+	const op = "ratelimit.Handler"
 
-		res, a, err := extractResourceAction(path, method)
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		reqInfo, ok := event.RequestInfoFromContext(req.Context())
+		if !ok || reqInfo == nil || reqInfo.ClientIp == "" {
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		authtoken, ok := req.Context().Value(globals.ContextAuthTokenPublicIdKey).(string)
+		if !ok {
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		res, a, err := extractResourceAction(req.URL.Path, req.Method)
 		if err != nil {
 			if extractErr, ok := err.(*extractResourceActionErr); ok {
 				rw.WriteHeader(extractErr.statusCode)
@@ -127,14 +141,13 @@ func Handler(l *rate.Limiter, next http.Handler) http.Handler {
 			return
 		}
 
-		allowed, quota, err := l.Allow(res, a)
+		allowed, quota, err := l.Allow(res, a, reqInfo.ClientIp, authtoken)
 		if err != nil {
 			if errFull, ok := err.(*rate.ErrLimiterFull); ok {
 				rw.Header().Add("Retry-After", fmt.Sprintf("%.0f", math.Ceil(errFull.RetryIn.Seconds())))
 				rw.WriteHeader(http.StatusServiceUnavailable)
 				return
 			}
-
 			// The only other error here should be rate.ErrLimitNotFound, which
 			// shouldn't be possible given how we initialize the limiter and
 			// the checks done by extractResourceAction.

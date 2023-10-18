@@ -39,10 +39,14 @@ import (
 
 // Defaults used when creating default rate.Limits.
 const (
-	DefaultRequestLimit     = 3000
-	DefaultPeriod           = time.Second * 30
-	DefaultListRequestLimit = 60
-	DefaultListPeriod       = time.Second * 30
+	DefaultInTotalRequestLimit       = 3000
+	DefaultIpAddressRequestLimit     = 3000
+	DefaultAuthTokenRequestLimit     = 3000
+	DefaultPeriod                    = time.Second * 30
+	DefaultInTotalListRequestLimit   = 60
+	DefaultIpAddressListRequestLimit = 60
+	DefaultAuthTokenListRequestLimit = 60
+	DefaultListPeriod                = time.Second * 30
 )
 
 // defaultLimiterMaxEntries is the default maximum number of quotas that
@@ -130,24 +134,58 @@ func (c Configs) Limits(ctx context.Context) ([]*rate.Limit, error) {
 		}
 
 		for a := range validActions {
-			key := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPerTotal)
+			inTotalKey := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPerTotal)
+			authTokenKey := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPerAuthToken)
+			ipAddressKey := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPerIPAddress)
 			switch a {
 			case action.List:
-				defaults[key] = &rate.Limit{
+				defaults[inTotalKey] = &rate.Limit{
 					Resource:    res.String(),
 					Action:      a.String(),
 					Per:         rate.LimitPerTotal,
 					Unlimited:   false,
-					MaxRequests: DefaultListRequestLimit,
+					MaxRequests: DefaultInTotalListRequestLimit,
+					Period:      DefaultListPeriod,
+				}
+				defaults[authTokenKey] = &rate.Limit{
+					Resource:    res.String(),
+					Action:      a.String(),
+					Per:         rate.LimitPerAuthToken,
+					Unlimited:   false,
+					MaxRequests: DefaultAuthTokenListRequestLimit,
+					Period:      DefaultListPeriod,
+				}
+				defaults[ipAddressKey] = &rate.Limit{
+					Resource:    res.String(),
+					Action:      a.String(),
+					Per:         rate.LimitPerIPAddress,
+					Unlimited:   false,
+					MaxRequests: DefaultIpAddressListRequestLimit,
 					Period:      DefaultListPeriod,
 				}
 			default:
-				defaults[key] = &rate.Limit{
+				defaults[inTotalKey] = &rate.Limit{
 					Resource:    res.String(),
 					Action:      a.String(),
 					Per:         rate.LimitPerTotal,
 					Unlimited:   false,
-					MaxRequests: DefaultRequestLimit,
+					MaxRequests: DefaultInTotalRequestLimit,
+					Period:      DefaultPeriod,
+				}
+				defaults[authTokenKey] = &rate.Limit{
+					Resource:    res.String(),
+					Action:      a.String(),
+					Per:         rate.LimitPerAuthToken,
+					Unlimited:   false,
+					MaxRequests: DefaultAuthTokenRequestLimit,
+					Period:      DefaultPeriod,
+				}
+				defaults[ipAddressKey] = &rate.Limit{
+					Resource:    res.String(),
+					Action:      a.String(),
+					Per:         rate.LimitPerIPAddress,
+					Unlimited:   false,
+					MaxRequests: DefaultIpAddressRequestLimit,
 					Period:      DefaultPeriod,
 				}
 			}
@@ -177,7 +215,7 @@ func (c Configs) Limits(ctx context.Context) ([]*rate.Limit, error) {
 					return nil, err
 				}
 				for a := range validActions {
-					key := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPerTotal)
+					key := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPer(cc.Per))
 
 					defaults[key] = &rate.Limit{
 						Resource:    res.String(),
@@ -205,7 +243,7 @@ func (c Configs) Limits(ctx context.Context) ([]*rate.Limit, error) {
 					if !ok {
 						return nil, errors.New(ctx, errors.InvalidConfiguration, op, "", errors.WithMsg("action %s not valid for resource %s", aStr, res.String()))
 					}
-					key := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPerTotal)
+					key := fmt.Sprintf("%s:%s:%s", res.String(), a.String(), rate.LimitPer(cc.Per))
 
 					defaults[key] = &rate.Limit{
 						Resource:    res.String(),
