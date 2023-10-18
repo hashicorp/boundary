@@ -13,7 +13,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
-	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -468,7 +467,7 @@ func TestCreate(t *testing.T) {
 						Path: wrapperspb.String("something"),
 					},
 				},
-				CredentialType: string(credential.UsernamePasswordType),
+				CredentialType: string(globals.UsernamePasswordCredentialType),
 				CredentialMappingOverrides: func() *structpb.Struct {
 					v := map[string]any{
 						usernameAttribute: "user-test",
@@ -563,7 +562,7 @@ func TestCreate(t *testing.T) {
 						Path: wrapperspb.String("something"),
 					},
 				},
-				CredentialType: string(credential.UsernamePasswordType),
+				CredentialType: string(globals.UsernamePasswordCredentialType),
 			}},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
@@ -582,7 +581,7 @@ func TestCreate(t *testing.T) {
 							HttpMethod: wrapperspb.String("GET"),
 						},
 					},
-					CredentialType:    string(credential.UsernamePasswordType),
+					CredentialType:    string(globals.UsernamePasswordCredentialType),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -605,7 +604,7 @@ func TestCreate(t *testing.T) {
 					require.NoError(t, err)
 					return ret
 				}(),
-				CredentialType: string(credential.UsernamePasswordType),
+				CredentialType: string(globals.UsernamePasswordCredentialType),
 			}},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
@@ -624,7 +623,7 @@ func TestCreate(t *testing.T) {
 							HttpMethod: wrapperspb.String("GET"),
 						},
 					},
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 					CredentialMappingOverrides: func() *structpb.Struct {
 						v := map[string]any{
 							usernameAttribute: "user-test",
@@ -656,7 +655,7 @@ func TestCreate(t *testing.T) {
 					require.NoError(t, err)
 					return ret
 				}(),
-				CredentialType: string(credential.UsernamePasswordType),
+				CredentialType: string(globals.UsernamePasswordCredentialType),
 			}},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
@@ -675,7 +674,7 @@ func TestCreate(t *testing.T) {
 							HttpMethod: wrapperspb.String("GET"),
 						},
 					},
-					CredentialType: string(credential.UsernamePasswordType),
+					CredentialType: string(globals.UsernamePasswordCredentialType),
 					CredentialMappingOverrides: func() *structpb.Struct {
 						v := map[string]any{
 							usernameAttribute: "user-test",
@@ -699,7 +698,7 @@ func TestCreate(t *testing.T) {
 						Path: wrapperspb.String("something"),
 					},
 				},
-				CredentialType: string(credential.SshPrivateKeyType),
+				CredentialType: string(globals.SshPrivateKeyCredentialType),
 			}},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
@@ -718,7 +717,7 @@ func TestCreate(t *testing.T) {
 							HttpMethod: wrapperspb.String("GET"),
 						},
 					},
-					CredentialType:    string(credential.SshPrivateKeyType),
+					CredentialType:    string(globals.SshPrivateKeyCredentialType),
 					AuthorizedActions: testAuthorizedActions,
 				},
 			},
@@ -743,7 +742,7 @@ func TestCreate(t *testing.T) {
 					require.NoError(t, err)
 					return ret
 				}(),
-				CredentialType: string(credential.SshPrivateKeyType),
+				CredentialType: string(globals.SshPrivateKeyCredentialType),
 			}},
 			idPrefix: globals.VaultCredentialLibraryPrefix + "_",
 			res: &pbs.CreateCredentialLibraryResponse{
@@ -762,7 +761,7 @@ func TestCreate(t *testing.T) {
 							HttpMethod: wrapperspb.String("GET"),
 						},
 					},
-					CredentialType: string(credential.SshPrivateKeyType),
+					CredentialType: string(globals.SshPrivateKeyCredentialType),
 					CredentialMappingOverrides: func() *structpb.Struct {
 						v := map[string]any{
 							usernameAttribute:     "user-test",
@@ -1791,7 +1790,7 @@ func TestUpdate(t *testing.T) {
 		{
 			name: "read only credential type",
 			path: "credential_type",
-			item: &pb.CredentialLibrary{CredentialType: string(credential.UsernamePasswordType)},
+			item: &pb.CredentialLibrary{CredentialType: string(globals.UsernamePasswordCredentialType)},
 		},
 	}
 	for _, tc := range errCases {
@@ -2093,7 +2092,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 						},
 					},
 					AuthorizedActions: testAuthorizedActions,
-					CredentialType:    string(credential.SshCertificateType),
+					CredentialType:    string(globals.SshCertificateCredentialType),
 				},
 			},
 		},
@@ -2131,7 +2130,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 						},
 					},
 					AuthorizedActions: testAuthorizedActions,
-					CredentialType:    string(credential.SshCertificateType),
+					CredentialType:    string(globals.SshCertificateCredentialType),
 				},
 			},
 		},
@@ -2468,7 +2467,7 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 		{
 			name: "read only credential type",
 			path: "credential_type",
-			item: &pb.CredentialLibrary{CredentialType: string(credential.UsernamePasswordType)},
+			item: &pb.CredentialLibrary{CredentialType: string(globals.UsernamePasswordCredentialType)},
 		},
 	}
 	for _, tc := range errCases {

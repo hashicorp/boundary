@@ -7,7 +7,7 @@ import (
 	"errors"
 
 	"github.com/hashicorp/boundary/api/targets"
-	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/globals"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -65,8 +65,8 @@ func parseCredentials(creds []*targets.SessionCredential) (credentials, error) {
 
 		var upCred usernamePassword
 		var spkCred sshPrivateKey
-		switch credential.Type(cred.CredentialSource.CredentialType) {
-		case credential.UsernamePasswordType:
+		switch globals.CredentialType(cred.CredentialSource.CredentialType) {
+		case globals.UsernamePasswordCredentialType:
 			// Decode attributes from credential struct
 			if err := mapstructure.Decode(cred.Credential, &upCred); err != nil {
 				return credentials{}, err
@@ -78,7 +78,7 @@ func parseCredentials(creds []*targets.SessionCredential) (credentials, error) {
 				continue
 			}
 
-		case credential.SshPrivateKeyType:
+		case globals.SshPrivateKeyCredentialType:
 			// Decode attributes from credential struct
 			if err := mapstructure.Decode(cred.Credential, &spkCred); err != nil {
 				return credentials{}, err
