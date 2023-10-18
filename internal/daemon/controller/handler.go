@@ -94,7 +94,7 @@ func (c *Controller) apiHandler(props HandlerProperties) (http.Handler, error) {
 		return nil, err
 	}
 
-	rateLimitedHandler := ratelimit.Handler(c.rateLimiter, mux)
+	rateLimitedHandler := ratelimit.Handler(c.baseContext, c.rateLimiter, mux)
 	corsWrappedHandler := wrapHandlerWithCors(rateLimitedHandler, props)
 	commonWrappedHandler := wrapHandlerWithCommonFuncs(corsWrappedHandler, c, props)
 	callbackInterceptingHandler := wrapHandlerWithCallbackInterceptor(commonWrappedHandler, c)
