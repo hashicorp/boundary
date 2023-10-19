@@ -412,6 +412,7 @@ func wrapHandlerWithCommonFuncs(h http.Handler, c *Controller, props HandlerProp
 		}
 
 		requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = auth.GetTokenFromRequest(ctx, c.kms, r)
+		ctx = context.WithValue(ctx, globals.ContextAuthTokenPublicIdKey, requestInfo.PublicId)
 
 		if info, ok := event.RequestInfoFromContext(ctx); ok {
 			// piggyback some eventing fields with the auth info proto message
