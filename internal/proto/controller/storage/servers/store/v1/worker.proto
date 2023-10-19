@@ -65,6 +65,10 @@ message Worker {
   // The state of the worker, to indicate if the worker is active or in shutdown.
   // @inject_tag: `gorm:"not_null"`
   string operational_state = 150;
+
+  // The local_storage_state indicates the state of the local disk space of the worker.
+  // @inject_tag: `gorm:"not_null"`
+  string local_storage_state = 160;
 }
 
 // WorkerTag is a tag for a worker.  The primary key is comprised of the

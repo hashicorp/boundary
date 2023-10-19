@@ -38,4 +38,7 @@ message ServerWorkerStatus {
 
   // The state of the worker, to indicate if the worker is active or in shutdown.
   string operational_state = 70; // @gotags: `class:"public" eventstream:"observation"`
+
+  // The local_storage_state indicates the state of the local disk space of the worker.
+  string local_storage_state = 80; // @gotags: `class:"public"`
 }
