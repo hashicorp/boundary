@@ -20,10 +20,10 @@ type ListFilterStoreFunc func(Store) (bool, error)
 // It returns a new refresh token based on the grants hash and the returned stores.
 func (s *StoreService) List(
 	ctx context.Context,
-	projectIds []string,
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn ListFilterStoreFunc,
+	projectIds []string,
 ) (*ListStoresResponse, error) {
 	const op = "credential.List"
 

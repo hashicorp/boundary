@@ -17,11 +17,11 @@ import (
 // targets.
 func ListRefresh(
 	ctx context.Context,
-	tok *refreshtoken.Token,
-	repo *Repository,
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn pagination.ListFilterFunc[Target],
+	tok *refreshtoken.Token,
+	repo *Repository,
 ) (*pagination.ListResponse2[Target], error) {
 	listItemsFn := func(ctx context.Context, tok *refreshtoken.Token, lastPageItem Target, limit int) ([]Target, error) {
 		opts := []Option{

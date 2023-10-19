@@ -65,7 +65,7 @@ func TestService_List(t *testing.T) {
 		filterFunc := func(_ context.Context, t target.Target) (bool, error) {
 			return true, nil
 		}
-		resp, err := target.List(ctx, repo, []byte("some hash"), 1, filterFunc)
+		resp, err := target.List(ctx, []byte("some hash"), 1, filterFunc, repo)
 		require.NoError(t, err)
 		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
@@ -75,7 +75,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], targets[0], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
-		resp2, err := target.ListRefresh(ctx, resp.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
+		resp2, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.RefreshToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp2.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp2.CompleteListing)
@@ -84,7 +84,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp2.Items, 1)
 		require.Empty(t, cmp.Diff(resp2.Items[0], targets[1], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
-		resp3, err := target.ListRefresh(ctx, resp2.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
+		resp3, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp2.RefreshToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp3.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp3.CompleteListing)
@@ -93,7 +93,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp3.Items, 1)
 		require.Empty(t, cmp.Diff(resp3.Items[0], targets[2], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
-		resp4, err := target.ListRefresh(ctx, resp3.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
+		resp4, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp3.RefreshToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp4.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp4.CompleteListing)
@@ -102,7 +102,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp4.Items, 1)
 		require.Empty(t, cmp.Diff(resp4.Items[0], targets[3], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
-		resp5, err := target.ListRefresh(ctx, resp4.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
+		resp5, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp4.RefreshToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp5.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)
@@ -111,7 +111,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp5.Items, 1)
 		require.Empty(t, cmp.Diff(resp5.Items[0], targets[4], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
-		resp6, err := target.ListRefresh(ctx, resp5.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
+		resp6, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp5.RefreshToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp6.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp6.CompleteListing)
@@ -124,7 +124,7 @@ func TestService_List(t *testing.T) {
 		filterFunc := func(_ context.Context, t target.Target) (bool, error) {
 			return t.GetPublicId() == targets[len(targets)-1].GetPublicId(), nil
 		}
-		resp, err := target.List(ctx, repo, []byte("some hash"), 1, filterFunc)
+		resp, err := target.List(ctx, []byte("some hash"), 1, filterFunc, repo)
 		require.NoError(t, err)
 		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
@@ -134,7 +134,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], targets[4], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
-		resp2, err := target.ListRefresh(ctx, resp.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
+		resp2, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.RefreshToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp2.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp2.CompleteListing)
@@ -158,7 +158,7 @@ func TestService_List(t *testing.T) {
 		_, err = sqlDb.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
-		resp, err := target.List(ctx, repo, []byte("some hash"), 1, filterFunc)
+		resp, err := target.List(ctx, []byte("some hash"), 1, filterFunc, repo)
 		require.NoError(t, err)
 		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
@@ -168,7 +168,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], targets[0], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
-		resp2, err := target.ListRefresh(ctx, resp.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
+		resp2, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.RefreshToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp2.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp2.CompleteListing)
@@ -186,7 +186,7 @@ func TestService_List(t *testing.T) {
 		_, err = sqlDb.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
-		resp3, err := target.ListRefresh(ctx, resp2.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
+		resp3, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp2.RefreshToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp3.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp3.CompleteListing)
@@ -195,7 +195,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp3.Items, 1)
 		require.Empty(t, cmp.Diff(resp3.Items[0], targets[1], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
-		resp4, err := target.ListRefresh(ctx, resp3.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
+		resp4, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp3.RefreshToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp4.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp4.CompleteListing)
@@ -203,7 +203,7 @@ func TestService_List(t *testing.T) {
 		require.Len(t, resp4.Items, 1)
 		require.Empty(t, cmp.Diff(resp4.Items[0], targets[2], cmpopts.IgnoreUnexported(targettest.Target{}, store.Target{}, timestamp.Timestamp{}, timestamppb.Timestamp{})))
 
-		resp5, err := target.ListRefresh(ctx, resp4.RefreshToken, repo, []byte("some hash"), 1, filterFunc)
+		resp5, err := target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp4.RefreshToken, repo)
 		require.NoError(t, err)
 		require.Equal(t, resp5.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)

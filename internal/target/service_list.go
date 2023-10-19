@@ -15,10 +15,10 @@ import (
 // based on the grants hash and the returned targets.
 func List(
 	ctx context.Context,
-	repo *Repository,
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn pagination.ListFilterFunc[Target],
+	repo *Repository,
 ) (*pagination.ListResponse2[Target], error) {
 	listItemsFn := func(ctx context.Context, lastPageItem Target, limit int) ([]Target, error) {
 		opts := []Option{

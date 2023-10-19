@@ -20,10 +20,10 @@ type ListFilterLibraryFunc func(Library) (bool, error)
 // It returns a new refresh token based on the grants hash and the returned libraries.
 func (s *LibraryService) List(
 	ctx context.Context,
-	credentialStoreId string,
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn ListFilterLibraryFunc,
+	credentialStoreId string,
 ) (*ListLibrariesResponse, error) {
 	const op = "credential.List"
 

@@ -18,11 +18,11 @@ import (
 // It returns a new refresh token based on the grants hash and the returned stores.
 func (s *StoreService) ListRefresh(
 	ctx context.Context,
-	projectIds []string,
-	tok *refreshtoken.Token,
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn ListFilterStoreFunc,
+	tok *refreshtoken.Token,
+	projectIds []string,
 ) (*ListStoresResponse, error) {
 	const op = "credential.ListRefresh"
 
