@@ -178,7 +178,7 @@ func ExampleListRefresh() {
 		// invocation to start from the point where this invocation left off.
 		return []string{"er_0123456789"}, time.Now(), nil
 	}
-	resp, err := pagination.ListRefresh(context.Background(), refreshToken, grantsHash, pageSize, filterItemFunc, listItemsFunc, estimatedCountFunc, deletedIdsFunc)
+	resp, err := pagination.ListRefresh(context.Background(), grantsHash, pageSize, filterItemFunc, listItemsFunc, estimatedCountFunc, deletedIdsFunc, refreshToken)
 	if err != nil {
 		fmt.Println("failed to paginate", err)
 		return

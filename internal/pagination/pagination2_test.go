@@ -471,13 +471,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, resp.Items)
@@ -524,13 +524,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(resp.Items, []*testType2{{nil, "1"}, {nil, "2"}}))
@@ -578,13 +578,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(resp.Items, []*testType2{{nil, "1"}, {nil, "2"}}))
@@ -639,13 +639,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(resp.Items, []*testType2{{nil, "1"}, {nil, "3"}}))
@@ -700,13 +700,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(resp.Items, []*testType2{{nil, "1"}, {nil, "3"}}))
@@ -761,13 +761,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(resp.Items, []*testType2{{nil, "1"}, {nil, "3"}}))
@@ -822,13 +822,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(resp.Items, []*testType2{{nil, "1"}}))
@@ -889,13 +889,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, cmp.Diff(resp.Items, []*testType2{{nil, "1"}}))
@@ -953,13 +953,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, resp.Items)
@@ -1006,13 +1006,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.ErrorContains(t, err, "failed to list")
 		assert.Empty(t, resp)
@@ -1052,13 +1052,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.ErrorContains(t, err, "failed to list")
 		assert.Empty(t, resp)
@@ -1092,13 +1092,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.ErrorContains(t, err, "failed to filter")
 		assert.Empty(t, resp)
@@ -1132,13 +1132,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.ErrorContains(t, err, "failed to estimate count")
 		assert.Empty(t, resp)
@@ -1172,13 +1172,13 @@ func Test_ListRefresh(t *testing.T) {
 		grantsHash := []byte("some hash")
 		resp, err := ListRefresh(
 			ctx,
-			refreshToken,
 			grantsHash,
 			pageSize,
 			filterItemFn,
 			listRefreshItemsFn,
 			estimatedItemCountFn,
 			deletedIDsFn,
+			refreshToken,
 		)
 		require.ErrorContains(t, err, "failed to list deleted ids")
 		assert.Empty(t, resp)

@@ -127,13 +127,13 @@ func List[T boundary.Resource](
 // resources that have been deleted since the refresh token was last used.
 func ListRefresh[T boundary.Resource](
 	ctx context.Context,
-	tok *refreshtoken.Token,
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn ListFilterFunc[T],
 	listRefreshItemsFn ListRefreshItemsFunc[T],
 	estimatedCountFn EstimatedCountFunc,
 	listDeletedIDsFn ListDeletedIDsFunc,
+	tok *refreshtoken.Token,
 ) (*ListResponse2[T], error) {
 	const op = "pagination.ListRefresh"
 
