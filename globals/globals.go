@@ -17,6 +17,7 @@ const (
 type (
 	ContextMaxRequestSizeType      struct{}
 	ContextOriginalRequestPathType struct{}
+	ContextAuthTokenPublicIdType   struct{}
 )
 
 var (
@@ -29,6 +30,10 @@ var (
 	// ContextMaxRequestSizeTypeKey is a value to keep linters from complaining
 	// about clashing string identifiers
 	ContextMaxRequestSizeTypeKey ContextMaxRequestSizeType
+
+	// ContextAuthTokenPublicIdKey is a value to keep linters from complaining
+	// about clashing string identifiers
+	ContextAuthTokenPublicIdKey ContextAuthTokenPublicIdType
 
 	// ContextOriginalRequestPathTypeKey is a value to keep linters from complaining
 	// about clashing string identifiers
