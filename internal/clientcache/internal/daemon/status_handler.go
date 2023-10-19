@@ -30,16 +30,16 @@ type ErrorStatus struct {
 type ResourceStatus struct {
 	Name         string
 	Count        int
-	LastError    *ErrorStatus
-	RefreshToken *RefreshTokenStatus
+	LastError    *ErrorStatus        `json:",omitempty"`
+	RefreshToken *RefreshTokenStatus `json:",omitempty"`
 }
 
 // AuthTokenStatus contains the status of an auth token tracked in the cache for
 // a specific user.
 type AuthTokenStatus struct {
 	Id                    string
-	KeyringReferences     int
-	KeyringlessReferences int
+	KeyringReferences     int `json:",omitempty"`
+	KeyringlessReferences int `json:",omitempty"`
 }
 
 // UserStatus contains the status of a specific user tracked by the cache
