@@ -19,8 +19,10 @@ import (
 	hostplugin "github.com/hashicorp/boundary/internal/host/plugin"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	plugin "github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -28,6 +30,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hosts"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -57,7 +60,12 @@ var (
 	}
 )
 
-const domain = "host"
+const (
+	domain = "host"
+	// The default max page size is used when one is not
+	// provided to NewService.
+	defaultMaxPageSize = 1000
+)
 
 func init() {
 	var err error
@@ -75,13 +83,14 @@ type Service struct {
 
 	staticRepoFn common.StaticRepoFactory
 	pluginRepoFn common.PluginHostRepoFactory
+	maxPageSize  uint
 }
 
 var _ pbs.HostServiceServer = (*Service)(nil)
 
 // NewService returns a host Service which handles host related requests to boundary and uses the provided
 // repositories for storage and retrieval.
-func NewService(ctx context.Context, repoFn common.StaticRepoFactory, pluginRepoFn common.PluginHostRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repoFn common.StaticRepoFactory, pluginRepoFn common.PluginHostRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "hosts.NewService"
 	if repoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static repository")
@@ -89,73 +98,162 @@ func NewService(ctx context.Context, repoFn common.StaticRepoFactory, pluginRepo
 	if pluginRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing plugin host repository")
 	}
-	return Service{staticRepoFn: repoFn, pluginRepoFn: pluginRepoFn}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
+	return Service{staticRepoFn: repoFn, pluginRepoFn: pluginRepoFn, maxPageSize: maxPageSize}, nil
 }
 
 func (s Service) ListHosts(ctx context.Context, req *pbs.ListHostsRequest) (*pbs.ListHostsResponse, error) {
+	const op = "hosts.(Service).ListHosts"
 	if err := validateListRequest(ctx, req); err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	_, authResults := s.parentAndAuthResult(ctx, req.GetHostCatalogId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	hl, plg, err := s.listFromRepo(ctx, req.GetHostCatalogId())
-	if err != nil {
-		return nil, err
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
 	}
-	if len(hl) == 0 {
-		return &pbs.ListHostsResponse{}, nil
-	}
-
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	finalItems := make([]*pb.Host, 0, len(hl))
+	filterItemFn := func(ctx context.Context, item host.Host, plg *plugin.Plugin) (bool, error) {
+		outputOpts, ok := newOutputOpts(ctx, item, plg, authResults)
+		if !ok {
+			return false, nil
+		}
+		pbItem, err := toProto(ctx, item, outputOpts...)
+		if err != nil {
+			return false, err
+		}
 
-	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Host,
-		Pin:     req.GetHostCatalogId(),
+		filterable, err := subtypes.Filterable(pbItem)
+		if err != nil {
+			return false, err
+		}
+		return filter.Match(filterable), nil
 	}
-	for _, item := range hl {
-		res.Id = item.GetPublicId()
-		idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, res.Id)]
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActions, auth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	var domainRefreshToken *refreshtoken.Token
+	if req.GetRefreshToken() != "" {
+		rt, err := handlers.ParseRefreshToken(ctx, req.GetRefreshToken())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		// We're doing the conversion from the protobuf types to the
+		// domain types here rather than in the domain so that the domain
+		// doesn't need to know about the protobuf types.
+		domainRefreshToken, err = refreshtoken.New(
+			ctx,
+			rt.CreatedTime.AsTime(),
+			rt.UpdatedTime.AsTime(),
+			handlers.RefreshTokenResourceToResource(rt.ResourceType),
+			rt.GrantsHash,
+			rt.LastItemId,
+			rt.LastItemUpdatedTime.AsTime(),
+		)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if err := domainRefreshToken.Validate(ctx, resource.Host, grantsHash); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	var listResp *pagination.ListResponse[host.Host]
+	var plg *plugin.Plugin
+	switch subtypes.SubtypeFromId(domain, req.GetHostCatalogId()) {
+	case static.Subtype:
+		// Wrap the filter item func that takes a plugin, since the static host
+		// domain does not use a filter.
+		staticFilterItemFn := func(ctx context.Context, item host.Host) (bool, error) {
+			return filterItemFn(ctx, item, nil)
+		}
+		repo, err := s.staticRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if domainRefreshToken == nil {
+			listResp, err = static.ListHosts(ctx, grantsHash, pageSize, staticFilterItemFn, repo, req.GetHostCatalogId())
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+		} else {
+			listResp, err = static.ListHostsRefresh(ctx, grantsHash, pageSize, staticFilterItemFn, domainRefreshToken, repo, req.GetHostCatalogId())
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+		}
+	case hostplugin.Subtype:
+		repo, err := s.pluginRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if domainRefreshToken == nil {
+			listResp, plg, err = hostplugin.ListHosts(ctx, grantsHash, pageSize, filterItemFn, repo, req.GetHostCatalogId())
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+		} else {
+			listResp, plg, err = hostplugin.ListHostsRefresh(ctx, grantsHash, pageSize, filterItemFn, domainRefreshToken, repo, req.GetHostCatalogId())
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op)
+			}
+		}
+	}
+
+	finalItems := make([]*pb.Host, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, ok := newOutputOpts(ctx, item, plg, authResults)
+		if !ok {
 			continue
 		}
-
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if plg != nil {
-			outputOpts = append(outputOpts, handlers.WithPlugin(plg))
-		}
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-		outputOpts = append(outputOpts, handlers.WithHostSetIds(item.GetSetIds()))
 		item, err := toProto(ctx, item, outputOpts...)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(ctx, err, op)
 		}
+		finalItems = append(finalItems, item)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListHostsResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+	}
 
-		// This comes last so that we can use item fields in the filter after
-		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(item)
-		if err != nil {
-			return nil, err
+	if listResp.RefreshToken != nil {
+		if listResp.RefreshToken.ResourceType != resource.Host {
+			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
 		}
-		if filter.Match(filterable) {
-			finalItems = append(finalItems, item)
+		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
+			UpdatedTime:         timestamppb.New(listResp.RefreshToken.UpdatedTime),
+			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_HOST,
+			GrantsHash:          listResp.RefreshToken.GrantsHash,
+			LastItemId:          listResp.RefreshToken.LastItemId,
+			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
+		})
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
-	return &pbs.ListHostsResponse{Items: finalItems}, nil
+
+	return resp, nil
 }
 
 // GetHost implements the interface pbs.HostServiceServer.
@@ -413,39 +511,6 @@ func (s Service) deleteFromRepo(ctx context.Context, projectId, id string) (bool
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, catalogId string) ([]host.Host, *plugins.PluginInfo, error) {
-	var hosts []host.Host
-	var plg *plugins.PluginInfo
-	switch subtypes.SubtypeFromId(domain, catalogId) {
-	case static.Subtype:
-		repo, err := s.staticRepoFn()
-		if err != nil {
-			return nil, nil, err
-		}
-		hl, err := repo.ListHosts(ctx, catalogId, static.WithLimit(-1))
-		if err != nil {
-			return nil, nil, err
-		}
-		for _, h := range hl {
-			hosts = append(hosts, h)
-		}
-	case hostplugin.Subtype:
-		repo, err := s.pluginRepoFn()
-		if err != nil {
-			return nil, nil, err
-		}
-		hl, hlPlg, err := repo.ListHostsByCatalogId(ctx, catalogId)
-		if err != nil {
-			return nil, nil, err
-		}
-		for _, h := range hl {
-			hosts = append(hosts, h)
-		}
-		plg = toPluginInfo(hlPlg)
-	}
-	return hosts, plg, nil
-}
-
 func (s Service) parentAndAuthResult(ctx context.Context, id string, a action.Type) (host.Catalog, auth.VerifyResults) {
 	res := auth.VerifyResults{}
 	staticRepo, err := s.staticRepoFn()
@@ -530,6 +595,36 @@ func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {
 		Name:        plg.GetName(),
 		Description: plg.GetDescription(),
 	}
+}
+
+func newOutputOpts(ctx context.Context, item host.Host, plg *plugin.Plugin, authResults auth.VerifyResults) ([]handlers.Option, bool) {
+	res := perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Host,
+		Pin:     item.GetCatalogId(),
+		Id:      item.GetPublicId(),
+	}
+	res.Id = item.GetPublicId()
+	idActions := idActionsTypeMap[subtypes.SubtypeFromId(domain, res.Id)]
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), idActions, auth.WithResource(&res)).Strings()
+	if len(authorizedActions) == 0 {
+		return nil, false
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if plg != nil {
+		outputOpts = append(outputOpts, handlers.WithPlugin(toPluginInfo(plg)))
+	}
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+	outputOpts = append(outputOpts, handlers.WithHostSetIds(item.GetSetIds()))
+	return outputOpts, true
 }
 
 func toProto(ctx context.Context, in host.Host, opt ...handlers.Option) (*pb.Host, error) {

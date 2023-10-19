@@ -46,4 +46,8 @@ final (action, host_id) as (
 select * from final
 order by action, host_id;
 `
+
+	estimateCountHosts = `
+select sum(reltuples::bigint) as estimate from pg_class where oid in ('static_host'::regclass)
+`
 )

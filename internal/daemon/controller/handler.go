@@ -149,7 +149,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterHostSetServiceServer(s, hss)
 	}
 	if _, ok := currentServices[services.HostService_ServiceDesc.ServiceName]; !ok {
-		hs, err := hosts.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn)
+		hs, err := hosts.NewService(c.baseContext, c.StaticHostRepoFn, c.PluginHostRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create host handler service: %w", err)
 		}

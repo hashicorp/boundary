@@ -220,7 +220,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
 	// Check the version number of the host(s)
-	hosts, _, err := hostRepo.ListHostsByCatalogId(ctx, hsa.CatalogId)
+	hosts, _, err := hostRepo.listHostsByCatalogId(ctx, hsa.CatalogId)
 	require.NoError(err)
 	assert.Len(hosts, 1)
 	for _, host := range hosts {
@@ -254,7 +254,7 @@ func TestSetSyncJob_Run(t *testing.T) {
 	assert.Equal(1, r.numSets)
 	assert.Equal(1, r.numProcessed)
 	// Check the version number of the host(s) again
-	hosts, _, err = hostRepo.ListHostsByCatalogId(ctx, hsa.CatalogId)
+	hosts, _, err = hostRepo.listHostsByCatalogId(ctx, hsa.CatalogId)
 	require.NoError(err)
 	assert.Len(hosts, 1)
 	for _, host := range hosts {

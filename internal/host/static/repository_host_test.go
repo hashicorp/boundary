@@ -923,7 +923,7 @@ func TestRepository_ListHosts(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(ctx, tt.in, tt.opts...)
+			got, err := repo.listHosts(ctx, tt.in, tt.opts...)
 			if tt.wantIsErr != 0 {
 				assert.Truef(errors.Match(errors.T(tt.wantIsErr), err), "want err: %q got: %q", tt.wantIsErr, err)
 				assert.Nil(got)
@@ -997,7 +997,7 @@ func TestRepository_ListHosts_HostSets(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kms)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(ctx, tt.in)
+			got, err := repo.listHosts(ctx, tt.in)
 			require.NoError(err)
 			assert.Empty(
 				cmp.Diff(
@@ -1078,11 +1078,175 @@ func TestRepository_ListHosts_Limits(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kms, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListHosts(ctx, hosts[0].CatalogId, tt.listOpts...)
+			got, err := repo.listHosts(ctx, hosts[0].CatalogId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 		})
 	}
+}
+
+func Test_ListDeletedHostIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	catalog := TestCatalogs(t, conn, proj1.GetPublicId(), 1)[0]
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, ttime, err := repo.listDeletedHostIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete a host
+	h := TestHosts(t, conn, catalog.GetPublicId(), 1)[0]
+	_, err = repo.DeleteHost(ctx, proj1.GetPublicId(), h.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime, err = repo.listDeletedHostIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{h.GetPublicId()}, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime, err = repo.listDeletedHostIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func Test_estimatedHostCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	catalog := TestCatalogs(t, conn, proj1.GetPublicId(), 1)[0]
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedHostCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create a host, expect 1 entries
+	h := TestHosts(t, conn, catalog.GetPublicId(), 1)[0]
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedHostCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the host, expect 0 again
+	_, err = repo.DeleteHost(ctx, proj1.GetPublicId(), h.GetPublicId())
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedHostCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+}
+
+func TestRepository_ListHosts_Pagination(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	catalog := TestCatalogs(t, conn, proj1.GetPublicId(), 1)[0]
+
+	total := 5
+	TestHosts(t, conn, catalog.GetPublicId(), total)
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	t.Run("no-options", func(t *testing.T) {
+		got, err := repo.listHosts(ctx, catalog.GetPublicId())
+		require.NoError(t, err)
+		assert.Equal(t, total, len(got))
+	})
+
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		page1, err := repo.listHosts(
+			ctx,
+			catalog.GetPublicId(),
+			WithLimit(2),
+		)
+		require.NoError(err)
+		require.Len(page1, 2)
+		page2, err := repo.listHosts(
+			ctx,
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page1[1]),
+		)
+		require.NoError(err)
+		require.Len(page2, 2)
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, err := repo.listHosts(
+			ctx,
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page2[1]),
+		)
+		require.NoError(err)
+		require.Len(page3, 1)
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+		}
+		page4, err := repo.listHosts(
+			ctx,
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page3[0]),
+		)
+		require.NoError(err)
+		require.Empty(page4, 2)
+
+		// Update the first host and check that it gets listed subsequently
+		page1[0].Name = "new-name"
+		_, _, err = repo.UpdateHost(ctx, proj1.GetPublicId(), page1[0], page1[0].GetVersion(), []string{"name"})
+		require.NoError(err)
+		page5, err := repo.listHosts(
+			ctx,
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page3[0]),
+		)
+		require.NoError(err)
+		require.Len(page5, 1)
+		require.Equal(page5[0].GetPublicId(), page1[0].GetPublicId())
+	})
 }
 
 func TestRepository_DeleteHost(t *testing.T) {

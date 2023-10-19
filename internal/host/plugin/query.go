@@ -54,4 +54,8 @@ set
   need_sync = false
 where public_id = ?
 `
+
+	estimateCountHosts = `
+select sum(reltuples::bigint) as estimate from pg_class where oid in ('host_plugin_host'::regclass)
+`
 )
