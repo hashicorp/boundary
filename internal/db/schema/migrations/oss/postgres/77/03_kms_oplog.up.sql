@@ -128,6 +128,12 @@ select kdkv.private_id, kdkv.data_key_id, kdkv.root_key_version_id, kdkv.version
 from kms_data_key_version kdkv, kms_oplog_data_key kodk
 where kdkv.data_key_id = kodk.private_id;
 
+-- truncate oplog_entry table, this is required because in v0.13.0 we
+-- inadvertently used kms.GetWrapper(ctx, am.ScopeId, kms.KeyPurposeDatabase)
+-- which resulted in the use of a database key for an oplog entry.  See:
+-- https://github.com/hashicorp/boundary/pull/3665/files#diff-bcf83b5283886c98fc45b6435fdc94d87d545b2768c6beac8acd14eb9d6b13f1  
+truncate oplog_entry cascade;
+
 -- ############################################################################
 -- post conversion, we add the required triggers
 
