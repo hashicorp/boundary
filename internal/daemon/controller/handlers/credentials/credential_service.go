@@ -174,7 +174,7 @@ func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRe
 	var listResp *credential.ListCredentialsResponse
 	if req.GetRefreshToken() == "" {
 		var err error
-		listResp, err = credential.List(ctx, req.GetCredentialStoreId(), repo, grantsHash, pageSize, filterItemFn)
+		listResp, err = credential.List(ctx, grantsHash, pageSize, filterItemFn, repo, req.GetCredentialStoreId())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -201,7 +201,7 @@ func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRe
 		if err := domainRefreshToken.Validate(ctx, resource.Credential, grantsHash); err != nil {
 			return nil, err
 		}
-		listResp, err = credential.ListRefresh(ctx, req.GetCredentialStoreId(), domainRefreshToken, repo, grantsHash, pageSize, filterItemFn)
+		listResp, err = credential.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, domainRefreshToken, repo, req.GetCredentialStoreId())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

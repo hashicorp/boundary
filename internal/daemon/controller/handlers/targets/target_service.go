@@ -268,7 +268,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 
 	var listResp *target.ListResponse
 	if req.GetRefreshToken() == "" {
-		listResp, err = target.List(ctx, repo, grantsHash, pageSize, filterItemFn)
+		listResp, err = target.List(ctx, grantsHash, pageSize, filterItemFn, repo)
 		if err != nil {
 			return nil, err
 		}
@@ -295,7 +295,7 @@ func (s Service) ListTargets(ctx context.Context, req *pbs.ListTargetsRequest) (
 		if err := domainRefreshToken.Validate(ctx, resource.Target, grantsHash); err != nil {
 			return nil, err
 		}
-		listResp, err = target.ListRefresh(ctx, domainRefreshToken, repo, grantsHash, pageSize, filterItemFn)
+		listResp, err = target.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, domainRefreshToken, repo)
 		if err != nil {
 			return nil, err
 		}

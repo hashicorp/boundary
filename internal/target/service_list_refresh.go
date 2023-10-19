@@ -17,11 +17,11 @@ import (
 // targets.
 func ListRefresh(
 	ctx context.Context,
-	tok *refreshtoken.Token,
-	repo *Repository,
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn func(Target) (bool, error),
+	tok *refreshtoken.Token,
+	repo *Repository,
 ) (*ListResponse, error) {
 	const op = "target.ListRefresh"
 

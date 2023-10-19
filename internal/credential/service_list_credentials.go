@@ -28,11 +28,11 @@ type Repository interface {
 // It returns a new refresh token based on the grants hash and the returned credentials.
 func List(
 	ctx context.Context,
-	credentialStoreId string,
-	repo Repository,
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn ListFilterCredentialFunc,
+	repo Repository,
+	credentialStoreId string,
 ) (*ListCredentialsResponse, error) {
 	const op = "credential.ListCredentials"
 

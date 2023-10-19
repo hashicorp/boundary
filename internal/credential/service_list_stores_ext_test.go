@@ -69,7 +69,7 @@ func TestStoreService_List(t *testing.T) {
 		filterFunc := func(credential.Store) (bool, error) {
 			return true, nil
 		}
-		resp, err := service.List(ctx, []string{prj.GetPublicId()}, []byte("some hash"), 1, filterFunc)
+		resp, err := service.List(ctx, []byte("some hash"), 1, filterFunc, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
@@ -79,7 +79,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], stores[0], cmpOpts...))
 
-		resp2, err := service.ListRefresh(ctx, []string{prj.GetPublicId()}, resp.RefreshToken, []byte("some hash"), 1, filterFunc)
+		resp2, err := service.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.RefreshToken, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.Equal(t, resp2.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp2.CompleteListing)
@@ -88,7 +88,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp2.Items, 1)
 		require.Empty(t, cmp.Diff(resp2.Items[0], stores[1], cmpOpts...))
 
-		resp3, err := service.ListRefresh(ctx, []string{prj.GetPublicId()}, resp2.RefreshToken, []byte("some hash"), 1, filterFunc)
+		resp3, err := service.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp2.RefreshToken, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.Equal(t, resp3.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp3.CompleteListing)
@@ -97,7 +97,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp3.Items, 1)
 		require.Empty(t, cmp.Diff(resp3.Items[0], stores[2], cmpOpts...))
 
-		resp4, err := service.ListRefresh(ctx, []string{prj.GetPublicId()}, resp3.RefreshToken, []byte("some hash"), 1, filterFunc)
+		resp4, err := service.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp3.RefreshToken, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.Equal(t, resp4.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp4.CompleteListing)
@@ -106,7 +106,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp4.Items, 1)
 		require.Empty(t, cmp.Diff(resp4.Items[0], stores[3], cmpOpts...))
 
-		resp5, err := service.ListRefresh(ctx, []string{prj.GetPublicId()}, resp4.RefreshToken, []byte("some hash"), 1, filterFunc)
+		resp5, err := service.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp4.RefreshToken, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.Equal(t, resp5.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)
@@ -115,7 +115,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp5.Items, 1)
 		require.Empty(t, cmp.Diff(resp5.Items[0], stores[4], cmpOpts...))
 
-		resp6, err := service.ListRefresh(ctx, []string{prj.GetPublicId()}, resp5.RefreshToken, []byte("some hash"), 1, filterFunc)
+		resp6, err := service.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp5.RefreshToken, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.Equal(t, resp6.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp6.CompleteListing)
@@ -128,7 +128,7 @@ func TestStoreService_List(t *testing.T) {
 		filterFunc := func(l credential.Store) (bool, error) {
 			return l.GetPublicId() == stores[len(stores)-1].GetPublicId(), nil
 		}
-		resp, err := service.List(ctx, []string{prj.GetPublicId()}, []byte("some hash"), 1, filterFunc)
+		resp, err := service.List(ctx, []byte("some hash"), 1, filterFunc, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
@@ -138,7 +138,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], stores[4], cmpOpts...))
 
-		resp2, err := service.ListRefresh(ctx, []string{prj.GetPublicId()}, resp.RefreshToken, []byte("some hash"), 1, filterFunc)
+		resp2, err := service.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.RefreshToken, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.Equal(t, resp2.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp2.CompleteListing)
@@ -162,7 +162,7 @@ func TestStoreService_List(t *testing.T) {
 		_, err = sqlDb.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
-		resp, err := service.List(ctx, []string{prj.GetPublicId()}, []byte("some hash"), 1, filterFunc)
+		resp, err := service.List(ctx, []byte("some hash"), 1, filterFunc, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.NotNil(t, resp.RefreshToken)
 		require.Equal(t, resp.RefreshToken.GrantsHash, []byte("some hash"))
@@ -174,7 +174,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp.Items, 1)
 		require.Empty(t, cmp.Diff(resp.Items[0], stores[0], cmpOpts...))
 
-		resp2, err := service.ListRefresh(ctx, []string{prj.GetPublicId()}, resp.RefreshToken, []byte("some hash"), 1, filterFunc)
+		resp2, err := service.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp.RefreshToken, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.Equal(t, resp2.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp2.CompleteListing)
@@ -192,7 +192,7 @@ func TestStoreService_List(t *testing.T) {
 		_, err = sqlDb.ExecContext(ctx, "analyze")
 		require.NoError(t, err)
 
-		resp3, err := service.ListRefresh(ctx, []string{prj.GetPublicId()}, resp2.RefreshToken, []byte("some hash"), 1, filterFunc)
+		resp3, err := service.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp2.RefreshToken, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.Equal(t, resp3.RefreshToken.GrantsHash, []byte("some hash"))
 		require.False(t, resp3.CompleteListing)
@@ -201,7 +201,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp3.Items, 1)
 		require.Empty(t, cmp.Diff(resp3.Items[0], stores[1], cmpOpts...))
 
-		resp4, err := service.ListRefresh(ctx, []string{prj.GetPublicId()}, resp3.RefreshToken, []byte("some hash"), 1, filterFunc)
+		resp4, err := service.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp3.RefreshToken, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.Equal(t, resp4.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp4.CompleteListing)
@@ -209,7 +209,7 @@ func TestStoreService_List(t *testing.T) {
 		require.Len(t, resp4.Items, 1)
 		require.Empty(t, cmp.Diff(resp4.Items[0], stores[2], cmpOpts...))
 
-		resp5, err := service.ListRefresh(ctx, []string{prj.GetPublicId()}, resp4.RefreshToken, []byte("some hash"), 1, filterFunc)
+		resp5, err := service.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, resp4.RefreshToken, []string{prj.GetPublicId()})
 		require.NoError(t, err)
 		require.Equal(t, resp5.RefreshToken.GrantsHash, []byte("some hash"))
 		require.True(t, resp5.CompleteListing)

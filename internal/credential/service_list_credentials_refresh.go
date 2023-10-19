@@ -16,12 +16,12 @@ import (
 // It returns a new refresh token based on the grants hash and the returned credentials.
 func ListRefresh(
 	ctx context.Context,
-	credentialStoreId string,
-	tok *refreshtoken.Token,
-	repo Repository,
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn ListFilterCredentialFunc,
+	tok *refreshtoken.Token,
+	repo Repository,
+	credentialStoreId string,
 ) (*ListCredentialsResponse, error) {
 	const op = "credential.ListRefresh"
 

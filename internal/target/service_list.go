@@ -20,10 +20,10 @@ type ListFilterFunc func(Target) (bool, error)
 // based on the grants hash and the returned targets.
 func List(
 	ctx context.Context,
-	repo *Repository,
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn ListFilterFunc,
+	repo *Repository,
 ) (*ListResponse, error) {
 	const op = "target.List"
 
