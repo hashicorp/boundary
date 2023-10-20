@@ -10,20 +10,20 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
-type partialResource struct {
+type item struct {
 	publicId     string
 	updateTime   time.Time
 	resourceType resource.Type
 }
 
-func (p *partialResource) GetPublicId() string {
+func (p *item) GetPublicId() string {
 	return p.publicId
 }
 
-func (p *partialResource) GetUpdateTime() *timestamp.Timestamp {
+func (p *item) GetUpdateTime() *timestamp.Timestamp {
 	return timestamp.New(p.updateTime)
 }
 
-func (p *partialResource) GetResourceType() resource.Type {
+func (p *item) GetResourceType() resource.Type {
 	return p.resourceType
 }

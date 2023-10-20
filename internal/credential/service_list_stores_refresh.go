@@ -34,7 +34,7 @@ func (s *StoreService) ListRefresh(
 			)
 		} else {
 			opts = append(opts,
-				WithStartPageAfterItem(tok.ToPartialResource()),
+				WithStartPageAfterItem(tok.LastItem()),
 			)
 		}
 		var page []Store

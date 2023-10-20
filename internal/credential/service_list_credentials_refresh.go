@@ -32,7 +32,7 @@ func ListRefresh(
 			)
 		} else {
 			opts = append(opts,
-				WithStartPageAfterItem(tok.ToPartialResource()),
+				WithStartPageAfterItem(tok.LastItem()),
 			)
 		}
 		return repo.ListCredentials(ctx, credentialStoreId, opts...)

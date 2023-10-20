@@ -5,8 +5,11 @@ package credential
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/boundary/internal/util/template"
 	"github.com/stretchr/testify/assert"
@@ -19,6 +22,19 @@ type fakeWriter struct {
 
 type fakeReader struct {
 	db.Reader
+}
+type fakeItem struct {
+	pagination.Item
+	publicId   string
+	updateTime time.Time
+}
+
+func (p *fakeItem) GetPublicId() string {
+	return p.publicId
+}
+
+func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
+	return timestamp.New(p.updateTime)
 }
 
 func Test_GetOpts(t *testing.T) {
@@ -68,5 +84,13 @@ func Test_GetOpts(t *testing.T) {
 			_, err := GetOpts(WithReaderWriter(r, (*fakeWriter)(nil)))
 			require.Error(t, err)
 		})
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts, err := GetOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", updateTime}))
+		require.NoError(t, err)
+		assert.Equal(opts.WithStartPageAfterItem.GetPublicId(), "s_1")
+		assert.Equal(opts.WithStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
 	})
 }

@@ -81,11 +81,9 @@ func FromResource(res boundary.Resource, grantsHash []byte) *Token {
 	}
 }
 
-// ToPartialResource returns a value that can
-// be used as a resource for the purposes of getting
-// the public ID, updated time and resource type.
-func (rt *Token) ToPartialResource() *partialResource {
-	return &partialResource{
+// LastItem returns the last item stored in the token.
+func (rt *Token) LastItem() *item {
+	return &item{
 		publicId:     rt.LastItemId,
 		updateTime:   rt.LastItemUpdatedTime,
 		resourceType: rt.ResourceType,

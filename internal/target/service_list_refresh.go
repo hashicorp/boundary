@@ -33,7 +33,7 @@ func ListRefresh(
 			)
 		} else {
 			opts = append(opts,
-				WithStartPageAfterItem(tok.ToPartialResource()),
+				WithStartPageAfterItem(tok.LastItem()),
 			)
 		}
 		return repo.listTargets(ctx, opts...)

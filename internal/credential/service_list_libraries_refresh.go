@@ -34,7 +34,7 @@ func (s *LibraryService) ListRefresh(
 			)
 		} else {
 			opts = append(opts,
-				WithStartPageAfterItem(tok.ToPartialResource()),
+				WithStartPageAfterItem(tok.LastItem()),
 			)
 		}
 		genericLibs, err := s.repo.ListCredentialLibraries(ctx, credentialStoreId, opts...)

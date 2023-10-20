@@ -9,22 +9,24 @@ import (
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target/store"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/assert"
 )
 
-type fakePartialResource struct {
+type fakeItem struct {
+	pagination.Item
 	publicId   string
 	updateTime time.Time
 }
 
-func (p *fakePartialResource) GetPublicId() string {
+func (p *fakeItem) GetPublicId() string {
 	return p.publicId
 }
 
-func (p *fakePartialResource) GetUpdateTime() *timestamp.Timestamp {
+func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
 	return timestamp.New(p.updateTime)
 }
 
@@ -251,7 +253,7 @@ func Test_GetOpts(t *testing.T) {
 	t.Run("WithStartPageAfterItem", func(t *testing.T) {
 		assert := assert.New(t)
 		updateTime := time.Now()
-		opts := GetOpts(WithStartPageAfterItem(&fakePartialResource{"s_1", updateTime}))
+		opts := GetOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", updateTime}))
 		assert.Equal(opts.WithStartPageAfterItem.GetPublicId(), "s_1")
 		assert.Equal(opts.WithStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
 	})

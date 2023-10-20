@@ -7,18 +7,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
-
-// PartialResource defines the interface used to
-// sort and paginate resources.
-type PartialResource interface {
-	GetPublicId() string
-	GetUpdateTime() *timestamp.Timestamp
-}
 
 // GetOpts - iterate the inbound Options and return a struct
 func GetOpts(opt ...Option) options {
@@ -60,7 +53,7 @@ type options struct {
 	WithStorageBucketId        string
 	WithEnableSessionRecording bool
 	WithNetResolver            intglobals.NetIpResolver
-	WithStartPageAfterItem     PartialResource
+	WithStartPageAfterItem     pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -277,7 +270,7 @@ func WithNetResolver(resolver intglobals.NetIpResolver) Option {
 
 // WithStartPageAfterItem is used to paginate over the results.
 // The next page will start after the provided item.
-func WithStartPageAfterItem(item PartialResource) Option {
+func WithStartPageAfterItem(item pagination.Item) Option {
 	return func(o *options) {
 		o.WithStartPageAfterItem = item
 	}

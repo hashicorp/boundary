@@ -19,7 +19,7 @@ func TestRefreshToken_ToPartialResource(t *testing.T) {
 	utime := ctime.Add(time.Hour)
 	rt, err := New(context.Background(), ctime, utime, resource.Session, []byte("some-hash"), "some-id", utime)
 	require.NoError(t, err)
-	res := rt.ToPartialResource()
+	res := rt.LastItem()
 	assert.Equal(t, res.GetPublicId(), "some-id")
 	assert.Equal(t, res.GetResourceType(), resource.Session)
 	assert.Equal(t, res.GetUpdateTime(), timestamp.New(utime))
