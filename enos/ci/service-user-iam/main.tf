@@ -177,6 +177,7 @@ data "aws_iam_policy_document" "enos_policy_document" {
       "iam:GetRolePolicy",
       "iam:GetUser",
       "iam:GetUserId",
+      "iam:GetUserPolicy",
       "iam:ListAccessKeys",
       "iam:ListAttachedRolePolicies",
       "iam:ListGroupsForUser",
