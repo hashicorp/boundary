@@ -39,9 +39,7 @@ func ListLibraries(
 			WithLimit(limit),
 		}
 		if lastPageItem != nil {
-			opts = append(opts,
-				WithStartPageAfterItem(lastPageItem),
-			)
+			opts = append(opts, WithStartPageAfterItem(lastPageItem))
 		}
 		return service.List(ctx, credentialStoreId, opts...)
 	}

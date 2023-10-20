@@ -23,6 +23,7 @@ type fakeWriter struct {
 type fakeReader struct {
 	db.Reader
 }
+
 type fakeItem struct {
 	pagination.Item
 	publicId   string

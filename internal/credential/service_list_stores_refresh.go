@@ -29,13 +29,9 @@ func (s *StoreService) ListRefresh(
 			WithLimit(limit),
 		}
 		if lastPageItem != nil {
-			opts = append(opts,
-				WithStartPageAfterItem(lastPageItem),
-			)
+			opts = append(opts, WithStartPageAfterItem(lastPageItem))
 		} else {
-			opts = append(opts,
-				WithStartPageAfterItem(tok.LastItem()),
-			)
+			opts = append(opts, WithStartPageAfterItem(tok.LastItem()))
 		}
 		var page []Store
 		for _, repo := range s.repos {

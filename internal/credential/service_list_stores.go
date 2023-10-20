@@ -29,9 +29,7 @@ func (s *StoreService) List(
 			WithLimit(limit),
 		}
 		if lastPageItem != nil {
-			opts = append(opts,
-				WithStartPageAfterItem(lastPageItem),
-			)
+			opts = append(opts, WithStartPageAfterItem(lastPageItem))
 		}
 		// Request another page from the DB until we fill the final items
 		var page []Store

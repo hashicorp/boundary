@@ -34,9 +34,7 @@ func List(
 			WithLimit(limit),
 		}
 		if lastPageItem != nil {
-			opts = append(opts,
-				WithStartPageAfterItem(lastPageItem),
-			)
+			opts = append(opts, WithStartPageAfterItem(lastPageItem))
 		}
 		return repo.ListCredentials(ctx, credentialStoreId, opts...)
 	}

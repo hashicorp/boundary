@@ -27,13 +27,9 @@ func ListRefresh(
 			WithLimit(limit),
 		}
 		if lastPageItem != nil {
-			opts = append(opts,
-				WithStartPageAfterItem(lastPageItem),
-			)
+			opts = append(opts, WithStartPageAfterItem(lastPageItem))
 		} else {
-			opts = append(opts,
-				WithStartPageAfterItem(tok.LastItem()),
-			)
+			opts = append(opts, WithStartPageAfterItem(tok.LastItem()))
 		}
 		return repo.ListCredentials(ctx, credentialStoreId, opts...)
 	}
