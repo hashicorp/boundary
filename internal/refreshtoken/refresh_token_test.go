@@ -61,7 +61,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "refresh token was missing its grants hash",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidRefreshToken,
 		},
 		{
 			name: "changed grants hash",
@@ -76,7 +76,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some other hash"),
 			resourceType:  resource.Target,
 			wantErrString: "grants have changed since refresh token was issued",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidRefreshToken,
 		},
 		{
 			name: "created in the future",
@@ -91,7 +91,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "refresh token was created in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidRefreshToken,
 		},
 		{
 			name: "expired",
@@ -106,7 +106,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "refresh token was expired",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidRefreshToken,
 		},
 		{
 			name: "updated before created",
@@ -121,7 +121,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "refresh token was updated before its creation time",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidRefreshToken,
 		},
 		{
 			name: "updated after now",
@@ -136,7 +136,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "refresh token was updated in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidRefreshToken,
 		},
 		{
 			name: "resource type mismatch",
@@ -151,7 +151,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.SessionRecording,
 			wantErrString: "refresh token resource type does not match expected resource type",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidRefreshToken,
 		},
 		{
 			name: "last item ID unset",
@@ -166,7 +166,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "refresh token missing last item ID",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidRefreshToken,
 		},
 		{
 			name: "last item ID unset",
@@ -181,7 +181,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "refresh token missing last item ID",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidRefreshToken,
 		},
 		{
 			name: "updated in the future",
@@ -196,7 +196,7 @@ func Test_ValidateRefreshToken(t *testing.T) {
 			grantsHash:    []byte("some hash"),
 			resourceType:  resource.Target,
 			wantErrString: "refresh token last item was updated in the future",
-			wantErrCode:   errors.InvalidParameter,
+			wantErrCode:   errors.InvalidRefreshToken,
 		},
 	}
 	for _, tt := range tests {
@@ -378,6 +378,7 @@ func TestFromResource(t *testing.T) {
 
 func TestRefresh(t *testing.T) {
 	createdTime := time.Now().AddDate(0, 0, -5)
+	updatedTime := time.Now()
 	tok := &refreshtoken.Token{
 		CreatedTime:         createdTime,
 		UpdatedTime:         createdTime,
@@ -386,10 +387,9 @@ func TestRefresh(t *testing.T) {
 		LastItemId:          "tcp_1234567890",
 		LastItemUpdatedTime: createdTime,
 	}
-	updatedTime := time.Now()
 	newTok := tok.Refresh(updatedTime)
 
-	require.True(t, newTok.UpdatedTime.Equal(updatedTime.Add(-refreshtoken.UpdatedTimeBuffer)))
+	require.True(t, newTok.UpdatedTime.Equal(updatedTime))
 	require.True(t, newTok.CreatedTime.Equal(createdTime))
 	require.Equal(t, newTok.ResourceType, tok.ResourceType)
 	require.Equal(t, newTok.GrantsHash, tok.GrantsHash)

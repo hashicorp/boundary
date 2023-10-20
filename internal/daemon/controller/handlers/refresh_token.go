@@ -19,11 +19,11 @@ func ParseRefreshToken(ctx context.Context, token string) (*pbs.ListRefreshToken
 	const op = "handlers.ParseRefreshToken"
 	marshaled, err := base58.Decode(token)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidRefreshToken))
 	}
 	var tok pbs.ListRefreshToken
 	if err := proto.Unmarshal(marshaled, &tok); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, errors.Wrap(ctx, err, op, errors.WithCode(errors.InvalidRefreshToken))
 	}
 	return &tok, nil
 }

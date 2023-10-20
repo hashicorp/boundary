@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
+	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/mr-tron/base58"
@@ -63,6 +64,7 @@ func Test_ParseRefreshToken(t *testing.T) {
 			got, err := handlers.ParseRefreshToken(context.Background(), tt.token)
 			if tt.wantErr {
 				require.Error(t, err)
+				require.True(t, errors.Match(errors.T(errors.InvalidRefreshToken), err))
 				return
 			}
 			require.NoError(t, err)
