@@ -26,7 +26,7 @@ import (
 // provided slice and a nil error. The returned function can be passed into the
 // options that provide a resource retrieval func such as
 // WithTargetRetrievalFunc and WithSessionRetrievalFunc.  The provided refresh
-// token determines the returned value and is an string representation of an
+// token determines the returned value and is a string representation of an
 // incrementing integer. This integer is the index into the provided return
 // values and once it reaches the length of the provided slice it returns an
 // empty slice and the same refresh token repeatedly.

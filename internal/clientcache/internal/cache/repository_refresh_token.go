@@ -17,8 +17,9 @@ import (
 // by the client cache.
 type RefreshTokenValue string
 
-// lookupRefreshToken returns the refresh token stored in the db unless it is
-// to old in which case it does not return a refresh token.
+// lookupRefreshToken returns the last known valid refresh token or an empty
+// string if one is unkonwn. No error is returned if no valid refresh token is
+// found.
 func (r *Repository) lookupRefreshToken(ctx context.Context, u *user, resourceType resourceType) (RefreshTokenValue, error) {
 	const op = "cache.(Repsoitory).lookupRefreshToken"
 	switch {

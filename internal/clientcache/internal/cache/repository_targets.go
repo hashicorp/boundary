@@ -72,7 +72,6 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	var newRefreshToken RefreshTokenValue
 	var retErr error
 	for at, t := range tokens {
-
 		resp, removedIds, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, oldRefreshToken)
 		if api.ErrInvalidRefreshToken.Is(err) {
 			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
