@@ -275,7 +275,7 @@ func (w *Worker) handleProxy(listenerCfg *listenerutil.ListenerConfig, sessionMa
 			}
 		}
 
-		pDialer, err := proxyHandlers.GetEndpointDialer(ctx, endpointUrl.Host, workerId, acResp, w.downstreamReceiver, proxyHandlers.WithDnsServer(w.conf.WorkerDnsServer))
+		pDialer, err := proxyHandlers.GetEndpointDialer(ctx, endpointUrl.Host, workerId, acResp, w.downstreamReceiver, proxyHandlers.WithDnsServerAddress(w.conf.WorkerDnsServer))
 		if err != nil {
 			conn.Close(proxyHandlers.WebsocketStatusProtocolSetupError, "unable to get endpoint dialer")
 			event.WriteError(ctx, op, err)
