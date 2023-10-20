@@ -312,7 +312,7 @@ func (r *Repository) LookupSSHCertificateCredentialLibrary(ctx context.Context, 
 //   - WithLimit
 //   - WithStartPageAfterItem
 func (r *Repository) listSSHCertificateCredentialLibraries(ctx context.Context, storeId string, opt ...credential.Option) ([]credential.Library, error) {
-	const op = "vault.(Repository).ListSSHCertificateCredentialLibraries"
+	const op = "vault.(Repository).listSSHCertificateCredentialLibraries"
 	if storeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
 	}
@@ -397,7 +397,7 @@ func (r *Repository) DeleteSSHCertificateCredentialLibrary(ctx context.Context, 
 
 // estimatedSSHCertificateLibraryCount returns an estimate of the number of SSH certificate credential libraries
 func (r *Repository) estimatedSSHCertificateLibraryCount(ctx context.Context) (int, error) {
-	const op = "vault.(Repository).EstimatedSSHCertificateLibraryCount"
+	const op = "vault.(Repository).estimatedSSHCertificateLibraryCount"
 	rows, err := r.reader.Query(ctx, estimateCountSSHCertificateCredentialLibraries, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault SSH certificate credential libraries"))
@@ -415,7 +415,7 @@ func (r *Repository) estimatedSSHCertificateLibraryCount(ctx context.Context) (i
 // Supported options:
 //   - credential.WithReaderWriter
 func (r *Repository) listDeletedSSHCertificateLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
-	const op = "vault.(Repository).ListDeletedSSHCertificateLibraryIds"
+	const op = "vault.(Repository).listDeletedSSHCertificateLibraryIds"
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)

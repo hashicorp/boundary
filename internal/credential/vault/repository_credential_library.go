@@ -459,7 +459,7 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, projectId stri
 //   - credential.WithLimit
 //   - credential.WithStartPageAfterItem
 func (r *Repository) listCredentialLibraries(ctx context.Context, storeId string, opt ...credential.Option) ([]credential.Library, error) {
-	const op = "vault.(Repository).ListCredentialLibraries"
+	const op = "vault.(Repository).listCredentialLibraries"
 	if storeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
 	}
@@ -505,7 +505,7 @@ func (r *Repository) listCredentialLibraries(ctx context.Context, storeId string
 
 // estimatedLibraryCount returns an estimate of the number of Vault credential libraries
 func (r *Repository) estimatedLibraryCount(ctx context.Context) (int, error) {
-	const op = "vault.(Repository).EstimatedLibraryCount"
+	const op = "vault.(Repository).estimatedLibraryCount"
 	rows, err := r.reader.Query(ctx, estimateCountCredentialLibraries, nil)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total Vault credential libraries"))
@@ -523,7 +523,7 @@ func (r *Repository) estimatedLibraryCount(ctx context.Context) (int, error) {
 // Supported options:
 //   - credential.WithReaderWriter
 func (r *Repository) listDeletedLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
-	const op = "vault.(Repository).ListDeletedLibraryIds"
+	const op = "vault.(Repository).listDeletedLibraryIds"
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
