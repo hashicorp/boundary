@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.2
 
 require (
-	github.com/hashicorp/boundary/sdk v0.0.38-0.20231018071814-b1413e72fee0
+	github.com/hashicorp/boundary/sdk v0.0.38-0.20231020201923-49eec7b8c903
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.13
 	github.com/hashicorp/go-retryablehttp v0.7.2
