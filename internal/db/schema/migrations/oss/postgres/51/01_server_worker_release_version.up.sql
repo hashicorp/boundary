@@ -12,7 +12,7 @@ alter table server_worker
 
 drop view server_worker_aggregate;
 
--- Updated in 52/01_worker_operational_state.up.sql
+-- Replaced in 78/01_server_worker_local_storage.up.sql
 create view server_worker_aggregate as
 with worker_config_tags(worker_id, source, tags) as (
   select

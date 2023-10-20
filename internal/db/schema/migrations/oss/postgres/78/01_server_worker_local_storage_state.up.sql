@@ -3,34 +3,40 @@
 
 begin;
 
-create table server_worker_operational_state_enm (
+create table server_worker_local_storage_state_state_enm (
   state text primary key
-  constraint only_predefined_operational_states_allowed
+  constraint only_predefined_local_storage_states_allowed
     check (
       state in (
-        'active',
-        'shutdown',
+        'available',
+        'lowStorage',
+        'criticallyLow',
+        'outOfStorage',
+        'notConfigured',
         'unknown'
       )
     )
 );
-comment on table server_worker_operational_state_enm is
-  'server_worker_operational_state_enm is an enumeration table for worker operational states.';
+comment on table server_worker_local_storage_state_state_enm is
+  'server_worker_local_storage_state_state_enm is an enumeration table for worker local storage states.';
 
-insert into server_worker_operational_state_enm (state) values
-  ('active'),
-  ('shutdown'),
+insert into server_worker_local_storage_state_state_enm (state) values
+  ('available'),
+  ('lowStorage'),
+  ('criticallyLow'),
+  ('outOfStorage'),
+  ('notConfigured'),
   ('unknown');
 
 alter table server_worker
-  add column operational_state text not null default 'active'
-    constraint server_worker_operational_state_enm_fkey
-      references server_worker_operational_state_enm (state)
+  add column local_storage_state text not null default 'available'
+    constraint server_worker_local_storage_state_state_enm_fkey
+      references server_worker_local_storage_state_state_enm (state)
       on delete restrict
       on update cascade;
 
 drop view server_worker_aggregate;
--- Replaced in 78/01_server_worker_local_storage.up.sql
+-- Replaces view created in 34/04_views.up.sql to add the worker local storage state
 create view server_worker_aggregate as
 with worker_config_tags(worker_id, source, tags) as (
   select
@@ -62,6 +68,7 @@ select
   w.type,
   w.release_version,
   w.operational_state,
+  w.local_storage_state,
   cc.count as active_connection_count,
   -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
   wt.tags as api_tags,
