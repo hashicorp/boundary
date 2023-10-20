@@ -297,9 +297,6 @@ message WorkerInfo {
 
 // SessionAuthorizationData contains the fields needed by the proxy command to
 // connect to a worker. It is marshaled inside the SessionAuthorization message.
-//
-// IMPORTANT: If you modify this, also update GetSessionAuthorizationData in the
-// api/targets package.
 message SessionAuthorizationData {
   // Output only. The ID of the session.
   string session_id = 10 [json_name = "session_id"]; // @gotags: `class:"public" eventstream:"observation"`
