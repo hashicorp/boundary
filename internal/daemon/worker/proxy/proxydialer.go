@@ -7,9 +7,12 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/netip"
+	"net/url"
 	"sync/atomic"
 
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/miekg/dns"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -19,19 +22,69 @@ var GetEndpointDialer = directDialer
 
 // directDialer returns a ProxyDialer which tcp dials directly to the provided
 // endpoint.
-func directDialer(ctx context.Context, endpoint string, _ string, _ proto.Message, _ interface{}) (*ProxyDialer, error) {
+func directDialer(ctx context.Context, endpoint string, _ string, _ proto.Message, _ interface{}, opt ...Option) (*ProxyDialer, error) {
 	const op = "proxy.directDialer"
 	if len(endpoint) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "endpoint is empty")
 	}
-	d, err := NewProxyDialer(ctx, func(opt ...Option) (net.Conn, error) {
+	opts := GetOpts(opt...)
+	dnsServer := opts.WithDnsServerAddress
+	parsedDnsServer, err := url.Parse(dnsServer)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
+	d, err := NewProxyDialer(ctx, func(dialerOpt ...Option) (net.Conn, error) {
+		if dnsServer != "" {
+			host, port, err := net.SplitHostPort(endpoint)
+			if err != nil {
+				return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error splitting host/port"))
+			}
+			_, err = netip.ParseAddr(host)
+			// Only try resolving if it's not an IP address (err is not nil) or
+			// not something we definitely can't resolve via an upstream DNS
+			// server (localhost)
+			if err != nil && host != "localhost" && host != "localhost.localdomain" {
+				dnsClient := new(dns.Client)
+				dnsClient.Net = parsedDnsServer.Scheme
+				m := new(dns.Msg)
+				m.Id = dns.Id()
+				m.RecursionDesired = true
+				m.Question = make([]dns.Question, 1)
+				m.Question[0] = dns.Question{
+					Name:   fmt.Sprintf("%s.", host),
+					Qtype:  dns.TypeA,
+					Qclass: dns.ClassINET,
+				}
+				resp, _, err := dnsClient.Exchange(m, parsedDnsServer.Host)
+				if err != nil {
+					return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error performing dns exchange"))
+				}
+				if len(resp.Answer) == 0 {
+					return nil, errors.New(ctx, errors.Internal, op, "no answer returned from dns")
+				}
+				var found bool
+				for _, ans := range resp.Answer {
+					ans, ok := ans.(*dns.A)
+					if !ok {
+						continue
+					}
+					endpoint = net.JoinHostPort(ans.A.String(), port)
+					found = true
+					break
+				}
+				if !found {
+					return nil, errors.New(ctx, errors.Internal, op, "no A records in dns answer")
+				}
+			}
+		}
 		remoteConn, err := net.Dial("tcp", endpoint)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
-		opts := GetOpts(opt...)
-		if opts.WithPostConnectionHook != nil {
-			opts.WithPostConnectionHook(remoteConn)
+		dialerOpts := GetOpts(dialerOpt...)
+		if dialerOpts.WithPostConnectionHook != nil {
+			dialerOpts.WithPostConnectionHook(remoteConn)
 		}
 		return remoteConn, nil
 	})
