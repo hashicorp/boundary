@@ -2703,8 +2703,8 @@ func TestAuthorizeSession(t *testing.T) {
 	ldapAuthRepoFn := func() (*ldap.Repository, error) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(context.Background(), rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(context.Background(), rw, repo)
 	}
 
 	plg := plugin.TestPlugin(t, conn, "test")
@@ -2790,7 +2790,7 @@ func TestAuthorizeSession(t *testing.T) {
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "pki"}))
 
 	vaultStore := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
-	credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, credLibServiceFn, 1000)
+	credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, vaultLibServiceFn, 1000)
 	require.NoError(t, err)
 	clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 		CredentialStoreId: vaultStore.GetPublicId(),
@@ -2996,8 +2996,8 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	pluginHostRepoFn := func() (*hostplugin.Repository, error) {
 		return hostplugin.NewRepository(ctx, rw, rw, kms, sche, map[string]plgpb.HostPluginServiceClient{})
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(context.Background(), rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(context.Background(), rw, repo)
 	}
 
 	org, proj := iam.TestScopes(t, iamRepo)
@@ -3032,7 +3032,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 	sec, tok := v.CreateToken(t, vault.WithPolicies([]string{"default", "boundary-controller", "secret"}))
 
 	vaultStore := vault.TestCredentialStore(t, conn, wrapper, proj.GetPublicId(), v.Addr, tok, sec.Auth.Accessor)
-	credLibService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, credLibServiceFn, 1000)
+	credLibService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, vaultLibServiceFn, 1000)
 	require.NoError(t, err)
 
 	// Create secret in vault with default username and password fields
@@ -3589,8 +3589,8 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(context.Background(), rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(context.Background(), rw, repo)
 	}
 	org, proj := iam.TestScopes(t, iamRepo)
 
@@ -3683,7 +3683,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	libraryExists := func(tar target.Target) (version uint32) {
-		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, credLibServiceFn, 1000)
+		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, vaultLibServiceFn, 1000)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: store.GetPublicId(),
@@ -3708,7 +3708,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	misConfiguredlibraryExists := func(tar target.Target) (version uint32) {
-		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, credLibServiceFn, 1000)
+		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, vaultLibServiceFn, 1000)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: store.GetPublicId(),
@@ -3733,7 +3733,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 	}
 
 	expiredTokenLibrary := func(tar target.Target) (version uint32) {
-		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, credLibServiceFn, 1000)
+		credService, err := credentiallibraries.NewService(ctx, iamRepoFn, vaultCredRepoFn, vaultLibServiceFn, 1000)
 		require.NoError(t, err)
 		clsResp, err := credService.CreateCredentialLibrary(ctx, &pbs.CreateCredentialLibraryRequest{Item: &credlibpb.CredentialLibrary{
 			CredentialStoreId: expiredStore.GetPublicId(),

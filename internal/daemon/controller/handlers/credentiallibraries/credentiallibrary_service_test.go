@@ -99,8 +99,8 @@ func TestList(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(ctx, rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prjNoLibs := iam.TestScopes(t, iamRepo)
@@ -211,7 +211,7 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(ctx, iamRepoFn, repoFn, credLibServiceFn, 1000)
+			s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 			require.NoError(t, err, "Couldn't create new credential library service.")
 
 			// Test non-anonymous listing
@@ -268,8 +268,8 @@ func TestList_Attributes(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(ctx, rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
 	}
 	_, prj := iam.TestScopes(t, iamRepo)
 
@@ -334,7 +334,7 @@ func TestList_Attributes(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(ctx, iamRepoFn, repoFn, credLibServiceFn, 1000)
+			s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 			require.NoError(t, err)
 
 			// Test non-anonymous listing
@@ -386,8 +386,8 @@ func TestCreate(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(ctx, rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -903,7 +903,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(ctx, iamRepoFn, repoFn, credLibServiceFn, 1000)
+			s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 			require.NoError(err, "Error when getting new credential store service.")
 
 			got, gErr := s.CreateCredentialLibrary(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), tc.req)
@@ -953,15 +953,15 @@ func TestGet(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(ctx, rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	unspecifiedLib := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
-	s, err := NewService(ctx, iamRepoFn, repoFn, credLibServiceFn, 1000)
+	s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 	require.NoError(t, err)
 
 	repo, err := repoFn()
@@ -1161,8 +1161,8 @@ func TestDelete(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(ctx, rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -1170,7 +1170,7 @@ func TestDelete(t *testing.T) {
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	vl := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
 	vl2 := vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
-	s, err := NewService(ctx, iamRepoFn, repoFn, credLibServiceFn, 1000)
+	s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -1230,14 +1230,14 @@ func TestUpdate(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(testCtx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(testCtx, rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(testCtx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(testCtx, iamRepoFn, repoFn, credLibServiceFn, 1000)
+	s, err := NewService(testCtx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 	require.NoError(t, err)
 	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
 	store, diffStore := cs[0], cs[1]
@@ -2004,8 +2004,8 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(ctx, rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -2241,7 +2241,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(ctx, iamRepoFn, repoFn, credLibServiceFn, 1000)
+			s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 			require.NoError(err, "Error when getting new credential store service.")
 
 			got, gErr := s.CreateCredentialLibrary(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), tc.req)
@@ -2291,14 +2291,14 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(testCtx, rw, rw, kms, sche)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(testCtx, rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(testCtx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(testCtx, iamRepoFn, repoFn, credLibServiceFn, 1000)
+	s, err := NewService(testCtx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 	require.NoError(t, err)
 	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
 	store, diffStore := cs[0], cs[1]
@@ -2687,8 +2687,8 @@ func TestListPagination(t *testing.T) {
 	serversRepoFn := func() (*server.Repository, error) {
 		return server.NewRepository(ctx, rw, rw, kms)
 	}
-	credLibServiceFn := func(repo *vault.Repository) (*credential.LibraryService, error) {
-		return credential.NewLibraryService(ctx, rw, repo)
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
 	}
 	vaultRepo, err := repoFn()
 	require.NoError(err)
@@ -2735,7 +2735,7 @@ func TestListPagination(t *testing.T) {
 	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
 	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
 
-	s, err := NewService(ctx, iamRepoFn, repoFn, credLibServiceFn, 1000)
+	s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 	require.NoError(err)
 
 	// Start paginating, recursively

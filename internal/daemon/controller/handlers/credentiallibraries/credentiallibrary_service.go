@@ -206,7 +206,7 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 	var listResp *pagination.ListResponse2[credential.Library]
 	if req.GetRefreshToken() == "" {
 		var err error
-		listResp, err = service.List(ctx, grantsHash, pageSize, filterItemFn, req.GetCredentialStoreId())
+		listResp, err = credential.ListLibraries(ctx, grantsHash, pageSize, filterItemFn, service, req.GetCredentialStoreId())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}
@@ -233,7 +233,7 @@ func (s Service) ListCredentialLibraries(ctx context.Context, req *pbs.ListCrede
 		if err := domainRefreshToken.Validate(ctx, resource.CredentialLibrary, grantsHash); err != nil {
 			return nil, err
 		}
-		listResp, err = service.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, domainRefreshToken, req.GetCredentialStoreId())
+		listResp, err = credential.ListLibrariesRefresh(ctx, grantsHash, pageSize, filterItemFn, domainRefreshToken, service, req.GetCredentialStoreId())
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
 		}

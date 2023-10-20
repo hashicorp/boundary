@@ -8,9 +8,17 @@ import (
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/credential"
+	"github.com/hashicorp/boundary/internal/db"
 	"github.com/stretchr/testify/require"
 )
 
+type fakeVaultLibraryRepository struct {
+	credential.LibraryService
+}
+
+type fakeWriter struct {
+	db.Writer
+}
 type fakeStoreRepository struct {
 	credential.StoreRepository
 }

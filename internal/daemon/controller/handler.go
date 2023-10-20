@@ -284,7 +284,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 			c.baseContext,
 			c.IamRepoFn,
 			c.VaultCredentialRepoFn,
-			c.LibraryServiceFn,
+			c.VaultLibraryServiceFn,
 			c.conf.RawConfig.Controller.MaxPageSize,
 		)
 		if err != nil {
