@@ -19,11 +19,11 @@ func (s *LibraryService) List(ctx context.Context, credentialStoreId string, opt
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	genericLibs, err := s.repo.ListCredentialLibraries(ctx, credentialStoreId, opts...)
+	genericLibs, err := s.repo.listCredentialLibraries(ctx, credentialStoreId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	sshCertLibs, err := s.repo.ListSSHCertificateCredentialLibraries(ctx, credentialStoreId, opts...)
+	sshCertLibs, err := s.repo.listSSHCertificateCredentialLibraries(ctx, credentialStoreId, opts...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -48,11 +48,11 @@ func (s *LibraryService) List(ctx context.Context, credentialStoreId string, opt
 
 func (s *LibraryService) EstimatedCount(ctx context.Context) (int, error) {
 	const op = "vault.(*LibraryService).EstimatedCount"
-	numGenericLibs, err := s.repo.EstimatedLibraryCount(ctx)
+	numGenericLibs, err := s.repo.estimatedLibraryCount(ctx)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}
-	numSSHCertLibs, err := s.repo.EstimatedSSHCertificateLibraryCount(ctx)
+	numSSHCertLibs, err := s.repo.estimatedSSHCertificateLibraryCount(ctx)
 	if err != nil {
 		return 0, errors.Wrap(ctx, err, op)
 	}
@@ -70,11 +70,11 @@ func (s *LibraryService) ListDeletedIds(ctx context.Context, since time.Time) ([
 	var deletedIds []string
 	var transactionTimestamp time.Time
 	if _, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		deletedGenericIds, err := s.repo.ListDeletedLibraryIds(ctx, since, credential.WithReaderWriter(r, w))
+		deletedGenericIds, err := s.repo.listDeletedLibraryIds(ctx, since, credential.WithReaderWriter(r, w))
 		if err != nil {
 			return err
 		}
-		deletedSSHCertIds, err := s.repo.ListDeletedSSHCertificateLibraryIds(ctx, since, credential.WithReaderWriter(r, w))
+		deletedSSHCertIds, err := s.repo.listDeletedSSHCertificateLibraryIds(ctx, since, credential.WithReaderWriter(r, w))
 		if err != nil {
 			return err
 		}

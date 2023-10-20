@@ -307,11 +307,11 @@ func (r *Repository) LookupSSHCertificateCredentialLibrary(ctx context.Context, 
 	return l, nil
 }
 
-// ListSSHCertificateCredentialLibraries returns a slice of SSHCertificateCredentialLibraries for the
+// listSSHCertificateCredentialLibraries returns a slice of SSHCertificateCredentialLibraries for the
 // storeId. Supports the following options:
 //   - WithLimit
 //   - WithStartPageAfterItem
-func (r *Repository) ListSSHCertificateCredentialLibraries(ctx context.Context, storeId string, opt ...credential.Option) ([]credential.Library, error) {
+func (r *Repository) listSSHCertificateCredentialLibraries(ctx context.Context, storeId string, opt ...credential.Option) ([]credential.Library, error) {
 	const op = "vault.(Repository).ListSSHCertificateCredentialLibraries"
 	if storeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
@@ -395,8 +395,8 @@ func (r *Repository) DeleteSSHCertificateCredentialLibrary(ctx context.Context, 
 	return rowsDeleted, nil
 }
 
-// EstimatedSSHCertificateLibraryCount returns an estimate of the number of SSH certificate credential libraries
-func (r *Repository) EstimatedSSHCertificateLibraryCount(ctx context.Context) (int, error) {
+// estimatedSSHCertificateLibraryCount returns an estimate of the number of SSH certificate credential libraries
+func (r *Repository) estimatedSSHCertificateLibraryCount(ctx context.Context) (int, error) {
 	const op = "vault.(Repository).EstimatedSSHCertificateLibraryCount"
 	rows, err := r.reader.Query(ctx, estimateCountSSHCertificateCredentialLibraries, nil)
 	if err != nil {
@@ -411,10 +411,10 @@ func (r *Repository) EstimatedSSHCertificateLibraryCount(ctx context.Context) (i
 	return count, nil
 }
 
-// ListDeletedSSHCertificateLibraryIds lists the public IDs of any SSH certificate credential libraries deleted since the timestamp provided.
+// listDeletedSSHCertificateLibraryIds lists the public IDs of any SSH certificate credential libraries deleted since the timestamp provided.
 // Supported options:
 //   - credential.WithReaderWriter
-func (r *Repository) ListDeletedSSHCertificateLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+func (r *Repository) listDeletedSSHCertificateLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 	const op = "vault.(Repository).ListDeletedSSHCertificateLibraryIds"
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {

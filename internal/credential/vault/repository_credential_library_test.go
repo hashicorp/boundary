@@ -2084,7 +2084,7 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		require.NotNil(orig)
 
 		// test
-		got, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId())
+		got, err := repo.listCredentialLibraries(ctx, cs.GetPublicId())
 		assert.NoError(err)
 		require.Len(got, 1)
 		require.Empty(cmp.Diff(
@@ -2113,7 +2113,7 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		assert.NoError(err)
 		require.NotNil(repo)
 		// test
-		got, err := repo.ListCredentialLibraries(ctx, "")
+		got, err := repo.listCredentialLibraries(ctx, "")
 		wantErr := errors.InvalidParameter
 		assert.Truef(errors.Match(errors.T(wantErr), err), "want err: %q got: %q", wantErr, err)
 		assert.Nil(got)
@@ -2131,7 +2131,7 @@ func TestRepository_ListCredentialLibraries(t *testing.T) {
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		cs := TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 		// test
-		got, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId())
+		got, err := repo.listCredentialLibraries(ctx, cs.GetPublicId())
 		assert.NoError(err)
 		assert.Empty(got)
 	})
@@ -2202,7 +2202,7 @@ func TestRepository_ListCredentialLibraries_Limits(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kms, sche, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListCredentialLibraries(ctx, libs[0].StoreId, tt.listOpts...)
+			got, err := repo.listCredentialLibraries(ctx, libs[0].StoreId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 		})
@@ -2229,28 +2229,28 @@ func TestRepository_ListCredentialLibraries_Pagination(t *testing.T) {
 	require.NotNil(repo)
 
 	for _, cs := range css[:2] {
-		page1, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2))
+		page1, err := repo.listCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2))
 		require.NoError(err)
 		require.Len(page1, 2)
-		page2, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1]))
+		page2, err := repo.listCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1]))
 		require.NoError(err)
 		require.Len(page2, 2)
 		for _, item := range page1 {
 			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
 			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
 		}
-		page3, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1]))
+		page3, err := repo.listCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1]))
 		require.NoError(err)
 		require.Len(page3, 1)
 		for _, item := range append(page1, page2...) {
 			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
 		}
-		page4, err := repo.ListCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0]))
+		page4, err := repo.listCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0]))
 		require.NoError(err)
 		require.Empty(page4)
 	}
 
-	emptyPage, err := repo.ListCredentialLibraries(ctx, css[2].GetPublicId(), credential.WithLimit(2))
+	emptyPage, err := repo.listCredentialLibraries(ctx, css[2].GetPublicId(), credential.WithLimit(2))
 	require.NoError(err)
 	require.Empty(emptyPage)
 }
@@ -2273,7 +2273,7 @@ func TestRepository_ListDeletedLibraryIds(t *testing.T) {
 	require.NotNil(repo)
 
 	// Expect no entries at the start
-	deletedIds, err := repo.ListDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, err := repo.listDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(err)
 	require.Empty(deletedIds)
 
@@ -2282,12 +2282,12 @@ func TestRepository_ListDeletedLibraryIds(t *testing.T) {
 	require.NoError(err)
 
 	// Expect a single entry
-	deletedIds, err = repo.ListDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, err = repo.listDeletedLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(err)
 	require.Equal([]string{libs[0].GetPublicId()}, deletedIds)
 
 	// Try again with the time set to now, expect no entries
-	deletedIds, err = repo.ListDeletedLibraryIds(ctx, time.Now())
+	deletedIds, err = repo.listDeletedLibraryIds(ctx, time.Now())
 	require.NoError(err)
 	require.Empty(deletedIds)
 }
@@ -2311,7 +2311,7 @@ func TestRepository_EstimatedLibraryCount(t *testing.T) {
 	require.NotNil(repo)
 
 	// Check total entries at start, expect 0
-	numItems, err := repo.EstimatedLibraryCount(ctx)
+	numItems, err := repo.estimatedLibraryCount(ctx)
 	require.NoError(err)
 	assert.Equal(0, numItems)
 
@@ -2321,7 +2321,7 @@ func TestRepository_EstimatedLibraryCount(t *testing.T) {
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
 
-	numItems, err = repo.EstimatedLibraryCount(ctx)
+	numItems, err = repo.estimatedLibraryCount(ctx)
 	require.NoError(err)
 	assert.Equal(2, numItems)
 
@@ -2331,7 +2331,7 @@ func TestRepository_EstimatedLibraryCount(t *testing.T) {
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
 
-	numItems, err = repo.EstimatedLibraryCount(ctx)
+	numItems, err = repo.estimatedLibraryCount(ctx)
 	require.NoError(err)
 	assert.Equal(1, numItems)
 }

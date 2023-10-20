@@ -877,7 +877,7 @@ func TestRepository_ListSSHCertificateCredentialLibraries_Limits(t *testing.T) {
 			repo, err := NewRepository(ctx, rw, rw, kms, sche, tt.repoOpts...)
 			assert.NoError(err)
 			require.NotNil(repo)
-			got, err := repo.ListSSHCertificateCredentialLibraries(ctx, libs[0].StoreId, tt.listOpts...)
+			got, err := repo.listSSHCertificateCredentialLibraries(ctx, libs[0].StoreId, tt.listOpts...)
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 		})
@@ -904,28 +904,28 @@ func TestRepository_ListSSHCertificateCredentialLibraries_Pagination(t *testing.
 	require.NotNil(repo)
 
 	for _, cs := range css[:2] {
-		page1, err := repo.ListSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2))
+		page1, err := repo.listSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2))
 		require.NoError(err)
 		require.Len(page1, 2)
-		page2, err := repo.ListSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1]))
+		page2, err := repo.listSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page1[1]))
 		require.NoError(err)
 		require.Len(page2, 2)
 		for _, item := range page1 {
 			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
 			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
 		}
-		page3, err := repo.ListSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1]))
+		page3, err := repo.listSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page2[1]))
 		require.NoError(err)
 		require.Len(page3, 1)
 		for _, item := range append(page1, page2...) {
 			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
 		}
-		page4, err := repo.ListSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0]))
+		page4, err := repo.listSSHCertificateCredentialLibraries(ctx, cs.GetPublicId(), credential.WithLimit(2), credential.WithStartPageAfterItem(page3[0]))
 		require.NoError(err)
 		require.Empty(page4)
 	}
 
-	emptyPage, err := repo.ListSSHCertificateCredentialLibraries(ctx, css[2].GetPublicId(), credential.WithLimit(2))
+	emptyPage, err := repo.listSSHCertificateCredentialLibraries(ctx, css[2].GetPublicId(), credential.WithLimit(2))
 	require.NoError(err)
 	require.Empty(emptyPage)
 }
@@ -2015,7 +2015,7 @@ func TestRepository_ListDeletedSSHCertificateLibraryIds(t *testing.T) {
 	require.NotNil(repo)
 
 	// Expect no entries at the start
-	deletedIds, err := repo.ListDeletedSSHCertificateLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, err := repo.listDeletedSSHCertificateLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(err)
 	require.Empty(deletedIds)
 
@@ -2024,12 +2024,12 @@ func TestRepository_ListDeletedSSHCertificateLibraryIds(t *testing.T) {
 	require.NoError(err)
 
 	// Expect one entry
-	deletedIds, err = repo.ListDeletedSSHCertificateLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
+	deletedIds, err = repo.listDeletedSSHCertificateLibraryIds(ctx, time.Now().AddDate(-1, 0, 0))
 	require.NoError(err)
 	require.Equal([]string{sshLibs[0].GetPublicId()}, deletedIds)
 
 	// Try again with the time set to now, expect no entries
-	deletedIds, err = repo.ListDeletedSSHCertificateLibraryIds(ctx, time.Now())
+	deletedIds, err = repo.listDeletedSSHCertificateLibraryIds(ctx, time.Now())
 	require.NoError(err)
 	require.Empty(deletedIds)
 }
@@ -2053,7 +2053,7 @@ func TestRepository_EstimatedSSHCertificateLibraryCount(t *testing.T) {
 	require.NotNil(repo)
 
 	// Check total entries at start, expect 0
-	numItems, err := repo.EstimatedSSHCertificateLibraryCount(ctx)
+	numItems, err := repo.estimatedSSHCertificateLibraryCount(ctx)
 	require.NoError(err)
 	assert.Equal(0, numItems)
 
@@ -2063,7 +2063,7 @@ func TestRepository_EstimatedSSHCertificateLibraryCount(t *testing.T) {
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
 
-	numItems, err = repo.EstimatedSSHCertificateLibraryCount(ctx)
+	numItems, err = repo.estimatedSSHCertificateLibraryCount(ctx)
 	require.NoError(err)
 	assert.Equal(2, numItems)
 
@@ -2073,7 +2073,7 @@ func TestRepository_EstimatedSSHCertificateLibraryCount(t *testing.T) {
 	_, err = sqlDb.ExecContext(ctx, "analyze")
 	require.NoError(err)
 
-	numItems, err = repo.EstimatedSSHCertificateLibraryCount(ctx)
+	numItems, err = repo.estimatedSSHCertificateLibraryCount(ctx)
 	require.NoError(err)
 	assert.Equal(1, numItems)
 }

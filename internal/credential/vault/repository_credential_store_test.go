@@ -1618,7 +1618,7 @@ group by store_id, status;
 			}
 
 			{
-				libs, err := repo.ListCredentialLibraries(ctx, storeId)
+				libs, err := repo.listCredentialLibraries(ctx, storeId)
 				assert.NoError(err)
 				assert.Len(libs, len(actualLibs))
 			}
@@ -1678,7 +1678,7 @@ group by store_id, status;
 
 			// libraries should be empty
 			{
-				libs, err := repo.ListCredentialLibraries(ctx, storeId)
+				libs, err := repo.listCredentialLibraries(ctx, storeId)
 				assert.NoError(err)
 				assert.Empty(libs)
 			}

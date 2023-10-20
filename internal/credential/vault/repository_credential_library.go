@@ -454,11 +454,11 @@ func (r *Repository) DeleteCredentialLibrary(ctx context.Context, projectId stri
 	return rowsDeleted, nil
 }
 
-// ListCredentialLibraries returns a slice of CredentialLibraries for the
+// listCredentialLibraries returns a slice of CredentialLibraries for the
 // storeId. Supports the following options:
 //   - credential.WithLimit
 //   - credential.WithStartPageAfterItem
-func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string, opt ...credential.Option) ([]credential.Library, error) {
+func (r *Repository) listCredentialLibraries(ctx context.Context, storeId string, opt ...credential.Option) ([]credential.Library, error) {
 	const op = "vault.(Repository).ListCredentialLibraries"
 	if storeId == "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no storeId")
@@ -503,8 +503,8 @@ func (r *Repository) ListCredentialLibraries(ctx context.Context, storeId string
 	return libs, nil
 }
 
-// EstimatedLibraryCount returns an estimate of the number of Vault credential libraries
-func (r *Repository) EstimatedLibraryCount(ctx context.Context) (int, error) {
+// estimatedLibraryCount returns an estimate of the number of Vault credential libraries
+func (r *Repository) estimatedLibraryCount(ctx context.Context) (int, error) {
 	const op = "vault.(Repository).EstimatedLibraryCount"
 	rows, err := r.reader.Query(ctx, estimateCountCredentialLibraries, nil)
 	if err != nil {
@@ -519,10 +519,10 @@ func (r *Repository) EstimatedLibraryCount(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-// ListDeletedLibraryIds lists the public IDs of any credential libraries deleted since the timestamp provided.
+// listDeletedLibraryIds lists the public IDs of any credential libraries deleted since the timestamp provided.
 // Supported options:
 //   - credential.WithReaderWriter
-func (r *Repository) ListDeletedLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
+func (r *Repository) listDeletedLibraryIds(ctx context.Context, since time.Time, opt ...credential.Option) ([]string, error) {
 	const op = "vault.(Repository).ListDeletedLibraryIds"
 	opts, err := credential.GetOpts(opt...)
 	if err != nil {
