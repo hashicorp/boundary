@@ -4,15 +4,12 @@
 package cache
 
 import (
-	"time"
-
 	"github.com/hashicorp/go-dbw"
 )
 
 type options struct {
 	withUpdateLastAccessedTime bool
 	withDbType                 dbw.DbType
-	withDuration               time.Duration
 	withTargetRetrievalFunc    TargetRetrievalFunc
 	withSessionRetrievalFunc   SessionRetrievalFunc
 }
@@ -41,14 +38,6 @@ func getOpts(opt ...Option) (options, error) {
 func WithUpdateLastAccessedTime(b bool) Option {
 	return func(o *options) error {
 		o.withUpdateLastAccessedTime = b
-		return nil
-	}
-}
-
-// WithDuration provides an option for specifying a duration
-func WithDuration(d time.Duration) Option {
-	return func(o *options) error {
-		o.withDuration = d
 		return nil
 	}
 }
