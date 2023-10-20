@@ -378,7 +378,6 @@ func TestFromResource(t *testing.T) {
 
 func TestRefresh(t *testing.T) {
 	createdTime := time.Now().AddDate(0, 0, -5)
-	updatedTime := time.Now()
 	tok := &refreshtoken.Token{
 		CreatedTime:         createdTime,
 		UpdatedTime:         createdTime,
@@ -387,9 +386,10 @@ func TestRefresh(t *testing.T) {
 		LastItemId:          "tcp_1234567890",
 		LastItemUpdatedTime: createdTime,
 	}
+	updatedTime := time.Now()
 	newTok := tok.Refresh(updatedTime)
 
-	require.True(t, newTok.UpdatedTime.Equal(updatedTime))
+	require.True(t, newTok.UpdatedTime.Equal(updatedTime.Add(-refreshtoken.UpdatedTimeBuffer)))
 	require.True(t, newTok.CreatedTime.Equal(createdTime))
 	require.Equal(t, newTok.ResourceType, tok.ResourceType)
 	require.Equal(t, newTok.GrantsHash, tok.GrantsHash)

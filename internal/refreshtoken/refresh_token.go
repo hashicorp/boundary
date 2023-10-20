@@ -17,6 +17,11 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
+// UpdatedTimeBuffer is used to automatically adjust the updated
+// time of a refresh token to account for delays between overalapping
+// database transactions.
+const UpdatedTimeBuffer = 30 * time.Second
+
 // A Token is returned in list endpoints for the purposes of pagination
 type Token struct {
 	CreatedTime         time.Time
@@ -63,7 +68,7 @@ func New(ctx context.Context, createdTime time.Time, updatedTime time.Time, typ 
 	}, nil
 }
 
-// FromResource creates a new refresh token from a resource and grants hash
+// FromResource creates a new refresh token from a resource and grants hash.
 func FromResource(res boundary.Resource, grantsHash []byte) *Token {
 	t := time.Now()
 	return &Token{
@@ -76,17 +81,26 @@ func FromResource(res boundary.Resource, grantsHash []byte) *Token {
 	}
 }
 
-// Refresh refreshes a token's updated time
+// Refresh refreshes a token's updated time. It accounts for overlapping
+// database transactions by subtracting UpdatedTimeBuffer from the
+// provided timestamp while ensuring that the updated time is never
+// before the created time of the token.
 func (rt *Token) Refresh(updatedTime time.Time) *Token {
-	rt.UpdatedTime = updatedTime
+	rt.UpdatedTime = updatedTime.Add(-UpdatedTimeBuffer)
+	if rt.UpdatedTime.Before(rt.CreatedTime) {
+		rt.UpdatedTime = rt.CreatedTime
+	}
 	return rt
 }
 
-// RefreshLastItem refreshes a token's updated time and last item
+// RefreshLastItem refreshes a token's updated time and last item.
+// It accounts for overlapping database transactions by subtracting
+// UpdatedTimeBuffer from the provided timestamp while ensuring that
+// the updated time is never before the created time of the token.
 func (rt *Token) RefreshLastItem(res boundary.Resource, updatedTime time.Time) *Token {
-	rt.UpdatedTime = updatedTime
 	rt.LastItemId = res.GetPublicId()
 	rt.LastItemUpdatedTime = res.GetUpdateTime().AsTime()
+	rt = rt.Refresh(updatedTime)
 	return rt
 }
 
