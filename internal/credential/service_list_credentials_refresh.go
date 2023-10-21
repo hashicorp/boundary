@@ -19,7 +19,7 @@ func ListRefresh(
 	pageSize int,
 	filterItemFn pagination.ListFilterFunc[Static],
 	tok *refreshtoken.Token,
-	repo Repository,
+	repo CredentialService,
 	credentialStoreId string,
 ) (*pagination.ListResponse2[Static], error) {
 	listItemsFn := func(ctx context.Context, tok *refreshtoken.Token, lastPageItem Static, limit int) ([]Static, error) {

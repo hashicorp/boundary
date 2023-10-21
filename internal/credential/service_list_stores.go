@@ -6,13 +6,49 @@ package credential
 import (
 	"context"
 	"slices"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/util"
 )
+
+// SubtypeStoreService defines the interface expected
+// to gather information about credential stores.
+type SubtypeStoreService interface {
+	EstimatedStoreCount(context.Context) (int, error)
+	ListDeletedStoreIds(context.Context, time.Time, ...Option) ([]string, error)
+	ListCredentialStores(context.Context, []string, ...Option) ([]Store, error)
+}
 
 // This function is a callback passed down from the application service layer
 // used to filter out protobuf stores that don't match any user-supplied filter.
 type ListFilterStoreFunc func(Store) (bool, error)
+
+// StoreService coordinates calls across different subtype repositories
+// to gather information about all credential stores.
+type StoreService struct {
+	repos  []SubtypeStoreService
+	writer db.Writer
+}
+
+// NewStoreService returns a new credential store service.
+func NewStoreService(ctx context.Context, writer db.Writer, vaultRepo SubtypeStoreService, staticRepo SubtypeStoreService) (*StoreService, error) {
+	const op = "credential.NewStoreService"
+	switch {
+	case util.IsNil(writer):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB writer")
+	case util.IsNil(vaultRepo):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing vault repo")
+	case util.IsNil(staticRepo):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing static repo")
+	}
+	return &StoreService{
+		repos:  []SubtypeStoreService{vaultRepo, staticRepo},
+		writer: writer,
+	}, nil
+}
 
 // List lists credential stores according to the page size,
 // filtering out entries that do not pass the filter item fn.
