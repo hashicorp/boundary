@@ -2700,7 +2700,7 @@ func TestAuthorizeSession(t *testing.T) {
 			gotCred.Secret = nil
 
 			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform(), protocmp.IgnoreFields(&pb.SessionAuthorization{}, "expiration"))
+			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform(), protocmp.IgnoreFields(&pb.SessionAuthorization{}, "expiration")))
 		})
 	}
 }
