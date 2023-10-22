@@ -33,23 +33,30 @@ func TestDeleteConnectedWorkers(t *testing.T) {
 
 	serverRepo, err := c.Controller().ServersRepoFn()
 	require.NoError(t, err)
-	workers, err := serverRepo.ListWorkers(ctx, []string{"global"}, server.WithLiveness(-1))
-	require.NoError(t, err)
+	workerTimeoutCtx, workerTimeoutCancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer workerTimeoutCancel()
 	var pkiWorker, childPkiWorker, childKmsWorker *server.Worker
-	for _, w := range workers {
-		if w.Type == "pki" && w.GetAddress() == multiHoppedPkiWorker.ProxyAddrs()[0] {
-			childPkiWorker = w
-		}
-		if w.Type == "pki" && w.GetAddress() == multiHoppedKmsWorker.ProxyAddrs()[0] {
-			childKmsWorker = w
-		}
-		if w.Type == "pki" && w.GetAddress() == directPkiWorker.ProxyAddrs()[0] {
-			pkiWorker = w
+	for pkiWorker == nil || childPkiWorker == nil || childKmsWorker == nil {
+		time.Sleep(time.Second)
+		select {
+		case <-workerTimeoutCtx.Done():
+			require.FailNow(t, "timeout waiting for all workers to connect")
+		default:
+			workers, err := serverRepo.ListWorkers(workerTimeoutCtx, []string{"global"}, server.WithLiveness(-1))
+			require.NoError(t, err)
+			for _, w := range workers {
+				if w.Type == "pki" && w.GetAddress() == multiHoppedPkiWorker.ProxyAddrs()[0] {
+					childPkiWorker = w
+				}
+				if w.Type == "pki" && w.GetAddress() == multiHoppedKmsWorker.ProxyAddrs()[0] {
+					childKmsWorker = w
+				}
+				if w.Type == "pki" && w.GetAddress() == directPkiWorker.ProxyAddrs()[0] {
+					pkiWorker = w
+				}
+			}
 		}
 	}
-	require.NotNil(t, childKmsWorker)
-	require.NotNil(t, childPkiWorker)
-	require.NotNil(t, pkiWorker)
 
 	cases := []struct {
 		name       string
