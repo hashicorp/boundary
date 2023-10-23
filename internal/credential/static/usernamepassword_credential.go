@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"google.golang.org/protobuf/proto"
@@ -71,6 +72,11 @@ func (c *UsernamePasswordCredential) TableName() string {
 // SetTableName sets the table name.
 func (c *UsernamePasswordCredential) SetTableName(n string) {
 	c.tableName = n
+}
+
+// GetResourceType returns the resource type of the Credential
+func (c *UsernamePasswordCredential) GetResourceType() resource.Type {
+	return resource.Credential
 }
 
 func (c *UsernamePasswordCredential) oplog(op oplog.OpType) oplog.Metadata {

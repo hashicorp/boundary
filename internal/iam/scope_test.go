@@ -175,7 +175,7 @@ func TestScope_Actions(t *testing.T) {
 func TestScope_ResourceType(t *testing.T) {
 	o, err := NewOrg(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, o.ResourceType(), resource.Scope)
+	assert.Equal(t, o.GetResourceType(), resource.Scope)
 	assert.Equal(t, o.GetParentId(), scope.Global.String())
 }
 
