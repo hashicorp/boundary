@@ -249,11 +249,17 @@ jobs:
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Rename e2e tests output
+        run : |
+          pushd enos
+          scenario="${{ matrix.filter }}"
+          for f in *.log; do mv --  "$f" "${f%.log}_${scenario%% *}.log"; done
+          popd
       - name: Upload e2e tests output
         uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
         with:
           name: test-e2e-output
-          path: enos/test*.log
+          path: enos/*.log
           retention-days: 5
       - name: Get logs from postgres container
         # Retrieve logs from the postgres container on a failed
