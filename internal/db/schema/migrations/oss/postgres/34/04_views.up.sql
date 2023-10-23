@@ -5,7 +5,7 @@ begin;
 
 -- worker_aggregate view allows the worker and configuration to be read at the
 -- same time.
--- Replaced in 78/01_server_worker_local_storage.up.sql
+-- Updated in 51/01_server_worker_release_version.up.sql
 create view server_worker_aggregate as
 with worker_config_tags(worker_id, source, tags) as (
   select
