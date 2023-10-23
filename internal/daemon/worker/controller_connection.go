@@ -442,5 +442,7 @@ func monitorUpstreamConnectionState(ctx context.Context, cc *grpc.ClientConn, co
 		}
 
 		connectionState.Store(newState)
+
+		time.Sleep(10 * time.Millisecond)
 	}
 }
