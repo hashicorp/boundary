@@ -3193,3 +3193,16 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 // 		})
 // 	}
 // }
+
+func TestDb_Now(t *testing.T) {
+	t.Parallel()
+	conn, _ := TestSetup(t, "postgres")
+	rw := New(conn)
+	ctx := context.Background()
+	now, err := rw.Now(ctx)
+	require.NoError(t, err)
+	// Check that it's within 1 second of now according to the system
+	// If this is flaky... just increase the limit 😬.
+	assert.True(t, now.Before(time.Now().Add(time.Second)))
+	assert.True(t, now.After(time.Now().Add(-time.Second)))
+}
