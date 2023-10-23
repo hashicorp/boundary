@@ -597,6 +597,7 @@ func (r *Repository) CreateWorker(ctx context.Context, worker *Worker, opt ...Op
 	}
 
 	worker.OperationalState = UnknownOperationalState.String()
+	worker.LocalStorageState = UnknownLocalStorageState.String()
 
 	var err error
 	if worker.PublicId, err = opts.withNewIdFunc(ctx); err != nil {

@@ -16,17 +16,23 @@ import (
 )
 
 type (
-	WorkerType       string
-	OperationalState string
+	WorkerType        string
+	OperationalState  string
+	LocalStorageState string
 )
 
 const (
-	UnknownWorkerType        WorkerType       = "unknown"
-	KmsWorkerType            WorkerType       = "kms"
-	PkiWorkerType            WorkerType       = "pki"
-	ActiveOperationalState   OperationalState = "active"
-	ShutdownOperationalState OperationalState = "shutdown"
-	UnknownOperationalState  OperationalState = "unknown"
+	UnknownWorkerType              WorkerType        = "unknown"
+	KmsWorkerType                  WorkerType        = "kms"
+	PkiWorkerType                  WorkerType        = "pki"
+	ActiveOperationalState         OperationalState  = "active"
+	ShutdownOperationalState       OperationalState  = "shutdown"
+	UnknownOperationalState        OperationalState  = "unknown"
+	AvailableLocalStorageState     LocalStorageState = "available"
+	LowStorageLocalStorageState    LocalStorageState = "low storage"
+	OutOfStorageLocalStorageState  LocalStorageState = "out of storage"
+	NotConfiguredLocalStorageState LocalStorageState = "not configured"
+	UnknownLocalStorageState       LocalStorageState = "unknown"
 )
 
 func (t WorkerType) Valid() bool {
@@ -63,6 +69,15 @@ func (t OperationalState) String() string {
 		return string(t)
 	}
 	return string(UnknownOperationalState)
+}
+
+func (t LocalStorageState) String() string {
+	switch t {
+	case AvailableLocalStorageState, LowStorageLocalStorageState,
+		OutOfStorageLocalStorageState, NotConfiguredLocalStorageState:
+		return string(t)
+	}
+	return string(UnknownLocalStorageState)
 }
 
 // AttachWorkerIdToState accepts a workerId and creates a struct for use with the Nodeenrollment lib
