@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/boundary/api"
@@ -61,12 +62,32 @@ func (n ScopeDeleteResult) GetResponse() *api.Response {
 }
 
 type ScopeListResult struct {
-	Items    []*Scope
-	response *api.Response
+	Items        []*Scope `json:"items,omitempty"`
+	EstItemCount uint     `json:"est_item_count,omitempty"`
+	RemovedIds   []string `json:"removed_ids,omitempty"`
+	RefreshToken string   `json:"refresh_token,omitempty"`
+	ResponseType string   `json:"response_type,omitempty"`
+	response     *api.Response
 }
 
 func (n ScopeListResult) GetItems() []*Scope {
 	return n.Items
+}
+
+func (n ScopeListResult) GetEstItemCount() uint {
+	return n.EstItemCount
+}
+
+func (n ScopeListResult) GetRemovedIds() []string {
+	return n.RemovedIds
+}
+
+func (n ScopeListResult) GetRefreshToken() string {
+	return n.RefreshToken
+}
+
+func (n ScopeListResult) GetResponseType() string {
+	return n.ResponseType
 }
 
 func (n ScopeListResult) GetResponse() *api.Response {
@@ -319,5 +340,77 @@ func (c *Client) List(ctx context.Context, scopeId string, opt ...Option) (*Scop
 		return nil, apiErr
 	}
 	target.response = resp
+	if target.ResponseType == "complete" || target.ResponseType == "" {
+		return target, nil
+	}
+	// If there are more results, automatically fetch the rest of the results.
+	// idToIndex keeps a map from the ID of an item to its index in target.Items.
+	// This is used to update updated items in-place and remove deleted items
+	// from the result after pagination is done.
+	idToIndex := map[string]int{}
+	for i, item := range target.Items {
+		idToIndex[item.Id] = i
+	}
+	for {
+		req, err := c.client.NewRequest(ctx, "GET", "scopes", nil, apiOpts...)
+		if err != nil {
+			return nil, fmt.Errorf("error creating List request: %w", err)
+		}
+
+		opts.queryMap["refresh_token"] = target.RefreshToken
+		if len(opts.queryMap) > 0 {
+			q := url.Values{}
+			for k, v := range opts.queryMap {
+				q.Add(k, v)
+			}
+			req.URL.RawQuery = q.Encode()
+		}
+
+		resp, err := c.client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("error performing client request during List call: %w", err)
+		}
+
+		page := new(ScopeListResult)
+		apiErr, err := resp.Decode(page)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding List response: %w", err)
+		}
+		if apiErr != nil {
+			return nil, apiErr
+		}
+		for _, item := range page.Items {
+			if i, ok := idToIndex[item.Id]; ok {
+				// Item has already been seen at index i, update in-place
+				target.Items[i] = item
+			} else {
+				target.Items = append(target.Items, item)
+				idToIndex[item.Id] = len(target.Items) - 1
+			}
+		}
+		target.RemovedIds = append(target.RemovedIds, page.RemovedIds...)
+		target.EstItemCount = page.EstItemCount
+		target.RefreshToken = page.RefreshToken
+		target.ResponseType = page.ResponseType
+		target.response = resp
+		if target.ResponseType == "complete" {
+			break
+		}
+	}
+	for _, removedId := range target.RemovedIds {
+		if i, ok := idToIndex[removedId]; ok {
+			// Remove the item at index i without preserving order
+			// https://github.com/golang/go/wiki/SliceTricks#delete-without-preserving-order
+			target.Items[i] = target.Items[len(target.Items)-1]
+			target.Items = target.Items[:len(target.Items)-1]
+			// Update the index of the last element
+			idToIndex[target.Items[i].Id] = i
+		}
+	}
+	// Finally, sort the results again since in-place updates and deletes
+	// may have shuffled items.
+	slices.SortFunc(target.Items, func(i, j *Scope) int {
+		return i.UpdatedTime.Compare(j.UpdatedTime)
+	})
 	return target, nil
 }
