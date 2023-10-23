@@ -37,14 +37,5 @@ message ServerWorkerStatus {
   string release_version = 60 [json_name = "release_version"]; // @gotags: `class:"public" eventstream:"observation"`
 
   // The state of the worker, to indicate if the worker is active or in shutdown.
-  string operational_state = 70 [json_name = "operational_state"]; // @gotags: `class:"public" eventstream:"observation"`
-
-  // The local_storage_state indicates the state of the local disk space of the worker.
-  // Possible values are:
-  // - available: The worker local storage state is at an acceptable state
-  // - lowStorage: The worker is below the minimum threshold for local storage
-  // - outOfStorage: The worker is out of local disk space
-  // - notConfigured: The worker does not have a local storage path configured
-  // - unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known
-  string local_storage_state = 80 [json_name = "local_storage_state"]; // @gotags: `class:"public"`
+  string operational_state = 70; // @gotags: `class:"public" eventstream:"observation"`
 }
