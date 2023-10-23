@@ -5,9 +5,13 @@ package auth
 
 import (
 	"context"
+	"encoding/binary"
 	stderrors "errors"
 	"fmt"
+	"hash"
+	"hash/fnv"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -97,6 +101,9 @@ type VerifyResults struct {
 
 	// Used for additional verification
 	v *verifier
+
+	// Used to generate a hash of all grants
+	grants []perms.GrantTuple
 }
 
 type verifier struct {
@@ -272,10 +279,9 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 	}
 
 	var authResults perms.ACLResults
-	var grantTuples []perms.GrantTuple
 	var userData template.Data
 	var err error
-	authResults, ret.UserData, ret.Scope, v.acl, grantTuples, err = v.performAuthCheck(ctx)
+	authResults, ret.UserData, ret.Scope, v.acl, ret.grants, err = v.performAuthCheck(ctx)
 	if err != nil {
 		event.WriteError(ctx, op, err, event.WithInfoMsg("error performing authn/authz check"))
 		return
@@ -320,8 +326,8 @@ func Verify(ctx context.Context, opt ...Option) (ret VerifyResults) {
 		}
 	}
 
-	grants := make([]event.Grant, 0, len(grantTuples))
-	for _, g := range grantTuples {
+	grants := make([]event.Grant, 0, len(ret.grants))
+	for _, g := range ret.grants {
 		grants = append(grants, event.Grant{
 			Grant:   g.Grant,
 			RoleId:  g.RoleId,
@@ -934,4 +940,53 @@ func (r *VerifyResults) ScopesAuthorizedForList(ctx context.Context, rootScopeId
 	}
 
 	return scopeResourceMap, nil
+}
+
+// GrantsHash returns a stable hash of all the grants in the verify results.
+func (r *VerifyResults) GrantsHash(ctx context.Context) ([]byte, error) {
+	const op = "auth.GrantsHash"
+	var values []string
+	for _, grant := range r.grants {
+		values = append(values, grant.Grant, grant.RoleId, grant.ScopeId)
+	}
+	// Sort for deterministic output
+	slices.Sort(values)
+	hashVal, err := hashStrings(values...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return binary.LittleEndian.AppendUint64(make([]byte, 0, 4), hashVal), nil
+}
+
+func hashStrings(s ...string) (uint64, error) {
+	hasher := fnv.New64()
+	var h uint64
+	var err error
+	for _, current := range s {
+		hasher.Reset()
+		if _, err = hasher.Write([]byte(current)); err != nil {
+			return 0, err
+		}
+		if h, err = hashUpdateOrdered(hasher, h, hasher.Sum64()); err != nil {
+			return 0, err
+		}
+	}
+	return h, nil
+}
+
+// hashUpdateOrdered is taken directly from
+// https://github.com/mitchellh/hashstructure
+func hashUpdateOrdered(h hash.Hash64, a, b uint64) (uint64, error) {
+	// For ordered updates, use a real hash function
+	h.Reset()
+
+	e1 := binary.Write(h, binary.LittleEndian, a)
+	e2 := binary.Write(h, binary.LittleEndian, b)
+	if e1 != nil {
+		return 0, e1
+	}
+	if e2 != nil {
+		return 0, e2
+	}
+	return h.Sum64(), nil
 }
