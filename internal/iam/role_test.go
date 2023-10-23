@@ -558,7 +558,7 @@ func TestRole_Actions(t *testing.T) {
 func TestRole_ResourceType(t *testing.T) {
 	assert := assert.New(t)
 	r := &Role{}
-	ty := r.ResourceType()
+	ty := r.GetResourceType()
 	assert.Equal(ty, resource.Role)
 }
 

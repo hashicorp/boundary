@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -118,6 +119,11 @@ func (a *Account) SetTableName(n string) {
 // doesn't currently support subject.
 func (a *Account) GetSubject() string {
 	return ""
+}
+
+// GetResourceType returns the resource type of the Account
+func (a *Account) GetResourceType() resource.Type {
+	return resource.Account
 }
 
 // oplog will create oplog metadata for the Account.

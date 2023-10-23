@@ -389,7 +389,7 @@ func TestUser_Actions(t *testing.T) {
 func TestUser_ResourceType(t *testing.T) {
 	t.Parallel()
 	u := AllocUser()
-	assert.Equal(t, resource.User, u.ResourceType())
+	assert.Equal(t, resource.User, u.GetResourceType())
 }
 
 func TestUser_SetTableName(t *testing.T) {

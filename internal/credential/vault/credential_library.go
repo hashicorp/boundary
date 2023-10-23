@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/credential/vault/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -101,6 +102,11 @@ func (l *CredentialLibrary) TableName() string {
 // SetTableName sets the table name.
 func (l *CredentialLibrary) SetTableName(n string) {
 	l.tableName = n
+}
+
+// GetResourceType returns the resource type of the CredentialLibrary
+func (l *CredentialLibrary) GetResourceType() resource.Type {
+	return resource.CredentialLibrary
 }
 
 func (l *CredentialLibrary) oplog(op oplog.OpType) oplog.Metadata {
