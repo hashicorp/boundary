@@ -123,12 +123,13 @@ func NewWorker(scopeId string, opt ...Option) *Worker {
 	opts := GetOpts(opt...)
 	worker := &Worker{
 		Worker: &store.Worker{
-			ScopeId:          scopeId,
-			Name:             opts.withName,
-			Description:      opts.withDescription,
-			Address:          opts.withAddress,
-			ReleaseVersion:   opts.withReleaseVersion,
-			OperationalState: opts.withOperationalState,
+			ScopeId:           scopeId,
+			Name:              opts.withName,
+			Description:       opts.withDescription,
+			Address:           opts.withAddress,
+			ReleaseVersion:    opts.withReleaseVersion,
+			OperationalState:  opts.withOperationalState,
+			LocalStorageState: opts.withLocalStorageState,
 		},
 		inputTags: opts.withWorkerTags,
 	}
@@ -246,6 +247,7 @@ type workerAggregate struct {
 	ApiTags               string
 	ActiveConnectionCount uint32
 	OperationalState      string
+	LocalStorageState     string
 	// Config Fields
 	LastStatusTime   *timestamp.Timestamp
 	WorkerConfigTags string
@@ -255,18 +257,19 @@ func (a *workerAggregate) toWorker(ctx context.Context) (*Worker, error) {
 	const op = "server.(workerAggregate).toWorker"
 	worker := &Worker{
 		Worker: &store.Worker{
-			PublicId:         a.PublicId,
-			Name:             a.Name,
-			Description:      a.Description,
-			Address:          a.Address,
-			CreateTime:       a.CreateTime,
-			UpdateTime:       a.UpdateTime,
-			ScopeId:          a.ScopeId,
-			Version:          a.Version,
-			LastStatusTime:   a.LastStatusTime,
-			Type:             a.Type,
-			ReleaseVersion:   a.ReleaseVersion,
-			OperationalState: a.OperationalState,
+			PublicId:          a.PublicId,
+			Name:              a.Name,
+			Description:       a.Description,
+			Address:           a.Address,
+			CreateTime:        a.CreateTime,
+			UpdateTime:        a.UpdateTime,
+			ScopeId:           a.ScopeId,
+			Version:           a.Version,
+			LastStatusTime:    a.LastStatusTime,
+			Type:              a.Type,
+			ReleaseVersion:    a.ReleaseVersion,
+			OperationalState:  a.OperationalState,
+			LocalStorageState: a.LocalStorageState,
 		},
 		activeConnectionCount: a.ActiveConnectionCount,
 	}

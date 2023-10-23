@@ -227,6 +227,37 @@ func TestWorkerAggregate(t *testing.T) {
 			{Key: "key", Value: "val"},
 		})
 	})
+
+	t.Run("worker with default unknown local storage state", func(t *testing.T) {
+		id, err := newWorkerId(ctx)
+		require.NoError(t, err)
+		id = strings.ToLower(id)
+		w := NewWorker(scope.Global.String(),
+			WithName(id),
+			WithAddress("address"))
+		w.Type = KmsWorkerType.String()
+		w.PublicId = id
+		require.NoError(t, rw.Create(ctx, w))
+
+		got := getAggWorker(id)
+		assert.Equal(t, UnknownLocalStorageState.String(), got.LocalStorageState)
+	})
+
+	t.Run("worker with available local storage state", func(t *testing.T) {
+		id, err := newWorkerId(ctx)
+		require.NoError(t, err)
+		id = strings.ToLower(id)
+		w := NewWorker(scope.Global.String(),
+			WithName(id),
+			WithAddress("address"),
+			WithLocalStorageState("available"))
+		w.Type = KmsWorkerType.String()
+		w.PublicId = id
+		require.NoError(t, rw.Create(ctx, w))
+
+		got := getAggWorker(id)
+		assert.Equal(t, AvailableLocalStorageState.String(), got.LocalStorageState)
+	})
 }
 
 func TestWorker_Update(t *testing.T) {
@@ -392,13 +423,14 @@ func TestWorker_Update(t *testing.T) {
 			name: "pki clear address",
 			initial: Worker{
 				Worker: &store.Worker{
-					Type:             PkiWorkerType.String(),
-					ScopeId:          scope.Global.String(),
-					PublicId:         newId(),
-					Name:             "pki clear address",
-					Address:          "pki clear address",
-					LastStatusTime:   &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
-					OperationalState: ActiveOperationalState.String(),
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki clear address",
+					Address:           "pki clear address",
+					LastStatusTime:    &timestamp.Timestamp{Timestamp: timestamppb.New(time.Now().Add(time.Hour))},
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 			},
 			update: Worker{
@@ -470,11 +502,54 @@ func TestWorker_Update(t *testing.T) {
 			mask:            []string{"Name"},
 			wantUpdateError: true,
 		},
+		{
+			name: "local storage state update to available",
+			initial: Worker{
+				Worker: &store.Worker{
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "valid local storage state",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					LocalStorageState: AvailableLocalStorageState.String(),
+				},
+			},
+			mask: []string{"LocalStorageState"},
+			assert: func(t *testing.T, init, up *Worker) {
+				t.Helper()
+				assert.Equal(t, AvailableLocalStorageState.String(), up.LocalStorageState)
+			},
+		},
+		{
+			name: "local storage state update to invalid value",
+			initial: Worker{
+				Worker: &store.Worker{
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "invalid local storage state",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
+				},
+			},
+			update: Worker{
+				Worker: &store.Worker{
+					LocalStorageState: "Invalid Local Storage State",
+				},
+			},
+			mask:            []string{"LocalStorageState"},
+			wantUpdateError: true,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			init := tc.initial.clone()
-			require.NoError(t, rw.Create(ctx, init))
+			require.NoError(t, rw.Create(ctx, init), tc.name)
 			up := tc.update.clone()
 			up.PublicId = init.PublicId
 			_, err := rw.Update(ctx, up, tc.mask, tc.nullMask)
@@ -649,6 +724,34 @@ func TestWorker_Create(t *testing.T) {
 			},
 			want: wanted{createError: true},
 		},
+		{
+			name: "pki with unknown local storage state",
+			in: Worker{
+				Worker: &store.Worker{
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki base",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
+				},
+			},
+			want: wanted{},
+		},
+		{
+			name: "pki with unknown local storage state",
+			in: Worker{
+				Worker: &store.Worker{
+					Type:              PkiWorkerType.String(),
+					ScopeId:           scope.Global.String(),
+					PublicId:          newId(),
+					Name:              "pki base",
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: "invalid state",
+				},
+			},
+			want: wanted{},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -730,8 +833,9 @@ func TestWorker_New(t *testing.T) {
 			},
 			want: &Worker{
 				Worker: &store.Worker{
-					ScopeId:          prj.GetPublicId(),
-					OperationalState: ActiveOperationalState.String(),
+					ScopeId:           prj.GetPublicId(),
+					OperationalState:  ActiveOperationalState.String(),
+					LocalStorageState: UnknownLocalStorageState.String(),
 				},
 			},
 		},
