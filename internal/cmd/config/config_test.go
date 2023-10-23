@@ -2476,3 +2476,105 @@ func TestSetupWorkerInitialUpstreams(t *testing.T) {
 		})
 	}
 }
+
+func TestMaxPageSize(t *testing.T) {
+	tests := []struct {
+		name           string
+		in             string
+		envMaxPageSize string
+		expMaxPageSize uint
+		expErr         bool
+		expErrStr      string
+	}{
+		{
+			name: "Valid integer value",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = 5
+			}`,
+			expMaxPageSize: 5,
+			expErr:         false,
+		},
+		{
+			name: "Valid string value",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "5"
+			}`,
+			expMaxPageSize: 5,
+			expErr:         false,
+		},
+		{
+			name: "Invalid value integer",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = 0
+			}`,
+			expErr:    true,
+			expErrStr: "Max page size value must be at least 1, was 0",
+		},
+		{
+			name: "Invalid value string",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "string bad"
+			}`,
+			expErr: true,
+			expErrStr: "Max page size value is not an int: " +
+				"strconv.Atoi: parsing \"string bad\": invalid syntax",
+		},
+		{
+			name: "Invalid value type",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = false
+			}`,
+			expErr:    true,
+			expErrStr: "Max page size: unsupported type \"bool\"",
+		},
+		{
+			name: "Valid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "env://ENV_MAX_CONN"
+			}`,
+			expMaxPageSize: 8,
+			envMaxPageSize: "8",
+			expErr:         false,
+		},
+		{
+			name: "Invalid env var",
+			in: `
+			controller {
+				name = "example-controller"
+				max_page_size = "env://ENV_MAX_CONN"
+			}`,
+			envMaxPageSize: "bogus value",
+			expErr:         true,
+			expErrStr: "Max page size value is not an int: " +
+				"strconv.Atoi: parsing \"bogus value\": invalid syntax",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("ENV_MAX_CONN", tt.envMaxPageSize)
+			c, err := Parse(tt.in)
+			if tt.expErr {
+				require.EqualError(t, err, tt.expErrStr)
+				require.Nil(t, c)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, c)
+			require.NotNil(t, c.Controller)
+			require.Equal(t, tt.expMaxPageSize, c.Controller.MaxPageSize)
+		})
+	}
+}
