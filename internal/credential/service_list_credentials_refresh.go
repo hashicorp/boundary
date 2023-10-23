@@ -19,7 +19,7 @@ func ListRefresh(
 	pageSize int,
 	filterItemFn pagination.ListFilterFunc[Static],
 	tok *refreshtoken.Token,
-	repo CredentialService,
+	service CredentialService,
 	credentialStoreId string,
 ) (*pagination.ListResponse2[Static], error) {
 	listItemsFn := func(ctx context.Context, tok *refreshtoken.Token, lastPageItem Static, limit int) ([]Static, error) {
@@ -31,8 +31,8 @@ func ListRefresh(
 		} else {
 			opts = append(opts, WithStartPageAfterItem(tok.LastItem()))
 		}
-		return repo.ListCredentials(ctx, credentialStoreId, opts...)
+		return service.ListCredentials(ctx, credentialStoreId, opts...)
 	}
 
-	return pagination.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, repo.EstimatedCredentialCount, repo.ListDeletedCredentialIds, tok)
+	return pagination.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, service.EstimatedCredentialCount, service.ListDeletedCredentialIds, tok)
 }

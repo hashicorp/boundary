@@ -34,12 +34,12 @@ func (s *StoreService) ListRefresh(
 			opts = append(opts, WithStartPageAfterItem(tok.LastItem()))
 		}
 		var page []Store
-		for _, repo := range s.repos {
-			repoPage, err := repo.ListCredentialStores(ctx, projectIds, opts...)
+		for _, service := range s.services {
+			servicePage, err := service.ListCredentialStores(ctx, projectIds, opts...)
 			if err != nil {
 				return nil, err
 			}
-			page = append(page, repoPage...)
+			page = append(page, servicePage...)
 		}
 		slices.SortFunc(page, func(i, j Store) int {
 			return i.GetUpdateTime().AsTime().Compare(j.GetUpdateTime().AsTime())
@@ -52,8 +52,8 @@ func (s *StoreService) ListRefresh(
 	}
 	estimatedCountFn := func(ctx context.Context) (int, error) {
 		var totalItems int
-		for _, repo := range s.repos {
-			numItems, err := repo.EstimatedStoreCount(ctx)
+		for _, service := range s.services {
+			numItems, err := service.EstimatedStoreCount(ctx)
 			if err != nil {
 				return 0, err
 			}
@@ -72,12 +72,12 @@ func (s *StoreService) ListRefresh(
 		var deletedIds []string
 		var transactionTimestamp time.Time
 		if _, err := s.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-			for _, repo := range s.repos {
-				deletedRepoIds, err := repo.ListDeletedStoreIds(ctx, tok.UpdatedTime, WithReaderWriter(r, w))
+			for _, service := range s.services {
+				deletedServiceIds, err := service.ListDeletedStoreIds(ctx, tok.UpdatedTime, WithReaderWriter(r, w))
 				if err != nil {
 					return err
 				}
-				deletedIds = append(deletedIds, deletedRepoIds...)
+				deletedIds = append(deletedIds, deletedServiceIds...)
 			}
 			var err error
 			transactionTimestamp, err = r.Now(ctx)

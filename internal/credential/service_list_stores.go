@@ -26,27 +26,27 @@ type SubtypeStoreService interface {
 // used to filter out protobuf stores that don't match any user-supplied filter.
 type ListFilterStoreFunc func(Store) (bool, error)
 
-// StoreService coordinates calls across different subtype repositories
+// StoreService coordinates calls across different subtype services
 // to gather information about all credential stores.
 type StoreService struct {
-	repos  []SubtypeStoreService
-	writer db.Writer
+	services []SubtypeStoreService
+	writer   db.Writer
 }
 
 // NewStoreService returns a new credential store service.
-func NewStoreService(ctx context.Context, writer db.Writer, vaultRepo SubtypeStoreService, staticRepo SubtypeStoreService) (*StoreService, error) {
+func NewStoreService(ctx context.Context, writer db.Writer, vaultService SubtypeStoreService, staticService SubtypeStoreService) (*StoreService, error) {
 	const op = "credential.NewStoreService"
 	switch {
 	case util.IsNil(writer):
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing DB writer")
-	case util.IsNil(vaultRepo):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing vault repo")
-	case util.IsNil(staticRepo):
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing static repo")
+	case util.IsNil(vaultService):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing vault service")
+	case util.IsNil(staticService):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing static service")
 	}
 	return &StoreService{
-		repos:  []SubtypeStoreService{vaultRepo, staticRepo},
-		writer: writer,
+		services: []SubtypeStoreService{vaultService, staticService},
+		writer:   writer,
 	}, nil
 }
 
@@ -69,12 +69,12 @@ func (s *StoreService) List(
 		}
 		// Request another page from the DB until we fill the final items
 		var page []Store
-		for _, repo := range s.repos {
-			repoPage, err := repo.ListCredentialStores(ctx, projectIds, opts...)
+		for _, service := range s.services {
+			servicePage, err := service.ListCredentialStores(ctx, projectIds, opts...)
 			if err != nil {
 				return nil, err
 			}
-			page = append(page, repoPage...)
+			page = append(page, servicePage...)
 		}
 		slices.SortFunc(page, func(i, j Store) int {
 			return i.GetUpdateTime().AsTime().Compare(j.GetUpdateTime().AsTime())
@@ -87,8 +87,8 @@ func (s *StoreService) List(
 	}
 	estimatedCountFn := func(ctx context.Context) (int, error) {
 		var totalItems int
-		for _, repo := range s.repos {
-			numItems, err := repo.EstimatedStoreCount(ctx)
+		for _, service := range s.services {
+			numItems, err := service.EstimatedStoreCount(ctx)
 			if err != nil {
 				return 0, nil
 			}

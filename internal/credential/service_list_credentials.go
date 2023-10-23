@@ -26,7 +26,7 @@ func List(
 	grantsHash []byte,
 	pageSize int,
 	filterItemFn pagination.ListFilterFunc[Static],
-	repo CredentialService,
+	service CredentialService,
 	credentialStoreId string,
 ) (*pagination.ListResponse2[Static], error) {
 	listItemsFn := func(ctx context.Context, lastPageItem Static, limit int) ([]Static, error) {
@@ -36,8 +36,8 @@ func List(
 		if lastPageItem != nil {
 			opts = append(opts, WithStartPageAfterItem(lastPageItem))
 		}
-		return repo.ListCredentials(ctx, credentialStoreId, opts...)
+		return service.ListCredentials(ctx, credentialStoreId, opts...)
 	}
 
-	return pagination.List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, repo.EstimatedCredentialCount)
+	return pagination.List(ctx, grantsHash, pageSize, filterItemFn, listItemsFn, service.EstimatedCredentialCount)
 }
