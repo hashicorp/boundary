@@ -89,8 +89,8 @@ func (u *User) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, u)
 }
 
-// ResourceType returns the type of the User
-func (*User) ResourceType() resource.Type { return resource.User }
+// GetResourceType returns the type of the User
+func (*User) GetResourceType() resource.Type { return resource.User }
 
 // Actions returns the  available actions for Users
 func (*User) Actions() map[string]action.Type {

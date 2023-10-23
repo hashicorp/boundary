@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -57,6 +58,11 @@ func (c *HostCatalog) TableName() string {
 // set the name to "" the name will be reset to the default name.
 func (c *HostCatalog) SetTableName(n string) {
 	c.tableName = n
+}
+
+// GetResourceType returns the resource type of the HostCatalog
+func (c *HostCatalog) GetResourceType() resource.Type {
+	return resource.HostCatalog
 }
 
 func allocCatalog() *HostCatalog {
