@@ -4,6 +4,9 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Bug Fixes
+* monitorUpstreamConnectionState CPU consumption: `monitorUpstreamConnectionState()` is a goroutine that listens for GRPC client connection changes using GRPC's `WaitForStateChange` method. `monitorUpstreamConnectionState()` was consuming the a lot of CPU. It was continuously running and not actually waiting for state changes. The `state` for `monitorUpstreamConnectionState()` was not getting correctly updated which caused the loop to continuously run instead of waiting for new state changes.
+
 ## 0.14.1 (2023/10/17)
 
 ### Security
