@@ -13,22 +13,22 @@ begin;
   insert into server_worker
     (public_id,        scope_id,   type,   local_storage_state)
   values
-    ('w_1234567892',   'global',   'pki',  'lowStorage');
+    ('w_1234567892',   'global',   'pki',  'low storage');
 
   insert into server_worker
     (public_id,        scope_id,   type,   local_storage_state)
   values
-    ('w_1234567893',   'global',   'pki',  'criticallyLow');
+    ('w_1234567893',   'global',   'pki',  'critically low');
 
   insert into server_worker
     (public_id,        scope_id,   type,   local_storage_state)
   values
-    ('w_1234567894',   'global',   'pki',  'outOfStorage');
+    ('w_1234567894',   'global',   'pki',  'out of storage');
 
   insert into server_worker
     (public_id,        scope_id,   type,   local_storage_state)
   values
-    ('w_1234567895',   'global',   'pki',  'notConfigured');
+    ('w_1234567895',   'global',   'pki',  'not configured');
 
   insert into server_worker
     (public_id,        scope_id,   type,   local_storage_state)
@@ -40,7 +40,7 @@ begin;
     insert into server_worker
       (public_id,       scope_id,   type,   local_storage_state)
     values
-      ('w_1234567897',  'global',   'pki',  'invalidState');
+      ('w_1234567897',  'global',   'pki',  'invalid state');
   select throws_ok(
     'invalid_local_storage_state_value',
     '23503',

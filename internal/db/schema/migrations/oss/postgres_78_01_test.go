@@ -100,5 +100,5 @@ func Test_WorkerLocalStorageStateChanges(t *testing.T) {
 		&actualWorker.PublicId,
 		&actualWorker.LocalStorageState,
 	))
-	require.Equal("available", actualWorker.LocalStorageState)
+	require.Equal("unknown", actualWorker.LocalStorageState)
 }

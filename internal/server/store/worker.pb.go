@@ -68,6 +68,12 @@ type Worker struct {
 	// @inject_tag: `gorm:"not_null"`
 	OperationalState string `protobuf:"bytes,150,opt,name=operational_state,json=operationalState,proto3" json:"operational_state,omitempty" gorm:"not_null"`
 	// The local_storage_state indicates the state of the local disk space of the worker.
+	// Possible values are:
+	// - available: The worker local storage state is at an acceptable state
+	// - low storage: The worker is below the minimum threshold for local storage
+	// - out of storage: The worker is out of local disk space
+	// - not configured: The worker does not have a local storage path configured
+	// - unknown: The default local storage state of a worker. Used when the local storage state of a worker is not yet known
 	// @inject_tag: `gorm:"not_null"`
 	LocalStorageState string `protobuf:"bytes,160,opt,name=local_storage_state,json=localStorageState,proto3" json:"local_storage_state,omitempty" gorm:"not_null"`
 }

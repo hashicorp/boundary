@@ -9,10 +9,10 @@ create table server_worker_local_storage_state_state_enm (
     check (
       state in (
         'available',
-        'lowStorage',
-        'criticallyLow',
-        'outOfStorage',
-        'notConfigured',
+        'low storage',
+        'critically low',
+        'out of storage',
+        'not configured',
         'unknown'
       )
     )
@@ -22,21 +22,21 @@ comment on table server_worker_local_storage_state_state_enm is
 
 insert into server_worker_local_storage_state_state_enm (state) values
   ('available'),
-  ('lowStorage'),
-  ('criticallyLow'),
-  ('outOfStorage'),
-  ('notConfigured'),
+  ('low storage'),
+  ('critically low'),
+  ('out of storage'),
+  ('not configured'),
   ('unknown');
 
 alter table server_worker
-  add column local_storage_state text not null default 'available'
+  add column local_storage_state text not null default 'unknown'
     constraint server_worker_local_storage_state_state_enm_fkey
       references server_worker_local_storage_state_state_enm (state)
       on delete restrict
       on update cascade;
 
 drop view server_worker_aggregate;
--- Replaces view created in 34/04_views.up.sql to add the worker local storage state
+-- Replaces view created in 52/01_worker_operational_state.up.sql to add the worker local storage state
 create view server_worker_aggregate as
 with worker_config_tags(worker_id, source, tags) as (
   select
@@ -70,7 +70,6 @@ select
   w.operational_state,
   w.local_storage_state,
   cc.count as active_connection_count,
-  -- keys and tags can be any lowercase printable character so use uppercase characters as delimitors.
   wt.tags as api_tags,
   ct.tags as worker_config_tags
 from server_worker w
