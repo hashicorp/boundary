@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -262,4 +263,83 @@ func TestVerify_AuditEvent(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGrantsHash(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	rw := db.New(conn)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	tokenRepo, err := authtoken.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return tokenRepo, nil
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+
+	o, _ := iam.TestScopes(t, iamRepo)
+	req := httptest.NewRequest("GET", "http://127.0.0.1/v1/scopes/"+o.GetPublicId(), nil)
+
+	at := authtoken.TestAuthToken(t, conn, kms, o.GetPublicId())
+	encToken, err := authtoken.EncryptToken(context.Background(), kms, o.GetPublicId(), at.GetPublicId(), at.GetToken())
+	require.NoError(t, err)
+	tokValue := at.GetPublicId() + "_" + encToken
+
+	// Add values for authn/authz checking
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokValue))
+	requestInfo := authpb.RequestInfo{
+		Path:   req.URL.Path,
+		Method: req.Method,
+	}
+	requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = GetTokenFromRequest(context.TODO(), kms, req)
+	verifierCtx := NewVerifierContext(ctx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	// Create auth result from token
+	res := Verify(verifierCtx, WithScopeId(o.GetPublicId()))
+	hash1, err := res.GrantsHash(ctx)
+	require.NoError(t, err)
+
+	// Look up the user and create a second token
+	user, _, err := iamRepo.LookupUser(ctx, at.IamUserId)
+	require.NoError(t, err)
+	at, err = tokenRepo.CreateAuthToken(ctx, user, at.AuthAccountId)
+	require.NoError(t, err)
+	encToken, err = authtoken.EncryptToken(context.Background(), kms, o.GetPublicId(), at.GetPublicId(), at.GetToken())
+	require.NoError(t, err)
+	tokValue = at.GetPublicId() + "_" + encToken
+
+	// Add values for authn/authz checking
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokValue))
+	requestInfo = authpb.RequestInfo{
+		Path:   req.URL.Path,
+		Method: req.Method,
+	}
+	requestInfo.PublicId, requestInfo.EncryptedToken, requestInfo.TokenFormat = GetTokenFromRequest(context.TODO(), kms, req)
+	verifierCtx = NewVerifierContext(ctx, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	// Create auth result from token
+	res = Verify(verifierCtx, WithScopeId(o.GetPublicId()))
+	hash2, err := res.GrantsHash(ctx)
+	require.NoError(t, err)
+
+	assert.True(t, bytes.Equal(hash1, hash2))
+
+	// Change grants of the user
+	newRole := iam.TestRole(t, conn, o.GetPublicId())
+	_ = iam.TestRoleGrant(t, conn, newRole.GetPublicId(), "id=*;type=*;actions=list-keys")
+	_ = iam.TestUserRole(t, conn, newRole.GetPublicId(), user.GetPublicId())
+
+	// Recreate auth result with new grants, should have a new hash
+	res = Verify(verifierCtx, WithScopeId(o.GetPublicId()))
+	hash3, err := res.GrantsHash(ctx)
+	require.NoError(t, err)
+	assert.False(t, bytes.Equal(hash1, hash3))
+	assert.False(t, bytes.Equal(hash1, hash3))
 }
