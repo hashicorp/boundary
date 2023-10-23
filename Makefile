@@ -269,6 +269,7 @@ copywrite:
 	cd internal/proto/controller/api && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
 	cd internal/proto/controller/custom_options && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + &&  copywrite headers
 	cd internal/proto/plugin && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
+	cd internal/proto/worker/proxy/v1 && find . -type f -name '*.proto' -exec sed -i '1,3d' {} + && copywrite headers
 
 .PHONY: website
 # must have nodejs and npm installed

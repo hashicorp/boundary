@@ -2652,15 +2652,18 @@ func TestAuthorizeSession(t *testing.T) {
 				HostId:    wantedHostId,
 				Type:      "tcp",
 				Endpoint:  fmt.Sprintf("tcp://%s", tc.wantedEndpoint),
-				Credentials: []*pb.SessionCredential{{
-					CredentialSource: &pb.CredentialSource{
-						Id:                clsResp.GetItem().GetId(),
-						Name:              clsResp.GetItem().GetName().GetValue(),
-						Description:       clsResp.GetItem().GetDescription().GetValue(),
-						CredentialStoreId: vaultStore.GetPublicId(),
-						Type:              vault.GenericLibrarySubtype.String(),
+				Credentials: []*pb.SessionCredential{
+					{
+						CredentialSource: &pb.CredentialSource{
+							Id:                clsResp.GetItem().GetId(),
+							Name:              clsResp.GetItem().GetName().GetValue(),
+							Description:       clsResp.GetItem().GetDescription().GetValue(),
+							CredentialStoreId: vaultStore.GetPublicId(),
+							Type:              vault.GenericLibrarySubtype.String(),
+						},
 					},
-				}},
+				},
+				EndpointPort: uint32(defaultPort),
 				// TODO: validate the contents of the authorization token is what is expected
 			}
 			wantSecret := map[string]any{
@@ -2697,7 +2700,7 @@ func TestAuthorizeSession(t *testing.T) {
 			gotCred.Secret = nil
 
 			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform(), protocmp.IgnoreFields(&pb.SessionAuthorization{}, "expiration")))
 		})
 	}
 }
@@ -3269,13 +3272,15 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 					Description:   proj.GetDescription(),
 					ParentScopeId: proj.GetParentId(),
 				},
-				TargetId:    tar.GetPublicId(),
-				UserId:      at.GetIamUserId(),
-				HostSetId:   tc.hostSourceId,
-				HostId:      tc.wantedHostId,
-				Type:        "tcp",
-				Endpoint:    fmt.Sprintf("tcp://%s:%d", tc.wantedEndpoint, defaultPort),
-				Credentials: []*pb.SessionCredential{tc.wantedCred},
+				TargetId:     tar.GetPublicId(),
+				UserId:       at.GetIamUserId(),
+				HostSetId:    tc.hostSourceId,
+				HostId:       tc.wantedHostId,
+				Type:         "tcp",
+				Endpoint:     fmt.Sprintf("tcp://%s:%d", tc.wantedEndpoint, defaultPort),
+				Credentials:  []*pb.SessionCredential{tc.wantedCred},
+				EndpointPort: uint32(defaultPort),
+				Expiration:   asRes.Item.Expiration,
 				// TODO: validate the contents of the authorization token is what is expected
 			}
 			got := asRes.GetItem()

@@ -495,7 +495,7 @@ func TestUpdateAfterKeyRotation(t *testing.T) {
 	// Should start asynchronous rewrapping of the encrypted JSON credential
 	assert.Equal("pending", result.State)
 
-	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 	for {
 		jobs, err := scopesClient.ListKeyVersionDestructionJobs(ctx, proj.PublicId)

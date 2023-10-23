@@ -791,7 +791,8 @@ func (x *WorkerInfo) GetAddress() string {
 	return ""
 }
 
-// SessionAuthorizationData contains the fields needed by the proxy command to connect to a worker. It is marshaled inside the SessionAuthorization message.
+// SessionAuthorizationData contains the fields needed by the proxy command to
+// connect to a worker. It is marshaled inside the SessionAuthorization message.
 type SessionAuthorizationData struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

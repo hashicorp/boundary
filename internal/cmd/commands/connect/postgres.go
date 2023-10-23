@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	apiproxy "github.com/hashicorp/boundary/api/proxy"
+	"github.com/hashicorp/boundary/api/proxy"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/posener/complete"
 )
@@ -54,7 +54,7 @@ func (p *postgresFlags) defaultExec() string {
 	return strings.ToLower(p.flagPostgresStyle)
 }
 
-func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds apiproxy.Credentials) (args, envs []string, retCreds apiproxy.Credentials, retErr error) {
+func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds proxy.Credentials) (args, envs []string, retCreds proxy.Credentials, retErr error) {
 	var username, password string
 
 	retCreds = creds
@@ -88,7 +88,7 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds apiproxy
 		if password != "" {
 			passfile, err := os.CreateTemp("", "*")
 			if err != nil {
-				return nil, nil, apiproxy.Credentials{}, fmt.Errorf("Error saving postgres password to tmp file: %w", err)
+				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error saving postgres password to tmp file: %w", err)
 			}
 			c.cleanupFuncs = append(c.cleanupFuncs, func() error {
 				if err := os.Remove(passfile.Name()); err != nil {
@@ -98,10 +98,10 @@ func (p *postgresFlags) buildArgs(c *Command, port, ip, _ string, creds apiproxy
 			})
 			_, err = passfile.WriteString(fmt.Sprintf("*:*:*:*:%s", password))
 			if err != nil {
-				return nil, nil, apiproxy.Credentials{}, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
+				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error writing password file to %s: %w", passfile.Name(), err)
 			}
 			if err := passfile.Close(); err != nil {
-				return nil, nil, apiproxy.Credentials{}, fmt.Errorf("Error closing password file after writing to %s: %w", passfile.Name(), err)
+				return nil, nil, proxy.Credentials{}, fmt.Errorf("Error closing password file after writing to %s: %w", passfile.Name(), err)
 			}
 			envs = append(envs, fmt.Sprintf("PGPASSFILE=%s", passfile.Name()))
 
