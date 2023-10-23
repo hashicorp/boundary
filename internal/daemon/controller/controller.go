@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
+	"github.com/hashicorp/boundary/internal/pagination/purge"
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
 	"github.com/hashicorp/boundary/internal/scheduler"
@@ -585,6 +586,9 @@ func (c *Controller) registerJobs() error {
 		return err
 	}
 	if err := census.RegisterJob(c.baseContext, c.scheduler, c.conf.RawConfig.Reporting.License.Enabled, rw, rw); err != nil {
+		return err
+	}
+	if err := purge.RegisterJobs(c.baseContext, c.scheduler, rw, rw); err != nil {
 		return err
 	}
 
