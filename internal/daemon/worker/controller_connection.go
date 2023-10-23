@@ -434,7 +434,7 @@ func monitorUpstreamConnectionState(ctx context.Context, cc *grpc.ClientConn, co
 	}
 
 	for cc.WaitForStateChange(ctx, state) {
-		state := cc.GetState()
+		state = cc.GetState()
 
 		// if the client is shutdown, exit function
 		if state == connectivity.Shutdown {
@@ -442,7 +442,5 @@ func monitorUpstreamConnectionState(ctx context.Context, cc *grpc.ClientConn, co
 		}
 
 		connectionState.Store(state)
-
-		time.Sleep(10 * time.Millisecond)
 	}
 }
