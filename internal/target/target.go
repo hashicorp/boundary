@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target/store"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
@@ -26,6 +27,7 @@ type Target interface {
 	GetDescription() string
 	GetVersion() uint32
 	GetType() subtypes.Subtype
+	GetResourceType() resource.Type
 	GetCreateTime() *timestamp.Timestamp
 	GetUpdateTime() *timestamp.Timestamp
 	GetSessionMaxSeconds() uint32
@@ -106,6 +108,11 @@ func (t *targetView) SetTableName(n string) {
 	default:
 		t.tableName = n
 	}
+}
+
+// GetResourceType returns the resource type of the Target
+func (t *targetView) GetResourceType() resource.Type {
+	return resource.Target
 }
 
 func (t *targetView) SetHostSources(hs []HostSource) {
