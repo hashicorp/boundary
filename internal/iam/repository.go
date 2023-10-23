@@ -259,14 +259,14 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 				"resource-public-id": []string{resource.GetPublicId()},
 				"scope-id":           []string{newScope.PublicId},
 				"scope-type":         []string{newScope.Type},
-				"resource-type":      []string{resource.ResourceType().String()},
+				"resource-type":      []string{resource.GetResourceType().String()},
 			}, nil
 		case scope.Project.String():
 			return oplog.Metadata{
 				"resource-public-id": []string{resource.GetPublicId()},
 				"scope-id":           []string{newScope.ParentId},
 				"scope-type":         []string{newScope.Type},
-				"resource-type":      []string{resource.ResourceType().String()},
+				"resource-type":      []string{resource.GetResourceType().String()},
 			}, nil
 		default:
 			return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("not a supported scope for metadata: %s", s.Type))
@@ -284,7 +284,7 @@ func (r *Repository) stdMetadata(ctx context.Context, resource Resource) (oplog.
 		"resource-public-id": []string{resource.GetPublicId()},
 		"scope-id":           []string{scope.PublicId},
 		"scope-type":         []string{scope.Type},
-		"resource-type":      []string{resource.ResourceType().String()},
+		"resource-type":      []string{resource.GetResourceType().String()},
 	}, nil
 }
 

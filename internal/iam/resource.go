@@ -33,7 +33,7 @@ type Resource interface {
 	GetScope(ctx context.Context, r db.Reader) (*Scope, error)
 
 	// Type of Resource (Target, Policy, User, Group, etc)
-	ResourceType() resource.Type
+	GetResourceType() resource.Type
 
 	// Actions that can be assigned permissions for
 	// the Resource in Policies. Action String() is key for

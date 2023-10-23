@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -122,14 +123,19 @@ func (c *HostCatalog) SetTableName(n string) {
 	c.tableName = n
 }
 
-func (s *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {
+// GetResourceType returns the resource type of the HostCatalog
+func (c *HostCatalog) GetResourceType() resource.Type {
+	return resource.HostCatalog
+}
+
+func (c *HostCatalog) oplog(op oplog.OpType) oplog.Metadata {
 	metadata := oplog.Metadata{
-		"resource-public-id": []string{s.PublicId},
+		"resource-public-id": []string{c.PublicId},
 		"resource-type":      []string{"plugin-host-catalog"},
 		"op-type":            []string{op.String()},
 	}
-	if s.ProjectId != "" {
-		metadata["project-id"] = []string{s.ProjectId}
+	if c.ProjectId != "" {
+		metadata["project-id"] = []string{c.ProjectId}
 	}
 	return metadata
 }
