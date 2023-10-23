@@ -68,6 +68,7 @@ const (
 	EnvTokenName      = "BOUNDARY_TOKEN_NAME"
 	EnvKeyringType    = "BOUNDARY_KEYRING_TYPE"
 	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
+	envSkipDaemon     = "BOUNDARY_SKIP_DAEMON"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
@@ -103,6 +104,7 @@ type Command struct {
 	FlagKeyringType      string
 	FlagRecoveryConfig   string
 	FlagOutputCurlString bool
+	FlagSkipDaemon       bool
 
 	FlagScopeId           string
 	FlagScopeName         string
@@ -185,6 +187,10 @@ func MakeShutdownCh() chan struct{} {
 		}
 	}()
 	return resultCh
+}
+
+func (c *Command) BaseCommand() *Command {
+	return c
 }
 
 // Client returns the HTTP API client. The client is cached on the command to
@@ -452,6 +458,14 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 				Name:   "output-curl-string",
 				Target: &c.FlagOutputCurlString,
 				Usage:  "Instead of executing the request, print an equivalent cURL command string and exit.",
+			})
+
+			f.BoolVar(&BoolVar{
+				Name:    "skip-daemon",
+				Target:  &c.FlagSkipDaemon,
+				Default: false,
+				EnvVar:  envSkipDaemon,
+				Usage:   "Skips starting the daemon or sending the current used/retrieved token to the daemon.",
 			})
 		}
 

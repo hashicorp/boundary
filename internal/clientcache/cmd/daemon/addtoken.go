@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
@@ -64,8 +65,19 @@ func (c *AddTokenCommand) Run(args []string) int {
 		c.PrintCliError(err)
 		return base.CommandUserError
 	}
+	client, err := c.Client()
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
 
-	apiErr, err := c.Add(ctx)
+	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+
+	apiErr, err := c.Add(ctx, client, keyringType, tokenName)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
@@ -78,25 +90,18 @@ func (c *AddTokenCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *AddTokenCommand) Add(ctx context.Context) (*api.Error, error) {
+func (c *AddTokenCommand) Add(ctx context.Context, client *api.Client, keyringType, tokenName string) (*api.Error, error) {
 	const op = "daemon.(AddTokenCommand).Add"
-	client, err := c.Client()
-	if err != nil {
-		return nil, err
-	}
-
-	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
-	if err != nil {
-		return nil, err
-	}
 
 	pa := daemon.UpsertTokenRequest{
 		BoundaryAddr: client.Addr(),
 	}
 	switch keyringType {
 	case "", base.NoneKeyring:
-		keyringType = base.NoneKeyring
-		token := client.Token()
+		token, ok := os.LookupEnv(authenticate.EnvBoundaryRetrievedToken)
+		if !ok {
+			token = client.Token()
+		}
 		if parts := strings.SplitN(token, "_", 4); len(parts) == 3 {
 			pa.AuthTokenId = strings.Join(parts[:2], "_")
 		} else {

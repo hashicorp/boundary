@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 	nkeyring "github.com/jefferai/keyring"
 	zkeyring "github.com/zalando/go-keyring"
 )
+
+const EnvBoundaryRetrievedToken = "_BOUNDARY_RETRIEVED_TOKEN"
 
 func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult) int {
 	token := new(authtokens.AuthToken)
@@ -101,6 +104,7 @@ func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult
 		c.UI.Warn("\nStoring the token in a keyring was disabled. The token is:")
 		c.UI.Output(token.Token)
 		c.UI.Warn("Please be sure to store it safely!")
+		os.Setenv(EnvBoundaryRetrievedToken, token.Token)
 	}
 
 	return base.CommandSuccess

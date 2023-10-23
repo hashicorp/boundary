@@ -15,19 +15,25 @@ import (
 	"github.com/mitchellh/cli"
 )
 
+// Keep this interface aligned with the interface at internal/cmd/commands.go
+type wrappableCommand interface {
+	cli.Command
+	BaseCommand() *base.Command
+}
+
 // CommandWrapper starts the boundary daemon after the command was Run and attempts
 // to send the current persona to any running daemon.
 type CommandWrapper struct {
-	cli.Command
+	wrappableCommand
 	ui cli.Ui
 }
 
 // Wrap returns a cli.CommandFactory that returns a command wrapped in the CommandWrapper.
-func Wrap(ui cli.Ui, wrapped cli.Command) cli.CommandFactory {
+func Wrap(ui cli.Ui, wrapped wrappableCommand) cli.CommandFactory {
 	return func() (cli.Command, error) {
 		return &CommandWrapper{
-			Command: wrapped,
-			ui:      ui,
+			wrappableCommand: wrapped,
+			ui:               ui,
 		}, nil
 	}
 }
@@ -35,11 +41,15 @@ func Wrap(ui cli.Ui, wrapped cli.Command) cli.CommandFactory {
 // Run runs the wrapped command and then attempts to start the boundary daemon and send
 // the current persona
 func (w *CommandWrapper) Run(args []string) int {
-	r := w.Command.Run(args)
+	r := w.wrappableCommand.Run(args)
+
+	if w.BaseCommand().FlagSkipDaemon {
+		return r
+	}
 
 	ctx := context.Background()
 	if w.startDaemon(ctx) {
-		w.addPersonaInCache(ctx)
+		w.addTokenToCache(ctx)
 	}
 	return r
 }
@@ -64,10 +74,18 @@ func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
 	return err == nil || strings.Contains(stdErr.String(), "already running")
 }
 
-// addPersonaInCache runs AddPersonaCommand
-func (w *CommandWrapper) addPersonaInCache(ctx context.Context) bool {
-	c := AddTokenCommand{Command: base.NewCommand(w.ui)}
-	c.Flags()
-	apiErr, err := c.Add(ctx)
+// addTokenToCache runs AddTokenCommand with the token used in, or retrieved by
+// the wrapped command.
+func (w *CommandWrapper) addTokenToCache(ctx context.Context) bool {
+	com := AddTokenCommand{Command: base.NewCommand(w.ui)}
+	client, err := w.BaseCommand().Client()
+	if err != nil {
+		return false
+	}
+	keyringType, tokName, err := w.BaseCommand().DiscoverKeyringTokenInfo()
+	if err != nil {
+		return false
+	}
+	apiErr, err := com.Add(ctx, client, keyringType, tokName)
 	return err == nil && apiErr == nil
 }

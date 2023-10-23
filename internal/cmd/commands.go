@@ -4,8 +4,6 @@
 package cmd
 
 import (
-	"github.com/hashicorp/boundary/api"
-	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/commands/accountscmd"
 	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
@@ -1168,15 +1166,10 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 
 var extraCommandsFuncs []func(ui, serverCmdUi cli.Ui, runOpts *RunOptions)
 
-type clientAndTokenProvider interface {
-	Client(opt ...base.Option) (*api.Client, error)
-	DiscoverKeyringTokenInfo() (string, string, error)
-	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
-}
-
+// Keep this interface aligned with the interface at internal/clientcache/cmd/daemon/command_wrapper.go
 type wrappableCommand interface {
 	cli.Command
-	clientAndTokenProvider
+	BaseCommand() *base.Command
 }
 
 // commandFactoryWrapper wraps all short lived, non server, command factories.
