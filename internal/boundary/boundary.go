@@ -7,6 +7,7 @@ package boundary
 
 import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/types/resource"
 )
 
 // An Entity is an object distinguished by its identity, rather than its
@@ -24,11 +25,12 @@ type Aggregate interface {
 	GetUpdateTime() *timestamp.Timestamp
 }
 
-// A Resource is an aggregate with a name and description.
+// A Resource is an aggregate with a name, description, and resource type.
 type Resource interface {
 	Aggregate
 	GetName() string
 	GetDescription() string
+	GetResourceType() resource.Type
 }
 
 // AuthzProtectedEntity is used by some functions (primarily

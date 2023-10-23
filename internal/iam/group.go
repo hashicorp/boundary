@@ -86,8 +86,8 @@ func (g *Group) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, g)
 }
 
-// ResourceType returns the type of the Group.
-func (*Group) ResourceType() resource.Type { return resource.Group }
+// GetResourceType returns the type of the Group.
+func (*Group) GetResourceType() resource.Type { return resource.Group }
 
 // Actions returns the  available actions for Group
 func (*Group) Actions() map[string]action.Type {
