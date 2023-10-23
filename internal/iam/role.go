@@ -86,8 +86,8 @@ func (role *Role) GetScope(ctx context.Context, r db.Reader) (*Scope, error) {
 	return LookupScope(ctx, r, role)
 }
 
-// ResourceType returns the type of the Role.
-func (*Role) ResourceType() resource.Type { return resource.Role }
+// GetResourceType returns the type of the Role.
+func (*Role) GetResourceType() resource.Type { return resource.Role }
 
 // Actions returns the available actions for Role.
 func (*Role) Actions() map[string]action.Type {
