@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -110,6 +111,11 @@ func (am *AuthMethod) TableName() string {
 // SetTableName sets the table name (func is required by oplog)
 func (am *AuthMethod) SetTableName(n string) {
 	am.tableName = n
+}
+
+// GetResourceType returns the resource type of the AuthMethod
+func (am *AuthMethod) GetResourceType() resource.Type {
+	return resource.AuthMethod
 }
 
 // oplog will create oplog metadata for the AuthMethod.
