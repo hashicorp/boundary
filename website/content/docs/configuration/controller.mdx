@@ -139,6 +139,10 @@ The `api_rate_limit` configuration stanza contains the following fields:
 If `api_rate_limit_disable` is set to `true`, and you have provided any `api_rate_limit` stanzas, you will receive an error.
 - `api_rate_limit_max_quotas` - Specifies the maximum number of API rate limiting quotas that Boundary allows.
 
+- `max_page_size` - The max allowed page size when paginating. If a user specifies a page size greater than
+  this number, it will be truncated to this number. This is also used as the default page size for any request
+  that don't explicitly specify a page size. Default is 1000.
+
 ## Signals
 
 The `SIGHUP` signal causes a controller to reload its configuration file to pick up any updates to the `database url` value. Any other updated values are ignored.
