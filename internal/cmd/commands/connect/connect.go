@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/boundary/api/targets"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/wspb"
 	targetspb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/targets"
 	"github.com/hashicorp/boundary/sdk/pbs/proxy"
 	"github.com/hashicorp/go-cleanhttp"
@@ -36,7 +37,6 @@ import (
 	exec "golang.org/x/sys/execabs"
 	"google.golang.org/protobuf/proto"
 	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wspb"
 )
 
 const sessionCancelTimeout = 10 * time.Second
