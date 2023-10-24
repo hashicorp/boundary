@@ -93,7 +93,7 @@ func Test_WorkerLocalStorageStateChanges(t *testing.T) {
 	}
 	require.Equal(want, state)
 
-	// Assert worker has been migrated and received default state of 'available'
+	// Assert worker has been migrated and received default state of 'unknown'
 	actualWorker := new(testWorker78)
 	row := d.QueryRowContext(ctx, selectWorkerQuery78, "test-worker-78")
 	require.NoError(row.Scan(
