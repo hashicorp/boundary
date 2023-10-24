@@ -35,6 +35,7 @@ import (
 	kmsjob "github.com/hashicorp/boundary/internal/kms/job"
 	"github.com/hashicorp/boundary/internal/plugin"
 	"github.com/hashicorp/boundary/internal/plugin/loopback"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 	"github.com/hashicorp/boundary/internal/scheduler"
 	"github.com/hashicorp/boundary/internal/scheduler/cleaner"
 	"github.com/hashicorp/boundary/internal/scheduler/job"
@@ -120,7 +121,7 @@ type Controller struct {
 	apiGrpcServerListener grpcServerListener
 	apiGrpcGatewayTicket  string
 
-	rateLimiter *rate.Limiter
+	rateLimiter *atomic.Pointer[rate.Limiter]
 
 	// Repo factory methods
 	AuthTokenRepoFn           common.AuthTokenRepoFactory
@@ -172,6 +173,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		pkiConnManager:          cluster.NewDownstreamManager(),
 		workerStatusGracePeriod: new(atomic.Int64),
 		livenessTimeToStale:     new(atomic.Int64),
+		rateLimiter:             new(atomic.Pointer[rate.Limiter]),
 	}
 
 	if downstreamReceiverFactory != nil {
@@ -253,10 +255,11 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		return nil, fmt.Errorf("error parsing rate limit configuration: %w", err)
 	}
 
-	c.rateLimiter, err = rate.NewLimiter(rateLimits, conf.RawConfig.Controller.ApiRateLimiterMaxEntries)
+	rateLimiter, err := rate.NewLimiter(rateLimits, conf.RawConfig.Controller.ApiRateLimiterMaxEntries)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing rate limiter: %w", err)
 	}
+	c.rateLimiter.Store(rateLimiter)
 
 	var pluginLogger hclog.Logger
 	for _, enabledPlugin := range c.enabledPlugins {
@@ -630,4 +633,38 @@ func (c *Controller) Shutdown() error {
 // and auto reconnection.
 func (c *Controller) WorkerStatusUpdateTimes() *sync.Map {
 	return c.workerStatusUpdateTimes
+}
+
+func (c *Controller) getRateLimiter() *rate.Limiter {
+	return c.rateLimiter.Load()
+}
+
+// ReloadRateLimiter replaces the Controller's rate.Limiter with a new rate.Limiter
+// using the supplied ratelimit.Configs and max entries. If the configs and max
+// entries match the current values, the rate.Limiter is not replaced and no
+// error is returned. Otherwise the rate.Limiter is replaced, and the old rate.Limiter
+// is shutdown. This means that a client's quota is effectively reset if the
+// configuration changes.
+func (c *Controller) ReloadRateLimiter(newLimitConfigs ratelimit.Configs, newMaxEntries int) error {
+	// Config has not changed, no need to reload.
+	if c.conf.ApiRateLimits.Equal(newLimitConfigs) && c.conf.ApiRateLimiterMaxEntries == newMaxEntries {
+		return nil
+	}
+
+	ratelimits, err := newLimitConfigs.Limits(c.baseContext)
+	if err != nil {
+		return fmt.Errorf("error parsing rate limit configuration: %w", err)
+	}
+
+	limiter, err := rate.NewLimiter(ratelimits, newMaxEntries)
+	if err != nil {
+		return err
+	}
+
+	old := c.rateLimiter.Swap(limiter)
+
+	c.conf.ApiRateLimits = newLimitConfigs
+	c.conf.ApiRateLimiterMaxEntries = newMaxEntries
+
+	return old.Shutdown()
 }

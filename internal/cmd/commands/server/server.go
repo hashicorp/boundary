@@ -602,6 +602,8 @@ func (c *Command) StartController(ctx context.Context) error {
 		RawConfig: c.Config,
 		Server:    c.Server,
 		TestOverrideWorkerAuthCaCertificateLifetime: c.flagWorkerAuthCaCertificateLifetime,
+		ApiRateLimits:            c.Config.Controller.ApiRateLimits,
+		ApiRateLimiterMaxEntries: c.Config.Controller.ApiRateLimiterMaxEntries,
 	}
 
 	var err error
@@ -821,6 +823,10 @@ func (c *Command) Reload(newConf *config.Config) error {
 		reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("failed to reload controller database: %w", err))
 	}
 
+	if err := c.reloadControllerRateLimits(newConf); err != nil {
+		reloadErrors = stderrors.Join(reloadErrors, fmt.Errorf("failed to reload controller api rate limits: %w", err))
+	}
+
 	if newConf != nil && c.worker != nil {
 		workerReloadErr := func() error {
 			if newConf.Controller != nil {
@@ -930,6 +936,13 @@ func (c *Command) reloadControllerDatabase(newConfig *config.Config) error {
 	oldDbCloseFn(c.Context)
 
 	return nil
+}
+
+func (c *Command) reloadControllerRateLimits(newConfig *config.Config) error {
+	if c.controller == nil || newConfig == nil || newConfig.Controller == nil {
+		return nil
+	}
+	return c.controller.ReloadRateLimiter(newConfig.Controller.ApiRateLimits, newConfig.Controller.ApiRateLimiterMaxEntries)
 }
 
 // acquireSchemaManager returns a schema manager and generally acquires a shared lock on
