@@ -64,11 +64,11 @@ const (
 	// maxLineLength is the maximum width of any line.
 	maxLineLength int = 78
 
-	envToken          = "BOUNDARY_TOKEN"
-	EnvTokenName      = "BOUNDARY_TOKEN_NAME"
-	EnvKeyringType    = "BOUNDARY_KEYRING_TYPE"
-	envRecoveryConfig = "BOUNDARY_RECOVERY_CONFIG"
-	envSkipDaemon     = "BOUNDARY_SKIP_DAEMON"
+	envToken           = "BOUNDARY_TOKEN"
+	EnvTokenName       = "BOUNDARY_TOKEN_NAME"
+	EnvKeyringType     = "BOUNDARY_KEYRING_TYPE"
+	envRecoveryConfig  = "BOUNDARY_RECOVERY_CONFIG"
+	envSkipCacheDaemon = "BOUNDARY_SKIP_CACHE_DAEMON"
 
 	StoredTokenName = "HashiCorp Boundary Auth Token"
 )
@@ -104,7 +104,7 @@ type Command struct {
 	FlagKeyringType      string
 	FlagRecoveryConfig   string
 	FlagOutputCurlString bool
-	FlagSkipDaemon       bool
+	FlagSkipCacheDaemon  bool
 
 	FlagScopeId           string
 	FlagScopeName         string
@@ -461,11 +461,11 @@ func (c *Command) FlagSet(bit FlagSetBit) *FlagSets {
 			})
 
 			f.BoolVar(&BoolVar{
-				Name:    "skip-daemon",
-				Target:  &c.FlagSkipDaemon,
+				Name:    "skip-cache-daemon",
+				Target:  &c.FlagSkipCacheDaemon,
 				Default: false,
-				EnvVar:  envSkipDaemon,
-				Usage:   "Skips starting the daemon or sending the current used/retrieved token to the daemon.",
+				EnvVar:  envSkipCacheDaemon,
+				Usage:   "Skips starting the caching daemon or sending the current used/retrieved token to the caching daemon.",
 			})
 		}
 

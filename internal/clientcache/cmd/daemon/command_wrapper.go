@@ -41,7 +41,7 @@ func Wrap(c cacheEnabledCommand) cli.CommandFactory {
 func (w *CommandWrapper) Run(args []string) int {
 	r := w.cacheEnabledCommand.Run(args)
 
-	if w.BaseCommand().FlagSkipDaemon {
+	if w.BaseCommand().FlagSkipCacheDaemon {
 		return r
 	}
 
