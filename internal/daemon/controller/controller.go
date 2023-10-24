@@ -132,6 +132,8 @@ type Controller struct {
 	SessionRepoFn             session.RepositoryFactory
 	ConnectionRepoFn          common.ConnectionRepoFactory
 	StaticHostRepoFn          common.StaticRepoFactory
+	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
+	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
 	PluginHostRepoFn          common.PluginHostRepoFactory
 	PluginStorageBucketRepoFn common.PluginStorageBucketRepoFactory
 	PluginRepoFn              common.PluginRepoFactory
