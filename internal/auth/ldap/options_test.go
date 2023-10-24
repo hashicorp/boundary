@@ -9,11 +9,28 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type fakeItem struct {
+	pagination.Item
+	publicId   string
+	updateTime time.Time
+}
+
+func (p *fakeItem) GetPublicId() string {
+	return p.publicId
+}
+
+func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
+	return timestamp.New(p.updateTime)
+}
 
 func Test_getOpts(t *testing.T) {
 	t.Parallel()
@@ -349,5 +366,13 @@ func Test_getOpts(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(err, `"Invalid" is not a valid ldap dereference alias type`)
 		assert.Truef(errors.Match(errors.T(errors.InvalidParameter), err), "want err code: %q got: %q", errors.InvalidParameter, err)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts, err := getOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", updateTime}))
+		require.NoError(t, err)
+		assert.Equal(opts.withStartPageAfterItem.GetPublicId(), "s_1")
+		assert.Equal(opts.withStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
 	})
 }

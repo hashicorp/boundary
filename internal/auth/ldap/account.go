@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -149,4 +150,14 @@ func (a *Account) oplog(ctx context.Context, opType oplog.OpType) (oplog.Metadat
 		"auth-method-id":     []string{a.AuthMethodId},
 	}
 	return metadata, nil
+}
+
+type deletedAccount struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAccount) TableName() string {
+	return "auth_ldap_account_deleted"
 }
