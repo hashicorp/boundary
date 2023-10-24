@@ -51,4 +51,14 @@ create table app_token_periodic_expiration_interval (
 comment on table app_token is
   'app_token_periodic_expiration_interval defines the expiration interval for an application auth token';
 
+create or replace function app_token_periodic_expiration_immutable() returns trigger
+  as $$
+  begin
+    raise exception 'app token periodic expirations are immutable';
+  end;
+  $$ language plpgsql;
+
+create trigger immutable_app_token_periodic_expiration before update on app_token
+  for each row execute procedure app_token_periodic_expiration_immutable();
+
 commit;
