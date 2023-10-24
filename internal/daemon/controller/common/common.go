@@ -22,6 +22,7 @@ type (
 	AuthTokenRepoFactory           = oidc.AuthTokenRepoFactory
 	VaultCredentialRepoFactory     = func() (*vault.Repository, error)
 	StaticCredentialRepoFactory    = func() (*credstatic.Repository, error)
+	LibraryServiceFactory          func(*vault.Repository) (*vault.LibraryService, error)
 	IamRepoFactory                 = iam.IamRepoFactory
 	OidcAuthRepoFactory            = oidc.OidcRepoFactory
 	LdapAuthRepoFactory            = ldap.RepoFactory

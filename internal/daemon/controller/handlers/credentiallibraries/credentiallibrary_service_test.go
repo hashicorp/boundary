@@ -13,15 +13,20 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/scheduler"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/credentiallibraries"
 	scopepb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
@@ -38,6 +43,46 @@ import (
 
 var testAuthorizedActions = []string{"no-op", "read", "update", "delete"}
 
+func vaultCredentialLibraryToProto(credLib *vault.CredentialLibrary, project *iam.Scope) *pb.CredentialLibrary {
+	return &pb.CredentialLibrary{
+		Id:                credLib.GetPublicId(),
+		CredentialStoreId: credLib.GetStoreId(),
+		Scope:             &scopepb.ScopeInfo{Id: project.GetPublicId(), Type: scope.Project.String(), ParentScopeId: project.GetParentId()},
+		CreatedTime:       credLib.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       credLib.GetUpdateTime().GetTimestamp(),
+		Version:           credLib.GetVersion(),
+		Type:              vault.GenericLibrarySubtype.String(),
+		AuthorizedActions: testAuthorizedActions,
+		Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
+			VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
+				Path:       wrapperspb.String(credLib.GetVaultPath()),
+				HttpMethod: wrapperspb.String(credLib.GetHttpMethod()),
+			},
+		},
+	}
+}
+
+func sshCredentialLibraryToProto(credLib *vault.SSHCertificateCredentialLibrary, project *iam.Scope) *pb.CredentialLibrary {
+	return &pb.CredentialLibrary{
+		Id:                credLib.GetPublicId(),
+		CredentialStoreId: credLib.GetStoreId(),
+		CredentialType:    credLib.GetCredentialType(),
+		Scope:             &scopepb.ScopeInfo{Id: project.GetPublicId(), Type: scope.Project.String(), ParentScopeId: project.GetParentId()},
+		CreatedTime:       credLib.GetCreateTime().GetTimestamp(),
+		UpdatedTime:       credLib.GetUpdateTime().GetTimestamp(),
+		Version:           credLib.GetVersion(),
+		Type:              vault.SSHCertificateLibrarySubtype.String(),
+		AuthorizedActions: testAuthorizedActions,
+		Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
+			VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
+				KeyType:  wrapperspb.String(credLib.GetKeyType()),
+				Path:     wrapperspb.String(credLib.GetVaultPath()),
+				Username: wrapperspb.String(credLib.GetUsername()),
+			},
+		},
+	}
+}
+
 func TestList(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -53,6 +98,9 @@ func TestList(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
+	}
 
 	_, prjNoLibs := iam.TestScopes(t, iamRepo)
 	storeNoLibs := vault.TestCredentialStores(t, conn, wrapper, prjNoLibs.GetPublicId(), 1)[0]
@@ -61,43 +109,12 @@ func TestList(t *testing.T) {
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	var wantLibraries []*pb.CredentialLibrary
 	for _, l := range vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 10) {
-		wantLibraries = append(wantLibraries, &pb.CredentialLibrary{
-			Id:                l.GetPublicId(),
-			CredentialStoreId: l.GetStoreId(),
-			Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-			CreatedTime:       l.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       l.GetUpdateTime().GetTimestamp(),
-			Version:           l.GetVersion(),
-			Type:              vault.GenericLibrarySubtype.String(),
-			AuthorizedActions: testAuthorizedActions,
-			Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
-				VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
-					Path:       wrapperspb.String(l.GetVaultPath()),
-					HttpMethod: wrapperspb.String(l.GetHttpMethod()),
-				},
-			},
-		})
+		wantLibraries = append(wantLibraries, vaultCredentialLibraryToProto(l, prj))
 	}
 	for _, l := range vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 10) {
-		wantLibraries = append(wantLibraries, &pb.CredentialLibrary{
-			Id:                l.GetPublicId(),
-			CredentialStoreId: l.GetStoreId(),
-			CredentialType:    l.GetCredentialType(),
-			Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-			CreatedTime:       l.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       l.GetUpdateTime().GetTimestamp(),
-			Version:           l.GetVersion(),
-			Type:              vault.SSHCertificateLibrarySubtype.String(),
-			AuthorizedActions: testAuthorizedActions,
-			Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
-				VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
-					KeyType:  wrapperspb.String(l.GetKeyType()),
-					Path:     wrapperspb.String(l.GetVaultPath()),
-					Username: wrapperspb.String(l.GetUsername()),
-				},
-			},
-		})
+		wantLibraries = append(wantLibraries, sshCredentialLibraryToProto(l, prj))
 	}
+
 	cases := []struct {
 		name    string
 		req     *pbs.ListCredentialLibrariesRequest
@@ -106,28 +123,84 @@ func TestList(t *testing.T) {
 		err     error
 	}{
 		{
-			name:    "List Many Libraries",
-			req:     &pbs.ListCredentialLibrariesRequest{CredentialStoreId: store.GetPublicId()},
-			res:     &pbs.ListCredentialLibrariesResponse{Items: wantLibraries},
-			anonRes: &pbs.ListCredentialLibrariesResponse{Items: wantLibraries},
+			name: "List Many Libraries",
+			req:  &pbs.ListCredentialLibrariesRequest{CredentialStoreId: store.GetPublicId()},
+			res: &pbs.ListCredentialLibrariesResponse{
+				Items:        wantLibraries,
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 20,
+			},
+			anonRes: &pbs.ListCredentialLibrariesResponse{
+				Items:        wantLibraries,
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 20,
+			},
 		},
 		{
-			name:    "List No Libraries",
-			req:     &pbs.ListCredentialLibrariesRequest{CredentialStoreId: storeNoLibs.GetPublicId()},
-			res:     &pbs.ListCredentialLibrariesResponse{},
-			anonRes: &pbs.ListCredentialLibrariesResponse{},
+			name: "List No Libraries",
+			req:  &pbs.ListCredentialLibrariesRequest{CredentialStoreId: storeNoLibs.GetPublicId()},
+			res: &pbs.ListCredentialLibrariesResponse{
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+			},
+			anonRes: &pbs.ListCredentialLibrariesResponse{
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+			},
 		},
 		{
-			name:    "Filter to One Libraries",
-			req:     &pbs.ListCredentialLibrariesRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantLibraries[1].GetId())},
-			res:     &pbs.ListCredentialLibrariesResponse{Items: wantLibraries[1:2]},
-			anonRes: &pbs.ListCredentialLibrariesResponse{Items: wantLibraries[1:2]},
+			name: "Filter to One Library",
+			req:  &pbs.ListCredentialLibrariesRequest{CredentialStoreId: store.GetPublicId(), Filter: fmt.Sprintf(`"/item/id"==%q`, wantLibraries[1].GetId())},
+			res: &pbs.ListCredentialLibrariesResponse{
+				Items:        wantLibraries[1:2],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 1,
+			},
+			anonRes: &pbs.ListCredentialLibrariesResponse{
+				Items:        wantLibraries[1:2],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 1,
+			},
 		},
 		{
-			name:    "Filter to No Libraries",
-			req:     &pbs.ListCredentialLibrariesRequest{CredentialStoreId: store.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
-			res:     &pbs.ListCredentialLibrariesResponse{},
-			anonRes: &pbs.ListCredentialLibrariesResponse{},
+			name: "Filter to No Libraries",
+			req:  &pbs.ListCredentialLibrariesRequest{CredentialStoreId: store.GetPublicId(), Filter: `"/item/id"=="doesnt match"`},
+			res: &pbs.ListCredentialLibrariesResponse{
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+			},
+			anonRes: &pbs.ListCredentialLibrariesResponse{
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -137,8 +210,8 @@ func TestList(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(ctx, repoFn, iamRepoFn)
-			require.NoError(t, err, "Couldn't create new host set service.")
+			s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
+			require.NoError(t, err, "Couldn't create new credential library service.")
 
 			// Test non-anonymous listing
 			got, gErr := s.ListCredentialLibraries(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), tc.req)
@@ -155,7 +228,16 @@ func TestList(t *testing.T) {
 			sort.Slice(want.Items, func(i, j int) bool {
 				return want.Items[i].GetId() < want.Items[j].GetId()
 			})
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
+			// Compare without comparing the refresh token
+			assert.Empty(
+				t,
+				cmp.Diff(
+					got,
+					want,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListCredentialLibrariesResponse{}, "refresh_token"),
+				),
+			)
 
 			// Test anonymous listing
 			got, gErr = s.ListCredentialLibraries(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -185,6 +267,9 @@ func TestList_Attributes(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
+	}
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	ts := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
@@ -192,43 +277,12 @@ func TestList_Attributes(t *testing.T) {
 	var wantLibrariesGeneric []*pb.CredentialLibrary
 	var wantLibrariesSSHCertificate []*pb.CredentialLibrary
 	for _, l := range vault.TestCredentialLibraries(t, conn, wrapper, storeGeneric.GetPublicId(), 5) {
-		wantLibrariesGeneric = append(wantLibrariesGeneric, &pb.CredentialLibrary{
-			Id:                l.GetPublicId(),
-			CredentialStoreId: l.GetStoreId(),
-			Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-			CreatedTime:       l.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       l.GetUpdateTime().GetTimestamp(),
-			Version:           l.GetVersion(),
-			Type:              vault.GenericLibrarySubtype.String(),
-			AuthorizedActions: testAuthorizedActions,
-			Attrs: &pb.CredentialLibrary_VaultGenericCredentialLibraryAttributes{
-				VaultGenericCredentialLibraryAttributes: &pb.VaultCredentialLibraryAttributes{
-					Path:       wrapperspb.String(l.GetVaultPath()),
-					HttpMethod: wrapperspb.String(l.GetHttpMethod()),
-				},
-			},
-		})
+		wantLibrariesGeneric = append(wantLibrariesGeneric, vaultCredentialLibraryToProto(l, prj))
 	}
 	for _, l := range vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, storeSSHCertificate.GetPublicId(), 10) {
-		wantLibrariesSSHCertificate = append(wantLibrariesSSHCertificate, &pb.CredentialLibrary{
-			Id:                l.GetPublicId(),
-			CredentialStoreId: l.GetStoreId(),
-			CredentialType:    l.GetCredentialType(),
-			Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: prj.GetParentId()},
-			CreatedTime:       l.GetCreateTime().GetTimestamp(),
-			UpdatedTime:       l.GetUpdateTime().GetTimestamp(),
-			Version:           l.GetVersion(),
-			Type:              vault.SSHCertificateLibrarySubtype.String(),
-			AuthorizedActions: testAuthorizedActions,
-			Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
-				VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
-					KeyType:  wrapperspb.String(l.GetKeyType()),
-					Path:     wrapperspb.String(l.GetVaultPath()),
-					Username: wrapperspb.String(l.GetUsername()),
-				},
-			},
-		})
+		wantLibrariesSSHCertificate = append(wantLibrariesSSHCertificate, sshCredentialLibraryToProto(l, prj))
 	}
+
 	cases := []struct {
 		name    string
 		req     *pbs.ListCredentialLibrariesRequest
@@ -237,22 +291,50 @@ func TestList_Attributes(t *testing.T) {
 		err     error
 	}{
 		{
-			name:    "Filter on Attribute Generic Library",
-			req:     &pbs.ListCredentialLibrariesRequest{CredentialStoreId: storeGeneric.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/path"==%q`, wantLibrariesGeneric[2].GetVaultGenericCredentialLibraryAttributes().GetPath().Value)},
-			res:     &pbs.ListCredentialLibrariesResponse{Items: wantLibrariesGeneric[2:3]},
-			anonRes: &pbs.ListCredentialLibrariesResponse{}, // anonymous user does not have access to attributes
+			name: "Filter on Attribute Generic Library",
+			req:  &pbs.ListCredentialLibrariesRequest{CredentialStoreId: storeGeneric.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/path"==%q`, wantLibrariesGeneric[2].GetVaultGenericCredentialLibraryAttributes().GetPath().Value)},
+			res: &pbs.ListCredentialLibrariesResponse{
+				Items:        wantLibrariesGeneric[2:3],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 1,
+			},
+			anonRes: &pbs.ListCredentialLibrariesResponse{
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+			}, // anonymous user does not have access to attributes
 		},
 		{
-			name:    "Filter on Attribute SSH Certificate Library",
-			req:     &pbs.ListCredentialLibrariesRequest{CredentialStoreId: storeSSHCertificate.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/path"==%q`, wantLibrariesSSHCertificate[2].GetVaultSshCertificateCredentialLibraryAttributes().GetPath().Value)},
-			res:     &pbs.ListCredentialLibrariesResponse{Items: wantLibrariesSSHCertificate[2:3]},
-			anonRes: &pbs.ListCredentialLibrariesResponse{}, // anonymous user does not have access to attributes
+			name: "Filter on Attribute SSH Certificate Library",
+			req:  &pbs.ListCredentialLibrariesRequest{CredentialStoreId: storeSSHCertificate.GetPublicId(), Filter: fmt.Sprintf(`"/item/attributes/path"==%q`, wantLibrariesSSHCertificate[2].GetVaultSshCertificateCredentialLibraryAttributes().GetPath().Value)},
+			res: &pbs.ListCredentialLibrariesResponse{
+				Items:        wantLibrariesSSHCertificate[2:3],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 1,
+			},
+			anonRes: &pbs.ListCredentialLibrariesResponse{
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+			}, // anonymous user does not have access to attributes
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(ctx, repoFn, iamRepoFn)
-			require.NoError(t, err, "Couldn't create new host set service.")
+			s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
+			require.NoError(t, err)
 
 			// Test non-anonymous listing
 			got, gErr := s.ListCredentialLibraries(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), tc.req)
@@ -262,24 +344,28 @@ func TestList_Attributes(t *testing.T) {
 				return
 			}
 			require.NoError(t, gErr)
-			sort.Slice(got.Items, func(i, j int) bool {
-				return got.Items[i].GetId() < got.Items[j].GetId()
-			})
-			want := proto.Clone(tc.res).(*pbs.ListCredentialLibrariesResponse)
-			sort.Slice(want.Items, func(i, j int) bool {
-				return want.Items[i].GetId() < want.Items[j].GetId()
-			})
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(
+				t,
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListCredentialLibrariesResponse{}, "refresh_token"),
+				),
+			)
 
 			// Test anonymous listing
 			got, gErr = s.ListCredentialLibraries(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
 			require.NoError(t, gErr)
-			assert.Len(t, got.Items, len(tc.anonRes.Items))
-			for _, item := range got.GetItems() {
-				require.Nil(t, item.CreatedTime)
-				require.Nil(t, item.UpdatedTime)
-				require.Zero(t, item.Version)
-			}
+			assert.Empty(
+				t,
+				cmp.Diff(
+					got,
+					tc.anonRes,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListCredentialLibrariesResponse{}, "refresh_token"),
+				),
+			)
 		})
 	}
 }
@@ -298,6 +384,9 @@ func TestCreate(t *testing.T) {
 	}
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
+	}
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
 	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
@@ -813,7 +902,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(ctx, repoFn, iamRepoFn)
+			s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 			require.NoError(err, "Error when getting new credential store service.")
 
 			got, gErr := s.CreateCredentialLibrary(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), tc.req)
@@ -863,12 +952,15 @@ func TestGet(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
+	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	unspecifiedLib := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
-	s, err := NewService(ctx, repoFn, iamRepoFn)
+	s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 	require.NoError(t, err)
 
 	repo, err := repoFn()
@@ -1068,13 +1160,16 @@ func TestDelete(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
+	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
 	vl := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
 	vl2 := vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
-	s, err := NewService(ctx, repoFn, iamRepoFn)
+	s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -1134,11 +1229,14 @@ func TestUpdate(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(testCtx, rw, rw, kms, sche)
 	}
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(testCtx, rw, repo)
+	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(testCtx, repoFn, iamRepoFn)
+	s, err := NewService(testCtx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 	require.NoError(t, err)
 	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
 	store, diffStore := cs[0], cs[1]
@@ -1905,6 +2003,9 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(ctx, rw, rw, kms, sche)
 	}
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
+	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
@@ -2139,7 +2240,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			s, err := NewService(ctx, repoFn, iamRepoFn)
+			s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 			require.NoError(err, "Error when getting new credential store service.")
 
 			got, gErr := s.CreateCredentialLibrary(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId()), tc.req)
@@ -2189,11 +2290,14 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 	repoFn := func() (*vault.Repository, error) {
 		return vault.NewRepository(testCtx, rw, rw, kms, sche)
 	}
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(testCtx, rw, repo)
+	}
 
 	_, prj := iam.TestScopes(t, iamRepo)
 	ctx := auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId())
 
-	s, err := NewService(testCtx, repoFn, iamRepoFn)
+	s, err := NewService(testCtx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
 	require.NoError(t, err)
 	cs := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 2)
 	store, diffStore := cs[0], cs[1]
@@ -2555,4 +2659,269 @@ func TestUpdate_SSHCertificateCredentialLibrary(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestListPagination(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(err)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	sche := scheduler.TestScheduler(t, conn, wrapper)
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	repoFn := func() (*vault.Repository, error) {
+		return vault.NewRepository(ctx, rw, rw, kms, sche)
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	vaultLibServiceFn := func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, rw, repo)
+	}
+	vaultRepo, err := repoFn()
+	require.NoError(err)
+	tokenRepo, err := tokenRepoFn()
+	require.NoError(err)
+
+	_, prjNoLibs := iam.TestScopes(t, iamRepo)
+	storeNoLibs := vault.TestCredentialStores(t, conn, wrapper, prjNoLibs.GetPublicId(), 1)[0]
+	o, prj := iam.TestScopes(t, iamRepo)
+
+	store := vault.TestCredentialStores(t, conn, wrapper, prj.GetPublicId(), 1)[0]
+	var allCredentialLibraries []*pb.CredentialLibrary
+	for _, l := range vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 5) {
+		allCredentialLibraries = append(allCredentialLibraries, vaultCredentialLibraryToProto(l, prj))
+	}
+	for _, l := range vault.TestSSHCertificateCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 5) {
+		allCredentialLibraries = append(allCredentialLibraries, sshCredentialLibraryToProto(l, prj))
+	}
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	authMethod := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+	// auth account is only used to join auth method to user.
+	// We don't do anything else with the auth account in the test setup.
+	acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "test_user")
+	u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+	role1 := iam.TestRole(t, conn, prj.GetPublicId())
+	iam.TestRoleGrant(t, conn, role1.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, role1.GetPublicId(), u.GetPublicId())
+	role2 := iam.TestRole(t, conn, prjNoLibs.GetPublicId())
+	iam.TestRoleGrant(t, conn, role2.GetPublicId(), "id=*;type=*;actions=*")
+	iam.TestUserRole(t, conn, role2.GetPublicId(), u.GetPublicId())
+	at, err := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+	require.NoError(err)
+
+	// Test without anon user
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	s, err := NewService(ctx, iamRepoFn, repoFn, vaultLibServiceFn, 1000)
+	require.NoError(err)
+
+	// Start paginating, recursively
+	req := &pbs.ListCredentialLibrariesRequest{
+		CredentialStoreId: store.PublicId, // Use store with libraries first
+		Filter:            "",
+		RefreshToken:      "",
+		PageSize:          2,
+	}
+	got, err := s.ListCredentialLibraries(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialLibrariesResponse{
+				Items:        allCredentialLibraries[0:2],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialLibrariesResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request second page
+	req.RefreshToken = got.RefreshToken
+	got, err = s.ListCredentialLibraries(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialLibrariesResponse{
+				Items:        allCredentialLibraries[2:4],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialLibrariesResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request rest of results
+	req.RefreshToken = got.RefreshToken
+	req.PageSize = 10
+	got, err = s.ListCredentialLibraries(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 6)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialLibrariesResponse{
+				Items:        allCredentialLibraries[4:],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialLibrariesResponse{}, "refresh_token"),
+		),
+	)
+
+	// Create another credential library
+	newCredLib := vault.TestCredentialLibraries(t, conn, wrapper, store.GetPublicId(), 1)[0]
+	// Delete one of the other credential libraries
+	_, err = vaultRepo.DeleteCredentialLibrary(ctx, prj.PublicId, allCredentialLibraries[0].Id)
+	require.NoError(err)
+	deletedCredLib := allCredentialLibraries[0]
+	allCredentialLibraries = allCredentialLibraries[1:]
+	pbNewCredLib := vaultCredentialLibraryToProto(newCredLib, prj)
+	allCredentialLibraries = append(allCredentialLibraries, pbNewCredLib)
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(err)
+
+	// Request updated results
+	req.RefreshToken = got.RefreshToken
+	got, err = s.ListCredentialLibraries(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialLibrariesResponse{
+				Items:        []*pb.CredentialLibrary{pbNewCredLib},
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should contain the deleted session
+				RemovedIds:   []string{deletedCredLib.Id},
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialLibrariesResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.RefreshToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, allCredentialLibraries[len(allCredentialLibraries)-2].Id, allCredentialLibraries[len(allCredentialLibraries)-1].Id)
+	got, err = s.ListCredentialLibraries(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialLibrariesResponse{
+				Items:        []*pb.CredentialLibrary{allCredentialLibraries[len(allCredentialLibraries)-2]},
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialLibrariesResponse{}, "refresh_token"),
+		),
+	)
+	req.RefreshToken = got.RefreshToken
+	// Get the second page
+	got, err = s.ListCredentialLibraries(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 1)
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialLibrariesResponse{
+				Items:        []*pb.CredentialLibrary{allCredentialLibraries[len(allCredentialLibraries)-1]},
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialLibrariesResponse{}, "refresh_token"),
+		),
+	)
+	req.RefreshToken = got.RefreshToken
+
+	// List items in the empty store
+	req = &pbs.ListCredentialLibrariesRequest{
+		CredentialStoreId: storeNoLibs.PublicId,
+		Filter:            "",
+		RefreshToken:      "",
+		PageSize:          2,
+	}
+	got, err = s.ListCredentialLibraries(ctx, req)
+	require.NoError(err)
+	require.Len(got.GetItems(), 0)
+	// Compare without comparing the refresh token
+	assert.Empty(
+		cmp.Diff(
+			got,
+			&pbs.ListCredentialLibrariesResponse{
+				Items:        nil,
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListCredentialLibrariesResponse{}, "refresh_token"),
+		),
+	)
 }

@@ -124,6 +124,7 @@ type Controller struct {
 	AuthTokenRepoFn           common.AuthTokenRepoFactory
 	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
 	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
+	VaultLibraryServiceFn     common.LibraryServiceFactory
 	IamRepoFn                 common.IamRepoFactory
 	OidcRepoFn                common.OidcAuthRepoFactory
 	LdapRepoFn                common.LdapAuthRepoFactory
@@ -395,6 +396,9 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 	}
 	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
+	}
+	c.VaultLibraryServiceFn = func(repo *vault.Repository) (*vault.LibraryService, error) {
+		return vault.NewLibraryService(ctx, dbase, repo)
 	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
 		return server.NewRepository(ctx, dbase, dbase, c.kms)
