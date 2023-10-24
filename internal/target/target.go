@@ -189,3 +189,13 @@ func (t *targetView) targetSubtype(ctx context.Context, address string) (Target,
 	tt.SetStorageBucketId(t.StorageBucketId)
 	return tt, nil
 }
+
+type deletedTarget struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedTarget) TableName() string {
+	return "target_all_subtypes_deleted_view"
+}

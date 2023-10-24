@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/boundary"
 	"github.com/hashicorp/boundary/internal/db"
@@ -227,12 +228,14 @@ func (r *Repository) FetchAuthzProtectedEntitiesByScope(ctx context.Context, pro
 	return targetsMap, nil
 }
 
-// ListTargets lists targets in a project based on the data in the WithPermissions option
+// listTargets lists targets in a project based on the data in the WithPermissions option
 // provided to the Repository constructor. If no permissions are available, this function
 // is a no-op.
-// Supports WithLimit which overrides the limit set in the Repository object.
-func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, error) {
-	const op = "target.(Repository).ListTargets"
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listTargets(ctx context.Context, opt ...Option) ([]Target, error) {
+	const op = "target.(Repository).listTargets"
 
 	if len(r.permissions) == 0 {
 		return []Target{}, nil
@@ -242,19 +245,39 @@ func (r *Repository) ListTargets(ctx context.Context, opt ...Option) ([]Target, 
 	if len(where) == 0 {
 		return []Target{}, nil
 	}
-
+	whereClause := strings.Join(where, " or ")
 	opts := GetOpts(opt...)
 	limit := r.defaultLimit
 	if opts.WithLimit != 0 {
 		limit = opts.WithLimit
 	}
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.WithStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use public_id as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+		)
+		whereClause += "and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
+	}
 
 	var foundTargets []*targetView
-	err := r.reader.SearchWhere(ctx,
+	err := r.reader.SearchWhere(
+		ctx,
 		&foundTargets,
-		strings.Join(where, " or "),
+		whereClause,
 		args,
 		db.WithLimit(limit),
+		db.WithOrder(withOrder),
 	)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -326,6 +349,48 @@ func (r *Repository) listPermissionWhereClauses() ([]string, []any) {
 	}
 
 	return where, args
+}
+
+// listDeletedIds lists the public IDs of any targets deleted since the timestamp provided,
+// and the timestamp of the transaction within which the targets were listed.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "target.(Repository).listDeletedIds"
+	var deleteTargets []*deletedTarget
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deleteTargets, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted targets"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var targetIds []string
+	for _, t := range deleteTargets {
+		targetIds = append(targetIds, t.PublicId)
+	}
+	return targetIds, transactionTimestamp, nil
+}
+
+// estimatedCount returns an estimate of the total number of items across all targets.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "target.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountTargets, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total targets"))
+		}
+	}
+	return count, nil
 }
 
 // DeleteTarget will delete a target from the repository.

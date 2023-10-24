@@ -5,7 +5,6 @@ package tcp_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -15,11 +14,8 @@ import (
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
-	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/tcp"
-	"github.com/hashicorp/boundary/internal/types/action"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -141,52 +137,6 @@ func TestRepository_LookupTarget(t *testing.T) {
 	}
 }
 
-func TestRepository_ListRoles_Multiple_Scopes(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	testKms := kms.TestKms(t, conn, wrapper)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-
-	_, proj1 := iam.TestScopes(t, iamRepo)
-	_, proj2 := iam.TestScopes(t, iamRepo)
-
-	db.TestDeleteWhere(t, conn, tcp.NewTestTarget(ctx, ""), "1=1")
-
-	const numPerScope = 10
-	var total int
-	for i := 0; i < numPerScope; i++ {
-		tcp.TestTarget(ctx, t, conn, proj1.GetPublicId(), fmt.Sprintf("proj1-%d", i))
-		total++
-		tcp.TestTarget(ctx, t, conn, proj2.GetPublicId(), fmt.Sprintf("proj2-%d", i))
-		total++
-	}
-
-	rw := db.New(conn)
-	repo, err := target.NewRepository(ctx, rw, rw, testKms,
-		target.WithPermissions([]perms.Permission{
-			{
-				ScopeId:  proj1.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
-			},
-			{
-				ScopeId:  proj2.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
-			},
-		}),
-	)
-	require.NoError(t, err)
-
-	got, err := repo.ListTargets(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, total, len(got))
-}
-
 func TestRepository_DeleteTarget(t *testing.T) {
 	t.Parallel()
 	conn, _ := db.TestSetup(t, "postgres")
@@ -269,44 +219,5 @@ func TestRepository_DeleteTarget(t *testing.T) {
 			err = db.TestVerifyOplog(t, rw, tt.args.target.GetPublicId(), db.WithOperation(oplog.OpType_OP_TYPE_DELETE), db.WithCreateNotBefore(10*time.Second))
 			assert.NoError(err)
 		})
-	}
-}
-
-func TestRepository_ListRoles_Above_Default_Count(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-	conn, _ := db.TestSetup(t, "postgres")
-	wrapper := db.TestWrapper(t)
-	testKms := kms.TestKms(t, conn, wrapper)
-	iamRepo := iam.TestRepo(t, conn, wrapper)
-
-	_, proj := iam.TestScopes(t, iamRepo)
-
-	numToCreate := db.DefaultLimit + 5
-	var total int
-	for i := 0; i < numToCreate; i++ {
-		tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), fmt.Sprintf("proj1-%d", i), target.WithAddress("1.2.3.4"))
-		total++
-	}
-	require.Equal(t, numToCreate, total)
-
-	rw := db.New(conn)
-	repo, err := target.NewRepository(ctx, rw, rw, testKms,
-		target.WithPermissions([]perms.Permission{
-			{
-				ScopeId:  proj.PublicId,
-				Resource: resource.Target,
-				Action:   action.List,
-				All:      true,
-			},
-		}))
-	require.NoError(t, err)
-
-	got, err := repo.ListTargets(ctx, target.WithLimit(-1))
-	require.NoError(t, err)
-	assert.Equal(t, total, len(got))
-
-	for _, tar := range got {
-		assert.Equal(t, "1.2.3.4", tar.GetAddress())
 	}
 }
