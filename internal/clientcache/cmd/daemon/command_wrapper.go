@@ -16,7 +16,7 @@ import (
 )
 
 // Keep this interface aligned with the interface at internal/cmd/commands.go
-type wrappableCommand interface {
+type cacheEnabledCommand interface {
 	cli.Command
 	BaseCommand() *base.Command
 }
@@ -24,16 +24,14 @@ type wrappableCommand interface {
 // CommandWrapper starts the boundary daemon after the command was Run and attempts
 // to send the current persona to any running daemon.
 type CommandWrapper struct {
-	wrappableCommand
-	ui cli.Ui
+	cacheEnabledCommand
 }
 
 // Wrap returns a cli.CommandFactory that returns a command wrapped in the CommandWrapper.
-func Wrap(ui cli.Ui, wrapped wrappableCommand) cli.CommandFactory {
+func Wrap(c cacheEnabledCommand) cli.CommandFactory {
 	return func() (cli.Command, error) {
 		return &CommandWrapper{
-			wrappableCommand: wrapped,
-			ui:               ui,
+			cacheEnabledCommand: c,
 		}, nil
 	}
 }
@@ -41,7 +39,7 @@ func Wrap(ui cli.Ui, wrapped wrappableCommand) cli.CommandFactory {
 // Run runs the wrapped command and then attempts to start the boundary daemon and send
 // the current persona
 func (w *CommandWrapper) Run(args []string) int {
-	r := w.wrappableCommand.Run(args)
+	r := w.cacheEnabledCommand.Run(args)
 
 	if w.BaseCommand().FlagSkipDaemon {
 		return r
@@ -59,7 +57,7 @@ func (w *CommandWrapper) Run(args []string) int {
 func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
 	cmdName, err := os.Executable()
 	if err != nil {
-		w.ui.Error(fmt.Sprintf("unable to find boundary binary for daemon startup: %s", err.Error()))
+		w.BaseCommand().UI.Error(fmt.Sprintf("unable to find boundary binary for daemon startup: %s", err.Error()))
 		return false
 	}
 
@@ -77,7 +75,7 @@ func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
 // addTokenToCache runs AddTokenCommand with the token used in, or retrieved by
 // the wrapped command.
 func (w *CommandWrapper) addTokenToCache(ctx context.Context) bool {
-	com := AddTokenCommand{Command: base.NewCommand(w.ui)}
+	com := AddTokenCommand{Command: base.NewCommand(w.BaseCommand().UI)}
 	client, err := w.BaseCommand().Client()
 	if err != nil {
 		return false
