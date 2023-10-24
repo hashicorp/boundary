@@ -86,7 +86,7 @@ jobs:
 
           # Parse it through jq to build a valid json object.
           jq --null-input \
-            --arg comment "$(cat github-comment.txt)" \
+            --rawfile comment github-comment.txt \
             '{"body": $comment}' > body.json
 
           # Post comment on PR.
