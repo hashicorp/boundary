@@ -740,6 +740,13 @@ func toProto(ctx context.Context, in credential.Library, opt ...handlers.Option)
 				json.Unmarshal([]byte(vaultIn.GetExtensions()), &e)
 				attrs.Extensions = e
 			}
+			if vaultIn.GetAdditionalValidPrincipals() != "" {
+				avp := strings.Split(vaultIn.GetAdditionalValidPrincipals(), ",")
+				attrs.AdditionalValidPrincipals = make([]*wrapperspb.StringValue, len(avp))
+				for i, p := range avp {
+					attrs.AdditionalValidPrincipals[i] = &wrapperspb.StringValue{Value: p}
+				}
+			}
 			out.Attrs = &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 				VaultSshCertificateCredentialLibraryAttributes: attrs,
 			}
@@ -849,6 +856,13 @@ func toStorageVaultSSHCertificateLibrary(ctx context.Context, storeId string, in
 			return nil, err
 		}
 		opts = append(opts, vault.WithExtensions(string(e)))
+	}
+	if attrs.GetAdditionalValidPrincipals() != nil {
+		avp := make([]string, len(attrs.GetAdditionalValidPrincipals()))
+		for i, p := range attrs.GetAdditionalValidPrincipals() {
+			avp[i] = p.GetValue()
+		}
+		opts = append(opts, vault.WithAdditionalValidPrincipals(avp))
 	}
 
 	cs, err := vault.NewSSHCertificateCredentialLibrary(storeId, attrs.GetPath().GetValue(), attrs.GetUsername().GetValue(), opts...)

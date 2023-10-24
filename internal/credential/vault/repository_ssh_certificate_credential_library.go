@@ -157,7 +157,7 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 		case strings.EqualFold(keyIdField, f):
 		case strings.EqualFold(CriticalOptionsField, f):
 		case strings.EqualFold(ExtensionsField, f):
-
+		case strings.EqualFold(AdditionalValidPrincipalsField, f):
 		default:
 			return nil, db.NoRowsAffected, errors.New(ctx, errors.InvalidFieldMask, op, f)
 		}
@@ -186,16 +186,17 @@ func (r *Repository) UpdateSSHCertificateCredentialLibrary(ctx context.Context, 
 	var dbMask, nullFields []string
 	dbMask, nullFields = dbw.BuildUpdatePaths(
 		map[string]any{
-			nameField:            l.Name,
-			descriptionField:     l.Description,
-			vaultPathField:       l.VaultPath,
-			usernameField:        l.Username,
-			keyTypeField:         l.KeyType,
-			keyBitsField:         l.KeyBits,
-			ttlField:             l.Ttl,
-			keyIdField:           l.KeyId,
-			CriticalOptionsField: l.CriticalOptions,
-			ExtensionsField:      l.Extensions,
+			nameField:                      l.Name,
+			descriptionField:               l.Description,
+			vaultPathField:                 l.VaultPath,
+			usernameField:                  l.Username,
+			keyTypeField:                   l.KeyType,
+			keyBitsField:                   l.KeyBits,
+			ttlField:                       l.Ttl,
+			keyIdField:                     l.KeyId,
+			CriticalOptionsField:           l.CriticalOptions,
+			ExtensionsField:                l.Extensions,
+			AdditionalValidPrincipalsField: l.AdditionalValidPrincipals,
 		},
 		fieldMaskPaths,
 		[]string{keyBitsField},
