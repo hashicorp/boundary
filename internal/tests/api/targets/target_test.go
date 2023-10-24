@@ -242,6 +242,43 @@ func TestList(t *testing.T) {
 	assert.Equal(filterItem.Id, ul.Items[0].Id)
 }
 
+func TestListWithRefreshToken(t *testing.T) {
+	require := require.New(t)
+	tc := controller.NewTestController(t, nil)
+	defer tc.Shutdown()
+
+	client := tc.Client()
+	token := tc.Token()
+	client.SetToken(token.Token)
+	_, proj := iam.TestScopes(t, tc.IamRepo(), iam.WithUserId(token.UserId))
+
+	tarClient := targets.NewClient(client)
+	_, err := tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("1"), targets.WithTcpTargetDefaultPort(2))
+	require.NoError(err)
+	_, err = tarClient.Create(tc.Context(), "tcp", proj.GetPublicId(), targets.WithName("2"), targets.WithTcpTargetDefaultPort(2))
+	require.NoError(err)
+
+	// Refresh tokens using project scope
+	res, err := tarClient.List(tc.Context(), proj.GetPublicId(), targets.WithRecursive(true))
+	require.NoError(err)
+	require.Len(res.Items, 2, "expected the 2 targets created above")
+	refTok := res.RefreshToken
+
+	res, err = tarClient.List(tc.Context(), proj.GetPublicId(), targets.WithRecursive(true), targets.WithRefreshToken(refTok))
+	require.NoError(err)
+	require.Empty(res.Items)
+
+	// Refresh tokens recursive listing over global scope
+	res, err = tarClient.List(tc.Context(), "global", targets.WithRecursive(true))
+	require.NoError(err)
+	require.Len(res.Items, 4, "expected the 2 targets created above and the 2 auto created for the test controller")
+	refTok = res.RefreshToken
+
+	res, err = tarClient.List(tc.Context(), "global", targets.WithRecursive(true), targets.WithRefreshToken(refTok))
+	require.NoError(err)
+	require.Empty(res.Items)
+}
+
 func TestTarget_AddressMutualExclusiveRelationship(t *testing.T) {
 	tc := controller.NewTestController(t, nil)
 
