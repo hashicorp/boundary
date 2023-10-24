@@ -78,6 +78,30 @@ func WithFilter(filter string) Option {
 	}
 }
 
+func WithVaultSSHCertificateCredentialLibraryAdditionalValidPrincipals(inAdditionalValidPrincipals []string) Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["additional_valid_principals"] = inAdditionalValidPrincipals
+		o.postMap["attributes"] = val
+	}
+}
+
+func DefaultVaultSSHCertificateCredentialLibraryAdditionalValidPrincipals() Option {
+	return func(o *options) {
+		raw, ok := o.postMap["attributes"]
+		if !ok {
+			raw = interface{}(map[string]interface{}{})
+		}
+		val := raw.(map[string]interface{})
+		val["additional_valid_principals"] = nil
+		o.postMap["attributes"] = val
+	}
+}
+
 func WithAttributes(inAttributes map[string]interface{}) Option {
 	return func(o *options) {
 		o.postMap["attributes"] = inAttributes

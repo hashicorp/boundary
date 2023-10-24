@@ -210,6 +210,7 @@ type genericIssuingCredentialLibrary struct {
 	PrivateKeyAttribute           string
 	PrivateKeyPassphraseAttribute string
 	Purpose                       credential.Purpose
+	AdditionalValidPrincipals     string
 }
 
 func (pl *genericIssuingCredentialLibrary) clone() *genericIssuingCredentialLibrary {
@@ -490,6 +491,7 @@ type privateCredentialLibraryAllTypes struct {
 	CriticalOptions               []byte
 	Extensions                    []byte
 	CredLibType                   string
+	AdditionalValidPrincipals     string
 }
 
 func (pl *privateCredentialLibraryAllTypes) GetPublicId() string { return pl.PublicId }
@@ -570,6 +572,7 @@ func (pl *privateCredentialLibraryAllTypes) clone() *privateCredentialLibraryAll
 		CriticalOptions:               pl.CriticalOptions,
 		Extensions:                    pl.Extensions,
 		CredLibType:                   pl.CredLibType,
+		AdditionalValidPrincipals:     pl.AdditionalValidPrincipals,
 	}
 }
 
@@ -577,38 +580,39 @@ func (pl *privateCredentialLibraryAllTypes) toTypedIssuingCredentialLibrary() is
 	switch pl.CredLibType {
 	case "ssh-signed-cert":
 		return &sshCertIssuingCredentialLibrary{
-			PublicId:        pl.PublicId,
-			StoreId:         pl.StoreId,
-			CredType:        pl.CredType,
-			Username:        pl.Username,
-			Name:            pl.Name,
-			Description:     pl.Description,
-			CreateTime:      pl.CreateTime,
-			UpdateTime:      pl.UpdateTime,
-			Version:         pl.Version,
-			ProjectId:       pl.ProjectId,
-			VaultPath:       pl.VaultPath,
-			VaultAddress:    pl.VaultAddress,
-			Namespace:       pl.Namespace,
-			CaCert:          pl.CaCert,
-			TlsServerName:   pl.TlsServerName,
-			TlsSkipVerify:   pl.TlsSkipVerify,
-			WorkerFilter:    pl.WorkerFilter,
-			TokenHmac:       pl.TokenHmac,
-			Token:           pl.Token,
-			CtToken:         pl.CtToken,
-			TokenKeyId:      pl.TokenKeyId,
-			ClientCert:      pl.ClientCert,
-			ClientKey:       pl.ClientKey,
-			CtClientKey:     pl.CtClientKey,
-			ClientKeyId:     pl.ClientKeyId,
-			Purpose:         pl.Purpose,
-			KeyType:         pl.KeyType,
-			KeyBits:         pl.KeyBits,
-			Ttl:             pl.Ttl,
-			KeyId:           pl.KeyId,
-			CriticalOptions: pl.CriticalOptions,
-			Extensions:      pl.Extensions,
+			PublicId:                  pl.PublicId,
+			StoreId:                   pl.StoreId,
+			CredType:                  pl.CredType,
+			Username:                  pl.Username,
+			Name:                      pl.Name,
+			Description:               pl.Description,
+			CreateTime:                pl.CreateTime,
+			UpdateTime:                pl.UpdateTime,
+			Version:                   pl.Version,
+			ProjectId:                 pl.ProjectId,
+			VaultPath:                 pl.VaultPath,
+			VaultAddress:              pl.VaultAddress,
+			Namespace:                 pl.Namespace,
+			CaCert:                    pl.CaCert,
+			TlsServerName:             pl.TlsServerName,
+			TlsSkipVerify:             pl.TlsSkipVerify,
+			WorkerFilter:              pl.WorkerFilter,
+			TokenHmac:                 pl.TokenHmac,
+			Token:                     pl.Token,
+			CtToken:                   pl.CtToken,
+			TokenKeyId:                pl.TokenKeyId,
+			ClientCert:                pl.ClientCert,
+			ClientKey:                 pl.ClientKey,
+			CtClientKey:               pl.CtClientKey,
+			ClientKeyId:               pl.ClientKeyId,
+			Purpose:                   pl.Purpose,
+			KeyType:                   pl.KeyType,
+			KeyBits:                   pl.KeyBits,
+			Ttl:                       pl.Ttl,
+			KeyId:                     pl.KeyId,
+			CriticalOptions:           pl.CriticalOptions,
+			Extensions:                pl.Extensions,
+			AdditionalValidPrincipals: pl.AdditionalValidPrincipals,
 		}
 	default:
 		return &genericIssuingCredentialLibrary{
@@ -643,6 +647,7 @@ func (pl *privateCredentialLibraryAllTypes) toTypedIssuingCredentialLibrary() is
 			CtClientKey:                   pl.CtClientKey,
 			ClientKeyId:                   pl.ClientKeyId,
 			Purpose:                       pl.Purpose,
+			AdditionalValidPrincipals:     pl.AdditionalValidPrincipals,
 		}
 	}
 }
@@ -691,38 +696,39 @@ func (m *requestMap) get(libraryId string) []credential.Purpose {
 }
 
 type sshCertIssuingCredentialLibrary struct {
-	PublicId        string
-	StoreId         string
-	Name            string
-	Description     string
-	CreateTime      *timestamp.Timestamp
-	UpdateTime      *timestamp.Timestamp
-	Version         uint32
-	VaultPath       string
-	CredType        string
-	ProjectId       string
-	VaultAddress    string
-	Namespace       string
-	CaCert          []byte
-	TlsServerName   string
-	TlsSkipVerify   bool
-	WorkerFilter    string
-	Token           TokenSecret
-	CtToken         []byte
-	TokenHmac       []byte
-	TokenKeyId      string
-	ClientCert      []byte
-	ClientKey       KeySecret
-	CtClientKey     []byte
-	ClientKeyId     string
-	Username        string
-	KeyType         string
-	KeyBits         int
-	KeyId           string
-	Ttl             string
-	CriticalOptions []byte
-	Extensions      []byte
-	Purpose         credential.Purpose
+	PublicId                  string
+	StoreId                   string
+	Name                      string
+	Description               string
+	CreateTime                *timestamp.Timestamp
+	UpdateTime                *timestamp.Timestamp
+	Version                   uint32
+	VaultPath                 string
+	CredType                  string
+	ProjectId                 string
+	VaultAddress              string
+	Namespace                 string
+	CaCert                    []byte
+	TlsServerName             string
+	TlsSkipVerify             bool
+	WorkerFilter              string
+	Token                     TokenSecret
+	CtToken                   []byte
+	TokenHmac                 []byte
+	TokenKeyId                string
+	ClientCert                []byte
+	ClientKey                 KeySecret
+	CtClientKey               []byte
+	ClientKeyId               string
+	Username                  string
+	KeyType                   string
+	KeyBits                   int
+	KeyId                     string
+	Ttl                       string
+	CriticalOptions           []byte
+	Extensions                []byte
+	Purpose                   credential.Purpose
+	AdditionalValidPrincipals string
 }
 
 func (lib *sshCertIssuingCredentialLibrary) GetPublicId() string            { return lib.PublicId }
@@ -906,8 +912,13 @@ func (lib *sshCertIssuingCredentialLibrary) retrieveCredential(ctx context.Conte
 		}
 	}
 
+	validPrincipals := username
+	if lib.AdditionalValidPrincipals != "" {
+		validPrincipals = fmt.Sprintf("%s,%s", username, lib.AdditionalValidPrincipals)
+	}
+
 	payload := sshCertVaultBody{
-		ValidPrincipals: username,
+		ValidPrincipals: validPrincipals,
 		CertType:        "user",
 		CriticalOptions: criticalOptions,
 		Extensions:      extensions,
