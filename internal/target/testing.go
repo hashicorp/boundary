@@ -6,6 +6,7 @@ package target
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/db"
@@ -72,4 +73,25 @@ func TestTargetAddress(t testing.TB, conn *db.DB, targetId, address string) *Add
 	err := rw.Create(context.Background(), staticAddress)
 	require.NoError(err)
 	return staticAddress
+}
+
+// TestListTargets exposes the repo listTargets method for testing purposes.
+func TestListTargets(t testing.TB, repo *Repository, ctx context.Context, opts ...Option) []Target {
+	targets, err := repo.listTargets(ctx, opts...)
+	require.NoError(t, err)
+	return targets
+}
+
+// TestListDeletedIds exposes the repo listDeletedIds method for testing purposes.
+func TestListDeletedIds(t testing.TB, repo *Repository, ctx context.Context, since time.Time) ([]string, time.Time) {
+	ids, ttime, err := repo.listDeletedIds(ctx, since)
+	require.NoError(t, err)
+	return ids, ttime
+}
+
+// TestEstimatedCount exposes the repo estimatedCount method for testing purposes.
+func TestEstimatedCount(t testing.TB, repo *Repository, ctx context.Context) int {
+	n, err := repo.estimatedCount(ctx)
+	require.NoError(t, err)
+	return n
 }
