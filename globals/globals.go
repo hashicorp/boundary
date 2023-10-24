@@ -27,6 +27,9 @@ var (
 	// DefaultMaxRequestSize is the maximum size of a request we allow by default
 	DefaultMaxRequestSize = int64(1024 * 1024)
 
+	// DefaultMaxPageSize is the maximum list page size allowed if not set in the config.
+	DefaultMaxPageSize = 1000
+
 	// ContextMaxRequestSizeTypeKey is a value to keep linters from complaining
 	// about clashing string identifiers
 	ContextMaxRequestSizeTypeKey ContextMaxRequestSizeType
