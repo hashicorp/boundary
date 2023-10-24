@@ -113,7 +113,7 @@ func testService(t *testing.T, ctx context.Context, conn *db.DB, kms *kms.Kms, w
 	staticCredRepoFn := func() (*credstatic.Repository, error) {
 		return credstatic.NewRepository(context.Background(), rw, rw, kms)
 	}
-	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
+	return targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, 1000, nil)
 }
 
 func TestGet(t *testing.T) {
@@ -347,6 +347,11 @@ func TestList(t *testing.T) {
 			res:  &pbs.ListTargetsResponse{Items: totalTars},
 		},
 		{
+			name: "Paginate listing",
+			req:  &pbs.ListTargetsRequest{ScopeId: scope.Global.String(), Recursive: true, PageSize: 2},
+			res:  &pbs.ListTargetsResponse{Items: totalTars[:2]},
+		},
+		{
 			name: "Filter To Many Targets",
 			req:  &pbs.ListTargetsRequest{ScopeId: scope.Global.String(), Recursive: true, Filter: fmt.Sprintf(`"/item/scope/id"==%q`, proj.GetPublicId())},
 			res:  &pbs.ListTargetsResponse{Items: wantTars},
@@ -411,6 +416,250 @@ func TestList(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestListPagination(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	repo, err := target.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	org, proj := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, proj.GetPublicId())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
+	hss := static.TestSets(t, conn, hc.GetPublicId(), 2)
+	s, err := testService(t, context.Background(), conn, kms, wrapper)
+	require.NoError(t, err)
+
+	var allTargets []*pb.Target
+	for i := 0; i < 10; i++ {
+		tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), fmt.Sprintf("tar%d", i), target.WithHostSources([]string{hss[0].GetPublicId(), hss[1].GetPublicId()}))
+		allTargets = append(allTargets, &pb.Target{
+			Id:                     tar.GetPublicId(),
+			ScopeId:                proj.GetPublicId(),
+			Name:                   wrapperspb.String(tar.GetName()),
+			Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+			CreatedTime:            tar.GetCreateTime().GetTimestamp(),
+			UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
+			Version:                tar.GetVersion(),
+			Type:                   tcp.Subtype.String(),
+			Attrs:                  &pb.Target_TcpTargetAttributes{},
+			SessionMaxSeconds:      wrapperspb.UInt32(28800),
+			SessionConnectionLimit: wrapperspb.Int32(-1),
+			AuthorizedActions:      testAuthorizedActions,
+			Address:                &wrapperspb.StringValue{},
+		})
+	}
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Test without anon user
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	// Start paginating, recursively
+	req := &pbs.ListTargetsRequest{
+		ScopeId:      "global",
+		Recursive:    true,
+		Filter:       "",
+		RefreshToken: "",
+		PageSize:     2,
+	}
+	got, err := s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        allTargets[0:2],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request second page
+	req.RefreshToken = got.RefreshToken
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        allTargets[2:4],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request rest of results
+	req.RefreshToken = got.RefreshToken
+	req.PageSize = 10
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 6)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        allTargets[4:],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "refresh_token"),
+		),
+	)
+
+	// Create another target
+	tar := tcp.TestTarget(ctx, t, conn, proj.GetPublicId(), "test-target", target.WithHostSources([]string{hss[0].GetPublicId(), hss[1].GetPublicId()}))
+	newTarget := &pb.Target{
+		Id:                     tar.GetPublicId(),
+		ScopeId:                proj.GetPublicId(),
+		Name:                   wrapperspb.String(tar.GetName()),
+		Scope:                  &scopes.ScopeInfo{Id: proj.GetPublicId(), Type: scope.Project.String(), ParentScopeId: org.GetPublicId()},
+		CreatedTime:            tar.GetCreateTime().GetTimestamp(),
+		UpdatedTime:            tar.GetUpdateTime().GetTimestamp(),
+		Version:                tar.GetVersion(),
+		Type:                   tcp.Subtype.String(),
+		Attrs:                  &pb.Target_TcpTargetAttributes{},
+		SessionMaxSeconds:      wrapperspb.UInt32(28800),
+		SessionConnectionLimit: wrapperspb.Int32(-1),
+		AuthorizedActions:      testAuthorizedActions,
+		Address:                &wrapperspb.StringValue{},
+	}
+	allTargets = append(allTargets, newTarget)
+
+	// Delete one of the other targets
+	_, err = repo.DeleteTarget(ctx, allTargets[0].Id)
+	require.NoError(t, err)
+	deletedTarget := allTargets[0]
+	allTargets = allTargets[1:]
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Request updated results
+	req.RefreshToken = got.RefreshToken
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        allTargets[len(allTargets)-1:],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should contain the deleted target
+				RemovedIds:   []string{deletedTarget.Id},
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.RefreshToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, allTargets[len(allTargets)-2].Id, allTargets[len(allTargets)-1].Id)
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        []*pb.Target{allTargets[len(allTargets)-2]},
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "refresh_token"),
+		),
+	)
+	req.RefreshToken = got.RefreshToken
+	// Get the second page
+	got, err = s.ListTargets(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListTargetsResponse{
+				Items:        []*pb.Target{allTargets[len(allTargets)-1]},
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListTargetsResponse{}, "refresh_token"),
+		),
+	)
 }
 
 func TestDelete(t *testing.T) {
@@ -2594,7 +2843,7 @@ func TestAuthorizeSession(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, 1000, nil)
 	require.NoError(t, err)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2767,7 +3016,7 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, 1000, nil)
 	require.NoError(t, err)
 
 	hc := static.TestCatalogs(t, conn, proj.GetPublicId(), 1)[0]
@@ -3343,7 +3592,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 
 	statusGracePeriod := new(atomic.Int64)
 	statusGracePeriod.Store(int64(server.DefaultLiveness))
-	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, nil)
+	s, err := targets.NewService(ctx, kms, repoFn, iamRepoFn, serversRepoFn, sessionRepoFn, pluginHostRepoFn, staticHostRepoFn, vaultCredRepoFn, staticCredRepoFn, nil, statusGracePeriod, 1000, nil)
 	require.NoError(t, err)
 
 	// Authorized user gets full permissions
@@ -3410,7 +3659,7 @@ func TestAuthorizeSession_Errors(t *testing.T) {
 		h.Address = fmt.Sprintf("%s:54321", h.GetAddress())
 		repo, err := staticHostRepoFn()
 		require.NoError(t, err)
-		h, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
+		_, _, err = repo.UpdateHost(ctx, hc.GetProjectId(), h, h.GetVersion(), []string{"address"})
 		require.NoError(t, err)
 		return apiTar.GetItem().GetVersion()
 	}

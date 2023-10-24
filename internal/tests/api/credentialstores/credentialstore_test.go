@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/credentialstores"
@@ -21,7 +22,12 @@ import (
 
 func TestList(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	tc := controller.NewTestController(t, nil)
+	tc := controller.NewTestController(t, &controller.TestControllerOpts{
+		// Set a lower scheduler run job interval to avoid
+		// an error when the renewed Vault tokens TTL is lower
+		// than the scheduler run job interval.
+		SchedulerRunJobInterval: time.Second * 10,
+	})
 	defer tc.Shutdown()
 
 	vaultServ := vault.NewTestVaultServer(t, vault.WithTestVaultTLS(vault.TestNoTLS))
