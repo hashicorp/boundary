@@ -329,6 +329,7 @@ func New(ctx context.Context, projectId string, opt ...target.Option) (target.Ta
 			EgressWorkerFilter:     opts.WithEgressWorkerFilter,
 			IngressWorkerFilter:    opts.WithIngressWorkerFilter,
 		},
+		Address: opts.WithAddress,
 	}
 	return t, nil
 }
@@ -365,6 +366,11 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 			newCredLibs = append(newCredLibs, cl)
 		}
 		err := rw.CreateItems(context.Background(), newCredLibs)
+		require.NoError(err)
+	}
+	if len(opts.WithAddress) != 0 {
+		addr := target.TestNewTargetAddress(id, opts.WithAddress)
+		err := rw.Create(ctx, addr)
 		require.NoError(err)
 	}
 	return tar
