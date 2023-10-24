@@ -14,14 +14,16 @@ create table app_token (
      ),
  name text,
  description text,
- created_by user_id
-   references iam_user_hst(public_id)
+ created_by wt_url_safe_id
+   constraint iam_user_hst_key_fkey
+   references iam_user_hst(history_id)
    on delete restrict -- History records with an app token cannot be deleted
    on update cascade,
  scope_id wt_scope_id not null
+   constraint scope_id_key_fkey
    references iam_scope(public_id)
    on delete cascade
-   on update cascade,
+   on update cascade
 );
 comment on table app_token is
   'app_token defines an application auth token';
