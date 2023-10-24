@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/db"
 	dbassert "github.com/hashicorp/boundary/internal/db/assert"
@@ -408,7 +409,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 	tests := []struct {
 		name       string
 		in         []string
-		opts       []Option
+		opts       []auth.Option
 		want       []*AuthMethod
 		wantIsErr  errors.Code
 		wantErrMsg string
@@ -471,18 +472,18 @@ func TestRepository_ListAuthMethods_Multiple_Scopes(t *testing.T) {
 		iam.TestSetPrimaryAuthMethod(t, iam.TestRepo(t, conn, wrapper), o, ams[0].PublicId)
 		total += numPerScope
 	}
-	got, err := repo.ListAuthMethods(ctx, scopeIds, WithOrderByCreateTime(true))
+	got, err := repo.ListAuthMethods(ctx, scopeIds)
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 	found := map[string]struct{}{}
 	for _, am := range got {
 		switch {
-		case am.Clone().ScopeId == "global":
-			assert.Equalf(t, false, am.IsPrimaryAuthMethod, "expected the the global auth method to not be primary")
+		case am.GetScopeId() == "global":
+			assert.Equalf(t, false, am.GetIsPrimaryAuthMethod(), "expected the the global auth method to not be primary")
 		default:
-			if _, ok := found[am.ScopeId]; !ok {
-				found[am.ScopeId] = struct{}{}
-				assert.Equalf(t, true, am.IsPrimaryAuthMethod, "expected the first auth method created for the scope %s to be primary", am.ScopeId)
+			if _, ok := found[am.GetScopeId()]; !ok {
+				found[am.GetScopeId()] = struct{}{}
+				assert.Equalf(t, true, am.GetIsPrimaryAuthMethod(), "expected the first auth method created for the scope %s to be primary", am.GetScopeId())
 			}
 		}
 	}
@@ -504,18 +505,18 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 	tests := []struct {
 		name     string
 		repoOpts []Option
-		listOpts []Option
+		listOpts []auth.Option
 		wantLen  int
 	}{
 		{
 			name:     "With no limits",
 			wantLen:  authMethodCount,
-			listOpts: []Option{WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{},
 		},
 		{
 			name:     "With repo limit",
 			repoOpts: []Option{WithLimit(3)},
-			listOpts: []Option{WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{},
 			wantLen:  3,
 		},
 		{
@@ -525,24 +526,24 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 		},
 		{
 			name:     "With List limit",
-			listOpts: []Option{WithLimit(3), WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{auth.WithLimit(ctx, 3)},
 			wantLen:  3,
 		},
 		{
 			name:     "With negative List limit",
-			listOpts: []Option{WithLimit(-1), WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{auth.WithLimit(ctx, -1)},
 			wantLen:  authMethodCount,
 		},
 		{
 			name:     "With repo smaller than list limit",
 			repoOpts: []Option{WithLimit(2)},
-			listOpts: []Option{WithLimit(6), WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{auth.WithLimit(ctx, 6)},
 			wantLen:  6,
 		},
 		{
 			name:     "With repo larger than list limit",
 			repoOpts: []Option{WithLimit(6)},
-			listOpts: []Option{WithLimit(2), WithOrderByCreateTime(true)},
+			listOpts: []auth.Option{auth.WithLimit(ctx, 2)},
 			wantLen:  2,
 		},
 	}
@@ -558,7 +559,7 @@ func TestRepository_ListAuthMethods_Limits(t *testing.T) {
 			require.NoError(err)
 			assert.Len(got, tt.wantLen)
 			if tt.wantLen > 0 {
-				assert.Equal(true, got[0].IsPrimaryAuthMethod)
+				assert.Equal(true, got[0].GetIsPrimaryAuthMethod())
 			}
 		})
 	}
