@@ -287,7 +287,12 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterWorkerServiceServer(s, ws)
 	}
 	if _, ok := currentServices[services.CredentialService_ServiceDesc.ServiceName]; !ok {
-		c, err := credentials.NewService(c.baseContext, c.StaticCredentialRepoFn, c.IamRepoFn)
+		c, err := credentials.NewService(
+			c.baseContext,
+			c.IamRepoFn,
+			c.StaticCredentialRepoFn,
+			c.conf.RawConfig.Controller.MaxPageSize,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to create credential handler service: %w", err)
 		}

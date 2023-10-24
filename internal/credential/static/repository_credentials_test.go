@@ -43,8 +43,7 @@ func TestRepository_Retrieve(t *testing.T) {
 		string(testdata.PEMEncryptedKeys[0].PEMBytes), staticStore.GetPublicId(), prj.GetPublicId(),
 		WithPrivateKeyPassphrase([]byte(testdata.PEMEncryptedKeys[0].EncryptionKey)))
 
-	obj, _, err := TestJsonObject()
-	assert.NoError(err)
+	obj, _ := TestJsonObject(t)
 
 	secondObj := credential.JsonObject{
 		Struct: &structpb.Struct{

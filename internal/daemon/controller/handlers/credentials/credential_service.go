@@ -19,7 +19,9 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -29,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -39,6 +42,10 @@ const (
 	privateKeyPassphraseField = "attributes.private_key_passphrase"
 	objectField               = "attributes.object"
 	domain                    = "credential"
+
+	// The default max page size is used when one is not
+	// provided to NewService.
+	defaultMaxPageSize = 1000
 )
 
 var (
@@ -92,14 +99,20 @@ func init() {
 type Service struct {
 	pbs.UnsafeCredentialServiceServer
 
-	iamRepoFn common.IamRepoFactory
-	repoFn    common.StaticCredentialRepoFactory
+	iamRepoFn   common.IamRepoFactory
+	repoFn      common.StaticCredentialRepoFactory
+	maxPageSize uint
 }
 
 var _ pbs.CredentialServiceServer = (*Service)(nil)
 
 // NewService returns a credential service which handles credential related requests to boundary.
-func NewService(ctx context.Context, repo common.StaticCredentialRepoFactory, iamRepo common.IamRepoFactory) (Service, error) {
+func NewService(
+	ctx context.Context,
+	iamRepo common.IamRepoFactory,
+	repo common.StaticCredentialRepoFactory,
+	maxPageSize uint,
+) (Service, error) {
 	const op = "credentials.NewService"
 	if iamRepo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
@@ -107,68 +120,137 @@ func NewService(ctx context.Context, repo common.StaticCredentialRepoFactory, ia
 	if repo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
 	}
-	return Service{iamRepoFn: iamRepo, repoFn: repo}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
+	return Service{iamRepoFn: iamRepo, repoFn: repo, maxPageSize: maxPageSize}, nil
 }
 
 // ListCredentials implements the interface pbs.CredentialServiceServer
 func (s Service) ListCredentials(ctx context.Context, req *pbs.ListCredentialsRequest) (*pbs.ListCredentialsResponse, error) {
+	const op = "credentials.(Service).ListCredentials"
 	if err := validateListRequest(ctx, req); err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	authResults := s.authResult(ctx, req.GetCredentialStoreId(), action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-
-	creds, err := s.listFromRepo(ctx, req.GetCredentialStoreId())
+	repo, err := s.repoFn()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	if len(creds) == 0 {
-		return &pbs.ListCredentialsResponse{}, nil
-	}
-
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	finalItems := make([]*pb.Credential, 0, len(creds))
-	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Credential,
-		Pin:     req.GetCredentialStoreId(),
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	for _, item := range creds {
-		res.Id = item.GetPublicId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
+	}
+
+	filterItemFn := func(ctx context.Context, item credential.Static) (bool, error) {
+		outputOpts, ok := newOutputOpts(ctx, item, req.CredentialStoreId, authResults)
+		if !ok {
+			return ok, nil
+		}
+		pbItem, err := toProto(item, outputOpts...)
+		if err != nil {
+			return false, err
+		}
+
+		filterable, err := subtypes.Filterable(pbItem)
+		if err != nil {
+			return false, err
+		}
+		return filter.Match(filterable), nil
+	}
+
+	var listResp *pagination.ListResponse[credential.Static]
+	if req.GetRefreshToken() == "" {
+		var err error
+		listResp, err = credential.List(ctx, grantsHash, pageSize, filterItemFn, repo, req.GetCredentialStoreId())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	} else {
+		rt, err := handlers.ParseRefreshToken(ctx, req.GetRefreshToken())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		// We're doing the conversion from the protobuf types to the
+		// domain types here rather than in the domain so that the domain
+		// doesn't need to know about the protobuf types.
+		domainRefreshToken, err := refreshtoken.New(
+			ctx,
+			rt.CreatedTime.AsTime(),
+			rt.UpdatedTime.AsTime(),
+			handlers.RefreshTokenResourceToResource(rt.ResourceType),
+			rt.GrantsHash,
+			rt.LastItemId,
+			rt.LastItemUpdatedTime.AsTime(),
+		)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if err := domainRefreshToken.Validate(ctx, resource.Credential, grantsHash); err != nil {
+			return nil, err
+		}
+		listResp, err = credential.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, domainRefreshToken, repo, req.GetCredentialStoreId())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	finalItems := make([]*pb.Credential, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, ok := newOutputOpts(ctx, item, req.CredentialStoreId, authResults)
+		if !ok {
 			continue
 		}
-
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-
-		item, err := toProto(item, outputOpts...)
+		pbItem, err := toProto(item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
+		finalItems = append(finalItems, pbItem)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListCredentialsResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+	}
 
-		filterable, err := subtypes.Filterable(item)
+	if listResp.RefreshToken != nil {
+		if listResp.RefreshToken.ResourceType != resource.Credential {
+			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
+		}
+		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
+			UpdatedTime:         timestamppb.New(listResp.RefreshToken.UpdatedTime),
+			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_CREDENTIAL,
+			GrantsHash:          listResp.RefreshToken.GrantsHash,
+			LastItemId:          listResp.RefreshToken.LastItemId,
+			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
+		})
 		if err != nil {
 			return nil, err
-		}
-		if filter.Match(filterable) {
-			finalItems = append(finalItems, item)
 		}
 	}
-	return &pbs.ListCredentialsResponse{Items: finalItems}, nil
+
+	return resp, nil
 }
 
 // GetCredential implements the interface pbs.CredentialServiceServer.
@@ -308,23 +390,6 @@ func (s Service) DeleteCredential(ctx context.Context, req *pbs.DeleteCredential
 		return nil, err
 	}
 	return nil, nil
-}
-
-func (s Service) listFromRepo(ctx context.Context, storeId string) ([]credential.Static, error) {
-	const op = "credentials.(Service).listFromRepo"
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	up, err := repo.ListCredentials(ctx, storeId, static.WithLimit(-1))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-
-	creds := make([]credential.Static, 0, len(up))
-	creds = append(creds, up...)
-
-	return creds, nil
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (credential.Static, error) {
@@ -566,6 +631,35 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 	opts = append(opts, auth.WithScopeId(cs.GetProjectId()))
 
 	return auth.Verify(ctx, opts...)
+}
+
+func newOutputOpts(
+	ctx context.Context,
+	item credential.Static,
+	credentialStoreId string,
+	authResults auth.VerifyResults,
+) ([]handlers.Option, bool) {
+	res := perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Credential,
+		Pin:     credentialStoreId,
+	}
+	res.Id = item.GetPublicId()
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+	if len(authorizedActions) == 0 {
+		return nil, false
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+	return outputOpts, true
 }
 
 func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, error) {

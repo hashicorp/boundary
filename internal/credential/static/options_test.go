@@ -5,9 +5,26 @@ package static
 
 import (
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/db/timestamp"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/stretchr/testify/assert"
 )
+
+type fakeItem struct {
+	pagination.Item
+	publicId   string
+	updateTime time.Time
+}
+
+func (p *fakeItem) GetPublicId() string {
+	return p.publicId
+}
+
+func (p *fakeItem) GetUpdateTime() *timestamp.Timestamp {
+	return timestamp.New(p.updateTime)
+}
 
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
@@ -35,5 +52,12 @@ func Test_GetOpts(t *testing.T) {
 		assert.NotEqual(t, opts, testOpts)
 		testOpts.withPrivateKeyPassphrase = []byte("my-pass")
 		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert := assert.New(t)
+		updateTime := time.Now()
+		opts := getOpts(WithStartPageAfterItem(&fakeItem{nil, "s_1", updateTime}))
+		assert.Equal(opts.withStartPageAfterItem.GetPublicId(), "s_1")
+		assert.Equal(opts.withStartPageAfterItem.GetUpdateTime(), timestamp.New(updateTime))
 	})
 }
