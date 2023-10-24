@@ -61,4 +61,34 @@ create or replace function app_token_periodic_expiration_immutable() returns tri
 create trigger immutable_app_token_periodic_expiration before update on app_token
   for each row execute procedure app_token_periodic_expiration_immutable();
 
+create table app_token_grant (
+  create_time wt_timestamp not null,
+  app_token_id wt_public_id -- pk
+    constraint app_token_id_key_fkey
+    references app_token(public_id)
+    on delete cascade
+    on update cascade,
+  canonical_grant text -- pk
+    constraint canonical_grant_must_not_be_empty
+    check(
+      length(trim(canonical_grant)) > 0
+    ),
+  raw_grant text not null
+    constraint raw_grant_must_not_be_empty
+    check(
+      length(trim(raw_grant)) > 0
+    ),
+  primary key(app_token_id, canonical_grant)
+);
+
+create or replace function app_token_immutable_grant() returns trigger
+  as $$
+  begin
+    raise exception 'app token grants are immutable';
+  end;
+$$ language plpgsql;
+
+create trigger immutable_app_token_grant before update on app_token_grant
+  for each row execute procedure app_token_immutable_grant();
+
 commit;
