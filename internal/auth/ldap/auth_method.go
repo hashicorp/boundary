@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/boundary/internal/auth/ldap/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -346,4 +347,14 @@ func (am *AuthMethod) convertAccountAttributeMaps(ctx context.Context) ([]any, e
 		newInterfaces = append(newInterfaces, obj)
 	}
 	return newInterfaces, nil
+}
+
+type deletedAuthMethod struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAuthMethod) TableName() string {
+	return "auth_ldap_method_deleted"
 }

@@ -10,7 +10,9 @@ import (
 	"crypto/x509"
 	"sort"
 	"testing"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -286,13 +288,13 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		setupFn      func() (scopeIds []string, want []*AuthMethod, wantPrimaryAuthMethodId string)
-		opt          []Option
+		setupFn      func() (scopeIds []string, want []auth.AuthMethod, wantPrimaryAuthMethodId string)
+		opt          []auth.Option
 		wantErrMatch *errors.Template
 	}{
 		{
 			name: "with-limits",
-			setupFn: func() ([]string, []*AuthMethod, string) {
+			setupFn: func() ([]string, []auth.AuthMethod, string) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, testConn, testWrapper))
 				orgDbWrapper, err := testKms.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
@@ -302,13 +304,13 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 
 				_ = TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId, []string{"ldaps://alice2.com"})
 
-				return []string{am1a.ScopeId}, []*AuthMethod{am1a}, am1a.PublicId
+				return []string{am1a.ScopeId}, []auth.AuthMethod{am1a}, am1a.PublicId
 			},
-			opt: []Option{WithLimit(testCtx, 1), WithOrderByCreateTime(testCtx, true)},
+			opt: []auth.Option{auth.WithLimit(testCtx, 1)},
 		},
 		{
 			name: "no-search-criteria",
-			setupFn: func() ([]string, []*AuthMethod, string) {
+			setupFn: func() ([]string, []auth.AuthMethod, string) {
 				return nil, nil, ""
 			},
 			wantErrMatch: errors.T(errors.InvalidParameter),
@@ -332,18 +334,18 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 			}
 			require.NoError(err)
 			sort.Slice(want, func(a, b int) bool {
-				return want[a].PublicId < want[b].PublicId
+				return want[a].GetPublicId() < want[b].GetPublicId()
 			})
 			sort.Slice(got, func(a, b int) bool {
-				return got[a].PublicId < got[b].PublicId
+				return got[a].GetPublicId() < got[b].GetPublicId()
 			})
 			assert.Equal(want, got)
 			if wantPrimaryAuthMethodId != "" {
 				found := false
 				for _, am := range got {
-					if am.PublicId == wantPrimaryAuthMethodId {
-						assert.Truef(am.IsPrimaryAuthMethod, "expected IsPrimaryAuthMethod to be true for: %s", am.PublicId)
-						if am.IsPrimaryAuthMethod {
+					if am.GetPublicId() == wantPrimaryAuthMethodId {
+						assert.Truef(am.GetIsPrimaryAuthMethod(), "expected IsPrimaryAuthMethod to be true for: %s", am.GetPublicId())
+						if am.GetIsPrimaryAuthMethod() {
 							found = true
 						}
 					}
@@ -351,9 +353,93 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 				assert.Truef(found, "expected to find primary id %s in: %+v", wantPrimaryAuthMethodId, got)
 			} else {
 				for _, am := range got {
-					assert.Falsef(am.IsPrimaryAuthMethod, "did not expect %s to be IsPrimaryAuthMethod", am.PublicId)
+					assert.Falsef(am.GetIsPrimaryAuthMethod(), "did not expect %s to be IsPrimaryAuthMethod", am.GetPublicId())
 				}
 			}
 		})
 	}
+}
+
+func Test_ListDeletedAuthMethodIds(t *testing.T) {
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testWrapper := db.TestWrapper(t)
+
+	ctx := context.Background()
+	testKms := kms.TestKms(t, testConn, testWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := testKms.GetWrapper(ctx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	repo, err := NewRepository(ctx, testRw, testRw, testKms)
+	assert.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedAuthMethodIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+
+	// Create and delete account
+	authMethod := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	account := TestAccount(t, testConn, authMethod, "create-success")
+	_, err = repo.DeleteAccount(ctx, account.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, err = repo.ListDeletedAuthMethodIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{account.PublicId}, deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedAuthMethodIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+}
+
+func Test_EstimatedAuthMethodCount(t *testing.T) {
+	testConn, _ := db.TestSetup(t, "postgres")
+	testRw := db.New(testConn)
+	testWrapper := db.TestWrapper(t)
+
+	testCtx := context.Background()
+	sqlDb, err := testConn.SqlDB(testCtx)
+	require.NoError(t, err)
+	testKms := kms.TestKms(t, testConn, testWrapper)
+	iamRepo := iam.TestRepo(t, testConn, testWrapper)
+	org, _ := iam.TestScopes(t, iamRepo)
+
+	databaseWrapper, err := testKms.GetWrapper(testCtx, org.PublicId, kms.KeyPurposeDatabase)
+	require.NoError(t, err)
+
+	testRepo, err := NewRepository(testCtx, testRw, testRw, testKms)
+	assert.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := testRepo.EstimatedAuthMethodCount(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create an account, expect 1 entries
+	authMethod := TestAuthMethod(t, testConn, databaseWrapper, org.PublicId, []string{"ldaps://ldap1"})
+	account := TestAccount(t, testConn, authMethod, "create-success")
+
+	// Run analyze to update postgres meta tables
+	_, err = sqlDb.ExecContext(testCtx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = testRepo.EstimatedAuthMethodCount(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// // Delete the account token, expect 0 again
+	_, err = testRepo.DeleteAccount(testCtx, account.GetPublicId())
+	require.NoError(t, err)
+	_, err = sqlDb.ExecContext(testCtx, "analyze")
+	require.NoError(t, err)
+
+	numItems, err = testRepo.EstimatedAuthMethodCount(testCtx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }
