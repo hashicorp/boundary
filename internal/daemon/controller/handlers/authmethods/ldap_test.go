@@ -15,11 +15,12 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/authtoken"
-	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
+	cauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/authmethods"
 	"github.com/hashicorp/boundary/internal/db"
@@ -66,10 +67,13 @@ func Test_UpdateLdap(t *testing.T) {
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(ctx, rw, rw, kms)
 	}
+	serviceFn := func(ldapRepo *ldap.Repository, oidcRepo *oidc.Repository, pwRepo *password.Repository) (*auth.AuthMethodService, error) {
+		return auth.NewAuthMethodService(ctx, rw, ldapRepo, oidcRepo, pwRepo)
+	}
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 
 	o, _ := iam.TestScopes(t, iamRepo)
-	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+	tested, err := authmethods.NewService(ctx, kms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, serviceFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -91,7 +95,7 @@ func Test_UpdateLdap(t *testing.T) {
 		if attrs == nil {
 			attrs = defaultAttributes
 		}
-		ctx := auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId())
+		ctx := cauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId())
 		am, err := tested.CreateAuthMethod(ctx, &pbs.CreateAuthMethodRequest{Item: &pb.AuthMethod{
 			ScopeId:     o.GetPublicId(),
 			Name:        wrapperspb.String("default"),
@@ -102,7 +106,7 @@ func Test_UpdateLdap(t *testing.T) {
 		require.NoError(t, err)
 
 		clean := func() {
-			_, err := tested.DeleteAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
+			_, err := tested.DeleteAuthMethod(cauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()),
 				&pbs.DeleteAuthMethodRequest{Id: am.GetItem().GetId()})
 			require.NoError(t, err)
 		}
@@ -834,7 +838,7 @@ func Test_UpdateLdap(t *testing.T) {
 				tc.res.Item.Id = am.GetId()
 				tc.res.Item.CreatedTime = am.GetCreatedTime()
 			}
-			got, gErr := tested.UpdateAuthMethod(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
+			got, gErr := tested.UpdateAuthMethod(cauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
 			// TODO: When handlers move to domain errors remove wantErr and rely errors.Match here.
 			if tc.err != nil || tc.wantErr {
 				require.Error(gErr)
@@ -904,6 +908,9 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	}
 	atRepoFn := func() (*authtoken.Repository, error) {
 		return authtoken.NewRepository(testCtx, testRw, testRw, testKms)
+	}
+	serviceFn := func(ldapRepo *ldap.Repository, oidcRepo *oidc.Repository, pwRepo *password.Repository) (*auth.AuthMethodService, error) {
+		return auth.NewAuthMethodService(testCtx, testRw, ldapRepo, oidcRepo, pwRepo)
 	}
 
 	orgDbWrapper, err := testKms.GetWrapper(testCtx, o.GetPublicId(), kms.KeyPurposeDatabase)
@@ -1084,10 +1091,10 @@ func TestAuthenticate_Ldap(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := authmethods.NewService(testCtx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn)
+			s, err := authmethods.NewService(testCtx, testKms, pwRepoFn, oidcRepoFn, iamRepoFn, atRepoFn, ldapRepoFn, serviceFn, 1000)
 			require.NoError(err)
 
-			resp, err := s.Authenticate(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
+			resp, err := s.Authenticate(cauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.request)
 			if tc.wantErr != nil {
 				assert.Error(err)
 				assert.Truef(errors.Is(err, tc.wantErr), "Got %#v, wanted %#v", err, tc.wantErr)

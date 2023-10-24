@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
@@ -18,7 +19,6 @@ import (
 	"github.com/hashicorp/boundary/internal/census"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
-	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
 	"github.com/hashicorp/boundary/internal/daemon/cluster"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -122,8 +122,7 @@ type Controller struct {
 
 	// Repo factory methods
 	AuthTokenRepoFn           common.AuthTokenRepoFactory
-	VaultCredentialRepoFn     common.VaultCredentialRepoFactory
-	StaticCredentialRepoFn    common.StaticCredentialRepoFactory
+	AuthMethodServiceFactory  common.AuthMethodServiceFactory
 	IamRepoFn                 common.IamRepoFactory
 	OidcRepoFn                common.OidcAuthRepoFactory
 	LdapRepoFn                common.LdapAuthRepoFactory
@@ -390,11 +389,8 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 			authtoken.WithTokenTimeToLiveDuration(c.conf.RawConfig.Controller.AuthTokenTimeToLiveDuration),
 			authtoken.WithTokenTimeToStaleDuration(c.conf.RawConfig.Controller.AuthTokenTimeToStaleDuration))
 	}
-	c.VaultCredentialRepoFn = func() (*vault.Repository, error) {
-		return vault.NewRepository(ctx, dbase, dbase, c.kms, c.scheduler)
-	}
-	c.StaticCredentialRepoFn = func() (*credstatic.Repository, error) {
-		return credstatic.NewRepository(ctx, dbase, dbase, c.kms)
+	c.AuthMethodServiceFactory = func(ldapRepo *ldap.Repository, oidcRepo *oidc.Repository, passwordRepo *password.Repository) (*auth.AuthMethodService, error) {
+		return auth.NewAuthMethodService(ctx, dbase, ldapRepo, oidcRepo, passwordRepo)
 	}
 	c.ServersRepoFn = func() (*server.Repository, error) {
 		return server.NewRepository(ctx, dbase, dbase, c.kms)

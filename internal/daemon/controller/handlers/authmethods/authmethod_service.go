@@ -26,7 +26,9 @@ import (
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -39,6 +41,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -59,6 +62,9 @@ const (
 	isPrimaryField    = "is_primary"
 
 	domain = "auth"
+
+	// default max page size is used when none provided to NewService
+	defaultMaxPageSize = 1000
 )
 
 var (
@@ -83,18 +89,31 @@ var (
 type Service struct {
 	pbs.UnsafeAuthMethodServiceServer
 
-	kms        *kms.Kms
-	pwRepoFn   common.PasswordAuthRepoFactory
-	oidcRepoFn common.OidcAuthRepoFactory
-	iamRepoFn  common.IamRepoFactory
-	atRepoFn   common.AuthTokenRepoFactory
-	ldapRepoFn common.LdapAuthRepoFactory
+	kms         *kms.Kms
+	pwRepoFn    common.PasswordAuthRepoFactory
+	oidcRepoFn  common.OidcAuthRepoFactory
+	iamRepoFn   common.IamRepoFactory
+	atRepoFn    common.AuthTokenRepoFactory
+	ldapRepoFn  common.LdapAuthRepoFactory
+	serviceFn   common.AuthMethodServiceFactory
+	maxPageSize uint
 }
 
 var _ pbs.AuthMethodServiceServer = (*Service)(nil)
 
 // NewService returns a auth method service which handles auth method related requests to boundary.
-func NewService(ctx context.Context, kms *kms.Kms, pwRepoFn common.PasswordAuthRepoFactory, oidcRepoFn common.OidcAuthRepoFactory, iamRepoFn common.IamRepoFactory, atRepoFn common.AuthTokenRepoFactory, ldapRepoFn common.LdapAuthRepoFactory, opt ...handlers.Option) (Service, error) {
+func NewService(
+	ctx context.Context,
+	kms *kms.Kms,
+	pwRepoFn common.PasswordAuthRepoFactory,
+	oidcRepoFn common.OidcAuthRepoFactory,
+	iamRepoFn common.IamRepoFactory,
+	atRepoFn common.AuthTokenRepoFactory,
+	ldapRepoFn common.LdapAuthRepoFactory,
+	serviceFn common.AuthMethodServiceFactory,
+	maxPageSize uint,
+	opt ...handlers.Option,
+) (Service, error) {
 	const op = "authmethods.NewService"
 	if kms == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing kms")
@@ -114,16 +133,51 @@ func NewService(ctx context.Context, kms *kms.Kms, pwRepoFn common.PasswordAuthR
 	if atRepoFn == nil {
 		return Service{}, fmt.Errorf("nil auth token repository provided")
 	}
-	s := Service{kms: kms, pwRepoFn: pwRepoFn, oidcRepoFn: oidcRepoFn, iamRepoFn: iamRepoFn, atRepoFn: atRepoFn, ldapRepoFn: ldapRepoFn}
+	if serviceFn == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing service factory")
+	}
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
+	s := Service{
+		kms:         kms,
+		pwRepoFn:    pwRepoFn,
+		oidcRepoFn:  oidcRepoFn,
+		iamRepoFn:   iamRepoFn,
+		atRepoFn:    atRepoFn,
+		ldapRepoFn:  ldapRepoFn,
+		serviceFn:   serviceFn,
+		maxPageSize: maxPageSize,
+	}
 
 	return s, nil
 }
 
 // ListAuthMethods implements the interface pbs.AuthMethodServiceServer.
 func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRequest) (*pbs.ListAuthMethodsResponse, error) {
+	const op = "authmethods.(Service).ListAuthMethods"
+
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
+
+	ldapRepo, err := s.ldapRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	oidcRepo, err := s.oidcRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	pwRepo, err := s.pwRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	authMethodService, err := s.serviceFn(ldapRepo, oidcRepo, pwRepo)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
@@ -148,63 +202,135 @@ func (s Service) ListAuthMethods(ctx context.Context, req *pbs.ListAuthMethodsRe
 		return &pbs.ListAuthMethodsResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds, authResults)
-	if err != nil {
-		return nil, err
-	}
-	if len(ul) == 0 {
-		return &pbs.ListAuthMethodsResponse{}, nil
+	pageSize := int(s.maxPageSize)
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
 	}
 
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.AuthMethod, 0, len(ul))
-	res := perms.Resource{
-		Type: resource.AuthMethod,
-	}
-	for _, am := range ul {
-		res.Id = am.GetPublicId()
-		res.ScopeId = am.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, am.GetPublicId())], requestauth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
-			continue
-		}
-
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[am.GetScopeId()]))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
-			if err != nil {
-				return nil, err
-			}
-			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
-		}
-
-		item, err := toAuthMethodProto(ctx, am, outputOpts...)
+	filterItemFn := func(ctx context.Context, am auth.AuthMethod) (bool, error) {
+		outputOpts, err := newAuthMethodOutputOpts(ctx, am, authResults, scopeInfoMap)
 		if err != nil {
-			return nil, err
+			return false, err
+		}
+
+		pbItem, err := toAuthMethodProto(ctx, am, outputOpts...)
+		if err != nil {
+			return false, err
 		}
 
 		// This comes last so that we can use item fields in the filter after
 		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(pbItem)
+		if err != nil {
+			return false, err
+		}
+		return filter.Match(filterable), nil
+	}
+
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, err
+	}
+	reqCtx, ok := requests.RequestContextFromCtx(ctx)
+	if !ok {
+		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
+	}
+
+	var listResp *pagination.ListResponse[auth.AuthMethod]
+	if req.GetRefreshToken() == "" {
+		listResp, err = authMethodService.ListAuthMethods(
+			ctx,
+			grantsHash,
+			pageSize,
+			filterItemFn,
+			scopeIds,
+			reqCtx.UserId == globals.AnonymousUserId,
+		)
 		if err != nil {
 			return nil, err
 		}
-		if filter.Match(filterable) {
-			finalItems = append(finalItems, item)
+	} else {
+		rt, err := handlers.ParseRefreshToken(ctx, req.GetRefreshToken())
+		if err != nil {
+			return nil, err
+		}
+		// We're doing the conversion from the protobuf types to the
+		// domain types here rather than in the domain so that the domain
+		// doesn't need to know about the protobuf types.
+		domainRefreshToken, err := refreshtoken.New(
+			ctx,
+			rt.CreatedTime.AsTime(),
+			rt.UpdatedTime.AsTime(),
+			handlers.RefreshTokenResourceToResource(rt.ResourceType),
+			rt.GrantsHash,
+			rt.LastItemId,
+			rt.LastItemUpdatedTime.AsTime(),
+		)
+		if err != nil {
+			return nil, err
+		}
+		if err := domainRefreshToken.Validate(ctx, resource.AuthMethod, grantsHash); err != nil {
+			return nil, err
+		}
+		listResp, err = authMethodService.ListAuthMethodsRefresh(
+			ctx,
+			grantsHash,
+			pageSize,
+			filterItemFn,
+			domainRefreshToken,
+			scopeIds,
+			reqCtx.UserId == globals.AnonymousUserId,
+		)
+		if err != nil {
+			return nil, err
 		}
 	}
-	return &pbs.ListAuthMethodsResponse{Items: finalItems}, nil
+
+	finalItems := make([]*pb.AuthMethod, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, err := newAuthMethodOutputOpts(ctx, item, authResults, scopeInfoMap)
+		if err != nil {
+			return nil, err
+		}
+		item, err := toAuthMethodProto(ctx, item, outputOpts...)
+		finalItems = append(finalItems, item)
+	}
+
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListAuthMethodsResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+	}
+
+	if listResp.RefreshToken != nil {
+		if listResp.RefreshToken.ResourceType != resource.AuthMethod {
+			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
+		}
+		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
+			UpdatedTime:         timestamppb.New(listResp.RefreshToken.UpdatedTime),
+			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_AUTH_METHOD,
+			GrantsHash:          listResp.RefreshToken.GrantsHash,
+			LastItemId:          listResp.RefreshToken.LastItemId,
+			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return resp, nil
 }
 
 // GetAuthMethod implements the interface pbs.AuthMethodServiceServer.
@@ -496,54 +622,6 @@ func (s Service) getFromRepo(ctx context.Context, id string) (auth.AuthMethod, e
 	}
 
 	return am, nil
-}
-
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string, authResults requestauth.VerifyResults) ([]auth.AuthMethod, error) {
-	const op = "authmethods.(Service).listFromRepo"
-	reqCtx, ok := requests.RequestContextFromCtx(ctx)
-	if !ok {
-		return nil, errors.New(ctx, errors.Internal, op, "no request context found")
-	}
-
-	var outUl []auth.AuthMethod
-
-	oidcRepo, err := s.oidcRepoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	ol, err := oidcRepo.ListAuthMethods(ctx, scopeIds, oidc.WithUnauthenticatedUser(reqCtx.UserId == globals.AnonymousUserId), oidc.WithLimit(-1))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	for _, item := range ol {
-		outUl = append(outUl, item)
-	}
-
-	repo, err := s.pwRepoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	pl, err := repo.ListAuthMethods(ctx, scopeIds)
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	for _, item := range pl {
-		outUl = append(outUl, item)
-	}
-
-	ldapRepo, err := s.ldapRepoFn()
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	ll, err := ldapRepo.ListAuthMethods(ctx, scopeIds, ldap.WithUnauthenticatedUser(ctx, reqCtx.UserId == globals.AnonymousUserId))
-	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
-	}
-	for _, item := range ll {
-		outUl = append(outUl, item)
-	}
-
-	return outUl, nil
 }
 
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.AuthMethod) (auth.AuthMethod, error) {
@@ -958,6 +1036,36 @@ func toAuthTokenProto(t *authtoken.AuthToken) *pba.AuthToken {
 		ApproximateLastUsedTime: t.GetApproximateLastAccessTime().GetTimestamp(),
 		ExpirationTime:          t.GetExpirationTime().GetTimestamp(),
 	}
+}
+
+func newAuthMethodOutputOpts(ctx context.Context, am auth.AuthMethod, authResults requestauth.VerifyResults, scopeInfoMap map[string]*scopes.ScopeInfo) ([]handlers.Option, error) {
+	res := perms.Resource{
+		Type: resource.AuthMethod,
+	}
+	res.Id = am.GetPublicId()
+	res.ScopeId = am.GetScopeId()
+	authorizedActions := authResults.FetchActionSetForId(ctx, am.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, am.GetPublicId())], requestauth.WithResource(&res)).Strings()
+	if len(authorizedActions) == 0 {
+		return nil, nil
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[am.GetScopeId()]))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		collectionActions, err := requestauth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap, authResults.Scope.Id, am.GetPublicId())
+		if err != nil {
+			return nil, err
+		}
+		outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+	}
+	return outputOpts, nil
 }
 
 // A validateX method should exist for each method above.  These methods do not make calls to any backing service but enforce
