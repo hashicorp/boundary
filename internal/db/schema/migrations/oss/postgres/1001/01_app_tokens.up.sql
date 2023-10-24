@@ -28,4 +28,14 @@ create table app_token (
 comment on table app_token is
   'app_token defines an application auth token';
 
+create or replace function app_token_immutable() returns trigger
+as $$
+begin
+ raise exception 'app tokens are immutable';
+end;
+$$ language plpgsql;
+
+create trigger immutable_app_token before update on app_token
+ for each row execute procedure app_token_immutable();
+
 commit;
