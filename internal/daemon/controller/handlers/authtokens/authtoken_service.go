@@ -15,14 +15,22 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authtokens"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// The default max page size is used when one is not
+// provided to NewService.
+const defaultMaxPageSize = 1000
 
 var (
 	// IdActions contains the set of actions that can be performed on
@@ -46,14 +54,15 @@ var (
 type Service struct {
 	pbs.UnsafeAuthTokenServiceServer
 
-	repoFn    common.AuthTokenRepoFactory
-	iamRepoFn common.IamRepoFactory
+	repoFn      common.AuthTokenRepoFactory
+	iamRepoFn   common.IamRepoFactory
+	maxPageSize uint
 }
 
 var _ pbs.AuthTokenServiceServer = (*Service)(nil)
 
 // NewService returns a user service which handles user related requests to boundary.
-func NewService(ctx context.Context, repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(ctx context.Context, repo common.AuthTokenRepoFactory, iamRepoFn common.IamRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "authtoken.NewService"
 	if repo == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing auth token repository")
@@ -61,14 +70,23 @@ func NewService(ctx context.Context, repo common.AuthTokenRepoFactory, iamRepoFn
 	if iamRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
-	return Service{repoFn: repo, iamRepoFn: iamRepoFn}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
+	return Service{
+		repoFn:      repo,
+		iamRepoFn:   iamRepoFn,
+		maxPageSize: maxPageSize,
+	}, nil
 }
 
 // ListAuthTokens implements the interface pbs.AuthTokenServiceServer.
 func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequest) (*pbs.ListAuthTokensResponse, error) {
+	const op = "authtoken.(Service).ListAuthTokens"
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
+
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
 		// If it's forbidden, and it's a recursive request, and they're
@@ -93,55 +111,133 @@ func (s Service) ListAuthTokens(ctx context.Context, req *pbs.ListAuthTokensRequ
 		return &pbs.ListAuthTokensResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
+	pageSize := int(s.maxPageSize)
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
+	}
+
+	repo, err := s.repoFn()
 	if err != nil {
 		return nil, err
-	}
-	if len(ul) == 0 {
-		return &pbs.ListAuthTokensResponse{}, nil
 	}
 
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.AuthToken, 0, len(ul))
-	res := perms.Resource{
-		Type: resource.AuthToken,
+
+	filterItemFn := func(ctx context.Context, at *authtoken.AuthToken) (bool, error) {
+		newOutputOpts, ok := newOutputOpts(ctx, at, authResults, scopeInfoMap)
+		if !ok {
+			return false, nil
+		}
+		pbItem, err := toProto(ctx, at, newOutputOpts...)
+		if err != nil {
+			return false, err
+		}
+		return filter.Match(pbItem), nil
 	}
-	for _, at := range ul {
-		res.Id = at.GetPublicId()
-		res.ScopeId = at.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions, auth.WithResource(&res))
-		if len(authorizedActions) == 0 {
-			continue
-		}
 
-		if authorizedActions.OnlySelf() && at.GetIamUserId() != authResults.UserId {
-			continue
-		}
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[at.GetScopeId()]))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions.Strings()))
-		}
-
-		item, err := toProto(ctx, at, outputOpts...)
+	var listResp *pagination.ListResponse[*authtoken.AuthToken]
+	if req.GetRefreshToken() == "" {
+		listResp, err = authtoken.List(
+			ctx,
+			grantsHash,
+			pageSize,
+			filterItemFn,
+			repo,
+			scopeIds,
+		)
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		rt, err := handlers.ParseRefreshToken(ctx, req.GetRefreshToken())
+		if err != nil {
+			return nil, err
+		}
+		// We're doing the conversion from the protobuf types to the
+		// domain types here rather than in the domain so that the domain
+		// doesn't need to know about the protobuf types.
+		domainRefreshToken, err := refreshtoken.New(
+			ctx,
+			rt.CreatedTime.AsTime(),
+			rt.UpdatedTime.AsTime(),
+			handlers.RefreshTokenResourceToResource(rt.ResourceType),
+			rt.GrantsHash,
+			rt.LastItemId,
+			rt.LastItemUpdatedTime.AsTime(),
+		)
+		if err != nil {
+			return nil, err
+		}
+		if err := domainRefreshToken.Validate(ctx, resource.AuthToken, grantsHash); err != nil {
+			return nil, err
+		}
 
-		if filter.Match(item) {
-			finalItems = append(finalItems, item)
+		listResp, err = authtoken.ListRefresh(
+			ctx,
+			grantsHash,
+			pageSize,
+			filterItemFn,
+			domainRefreshToken,
+			repo,
+			scopeIds,
+		)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return &pbs.ListAuthTokensResponse{Items: finalItems}, nil
+	finalItems := make([]*pb.AuthToken, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, ok := newOutputOpts(ctx, item, authResults, scopeInfoMap)
+		if !ok {
+			continue
+		}
+		item, err := toProto(ctx, item, outputOpts...)
+		if err != nil {
+			return nil, err
+		}
+		finalItems = append(finalItems, item)
+	}
+
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListAuthTokensResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+	}
+
+	if listResp.RefreshToken != nil {
+		if listResp.RefreshToken.ResourceType != resource.AuthToken {
+			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
+		}
+		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
+			UpdatedTime:         timestamppb.New(listResp.RefreshToken.UpdatedTime),
+			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_AUTH_TOKEN,
+			GrantsHash:          listResp.RefreshToken.GrantsHash,
+			LastItemId:          listResp.RefreshToken.LastItemId,
+			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return resp, nil
 }
 
 // GetAuthToken implements the interface pbs.AuthTokenServiceServer.
@@ -261,19 +357,6 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*authtoken.AuthToken, error) {
-	repo, err := s.repoFn()
-	_ = repo
-	if err != nil {
-		return nil, err
-	}
-	ul, err := repo.ListAuthTokens(ctx, scopeIds, authtoken.WithLimit(-1))
-	if err != nil {
-		return nil, err
-	}
-	return ul, nil
-}
-
 func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.VerifyResults {
 	res := auth.VerifyResults{}
 
@@ -389,4 +472,32 @@ func validateListRequest(ctx context.Context, req *pbs.ListAuthTokensRequest) er
 		return handlers.InvalidArgumentErrorf("Improperly formatted identifier.", badFields)
 	}
 	return nil
+}
+
+func newOutputOpts(ctx context.Context, at *authtoken.AuthToken, authResults auth.VerifyResults, scopeInfoMap map[string]*scopes.ScopeInfo) ([]handlers.Option, bool) {
+	res := perms.Resource{
+		Type: resource.AuthToken,
+	}
+
+	res.Id = at.GetPublicId()
+	res.ScopeId = at.GetScopeId()
+	authorizedActions := authResults.FetchActionSetForId(ctx, at.GetPublicId(), IdActions, auth.WithResource(&res))
+	if len(authorizedActions) == 0 {
+		return nil, false
+	}
+
+	if authorizedActions.OnlySelf() && at.GetIamUserId() != authResults.UserId {
+		return nil, false
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[at.GetScopeId()]))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions.Strings()))
+	}
+	return outputOpts, true
 }
