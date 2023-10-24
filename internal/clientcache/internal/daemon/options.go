@@ -5,13 +5,19 @@ package daemon
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
 )
 
 type options struct {
-	withDebug                   bool
-	withBoundaryTokenReaderFunc cache.BoundaryTokenReaderFn
+	withDebug                          bool
+	withRefreshInterval                time.Duration
+	withFullFetchInterval              time.Duration
+	withIntervalRandomizationFactor    float64
+	withIntervalRandomizationFactorSet bool
+	withBoundaryTokenReaderFunc        cache.BoundaryTokenReaderFn
 }
 
 // Option - how options are passed as args
@@ -36,6 +42,40 @@ func getOpts(opt ...Option) (options, error) {
 func WithDebug(_ context.Context, debug bool) Option {
 	return func(o *options) error {
 		o.withDebug = debug
+		return nil
+	}
+}
+
+// withRefreshInterval provides an optional refresh interval.
+func withRefreshInterval(_ context.Context, d time.Duration) Option {
+	return func(o *options) error {
+		if d <= 0 {
+			return fmt.Errorf("provided refresh interval %q must be positive", d)
+		}
+		o.withRefreshInterval = d
+		return nil
+	}
+}
+
+// withFullFetchInterval provides an optional full fetch interval.
+func withFullFetchInterval(_ context.Context, d time.Duration) Option {
+	return func(o *options) error {
+		if d <= 0 {
+			return fmt.Errorf("provided full fetch interval %q must be positive", d)
+		}
+		o.withFullFetchInterval = d
+		return nil
+	}
+}
+
+// withIntervalRandomizationFactor provides an optional interval randomziation factor.
+func withIntervalRandomizationFactor(_ context.Context, f float64) Option {
+	return func(o *options) error {
+		if f < 0 {
+			return fmt.Errorf("withIntervalRandomizationFactor must be non negative")
+		}
+		o.withIntervalRandomizationFactor = f
+		o.withIntervalRandomizationFactorSet = true
 		return nil
 	}
 }

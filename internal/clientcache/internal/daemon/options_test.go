@@ -6,6 +6,7 @@ package daemon
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/cache"
@@ -28,6 +29,54 @@ func Test_GetOpts(t *testing.T) {
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
 		testOpts.withDebug = true
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("withRefreshInterval", func(t *testing.T) {
+		opts, err := getOpts(withRefreshInterval(ctx, time.Second))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withRefreshInterval = time.Second
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("withRefreshInterval_negative", func(t *testing.T) {
+		opts, err := getOpts(withRefreshInterval(ctx, -time.Second))
+		require.ErrorContains(t, err, "must be positive")
+		testOpts := getDefaultOptions()
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("withFullFetchInterval", func(t *testing.T) {
+		opts, err := getOpts(withFullFetchInterval(ctx, time.Second))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withFullFetchInterval = time.Second
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("withFullFetchInterval_negative", func(t *testing.T) {
+		opts, err := getOpts(withFullFetchInterval(ctx, -time.Second))
+		require.ErrorContains(t, err, "must be positive")
+		testOpts := getDefaultOptions()
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("withIntervalRandomizationFactor", func(t *testing.T) {
+		opts, err := getOpts(withIntervalRandomizationFactor(ctx, 0.2))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withIntervalRandomizationFactor = 0.2
+		testOpts.withIntervalRandomizationFactorSet = true
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("withIntervalRandomizationFactor zero", func(t *testing.T) {
+		opts, err := getOpts(withIntervalRandomizationFactor(ctx, 0))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withIntervalRandomizationFactor = 0
+		testOpts.withIntervalRandomizationFactorSet = true
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("withIntervalRandomizationFactor negative", func(t *testing.T) {
+		opts, err := getOpts(withIntervalRandomizationFactor(ctx, -0.2))
+		require.ErrorContains(t, err, "must be non negative")
+		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithBoundaryTokenReaderFunc", func(t *testing.T) {

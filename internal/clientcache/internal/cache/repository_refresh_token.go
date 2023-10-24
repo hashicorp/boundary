@@ -5,6 +5,7 @@ package cache
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -41,6 +42,15 @@ func (r *Repository) lookupRefreshToken(ctx context.Context, u *user, resourceTy
 		return "", errors.Wrap(ctx, err, op)
 	}
 	return rt.RefreshToken, nil
+}
+
+func (r *Repository) listRefreshTokens(ctx context.Context, u *user) ([]*refreshToken, error) {
+	const op = "cache.(Repository).listRefreshTokens"
+	var ret []*refreshToken
+	if err := r.rw.SearchWhere(ctx, &ret, "user_id = @user_id", []any{sql.Named("user_id", u.Id)}); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	return ret, nil
 }
 
 // deleteRefreshToken deletes the refresh token for the provided user and resource type

@@ -18,11 +18,11 @@ func TestTickerRefresh(t *testing.T) {
 
 	refresher := &fakeRefresher{make(chan struct{})}
 
-	rt, err := newRefreshTicker(ctx, 60, refresher)
+	rt, err := newRefreshTicker(ctx, refresher)
 	require.NoError(t, err)
 
 	tickerCtx, tickerCancel := context.WithCancel(ctx)
-	go rt.start(tickerCtx)
+	go rt.startRefresh(tickerCtx)
 	t.Cleanup(func() {
 		tickerCancel()
 	})
@@ -47,11 +47,66 @@ func TestTickerRefresh(t *testing.T) {
 	}
 }
 
+func TestTickerFullFetch(t *testing.T) {
+	ctx := context.Background()
+
+	refresher := &fakeRefresher{make(chan struct{})}
+
+	rt, err := newRefreshTicker(ctx, refresher)
+	require.NoError(t, err)
+
+	tickerCtx, tickerCancel := context.WithCancel(ctx)
+	go rt.startFullFetch(tickerCtx)
+	t.Cleanup(func() {
+		tickerCancel()
+	})
+
+	// let the normal start ticker refresh things,
+	<-refresher.called
+
+	testCtx, testCancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer testCancel()
+	rt.refresh()
+	select {
+	case <-refresher.called:
+		assert.Fail(t, "full fetch called as a result of refresh()")
+	case <-testCtx.Done():
+	}
+}
+
+func TestNextIntervalWithRandomness(t *testing.T) {
+	ctx := context.Background()
+	refresher := &fakeRefresher{make(chan struct{})}
+	rt, err := newRefreshTicker(ctx, refresher, withIntervalRandomizationFactor(ctx, .2))
+	require.NoError(t, err)
+
+	interval := 10 * time.Second
+	max, min := interval, interval
+	for i := 0; i < 100; i++ {
+		got := rt.nextIntervalWithRandomness(10 * time.Second)
+		if got > max {
+			max = got
+		}
+		if got < min {
+			min = got
+		}
+	}
+	assert.GreaterOrEqual(t, min, 8*time.Second)
+	assert.LessOrEqual(t, max, 12*time.Second)
+	assert.Less(t, min, interval)
+	assert.Greater(t, max, interval)
+}
+
 type fakeRefresher struct {
 	called chan struct{}
 }
 
 func (r *fakeRefresher) Refresh(context.Context, ...cache.Option) error {
+	r.called <- struct{}{}
+	return nil
+}
+
+func (r *fakeRefresher) FullFetch(context.Context, ...cache.Option) error {
 	r.called <- struct{}{}
 	return nil
 }

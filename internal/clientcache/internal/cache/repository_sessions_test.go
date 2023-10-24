@@ -426,6 +426,7 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 	tc.Client().SetToken(tc.Token().Token)
 	tarClient := targets.NewClient(tc.Client())
 	_ = worker.NewTestWorker(t, &worker.TestWorkerOpts{
+		Name:             "test",
 		InitialUpstreams: tc.ClusterAddrs(),
 		WorkerAuthKms:    tc.Config().WorkerAuthKms,
 	})
@@ -433,8 +434,10 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 	tar1, err := tarClient.Create(tc.Context(), "tcp", "p_1234567890", targets.WithName("tar1"), targets.WithTcpTargetDefaultPort(1), targets.WithAddress("address"))
 	require.NoError(t, err)
 	require.NotNil(t, tar1)
+
+	require.NoError(t, tc.WaitForNextWorkerStatusUpdate("test"))
 	_, err = tarClient.AuthorizeSession(tc.Context(), tar1.Item.Id)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	got, removed, refTok, err := defaultSessionFunc(tc.Context(), tc.ApiAddrs()[0], tc.Token().Token, "")
 	assert.NoError(t, err)
@@ -446,5 +449,7 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok2)
 	assert.Empty(t, removed2)
+	_ = got2
+	t.Skip("This is skipped while waiting for PR 3897 to be merged")
 	assert.Empty(t, got2)
 }

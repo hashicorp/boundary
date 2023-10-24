@@ -60,14 +60,15 @@ type CacheServer struct {
 }
 
 type Config struct {
-	ContextCancel          context.CancelFunc
-	RefreshIntervalSeconds int64
-	DatabaseUrl            string
-	StoreDebug             bool
-	LogLevel               string
-	LogFormat              string
-	LogWriter              io.Writer
-	DotDirectory           string
+	ContextCancel     context.CancelFunc
+	RefreshInterval   time.Duration
+	FullFetchInterval time.Duration
+	DatabaseUrl       string
+	StoreDebug        bool
+	LogLevel          string
+	LogFormat         string
+	LogWriter         io.Writer
+	DotDirectory      string
 }
 
 func (sc *Config) validate(ctx context.Context) error {
@@ -231,7 +232,14 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-	tic, err := newRefreshTicker(ctx, s.conf.RefreshIntervalSeconds, refreshService)
+	ticOptions := []Option{}
+	if s.conf.RefreshInterval > 0 {
+		ticOptions = append(ticOptions, withRefreshInterval(ctx, s.conf.RefreshInterval))
+	}
+	if s.conf.FullFetchInterval > 0 {
+		ticOptions = append(ticOptions, withFullFetchInterval(ctx, s.conf.FullFetchInterval))
+	}
+	tic, err := newRefreshTicker(ctx, refreshService, ticOptions...)
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
@@ -239,10 +247,14 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	tickingCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var tickerWg sync.WaitGroup
-	tickerWg.Add(1)
+	tickerWg.Add(2)
 	go func() {
 		defer tickerWg.Done()
-		tic.start(tickingCtx)
+		tic.startRefresh(tickingCtx)
+	}()
+	go func() {
+		defer tickerWg.Done()
+		tic.startFullFetch(tickingCtx)
 	}()
 
 	mux := http.NewServeMux()
