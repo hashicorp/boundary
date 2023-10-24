@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/config"
+	"github.com/hashicorp/boundary/internal/ratelimit"
 )
 
 type Config struct {
@@ -21,4 +22,9 @@ type Config struct {
 	DisableAuthorizationFailures bool
 	// Override worker auth CA certificate lifetime for testing
 	TestOverrideWorkerAuthCaCertificateLifetime time.Duration
+
+	// These are duplicated from the config.Config to track the state if these
+	// change via SIGHUP reloads.
+	ApiRateLimits            ratelimit.Configs
+	ApiRateLimiterMaxEntries int
 }

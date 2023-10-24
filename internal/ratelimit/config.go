@@ -6,6 +6,7 @@ package ratelimit
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -107,6 +108,11 @@ type Config struct {
 
 // Configs is an ordered set of Config.
 type Configs []*Config
+
+// Equal checks if a set of Configs is equal to another set of Configs.
+func (c Configs) Equal(o Configs) bool {
+	return reflect.DeepEqual(c, o)
+}
 
 // Limits creates a slice of rate.Limit from the Configs. This will enumerate
 // every combination of resource+action, defining a Limit for each.
