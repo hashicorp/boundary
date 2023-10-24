@@ -142,10 +142,14 @@ func TestRepository_ListTargets(t *testing.T) {
 	testKms := kms.TestKms(t, conn, wrapper)
 	iamRepo := iam.TestRepo(t, conn, wrapper)
 	_, proj1 := iam.TestScopes(t, iamRepo)
+	_, proj2 := iam.TestScopes(t, iamRepo)
 
-	total := 5
-	for i := 0; i < total; i++ {
+	var total int
+	for i := 0; i < 5; i++ {
 		targettest.TestNewTestTarget(ctx, t, conn, proj1.GetPublicId(), fmt.Sprintf("proj1-%d", i))
+		total++
+		targettest.TestNewTestTarget(ctx, t, conn, proj2.GetPublicId(), fmt.Sprintf("proj2-%d", i))
+		total++
 	}
 
 	rw := db.New(conn)
@@ -153,6 +157,12 @@ func TestRepository_ListTargets(t *testing.T) {
 		target.WithPermissions([]perms.Permission{
 			{
 				ScopeId:  proj1.PublicId,
+				Resource: resource.Target,
+				Action:   action.List,
+				All:      true,
+			},
+			{
+				ScopeId:  proj2.PublicId,
 				Resource: resource.Target,
 				Action:   action.List,
 				All:      true,
@@ -196,32 +206,57 @@ func TestRepository_ListTargets(t *testing.T) {
 			target.WithStartPageAfterItem(page2[1]),
 		)
 		require.NoError(err)
-		require.Len(page3, 1)
-		for _, item := range append(page1, page2...) {
+		require.Len(page3, 2)
+		for _, item := range page2 {
 			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
 		}
 		page4, err := target.ListTargets(
 			repo,
 			context.Background(),
 			target.WithLimit(2),
-			target.WithStartPageAfterItem(page3[0]),
+			target.WithStartPageAfterItem(page3[1]),
 		)
 		require.NoError(err)
-		require.Empty(page4)
+		require.Len(page4, 2)
+		for _, item := range page3 {
+			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, err := target.ListTargets(
+			repo,
+			context.Background(),
+			target.WithLimit(2),
+			target.WithStartPageAfterItem(page4[1]),
+		)
+		require.NoError(err)
+		require.Len(page5, 2)
+		for _, item := range page4 {
+			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, err := target.ListTargets(
+			repo,
+			context.Background(),
+			target.WithLimit(2),
+			target.WithStartPageAfterItem(page5[1]),
+		)
+		require.NoError(err)
+		require.Empty(page6)
 
 		// Update the first session and check that it gets listed subsequently
 		page1[0].SetName("new-name")
 		_, _, err = repo.UpdateTarget(ctx, page1[0], page1[0].GetVersion(), []string{"name"})
 		require.NoError(err)
-		page5, err := target.ListTargets(
+		page7, err := target.ListTargets(
 			repo,
 			context.Background(),
 			target.WithLimit(2),
-			target.WithStartPageAfterItem(page3[0]),
+			target.WithStartPageAfterItem(page5[1]),
 		)
 		require.NoError(err)
-		require.Len(page5, 1)
-		require.Equal(page5[0].GetPublicId(), page1[0].GetPublicId())
+		require.Len(page7, 1)
+		require.Equal(page7[0].GetPublicId(), page1[0].GetPublicId())
 	})
 }
 
