@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/pagination"
 )
 
 // getOpts - iterate the inbound Options and return a struct.
@@ -48,6 +49,7 @@ type options struct {
 	withOperationalState    AuthMethodState
 	withAccountClaimMap     map[string]AccountToClaim
 	withReader              db.Reader
+	withStartPageAfterItem  pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -230,5 +232,13 @@ func WithAccountClaimMap(acm map[string]AccountToClaim) Option {
 func WithReader(reader db.Reader) Option {
 	return func(o *options) {
 		o.withReader = reader
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }
