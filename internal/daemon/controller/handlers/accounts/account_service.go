@@ -22,7 +22,9 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -30,6 +32,7 @@ import (
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/accounts"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -61,6 +64,9 @@ const (
 	memberOfAttrField = "attributes.member_of_groups"
 
 	domain = "auth"
+
+	// default max page size is used when none provided to NewService
+	defaultMaxPageSize = 1000
 )
 
 var (
@@ -117,12 +123,14 @@ type Service struct {
 	pwRepoFn   common.PasswordAuthRepoFactory
 	oidcRepoFn common.OidcAuthRepoFactory
 	ldapRepoFn common.LdapAuthRepoFactory
+
+	maxPageSize uint
 }
 
 var _ pbs.AccountServiceServer = (*Service)(nil)
 
 // NewService returns a account service which handles account related requests to boundary.
-func NewService(ctx context.Context, pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory, ldapRepo common.LdapAuthRepoFactory) (Service, error) {
+func NewService(ctx context.Context, pwRepo common.PasswordAuthRepoFactory, oidcRepo common.OidcAuthRepoFactory, ldapRepo common.LdapAuthRepoFactory, maxPageSize uint) (Service, error) {
 	const op = "accounts.NewService"
 	switch {
 	case pwRepo == nil:
@@ -132,70 +140,177 @@ func NewService(ctx context.Context, pwRepo common.PasswordAuthRepoFactory, oidc
 	case ldapRepo == nil:
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing ldap repository")
 	}
-	return Service{pwRepoFn: pwRepo, oidcRepoFn: oidcRepo, ldapRepoFn: ldapRepo}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
+	return Service{
+		pwRepoFn:    pwRepo,
+		oidcRepoFn:  oidcRepo,
+		ldapRepoFn:  ldapRepo,
+		maxPageSize: maxPageSize,
+	}, nil
 }
 
 // ListAccounts implements the interface pbs.AccountServiceServer.
 func (s Service) ListAccounts(ctx context.Context, req *pbs.ListAccountsRequest) (*pbs.ListAccountsResponse, error) {
+	const op = "accounts.(Service).ListAccounts"
+
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
-	_, authResults := s.parentAndAuthResult(ctx, req.GetAuthMethodId(), action.List)
+
+	authMethodId := req.GetAuthMethodId()
+	_, authResults := s.parentAndAuthResult(ctx, authMethodId, action.List)
 	if authResults.Error != nil {
 		return nil, authResults.Error
 	}
-	ul, err := s.listFromRepo(ctx, req.GetAuthMethodId())
-	if err != nil {
-		return nil, err
-	}
-	if len(ul) == 0 {
-		return &pbs.ListAccountsResponse{}, nil
+
+	pageSize := int(s.maxPageSize)
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
 	}
 
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.Account, 0, len(ul))
-
-	res := perms.Resource{
-		ScopeId: authResults.Scope.Id,
-		Type:    resource.Account,
-		Pin:     req.GetAuthMethodId(),
-	}
-	for _, acct := range ul {
-		res.Id = acct.GetPublicId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())], requestauth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
-			continue
-		}
-
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-
-		item, err := toProto(ctx, acct, outputOpts...)
+	filterItemFn := func(ctx context.Context, acct auth.Account) (bool, error) {
+		pbItem, err := toProto(ctx, acct, newOutputOpts(ctx, acct, authResults, authMethodId)...)
 		if err != nil {
-			return nil, err
+			return false, err
 		}
 
-		// This comes last so that we can use item fields in the filter after
+		// This comes last so that we can use pbItem fields in the filter after
 		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(pbItem)
+		if err != nil {
+			return false, err
+		}
+		return filter.Match(filterable), nil
+	}
+
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var refreshToken *refreshtoken.Token
+	if req.GetRefreshToken() != "" {
+		rt, err := handlers.ParseRefreshToken(ctx, req.GetRefreshToken())
 		if err != nil {
 			return nil, err
 		}
-		if filter.Match(filterable) {
-			finalItems = append(finalItems, item)
+		// We're doing the conversion from the protobuf types to the
+		// domain types here rather than in the domain so that the domain
+		// doesn't need to know about the protobuf types.
+		refreshToken, err = refreshtoken.New(
+			ctx,
+			rt.CreatedTime.AsTime(),
+			rt.UpdatedTime.AsTime(),
+			handlers.RefreshTokenResourceToResource(rt.ResourceType),
+			rt.GrantsHash,
+			rt.LastItemId,
+			rt.LastItemUpdatedTime.AsTime(),
+		)
+		if err != nil {
+			return nil, err
+		}
+		if err := refreshToken.Validate(ctx, resource.Account, grantsHash); err != nil {
+			return nil, err
 		}
 	}
-	return &pbs.ListAccountsResponse{Items: finalItems}, nil
+
+	var listResp *pagination.ListResponse[auth.Account]
+	switch subtypes.SubtypeFromId(domain, authMethodId) {
+	case ldap.Subtype:
+		repo, err := s.ldapRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if refreshToken == nil {
+			listResp, err = ldap.ListAccounts(ctx, grantsHash, pageSize, filterItemFn, repo, authMethodId)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			listResp, err = ldap.ListAccountsRefresh(ctx, grantsHash, pageSize, filterItemFn, refreshToken, repo, authMethodId)
+			if err != nil {
+				return nil, err
+			}
+		}
+	case oidc.Subtype:
+		repo, err := s.oidcRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if refreshToken == nil {
+			listResp, err = oidc.ListAccounts(ctx, grantsHash, pageSize, filterItemFn, repo, authMethodId)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			listResp, err = oidc.ListAccountsRefresh(ctx, grantsHash, pageSize, filterItemFn, refreshToken, repo, authMethodId)
+			if err != nil {
+				return nil, err
+			}
+		}
+	case password.Subtype:
+		repo, err := s.pwRepoFn()
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if refreshToken == nil {
+			listResp, err = password.ListAccounts(ctx, grantsHash, pageSize, filterItemFn, repo, authMethodId)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			listResp, err = password.ListAccountsRefresh(ctx, grantsHash, pageSize, filterItemFn, refreshToken, repo, authMethodId)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	finalItems := make([]*pb.Account, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		pbItem, err := toProto(ctx, item, newOutputOpts(ctx, item, authResults, authMethodId)...)
+		if err != nil {
+			return nil, err
+		}
+		finalItems = append(finalItems, pbItem)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListAccountsResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+	}
+
+	if listResp.RefreshToken != nil {
+		if listResp.RefreshToken.ResourceType != resource.Account {
+			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
+		}
+		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
+			UpdatedTime:         timestamppb.New(listResp.RefreshToken.UpdatedTime),
+			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_ACCOUNT,
+			GrantsHash:          listResp.RefreshToken.GrantsHash,
+			LastItemId:          listResp.RefreshToken.LastItemId,
+			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return resp, nil
 }
 
 // GetAccount implements the interface pbs.AccountServiceServer.
@@ -817,51 +932,6 @@ func (s Service) deleteFromRepo(ctx context.Context, scopeId, id string) (bool, 
 	return rows > 0, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, authMethodId string) ([]auth.Account, error) {
-	const op = "accounts.(Service).listFromRepo"
-
-	var outUl []auth.Account
-	switch subtypes.SubtypeFromId(domain, authMethodId) {
-	case password.Subtype:
-		pwRepo, err := s.pwRepoFn()
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		pwl, err := pwRepo.ListAccounts(ctx, authMethodId, password.WithLimit(-1))
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		for _, a := range pwl {
-			outUl = append(outUl, a)
-		}
-	case oidc.Subtype:
-		oidcRepo, err := s.oidcRepoFn()
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		oidcl, err := oidcRepo.ListAccounts(ctx, authMethodId, oidc.WithLimit(-1))
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		for _, a := range oidcl {
-			outUl = append(outUl, a)
-		}
-	case ldap.Subtype:
-		ldapRepo, err := s.ldapRepoFn()
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		ldapList, err := ldapRepo.ListAccounts(ctx, authMethodId, ldap.WithLimit(ctx, -1))
-		if err != nil {
-			return nil, errors.Wrap(ctx, err, op)
-		}
-		for _, a := range ldapList {
-			outUl = append(outUl, a)
-		}
-	}
-	return outUl, nil
-}
-
 func (s Service) changePasswordInRepo(ctx context.Context, scopeId, id string, version uint32, currentPassword, newPassword string) (auth.Account, error) {
 	const op = "account.(Service).changePasswordInRepo"
 	repo, err := s.pwRepoFn()
@@ -1324,6 +1394,30 @@ func validateListRequest(ctx context.Context, req *pbs.ListAccountsRequest) erro
 		return handlers.InvalidArgumentErrorf("Error in provided request.", badFields)
 	}
 	return nil
+}
+
+func newOutputOpts(ctx context.Context, acct auth.Account, authResults requestauth.VerifyResults, authMethodId string) []handlers.Option {
+	res := perms.Resource{
+		ScopeId: authResults.Scope.Id,
+		Type:    resource.Account,
+		Pin:     authMethodId,
+	}
+	res.Id = acct.GetPublicId()
+	authorizedActions := authResults.FetchActionSetForId(ctx, acct.GetPublicId(), IdActions[subtypes.SubtypeFromId(domain, acct.GetPublicId())], requestauth.WithResource(&res)).Strings()
+	if len(authorizedActions) == 0 {
+		return nil
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(authResults.Scope))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+	return outputOpts
 }
 
 func validateChangePasswordRequest(ctx context.Context, req *pbs.ChangePasswordRequest) error {

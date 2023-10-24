@@ -156,7 +156,7 @@ func (c *Controller) registerGrpcServices(s *grpc.Server) error {
 		services.RegisterHostServiceServer(s, hs)
 	}
 	if _, ok := currentServices[services.AccountService_ServiceDesc.ServiceName]; !ok {
-		accts, err := accounts.NewService(c.baseContext, c.PasswordAuthRepoFn, c.OidcRepoFn, c.LdapRepoFn)
+		accts, err := accounts.NewService(c.baseContext, c.PasswordAuthRepoFn, c.OidcRepoFn, c.LdapRepoFn, c.conf.RawConfig.Controller.MaxPageSize)
 		if err != nil {
 			return fmt.Errorf("failed to create account handler service: %w", err)
 		}
