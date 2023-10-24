@@ -8,6 +8,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/hashicorp/boundary/internal/auth"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/iam"
@@ -129,13 +130,13 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		setupFn      func() (scopeIds []string, want []*AuthMethod, wantPrimaryAuthMethodId string)
-		opt          []Option
+		setupFn      func() (scopeIds []string, want []auth.AuthMethod, wantPrimaryAuthMethodId string)
+		opt          []auth.Option
 		wantErrMatch *errors.Template
 	}{
 		{
 			name: "with-limits",
-			setupFn: func() ([]string, []*AuthMethod, string) {
+			setupFn: func() ([]string, []auth.AuthMethod, string) {
 				org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 				databaseWrapper, err := kmsCache.GetWrapper(context.Background(), org.PublicId, kms.KeyPurposeDatabase)
 				require.NoError(t, err)
@@ -148,13 +149,13 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 				_ = TestAuthMethod(t, conn, databaseWrapper, org.PublicId, InactiveState, "alice_rp-2", "alices-cat-name",
 					WithIssuer(TestConvertToUrls(t, "https://alice.com")[0]), WithApiUrl(TestConvertToUrls(t, "https://api.com")[0]), WithClaimsScopes("email", "profile"))
 
-				return []string{am1a.ScopeId}, []*AuthMethod{am1a}, am1a.PublicId
+				return []string{am1a.ScopeId}, []auth.AuthMethod{am1a}, am1a.PublicId
 			},
-			opt: []Option{WithLimit(1), WithOrderByCreateTime(true)},
+			opt: []auth.Option{auth.WithLimit(ctx, 1)},
 		},
 		{
 			name: "no-search-criteria",
-			setupFn: func() ([]string, []*AuthMethod, string) {
+			setupFn: func() ([]string, []auth.AuthMethod, string) {
 				return nil, nil, ""
 			},
 			wantErrMatch: errors.T(errors.InvalidParameter),
@@ -178,18 +179,18 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 			}
 			require.NoError(err)
 			sort.Slice(want, func(a, b int) bool {
-				return want[a].PublicId < want[b].PublicId
+				return want[a].GetPublicId() < want[b].GetPublicId()
 			})
 			sort.Slice(got, func(a, b int) bool {
-				return got[a].PublicId < got[b].PublicId
+				return got[a].GetPublicId() < got[b].GetPublicId()
 			})
 			assert.Equal(want, got)
 			if wantPrimaryAuthMethodId != "" {
 				found := false
 				for _, am := range got {
-					if am.PublicId == wantPrimaryAuthMethodId {
-						assert.Truef(am.IsPrimaryAuthMethod, "expected IsPrimaryAuthMethod to be true for: %s", am.PublicId)
-						if am.IsPrimaryAuthMethod {
+					if am.GetPublicId() == wantPrimaryAuthMethodId {
+						assert.Truef(am.GetIsPrimaryAuthMethod(), "expected IsPrimaryAuthMethod to be true for: %s", am.GetPublicId())
+						if am.GetIsPrimaryAuthMethod() {
 							found = true
 						}
 					}
@@ -197,7 +198,7 @@ func TestRepository_ListAuthMethods(t *testing.T) {
 				assert.Truef(found, "expected to find primary id %s in: %+v", wantPrimaryAuthMethodId, got)
 			} else {
 				for _, am := range got {
-					assert.Falsef(am.IsPrimaryAuthMethod, "did not expect %s to be IsPrimaryAuthMethod", am.PublicId)
+					assert.Falsef(am.GetIsPrimaryAuthMethod(), "did not expect %s to be IsPrimaryAuthMethod", am.GetPublicId())
 				}
 			}
 		})

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/libs/crypto"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -463,4 +464,14 @@ func ParseAccountClaimMaps(ctx context.Context, m ...string) ([]ClaimMap, error)
 		})
 	}
 	return claimMap, nil
+}
+
+type deletedAuthMethod struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAuthMethod) TableName() string {
+	return "auth_oidc_method_deleted"
 }
