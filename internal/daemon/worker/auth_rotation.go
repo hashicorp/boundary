@@ -25,11 +25,6 @@ const defaultAuthRotationResetDuration = 5 * time.Second
 func (w *Worker) startAuthRotationTicking(cancelCtx context.Context) {
 	const op = "worker.(Worker).startAuthRotationTicking"
 
-	if w.conf.RawConfig.Worker.UseDeprecatedKmsAuthMethod {
-		event.WriteSysEvent(cancelCtx, op, "using deprecated kms worker authentication method; pki auth rotation ticking not running")
-		return
-	}
-
 	event.WriteSysEvent(cancelCtx, op, "starting auth rotation ticking")
 
 	// This will start at 0 which will cause us to run immediately

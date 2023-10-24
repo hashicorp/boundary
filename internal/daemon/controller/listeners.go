@@ -5,7 +5,6 @@ package controller
 
 import (
 	"context"
-	"crypto/tls"
 	stderrors "errors"
 	"fmt"
 	"math"
@@ -159,9 +158,6 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 			Context:      c.baseContext,
 			Storage:      workerAuthStorage,
 			BaseListener: ln.ClusterListener,
-			BaseTlsConfiguration: &tls.Config{
-				GetConfigForClient: c.validateWorkerTls,
-			},
 			Options: []nodee.Option{
 				nodee.WithLogger(eventLogger),
 				nodee.WithRegistrationWrapper(wrapperToUse),
@@ -185,26 +181,11 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		return nil, fmt.Errorf("error instantiating node enrollment authed split listener: %w", err)
 	}
 
-	// This wraps the normal pki worker connections with a listener which adds
-	// the worker key id of the connections to the controller's pkiConnManager.
-	pkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, nodeeAuthedListener, c.pkiConnManager, sourcePurpose(grpcListenerPurpose))
+	// This wraps connections with a listener which adds the worker key id of
+	// the connections to the controller's nodeeConnManager.
+	workerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, nodeeAuthedListener, c.downstreamConnManager, sourcePurpose(grpcListenerPurpose))
 	if err != nil {
-		return nil, fmt.Errorf("%s: error creating pki worker tracking listener: %w", op, err)
-	}
-
-	// Create a multiplexer to unify connections between PKI and KMS
-	multiplexingAuthedListener, err := nodeenet.NewMultiplexingListener(c.baseContext, nodeeAuthedListener.Addr())
-	if err != nil {
-		return nil, fmt.Errorf("error instantiating authed multiplexed listener: %w", err)
-	}
-	if err := multiplexingAuthedListener.IngressListener(pkiWorkerTrackingListener); err != nil {
-		return nil, fmt.Errorf("error adding authed evented listener to multiplexed listener: %w", err)
-	}
-	// Connections that came in on the cluster listener that are not authed via
-	// PKI need to be sent for KMS routing
-	nodeeUnauthedListener, err := splitListener.GetListener(nodeenet.UnauthenticatedNextProto)
-	if err != nil {
-		return nil, fmt.Errorf("error instantiating node enrollment unauthed split listener: %w", err)
+		return nil, fmt.Errorf("%s: error creating node enrollment worker tracking listener: %w", op, err)
 	}
 
 	// Connections coming in here are authed by nodeenrollment and are for the
@@ -214,25 +195,11 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 		return nil, fmt.Errorf("error instantiating reverse gprc connection split listener: %w", err)
 	}
 
-	// This wraps the reverse grpc pki worker connections with a listener which
-	// adds the worker key id of the connections to the pkiConnManager.
-	revPkiWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, reverseGrpcListener, c.pkiConnManager, sourcePurpose(reverseGrpcListenerPurpose))
+	// This wraps the reverse grpc connections with a listener which adds the
+	// worker key id of the connections to the nodeeConnManager.
+	revWorkerTrackingListener, err := cluster.NewTrackingListener(c.baseContext, reverseGrpcListener, c.downstreamConnManager, sourcePurpose(reverseGrpcListenerPurpose))
 	if err != nil {
-		return nil, fmt.Errorf("%s: error creating reverse grpc pki worker tracking listener: %w", op, err)
-	}
-
-	// Create a multiplexer to unify reverse grpc connections between PKI and KMS
-	multiplexingReverseGrpcListener, err := nodeenet.NewMultiplexingListener(c.baseContext, reverseGrpcListener.Addr())
-	if err != nil {
-		return nil, fmt.Errorf("error instantiating reverse grpc multiplexed listener: %w", err)
-	}
-	if err := multiplexingReverseGrpcListener.IngressListener(revPkiWorkerTrackingListener); err != nil {
-		return nil, fmt.Errorf("error adding reverse grpc listener to multiplexed listener: %w", err)
-	}
-
-	// Start routing KMS connections
-	if err := startKmsConnRouter(c.baseContext, c, nodeeUnauthedListener, multiplexingAuthedListener, multiplexingReverseGrpcListener); err != nil {
-		return nil, errors.Wrap(c.baseContext, err, op)
+		return nil, fmt.Errorf("%s: error creating reverse grpc worker tracking listener: %w", op, err)
 	}
 
 	workerReqInterceptor, err := workerRequestInfoInterceptor(c.baseContext, c.conf.Eventer)
@@ -269,7 +236,7 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 	ln.GrpcServer = workerServer
 
 	return func() {
-		err := handleSecondaryConnection(c.baseContext, metric.InstrumentClusterTrackingListener(multiplexingReverseGrpcListener, reverseGrpcListenerPurpose),
+		err := handleSecondaryConnection(c.baseContext, metric.InstrumentClusterTrackingListener(revWorkerTrackingListener, reverseGrpcListenerPurpose),
 			c.downstreamConns)
 		if err != nil {
 			event.WriteError(c.baseContext, op, err, event.WithInfoMsg("handleSecondaryConnection error"))
@@ -281,9 +248,9 @@ func (c *Controller) configureForCluster(ln *base.ServerListener) (func(), error
 			}
 		}()
 		go func() {
-			err := ln.GrpcServer.Serve(metric.InstrumentClusterTrackingListener(multiplexingAuthedListener, grpcListenerPurpose))
+			err := ln.GrpcServer.Serve(metric.InstrumentClusterTrackingListener(workerTrackingListener, grpcListenerPurpose))
 			if err != nil && !errors.Is(err, net.ErrClosed) {
-				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("multiplexingAuthedListener error"))
+				event.WriteError(c.baseContext, op, err, event.WithInfoMsg("workerTrackingListener error"))
 			}
 		}()
 	}, nil

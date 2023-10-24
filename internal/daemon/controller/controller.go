@@ -158,7 +158,7 @@ type Controller struct {
 	// replying to queries with "503 Service Unavailable".
 	HealthService *health.Service
 
-	pkiConnManager *cluster.DownstreamManager
+	downstreamConnManager *cluster.DownstreamManager
 
 	// ControllerExtension defines a std way to extend the controller
 	ControllerExtension intglobals.ControllerExtension
@@ -178,7 +178,7 @@ func New(ctx context.Context, conf *Config) (*Controller, error) {
 		workerStatusUpdateTimes: new(sync.Map),
 		enabledPlugins:          conf.Server.EnabledPlugins,
 		apiListeners:            make([]*base.ServerListener, 0),
-		pkiConnManager:          cluster.NewDownstreamManager(),
+		downstreamConnManager:   cluster.NewDownstreamManager(),
 		workerStatusGracePeriod: new(atomic.Int64),
 		livenessTimeToStale:     new(atomic.Int64),
 	}
@@ -523,7 +523,7 @@ func (c *Controller) Start() error {
 		defer c.tickerWg.Done()
 		c.startCloseExpiredPendingTokens(c.baseContext)
 	}()
-	if err := c.startWorkerConnectionMaintenanceTicking(c.baseContext, c.tickerWg, c.pkiConnManager); err != nil {
+	if err := c.startWorkerConnectionMaintenanceTicking(c.baseContext, c.tickerWg, c.downstreamConnManager); err != nil {
 		return errors.Wrap(c.baseContext, err, op)
 	}
 

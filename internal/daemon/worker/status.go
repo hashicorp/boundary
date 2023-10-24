@@ -198,7 +198,7 @@ func (w *Worker) sendWorkerStatus(cancelCtx context.Context, sessionManager sess
 			event.WithInfoMsg("error making status request to controller"))
 	}
 	versionInfo := version.Get()
-	connectionState := w.pkiConnManager.Connected()
+	connectionState := w.downstreamConnManager.Connected()
 	result, err := client.Status(statusCtx, &pbs.StatusRequest{
 		Jobs: activeJobs,
 		WorkerStatus: &pb.ServerWorkerStatus{

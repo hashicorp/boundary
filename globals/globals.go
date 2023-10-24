@@ -12,6 +12,8 @@ const (
 	AnyAuthenticatedUserId = "u_auth"
 	AnonymousUserId        = "u_anon"
 	RecoveryUserId         = "u_recovery"
+
+	MinimumSupportedPostgresVersion = "12"
 )
 
 type (
