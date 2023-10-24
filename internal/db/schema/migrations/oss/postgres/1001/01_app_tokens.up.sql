@@ -91,4 +91,54 @@ $$ language plpgsql;
 create trigger immutable_app_token_grant before update on app_token_grant
   for each row execute procedure app_token_immutable_grant();
 
+
+create table app_token_usage (
+ app_token_id wt_public_id
+   references app_token(public_id)
+   on delete cascade
+   on update cascade,
+ create_time wt_timestamp,
+ client_tcp_address inet not null,
+ request_method text not null
+   constraint request_method_must_not_be_empty
+     check(
+       length(trim(request_method)) > 0
+     ),
+ request_path text not null
+   constraint request_path_must_not_be_empty
+   check(
+     length(trim(request_path)) > 0
+   ),
+ primary key(app_token_id, create_time)
+);
+comment on table app_token is
+  'app_token_usage defines the usage of an application auth token';
+
+-- limit the usage list the last 30 days or last 10 uses whichever is greater
+create or replace function limit_app_token_usage_rows() returns trigger
+  as $$
+  declare
+    max_rows integer := 10;
+begin
+  delete from app_token_usage
+  where
+    app_token_id = new.app_token_id  and
+    app_token_id not in (
+      select app_token_id
+      from app_token_usage
+      where
+      app_token_id = new.app_token_id
+      order by create_time desc
+      limit max_rows
+    ) or
+    create_time < now() - interval '30 days';
+    return new;
+  end;
+$$ language plpgsql;
+comment on table app_token is
+  'app_token_usage defines the limits of how many rows are stored regarding an app_token usage';
+
+create trigger limit_app_token_usage before insert on app_token_usage
+  for each row execute procedure limit_app_token_usage_rows();
+
 commit;
