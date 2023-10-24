@@ -16,14 +16,18 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	requestauth "github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/accounts"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
@@ -107,7 +111,7 @@ func TestNewService(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := accounts.NewService(ctx, tc.pwRepo, tc.oidcRepo, ldapRepoFn)
+			_, err := accounts.NewService(ctx, tc.pwRepo, tc.oidcRepo, ldapRepoFn, 1000)
 			if tc.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -136,7 +140,7 @@ func TestGet(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new auth token service.")
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -153,7 +157,7 @@ func TestGet(t *testing.T) {
 		Version:      1,
 		Type:         password.Subtype.String(),
 		Attrs: &pb.Account_PasswordAccountAttributes{
-			&pb.PasswordAccountAttributes{LoginName: pwA.GetLoginName()},
+			PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: pwA.GetLoginName()},
 		},
 		AuthorizedActions: pwAuthorizedActions,
 	}
@@ -180,7 +184,7 @@ func TestGet(t *testing.T) {
 		Version:      1,
 		Type:         oidc.Subtype.String(),
 		Attrs: &pb.Account_OidcAccountAttributes{
-			&pb.OidcAccountAttributes{
+			OidcAccountAttributes: &pb.OidcAccountAttributes{
 				Issuer:  oidcAm.GetIssuer(),
 				Subject: "test-subject",
 			},
@@ -304,8 +308,10 @@ func TestGet(t *testing.T) {
 }
 
 func TestListPassword(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kms := kms.TestKms(t, conn, wrap)
@@ -354,11 +360,15 @@ func TestListPassword(t *testing.T) {
 			Version:      1,
 			Type:         "password",
 			Attrs: &pb.Account_PasswordAccountAttributes{
-				&pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
+				PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
 			},
 			AuthorizedActions: pwAuthorizedActions,
 		})
 	}
+
+	// Run analyze in the DB to update the estimate tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 
 	cases := []struct {
 		name     string
@@ -370,17 +380,44 @@ func TestListPassword(t *testing.T) {
 		{
 			name: "List Some Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId()},
-			res:  &pbs.ListAccountsResponse{Items: wantSomeAccounts},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantSomeAccounts,
+				EstItemCount: uint32(len(wantSomeAccounts)),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
+		},
+		{
+			name: "Paginate Some Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId(), PageSize: 2},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantSomeAccounts[:2],
+				EstItemCount: 6,
+				ResponseType: "delta",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List Other Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amOtherAccounts.GetPublicId()},
-			res:  &pbs.ListAccountsResponse{Items: wantOtherAccounts},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantOtherAccounts,
+				EstItemCount: uint32(len(wantOtherAccounts)),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List No Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amNoAccounts.GetPublicId()},
-			res:  &pbs.ListAccountsResponse{},
+			res: &pbs.ListAccountsResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Unfound Auth Method",
@@ -393,7 +430,13 @@ func TestListPassword(t *testing.T) {
 				AuthMethodId: amSomeAccounts.GetPublicId(),
 				Filter:       fmt.Sprintf(`"/item/attributes/login_name"==%q`, wantSomeAccounts[1].GetPasswordAccountAttributes().LoginName),
 			},
-			res:      &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantSomeAccounts[1:2],
+				EstItemCount: 1,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			skipAnon: true,
 		},
 		{
@@ -402,7 +445,12 @@ func TestListPassword(t *testing.T) {
 				AuthMethodId: amSomeAccounts.GetPublicId(),
 				Filter:       `"/item/id"=="noaccountmatchesthis"`,
 			},
-			res: &pbs.ListAccountsResponse{},
+			res: &pbs.ListAccountsResponse{
+				EstItemCount: 0,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -413,7 +461,7 @@ func TestListPassword(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 			require.NoError(err, "Couldn't create new user service.")
 
 			// Test non-anon first
@@ -425,7 +473,15 @@ func TestListPassword(t *testing.T) {
 			} else {
 				require.NoError(gErr)
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.SortRepeatedFields(got),
+					protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+				),
+			)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -447,6 +503,8 @@ func TestListPassword(t *testing.T) {
 func TestListOidc(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
@@ -486,7 +544,7 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         oidc.Subtype.String(),
 			Attrs: &pb.Account_OidcAccountAttributes{
-				&pb.OidcAccountAttributes{
+				OidcAccountAttributes: &pb.OidcAccountAttributes{
 					Issuer:  amSomeAccounts.GetIssuer(),
 					Subject: subId,
 				},
@@ -508,7 +566,7 @@ func TestListOidc(t *testing.T) {
 			Version:      1,
 			Type:         oidc.Subtype.String(),
 			Attrs: &pb.Account_OidcAccountAttributes{
-				&pb.OidcAccountAttributes{
+				OidcAccountAttributes: &pb.OidcAccountAttributes{
 					Issuer:  amOtherAccounts.GetIssuer(),
 					Subject: subId,
 				},
@@ -516,6 +574,10 @@ func TestListOidc(t *testing.T) {
 			AuthorizedActions: oidcAuthorizedActions,
 		})
 	}
+
+	// Run analyze in the DB to update the estimate tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
 
 	cases := []struct {
 		name     string
@@ -527,17 +589,44 @@ func TestListOidc(t *testing.T) {
 		{
 			name: "List Some Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId()},
-			res:  &pbs.ListAccountsResponse{Items: wantSomeAccounts},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantSomeAccounts,
+				EstItemCount: uint32(len(wantSomeAccounts)),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
+		},
+		{
+			name: "Paginate Some Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId(), PageSize: 2},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantSomeAccounts[:2],
+				EstItemCount: 6,
+				ResponseType: "delta",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List Other Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amOtherAccounts.GetPublicId()},
-			res:  &pbs.ListAccountsResponse{Items: wantOtherAccounts},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantOtherAccounts,
+				EstItemCount: uint32(len(wantOtherAccounts)),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List No Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amNoAccounts.GetPublicId()},
-			res:  &pbs.ListAccountsResponse{},
+			res: &pbs.ListAccountsResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Unfound Auth Method",
@@ -550,7 +639,13 @@ func TestListOidc(t *testing.T) {
 				AuthMethodId: amSomeAccounts.GetPublicId(),
 				Filter:       fmt.Sprintf(`"/item/attributes/subject"==%q`, wantSomeAccounts[1].GetOidcAccountAttributes().Subject),
 			},
-			res:      &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantSomeAccounts[1:2],
+				EstItemCount: 1,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			skipAnon: true,
 		},
 		{
@@ -559,7 +654,11 @@ func TestListOidc(t *testing.T) {
 				AuthMethodId: amSomeAccounts.GetPublicId(),
 				Filter:       `"/item/id"=="noaccountmatchesthis"`,
 			},
-			res: &pbs.ListAccountsResponse{},
+			res: &pbs.ListAccountsResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -570,7 +669,7 @@ func TestListOidc(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
@@ -585,7 +684,14 @@ func TestListOidc(t *testing.T) {
 				return strings.Compare(got.Items[i].GetOidcAccountAttributes().Subject,
 					got.Items[j].GetOidcAccountAttributes().Subject) < 0
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+				),
+			)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -607,6 +713,8 @@ func TestListOidc(t *testing.T) {
 func TestListLdap(t *testing.T) {
 	ctx := context.Background()
 	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
 	rw := db.New(conn)
 	wrap := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, wrap)
@@ -672,6 +780,10 @@ func TestListLdap(t *testing.T) {
 		})
 	}
 
+	// Run analyze in the DB to update the estimate tables
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
 	cases := []struct {
 		name     string
 		req      *pbs.ListAccountsRequest
@@ -682,17 +794,44 @@ func TestListLdap(t *testing.T) {
 		{
 			name: "List Some Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId()},
-			res:  &pbs.ListAccountsResponse{Items: wantSomeAccounts},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantSomeAccounts,
+				EstItemCount: uint32(len(wantSomeAccounts)),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
+		},
+		{
+			name: "Paginate Some Accounts",
+			req:  &pbs.ListAccountsRequest{AuthMethodId: amSomeAccounts.GetPublicId(), PageSize: 2},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantSomeAccounts[:2],
+				EstItemCount: 6,
+				ResponseType: "delta",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List Other Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amOtherAccounts.GetPublicId()},
-			res:  &pbs.ListAccountsResponse{Items: wantOtherAccounts},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantOtherAccounts,
+				EstItemCount: uint32(len(wantOtherAccounts)),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List No Accounts",
 			req:  &pbs.ListAccountsRequest{AuthMethodId: amNoAccounts.GetPublicId()},
-			res:  &pbs.ListAccountsResponse{},
+			res: &pbs.ListAccountsResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Unfound Auth Method",
@@ -705,7 +844,13 @@ func TestListLdap(t *testing.T) {
 				AuthMethodId: amSomeAccounts.GetPublicId(),
 				Filter:       fmt.Sprintf(`"/item/attributes/login_name"==%q`, wantSomeAccounts[1].GetLdapAccountAttributes().LoginName),
 			},
-			res:      &pbs.ListAccountsResponse{Items: wantSomeAccounts[1:2]},
+			res: &pbs.ListAccountsResponse{
+				Items:        wantSomeAccounts[1:2],
+				EstItemCount: 1,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			skipAnon: true,
 		},
 		{
@@ -714,7 +859,11 @@ func TestListLdap(t *testing.T) {
 				AuthMethodId: amSomeAccounts.GetPublicId(),
 				Filter:       `"/item/id"=="noaccountmatchesthis"`,
 			},
-			res: &pbs.ListAccountsResponse{},
+			res: &pbs.ListAccountsResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -725,7 +874,7 @@ func TestListLdap(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+			s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 			require.NoError(err, "Couldn't create new user service.")
 
 			got, gErr := s.ListAccounts(requestauth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
@@ -740,7 +889,14 @@ func TestListLdap(t *testing.T) {
 				return strings.Compare(got.Items[i].GetLdapAccountAttributes().LoginName,
 					got.Items[j].GetLdapAccountAttributes().LoginName) < 0
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+				),
+				"ListAccounts() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -796,7 +952,7 @@ func TestDelete(t *testing.T) {
 	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
 	ldapAcct := ldap.TestAccount(t, conn, ldapAm, "test-account")
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -905,7 +1061,7 @@ func TestDelete_twice(t *testing.T) {
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 	ac := password.TestAccount(t, conn, am.GetPublicId(), "name1")
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteAccountRequest{
 		Id: ac.GetPublicId(),
@@ -936,7 +1092,7 @@ func TestCreatePassword(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kms)
 	}
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new account service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -960,7 +1116,7 @@ func TestCreatePassword(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "validaccount",
 							Password:  nil,
 						},
@@ -977,7 +1133,7 @@ func TestCreatePassword(t *testing.T) {
 					Version:      1,
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "validaccount",
 							Password:  nil,
 						},
@@ -992,7 +1148,7 @@ func TestCreatePassword(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "notypedefined",
 							Password:  nil,
 						},
@@ -1007,7 +1163,7 @@ func TestCreatePassword(t *testing.T) {
 					Version:      1,
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "notypedefined",
 							Password:  nil,
 						},
@@ -1024,7 +1180,7 @@ func TestCreatePassword(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "name_with_password"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "haspassword",
 							Password:  &wrapperspb.StringValue{Value: "somepassword"},
 						},
@@ -1041,7 +1197,7 @@ func TestCreatePassword(t *testing.T) {
 					Version:      1,
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "haspassword",
 							Password:  nil,
 						},
@@ -1057,7 +1213,7 @@ func TestCreatePassword(t *testing.T) {
 					AuthMethodId: defaultAccount.GetAuthMethodId(),
 					Type:         "wrong",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "nopwprovided",
 							Password:  nil,
 						},
@@ -1075,7 +1231,7 @@ func TestCreatePassword(t *testing.T) {
 					Id:           globals.PasswordAccountPrefix + "_notallowed",
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "cantprovideid",
 							Password:  nil,
 						},
@@ -1093,7 +1249,7 @@ func TestCreatePassword(t *testing.T) {
 					CreatedTime:  timestamppb.Now(),
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "nocreatedtime",
 							Password:  nil,
 						},
@@ -1111,7 +1267,7 @@ func TestCreatePassword(t *testing.T) {
 					UpdatedTime:  timestamppb.Now(),
 					Type:         "password",
 					Attrs: &pb.Account_PasswordAccountAttributes{
-						&pb.PasswordAccountAttributes{
+						PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 							LoginName: "noupdatetime",
 							Password:  nil,
 						},
@@ -1183,7 +1339,7 @@ func TestCreateOidc(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new account service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -1212,7 +1368,7 @@ func TestCreateOidc(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "valid-account",
 						},
 					},
@@ -1228,7 +1384,7 @@ func TestCreateOidc(t *testing.T) {
 					Version:      1,
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "valid-account",
 							Issuer:  am.GetIssuer(),
 						},
@@ -1243,7 +1399,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.Account{
 					AuthMethodId: am.GetPublicId(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "no type defined",
 						},
 					},
@@ -1257,7 +1413,7 @@ func TestCreateOidc(t *testing.T) {
 					Version:      1,
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "no type defined",
 							Issuer:  am.GetIssuer(),
 						},
@@ -1274,7 +1430,7 @@ func TestCreateOidc(t *testing.T) {
 					Name:         &wrapperspb.StringValue{Value: "overwritten issuer"},
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "overwritten-issuer",
 							Issuer:  "https://overwrite.com",
 						},
@@ -1290,7 +1446,7 @@ func TestCreateOidc(t *testing.T) {
 					Version:      1,
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "overwritten-issuer",
 							Issuer:  "https://overwrite.com",
 						},
@@ -1306,7 +1462,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Type:         password.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "cant-specify-mismatching-type",
 						},
 					},
@@ -1323,7 +1479,7 @@ func TestCreateOidc(t *testing.T) {
 					Id:           globals.OidcAccountPrefix + "_notallowed",
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "cant-specify-id",
 						},
 					},
@@ -1340,7 +1496,7 @@ func TestCreateOidc(t *testing.T) {
 					CreatedTime:  timestamppb.Now(),
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "cant-specify-created-time",
 						},
 					},
@@ -1357,7 +1513,7 @@ func TestCreateOidc(t *testing.T) {
 					UpdatedTime:  timestamppb.Now(),
 					Type:         oidc.Subtype.String(),
 					Attrs: &pb.Account_OidcAccountAttributes{
-						&pb.OidcAccountAttributes{
+						OidcAccountAttributes: &pb.OidcAccountAttributes{
 							Subject: "cant-specify-update-time",
 						},
 					},
@@ -1420,7 +1576,7 @@ func TestCreateLdap(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
-	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new account service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -1701,17 +1857,17 @@ func TestUpdatePassword(t *testing.T) {
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
 	am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new accounts service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &pb.Account_PasswordAccountAttributes{
-		&pb.PasswordAccountAttributes{
+		PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 			LoginName: "default",
 		},
 	}
 	modifiedAttributes := &pb.Account_PasswordAccountAttributes{
-		&pb.PasswordAccountAttributes{
+		PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 			LoginName: "modified",
 		},
 	}
@@ -2100,18 +2256,18 @@ func TestUpdateOidc(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 
-	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
 	defaultAttributes := &pb.Account_OidcAccountAttributes{
-		&pb.OidcAccountAttributes{
+		OidcAccountAttributes: &pb.OidcAccountAttributes{
 			Issuer:  "https://www.alice.com",
 			Subject: "test-subject",
 		},
 	}
 	modifiedAttributes := &pb.Account_OidcAccountAttributes{
-		&pb.OidcAccountAttributes{
+		OidcAccountAttributes: &pb.OidcAccountAttributes{
 			Issuer:  "https://www.changed.com",
 			Subject: "changed",
 		},
@@ -2485,7 +2641,7 @@ func TestUpdateLdap(t *testing.T) {
 	require.NoError(t, err)
 	am := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap"})
 
-	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -2854,13 +3010,13 @@ func TestSetPassword(t *testing.T) {
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {
 		am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
 		pwAttrs := &pb.Account_PasswordAccountAttributes{
-			&pb.PasswordAccountAttributes{
+			PasswordAccountAttributes: &pb.PasswordAccountAttributes{
 				LoginName: "testusername",
 			},
 		}
@@ -2996,14 +3152,16 @@ func TestChangePassword(t *testing.T) {
 	}
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
-	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn)
+	tested, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new auth_method service.")
 
 	createAccount := func(t *testing.T, pw string) *pb.Account {
 		am := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
-		pwAttrs := &pb.Account_PasswordAccountAttributes{&pb.PasswordAccountAttributes{
-			LoginName: "testusername",
-		}}
+		pwAttrs := &pb.Account_PasswordAccountAttributes{
+			PasswordAccountAttributes: &pb.PasswordAccountAttributes{
+				LoginName: "testusername",
+			},
+		}
 		if pw != "" {
 			pwAttrs.PasswordAccountAttributes.Password = wrapperspb.String(pw)
 		}
@@ -3150,4 +3308,760 @@ func TestChangePassword(t *testing.T) {
 			assert.Nil(changeResp)
 		})
 	}
+}
+
+func TestListPagination(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+	pwRepoFn := func() (*password.Repository, error) {
+		return password.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kmsCache)
+	}
+
+	s, err := accounts.NewService(ctx, pwRepoFn, oidcRepoFn, ldapRepoFn, 1000)
+	require.NoError(t, err, "Couldn't create new user service.")
+
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	tokenRepo, _ := tokenRepoFn()
+	pwRepo, _ := pwRepoFn()
+	oidcRepo, _ := oidcRepoFn()
+	ldapRepo, _ := ldapRepoFn()
+	o, pwt := iam.TestScopes(t, iamRepo)
+
+	t.Run("password", func(t *testing.T) {
+		authMethod := password.TestAuthMethods(t, conn, o.GetPublicId(), 1)[0]
+
+		var accounts []*pb.Account
+		for _, aa := range password.TestMultipleAccounts(t, conn, authMethod.GetPublicId(), 9) {
+			accounts = append(accounts, &pb.Account{
+				Id:           aa.GetPublicId(),
+				AuthMethodId: aa.GetAuthMethodId(),
+				CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+				UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+				Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+				Version:      1,
+				Type:         "password",
+				Attrs: &pb.Account_PasswordAccountAttributes{
+					PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
+				},
+				AuthorizedActions: pwAuthorizedActions,
+			})
+		}
+
+		acct := password.TestAccount(t, conn, authMethod.GetPublicId(), "test-login-last")
+		u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+
+		privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
+		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
+		privOrgRole := iam.TestRole(t, conn, o.GetPublicId())
+		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
+
+		accounts = append(accounts, &pb.Account{
+			Id:           acct.GetPublicId(),
+			AuthMethodId: acct.GetAuthMethodId(),
+			CreatedTime:  acct.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  acct.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         "password",
+			Attrs: &pb.Account_PasswordAccountAttributes{
+				PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: acct.GetLoginName()},
+			},
+			AuthorizedActions: pwAuthorizedActions,
+		})
+
+		at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(requestauth.AuthTokenTypeBearer),
+			PublicId:    at.GetPublicId(),
+			Token:       at.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx = requestauth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+
+		req := &pbs.ListAccountsRequest{
+			AuthMethodId: authMethod.GetPublicId(),
+			Filter:       "",
+			RefreshToken: "",
+			PageSize:     2,
+		}
+
+		// Run analyze in the DB to update the estimate tables
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		got, err := s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 2)
+
+		// all comparisons will be done without refresh token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        accounts[0:2],
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// second page
+		req.RefreshToken = got.RefreshToken
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 2)
+
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        accounts[2:4],
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// remainder of results
+		req.RefreshToken = got.RefreshToken
+		req.PageSize = 6
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 6)
+
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        accounts[4:],
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// create another acct
+		aa := password.TestAccount(t, conn, authMethod.GetPublicId(), "test-login-new-last")
+		newAccount := &pb.Account{
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         "password",
+			Attrs: &pb.Account_PasswordAccountAttributes{
+				PasswordAccountAttributes: &pb.PasswordAccountAttributes{LoginName: aa.GetLoginName()},
+			},
+			AuthorizedActions: pwAuthorizedActions,
+		}
+		accounts = append(accounts, newAccount)
+
+		// delete different acct
+		_, err = pwRepo.DeleteAccount(ctx, o.GetPublicId(), accounts[0].Id)
+		require.NoError(t, err)
+		deletedAccount := accounts[0]
+		accounts = accounts[1:]
+
+		// Run analyze to update postgres estimates
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		// request updated results
+		req.RefreshToken = got.RefreshToken
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        []*pb.Account{newAccount},
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   []string{deletedAccount.Id},
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// Request new page with filter requiring looping
+		// to fill the page.
+		req.RefreshToken = ""
+		req.PageSize = 1
+		req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, accounts[len(accounts)-2].Id, accounts[len(accounts)-1].Id)
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        []*pb.Account{accounts[len(accounts)-2]},
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					// Should be empty again
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+		req.RefreshToken = got.RefreshToken
+		// Get the second page
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        []*pb.Account{accounts[len(accounts)-1]},
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+	})
+	t.Run("oidc", func(t *testing.T) {
+		o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+		databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState, "someAccounts", "fido",
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.someaccounts.com")[0]), oidc.WithSigningAlgs(oidc.RS256), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
+
+		var accounts []*pb.Account
+		for i := 0; i < 9; i++ {
+			subId := fmt.Sprintf("test-subject%d", i)
+			aa := oidc.TestAccount(t, conn, authMethod, subId)
+			accounts = append(accounts, &pb.Account{
+				Id:           aa.GetPublicId(),
+				AuthMethodId: aa.GetAuthMethodId(),
+				CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+				UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+				Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+				Version:      1,
+				Type:         oidc.Subtype.String(),
+				Attrs: &pb.Account_OidcAccountAttributes{
+					OidcAccountAttributes: &pb.OidcAccountAttributes{
+						Issuer:  authMethod.GetIssuer(),
+						Subject: subId,
+					},
+				},
+				AuthorizedActions: oidcAuthorizedActions,
+			})
+		}
+
+		acct := oidc.TestAccount(t, conn, authMethod, "test-login-last")
+		u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+
+		privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
+		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
+		privOrgRole := iam.TestRole(t, conn, o.GetPublicId())
+		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
+
+		accounts = append(accounts, &pb.Account{
+			Id:           acct.GetPublicId(),
+			AuthMethodId: acct.GetAuthMethodId(),
+			CreatedTime:  acct.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  acct.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         oidc.Subtype.String(),
+			Attrs: &pb.Account_OidcAccountAttributes{
+				OidcAccountAttributes: &pb.OidcAccountAttributes{
+					Issuer:  authMethod.GetIssuer(),
+					Subject: "test-login-last",
+				},
+			},
+			AuthorizedActions: oidcAuthorizedActions,
+		})
+
+		at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(requestauth.AuthTokenTypeBearer),
+			PublicId:    at.GetPublicId(),
+			Token:       at.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx = requestauth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+
+		req := &pbs.ListAccountsRequest{
+			AuthMethodId: authMethod.GetPublicId(),
+			Filter:       "",
+			RefreshToken: "",
+			PageSize:     2,
+		}
+
+		// Run analyze in the DB to update the estimate tables
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		got, err := s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 2)
+
+		// all comparisons will be done without refresh token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        accounts[0:2],
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// second page
+		req.RefreshToken = got.RefreshToken
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 2)
+
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        accounts[2:4],
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// remainder of results
+		req.RefreshToken = got.RefreshToken
+		req.PageSize = 6
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 6)
+
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        accounts[4:],
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// create another acct
+		aa := oidc.TestAccount(t, conn, authMethod, "test-login-new-last")
+		newAccount := &pb.Account{
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         oidc.Subtype.String(),
+			Attrs: &pb.Account_OidcAccountAttributes{
+				OidcAccountAttributes: &pb.OidcAccountAttributes{
+					Issuer:  authMethod.GetIssuer(),
+					Subject: "test-login-new-last",
+				},
+			},
+			AuthorizedActions: oidcAuthorizedActions,
+		}
+		accounts = append(accounts, newAccount)
+
+		// delete different acct
+		_, err = oidcRepo.DeleteAccount(ctx, o.GetPublicId(), accounts[0].Id)
+		require.NoError(t, err)
+		deletedAccount := accounts[0]
+		accounts = accounts[1:]
+
+		// Run analyze to update postgres estimates
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		// request updated results
+		req.RefreshToken = got.RefreshToken
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        []*pb.Account{newAccount},
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   []string{deletedAccount.Id},
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// Request new page with filter requiring looping
+		// to fill the page.
+		req.RefreshToken = ""
+		req.PageSize = 1
+		req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, accounts[len(accounts)-2].Id, accounts[len(accounts)-1].Id)
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        []*pb.Account{accounts[len(accounts)-2]},
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					// Should be empty again
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+		req.RefreshToken = got.RefreshToken
+		// Get the second page
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        []*pb.Account{accounts[len(accounts)-1]},
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+	})
+	t.Run("ldap", func(t *testing.T) {
+		o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
+		databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		authMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://some-accounts"})
+
+		var accounts []*pb.Account
+		for i := 0; i < 9; i++ {
+			loginName := fmt.Sprintf("test-login-name%d", i)
+			aa := ldap.TestAccount(t, conn, authMethod, loginName)
+			accounts = append(accounts, &pb.Account{
+				Id:           aa.GetPublicId(),
+				AuthMethodId: aa.GetAuthMethodId(),
+				CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+				UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+				Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+				Version:      1,
+				Type:         ldap.Subtype.String(),
+				Attrs: &pb.Account_LdapAccountAttributes{
+					LdapAccountAttributes: &pb.LdapAccountAttributes{
+						LoginName: loginName,
+					},
+				},
+				AuthorizedActions: ldapAuthorizedActions,
+			})
+		}
+
+		acct := ldap.TestAccount(t, conn, authMethod, "test-login-last")
+		u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+
+		privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
+		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
+		privOrgRole := iam.TestRole(t, conn, o.GetPublicId())
+		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
+
+		accounts = append(accounts, &pb.Account{
+			Id:           acct.GetPublicId(),
+			AuthMethodId: acct.GetAuthMethodId(),
+			CreatedTime:  acct.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  acct.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         ldap.Subtype.String(),
+			Attrs: &pb.Account_LdapAccountAttributes{
+				LdapAccountAttributes: &pb.LdapAccountAttributes{
+					LoginName: "test-login-last",
+				},
+			},
+			AuthorizedActions: ldapAuthorizedActions,
+		})
+
+		at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(requestauth.AuthTokenTypeBearer),
+			PublicId:    at.GetPublicId(),
+			Token:       at.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx = requestauth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+
+		req := &pbs.ListAccountsRequest{
+			AuthMethodId: authMethod.GetPublicId(),
+			Filter:       "",
+			RefreshToken: "",
+			PageSize:     2,
+		}
+
+		// Run analyze in the DB to update the estimate tables
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		got, err := s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 2)
+
+		// all comparisons will be done without refresh token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        accounts[0:2],
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// second page
+		req.RefreshToken = got.RefreshToken
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 2)
+
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        accounts[2:4],
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// remainder of results
+		req.RefreshToken = got.RefreshToken
+		req.PageSize = 6
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 6)
+
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        accounts[4:],
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// create another acct
+		aa := ldap.TestAccount(t, conn, authMethod, "test-login-new-last")
+		newAccount := &pb.Account{
+			Id:           aa.GetPublicId(),
+			AuthMethodId: aa.GetAuthMethodId(),
+			CreatedTime:  aa.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  aa.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         ldap.Subtype.String(),
+			Attrs: &pb.Account_LdapAccountAttributes{
+				LdapAccountAttributes: &pb.LdapAccountAttributes{
+					LoginName: "test-login-new-last",
+				},
+			},
+			AuthorizedActions: ldapAuthorizedActions,
+		}
+		accounts = append(accounts, newAccount)
+
+		// delete different acct
+		_, err = ldapRepo.DeleteAccount(ctx, accounts[0].Id)
+		require.NoError(t, err)
+		deletedAccount := accounts[0]
+		accounts = accounts[1:]
+
+		// Run analyze to update postgres estimates
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		// request updated results
+		req.RefreshToken = got.RefreshToken
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        []*pb.Account{newAccount},
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   []string{deletedAccount.Id},
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+
+		// Request new page with filter requiring looping
+		// to fill the page.
+		req.RefreshToken = ""
+		req.PageSize = 1
+		req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, accounts[len(accounts)-2].Id, accounts[len(accounts)-1].Id)
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        []*pb.Account{accounts[len(accounts)-2]},
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					// Should be empty again
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+		req.RefreshToken = got.RefreshToken
+		// Get the second page
+		got, err = s.ListAccounts(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListAccountsResponse{
+					Items:        []*pb.Account{accounts[len(accounts)-1]},
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListAccountsResponse{}, "refresh_token"),
+			),
+		)
+	})
+
 }
