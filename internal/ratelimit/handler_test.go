@@ -747,7 +747,7 @@ func TestHandler(t *testing.T) {
 
 						next.ServeHTTP(rw, req)
 					})
-				}(ratelimit.Handler(ctx, tc.limiter, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				}(ratelimit.Handler(ctx, func() *rate.Limiter { return tc.limiter }, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
 					return
 				}))),
@@ -850,7 +850,7 @@ func TestHandlerErrors(t *testing.T) {
 
 						next.ServeHTTP(rw, req)
 					})
-				}(ratelimit.Handler(ctx, r, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				}(ratelimit.Handler(ctx, func() *rate.Limiter { return r }, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusOK)
 					return
 				}))),

@@ -112,14 +112,18 @@ func extractResourceAction(path, method string) (res, act string, err error) {
 	return
 }
 
+// LimiterFunc returns a rate.Limiter
+type LimiterFunc func() *rate.Limiter
+
 // Handler is an http middleware handler that checks if a request is allowed
-// using the provided rate limiter. If the request is allowed, the next handler
+// using the rate limiter returned by f. If the request is allowed, the next handler
 // is called. Otherwise a 429 is returned with the Retry-After response header
 // set to the number of seconds the client should wait to make it's next request.
-func Handler(ctx context.Context, l *rate.Limiter, next http.Handler) http.Handler {
+func Handler(ctx context.Context, f LimiterFunc, next http.Handler) http.Handler {
 	const op = "ratelimit.Handler"
-
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		l := f()
+
 		reqInfo, ok := event.RequestInfoFromContext(req.Context())
 		if !ok || reqInfo == nil || reqInfo.ClientIp == "" {
 			rw.WriteHeader(http.StatusInternalServerError)

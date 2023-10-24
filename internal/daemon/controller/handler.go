@@ -74,7 +74,7 @@ func createMuxWithEndpoints(c *Controller, props HandlerProperties) (http.Handle
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/v1/", ratelimit.Handler(c.baseContext, c.rateLimiter, grpcGwMux))
+	mux.Handle("/v1/", ratelimit.Handler(c.baseContext, c.getRateLimiter, grpcGwMux))
 	mux.Handle(uiPath, handleUi(c))
 
 	isUiRequest := func(req *http.Request) bool {
