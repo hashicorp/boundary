@@ -5,7 +5,10 @@ package authtoken
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -299,10 +302,38 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 	}
 	opts := getOpts(opt...)
 
+	var inClauses []string
+	var args []any
+	for i, scopeId := range withScopeIds {
+		arg := "scope_id_" + strconv.Itoa(i)
+		inClauses = append(inClauses, "@"+arg)
+		args = append(args, sql.Named(arg, scopeId))
+	}
+	inClause := strings.Join(inClauses, ", ")
+	whereClause := "auth_account_id in (select public_id from auth_account where scope_id in (" + inClause + "))"
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+		whereClause = "(" + whereClause + ") and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
+	}
+
 	// use the view, to bring in the required account columns. Just don't forget
 	// to convert them before returning them
 	var atvs []*authTokenView
-	if err := r.reader.SearchWhere(ctx, &atvs, "auth_account_id in (select public_id from auth_account where scope_id in (?))", []any{withScopeIds}, db.WithLimit(opts.withLimit)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &atvs, whereClause, args, db.WithLimit(opts.withLimit), db.WithOrder(withOrder)); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	authTokens := make([]*AuthToken, 0, len(atvs))
@@ -313,6 +344,48 @@ func (r *Repository) ListAuthTokens(ctx context.Context, withScopeIds []string, 
 		authTokens = append(authTokens, atv.toAuthToken())
 	}
 	return authTokens, nil
+}
+
+// listDeletedIds lists the public IDs of any auth tokens deleted since the timestamp provided,
+// and the timestamp of the transaction within which the auth tokens were listed.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "authtoken.(Repository).listDeletedIds"
+	var deletedAuthTokens []*deletedAuthToken
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedAuthTokens, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted auth tokens"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var tokIds []string
+	for _, at := range deletedAuthTokens {
+		tokIds = append(tokIds, at.PublicId)
+	}
+	return tokIds, transactionTimestamp, nil
+}
+
+// estimatedCount returns an estimate of the total number of items across all auth tokens.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "authtoken.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountAuthTokens, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total auth tokens"))
+		}
+	}
+	return count, nil
 }
 
 // DeleteAuthToken deletes the token with the provided id from the repository returning a count of the

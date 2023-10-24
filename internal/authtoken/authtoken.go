@@ -12,9 +12,11 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken/store"
 	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/gen/controller/tokens"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 	"github.com/hashicorp/go-secure-stdlib/base62"
@@ -48,6 +50,29 @@ func (atv *authTokenView) toAuthToken() *AuthToken {
 	return &AuthToken{
 		AuthToken: cp.(*store.AuthToken),
 	}
+}
+
+// GetResourceType returns the resource type of the Auth Token
+func (at *AuthToken) GetResourceType() resource.Type {
+	return resource.AuthToken
+}
+
+// GetDescription returns the description of the Auth Token
+// This returns an empty string because it needs to implement boundary.Resource
+func (at *AuthToken) GetDescription() string {
+	return ""
+}
+
+// GetName returns the name of the Auth Token
+// This returns an empty string because it needs to implement boundary.Resource
+func (at *AuthToken) GetName() string {
+	return ""
+}
+
+// GetVersion returns the version of the Auth Token
+// This returns 0 because it needs to implement boundary.Resource
+func (at *AuthToken) GetVersion() uint32 {
+	return 0
 }
 
 // A AuthToken contains auth tokens. It is owned by a scope.
@@ -166,4 +191,14 @@ func EncryptToken(ctx context.Context, kmsCache *kms.Kms, scopeId, publicId, tok
 	encoded := base58.FastBase58Encoding(marshaledBlob)
 
 	return globals.ServiceTokenV1 + encoded, nil
+}
+
+type deletedAuthToken struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedAuthToken) TableName() string {
+	return "auth_token_deleted"
 }
