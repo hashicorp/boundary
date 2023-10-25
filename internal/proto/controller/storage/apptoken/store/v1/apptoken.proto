@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: BUSL-1.1
+
 syntax = "proto3";
 
 package controller.storage.apptoken.store.v1;
@@ -33,18 +36,18 @@ message AppToken {
   // The scope_id of the owning scope. Must be set.
   // @inject_tag: `gorm:"not_null"`
   string scope_id = 70;
-};
+}
 
 message AppTokenPeriodicExpirationInterval {
   // The app token for this expiration
   // @inject_tag: `gorm:"primary_key"`
-  string app_token_id = 10; 
+  string app_token_id = 10;
 
   // @inject_tag: `gorm:"not_null"`
   uint32 expiration_interval_in_max_seconds = 20;
-};
+}
 
-message AppTokenGrant{
+message AppTokenGrant {
   // The create_time is set by the database.
   // @inject_tag: `gorm:"default:current_timestamp"`
   timestamp.v1.Timestamp create_time = 10;
@@ -57,16 +60,16 @@ message AppTokenGrant{
   // We use this as the unique constraint.
   // @inject_tag: `gorm:"primary_key"`
   string canonical_grant = 30;
-  
+
   // raw_grant is the string grant value as provided by the user
   // @inject_tag: `gorm:"not_null"`
   string raw_grant = 40;
-};
+}
 
 message AppTokenUsage {
   // app_token_id is the identifier for the app token.
   // @inject_tag: `gorm:"primary_key"`
-  string app_token_id = 10; 
+  string app_token_id = 10;
 
   // The create_time is set by the database.
   // @inject_tag: `gorm:"primary_key"`
@@ -83,5 +86,4 @@ message AppTokenUsage {
   // request_path is the http path in the client request
   // @inject_tag: `gorm:"not_null"`
   string request_path = 50;
-};
-
+}
