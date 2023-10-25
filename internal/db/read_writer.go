@@ -70,6 +70,11 @@ type Reader interface {
 
 	// ScanRows will scan sql rows into the interface provided
 	ScanRows(ctx context.Context, rows *sql.Rows, result any) error
+
+	// Now returns the current transaction timestamp. Now will return the same
+	// timestamp whenever it is called within a transaction. In other words, calling
+	// Now at the start and at the end of a transaction will return the same value.
+	Now(ctx context.Context) (time.Time, error)
 }
 
 // Writer interface defines create, update and retryable transaction handlers
@@ -531,6 +536,27 @@ func (rw *Db) SearchWhere(ctx context.Context, resources any, where string, args
 		return wrapError(ctx, err, op)
 	}
 	return nil
+}
+
+// Now returns the current transaction timestamp. Now will return the same
+// timestamp whenever it is called within a transaction. In other words, calling
+// Now at the start and at the end of a transaction will return the same value.
+func (rw *Db) Now(ctx context.Context) (time.Time, error) {
+	const op = "db.(*Db).Now"
+	// The Postgres docs define the different pre-defined time variables available:
+	// https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-CURRENT.
+	// The value produced by this function is equivalent to current_timestamp.
+	rows, err := rw.Query(ctx, "select now()", nil)
+	if err != nil {
+		return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+	}
+	var now time.Time
+	for rows.Next() {
+		if err := rw.ScanRows(ctx, rows, &now); err != nil {
+			return time.Time{}, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query current timestamp"))
+		}
+	}
+	return now, nil
 }
 
 func isNil(i any) bool {
