@@ -80,6 +80,8 @@ create table app_token_grant (
     ),
   primary key(app_token_id, canonical_grant)
 );
+comment on table app_token is
+  'app_token_grant defines the grants for an application auth token';
 
 create or replace function app_token_immutable_grant() returns trigger
   as $$
