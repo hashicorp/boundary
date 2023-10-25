@@ -8,7 +8,7 @@ select wtt_load('widgets','iam','kms');
 -- validate the app_token update trigger
 prepare insert_app_token as
   insert into app_token
-  (public_id, create_time,    expiration_time, scope_id, name, description, created_by)
+  (public_id, create_time, expiration_time, scope_id, name, description, created_by)
   SELECT 'appt_____clare', now(), now() + interval '1 hour', 'o_____colors','test-app-token-name','test-description', iam_user_hst.history_id
   FROM iam_user_hst
   JOIN iam_user ON iam_user.public_id = iam_user_hst.public_id
