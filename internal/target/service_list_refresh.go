@@ -6,6 +6,7 @@ package target
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/refreshtoken"
 )
@@ -23,6 +24,24 @@ func ListRefresh(
 	tok *refreshtoken.Token,
 	repo *Repository,
 ) (*pagination.ListResponse[Target], error) {
+	const op = "target.ListRefresh"
+
+	if len(grantsHash) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants hash")
+	}
+	if pageSize < 1 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "page size must be at least 1")
+	}
+	if filterItemFn == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
+	}
+	if tok == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing token")
+	}
+	if repo == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing repo")
+	}
+
 	listItemsFn := func(ctx context.Context, tok *refreshtoken.Token, lastPageItem Target, limit int) ([]Target, error) {
 		opts := []Option{
 			WithLimit(limit),
