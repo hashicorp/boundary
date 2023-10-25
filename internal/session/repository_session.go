@@ -276,7 +276,7 @@ func (r *Repository) LookupSession(ctx context.Context, sessionId string, opt ..
 
 // ListSessions lists sessions. Sessions returned will be limited by the list
 // permissions of the repository. Supports the WithTerminated, WithLimit,
-// WithOrderByCreateTime options.
+// WithOrderByCreateTime, withStartPageAfterItem options.
 func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Session, error) {
 	const op = "session.(Repository).ListSessions"
 	opts := getOpts(opt...)
@@ -288,14 +288,33 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 
 	var whereClause string
 	if len(where) > 0 {
-		whereClause = " where (" + strings.Join(where, " or ") + ")"
+		whereClause = "where (" + strings.Join(where, " or ") + ")"
 		if !opts.withTerminated {
-			whereClause += "and termination_reason is null"
+			whereClause += " and termination_reason is null"
 		}
 	} else {
 		if !opts.withTerminated {
-			whereClause = "where termination_reason is null"
+			whereClause = " where termination_reason is null"
 		}
+	}
+
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "order by update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use public_id as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+		whereClause += " and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
 
 	var limit string
@@ -306,15 +325,6 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 	default:
 		// non-zero signals an override of the default limit for the repo.
 		limit = fmt.Sprintf("limit %d", opts.withLimit)
-	}
-	var withOrder string
-	switch opts.withOrderByCreateTime {
-	case db.AscendingOrderBy:
-		withOrder = "order by create_time asc"
-	case db.DescendingOrderBy:
-		fallthrough
-	default:
-		withOrder = "order by create_time"
 	}
 
 	q := sessionList
@@ -339,6 +349,47 @@ func (r *Repository) ListSessions(ctx context.Context, opt ...Option) ([]*Sessio
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	return sessions, nil
+}
+
+// listDeletedIds lists the public IDs of any sessions deleted since the timestamp provided.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "session.(Repository).listDeletedIds"
+	var deletedSessions []*deletedSession
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedSessions, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted auth tokens"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var sessionIds []string
+	for _, sess := range deletedSessions {
+		sessionIds = append(sessionIds, sess.PublicId)
+	}
+	return sessionIds, transactionTimestamp, nil
+}
+
+// estimatedCount returns an estimate of the total number of items in the session table.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "session.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountSessions, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total sessions"))
+		}
+	}
+	return count, nil
 }
 
 // DeleteSession will delete a session from the repository.

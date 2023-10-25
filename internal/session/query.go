@@ -423,6 +423,10 @@ update session_credential
 where session_id = ?
 	and credential_sha256 = ?;
 `
+
+	estimateCountSessions = `
+select reltuples::bigint as estimate from pg_class where oid in ('session'::regclass)
+`
 )
 
 const (
