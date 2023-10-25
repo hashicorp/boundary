@@ -88,6 +88,22 @@ func List[T boundary.Resource](
 ) (*ListResponse[T], error) {
 	const op = "pagination.List"
 
+	if len(grantsHash) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants hash")
+	}
+	if pageSize < 1 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "page size must be at least 1")
+	}
+	if filterItemFn == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
+	}
+	if listItemsFn == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing list items callback")
+	}
+	if estimatedCountFn == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing estimated count callback")
+	}
+
 	items, completeListing, err := list(ctx, grantsHash, pageSize, filterItemFn, listItemsFn)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
@@ -136,6 +152,28 @@ func ListRefresh[T boundary.Resource](
 	tok *refreshtoken.Token,
 ) (*ListResponse[T], error) {
 	const op = "pagination.ListRefresh"
+
+	if len(grantsHash) == 0 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing grants hash")
+	}
+	if pageSize < 1 {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "page size must be at least 1")
+	}
+	if filterItemFn == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing filter item callback")
+	}
+	if listRefreshItemsFn == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing list refresh items callback")
+	}
+	if estimatedCountFn == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing estimated count callback")
+	}
+	if listDeletedIDsFn == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing list deleted IDs callback")
+	}
+	if tok == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing refresh token")
+	}
 
 	deletedIds, transactionTimestamp, err := listDeletedIDsFn(ctx, tok.UpdatedTime)
 	if err != nil {
