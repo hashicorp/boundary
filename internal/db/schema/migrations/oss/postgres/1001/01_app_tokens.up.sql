@@ -58,7 +58,7 @@ create or replace function app_token_periodic_expiration_immutable() returns tri
   end;
   $$ language plpgsql;
 
-create trigger immutable_app_token_periodic_expiration before update on app_token
+create trigger immutable_app_token_periodic_expiration before update on app_token_periodic_expiration_interval
   for each row execute procedure app_token_periodic_expiration_immutable();
 
 create table app_token_grant (
