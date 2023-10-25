@@ -61,10 +61,40 @@ message ListSessionsRequest {
   // Experimental. By default only non-terminated (i.e. pending, active, canceling) are returned.
   // Set this option to include terminated sessions as well.
   bool include_terminated = 40 [json_name = "include_terminated"]; // @gotags: `class:"public" eventstream:"observation"`
+  // An opaque token used to continue an existing iteration or
+  // request updated items. If paginating, use this token in the
+  // next list request.
+  string refresh_token = 50 [json_name = "refresh_token"]; // @gotags: `class:"public"`
+  // The maximum size of a page in this iteration.
+  // If unset, the default page size configured will be used.
+  // If the page_size is greater than the max page size configured,
+  // the page size will be truncated to this number.
+  uint32 page_size = 60 [json_name = "page_size"]; // @gotags: `class:"public"`
 }
 
 message ListSessionsResponse {
+  // The items returned in this page.
   repeated resources.sessions.v1.Session items = 1;
+  // The type of response, either "delta" or "complete".
+  // Delta signifies that this is part of a paginated result
+  // or an update to a previously completed pagination.
+  // Complete signifies that it is the last page.
+  string response_type = 2 [json_name = "response_type"]; // @gotags: `class:"public"`
+  // An opaque token used to continue an existing pagination or
+  // request updated items. Use this token in the next list request
+  // to request the next page.
+  string refresh_token = 3 [json_name = "refresh_token"]; // @gotags: `class:"public"`
+  // The name of the field which the items are sorted by.
+  string sort_by = 4 [json_name = "sort_by"]; // @gotags: `class:"public"`
+  // The direction of the sort, either "asc" or "desc".
+  string sort_dir = 5 [json_name = "sort_dir"]; // @gotags: `class:"public"`
+  // A list of item IDs that have been removed since they were returned
+  // as part of an pagination. They should be dropped from any client cache.
+  // This may contain items that are not known to the cache, if they were
+  // created and deleted between listings.
+  repeated string removed_ids = 6 [json_name = "removed_ids"]; // @gotags: `class:"public"`
+  // An estimate at the total items available. This may change during pagination.
+  uint32 est_item_count = 7 [json_name = "est_item_count"]; // @gotags: `class:"public"`
 }
 
 message CancelSessionRequest {
