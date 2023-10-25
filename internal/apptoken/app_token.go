@@ -44,6 +44,7 @@ func NewAppToken(ctx context.Context, scopeId string, expirationTime time.Time, 
 		AppToken: &store.AppToken{
 			ScopeId:        scopeId,
 			ExpirationTime: &timestamp.Timestamp{Timestamp: timestamppb.New(expirationTime.Truncate(time.Second))},
+			CreatedBy:      createdByUserCurrentHistoryId,
 			Name:           opts.withName,
 			Description:    opts.withDescription,
 		},
@@ -55,6 +56,13 @@ func (at *AppToken) clone() *AppToken {
 	cp := proto.Clone(at.AppToken)
 	return &AppToken{
 		AppToken: cp.(*store.AppToken),
+	}
+}
+
+// AllocAppToken makes an empty one in memory
+func AllocAppToken() *AppToken {
+	return &AppToken{
+		AppToken: &store.AppToken{},
 	}
 }
 
