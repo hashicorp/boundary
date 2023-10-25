@@ -3193,3 +3193,37 @@ func TestDb_oplogMsgsForItems(t *testing.T) {
 // 		})
 // 	}
 // }
+
+func TestDb_Now(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	conn, _ := TestSetup(t, "postgres")
+	rw := New(conn)
+	ctx := context.Background()
+	now, err := rw.Now(ctx)
+	require.NoError(err)
+
+	now2, err := rw.Now(ctx)
+	require.NoError(err)
+
+	// Calling Now() outside a transaction should result in different timestamps.
+	// Using time.Equal instead of assert.Equal since it's more consistently
+	// accurate for time.Time structs.
+	assert.False(now.Equal(now2))
+
+	_, err = rw.DoTx(ctx, StdRetryCnt, ExpBackoff{}, func(r Reader, _ Writer) error {
+		now3, err := r.Now(ctx)
+		require.NoError(err)
+		now4, err := r.Now(ctx)
+		require.NoError(err)
+
+		// Calling Now() inside a transaction should result in the same timestamp
+		assert.True(now3.Equal(now4))
+		// The timestamps within the transaction should differ from those created outside.
+		assert.False(now3.Equal(now))
+		assert.False(now3.Equal(now2))
+
+		return nil
+	})
+	require.NoError(err)
+}
