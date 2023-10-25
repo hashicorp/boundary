@@ -111,7 +111,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
 				return true, nil
 			}
-			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Session, []byte("some hash"), "some-id", time.Now())
+			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Target, []byte("some hash"), "some-id", time.Now())
 			require.NoError(t, err)
 			_, err = target.ListRefresh(ctx, nil, 1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "missing grants hash")
@@ -121,7 +121,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
 				return true, nil
 			}
-			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Session, []byte("some hash"), "some-id", time.Now())
+			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Target, []byte("some hash"), "some-id", time.Now())
 			require.NoError(t, err)
 			_, err = target.ListRefresh(ctx, []byte("some hash"), 0, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
@@ -131,14 +131,14 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
 				return true, nil
 			}
-			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Session, []byte("some hash"), "some-id", time.Now())
+			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Target, []byte("some hash"), "some-id", time.Now())
 			require.NoError(t, err)
 			_, err = target.ListRefresh(ctx, []byte("some hash"), -1, filterFunc, tok, repo)
 			require.ErrorContains(t, err, "page size must be at least 1")
 		})
 		t.Run("nil filter func", func(t *testing.T) {
 			t.Parallel()
-			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Session, []byte("some hash"), "some-id", time.Now())
+			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Target, []byte("some hash"), "some-id", time.Now())
 			require.NoError(t, err)
 			_, err = target.ListRefresh(ctx, []byte("some hash"), 1, nil, tok, repo)
 			require.ErrorContains(t, err, "missing filter item callback")
@@ -156,7 +156,7 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
 				return true, nil
 			}
-			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Session, []byte("some hash"), "some-id", time.Now())
+			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Target, []byte("some hash"), "some-id", time.Now())
 			require.NoError(t, err)
 			_, err = target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, nil)
 			require.ErrorContains(t, err, "missing repo")
