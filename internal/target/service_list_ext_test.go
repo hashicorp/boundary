@@ -70,6 +70,47 @@ func TestService_List(t *testing.T) {
 			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
 				return true, nil
 			}
+			_, err := target.List(ctx, nil, 1, filterFunc, repo)
+			require.ErrorContains(t, err, "missing grants hash")
+		})
+		t.Run("zero page size", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
+				return true, nil
+			}
+			_, err := target.List(ctx, []byte("some hash"), 0, filterFunc, repo)
+			require.ErrorContains(t, err, "page size must be at least 1")
+		})
+		t.Run("negative page size", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
+				return true, nil
+			}
+			_, err := target.List(ctx, []byte("some hash"), -1, filterFunc, repo)
+			require.ErrorContains(t, err, "page size must be at least 1")
+		})
+		t.Run("nil filter func", func(t *testing.T) {
+			t.Parallel()
+			_, err := target.List(ctx, []byte("some hash"), 1, nil, repo)
+			require.ErrorContains(t, err, "missing filter item callback")
+		})
+		t.Run("nil repo", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
+				return true, nil
+			}
+			_, err := target.List(ctx, []byte("some hash"), 1, filterFunc, nil)
+			require.ErrorContains(t, err, "missing repo")
+		})
+	})
+
+	t.Run("ListRefresh validation", func(t *testing.T) {
+		t.Parallel()
+		t.Run("missing grants hash", func(t *testing.T) {
+			t.Parallel()
+			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
+				return true, nil
+			}
 			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Session, []byte("some hash"), "some-id", time.Now())
 			require.NoError(t, err)
 			_, err = target.ListRefresh(ctx, nil, 1, filterFunc, tok, repo)
@@ -118,47 +159,6 @@ func TestService_List(t *testing.T) {
 			tok, err := refreshtoken.New(ctx, time.Now(), time.Now(), resource.Session, []byte("some hash"), "some-id", time.Now())
 			require.NoError(t, err)
 			_, err = target.ListRefresh(ctx, []byte("some hash"), 1, filterFunc, tok, nil)
-			require.ErrorContains(t, err, "missing repo")
-		})
-	})
-
-	t.Run("ListRefresh validation", func(t *testing.T) {
-		t.Parallel()
-		t.Run("missing grants hash", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			_, err := target.List(ctx, nil, 1, filterFunc, repo)
-			require.ErrorContains(t, err, "missing grants hash")
-		})
-		t.Run("zero page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			_, err := target.List(ctx, []byte("some hash"), 0, filterFunc, repo)
-			require.ErrorContains(t, err, "page size must be at least 1")
-		})
-		t.Run("negative page size", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			_, err := target.List(ctx, []byte("some hash"), -1, filterFunc, repo)
-			require.ErrorContains(t, err, "page size must be at least 1")
-		})
-		t.Run("nil filter func", func(t *testing.T) {
-			t.Parallel()
-			_, err := target.List(ctx, []byte("some hash"), 1, nil, repo)
-			require.ErrorContains(t, err, "missing filter item callback")
-		})
-		t.Run("nil repo", func(t *testing.T) {
-			t.Parallel()
-			filterFunc := func(_ context.Context, t target.Target) (bool, error) {
-				return true, nil
-			}
-			_, err := target.List(ctx, []byte("some hash"), 1, filterFunc, nil)
 			require.ErrorContains(t, err, "missing repo")
 		})
 	})
