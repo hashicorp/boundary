@@ -6,6 +6,7 @@ package ldap
 import (
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"strings"
 
@@ -54,6 +55,11 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 		return nil, errors.New(ctx, errors.RecordNotFound, op, fmt.Sprintf("auth method id %q not found", authMethodId))
 	}
 
+	var clientTLSKeyPem string
+	if am.ClientCertificateKey != nil {
+		clientTLSKeyPem = string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: am.ClientCertificateKey}))
+	}
+
 	// config cap ldap provider
 	client, err := ldap.NewClient(ctx, &ldap.ClientConfig{
 		IncludeUserAttributes: true,
@@ -72,7 +78,7 @@ func (r *Repository) Authenticate(ctx context.Context, authMethodId, loginName, 
 		GroupAttr:             am.GroupAttr,
 		GroupFilter:           am.GroupFilter,
 		Certificates:          am.Certificates,
-		ClientTLSKey:          string(am.ClientCertificateKey),
+		ClientTLSKey:          clientTLSKeyPem,
 		ClientTLSCert:         am.ClientCertificate,
 		BindDN:                am.BindDn,
 		BindPassword:          am.BindPassword,
