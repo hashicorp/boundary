@@ -97,6 +97,7 @@ func TestNewAppToken(t *testing.T) {
 			got, err := NewAppToken(testCtx, tc.scopeId, tc.expTime, tc.createdBy, tc.opts...)
 			if tc.wantErrContains != "" {
 				require.Error(err)
+				assert.Contains(err.Error(), tc.wantErrContains)
 				if tc.wantErrMatch != nil {
 					assert.True(errors.Match(tc.wantErrMatch, err))
 				}
