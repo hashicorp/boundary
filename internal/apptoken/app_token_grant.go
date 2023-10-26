@@ -35,7 +35,7 @@ func NewAppTokenGrant(ctx context.Context, appTokenId string, grant string) (*Ap
 	// checking time and we just care that it parses correctly.
 	perm, err := perms.Parse(ctx, "o_abcd1234", grant)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	return &AppTokenGrant{
 		AppTokenGrant: &store.AppTokenGrant{
