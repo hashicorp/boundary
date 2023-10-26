@@ -5,13 +5,12 @@ package apptoken
 
 import (
 	"context"
-	"time"
+	"net"
+	"net/url"
 
 	"github.com/hashicorp/boundary/internal/apptoken/store"
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const appTokenUsageTableName = "app_token_usage"
@@ -24,7 +23,7 @@ type AppTokenUsage struct {
 
 // NewAppToken creates an in-memory app token with options.  Supported options:
 // WithName, WithDescription
-func NewAppTokenUsage(ctx context.Context, appTokenId, clientTcpAddress, requestMethod, requestPath string, createdTime time.Time, _ ...Option) (*AppTokenUsage, error) {
+func NewAppTokenUsage(ctx context.Context, appTokenId, clientTcpAddress, requestMethod, requestPath string) (*AppTokenUsage, error) {
 	const op = "apptoken.NewAppToken"
 	switch {
 	case appTokenId == "":
@@ -35,15 +34,22 @@ func NewAppTokenUsage(ctx context.Context, appTokenId, clientTcpAddress, request
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing request method")
 	case requestPath == "":
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing request path")
-	case createdTime.IsZero():
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing created time")
+	}
+
+	_, err := url.ParseRequestURI(requestPath)
+	if err != nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid request path")
+	}
+
+	ip := net.ParseIP(clientTcpAddress)
+	if ip == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "invalid client tcp address")
 	}
 
 	return &AppTokenUsage{
 		AppTokenUsage: &store.AppTokenUsage{
 			AppTokenId:       appTokenId,
 			ClientTcpAddress: clientTcpAddress,
-			CreateTime:       &timestamp.Timestamp{Timestamp: timestamppb.New(createdTime)},
 			RequestMethod:    requestMethod,
 			RequestPath:      requestPath,
 		},

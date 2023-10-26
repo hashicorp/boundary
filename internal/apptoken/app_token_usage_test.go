@@ -6,21 +6,17 @@ package apptoken
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/boundary/internal/apptoken/store"
-	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func TestNewAppTokenUsage(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	testTime := time.Now().Truncate(time.Second)
 	const (
 		testAppTokenId       = "appt_____test"
 		testClientTcpAddress = "127.0.0.1"
@@ -34,7 +30,6 @@ func TestNewAppTokenUsage(t *testing.T) {
 		clientTcpAddress string
 		requestMethod    string
 		requestPath      string
-		createdTime      time.Time
 		want             *AppTokenUsage
 		wantErrContains  string
 		wantErrMatch     *errors.Template
@@ -45,14 +40,12 @@ func TestNewAppTokenUsage(t *testing.T) {
 			clientTcpAddress: testClientTcpAddress,
 			requestMethod:    testRequestMethod,
 			requestPath:      testRequestPath,
-			createdTime:      testTime,
 			want: &AppTokenUsage{
 				AppTokenUsage: &store.AppTokenUsage{
 					AppTokenId:       testAppTokenId,
 					ClientTcpAddress: testClientTcpAddress,
 					RequestMethod:    testRequestMethod,
 					RequestPath:      testRequestPath,
-					CreateTime:       &timestamp.Timestamp{Timestamp: timestamppb.New(testTime)},
 				},
 			},
 		},
@@ -61,8 +54,7 @@ func TestNewAppTokenUsage(t *testing.T) {
 			clientTcpAddress: testClientTcpAddress,
 			requestMethod:    testRequestMethod,
 			requestPath:      testRequestPath,
-			createdTime:      testTime,
-			wantErrContains:  "missing  app token id",
+			wantErrContains:  "missing app token id",
 			wantErrMatch:     errors.T(errors.InvalidParameter),
 		},
 		{
@@ -70,24 +62,22 @@ func TestNewAppTokenUsage(t *testing.T) {
 			appTokenId:      testAppTokenId,
 			requestMethod:   testRequestMethod,
 			requestPath:     testRequestPath,
-			createdTime:     testTime,
-			wantErrContains: "missing created by cleint tcp address",
+			wantErrContains: "missing cleint tcp address",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 		},
 		{
-			name:             "missing-created-time",
+			name:             "invalid-client-tcp-address",
 			appTokenId:       testAppTokenId,
-			clientTcpAddress: testClientTcpAddress,
 			requestMethod:    testRequestMethod,
 			requestPath:      testRequestPath,
-			wantErrContains:  "missing created time",
+			clientTcpAddress: "255",
+			wantErrContains:  "invalid client tcp address",
 			wantErrMatch:     errors.T(errors.InvalidParameter),
 		},
 		{
 			name:             "missing-request-method",
 			appTokenId:       testAppTokenId,
 			clientTcpAddress: testClientTcpAddress,
-			createdTime:      testTime,
 			requestPath:      testRequestPath,
 			wantErrContains:  "missing request method",
 			wantErrMatch:     errors.T(errors.InvalidParameter),
@@ -96,9 +86,17 @@ func TestNewAppTokenUsage(t *testing.T) {
 			name:             "missing-request-path",
 			appTokenId:       testAppTokenId,
 			clientTcpAddress: testClientTcpAddress,
-			createdTime:      testTime,
 			requestMethod:    testRequestMethod,
 			wantErrContains:  "missing request path",
+			wantErrMatch:     errors.T(errors.InvalidParameter),
+		},
+		{
+			name:             "invalid-request-path",
+			appTokenId:       testAppTokenId,
+			clientTcpAddress: testClientTcpAddress,
+			requestMethod:    testRequestMethod,
+			requestPath:      "path",
+			wantErrContains:  "invalid request path",
 			wantErrMatch:     errors.T(errors.InvalidParameter),
 		},
 	}
@@ -106,12 +104,13 @@ func TestNewAppTokenUsage(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewAppTokenUsage(testCtx, tc.appTokenId, tc.clientTcpAddress, tc.requestMethod, tc.requestPath, tc.createdTime)
+			got, err := NewAppTokenUsage(testCtx, tc.appTokenId, tc.clientTcpAddress, tc.requestMethod, tc.requestPath)
 			if tc.wantErrContains != "" {
 				require.Error(err)
 				if tc.wantErrMatch != nil {
 					assert.True(errors.Match(tc.wantErrMatch, err))
 				}
+				require.ErrorContains(err, tc.wantErrContains)
 				return
 			}
 			require.NoError(err)
@@ -123,7 +122,6 @@ func TestNewAppTokenUsage(t *testing.T) {
 func TestAppTokenUsage_clone(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()
-	testTime := time.Now().Truncate(time.Second)
 	const (
 		testAppTokenId       = "appt_____test"
 		testClientTcpAddress = "127.0.0.1"
@@ -133,16 +131,16 @@ func TestAppTokenUsage_clone(t *testing.T) {
 
 	t.Run("valid", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		orig, err := NewAppTokenUsage(testCtx, testAppTokenId, testClientTcpAddress, testRequestMethod, testRequestPath, testTime)
+		orig, err := NewAppTokenUsage(testCtx, testAppTokenId, testClientTcpAddress, testRequestMethod, testRequestPath)
 		require.NoError(err)
 		cp := orig.clone()
 		assert.True(proto.Equal(cp.AppTokenUsage, orig.AppTokenUsage))
 	})
 	t.Run("not-equal", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		orig, err := NewAppTokenUsage(testCtx, testAppTokenId, testClientTcpAddress, testRequestMethod, testRequestPath, testTime)
+		orig, err := NewAppTokenUsage(testCtx, testAppTokenId, testClientTcpAddress, testRequestMethod, testRequestPath)
 		require.NoError(err)
-		orig2, err := NewAppTokenUsage(testCtx, testAppTokenId+"+2", testClientTcpAddress+"+2", testRequestMethod+"+2", testRequestPath+"+2", testTime.Add(2*time.Hour))
+		orig2, err := NewAppTokenUsage(testCtx, testAppTokenId+"+2", testClientTcpAddress, testRequestMethod+"+2", testRequestPath+"+2")
 		require.NoError(err)
 
 		cp := orig.clone()
