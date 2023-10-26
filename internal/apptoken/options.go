@@ -10,6 +10,7 @@ import (
 type options struct {
 	withName        string
 	withDescription string
+	withLimit       int
 }
 
 // Option - how options are passed as args
@@ -42,6 +43,15 @@ func WithName(_ context.Context, n string) Option {
 func WithDescription(_ context.Context, desc string) Option {
 	return func(o *options) error {
 		o.withDescription = desc
+		return nil
+	}
+}
+
+// WithLimit provides an option to provide a limit.  Intentionally allowing
+// negative integers.
+func WithLimit(_ context.Context, limit int) Option {
+	return func(o *options) error {
+		o.withLimit = limit
 		return nil
 	}
 }
