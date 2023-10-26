@@ -138,7 +138,7 @@ func TestAppToken_clone(t *testing.T) {
 	})
 }
 
-func TestAccount_SetTableName(t *testing.T) {
+func TestAppToken_SetTableName(t *testing.T) {
 	t.Parallel()
 	defaultTableName := appTokenTableName
 	tests := []struct {
