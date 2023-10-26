@@ -21,8 +21,7 @@ type AppTokenUsage struct {
 	tableName string
 }
 
-// NewAppToken creates an in-memory app token with options.  Supported options:
-// WithName, WithDescription
+// NewAppTokenUsage creates an usage record for an app token.
 func NewAppTokenUsage(ctx context.Context, appTokenId, clientTcpAddress, requestMethod, requestPath string) (*AppTokenUsage, error) {
 	const op = "apptoken.NewAppTokenUsage"
 	switch {
