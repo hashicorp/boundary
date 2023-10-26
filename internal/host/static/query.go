@@ -50,4 +50,8 @@ order by action, host_id;
 	estimateCountHosts = `
 select sum(reltuples::bigint) as estimate from pg_class where oid in ('static_host'::regclass)
 `
+
+	estimateCountHostCatalogs = `
+select sum(reltuples::bigint) as estimate from pg_class where oid in ('static_host_catalog'::regclass)
+`
 )

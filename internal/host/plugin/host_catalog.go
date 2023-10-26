@@ -193,3 +193,13 @@ func (agg *catalogAgg) TableName() string {
 func (agg *catalogAgg) GetPublicId() string {
 	return agg.PublicId
 }
+
+type deletedHostCatalog struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedHostCatalog) TableName() string {
+	return "host_plugin_catalog_deleted"
+}

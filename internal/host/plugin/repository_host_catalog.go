@@ -5,8 +5,11 @@ package plugin
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -592,8 +595,11 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, _ ...Option) 
 	return c, plg, nil
 }
 
-// ListCatalogs returns a slice of HostCatalogs for the project IDs. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...host.Option) ([]*HostCatalog, []*plg.Plugin, error) {
+// ListCatalogs returns a slice of host catalogs for the
+// projectIds. Supports the following options:
+//   - WithLimit
+//   - WithStartPageAfterItem
+func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...host.Option) ([]host.Catalog, []*plg.Plugin, error) {
 	const op = "plugin.(Repository).ListCatalogs"
 	if len(projectIds) == 0 {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
@@ -607,19 +613,48 @@ func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt 
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.WithLimit
 	}
+	var inClauses []string
+	var args []any
+	for i, projectId := range projectIds {
+		arg := "project_id_" + strconv.Itoa(i)
+		inClauses = append(inClauses, "@"+arg)
+		args = append(args, sql.Named(arg, projectId))
+	}
+	inClause := strings.Join(inClauses, ", ")
+	whereClause := "project_id in (" + inClause + ")"
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.WithStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+		)
+		whereClause = "(" + whereClause + ") and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
+	}
 	var hostCatalogs []*HostCatalog
-	if err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []any{projectIds}, db.WithLimit(limit)); err != nil {
+	if err := r.reader.SearchWhere(ctx, &hostCatalogs, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder)); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
 	plgIds := make([]string, 0, len(hostCatalogs))
+	var catalogs []host.Catalog
 	for _, c := range hostCatalogs {
 		plgIds = append(plgIds, c.PluginId)
+		catalogs = append(catalogs, c)
 	}
 	var plgs []*plg.Plugin
 	if err := r.reader.SearchWhere(ctx, &plgs, "public_id in (?)", []any{plgIds}); err != nil {
 		return nil, nil, errors.Wrap(ctx, err, op)
 	}
-	return hostCatalogs, plgs, nil
+	return catalogs, plgs, nil
 }
 
 // DeleteCatalog deletes catalog for the provided id from the repository
@@ -705,6 +740,46 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, _ ...Option) 
 	}
 
 	return rowsDeleted, nil
+}
+
+// EstimatedCatalogCount returns an estimate of the number of plugin host catalogs
+func (r *Repository) EstimatedCatalogCount(ctx context.Context) (int, error) {
+	const op = "plugin.(Repository).EstimatedCatalogCount"
+	rows, err := r.reader.Query(ctx, estimateCountHostCatalogs, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total plugin host catalogs"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total plugin host catalogs"))
+		}
+	}
+	return count, nil
+}
+
+// ListDeletedCatalogIds lists the public IDs of any host catalogs deleted since the timestamp provided.
+// Supported options:
+//   - host.WithReaderWriter
+func (r *Repository) ListDeletedCatalogIds(ctx context.Context, since time.Time, opt ...host.Option) ([]string, error) {
+	const op = "plugin.(Repository).ListDeletedCatalogIds"
+	opts, err := host.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedHostCatalogs []*deletedHostCatalog
+	if err := rdr.SearchWhere(ctx, &deletedHostCatalogs, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted host catalogs"))
+	}
+	var hostCatalogIds []string
+	for _, cl := range deletedHostCatalogs {
+		hostCatalogIds = append(hostCatalogIds, cl.PublicId)
+	}
+	return hostCatalogIds, nil
 }
 
 // getCatalog retrieves the *HostCatalog with the provided id.  If it is not found or there

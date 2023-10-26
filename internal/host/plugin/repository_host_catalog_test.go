@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
@@ -1361,6 +1362,217 @@ func TestRepository_ListCatalogs_Multiple_Scopes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, total, len(got))
 	assert.Contains(t, plgs, plg)
+}
+
+func TestRepository_ListCatalogs(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	_, proj2 := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+
+	total := 10
+	TestCatalogs(t, conn, proj1.GetPublicId(), plg.GetPublicId(), total/2)
+	TestCatalogs(t, conn, proj2.GetPublicId(), plg.GetPublicId(), total/2)
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+	require.NoError(t, err)
+
+	t.Run("no-options", func(t *testing.T) {
+		got, plgs, err := repo.ListCatalogs(ctx, []string{proj1.GetPublicId(), proj2.GetPublicId()})
+		require.NoError(t, err)
+		assert.Equal(t, total, len(got))
+		require.Len(t, plgs, 1)
+		assert.Equal(t, plgs[0], plg)
+	})
+
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		page1, plgs, err := repo.ListCatalogs(
+			context.Background(),
+			[]string{proj1.GetPublicId(), proj2.GetPublicId()},
+			host.WithLimit(2),
+		)
+		require.NoError(err)
+		require.Len(page1, 2)
+		require.Len(plgs, 1)
+		assert.Equal(plgs[0], plg)
+		page2, plgs, err := repo.ListCatalogs(
+			context.Background(),
+			[]string{proj1.GetPublicId(), proj2.GetPublicId()},
+			host.WithLimit(2),
+			host.WithStartPageAfterItem(page1[1]),
+		)
+		require.NoError(err)
+		require.Len(page2, 2)
+		require.Len(plgs, 1)
+		assert.Equal(plgs[0], plg)
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, plgs, err := repo.ListCatalogs(
+			context.Background(),
+			[]string{proj1.GetPublicId(), proj2.GetPublicId()},
+			host.WithLimit(2),
+			host.WithStartPageAfterItem(page2[1]),
+		)
+		require.NoError(err)
+		require.Len(page3, 2)
+		require.Len(plgs, 1)
+		assert.Equal(plgs[0], plg)
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
+		}
+		page4, plgs, err := repo.ListCatalogs(
+			context.Background(),
+			[]string{proj1.GetPublicId(), proj2.GetPublicId()},
+			host.WithLimit(2),
+			host.WithStartPageAfterItem(page3[1]),
+		)
+		require.NoError(err)
+		require.Len(page4, 2)
+		require.Len(plgs, 1)
+		assert.Equal(plgs[0], plg)
+		for _, item := range page3 {
+			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, plgs, err := repo.ListCatalogs(
+			context.Background(),
+			[]string{proj1.GetPublicId(), proj2.GetPublicId()},
+			host.WithLimit(2),
+			host.WithStartPageAfterItem(page4[1]),
+		)
+		require.NoError(err)
+		require.Len(page5, 2)
+		require.Len(plgs, 1)
+		assert.Equal(plgs[0], plg)
+		for _, item := range page4 {
+			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, plgs, err := repo.ListCatalogs(
+			context.Background(),
+			[]string{proj1.GetPublicId(), proj2.GetPublicId()},
+			host.WithLimit(2),
+			host.WithStartPageAfterItem(page5[1]),
+		)
+		require.NoError(err)
+		require.Empty(page6)
+		require.Empty(plgs)
+
+		// Update the first target and check that it gets listed subsequently
+		page1[0].(*HostCatalog).Name = "new-name"
+		_, _, _, err = repo.UpdateCatalog(ctx, page1[0].(*HostCatalog), page1[0].GetVersion(), []string{"name"})
+		require.NoError(err)
+		page7, plgs, err := repo.ListCatalogs(
+			context.Background(),
+			[]string{proj1.GetPublicId(), proj2.GetPublicId()},
+			host.WithLimit(2),
+			host.WithStartPageAfterItem(page5[1]),
+		)
+		require.NoError(err)
+		require.Len(page7, 1)
+		require.Equal(page7[0].GetPublicId(), page1[0].GetPublicId())
+		require.Len(plgs, 1)
+		assert.Equal(plgs[0], plg)
+	})
+}
+
+func TestListDeletedCatalogIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms, sched, plgm)
+	require.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, err := repo.ListDeletedCatalogIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+
+	// Delete a catalog
+	c := TestCatalog(t, conn, proj1.GetPublicId(), plg.GetPublicId())
+	_, err = repo.DeleteCatalog(ctx, c.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, err = repo.ListDeletedCatalogIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{c.GetPublicId()}, deletedIds)
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, err = repo.ListDeletedCatalogIds(ctx, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+}
+
+func TestEstimatedCatalogCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms, sched, plgm)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.EstimatedCatalogCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create a catalog, expect 1 entries
+	c := TestCatalog(t, conn, proj1.GetPublicId(), plg.GetPublicId())
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.EstimatedCatalogCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
+
+	// Delete the catalog, expect 0 again
+	_, err = repo.DeleteCatalog(ctx, c.GetPublicId())
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.EstimatedCatalogCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
 }
 
 func TestRepository_DeleteCatalog(t *testing.T) {

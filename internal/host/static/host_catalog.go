@@ -6,6 +6,7 @@ package static
 import (
 	"context"
 
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/host/static/store"
 	"github.com/hashicorp/boundary/internal/oplog"
@@ -82,4 +83,14 @@ func newCatalogMetadata(c *HostCatalog, op oplog.OpType) oplog.Metadata {
 		metadata["project-id"] = []string{c.ProjectId}
 	}
 	return metadata
+}
+
+type deletedHostCatalog struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedHostCatalog) TableName() string {
+	return "static_host_catalog_deleted"
 }

@@ -5,12 +5,16 @@ package static
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/host"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 )
@@ -204,24 +208,60 @@ func (r *Repository) LookupCatalog(ctx context.Context, id string, opt ...Option
 	return c, nil
 }
 
-// ListCatalogs returns a slice of HostCatalogs for the project IDs. WithLimit is the only option supported.
-func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...Option) ([]*HostCatalog, error) {
+// ListCatalogs returns a slice of host catalogs for the
+// projectIds. Supports the following options:
+//   - WithLimit
+//   - WithStartPageAfterItem
+func (r *Repository) ListCatalogs(ctx context.Context, projectIds []string, opt ...host.Option) ([]host.Catalog, error) {
 	const op = "static.(Repository).ListCatalogs"
 	if len(projectIds) == 0 {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no project id")
 	}
-	opts := getOpts(opt...)
-	limit := r.defaultLimit
-	if opts.withLimit != 0 {
-		// non-zero signals an override of the default limit for the repo.
-		limit = opts.withLimit
-	}
-	var hostCatalogs []*HostCatalog
-	err := r.reader.SearchWhere(ctx, &hostCatalogs, "project_id in (?)", []any{projectIds}, db.WithLimit(limit))
+	opts, err := host.GetOpts(opt...)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	return hostCatalogs, nil
+	limit := r.defaultLimit
+	if opts.WithLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.WithLimit
+	}
+	var inClauses []string
+	var args []any
+	for i, projectId := range projectIds {
+		arg := "project_id_" + strconv.Itoa(i)
+		inClauses = append(inClauses, "@"+arg)
+		args = append(args, sql.Named(arg, projectId))
+	}
+	inClause := strings.Join(inClauses, ", ")
+	whereClause := "project_id in (" + inClause + ")"
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.WithStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.WithStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.WithStartPageAfterItem.GetPublicId()),
+		)
+		whereClause = "(" + whereClause + ") and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
+	}
+	var hostCatalogs []*HostCatalog
+	if err := r.reader.SearchWhere(ctx, &hostCatalogs, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder)); err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	var catalogs []host.Catalog
+	for _, c := range hostCatalogs {
+		catalogs = append(catalogs, c)
+	}
+	return catalogs, nil
 }
 
 // DeleteCatalog deletes id from the repository returning a count of the
@@ -279,4 +319,44 @@ func (r *Repository) DeleteCatalog(ctx context.Context, id string, opt ...Option
 	}
 
 	return rowsDeleted, nil
+}
+
+// EstimatedCatalogCount returns an estimate of the number of static host catalogs
+func (r *Repository) EstimatedCatalogCount(ctx context.Context) (int, error) {
+	const op = "static.(Repository).EstimatedCatalogCount"
+	rows, err := r.reader.Query(ctx, estimateCountHostCatalogs, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total static host catalogs"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total static host catalogs"))
+		}
+	}
+	return count, nil
+}
+
+// ListDeletedCatalogIds lists the public IDs of any host catalogs deleted since the timestamp provided.
+// Supported options:
+//   - host.WithReaderWriter
+func (r *Repository) ListDeletedCatalogIds(ctx context.Context, since time.Time, opt ...host.Option) ([]string, error) {
+	const op = "static.(Repository).ListDeletedCatalogIds"
+	opts, err := host.GetOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	rdr := r.reader
+	if opts.WithReader != nil {
+		rdr = opts.WithReader
+	}
+	var deletedHostCatalogs []*deletedHostCatalog
+	if err := rdr.SearchWhere(ctx, &deletedHostCatalogs, "delete_time >= ?", []any{since}); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted host catalogs"))
+	}
+	var hostCatalogIds []string
+	for _, cl := range deletedHostCatalogs {
+		hostCatalogIds = append(hostCatalogIds, cl.PublicId)
+	}
+	return hostCatalogIds, nil
 }

@@ -21,8 +21,10 @@ import (
 	pluginstore "github.com/hashicorp/boundary/internal/host/plugin/store"
 	"github.com/hashicorp/boundary/internal/host/static"
 	"github.com/hashicorp/boundary/internal/host/static/store"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
 	"github.com/hashicorp/boundary/internal/plugin"
+	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -30,10 +32,12 @@ import (
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/hostcatalogs"
 	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/plugins"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -71,7 +75,12 @@ var (
 	}
 )
 
-const domain = "host"
+const (
+	domain = "host"
+	// The default max page size is used when one is not
+	// provided to NewService.
+	defaultMaxPageSize = 1000
+)
 
 func init() {
 	var err error
@@ -98,13 +107,23 @@ type Service struct {
 	pluginHostRepoFn common.PluginHostRepoFactory
 	pluginRepoFn     common.PluginRepoFactory
 	iamRepoFn        common.IamRepoFactory
+	catalogServiceFn common.CatalogServiceFactory
+	maxPageSize      uint
 }
 
 var _ pbs.HostCatalogServiceServer = (*Service)(nil)
 
 // NewService returns a host catalog Service which handles host catalog related requests to boundary and uses the provided
 // repositories for storage and retrieval.
-func NewService(ctx context.Context, repoFn common.StaticRepoFactory, pluginHostRepoFn common.PluginHostRepoFactory, hostPluginRepoFn common.PluginRepoFactory, iamRepoFn common.IamRepoFactory) (Service, error) {
+func NewService(
+	ctx context.Context,
+	repoFn common.StaticRepoFactory,
+	pluginHostRepoFn common.PluginHostRepoFactory,
+	hostPluginRepoFn common.PluginRepoFactory,
+	iamRepoFn common.IamRepoFactory,
+	catalogServiceFn common.CatalogServiceFactory,
+	maxPageSize uint,
+) (Service, error) {
 	const op = "host_catalogs.NewService"
 	if repoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static repository")
@@ -118,12 +137,26 @@ func NewService(ctx context.Context, repoFn common.StaticRepoFactory, pluginHost
 	if iamRepoFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing iam repository")
 	}
-	return Service{staticRepoFn: repoFn, pluginHostRepoFn: pluginHostRepoFn, pluginRepoFn: hostPluginRepoFn, iamRepoFn: iamRepoFn}, nil
+	if catalogServiceFn == nil {
+		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing host catalog service")
+	}
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
+	return Service{
+		staticRepoFn:     repoFn,
+		pluginHostRepoFn: pluginHostRepoFn,
+		pluginRepoFn:     hostPluginRepoFn,
+		iamRepoFn:        iamRepoFn,
+		catalogServiceFn: catalogServiceFn,
+		maxPageSize:      maxPageSize,
+	}, nil
 }
 
 func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogsRequest) (*pbs.ListHostCatalogsResponse, error) {
+	const op = "host_catalogs.(Service).ListHostCatalogs"
 	if err := validateListRequest(ctx, req); err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	authResults := s.authResult(ctx, req.GetScopeId(), action.List)
 	if authResults.Error != nil {
@@ -142,85 +175,153 @@ func (s Service) ListHostCatalogs(ctx context.Context, req *pbs.ListHostCatalogs
 	scopeIds, scopeInfoMap, err := scopeids.GetListingScopeIds(
 		ctx, s.iamRepoFn, authResults, req.GetScopeId(), resource.HostCatalog, req.GetRecursive())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
 	// If no scopes match, return an empty response
 	if len(scopeIds) == 0 {
 		return &pbs.ListHostCatalogsResponse{}, nil
 	}
-
-	items, pluginInfoMap, err := s.listFromRepo(ctx, scopeIds)
-	if err != nil {
-		return nil, err
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
 	}
-	if len(items) == 0 {
-		return &pbs.ListHostCatalogsResponse{}, nil
-	}
-
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	finalItems := make([]*pb.HostCatalog, 0, len(items))
-	res := perms.Resource{
-		Type: resource.HostCatalog,
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
 	}
-	for _, item := range items {
-		res.Id = item.GetPublicId()
-		res.ScopeId = item.GetProjectId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
-			continue
-		}
 
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetProjectId()]))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-		if outputFields.Has(globals.AuthorizedCollectionActionsField) {
-			var subtype subtypes.Subtype
-			switch item.(type) {
-			case *static.HostCatalog:
-				subtype = static.Subtype
-			case *hostplugin.HostCatalog:
-				subtype = hostplugin.Subtype
-			}
-			if subtype != "" {
-				collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, item.GetPublicId())
-				if err != nil {
-					return nil, err
-				}
-				outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
-			}
-		}
-		switch hc := item.(type) {
-		case *hostplugin.HostCatalog:
-			if plgInfo, ok := pluginInfoMap[hc.GetPluginId()]; ok {
-				outputOpts = append(outputOpts, handlers.WithPlugin(plgInfo))
-			}
-		}
+	repo, err := s.staticRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	pluginRepo, err := s.pluginHostRepoFn()
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	service, err := s.catalogServiceFn(pluginRepo, repo)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 
-		item, err := toProto(ctx, item, outputOpts...)
+	filterItemFn := func(ctx context.Context, item host.Catalog, plgs []*plugin.Plugin) (bool, error) {
+		pluginInfoMap := make(map[string]*plugins.PluginInfo, len(plgs))
+		for _, plg := range plgs {
+			pluginInfoMap[plg.GetPublicId()] = toPluginInfo(plg)
+		}
+		outputOpts, ok, err := newOutputOpts(ctx, item, authResults, scopeInfoMap, pluginInfoMap)
 		if err != nil {
-			return nil, err
+			return false, err
+		}
+		if !ok {
+			return false, nil
+		}
+		pbItem, err := toProto(ctx, item, outputOpts...)
+		if err != nil {
+			return false, err
 		}
 
 		// This comes last so that we can use item fields in the filter after
 		// the allowed fields are populated above
-		filterable, err := subtypes.Filterable(item)
+		filterable, err := subtypes.Filterable(pbItem)
 		if err != nil {
-			return nil, err
+			return false, err
 		}
-		if filter.Match(filterable) {
-			finalItems = append(finalItems, item)
+		return filter.Match(filterable), nil
+	}
+
+	var listResp *pagination.ListResponse[host.Catalog]
+	var plgs []*plugin.Plugin
+	if req.GetRefreshToken() == "" {
+		listResp, plgs, err = service.List(ctx, grantsHash, pageSize, filterItemFn, scopeIds)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	} else {
+		rt, err := handlers.ParseRefreshToken(ctx, req.GetRefreshToken())
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		// We're doing the conversion from the protobuf types to the
+		// domain types here rather than in the domain so that the domain
+		// doesn't need to know about the protobuf types.
+		domainRefreshToken, err := refreshtoken.New(
+			ctx,
+			rt.CreatedTime.AsTime(),
+			rt.UpdatedTime.AsTime(),
+			handlers.RefreshTokenResourceToResource(rt.ResourceType),
+			rt.GrantsHash,
+			rt.LastItemId,
+			rt.LastItemUpdatedTime.AsTime(),
+		)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if err := domainRefreshToken.Validate(ctx, resource.HostCatalog, grantsHash); err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		listResp, plgs, err = service.ListRefresh(ctx, grantsHash, pageSize, filterItemFn, domainRefreshToken, scopeIds)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
 		}
 	}
-	return &pbs.ListHostCatalogsResponse{Items: finalItems}, nil
+
+	pluginInfoMap := make(map[string]*plugins.PluginInfo, len(plgs))
+	for _, plg := range plgs {
+		pluginInfoMap[plg.GetPublicId()] = toPluginInfo(plg)
+	}
+
+	finalItems := make([]*pb.HostCatalog, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, ok, err := newOutputOpts(ctx, item, authResults, scopeInfoMap, pluginInfoMap)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		if !ok {
+			continue
+		}
+		item, err := toProto(ctx, item, outputOpts...)
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+		finalItems = append(finalItems, item)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListHostCatalogsResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+	}
+
+	if listResp.RefreshToken != nil {
+		if listResp.RefreshToken.ResourceType != resource.HostCatalog {
+			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
+		}
+		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
+			UpdatedTime:         timestamppb.New(listResp.RefreshToken.UpdatedTime),
+			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_HOST_CATALOG,
+			GrantsHash:          listResp.RefreshToken.GrantsHash,
+			LastItemId:          listResp.RefreshToken.LastItemId,
+			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
+		})
+		if err != nil {
+			return nil, errors.Wrap(ctx, err, op)
+		}
+	}
+
+	return resp, nil
 }
 
 // GetHostCatalog implements the interface pbs.HostCatalogServiceServer.
@@ -445,38 +546,6 @@ func (s Service) getFromRepo(ctx context.Context, id string) (host.Catalog, *plu
 		plg = toPluginInfo(hcplg)
 	}
 	return cat, plg, nil
-}
-
-func (s Service) listFromRepo(ctx context.Context, projectIds []string) ([]host.Catalog, map[string]*plugins.PluginInfo, error) {
-	repo, err := s.staticRepoFn()
-	if err != nil {
-		return nil, nil, err
-	}
-	ul, err := repo.ListCatalogs(ctx, projectIds, static.WithLimit(-1))
-	if err != nil {
-		return nil, nil, err
-	}
-	var res []host.Catalog
-	for _, c := range ul {
-		res = append(res, c)
-	}
-	pluginRepo, err := s.pluginHostRepoFn()
-	if err != nil {
-		return nil, nil, err
-	}
-	pl, plgs, err := pluginRepo.ListCatalogs(ctx, projectIds, host.WithLimit(-1))
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, c := range pl {
-		res = append(res, c)
-	}
-	pluginsMap := make(map[string]*plugins.PluginInfo, len(plgs))
-	for _, plg := range plgs {
-		pluginsMap[plg.GetPublicId()] = toPluginInfo(plg)
-	}
-
-	return res, pluginsMap, nil
 }
 
 func (s Service) createStaticInRepo(ctx context.Context, projId string, item *pb.HostCatalog) (*static.HostCatalog, error) {
@@ -709,6 +778,59 @@ func toPluginInfo(plg *plugin.Plugin) *plugins.PluginInfo {
 		Name:        plg.GetName(),
 		Description: plg.GetDescription(),
 	}
+}
+
+func newOutputOpts(
+	ctx context.Context,
+	item host.Catalog,
+	authResults auth.VerifyResults,
+	scopeInfoMap map[string]*scopes.ScopeInfo,
+	pluginInfoMap map[string]*plugins.PluginInfo,
+) ([]handlers.Option, bool, error) {
+	res := perms.Resource{
+		Type:    resource.HostCatalog,
+		Id:      item.GetPublicId(),
+		ScopeId: item.GetProjectId(),
+	}
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+	if len(authorizedActions) == 0 {
+		return nil, false, nil
+	}
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetProjectId()]))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+	if outputFields.Has(globals.AuthorizedCollectionActionsField) {
+		var subtype subtypes.Subtype
+		switch item.(type) {
+		case *static.HostCatalog:
+			subtype = static.Subtype
+		case *hostplugin.HostCatalog:
+			subtype = hostplugin.Subtype
+		}
+		if subtype != "" {
+			collectionActions, err := auth.CalculateAuthorizedCollectionActions(ctx, authResults, collectionTypeMap[subtype], authResults.Scope.Id, item.GetPublicId())
+			if err != nil {
+				return nil, false, err
+			}
+			outputOpts = append(outputOpts, handlers.WithAuthorizedCollectionActions(collectionActions))
+		}
+	}
+	if pluginInfoMap != nil {
+		if hc, ok := item.(*hostplugin.HostCatalog); ok {
+			if plgInfo, ok := pluginInfoMap[hc.GetPluginId()]; ok {
+				outputOpts = append(outputOpts, handlers.WithPlugin(plgInfo))
+			}
+		}
+	}
+
+	return outputOpts, true, nil
 }
 
 func toProto(ctx context.Context, in host.Catalog, opt ...handlers.Option) (*pb.HostCatalog, error) {

@@ -3,6 +3,14 @@
 
 package host
 
+import (
+	"errors"
+
+	"github.com/hashicorp/boundary/internal/db"
+	"github.com/hashicorp/boundary/internal/pagination"
+	"github.com/hashicorp/boundary/internal/util"
+)
+
 // GetOpts - iterate the inbound Options and return a struct
 func GetOpts(opt ...Option) (options, error) {
 	opts := getDefaultOptions()
@@ -19,9 +27,12 @@ type Option func(*options) error
 
 // options = how options are represented
 type options struct {
-	WithLimit             int
-	WithOrderByCreateTime bool
-	Ascending             bool
+	WithLimit              int
+	WithOrderByCreateTime  bool
+	Ascending              bool
+	WithStartPageAfterItem pagination.Item
+	WithReader             db.Reader
+	WithWriter             db.Writer
 }
 
 func getDefaultOptions() options {
@@ -44,6 +55,32 @@ func WithOrderByCreateTime(ascending bool) Option {
 	return func(o *options) error {
 		o.WithOrderByCreateTime = true
 		o.Ascending = ascending
+		return nil
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) error {
+		o.WithStartPageAfterItem = item
+		return nil
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction.
+func WithReaderWriter(r db.Reader, w db.Writer) Option {
+	return func(o *options) error {
+		switch {
+		case util.IsNil(r):
+			return errors.New("nil reader")
+		case util.IsNil(w):
+			return errors.New("nil writer")
+		}
+		o.WithReader = r
+		o.WithWriter = w
 		return nil
 	}
 }
