@@ -37,14 +37,13 @@ func NewAppTokenGrant(ctx context.Context, appTokenId string, grant string) (*Ap
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("parsing grant string"))
 	}
-	atg := &AppTokenGrant{
+	return &AppTokenGrant{
 		AppTokenGrant: &store.AppTokenGrant{
 			AppTokenId:     appTokenId,
 			RawGrant:       grant,
 			CanonicalGrant: perm.CanonicalString(),
 		},
-	}
-	return atg, nil
+	}, nil
 }
 
 // clone an AppTokenGrant.
