@@ -51,14 +51,14 @@ func TestNewAppTokenGrant(t *testing.T) {
 		{
 			name:            "missing grant",
 			appTokenId:      testAppTokenId,
-			wantErrContains: "missing app token id",
+			wantErrContains: "missing grant",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 		},
 		{
 			name:            "invalid grant",
 			appTokenId:      testAppTokenId,
 			grant:           "id=*;type=*;actions=",
-			wantErrContains: "parsing grant string",
+			wantErrContains: "unable to parse grant string",
 			wantErrMatch:    errors.T(errors.InvalidParameter),
 		},
 	}
@@ -69,6 +69,7 @@ func TestNewAppTokenGrant(t *testing.T) {
 			got, err := NewAppTokenGrant(textCtx, tc.appTokenId, tc.grant)
 			if tc.wantErrContains != "" {
 				require.Error(err)
+				assert.Contains(err.Error(), tc.wantErrContains)
 				if tc.wantErrMatch != nil {
 					assert.True(errors.Match(tc.wantErrMatch, err))
 				}
