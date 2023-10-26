@@ -56,7 +56,7 @@ func NewAppTokenUsage(ctx context.Context, appTokenId, clientTcpAddress, request
 	}, nil
 }
 
-// clone an AppToken.
+// clone an AppTokenUsage.
 func (atu *AppTokenUsage) clone() *AppTokenUsage {
 	cp := proto.Clone(atu.AppTokenUsage)
 	return &AppTokenUsage{
