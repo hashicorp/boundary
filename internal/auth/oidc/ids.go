@@ -14,14 +14,10 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(auth.Domain, Subtype, globals.OidcAuthMethodPrefix, globals.OidcAccountPrefix, globals.OidcManagedGroupPrefix); err != nil {
+	if err := subtypes.Register(auth.Domain, globals.OidcSubtype, globals.OidcAuthMethodPrefix, globals.OidcAccountPrefix, globals.OidcManagedGroupPrefix); err != nil {
 		panic(err)
 	}
 }
-
-const (
-	Subtype = subtypes.Subtype("oidc")
-)
 
 func newAuthMethodId(ctx context.Context) (string, error) {
 	const op = "oidc.newAuthMethodId"

@@ -14,23 +14,16 @@ import (
 )
 
 func init() {
-	if err := subtypes.Register(credential.Domain, Subtype, globals.VaultCredentialStorePrefix, globals.VaultDynamicCredentialPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, globals.VaultSubtype, globals.VaultCredentialStorePrefix, globals.VaultDynamicCredentialPrefix); err != nil {
 		panic(err)
 	}
-	if err := subtypes.Register(credential.Domain, GenericLibrarySubtype, globals.VaultCredentialLibraryPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, globals.VaultGenericLibrarySubtype, globals.VaultCredentialLibraryPrefix); err != nil {
 		panic(err)
 	}
-	if err := subtypes.Register(credential.Domain, SSHCertificateLibrarySubtype, globals.VaultSshCertificateCredentialLibraryPrefix); err != nil {
+	if err := subtypes.Register(credential.Domain, globals.VaultSshCertificateLibrarySubtype, globals.VaultSshCertificateCredentialLibraryPrefix); err != nil {
 		panic(err)
 	}
 }
-
-// PublicId prefixes for the resources in the vault package.
-const (
-	Subtype                      = subtypes.Subtype("vault")
-	GenericLibrarySubtype        = subtypes.Subtype("vault-generic")
-	SSHCertificateLibrarySubtype = subtypes.Subtype("vault-ssh-certificate")
-)
 
 func newCredentialStoreId(ctx context.Context) (string, error) {
 	id, err := db.NewPublicId(ctx, globals.VaultCredentialStorePrefix)
