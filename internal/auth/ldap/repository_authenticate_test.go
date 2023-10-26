@@ -5,6 +5,7 @@ package ldap
 
 import (
 	"context"
+	"encoding/pem"
 	"fmt"
 	"testing"
 
@@ -281,6 +282,44 @@ func TestRepository_authenticate(t *testing.T) {
 		assert.Contains(err.Error(), "authenticate failed")
 		assert.Contains(err.Error(), "failed to connect")
 		assert.Nil(got)
+	})
+	t.Run("mTLS-client-success", func(t *testing.T) {
+		// test for client key/cert issue reported:
+		// https://github.com/hashicorp/boundary/issues/3927
+		tdWithMtls := testdirectory.Start(t,
+			testdirectory.WithMTLS(t),
+			testdirectory.WithDefaults(t, &testdirectory.Defaults{AllowAnonymousBind: true}),
+			testdirectory.WithLogger(t, logger),
+		)
+		tdWithMtlsCerts, err := ParseCertificates(testCtx, tdWithMtls.Cert())
+		require.NoError(t, err)
+
+		testClientCert, err := ParseCertificates(testCtx, tdWithMtls.ClientCert())
+		require.NoError(t, err)
+		testClientKeyPem := tdWithMtls.ClientKey()
+		block, _ := pem.Decode([]byte(testClientKeyPem))
+		require.NotEmpty(t, block)
+		// block.Bytes
+
+		testAmWithMtls := TestAuthMethod(t, testConn, orgDbWrapper, org.PublicId,
+			[]string{fmt.Sprintf("ldaps://%s:%d", tdWithMtls.Host(), tdWithMtls.Port())},
+			WithCertificates(testCtx, tdWithMtlsCerts...),
+			WithClientCertificate(testCtx, block.Bytes, testClientCert[0]),
+			WithDiscoverDn(testCtx),
+			WithEnableGroups(testCtx),
+			WithUserDn(testCtx, testdirectory.DefaultUserDN),
+			WithGroupDn(testCtx, testdirectory.DefaultGroupDN),
+		)
+
+		testAccountUsingMtls := TestAccount(t, testConn, testAmWithMtls, testLoginName)
+
+		tdWithMtls.SetUsers(users...)
+		tdWithMtls.SetGroups(groups...)
+		tdWithMtls.SetTokenGroups(tokenGroups)
+
+		got, err := testRepo.Authenticate(testCtx, testAmWithMtls.PublicId, testAccountUsingMtls.LoginName, testPassword)
+		require.NoError(t, err)
+		require.NotEmpty(t, got)
 	})
 }
 
