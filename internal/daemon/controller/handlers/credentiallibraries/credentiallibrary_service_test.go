@@ -2063,7 +2063,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
 				CredentialStoreId: store.GetPublicId(),
 				Type:              vault.SSHCertificateLibrarySubtype.String(),
-				Name:              &wrapperspb.StringValue{Value: "name"},
+				Name:              &wrapperspb.StringValue{Value: "name1"},
 				Description:       &wrapperspb.StringValue{Value: "desc"},
 				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
 					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
@@ -2080,7 +2080,7 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 					CredentialStoreId: store.GetPublicId(),
 					CreatedTime:       store.GetCreateTime().GetTimestamp(),
 					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
-					Name:              &wrapperspb.StringValue{Value: "name"},
+					Name:              &wrapperspb.StringValue{Value: "name1"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
 					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
 					Version:           1,
@@ -2128,6 +2128,47 @@ func TestCreate_SSHCertificateCredentialLibrary(t *testing.T) {
 							Path:     wrapperspb.String("/ssh/sign/foo"),
 							Username: wrapperspb.String("username"),
 							KeyType:  wrapperspb.String(vault.KeyTypeEd25519),
+						},
+					},
+					AuthorizedActions: testAuthorizedActions,
+					CredentialType:    string(credential.SshCertificateType),
+				},
+			},
+		},
+		{
+			name: "valid vault SSHCertificateCredentialLibrary with AdditionalValidPrincipals",
+			req: &pbs.CreateCredentialLibraryRequest{Item: &pb.CredentialLibrary{
+				CredentialStoreId: store.GetPublicId(),
+				Type:              vault.SSHCertificateLibrarySubtype.String(),
+				Name:              &wrapperspb.StringValue{Value: "name"},
+				Description:       &wrapperspb.StringValue{Value: "desc"},
+				Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
+					VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
+						Path:                      wrapperspb.String("/ssh/sign/foo"),
+						Username:                  wrapperspb.String("username"),
+						AdditionalValidPrincipals: []*wrapperspb.StringValue{wrapperspb.String("testprincipal")},
+					},
+				},
+			}},
+			idPrefix: globals.VaultSshCertificateCredentialLibraryPrefix + "_",
+			res: &pbs.CreateCredentialLibraryResponse{
+				Uri: fmt.Sprintf("credential-libraries/%s_", globals.VaultSshCertificateCredentialLibraryPrefix),
+				Item: &pb.CredentialLibrary{
+					Id:                store.GetPublicId(),
+					CredentialStoreId: store.GetPublicId(),
+					CreatedTime:       store.GetCreateTime().GetTimestamp(),
+					UpdatedTime:       store.GetUpdateTime().GetTimestamp(),
+					Name:              &wrapperspb.StringValue{Value: "name"},
+					Description:       &wrapperspb.StringValue{Value: "desc"},
+					Scope:             &scopepb.ScopeInfo{Id: prj.GetPublicId(), Type: prj.GetType(), ParentScopeId: prj.GetParentId()},
+					Version:           1,
+					Type:              vault.SSHCertificateLibrarySubtype.String(),
+					Attrs: &pb.CredentialLibrary_VaultSshCertificateCredentialLibraryAttributes{
+						VaultSshCertificateCredentialLibraryAttributes: &pb.VaultSSHCertificateCredentialLibraryAttributes{
+							Path:                      wrapperspb.String("/ssh/sign/foo"),
+							Username:                  wrapperspb.String("username"),
+							KeyType:                   wrapperspb.String(vault.KeyTypeEd25519),
+							AdditionalValidPrincipals: []*wrapperspb.StringValue{wrapperspb.String("testprincipal")},
 						},
 					},
 					AuthorizedActions: testAuthorizedActions,

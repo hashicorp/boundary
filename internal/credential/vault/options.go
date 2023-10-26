@@ -38,12 +38,13 @@ type options struct {
 	withOverridePrivateKeyPassphraseAttribute string
 	withMappingOverride                       MappingOverride
 
-	withKeyType         string
-	withKeyBits         uint32
-	withTtl             string
-	withKeyId           string
-	withCriticalOptions string
-	withExtensions      string
+	withKeyType                   string
+	withKeyBits                   uint32
+	withTtl                       string
+	withKeyId                     string
+	withCriticalOptions           string
+	withExtensions                string
+	withAdditionalValidPrincipals []string
 }
 
 func getDefaultOptions() options {
@@ -227,5 +228,13 @@ func WithCriticalOptions(s string) Option {
 func WithExtensions(s string) Option {
 	return func(o *options) {
 		o.withExtensions = s
+	}
+}
+
+// WithAdditionalValidPrincipals adds principals to be signed for as
+// "valid_principles" in addition to username.
+func WithAdditionalValidPrincipals(p []string) Option {
+	return func(o *options) {
+		o.withAdditionalValidPrincipals = p
 	}
 }
