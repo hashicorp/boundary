@@ -4,6 +4,15 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### New and Improved
+
+* feat: List endpoint pagination: All resource list endpoints now support pagination.
+  * api: All list endpoint functions have added support for pagination. The new
+    WithRefreshToken option can be used to request a list of updated and deleted resources
+    relative to the last result received.
+  * config: add new controller max_page_size field for controlling the default and max size
+    of pages when paginating through results.
+
 ## 0.14.1 (2023/10/17)
 
 ### Security
