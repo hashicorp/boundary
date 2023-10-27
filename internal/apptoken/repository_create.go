@@ -13,15 +13,15 @@ import (
 )
 
 // CreateAppToken will create an apptoken in the repository and return the written apptoken
-func (r *Repository) CreateAppToken(ctx context.Context, user *AppToken, opt ...Option) (*User, error) {
-	const op = "apptoken.(Repository).CreateUser"
-	if user == nil {
-		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing user")
+func (r *Repository) CreateAppToken(ctx context.Context, appToken *AppToken, opt ...Option) (*AppToken, error) {
+	const op = "apptoken.(Repository).CreateAppToken"
+	if appToken == nil {
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "missing app token")
 	}
-	if user.PublicId != "" {
+	if appToken.PublicId != "" {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "public id is not empty")
 	}
-	u := user.Clone().(*User)
+	appT := appToken.Clone().(*AppToken)
 
 	opts := getOpts(opt...)
 
