@@ -147,7 +147,7 @@ func (rt *refreshTicker) nextIntervalWithRandomness(d time.Duration) time.Durati
 
 	randFactor := rt.rand.Float64()
 	randFactor = randFactor * rt.randomizationFactor
-	
+
 	randDur := randFactor * float64(d)
 	// Half a chance to be faster, not slower
 	if rt.rand.Float32() > 0.5 {
