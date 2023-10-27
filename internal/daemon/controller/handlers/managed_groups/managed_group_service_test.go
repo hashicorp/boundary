@@ -17,14 +17,18 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
 	"github.com/hashicorp/boundary/internal/auth/password"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers/managed_groups"
 	"github.com/hashicorp/boundary/internal/db"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
+	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/managedgroups"
@@ -93,7 +97,7 @@ func TestNewService(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := managed_groups.NewService(ctx, tc.oidcRepo, tc.ldapRepo)
+			_, err := managed_groups.NewService(ctx, tc.oidcRepo, tc.ldapRepo, 1000)
 			if tc.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.wantErrContains)
@@ -120,7 +124,7 @@ func TestGet(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
-	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
+	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Couldn't create new managed groups service.")
 
 	org, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -335,17 +339,33 @@ func TestListOidc(t *testing.T) {
 		{
 			name: "List Some ManagedGroups",
 			req:  &pbs.ListManagedGroupsRequest{AuthMethodId: amSomeManagedGroups.GetPublicId()},
-			res:  &pbs.ListManagedGroupsResponse{Items: wantSomeManagedGroups},
+			res: &pbs.ListManagedGroupsResponse{
+				Items:        wantSomeManagedGroups,
+				EstItemCount: uint32(len(wantSomeManagedGroups)),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List Other ManagedGroups",
 			req:  &pbs.ListManagedGroupsRequest{AuthMethodId: amOtherManagedGroups.GetPublicId()},
-			res:  &pbs.ListManagedGroupsResponse{Items: wantOtherManagedGroups},
+			res: &pbs.ListManagedGroupsResponse{
+				Items:        wantOtherManagedGroups,
+				EstItemCount: uint32(len(wantOtherManagedGroups)),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List No ManagedGroups",
 			req:  &pbs.ListManagedGroupsRequest{AuthMethodId: amNoManagedGroups.GetPublicId()},
-			res:  &pbs.ListManagedGroupsResponse{},
+			res: &pbs.ListManagedGroupsResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Unfound Auth Method",
@@ -358,7 +378,13 @@ func TestListOidc(t *testing.T) {
 				AuthMethodId: amSomeManagedGroups.GetPublicId(),
 				Filter:       fmt.Sprintf(`"/item/name"==%q`, wantSomeManagedGroups[1].Name.GetValue()),
 			},
-			res:      &pbs.ListManagedGroupsResponse{Items: wantSomeManagedGroups[1:2]},
+			res: &pbs.ListManagedGroupsResponse{
+				Items:        wantSomeManagedGroups[1:2],
+				EstItemCount: 1,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			skipAnon: true,
 		},
 		{
@@ -367,7 +393,11 @@ func TestListOidc(t *testing.T) {
 				AuthMethodId: amSomeManagedGroups.GetPublicId(),
 				Filter:       `"/item/id"=="noManagedGroupmatchesthis"`,
 			},
-			res: &pbs.ListManagedGroupsResponse{},
+			res: &pbs.ListManagedGroupsResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -378,7 +408,7 @@ func TestListOidc(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
+			s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
 			require.NoError(err, "Couldn't create new managed group service.")
 
 			got, gErr := s.ListManagedGroups(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
@@ -393,7 +423,18 @@ func TestListOidc(t *testing.T) {
 				return strings.Compare(got.Items[i].GetName().GetValue(),
 					got.Items[j].GetName().GetValue()) < 0
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListManagedGroups() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+				),
+				"ListManagedGroups() with scope %q got response %q, wanted %q",
+				tc.req,
+				got,
+				tc.res,
+			)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -489,17 +530,33 @@ func TestListLdap(t *testing.T) {
 		{
 			name: "List Some ManagedGroups",
 			req:  &pbs.ListManagedGroupsRequest{AuthMethodId: amSomeManagedGroups.GetPublicId()},
-			res:  &pbs.ListManagedGroupsResponse{Items: wantSomeManagedGroups},
+			res: &pbs.ListManagedGroupsResponse{
+				Items:        wantSomeManagedGroups,
+				EstItemCount: uint32(len(wantSomeManagedGroups)),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List Other ManagedGroups",
 			req:  &pbs.ListManagedGroupsRequest{AuthMethodId: amOtherManagedGroups.GetPublicId()},
-			res:  &pbs.ListManagedGroupsResponse{Items: wantOtherManagedGroups},
+			res: &pbs.ListManagedGroupsResponse{
+				Items:        wantOtherManagedGroups,
+				EstItemCount: uint32(len(wantOtherManagedGroups)),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "List No ManagedGroups",
 			req:  &pbs.ListManagedGroupsRequest{AuthMethodId: amNoManagedGroups.GetPublicId()},
-			res:  &pbs.ListManagedGroupsResponse{},
+			res: &pbs.ListManagedGroupsResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name:        "Unfound Auth Method",
@@ -513,7 +570,13 @@ func TestListLdap(t *testing.T) {
 				AuthMethodId: amSomeManagedGroups.GetPublicId(),
 				Filter:       fmt.Sprintf(`"/item/name"==%q`, wantSomeManagedGroups[1].Name.GetValue()),
 			},
-			res:      &pbs.ListManagedGroupsResponse{Items: wantSomeManagedGroups[1:2]},
+			res: &pbs.ListManagedGroupsResponse{
+				Items:        wantSomeManagedGroups[1:2],
+				EstItemCount: 1,
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 			skipAnon: true,
 		},
 		{
@@ -522,7 +585,11 @@ func TestListLdap(t *testing.T) {
 				AuthMethodId: amSomeManagedGroups.GetPublicId(),
 				Filter:       `"/item/id"=="noManagedGroupmatchesthis"`,
 			},
-			res: &pbs.ListManagedGroupsResponse{},
+			res: &pbs.ListManagedGroupsResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name:        "Filter Bad Format",
@@ -534,7 +601,7 @@ func TestListLdap(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
+			s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
 			require.NoError(err, "Couldn't create new managed group service.")
 
 			got, gErr := s.ListManagedGroups(auth.DisabledAuthTestContext(iamRepoFn, o.GetPublicId()), tc.req)
@@ -551,7 +618,18 @@ func TestListLdap(t *testing.T) {
 				return strings.Compare(got.Items[i].GetName().GetValue(),
 					got.Items[j].GetName().GetValue()) < 0
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListManagedGroups() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(
+				cmp.Diff(
+					got,
+					tc.res,
+					protocmp.Transform(),
+					protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+				),
+				"ListManagedGroups() with scope %q got response %q, wanted %q",
+				tc.req,
+				got,
+				tc.res,
+			)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -602,7 +680,7 @@ func TestDelete(t *testing.T) {
 	ldapAm := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
 	ldapMg := ldap.TestManagedGroup(t, conn, ldapAm, []string{"admin", "users"})
 
-	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
+	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new user service.")
 
 	cases := []struct {
@@ -697,7 +775,7 @@ func TestDelete_twice(t *testing.T) {
 	)
 	oidcMg := oidc.TestManagedGroup(t, conn, oidcAm, oidc.TestFakeManagedGroupFilter)
 
-	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
+	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(err, "Error when getting new user service")
 	req := &pbs.DeleteManagedGroupRequest{
 		Id: oidcMg.GetPublicId(),
@@ -725,7 +803,7 @@ func TestCreateOidc(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
-	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
+	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new managed group service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -930,7 +1008,7 @@ func TestCreateLdap(t *testing.T) {
 		return ldap.NewRepository(ctx, rw, rw, kmsCache)
 	}
 
-	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
+	s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new managed group service.")
 
 	o, _ := iam.TestScopes(t, iam.TestRepo(t, conn, wrap))
@@ -1147,7 +1225,7 @@ func TestUpdateOidc(t *testing.T) {
 		oidc.WithSigningAlgs(oidc.RS256),
 		oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
 
-	tested, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
+	tested, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new managed_groups service.")
 
 	defaultScopeInfo := &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: o.GetType(), ParentScopeId: scope.Global.String()}
@@ -1530,7 +1608,7 @@ func TestUpdateLdap(t *testing.T) {
 	require.NoError(t, err)
 	am := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://ldap1"})
 
-	tested, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn)
+	tested, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
 	require.NoError(t, err, "Error when getting new managed_groups service.")
 
 	testGroups := []string{"test", "admin"}
@@ -1900,4 +1978,520 @@ func TestUpdateLdap(t *testing.T) {
 			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
+}
+
+func TestListPagination(t *testing.T) {
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	rw := db.New(conn)
+	wrap := db.TestWrapper(t)
+	kmsCache := kms.TestKms(t, conn, wrap)
+
+	oidcRepoFn := func() (*oidc.Repository, error) {
+		return oidc.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iam.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	ldapRepoFn := func() (*ldap.Repository, error) {
+		return ldap.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kmsCache)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kmsCache)
+	}
+
+	iamRepo := iam.TestRepo(t, conn, wrap)
+	tokenRepo, _ := tokenRepoFn()
+	oidcRepo, _ := oidcRepoFn()
+	ldapRepo, _ := ldapRepoFn()
+	o, pwt := iam.TestScopes(t, iamRepo)
+
+	t.Run("oidc", func(t *testing.T) {
+		databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		authMethod := oidc.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, oidc.ActivePrivateState, "someManagedGroups", "fido",
+			oidc.WithIssuer(oidc.TestConvertToUrls(t, "https://www.somemanagedgroups.com")[0]), oidc.WithSigningAlgs(oidc.RS256), oidc.WithApiUrl(oidc.TestConvertToUrls(t, "https://www.alice.com/callback")[0]))
+
+		var mgs []*pb.ManagedGroup
+		for i := 0; i < 10; i++ {
+			mg := oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter, oidc.WithName(strconv.Itoa(i)))
+			mgs = append(mgs, &pb.ManagedGroup{
+				Id:           mg.GetPublicId(),
+				AuthMethodId: mg.GetAuthMethodId(),
+				Name:         wrapperspb.String(strconv.Itoa(i)),
+				CreatedTime:  mg.GetCreateTime().GetTimestamp(),
+				UpdatedTime:  mg.GetUpdateTime().GetTimestamp(),
+				Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+				Version:      1,
+				Type:         oidc.Subtype.String(),
+				Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
+					OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
+						Filter: oidc.TestFakeManagedGroupFilter,
+					},
+				},
+				AuthorizedActions: oidcAuthorizedActions,
+			})
+		}
+
+		acct := oidc.TestAccount(t, conn, authMethod, "test-login-last")
+		u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+
+		privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
+		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
+		privOrgRole := iam.TestRole(t, conn, o.GetPublicId())
+		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
+
+		at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
+			PublicId:    at.GetPublicId(),
+			Token:       at.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+
+		req := &pbs.ListManagedGroupsRequest{
+			AuthMethodId: authMethod.GetPublicId(),
+			Filter:       "",
+			RefreshToken: "",
+			PageSize:     2,
+		}
+
+		s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
+		require.NoError(t, err)
+
+		// Run analyze in the DB to update the estimate tables
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		got, err := s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		sort.Slice(got.Items, func(i, j int) bool {
+			return strings.Compare(got.Items[i].GetName().GetValue(),
+				got.Items[j].GetName().GetValue()) < 0
+		})
+		require.Len(t, got.GetItems(), 2)
+
+		// all comparisons will be done without refresh token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        mgs[0:2],
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+
+		// second page
+		req.RefreshToken = got.RefreshToken
+		got, err = s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		sort.Slice(got.Items, func(i, j int) bool {
+			return strings.Compare(got.Items[i].GetName().GetValue(),
+				got.Items[j].GetName().GetValue()) < 0
+		})
+		require.Len(t, got.GetItems(), 2)
+
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        mgs[2:4],
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+
+		// remainder of results
+		req.RefreshToken = got.RefreshToken
+		req.PageSize = 6
+		got, err = s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		sort.Slice(got.Items, func(i, j int) bool {
+			return strings.Compare(got.Items[i].GetName().GetValue(),
+				got.Items[j].GetName().GetValue()) < 0
+		})
+		require.Len(t, got.GetItems(), 6)
+
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        mgs[4:],
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+
+		// create another mg
+		mg := oidc.TestManagedGroup(t, conn, authMethod, oidc.TestFakeManagedGroupFilter, oidc.WithName("lasty"))
+		newManagedGroup := &pb.ManagedGroup{
+			Id:           mg.GetPublicId(),
+			AuthMethodId: mg.GetAuthMethodId(),
+			Name:         wrapperspb.String("lasty"),
+			CreatedTime:  mg.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  mg.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         oidc.Subtype.String(),
+			Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
+				OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
+					Filter: oidc.TestFakeManagedGroupFilter,
+				},
+			},
+			AuthorizedActions: oidcAuthorizedActions,
+		}
+		mgs = append(mgs, newManagedGroup)
+
+		// delete different mg
+		_, err = oidcRepo.DeleteManagedGroup(ctx, o.GetPublicId(), mgs[0].Id)
+		require.NoError(t, err)
+		deletedManagedGroup := mgs[0]
+		mgs = mgs[1:]
+
+		// Run analyze to update postgres estimates
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		// request updated results
+		req.RefreshToken = got.RefreshToken
+		got, err = s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        []*pb.ManagedGroup{newManagedGroup},
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   []string{deletedManagedGroup.Id},
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+
+		// Request new page with filter requiring looping
+		// to fill the page.
+		req.RefreshToken = ""
+		req.PageSize = 1
+		req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, mgs[len(mgs)-2].Id, mgs[len(mgs)-1].Id)
+		got, err = s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        []*pb.ManagedGroup{mgs[len(mgs)-2]},
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					// Should be empty again
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+		req.RefreshToken = got.RefreshToken
+		// Get the second page
+		got, err = s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        []*pb.ManagedGroup{mgs[len(mgs)-1]},
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+	})
+	t.Run("ldap", func(t *testing.T) {
+		databaseWrapper, err := kmsCache.GetWrapper(ctx, o.PublicId, kms.KeyPurposeDatabase)
+		require.NoError(t, err)
+		authMethod := ldap.TestAuthMethod(t, conn, databaseWrapper, o.PublicId, []string{"ldaps://no-managed-groups"})
+
+		testGroups := []string{"admin", "users"}
+		var mgs []*pb.ManagedGroup
+		for i := 0; i < 10; i++ {
+			mg := ldap.TestManagedGroup(t, conn, authMethod, testGroups, ldap.WithName(ctx, strconv.Itoa(i)))
+			mgs = append(mgs, &pb.ManagedGroup{
+				Id:           mg.GetPublicId(),
+				AuthMethodId: mg.GetAuthMethodId(),
+				Name:         wrapperspb.String(strconv.Itoa(i)),
+				CreatedTime:  mg.GetCreateTime().GetTimestamp(),
+				UpdatedTime:  mg.GetUpdateTime().GetTimestamp(),
+				Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+				Version:      1,
+				Type:         ldap.Subtype.String(),
+				Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
+					LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
+						GroupNames: testGroups,
+					},
+				},
+				AuthorizedActions: ldapAuthorizedActions,
+			})
+		}
+
+		acct := ldap.TestAccount(t, conn, authMethod, "test-login-last")
+		u := iam.TestUser(t, iamRepo, o.GetPublicId(), iam.WithAccountIds(acct.PublicId))
+
+		privProjRole := iam.TestRole(t, conn, pwt.GetPublicId())
+		iam.TestRoleGrant(t, conn, privProjRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, privProjRole.GetPublicId(), u.GetPublicId())
+		privOrgRole := iam.TestRole(t, conn, o.GetPublicId())
+		iam.TestRoleGrant(t, conn, privOrgRole.GetPublicId(), "id=*;type=*;actions=*")
+		iam.TestUserRole(t, conn, privOrgRole.GetPublicId(), u.GetPublicId())
+
+		at, _ := tokenRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
+
+		requestInfo := authpb.RequestInfo{
+			TokenFormat: uint32(auth.AuthTokenTypeBearer),
+			PublicId:    at.GetPublicId(),
+			Token:       at.GetToken(),
+		}
+		requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+		ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kmsCache, &requestInfo)
+
+		req := &pbs.ListManagedGroupsRequest{
+			AuthMethodId: authMethod.GetPublicId(),
+			Filter:       "",
+			RefreshToken: "",
+			PageSize:     2,
+		}
+
+		s, err := managed_groups.NewService(ctx, oidcRepoFn, ldapRepoFn, 1000)
+		require.NoError(t, err)
+
+		// Run analyze in the DB to update the estimate tables
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		got, err := s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		sort.Slice(got.Items, func(i, j int) bool {
+			return strings.Compare(got.Items[i].GetName().GetValue(),
+				got.Items[j].GetName().GetValue()) < 0
+		})
+		require.Len(t, got.GetItems(), 2)
+
+		// all comparisons will be done without refresh token
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        mgs[0:2],
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+
+		// second page
+		req.RefreshToken = got.RefreshToken
+		got, err = s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		sort.Slice(got.Items, func(i, j int) bool {
+			return strings.Compare(got.Items[i].GetName().GetValue(),
+				got.Items[j].GetName().GetValue()) < 0
+		})
+		require.Len(t, got.GetItems(), 2)
+
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        mgs[2:4],
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+
+		// remainder of results
+		req.RefreshToken = got.RefreshToken
+		req.PageSize = 6
+		got, err = s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		sort.Slice(got.Items, func(i, j int) bool {
+			return strings.Compare(got.Items[i].GetName().GetValue(),
+				got.Items[j].GetName().GetValue()) < 0
+		})
+		require.Len(t, got.GetItems(), 6)
+
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        mgs[4:],
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+
+		// create another mg
+		mg := ldap.TestManagedGroup(t, conn, authMethod, testGroups, ldap.WithName(ctx, "lasty"))
+		newManagedGroup := &pb.ManagedGroup{
+			Id:           mg.GetPublicId(),
+			AuthMethodId: mg.GetAuthMethodId(),
+			Name:         wrapperspb.String("lasty"),
+			CreatedTime:  mg.GetCreateTime().GetTimestamp(),
+			UpdatedTime:  mg.GetUpdateTime().GetTimestamp(),
+			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
+			Version:      1,
+			Type:         ldap.Subtype.String(),
+			Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
+				LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
+					GroupNames: testGroups,
+				},
+			},
+			AuthorizedActions: ldapAuthorizedActions,
+		}
+		mgs = append(mgs, newManagedGroup)
+
+		// delete different mg
+		_, err = ldapRepo.DeleteManagedGroup(ctx, o.GetPublicId(), mgs[0].Id)
+		require.NoError(t, err)
+		deletedManagedGroup := mgs[0]
+		mgs = mgs[1:]
+
+		// Run analyze to update postgres estimates
+		_, err = sqlDB.ExecContext(ctx, "analyze")
+		require.NoError(t, err)
+
+		// request updated results
+		req.RefreshToken = got.RefreshToken
+		got, err = s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        []*pb.ManagedGroup{newManagedGroup},
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   []string{deletedManagedGroup.Id},
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+
+		// Request new page with filter requiring looping
+		// to fill the page.
+		req.RefreshToken = ""
+		req.PageSize = 1
+		req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, mgs[len(mgs)-2].Id, mgs[len(mgs)-1].Id)
+		got, err = s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        []*pb.ManagedGroup{mgs[len(mgs)-2]},
+					ResponseType: "delta",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					// Should be empty again
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+		req.RefreshToken = got.RefreshToken
+		// Get the second page
+		got, err = s.ListManagedGroups(ctx, req)
+		require.NoError(t, err)
+		require.Len(t, got.GetItems(), 1)
+		assert.Empty(t,
+			cmp.Diff(
+				got,
+				&pbs.ListManagedGroupsResponse{
+					Items:        []*pb.ManagedGroup{mgs[len(mgs)-1]},
+					ResponseType: "complete",
+					RefreshToken: "",
+					SortBy:       "updated_time",
+					SortDir:      "asc",
+					RemovedIds:   nil,
+					EstItemCount: 10,
+				},
+				protocmp.Transform(),
+				protocmp.IgnoreFields(&pbs.ListManagedGroupsResponse{}, "refresh_token"),
+			),
+		)
+	})
+
 }
