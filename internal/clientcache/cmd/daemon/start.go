@@ -21,6 +21,7 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-homedir"
 	"github.com/posener/complete"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (
@@ -150,6 +151,10 @@ func (c *StartCommand) Run(args []string) int {
 	if err != nil {
 		return base.CommandCliError
 	}
+	if err := os.MkdirAll(dotDir, 0o700); err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
 
 	continueRun, writers, cleanup, err := makeBackground(ctx, dotDir, c.flagBackground)
 	defer func() {
@@ -169,16 +174,24 @@ func (c *StartCommand) Run(args []string) int {
 	// report if the daemon started or not.
 
 	logFilePath := filepath.Join(dotDir, logFileName)
-	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
+
+	{
+		// Ensure the file is created with the desired permissions.
+		logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY, 0o600)
+		if err != nil {
+			c.PrintCliError(err)
+			return base.CommandCliError
+		}
+		logFile.Close()
+	}
+
+	logFile := &lumberjack.Logger{
+		Filename:   logFilePath,
+		MaxSize:    5, // megabytes
+		MaxBackups: 3,
+		Compress:   true,
 	}
 	defer logFile.Close()
-	if _, err := logFile.Seek(0, io.SeekEnd); err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
-	}
 	writers = append(writers, logFile)
 
 	cfg := &daemon.Config{
