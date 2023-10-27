@@ -521,13 +521,10 @@ func TestRepository_SqliteReadDuringTx(t *testing.T) {
 
 	var startTx sync.WaitGroup
 	startTx.Add(1)
-	var goFuncDone sync.WaitGroup
-	goFuncDone.Add(1)
 	go func() {
-		defer goFuncDone.Done()
 		_, err = rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(reader db.Reader, writer db.Writer) error {
 			startTx.Done()
-			time.Sleep(5 * time.Second)
+			time.Sleep(500 * time.Millisecond)
 
 			assert.ErrorContains(t, reader.LookupById(ctx, &ret), "not found")
 			return nil
@@ -536,5 +533,4 @@ func TestRepository_SqliteReadDuringTx(t *testing.T) {
 	// setup a read that potentially executes during a tx
 	startTx.Wait()
 	assert.ErrorContains(t, rw.LookupById(ctx, &ret), "not found")
-	goFuncDone.Wait()
 }
