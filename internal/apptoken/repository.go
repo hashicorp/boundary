@@ -36,7 +36,10 @@ func NewRepository(ctx context.Context, r db.Reader, w db.Writer, kms *kms.Kms, 
 	if kms == nil {
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "nil kms")
 	}
-	opts := getOpts(opt...)
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	if opts.withLimit == 0 {
 		// zero signals the boundary defaults should be used.
 		opts.withLimit = db.DefaultLimit
