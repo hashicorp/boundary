@@ -34,7 +34,9 @@ func Open(ctx context.Context, opt ...Option) (*db.DB, error) {
 	default:
 		url = DefaultStoreUrl
 	}
-	conn, err := db.Open(ctx, db.Sqlite, url)
+	// sqlite db must be set to 1 max open connection so requests can be serialized
+	// otherwise reading while a tx is ongoing results in sql logic errors.
+	conn, err := db.Open(ctx, db.Sqlite, url, db.WithMaxOpenConnections(1))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
