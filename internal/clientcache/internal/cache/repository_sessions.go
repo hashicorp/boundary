@@ -171,7 +171,7 @@ func (r *Repository) fullFetchSessions(ctx context.Context, u *user, tokens map[
 	}
 
 	if retErr != nil {
-		if saveErr := r.SaveError(ctx, u, resourceType, retErr); saveErr != nil {
+		if saveErr := r.saveError(ctx, u, resourceType, retErr); saveErr != nil {
 			return stderrors.Join(err, errors.Wrap(ctx, saveErr, op))
 		}
 	}
