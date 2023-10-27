@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -24,10 +25,42 @@ import (
 // testStaticResourceRetrievalFunc returns a function that always returns the
 // provided slice and a nil error. The returned function can be passed into the
 // options that provide a resource retrieval func such as
-// WithTargetRetrievalFunc and WithSessionRetrievalFunc.
-func testStaticResourceRetrievalFunc[T any](ret []T) func(context.Context, string, string) ([]T, error) {
-	return func(ctx context.Context, s1, s2 string) ([]T, error) {
-		return ret, nil
+// WithTargetRetrievalFunc and WithSessionRetrievalFunc.  The provided refresh
+// token determines the returned value and is a string representation of an
+// incrementing integer. This integer is the index into the provided return
+// values and once it reaches the length of the provided slice it returns an
+// empty slice and the same refresh token repeatedly.
+func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][]string) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+	t.Helper()
+	require.Equal(t, len(ret), len(removed), "returned slice and removed slice must be the same length")
+	return func(ctx context.Context, s1, s2 string, refToken RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+		index := 0
+		if refToken != "" {
+			var err error
+			index, err = strconv.Atoi(string(refToken))
+			require.NoError(t, err)
+		}
+
+		switch {
+		case len(ret) == 0:
+			return nil, nil, "", nil
+		case index > 0 && index >= len(ret):
+			return []T{}, []string{}, RefreshTokenValue(fmt.Sprintf("%d", index)), nil
+		default:
+			return ret[index], removed[index], RefreshTokenValue(fmt.Sprintf("%d", index+1)), nil
+		}
+	}
+}
+
+// testErroringForRefreshTokenRetrievalFunc returns a refresh token error when
+// the refresh token is not empty.  This is useful for testing behavior when
+// the refresh token has expired or is otherwise invalid.
+func testErroringForRefreshTokenRetrievalFunc[T any](t *testing.T, ret []T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+	return func(ctx context.Context, s1, s2 string, refToken RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+		if refToken != "" {
+			return nil, nil, "", api.ErrInvalidRefreshToken
+		}
+		return ret, nil, "1", nil
 	}
 }
 
@@ -297,32 +330,32 @@ func TestRefresh(t *testing.T) {
 			target("1"),
 			target("2"),
 			target("3"),
+			target("4"),
 		}
-		assert.NoError(t, rs.Refresh(ctx,
-			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](nil)),
-			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string) ([]*targets.Target, error) {
-				require.Equal(t, boundaryAddr, addr)
-				require.Equal(t, at.Token, token)
-				return retTargets, nil
-			})))
+		opts := []Option{
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t,
+				[][]*targets.Target{
+					retTargets[:3],
+					retTargets[3:],
+				},
+				[][]string{
+					nil,
+					{retTargets[0].Id, retTargets[1].Id},
+				},
+			)),
+		}
+		assert.NoError(t, rs.Refresh(ctx, opts...))
 
 		cachedTargets, err := r.ListTargets(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retTargets, cachedTargets)
+		assert.ElementsMatch(t, retTargets[:3], cachedTargets)
 
-		t.Run("empty response clears it out", func(t *testing.T) {
-			assert.NoError(t, rs.Refresh(ctx,
-				WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](nil)),
-				WithTargetRetrievalFunc(func(ctx context.Context, addr, token string) ([]*targets.Target, error) {
-					require.Equal(t, boundaryAddr, addr)
-					require.Equal(t, at.Token, token)
-					return nil, nil
-				})))
-
-			cachedTargets, err := r.ListTargets(ctx, at.Id)
-			assert.NoError(t, err)
-			assert.Empty(t, cachedTargets)
-		})
+		// Second call removes the first 2 resources from the cache and adds the last
+		assert.NoError(t, rs.Refresh(ctx, opts...))
+		cachedTargets, err = r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retTargets[2:], cachedTargets)
 	})
 
 	t.Run("set sessions", func(t *testing.T) {
@@ -330,42 +363,49 @@ func TestRefresh(t *testing.T) {
 			session("1"),
 			session("2"),
 			session("3"),
+			session("4"),
 		}
-		assert.NoError(t, rs.Refresh(ctx,
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](nil)),
-			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc(retSess))))
-
+		opts := []Option{
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t,
+				[][]*sessions.Session{
+					retSess[:3],
+					retSess[3:],
+				},
+				[][]string{
+					nil,
+					{retSess[0].Id, retSess[1].Id},
+				},
+			)),
+		}
+		assert.NoError(t, rs.Refresh(ctx, opts...))
 		cachedSessions, err := r.ListSessions(ctx, at.Id)
 		assert.NoError(t, err)
-		assert.ElementsMatch(t, retSess, cachedSessions)
+		assert.ElementsMatch(t, retSess[:3], cachedSessions)
 
-		t.Run("empty response clears it out", func(t *testing.T) {
-			assert.NoError(t, rs.Refresh(ctx,
-				WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](nil)),
-				WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](nil))))
-
-			cachedTargets, err := r.ListSessions(ctx, at.Id)
-			assert.NoError(t, err)
-			assert.Empty(t, cachedTargets)
-		})
+		// Second call removes the first 2 resources from the cache and adds the last
+		assert.NoError(t, rs.Refresh(ctx, opts...))
+		cachedSessions, err = r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, retSess[2:], cachedSessions)
 	})
 
 	t.Run("error propogates up", func(t *testing.T) {
 		innerErr := errors.New("test error")
 		err := rs.Refresh(ctx,
-			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](nil)),
-			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string) ([]*targets.Target, error) {
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
-				return nil, innerErr
+				return nil, nil, "", innerErr
 			}))
 		assert.ErrorContains(t, err, innerErr.Error())
 		err = rs.Refresh(ctx,
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](nil)),
-			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)),
+			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
 				require.Equal(t, at.Token, token)
-				return nil, innerErr
+				return nil, nil, "", innerErr
 			}))
 		assert.ErrorContains(t, err, innerErr.Error())
 	})
@@ -385,8 +425,8 @@ func TestRefresh(t *testing.T) {
 		assert.Len(t, us, 1)
 
 		rs.Refresh(ctx,
-			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](nil)),
-			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](nil)))
+			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
+			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)))
 
 		ps, err = r.listTokens(ctx, u)
 		require.NoError(t, err)
