@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/boundary/internal/auth/oidc/store"
+	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/types/resource"
@@ -106,4 +107,14 @@ func (mg *ManagedGroup) oplog(op oplog.OpType, authMethodScopeId string) oplog.M
 		metadata["scope-id"] = []string{authMethodScopeId}
 	}
 	return metadata
+}
+
+type deletedManagedGroup struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedManagedGroup) TableName() string {
+	return "auth_oidc_managed_group_deleted"
 }

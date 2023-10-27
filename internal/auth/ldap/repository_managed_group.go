@@ -5,8 +5,10 @@ package ldap
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -97,7 +99,9 @@ func (r *Repository) LookupManagedGroup(ctx context.Context, withPublicId string
 	return a, nil
 }
 
-// ListManagedGroups in an auth method and supports WithLimit option.
+// ListManagedGroups returns a slice of Managed Groups for the auth method ID. Supported options:
+//   - auth.WithLimit
+//   - auth.WithStartPageAfterItem
 func (r *Repository) ListManagedGroups(ctx context.Context, withAuthMethodId string, opt ...Option) ([]*ManagedGroup, error) {
 	const op = "ldap.(Repository).ListManagedGroups"
 	if withAuthMethodId == "" {
@@ -112,8 +116,30 @@ func (r *Repository) ListManagedGroups(ctx context.Context, withAuthMethodId str
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
 	}
+	var args []any
+	args = append(args, sql.Named("with_auth_method_id", withAuthMethodId))
+	whereClause := "auth_method_id = @with_auth_method_id"
+
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use PublicId as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+		whereClause = "(" + whereClause + ") and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
+	}
 	var mgs []*ManagedGroup
-	err = r.reader.SearchWhere(ctx, &mgs, "auth_method_id = ?", []any{withAuthMethodId}, db.WithLimit(limit))
+	err = r.reader.SearchWhere(ctx, &mgs, whereClause, args, db.WithLimit(limit), db.WithOrder(withOrder))
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
@@ -261,4 +287,45 @@ func (r *Repository) UpdateManagedGroup(ctx context.Context, scopeId string, mg 
 	}
 
 	return returnedManagedGroup, rowsUpdated, nil
+}
+
+// listDeletedIds lists the public IDs of any managed groups deleted since the timestamp provided.
+func (r *Repository) listDeletedIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "ldap.(Repository).listDeletedIds"
+	var deletedManagedGroups []*deletedManagedGroup
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedManagedGroups, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted managed groups"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var mgIds []string
+	for _, mg := range deletedManagedGroups {
+		mgIds = append(mgIds, mg.PublicId)
+	}
+	return mgIds, transactionTimestamp, nil
+}
+
+// estimatedCount returns and estimate of the total number of items in the managed groups table.
+func (r *Repository) estimatedCount(ctx context.Context) (int, error) {
+	const op = "ldap.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountLdapManagedGroups, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total managed groups"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total managed groups"))
+		}
+	}
+	return count, nil
 }
