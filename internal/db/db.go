@@ -174,7 +174,7 @@ func Open(ctx context.Context, dbType DbType, connectionUrl string, opt ...Optio
 		wrappedOpts = append(wrappedOpts, dbw.WithLogger(opts.withGormFormatter))
 	}
 	if opts.withMaxOpenConnections > 0 {
-		if opts.withMaxOpenConnections < 5 {
+		if opts.withMaxOpenConnections < 5 && dbType != Sqlite {
 			return nil, fmt.Errorf("max_open_connections cannot be below 5")
 		}
 		wrappedOpts = append(wrappedOpts, dbw.WithMaxOpenConnections(opts.withMaxOpenConnections))
