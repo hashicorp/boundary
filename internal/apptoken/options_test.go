@@ -32,4 +32,13 @@ func Test_getOpts(t *testing.T) {
 		testOpts.withDescription = "test"
 		assert.Equal(opts, testOpts)
 	})
+	t.Run("WithLimit", func(t *testing.T) {
+		assert := assert.New(t)
+		opts, err := getOpts(WithLimit(testCtx, 50))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		assert.NotEqual(opts, testOpts)
+		testOpts.withLimit = 50
+		assert.Equal(opts, testOpts)
+	})
 }
