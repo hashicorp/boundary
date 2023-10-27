@@ -449,7 +449,5 @@ func TestDefaultSessionRetrievalFunc(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok2)
 	assert.Empty(t, removed2)
-	_ = got2
-	t.Skip("This is skipped while waiting for PR 3897 to be merged")
 	assert.Empty(t, got2)
 }

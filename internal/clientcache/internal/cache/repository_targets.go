@@ -43,6 +43,9 @@ func defaultTargetFunc(ctx context.Context, addr, authTok string, refreshTok Ref
 	return l.Items, l.RemovedIds, RefreshTokenValue(l.RefreshToken), nil
 }
 
+// refreshTargets uses attempts to refresh the targets for the provided user
+// using the provided tokens. If available, it uses the refresh tokens in
+// storage to retrieve and apply only the delta.
 func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
 	const op = "cache.(Repository).refreshTargets"
 	switch {
@@ -128,8 +131,11 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	return nil
 }
 
+// fullFetchTargets fetches all targets for the provided user and sets the
+// cache to match the values returned.  If the response includes a refresh
+// token it will save that as well.
 func (r *Repository) fullFetchTargets(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
-	const op = "cache.(Repository).refreshTargets"
+	const op = "cache.(Repository).fullFetchTargets"
 	switch {
 	case util.IsNil(u):
 		return errors.New(ctx, errors.InvalidParameter, op, "user is nil")
@@ -192,6 +198,7 @@ func (r *Repository) fullFetchTargets(ctx context.Context, u *user, tokens map[A
 	return nil
 }
 
+// upsertTargets upserts the provided targets to be stored for the provided user.
 func upsertTargets(ctx context.Context, w db.Writer, u *user, in []*targets.Target) error {
 	const op = "cache.upserTargets"
 	switch {

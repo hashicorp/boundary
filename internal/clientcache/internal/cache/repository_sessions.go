@@ -43,6 +43,9 @@ func defaultSessionFunc(ctx context.Context, addr, authTok string, refreshTok Re
 	return l.Items, l.RemovedIds, RefreshTokenValue(l.RefreshToken), nil
 }
 
+// refreshSessions uses attempts to refresh the sessions for the provided user
+// using the provided tokens. If available, it uses the refresh tokens in
+// storage to retrieve and apply only the delta.
 func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
 	const op = "cache.(Repository).refreshSessions"
 	switch {
@@ -129,8 +132,11 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	return nil
 }
 
+// fullFetchSessions fetches all sessions for the provided user and sets the
+// cache to match the values returned.  If the response includes a refresh
+// token it will save that as well.
 func (r *Repository) fullFetchSessions(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
-	const op = "cache.(Repository).refreshSessions"
+	const op = "cache.(Repository).fullFetchSessions"
 	switch {
 	case util.IsNil(u):
 		return errors.New(ctx, errors.InvalidParameter, op, "user is nil")
@@ -194,6 +200,7 @@ func (r *Repository) fullFetchSessions(ctx context.Context, u *user, tokens map[
 	return nil
 }
 
+// upsertSessions upserts the provided sessions to be stored for the provided user.
 func upsertSessions(ctx context.Context, w db.Writer, u *user, in []*sessions.Session) error {
 	const op = "cache.upsertSessions"
 	switch {

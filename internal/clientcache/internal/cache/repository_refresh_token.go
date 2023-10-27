@@ -44,8 +44,15 @@ func (r *Repository) lookupRefreshToken(ctx context.Context, u *user, resourceTy
 	return rt.RefreshToken, nil
 }
 
+// listRefreshTokens returns all refresh tokens associated with a specific user
 func (r *Repository) listRefreshTokens(ctx context.Context, u *user) ([]*refreshToken, error) {
 	const op = "cache.(Repository).listRefreshTokens"
+	switch {
+	case util.IsNil(u):
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "user is nil")
+	case u.Id == "":
+		return nil, errors.New(ctx, errors.InvalidParameter, op, "user id is empty")
+	}
 	var ret []*refreshToken
 	if err := r.rw.SearchWhere(ctx, &ret, "user_id = @user_id", []any{sql.Named("user_id", u.Id)}); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
