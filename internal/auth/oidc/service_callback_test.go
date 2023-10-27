@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,11 +20,13 @@ import (
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/iam"
 	iamStore "github.com/hashicorp/boundary/internal/iam/store"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/cap/oidc"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -333,6 +336,19 @@ func Test_Callback(t *testing.T) {
 				tp.SetUserInfoReply(info)
 			}
 
+			config := event.EventerConfig{
+				ObservationsEnabled: true,
+			}
+			testLock := &sync.Mutex{}
+			testLogger := hclog.New(&hclog.LoggerOptions{
+				Mutex: testLock,
+				Name:  "test",
+			})
+			e, err := event.NewEventer(testLogger, testLock, tt.name, config)
+			require.NoError(err)
+			ctx, err := event.NewEventerContext(ctx, e)
+			require.NoError(err)
+
 			gotRedirect, err := Callback(ctx,
 				tt.oidcRepoFn,
 				tt.iamRepoFn,
@@ -461,7 +477,18 @@ func Test_Callback(t *testing.T) {
 
 		tp.SetUserInfoReply(map[string]any{"sub": wantSubject})
 		tp.SetExpectedAuthNonce(testNonce)
-
+		config := event.EventerConfig{
+			ObservationsEnabled: true,
+		}
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+		e, err := event.NewEventer(testLogger, testLock, "replay-attack-with-dup-state", config)
+		require.NoError(err)
+		ctx, err := event.NewEventerContext(ctx, e)
+		require.NoError(err)
 		// the first request should succeed.
 		gotRedirect, err := Callback(ctx,
 			repoFn,
@@ -779,7 +806,18 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 				require.Equal(numUpdated, 1)
 				require.NoError(err)
 			}
-
+			config := event.EventerConfig{
+				ObservationsEnabled: true,
+			}
+			testLock := &sync.Mutex{}
+			testLogger := hclog.New(&hclog.LoggerOptions{
+				Mutex: testLock,
+				Name:  "test",
+			})
+			e, err := event.NewEventer(testLogger, testLock, tt.name, config)
+			require.NoError(err)
+			ctx, err := event.NewEventerContext(ctx, e)
+			require.NoError(err)
 			// Run the callback
 			_, err = Callback(ctx,
 				repoFn,

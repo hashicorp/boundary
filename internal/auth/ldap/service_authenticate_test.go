@@ -6,11 +6,13 @@ package ldap
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/go-hclog"
@@ -301,7 +303,19 @@ func TestAuthenticate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			require.Equal(tc.order, idx)
-			got, err := Authenticate(tc.ctx, tc.authenticatorFn, tc.lookupUserWithLoginFn, tc.tokenCreatorFn, tc.authMethodId, tc.loginName, tc.password)
+			config := event.EventerConfig{
+				ObservationsEnabled: true,
+			}
+			testLock := &sync.Mutex{}
+			testLogger := hclog.New(&hclog.LoggerOptions{
+				Mutex: testLock,
+				Name:  "test",
+			})
+			e, err := event.NewEventer(testLogger, testLock, tc.name, config)
+			require.NoError(err)
+			eCtx, err := event.NewEventerContext(tc.ctx, e)
+			require.NoError(err)
+			got, err := Authenticate(eCtx, tc.authenticatorFn, tc.lookupUserWithLoginFn, tc.tokenCreatorFn, tc.authMethodId, tc.loginName, tc.password)
 			if tc.wantErrMatch != nil {
 				require.Error(err)
 				assert.Empty(got)
