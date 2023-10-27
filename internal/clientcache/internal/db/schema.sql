@@ -37,8 +37,6 @@ create table if not exists refresh_token(
     constraint only_known_resource_types_allowed,
   refresh_token text not null
     check (length(refresh_token) > 0),
-  update_time timestamp not null default (strftime('%Y-%m-%d %H:%M:%f','now')),
-  create_time timestamp not null default (strftime('%Y-%m-%d %H:%M:%f','now')),
   primary key (user_id, resource_type)
 );
 
