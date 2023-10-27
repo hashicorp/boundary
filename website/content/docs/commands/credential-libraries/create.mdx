@@ -154,6 +154,11 @@ $ boundary credential-libraries create vault-ssh-certificate [options] [args]
 
 The following are options are specific to the Vault SSH certificate credential library, in addition to the command options:
 
+- `-additional-valid-principal` - Any additional users or groups that you want to configure as valid principals.
+By default, Boundary only passes the username to Vault to sign as a valid principal.
+Use this option when you want to configure additional users or groups as valid principals that the certificate should be signed for in Vault.
+
+   For more information, refer to OpenSSH's definition of [valid principals](https://github.com/openssh/openssh-portable/blob/5f93c4836527d9fda05de8944a1c7b4a205080c7/PROTOCOL.certkeys#L176-L181) and Vault's [SSH secrets engine](https://developer.hashicorp.com/vault/api-docs/secret/ssh#valid_principals) documentation.
 - `-critical-option`  - A key=value pair to add to the request's
    critical-options map.
    It can also be a key value only which sets a JSON null as the value.
