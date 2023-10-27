@@ -33,7 +33,8 @@ func NewAppTokenGrant(ctx context.Context, appTokenId string, grant string) (*Ap
 	// Validate that the grant parses successfully. Note that we fake the scope
 	// here to avoid a lookup as the scope is only relevant at actual ACL
 	// checking time and we just care that it parses correctly.
-	perm, err := perms.Parse(ctx, "o_abcd1234", grant)
+	const fakeScopeId = "o_abcd1234"
+	perm, err := perms.Parse(ctx, fakeScopeId, grant)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
