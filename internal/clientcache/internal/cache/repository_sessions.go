@@ -15,30 +15,32 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/mql"
 )
 
 // SessionRetrievalFunc is a function that retrieves sessions
 // from the provided boundary addr using the provided token.
-type SessionRetrievalFunc func(ctx context.Context, addr, token string) ([]*sessions.Session, error)
+type SessionRetrievalFunc func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) (ret []*sessions.Session, removedIds []string, refreshToken RefreshTokenValue, err error)
 
-func defaultSessionFunc(ctx context.Context, addr, token string) ([]*sessions.Session, error) {
+func defaultSessionFunc(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
 	const op = "cache.defaultSessionFunc"
 	client, err := api.NewClient(&api.Config{
 		Addr:  addr,
-		Token: token,
+		Token: authTok,
 	})
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
 	sClient := sessions.NewClient(client)
-	l, err := sClient.List(ctx, "global", sessions.WithRecursive(true))
+	l, err := sClient.List(ctx, "global", sessions.WithRecursive(true), sessions.WithRefreshToken(string(refreshTok)))
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		if api.ErrInvalidRefreshToken.Is(err) {
+			return nil, nil, "", err
+		}
+		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
-	return l.Items, nil
+	return l.Items, l.RemovedIds, RefreshTokenValue(l.RefreshToken), nil
 }
 
 func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
@@ -51,6 +53,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	case u.Address == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "user boundary address is missing")
 	}
+	const resourceType = sessionResourceType
 
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -59,16 +62,28 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	if opts.withSessionRetrievalFunc == nil {
 		opts.withSessionRetrievalFunc = defaultSessionFunc
 	}
+	oldRefreshToken, err := r.lookupRefreshToken(ctx, u, resourceType)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 
 	// Find and use a token for retrieving sessions
 	var gotResponse bool
 	var resp []*sessions.Session
+	var newRefreshToken RefreshTokenValue
+	var removedIds []string
 	var retErr error
 	for at, t := range tokens {
-		resp, err = opts.withSessionRetrievalFunc(ctx, u.Address, t)
+		resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, oldRefreshToken)
+		if api.ErrInvalidRefreshToken.Is(err) {
+			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			// try again without the refresh token
+			oldRefreshToken = ""
+			resp, removedIds, newRefreshToken, err = opts.withSessionRetrievalFunc(ctx, u.Address, t, "")
+		}
 		if err != nil {
-			// TODO: If we get an error about the token no longer having
-			// permissions, remove it.
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
 			continue
 		}
@@ -77,7 +92,7 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 	}
 
 	if retErr != nil {
-		if saveErr := r.SaveError(ctx, u, resource.Session.String(), retErr); saveErr != nil {
+		if saveErr := r.SaveError(ctx, u, resourceType, retErr); saveErr != nil {
 			return stderrors.Join(err, errors.Wrap(ctx, saveErr, op))
 		}
 	}
@@ -87,10 +102,17 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 
 	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d sessions for user %v", len(resp), u))
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		// TODO: Instead of deleting everything, use refresh tokens and apply the delta
-		if _, err := w.Exec(ctx, "delete from session where user_id = @user_id",
-			[]any{sql.Named("user_id", u.Id)}); err != nil {
-			return err
+		switch {
+		case oldRefreshToken == "":
+			if _, err := w.Exec(ctx, "delete from session where user_id = @user_id",
+				[]any{sql.Named("user_id", u.Id)}); err != nil {
+				return err
+			}
+		case len(removedIds) > 0:
+			if _, err := w.Exec(ctx, "delete from session where id in @ids",
+				[]any{sql.Named("ids", removedIds)}); err != nil {
+				return err
+			}
 		}
 
 		for _, s := range resp {
@@ -113,6 +135,10 @@ func (r *Repository) refreshSessions(ctx context.Context, u *user, tokens map[Au
 			if err := w.Create(ctx, newSession, db.WithOnConflict(&onConflict)); err != nil {
 				return err
 			}
+		}
+
+		if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
+			return err
 		}
 		return nil
 	})

@@ -13,6 +13,33 @@ create table if not exists user (
     check (length(address) > 0)
 );
 
+-- Contains the known resource types contained in the boundary client cache
+create table if not exists resource_type_enm(
+  string text not null primary key
+    constraint only_predefined_resource_types_allowed
+    check(string in ('unknown', 'target', 'session'))
+);
+
+insert into resource_type_enm (string)
+values
+  ('unknown'),
+  ('target'),
+  ('session');
+
+-- Contains refresh tokens for list requests sent by the client daemon to the
+-- boundary instance.
+create table if not exists refresh_token(
+  user_id text not null
+    references user(id)
+    on delete cascade,
+  resource_type text not null
+    references resource_type_enm(string)
+    constraint only_known_resource_types_allowed,
+  refresh_token text not null
+    check (length(refresh_token) > 0),
+  primary key (user_id, resource_type)
+);
+
 -- Contains the boundary auth token
 create table if not exists auth_token (
   -- id is the boundary id of the auth token
@@ -107,7 +134,9 @@ create table if not exists api_error (
   user_id text not null
     references user(id)
     on delete cascade,
-  resource_type text not null,
+  resource_type text not null
+    references resource_type_enm(string)
+    constraint only_known_resource_types_allowed,
   error text not null,
   create_time timestamp not null default current_timestamp,
   primary key (user_id, resource_type)

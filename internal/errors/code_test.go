@@ -415,6 +415,11 @@ func TestCode_Both_String_Info(t *testing.T) {
 			c:    InvalidConfiguration,
 			want: InvalidConfiguration,
 		},
+		{
+			name: "InvalidRefreshToken",
+			c:    InvalidRefreshToken,
+			want: InvalidRefreshToken,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
