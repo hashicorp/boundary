@@ -33,7 +33,9 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithTargetRetrievalFunc", func(t *testing.T) {
-		var f TargetRetrievalFunc = func(ctx context.Context, keyringstring, tokenName string) ([]*targets.Target, error) { return nil, nil }
+		var f TargetRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
+			return nil, nil, "", nil
+		}
 		opts, err := getOpts(WithTargetRetrievalFunc(f))
 		require.NoError(t, err)
 
@@ -44,8 +46,8 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(t, opts, testOpts)
 	})
 	t.Run("WithSessionRetrievalFunc", func(t *testing.T) {
-		var f SessionRetrievalFunc = func(ctx context.Context, keyringstring, tokenName string) ([]*sessions.Session, error) {
-			return nil, nil
+		var f SessionRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
+			return nil, nil, "", nil
 		}
 		opts, err := getOpts(WithSessionRetrievalFunc(f))
 		require.NoError(t, err)
