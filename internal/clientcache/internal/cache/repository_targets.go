@@ -15,30 +15,32 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
-	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/util"
 	"github.com/hashicorp/mql"
 )
 
 // TargetRetrievalFunc is a function that retrieves targets
 // from the provided boundary addr using the provided token.
-type TargetRetrievalFunc func(ctx context.Context, addr, token string) ([]*targets.Target, error)
+type TargetRetrievalFunc func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) (ret []*targets.Target, removedIds []string, refreshToken RefreshTokenValue, err error)
 
-func defaultTargetFunc(ctx context.Context, addr, token string) ([]*targets.Target, error) {
+func defaultTargetFunc(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 	const op = "cache.defaultTargetFunc"
 	client, err := api.NewClient(&api.Config{
 		Addr:  addr,
-		Token: token,
+		Token: authTok,
 	})
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
 	tarClient := targets.NewClient(client)
-	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true))
+	l, err := tarClient.List(ctx, "global", targets.WithRecursive(true), targets.WithRefreshToken(string(refreshTok)))
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		if api.ErrInvalidRefreshToken.Is(err) {
+			return nil, nil, "", err
+		}
+		return nil, nil, "", errors.Wrap(ctx, err, op)
 	}
-	return l.Items, nil
+	return l.Items, l.RemovedIds, RefreshTokenValue(l.RefreshToken), nil
 }
 
 func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[AuthToken]string, opt ...Option) error {
@@ -49,6 +51,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	case u.Id == "":
 		return errors.New(ctx, errors.InvalidParameter, op, "user id is missing")
 	}
+	const resourceType = targetResourceType
 
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -57,16 +60,28 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 	if opts.withTargetRetrievalFunc == nil {
 		opts.withTargetRetrievalFunc = defaultTargetFunc
 	}
+	oldRefreshToken, err := r.lookupRefreshToken(ctx, u, resourceType)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
 
 	// Find and use a token for retrieving targets
 	var gotResponse bool
 	var resp []*targets.Target
+	var removedIds []string
+	var newRefreshToken RefreshTokenValue
 	var retErr error
 	for at, t := range tokens {
-		resp, err = opts.withTargetRetrievalFunc(ctx, u.Address, t)
+		resp, removedIds, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, oldRefreshToken)
+		if api.ErrInvalidRefreshToken.Is(err) {
+			if err := r.deleteRefreshToken(ctx, u, resourceType); err != nil {
+				return errors.Wrap(ctx, err, op)
+			}
+			// try again without the refresh token
+			oldRefreshToken = ""
+			resp, removedIds, newRefreshToken, err = opts.withTargetRetrievalFunc(ctx, u.Address, t, "")
+		}
 		if err != nil {
-			// TODO: If we get an error about the token no longer having
-			// permissions, remove it.
 			retErr = stderrors.Join(retErr, errors.Wrap(ctx, err, op, errors.WithMsg("for token %q", at.Id)))
 			continue
 		}
@@ -74,7 +89,7 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 		break
 	}
 	if retErr != nil {
-		if saveErr := r.SaveError(ctx, u, resource.Target.String(), retErr); saveErr != nil {
+		if saveErr := r.SaveError(ctx, u, resourceType, retErr); saveErr != nil {
 			return stderrors.Join(err, errors.Wrap(ctx, saveErr, op))
 		}
 	}
@@ -84,10 +99,17 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 
 	event.WriteSysEvent(ctx, op, fmt.Sprintf("updating %d targets for user %v", len(resp), u))
 	_, err = r.rw.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
-		// TODO: Instead of deleting everything, use refresh tokens and apply the delta
-		if _, err := w.Exec(ctx, "delete from target where user_id = @user_id",
-			[]any{sql.Named("user_id", u.Id)}); err != nil {
-			return err
+		switch {
+		case oldRefreshToken == "":
+			if _, err := w.Exec(ctx, "delete from target where user_id = @user_id",
+				[]any{sql.Named("user_id", u.Id)}); err != nil {
+				return err
+			}
+		case len(removedIds) > 0:
+			if _, err := w.Exec(ctx, "delete from target where id in @ids",
+				[]any{sql.Named("ids", removedIds)}); err != nil {
+				return err
+			}
 		}
 
 		for _, t := range resp {
@@ -108,6 +130,12 @@ func (r *Repository) refreshTargets(ctx context.Context, u *user, tokens map[Aut
 				Action: db.UpdateAll(true),
 			}
 			if err := w.Create(ctx, newTarget, db.WithOnConflict(&onConflict)); err != nil {
+				return err
+			}
+		}
+
+		if newRefreshToken != "" || oldRefreshToken != "" {
+			if err := upsertRefreshToken(ctx, w, u, resourceType, newRefreshToken); err != nil {
 				return err
 			}
 		}
