@@ -5,11 +5,13 @@ package oidc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -26,6 +28,7 @@ import (
 	"github.com/hashicorp/boundary/internal/kms"
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/cap/oidc"
+	"github.com/hashicorp/eventlogger/formatter_filters/cloudevents"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +45,14 @@ func Test_Callback(t *testing.T) {
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
 
 	testCtx := context.Background()
-
+	opt := event.TestWithObservationSink(t)
+	c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback", opt)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_Callback", event.WithEventerConfig(&c.EventerConfig)))
 	// some standard factories for unit tests which
 	// are used in the Callback(...) call
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -335,20 +345,6 @@ func Test_Callback(t *testing.T) {
 			if len(info) > 0 {
 				tp.SetUserInfoReply(info)
 			}
-
-			config := event.EventerConfig{
-				ObservationsEnabled: true,
-			}
-			testLock := &sync.Mutex{}
-			testLogger := hclog.New(&hclog.LoggerOptions{
-				Mutex: testLock,
-				Name:  "test",
-			})
-			e, err := event.NewEventer(testLogger, testLock, tt.name, config)
-			require.NoError(err)
-			ctx, err := event.NewEventerContext(ctx, e)
-			require.NoError(err)
-
 			gotRedirect, err := Callback(ctx,
 				tt.oidcRepoFn,
 				tt.iamRepoFn,
@@ -382,6 +378,21 @@ func Test_Callback(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tt.wantFinalRedirect, gotRedirect)
+
+			sinkFileName := c.ObservationEvents.Name()
+			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
+			b, err := ioutil.ReadFile(sinkFileName)
+			require.NoError(err)
+			got := &cloudevents.Event{}
+			err = json.Unmarshal(b, got)
+			require.NoErrorf(err, "json: %s", string(b))
+			details, ok := got.Data.(map[string]any)["details"]
+			require.True(ok)
+			for _, key := range details.([]any) {
+				assert.Contains(key.(map[string]any)["payload"], "user_id")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_start")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_end")
+			}
 
 			// make sure a pending token was created.
 			var tokens []*authtoken.AuthToken
@@ -523,7 +534,13 @@ func Test_StartAuth_to_Callback(t *testing.T) {
 	t.Run("startAuth-to-Callback", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		ctx := context.Background()
-
+		c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback")
+		testLock := &sync.Mutex{}
+		testLogger := hclog.New(&hclog.LoggerOptions{
+			Mutex: testLock,
+			Name:  "test",
+		})
+		require.NoError(event.InitSysEventer(testLogger, testLock, "use-Test_StartAuth_to_Callback", event.WithEventerConfig(&c.EventerConfig)))
 		conn, _ := db.TestSetup(t, "postgres")
 		rw := db.New(conn)
 		// start with no tokens in the db
@@ -642,7 +659,14 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 	rw := db.New(conn)
 	rootWrapper := db.TestWrapper(t)
 	kmsCache := kms.TestKms(t, conn, rootWrapper)
-
+	opt := event.TestWithObservationSink(t)
+	c := event.TestEventerConfig(t, "Test_StartAuth_to_Callback", opt)
+	testLock := &sync.Mutex{}
+	testLogger := hclog.New(&hclog.LoggerOptions{
+		Mutex: testLock,
+		Name:  "test",
+	})
+	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_ManagedGroupFiltering", event.WithEventerConfig(&c.EventerConfig)))
 	// some standard factories for unit tests which
 	// are used in the Callback(...) call
 	iamRepoFn := func() (*iam.Repository, error) {
@@ -806,18 +830,6 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 				require.Equal(numUpdated, 1)
 				require.NoError(err)
 			}
-			config := event.EventerConfig{
-				ObservationsEnabled: true,
-			}
-			testLock := &sync.Mutex{}
-			testLogger := hclog.New(&hclog.LoggerOptions{
-				Mutex: testLock,
-				Name:  "test",
-			})
-			e, err := event.NewEventer(testLogger, testLock, tt.name, config)
-			require.NoError(err)
-			ctx, err := event.NewEventerContext(ctx, e)
-			require.NoError(err)
 			// Run the callback
 			_, err = Callback(ctx,
 				repoFn,
@@ -828,7 +840,20 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 				code,
 			)
 			require.NoError(err)
-
+			sinkFileName := c.ObservationEvents.Name()
+			defer func() { _ = os.WriteFile(sinkFileName, nil, 0o666) }()
+			b, err := ioutil.ReadFile(sinkFileName)
+			require.NoError(err)
+			got := &cloudevents.Event{}
+			err = json.Unmarshal(b, got)
+			require.NoErrorf(err, "json: %s", string(b))
+			details, ok := got.Data.(map[string]any)["details"]
+			require.True(ok)
+			for _, key := range details.([]any) {
+				assert.Contains(key.(map[string]any)["payload"], "user_id")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_start")
+				assert.Contains(key.(map[string]any)["payload"], "auth_token_end")
+			}
 			// Ensure that we get the expected groups
 			memberships, err := repo.ListManagedGroupMembershipsByMember(ctx, account.PublicId)
 			require.NoError(err)
