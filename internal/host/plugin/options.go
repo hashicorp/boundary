@@ -3,7 +3,10 @@
 
 package plugin
 
-import "google.golang.org/protobuf/types/known/structpb"
+import (
+	"github.com/hashicorp/boundary/internal/pagination"
+	"google.golang.org/protobuf/types/known/structpb"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -33,6 +36,7 @@ type options struct {
 	withLimit               int
 	withSetIds              []string
 	withSecretsHmac         []byte
+	withStartPageAfterItem  pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -139,5 +143,13 @@ func WithSetIds(with []string) Option {
 func WithSecretsHmac(secretsHmac []byte) Option {
 	return func(o *options) {
 		o.withSecretsHmac = secretsHmac
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }
