@@ -10,6 +10,8 @@ import (
 type options struct {
 	withUpdateLastAccessedTime bool
 	withDbType                 dbw.DbType
+	withAuthTokenId            string
+	withUserId                 string
 	withTargetRetrievalFunc    TargetRetrievalFunc
 	withSessionRetrievalFunc   SessionRetrievalFunc
 }
@@ -38,6 +40,22 @@ func getOpts(opt ...Option) (options, error) {
 func WithUpdateLastAccessedTime(b bool) Option {
 	return func(o *options) error {
 		o.withUpdateLastAccessedTime = b
+		return nil
+	}
+}
+
+// withUserId provides an option for providing an auth token id
+func withAuthTokenId(id string) Option {
+	return func(o *options) error {
+		o.withAuthTokenId = id
+		return nil
+	}
+}
+
+// withUserId provides an option for providing a user id
+func withUserId(id string) Option {
+	return func(o *options) error {
+		o.withUserId = id
 		return nil
 	}
 }
