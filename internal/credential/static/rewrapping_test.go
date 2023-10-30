@@ -219,8 +219,7 @@ func TestRewrap_credStaticJsonRewrapFn(t *testing.T) {
 
 		_, prj := iam.TestScopes(t, iam.TestRepo(t, conn, wrapper))
 		cs := TestCredentialStore(t, conn, wrapper, prj.PublicId)
-		obj, objBytes, err := TestJsonObject()
-		assert.NoError(t, err)
+		obj, objBytes := TestJsonObject(t)
 		cred, err := NewJsonCredential(ctx, cs.GetPublicId(), obj)
 		assert.NoError(t, err)
 
