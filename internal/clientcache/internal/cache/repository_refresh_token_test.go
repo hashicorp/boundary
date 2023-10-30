@@ -15,6 +15,62 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestListRefreshToken(t *testing.T) {
+	ctx := context.Background()
+	s, err := cachedb.Open(ctx)
+	require.NoError(t, err)
+
+	r, err := NewRepository(ctx, s, &sync.Map{},
+		mapBasedAuthTokenKeyringLookup(map[ringToken]*authtokens.AuthToken{}),
+		sliceBasedAuthTokenBoundaryReader(nil))
+	require.NoError(t, err)
+
+	t.Run("nil user", func(t *testing.T) {
+		got, err := r.listRefreshTokens(ctx, nil)
+		assert.ErrorContains(t, err, "user is nil")
+		assert.Nil(t, got)
+	})
+	t.Run("empty user id", func(t *testing.T) {
+		got, err := r.listRefreshTokens(ctx, &user{Address: ""})
+		assert.ErrorContains(t, err, "user id is empty")
+		assert.Nil(t, got)
+	})
+	t.Run("empty response", func(t *testing.T) {
+		got, err := r.listRefreshTokens(ctx, &user{Id: "u123"})
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+	})
+	t.Run("got target response", func(t *testing.T) {
+		known := &user{Id: "withtargetresponse", Address: "addr"}
+		require.NoError(t, r.rw.Create(ctx, known))
+
+		token := RefreshTokenValue("something")
+		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
+			return nil
+		})
+
+		got, err := r.listRefreshTokens(ctx, known)
+		assert.NoError(t, err)
+		assert.Len(t, got, 1)
+	})
+	t.Run("got multiple responses", func(t *testing.T) {
+		known := &user{Id: "with multiple responses", Address: "addr"}
+		require.NoError(t, r.rw.Create(ctx, known))
+
+		token := RefreshTokenValue("something")
+		r.rw.DoTx(ctx, 1, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+			require.NoError(t, upsertRefreshToken(ctx, w, known, targetResourceType, token))
+			require.NoError(t, upsertRefreshToken(ctx, w, known, sessionResourceType, token))
+			return nil
+		})
+
+		got, err := r.listRefreshTokens(ctx, known)
+		assert.NoError(t, err)
+		assert.Len(t, got, 2)
+	})
+}
+
 func TestLookupRefreshToken(t *testing.T) {
 	ctx := context.Background()
 	s, err := cachedb.Open(ctx)

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
@@ -46,12 +47,13 @@ type server interface {
 type StartCommand struct {
 	*base.Command
 
-	flagRefreshIntervalSeconds int64
-	flagDatabaseUrl            string
-	flagLogLevel               string
-	flagLogFormat              string
-	flagStoreDebug             bool
-	flagBackground             bool
+	flagRefreshInterval   time.Duration
+	flagFullFetchInterval time.Duration
+	flagDatabaseUrl       string
+	flagLogLevel          string
+	flagLogFormat         string
+	flagStoreDebug        bool
+	flagBackground        bool
 }
 
 func (c *StartCommand) Synopsis() string {
@@ -95,12 +97,17 @@ func (c *StartCommand) Flags() *base.FlagSets {
 		Target: &c.flagDatabaseUrl,
 		Usage:  `If set, specifies the URL used to connect to the sqlite database (store) for caching. This can refer to a file on disk (file://) from which a URL will be read; an env var (env://) from which the URL will be read; or a direct database URL.`,
 	})
-	f.Int64Var(&base.Int64Var{
+	f.DurationVar(&base.DurationVar{
 		Name:    "refresh-interval-seconds",
-		Target:  &c.flagRefreshIntervalSeconds,
-		Usage:   `If set, specifies the number of seconds between cache refreshes. Default: 5 minutes`,
-		Aliases: []string{"r"},
-		Default: daemon.DefaultRefreshIntervalSeconds,
+		Target:  &c.flagRefreshInterval,
+		Usage:   `If set, specifies the number of seconds between refresh token supported cache refreshes. Default: 1 minute`,
+		Default: daemon.DefaultRefreshIntervalSeconds * time.Second,
+	})
+	f.DurationVar(&base.DurationVar{
+		Name:    "full-fetch-interval-seconds",
+		Target:  &c.flagFullFetchInterval,
+		Usage:   `If set, specifies the number of seconds between full cache refresh for boundary instances which do not support refresh tokens. Default: 5 minutes`,
+		Default: daemon.DefaultFullFetchIntervalSeconds * time.Second,
 	})
 	f.BoolVar(&base.BoolVar{
 		Name:    "store-debug",
@@ -175,14 +182,15 @@ func (c *StartCommand) Run(args []string) int {
 	writers = append(writers, logFile)
 
 	cfg := &daemon.Config{
-		ContextCancel:          cancel,
-		RefreshIntervalSeconds: c.flagRefreshIntervalSeconds,
-		DatabaseUrl:            c.flagDatabaseUrl,
-		StoreDebug:             c.flagStoreDebug,
-		LogLevel:               c.flagLogLevel,
-		LogFormat:              c.flagLogFormat,
-		LogWriter:              io.MultiWriter(writers...),
-		DotDirectory:           dotDir,
+		ContextCancel:     cancel,
+		RefreshInterval:   c.flagRefreshInterval,
+		FullFetchInterval: c.flagFullFetchInterval,
+		DatabaseUrl:       c.flagDatabaseUrl,
+		StoreDebug:        c.flagStoreDebug,
+		LogLevel:          c.flagLogLevel,
+		LogFormat:         c.flagLogFormat,
+		LogWriter:         io.MultiWriter(writers...),
+		DotDirectory:      dotDir,
 	}
 
 	srv, err := daemon.New(ctx, cfg)
