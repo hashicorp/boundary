@@ -3,6 +3,10 @@
 
 package static
 
+import (
+	"github.com/hashicorp/boundary/internal/pagination"
+)
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -22,6 +26,7 @@ type options struct {
 	withLimit                int
 	withPublicId             string
 	withPrivateKeyPassphrase []byte
+	withStartPageAfterItem   pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -62,5 +67,13 @@ func WithPublicId(name string) Option {
 func WithPrivateKeyPassphrase(with []byte) Option {
 	return func(o *options) {
 		o.withPrivateKeyPassphrase = with
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }
