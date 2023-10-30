@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/password/store"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/oplog"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -67,6 +68,11 @@ func (a *AuthMethod) TableName() string {
 // SetTableName sets the table name.
 func (a *AuthMethod) SetTableName(n string) {
 	a.tableName = n
+}
+
+// GetResourceType returns the resource type of the AuthMethod
+func (a *AuthMethod) GetResourceType() resource.Type {
+	return resource.AuthMethod
 }
 
 func (a *AuthMethod) oplog(op oplog.OpType) oplog.Metadata {

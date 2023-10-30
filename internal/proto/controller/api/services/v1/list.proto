@@ -1,0 +1,58 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+syntax = "proto3";
+
+package controller.api.services.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hashicorp/boundary/internal/gen/controller/api/services;services";
+
+// ListRefreshToken is used to create refresh
+// tokens for list endpoints.
+message ListRefreshToken {
+  // When the refresh token was created.
+  google.protobuf.Timestamp created_time = 1;
+  // When the refresh token was last used.
+  google.protobuf.Timestamp updated_time = 2;
+  // The resource type listed. Used to ensure
+  // refresh tokens are not used between list methods.
+  ResourceType resource_type = 3;
+  // A hash of the users grants
+  // at the time of the refresh token issuing.
+  bytes grants_hash = 4;
+  // The ID of the last item returned on the
+  // previous page.
+  string last_item_id = 5;
+  // The updated_time of the last item returned on
+  // the previous page. This is needed
+  // in addition to the ID since it can change after
+  // the creation of the refresh token.
+  google.protobuf.Timestamp last_item_updated_time = 6;
+}
+
+// ResourceType represents the different list
+// endpoint resource types supported.
+enum ResourceType {
+  RESOURCE_TYPE_UNSPECIFIED = 0;
+  RESOURCE_TYPE_ACCOUNT = 1;
+  RESOURCE_TYPE_AUTH_METHOD = 2;
+  RESOURCE_TYPE_AUTH_TOKEN = 3;
+  RESOURCE_TYPE_CREDENTIAL = 4;
+  RESOURCE_TYPE_CREDENTIAL_LIBRARY = 5;
+  RESOURCE_TYPE_CREDENTIAL_STORE = 6;
+  RESOURCE_TYPE_GROUP = 7;
+  RESOURCE_TYPE_HOST = 8;
+  RESOURCE_TYPE_HOST_CATALOG = 9;
+  RESOURCE_TYPE_HOST_SET = 10;
+  RESOURCE_TYPE_MANAGED_GROUP = 11;
+  RESOURCE_TYPE_ROLE = 12;
+  RESOURCE_TYPE_SCOPE = 13;
+  RESOURCE_TYPE_SESSION = 14;
+  RESOURCE_TYPE_SESSION_RECORDING = 15;
+  RESOURCE_TYPE_STORAGE_BUCKET = 16;
+  RESOURCE_TYPE_TARGET = 17;
+  RESOURCE_TYPE_USER = 18;
+  RESOURCE_TYPE_WORKER = 19;
+}

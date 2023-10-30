@@ -58,4 +58,8 @@ select public_id, project_id from target
 %s
 ;
 `
+
+	estimateCountTargets = `
+select sum(reltuples::bigint) as estimate from pg_class where oid in ('target_tcp'::regclass, 'target_ssh'::regclass)
+`
 )

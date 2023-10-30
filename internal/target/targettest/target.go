@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/targettest/store"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -182,6 +183,11 @@ func (t *Target) SetDescription(description string) {
 	t.Description = description
 }
 
+// GetResourceType returns the resource type of the Target
+func (t *Target) GetResourceType() resource.Type {
+	return resource.Target
+}
+
 func (t *Target) SetVersion(v uint32) {
 	t.Version = v
 }
@@ -324,6 +330,7 @@ func New(ctx context.Context, projectId string, opt ...target.Option) (target.Ta
 			EgressWorkerFilter:     opts.WithEgressWorkerFilter,
 			IngressWorkerFilter:    opts.WithIngressWorkerFilter,
 		},
+		Address: opts.WithAddress,
 	}
 	return t, nil
 }
@@ -360,6 +367,11 @@ func TestNewTestTarget(ctx context.Context, t *testing.T, conn *db.DB, projectId
 			newCredLibs = append(newCredLibs, cl)
 		}
 		err := rw.CreateItems(context.Background(), newCredLibs)
+		require.NoError(err)
+	}
+	if len(opts.WithAddress) != 0 {
+		addr := target.TestNewTargetAddress(id, opts.WithAddress)
+		err := rw.Create(ctx, addr)
 		require.NoError(err)
 	}
 	return tar

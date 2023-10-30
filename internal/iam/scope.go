@@ -150,8 +150,8 @@ func (s *Scope) VetForWrite(ctx context.Context, r db.Reader, opType db.OpType, 
 	return nil
 }
 
-// ResourceType returns the type of scope
-func (s *Scope) ResourceType() resource.Type {
+// GetResourceType returns the type of scope
+func (s *Scope) GetResourceType() resource.Type {
 	return resource.Scope
 }
 
