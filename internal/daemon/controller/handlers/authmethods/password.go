@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
 	"github.com/hashicorp/boundary/internal/types/action"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/authmethods"
@@ -100,6 +101,7 @@ func (s Service) authenticatePassword(ctx context.Context, req *pbs.Authenticate
 }
 
 func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethodId, loginName, pw string) (*pba.AuthToken, error) {
+	const op = "authmethods.(Service).authenticateWithPwRepo"
 	iamRepo, err := s.iamRepoFn()
 	if err != nil {
 		return nil, err
@@ -128,6 +130,11 @@ func (s Service) authenticateWithPwRepo(ctx context.Context, scopeId, authMethod
 	tok, err := atRepo.CreateAuthToken(ctx, u, acct.GetPublicId())
 	if err != nil {
 		return nil, err
+	}
+
+	if err := event.WriteObservation(ctx, op, event.WithDetails("user_id", u.GetPublicId(), "auth_token_start",
+		tok.GetCreateTime(), "auth_token_end", tok.GetExpirationTime())); err != nil {
+		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("Unable to write observation event for authenticate method"))
 	}
 
 	return s.ConvertInternalAuthTokenToApiAuthToken(
