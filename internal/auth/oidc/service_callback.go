@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/boundary/internal/auth/oidc/request"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/errors"
+	"github.com/hashicorp/boundary/internal/event"
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-bexpr"
 	"github.com/mitchellh/pointerstructure"
@@ -252,11 +253,16 @@ func Callback(
 	if err != nil {
 		return "", errors.Wrap(ctx, err, op)
 	}
-	if _, err := tokenRepo.CreateAuthToken(ctx, user, acct.PublicId, authtoken.WithPublicId(reqState.TokenRequestId), authtoken.WithStatus(authtoken.PendingStatus)); err != nil {
+	authToken, err := tokenRepo.CreateAuthToken(ctx, user, acct.PublicId, authtoken.WithPublicId(reqState.TokenRequestId), authtoken.WithStatus(authtoken.PendingStatus))
+	if err != nil {
 		if errors.Match(errors.T(errors.NotUnique), err) {
 			return "", errors.New(ctx, errors.Forbidden, op, "not a unique request", errors.WithWrap(err))
 		}
 		return "", errors.Wrap(ctx, err, op)
+	}
+	if err := event.WriteObservation(ctx, op, event.WithDetails("user_id", user.GetPublicId(), "auth_token_start",
+		authToken.GetCreateTime(), "auth_token_end", authToken.GetExpirationTime())); err != nil {
+		return "", errors.Wrap(ctx, err, op, errors.WithMsg("Unable to write observation event for authenticate method"))
 	}
 	// tada!  we can return a final redirect URL for the successful authentication.
 	return reqState.FinalRedirectUrl, nil
