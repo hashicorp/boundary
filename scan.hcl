@@ -3,7 +3,7 @@
 
 repository {
   go_modules = true
-  # osv = true
+  osv = true
   secrets {
     all = true
   } 
