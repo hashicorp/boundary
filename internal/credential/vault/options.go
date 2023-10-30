@@ -3,7 +3,10 @@
 
 package vault
 
-import "github.com/hashicorp/boundary/globals"
+import (
+	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/pagination"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -19,18 +22,19 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withName           string
-	withDescription    string
-	withLimit          int
-	withCACert         []byte
-	withNamespace      string
-	withTlsServerName  string
-	withTlsSkipVerify  bool
-	withWorkerFilter   string
-	withClientCert     *ClientCertificate
-	withMethod         Method
-	withRequestBody    []byte
-	withCredentialType globals.CredentialType
+	withName               string
+	withDescription        string
+	withLimit              int
+	withCACert             []byte
+	withNamespace          string
+	withTlsServerName      string
+	withTlsSkipVerify      bool
+	withWorkerFilter       string
+	withClientCert         *ClientCertificate
+	withMethod             Method
+	withRequestBody        []byte
+	withCredentialType     globals.CredentialType
+	withStartPageAfterItem pagination.Item
 
 	withOverrideUsernameAttribute             string
 	withOverridePasswordAttribute             string
@@ -236,5 +240,13 @@ func WithExtensions(s string) Option {
 func WithAdditionalValidPrincipals(p []string) Option {
 	return func(o *options) {
 		o.withAdditionalValidPrincipals = p
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }
