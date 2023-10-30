@@ -52,6 +52,12 @@ func testStaticResourceRetrievalFunc[T any](t *testing.T, ret [][]T, removed [][
 	}
 }
 
+func testFullFetchRetrievalFunc[T any](t *testing.T, ret []T) func(context.Context, string, string, RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+	return func(_ context.Context, _, _ string, _ RefreshTokenValue) ([]T, []string, RefreshTokenValue, error) {
+		return ret, nil, "", nil
+	}
+}
+
 // testErroringForRefreshTokenRetrievalFunc returns a refresh token error when
 // the refresh token is not empty.  This is useful for testing behavior when
 // the refresh token has expired or is otherwise invalid.
@@ -303,8 +309,6 @@ func TestCleanAndPickTokens(t *testing.T) {
 
 func TestRefresh(t *testing.T) {
 	ctx := context.Background()
-	s, err := db.Open(ctx)
-	require.NoError(t, err)
 
 	boundaryAddr := "address"
 	u := &user{Id: "u1", Address: boundaryAddr}
@@ -317,15 +321,18 @@ func TestRefresh(t *testing.T) {
 
 	boundaryAuthTokens := []*authtokens.AuthToken{at}
 	atMap := make(map[ringToken]*authtokens.AuthToken)
-	r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
-	require.NoError(t, err)
-	rs, err := NewRefreshService(ctx, r)
-	require.NoError(t, err)
 
 	atMap[ringToken{"k", "t"}] = at
-	require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
 
 	t.Run("set targets", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
 		retTargets := []*targets.Target{
 			target("1"),
 			target("2"),
@@ -359,6 +366,14 @@ func TestRefresh(t *testing.T) {
 	})
 
 	t.Run("set sessions", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
 		retSess := []*sessions.Session{
 			session("1"),
 			session("2"),
@@ -391,8 +406,16 @@ func TestRefresh(t *testing.T) {
 	})
 
 	t.Run("error propogates up", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
 		innerErr := errors.New("test error")
-		err := rs.Refresh(ctx,
+		err = rs.Refresh(ctx,
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
 			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 				require.Equal(t, boundaryAddr, addr)
@@ -411,6 +434,14 @@ func TestRefresh(t *testing.T) {
 	})
 
 	t.Run("tokens that are no longer in the ring is deleted", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
 		// Remove the token from the keyring, see that we can still see the
 		// token and then user until a Refresh happens which causes them to be
 		// cleaned up.
@@ -427,6 +458,178 @@ func TestRefresh(t *testing.T) {
 		rs.Refresh(ctx,
 			WithSessionRetrievalFunc(testStaticResourceRetrievalFunc[*sessions.Session](t, nil, nil)),
 			WithTargetRetrievalFunc(testStaticResourceRetrievalFunc[*targets.Target](t, nil, nil)))
+
+		ps, err = r.listTokens(ctx, u)
+		require.NoError(t, err)
+		assert.Empty(t, ps)
+
+		// And since the last token was deleted, the user also was deleted
+		us, err = r.listUsers(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, us)
+	})
+}
+
+func TestFullFetch(t *testing.T) {
+	ctx := context.Background()
+
+	boundaryAddr := "address"
+	u := &user{Id: "u1", Address: boundaryAddr}
+	at := &authtokens.AuthToken{
+		Id:             "at_1",
+		Token:          "at_1_token",
+		UserId:         u.Id,
+		ExpirationTime: time.Now().Add(time.Minute),
+	}
+
+	boundaryAuthTokens := []*authtokens.AuthToken{at}
+	atMap := make(map[ringToken]*authtokens.AuthToken)
+
+	atMap[ringToken{"k", "t"}] = at
+
+	t.Run("set targets", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retTargets := []*targets.Target{
+			target("1"),
+			target("2"),
+			target("3"),
+			target("4"),
+		}
+		// Since this user doesn't have any resources, the user's data will still
+		// only get updated with a call to Refresh.
+		assert.NoError(t, rs.FullFetch(ctx,
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets))))
+
+		got, err := r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+
+		assert.NoError(t, rs.Refresh(ctx,
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets[:2]))))
+
+		got, err = r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, got, retTargets[:2])
+
+		// now a full fetch will work since the user has resources and no refresh token
+		assert.NoError(t, rs.FullFetch(ctx,
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, retTargets))))
+
+		got, err = r.ListTargets(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, got, retTargets)
+	})
+
+	t.Run("set sessions", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		retSess := []*sessions.Session{
+			session("1"),
+			session("2"),
+			session("3"),
+			session("4"),
+		}
+		assert.NoError(t, rs.FullFetch(ctx,
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, nil)),
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, retSess))))
+
+		got, err := r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+
+		assert.NoError(t, rs.Refresh(ctx,
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, nil)),
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, retSess[:2]))))
+		got, err = r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, got, retSess[:2])
+
+		assert.NoError(t, rs.FullFetch(ctx,
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, nil)),
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, retSess))))
+		got, err = r.ListSessions(ctx, at.Id)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, got, retSess)
+	})
+
+	t.Run("error propogates up", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		assert.NoError(t, rs.Refresh(ctx,
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, []*targets.Target{target("1")})),
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, []*sessions.Session{session("1")}))))
+
+		innerErr := errors.New("test error")
+		err = rs.FullFetch(ctx,
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
+			WithTargetRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
+				require.Equal(t, boundaryAddr, addr)
+				require.Equal(t, at.Token, token)
+				return nil, nil, "", innerErr
+			}))
+		assert.ErrorContains(t, err, innerErr.Error())
+
+		err = rs.FullFetch(ctx,
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, nil)),
+			WithSessionRetrievalFunc(func(ctx context.Context, addr, token string, refreshTok RefreshTokenValue) ([]*sessions.Session, []string, RefreshTokenValue, error) {
+				require.Equal(t, boundaryAddr, addr)
+				require.Equal(t, at.Token, token)
+				return nil, nil, "", innerErr
+			}))
+		assert.ErrorContains(t, err, innerErr.Error())
+	})
+
+	t.Run("tokens that are no longer in the ring is deleted", func(t *testing.T) {
+		s, err := db.Open(ctx)
+		require.NoError(t, err)
+		r, err := NewRepository(ctx, s, &sync.Map{}, mapBasedAuthTokenKeyringLookup(atMap), sliceBasedAuthTokenBoundaryReader(boundaryAuthTokens))
+		require.NoError(t, err)
+		rs, err := NewRefreshService(ctx, r)
+		require.NoError(t, err)
+		require.NoError(t, r.AddKeyringToken(ctx, boundaryAddr, KeyringToken{KeyringType: "k", TokenName: "t", AuthTokenId: at.Id}))
+
+		assert.NoError(t, rs.Refresh(ctx,
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, []*targets.Target{target("1")})),
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, []*sessions.Session{session("1")}))))
+
+		// Remove the token from the keyring, see that we can still see the
+		// token and then user until a Refresh happens which causes them to be
+		// cleaned up.
+		delete(atMap, ringToken{"k", "t"})
+
+		ps, err := r.listTokens(ctx, u)
+		require.NoError(t, err)
+		assert.Len(t, ps, 1)
+
+		us, err := r.listUsers(ctx)
+		require.NoError(t, err)
+		assert.Len(t, us, 1)
+
+		rs.FullFetch(ctx,
+			WithSessionRetrievalFunc(testFullFetchRetrievalFunc[*sessions.Session](t, nil)),
+			WithTargetRetrievalFunc(testFullFetchRetrievalFunc[*targets.Target](t, nil)))
 
 		ps, err = r.listTokens(ctx, u)
 		require.NoError(t, err)
