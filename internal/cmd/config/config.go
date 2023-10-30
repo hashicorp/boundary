@@ -370,7 +370,7 @@ func DevKeyGeneration() string {
 	if n != numBytes {
 		panic(fmt.Errorf("expected to read 32 bytes, read %d", n))
 	}
-	devKey := base64.StdEncoding.EncodeToString(randBuf.Bytes())[:numBytes]
+	devKey := base64.StdEncoding.EncodeToString(randBuf.Bytes())
 	return devKey
 }
 
