@@ -5,6 +5,7 @@ package plugin
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -575,7 +576,7 @@ func (r *Repository) UpdateSet(ctx context.Context, projectId string, s *HostSet
 // LookupSet will look up a host set in the repository and return the host set,
 // as well as host IDs that match. If the host set is not found, it will return
 // nil, nil, nil. No options are currently supported.
-func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...host.Option) (*HostSet, *plugin.Plugin, error) {
+func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...Option) (*HostSet, *plugin.Plugin, error) {
 	const op = "plugin.(Repository).LookupSet"
 	if publicId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "no public id")
@@ -596,19 +597,108 @@ func (r *Repository) LookupSet(ctx context.Context, publicId string, _ ...host.O
 	return sets[0], plg, nil
 }
 
-// ListSets returns a slice of HostSets for the catalogId. WithLimit is the
-// only option supported.
-func (r *Repository) ListSets(ctx context.Context, catalogId string, opt ...host.Option) ([]*HostSet, *plugin.Plugin, error) {
-	const op = "plugin.(Repository).ListSets"
+// listSets returns a slice of HostSets for the catalogId.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listSets(ctx context.Context, catalogId string, opt ...Option) ([]*HostSet, *plugin.Plugin, time.Time, error) {
+	const op = "plugin.(Repository).listSets"
 	if catalogId == "" {
-		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
+		return nil, nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing catalog id")
 	}
 
-	sets, plg, err := r.getSets(ctx, "", catalogId, opt...)
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
 	}
-	return sets, plg, nil
+	query := fmt.Sprintf(listSetsTemplate, limit)
+	args := []any{sql.Named("catalog_id", catalogId)}
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(listSetsPageTemplate, limit)
+		args = append(args,
+			sql.Named("last_item_create_time", opts.withStartPageAfterItem.GetCreateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	return r.querySets(ctx, query, args)
+}
+
+// listSetsRefresh returns a slice of Host sets for the catalogId and the associated plugin.
+// Supported options:
+//   - WithLimit which overrides the limit set in the Repository object
+//   - WithStartPageAfterItem which sets where to start listing from
+func (r *Repository) listSetsRefresh(ctx context.Context, catalogId string, updatedAfter time.Time, opt ...Option) ([]*HostSet, *plugin.Plugin, time.Time, error) {
+	const op = "plugin.(Repository).listSetsRefresh"
+	switch {
+	case catalogId == "":
+		return nil, nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "no catalog id")
+	case updatedAfter.IsZero():
+		return nil, nil, time.Time{}, errors.New(ctx, errors.InvalidParameter, op, "missing updated after time")
+	}
+	opts := getOpts(opt...)
+	limit := r.defaultLimit
+	if opts.withLimit != 0 {
+		// non-zero signals an override of the default limit for the repo.
+		limit = opts.withLimit
+	}
+	query := fmt.Sprintf(listSetsRefreshTemplate, limit)
+	args := []any{
+		sql.Named("catalog_id", catalogId),
+		sql.Named("updated_after_time", updatedAfter),
+	}
+	if opts.withStartPageAfterItem != nil {
+		query = fmt.Sprintf(listSetsRefreshPageTemplate, limit)
+		args = append(args,
+			sql.Named("last_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("last_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+	}
+
+	return r.querySets(ctx, query, args)
+}
+
+func (r *Repository) querySets(ctx context.Context, query string, args []any) ([]*HostSet, *plugin.Plugin, time.Time, error) {
+	const op = "plugin.(Repository).querySets"
+
+	var sets []*HostSet
+	var plg *plugin.Plugin
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, w db.Writer) error {
+		rows, err := r.Query(ctx, query, args)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		var foundSets []*hostSetAgg
+		for rows.Next() {
+			if err := r.ScanRows(ctx, rows, &foundSets); err != nil {
+				return err
+			}
+		}
+		if len(foundSets) != 0 {
+			plg = plugin.NewPlugin()
+			plg.PublicId = foundSets[0].PluginId
+			if err := r.LookupByPublicId(ctx, plg); err != nil {
+				return err
+			}
+			sets = make([]*HostSet, 0, len(foundSets))
+			for _, ha := range foundSets {
+				set, err := ha.toHostSet(ctx)
+				if err != nil {
+					return err
+				}
+				sets = append(sets, set)
+			}
+		}
+		transactionTimestamp, err = r.Now(ctx)
+		return err
+	}); err != nil {
+		return nil, nil, time.Time{}, errors.Wrap(ctx, err, op)
+	}
+	return sets, plg, transactionTimestamp, nil
 }
 
 // DeleteSet deletes the host set for the provided id from the repository
@@ -686,7 +776,7 @@ func (r *Repository) DeleteSet(ctx context.Context, projectId string, publicId s
 	return rowsDeleted, nil
 }
 
-func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...host.Option) ([]*HostSet, *plugin.Plugin, error) {
+func (r *Repository) getSets(ctx context.Context, publicId string, catalogId string, opt ...Option) ([]*HostSet, *plugin.Plugin, error) {
 	const op = "plugin.(Repository).getSets"
 	if publicId == "" && catalogId == "" {
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "missing search criteria: both host set id and catalog id are empty")
@@ -695,35 +785,44 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 		return nil, nil, errors.New(ctx, errors.InvalidParameter, op, "searching for both a host set id and a catalog id is not supported")
 	}
 
-	opts, err := host.GetOpts(opt...)
-	if err != nil {
-		return nil, nil, errors.Wrap(ctx, err, op)
-	}
+	opts := getOpts(opt...)
 
 	limit := r.defaultLimit
-	if opts.WithLimit != 0 {
+	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
-		limit = opts.WithLimit
+		limit = opts.withLimit
 	}
 
-	args := make([]any, 0, 1)
+	var args []any
 	var where string
-
 	switch {
 	case publicId != "":
-		where, args = "public_id = ?", append(args, publicId)
+		where, args = "public_id = @public_id", append(args, sql.Named("public_id", publicId))
 	default:
-		where, args = "catalog_id = ?", append(args, catalogId)
+		where, args = "catalog_id = @catalog_id", append(args, sql.Named("catalog_id", catalogId))
+	}
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use public_id as a tiebreaker.
+		args = append(args,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+		where = "(" + where + ") and (update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))"
 	}
 
-	dbArgs := []db.Option{db.WithLimit(limit)}
-
-	if opts.WithOrderByCreateTime {
-		if opts.Ascending {
-			dbArgs = append(dbArgs, db.WithOrder("create_time asc"))
-		} else {
-			dbArgs = append(dbArgs, db.WithOrder("create_time"))
-		}
+	dbArgs := []db.Option{
+		db.WithLimit(limit),
+		db.WithOrder(withOrder),
 	}
 
 	var aggHostSets []*hostSetAgg
@@ -746,6 +845,7 @@ func (r *Repository) getSets(ctx context.Context, publicId string, catalogId str
 	}
 	var plg *plugin.Plugin
 	if plgId != "" {
+		var err error
 		plg, err = r.getPlugin(ctx, plgId)
 		if err != nil {
 			return nil, nil, errors.Wrap(ctx, err, op)
@@ -786,6 +886,48 @@ func toPluginSet(ctx context.Context, in *HostSet) (*pb.HostSet, error) {
 		}
 	}
 	return hs, nil
+}
+
+// listDeletedSetIds lists the public IDs of any hosts deleted since the timestamp provided,
+// and the timestamp of the transaction within which the hosts were listed.
+func (r *Repository) listDeletedSetIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "static.(Repository).listDeletedHostSetIds"
+	var deleteHostSets []*deletedHostSet
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deleteHostSets, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted host sets"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var hostSetIds []string
+	for _, t := range deleteHostSets {
+		hostSetIds = append(hostSetIds, t.PublicId)
+	}
+	return hostSetIds, transactionTimestamp, nil
+}
+
+// estimatedSetCount returns an estimate of the total number of plugin host sets.
+func (r *Repository) estimatedSetCount(ctx context.Context) (int, error) {
+	const op = "plugin.(Repository).estimatedHostSetCount"
+	rows, err := r.reader.Query(ctx, estimateCountHostSets, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query plugin host sets"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query plugin host sets"))
+		}
+	}
+	return count, nil
 }
 
 // Endpoints provides all the endpoints available for a given set id.
