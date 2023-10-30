@@ -197,4 +197,8 @@ select reltuples::bigint as estimate from pg_class where oid in ('credential_vau
 	estimateCountSSHCertificateCredentialLibraries = `
 select reltuples::bigint as estimate from pg_class where oid in ('credential_vault_ssh_cert_library'::regclass)
 `
+
+	estimateCountCredentialStores = `
+select reltuples::bigint as estimate from pg_class where oid in ('credential_vault_store'::regclass)
+`
 )

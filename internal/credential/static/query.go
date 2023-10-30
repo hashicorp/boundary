@@ -49,4 +49,8 @@ select sum(reltuples::bigint) as estimate
   'credential_static_username_password_credential'::regclass,
   'credential_static_ssh_private_key_credential'::regclass
  )`
+
+	estimateCountCredentialStores = `
+select reltuples::bigint as estimate from pg_class where oid in ('credential_static_store'::regclass)
+`
 )
