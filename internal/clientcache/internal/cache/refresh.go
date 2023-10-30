@@ -129,7 +129,7 @@ func (r *RefreshService) refreshableUsers(ctx context.Context, in []*user) ([]*u
 // Refresh iterates over all tokens in the cache that are for users who either
 // have a refresh token or which do not have any resources in the cache yet. It
 // then attempts to read those user's resources from boundary and updates the
-// cache with the values retrieved there.  Refresh accepts the options
+// cache with the values retrieved there. Refresh accepts the options
 // WithTargetRetrievalFunc and WithSessionRetrievalFunc which overwrites the
 // default functions used to retrieve those resources from boundary.
 func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
@@ -175,8 +175,7 @@ func (r *RefreshService) Refresh(ctx context.Context, opt ...Option) error {
 // for that user and updates the database with the result. Users are identified
 // as being in this group if they have at least one resource in the cache and
 // do not have any refresh tokens. Users who do not have any resources nor
-// refresh tokens are updated using Refresh since a query for no resources
-// should be just as quick as a query using refresh tokens.
+// refresh tokens are updated using Refresh.
 func (r *RefreshService) FullFetch(ctx context.Context, opt ...Option) error {
 	const op = "cache.(RefreshService).Refresh"
 	if err := r.repo.cleanExpiredOrOrphanedAuthTokens(ctx); err != nil {

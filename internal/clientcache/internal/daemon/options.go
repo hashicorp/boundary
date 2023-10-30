@@ -68,7 +68,7 @@ func withFullFetchInterval(_ context.Context, d time.Duration) Option {
 	}
 }
 
-// withIntervalRandomizationFactor provides an optional interval randomziation factor.
+// withIntervalRandomizationFactor provides an optional interval randomization factor.
 func withIntervalRandomizationFactor(_ context.Context, f float64) Option {
 	return func(o *options) error {
 		if f < 0 {

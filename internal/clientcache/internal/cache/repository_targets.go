@@ -200,7 +200,7 @@ func (r *Repository) fullFetchTargets(ctx context.Context, u *user, tokens map[A
 
 // upsertTargets upserts the provided targets to be stored for the provided user.
 func upsertTargets(ctx context.Context, w db.Writer, u *user, in []*targets.Target) error {
-	const op = "cache.upserTargets"
+	const op = "cache.upsertTargets"
 	switch {
 	case util.IsNil(w):
 		return errors.New(ctx, errors.InvalidParameter, op, "writer is nil")
