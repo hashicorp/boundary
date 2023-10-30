@@ -440,13 +440,18 @@ func Test_WriteObservation(t *testing.T) {
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
 		{
-			name:                    "simple",
-			ctx:                     testCtx,
-			telemetryFlag:           true,
-			observationPayload:      testPayloads,
-			header:                  testWantHeader,
-			details:                 testWantDetails,
-			observationSinkFileName: c.AllEvents.Name(),
+			name:               "simple",
+			ctx:                testCtx,
+			telemetryFlag:      true,
+			observationPayload: testPayloads,
+			header:             testWantHeader,
+		},
+		{
+			name:               "simple",
+			ctx:                testCtx,
+			telemetryFlag:      true,
+			observationPayload: testPayloads,
+			details:            testWantDetails,
 		},
 	}
 	for _, tt := range tests {
@@ -483,6 +488,7 @@ func Test_WriteObservation(t *testing.T) {
 			if !tt.telemetryFlag {
 				require.Nil(event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithRequest(tt.Request),
 					event.WithResponse(tt.Response)))
+				require.Nil(event.WriteObservation(tt.ctx, event.Op(tt.name), event.WithDetails(tt.details)))
 			}
 			if tt.observationSinkFileName != "" {
 				defer func() { _ = os.WriteFile(tt.observationSinkFileName, nil, 0o666) }()

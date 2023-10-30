@@ -52,6 +52,7 @@ func Test_Callback(t *testing.T) {
 		Mutex: testLock,
 		Name:  "test",
 	})
+	c.EventerConfig.TelemetryEnabled = true
 	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_Callback", event.WithEventerConfig(&c.EventerConfig)))
 	// some standard factories for unit tests which
 	// are used in the Callback(...) call
@@ -666,6 +667,7 @@ func Test_ManagedGroupFiltering(t *testing.T) {
 		Mutex: testLock,
 		Name:  "test",
 	})
+	c.EventerConfig.TelemetryEnabled = true
 	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_ManagedGroupFiltering", event.WithEventerConfig(&c.EventerConfig)))
 	// some standard factories for unit tests which
 	// are used in the Callback(...) call
