@@ -32,6 +32,20 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.withUpdateLastAccessedTime = true
 		assert.Equal(t, opts, testOpts)
 	})
+	t.Run("withUserId", func(t *testing.T) {
+		opts, err := getOpts(withUserId("u123"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withUserId = "u123"
+		assert.Equal(t, opts, testOpts)
+	})
+	t.Run("withAuthTokenId", func(t *testing.T) {
+		opts, err := getOpts(withAuthTokenId("at123"))
+		require.NoError(t, err)
+		testOpts := getDefaultOptions()
+		testOpts.withAuthTokenId = "at123"
+		assert.Equal(t, opts, testOpts)
+	})
 	t.Run("WithTargetRetrievalFunc", func(t *testing.T) {
 		var f TargetRetrievalFunc = func(ctx context.Context, addr, authTok string, refreshTok RefreshTokenValue) ([]*targets.Target, []string, RefreshTokenValue, error) {
 			return nil, nil, "", nil

@@ -432,5 +432,6 @@ func TestDefaultTargetRetrievalFunc(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, refTok2)
 	assert.Empty(t, removed2)
+	// Note: This will sometimes fail until PR 3897 is merged
 	assert.Empty(t, got2)
 }

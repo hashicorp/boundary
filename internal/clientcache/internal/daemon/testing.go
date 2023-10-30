@@ -33,11 +33,12 @@ func NewTestServer(t *testing.T, cmd Commander, opt ...Option) *TestServer {
 	dotDir := t.TempDir()
 
 	cfg := &Config{
-		ContextCancel:          cancel,
-		RefreshIntervalSeconds: DefaultRefreshIntervalSeconds,
-		StoreDebug:             opts.withDebug,
-		LogWriter:              io.Discard,
-		DotDirectory:           dotDir,
+		ContextCancel:     cancel,
+		RefreshInterval:   defaultRefreshInterval,
+		FullFetchInterval: defaultFullFetchInterval,
+		StoreDebug:        opts.withDebug,
+		LogWriter:         io.Discard,
+		DotDirectory:      dotDir,
 	}
 
 	s, err := New(ctx, cfg)
