@@ -230,7 +230,7 @@ func TestJob_UpsertHosts(t *testing.T) {
 
 			// Check again, but via performing an explicit list
 			var gotPlg *plugin.Plugin
-			got, gotPlg, err = repo.ListHostsByCatalogId(ctx, in.catalog.GetPublicId())
+			got, gotPlg, _, err = repo.listHosts(ctx, in.catalog.GetPublicId())
 			require.NoError(err)
 			assert.Len(got, len(in.phs))
 			assert.Empty(
@@ -296,4 +296,157 @@ func TestJob_UpsertHosts(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRepository_ListHostsByCatalogId(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+	catalog := TestCatalog(t, conn, proj1.GetPublicId(), plg.GetPublicId())
+
+	total := 5
+	for i := 0; i < total; i++ {
+		TestHost(t, conn, catalog.GetPublicId(), fmt.Sprintf("ext-id-%d", i))
+	}
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, kms, sched, plgm)
+	require.NoError(t, err)
+
+	t.Run("no-options", func(t *testing.T) {
+		got, retPlg, ttime, err := repo.listHosts(ctx, catalog.GetPublicId())
+		require.NoError(t, err)
+		assert.Equal(t, total, len(got))
+		assert.Equal(t, retPlg, plg)
+		// Transaction timestamp should be within ~10 seconds of now
+		assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+		assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+	})
+
+	t.Run("withStartPageAfter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		page1, retPlg, ttime, err := repo.listHosts(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+		)
+		require.NoError(err)
+		require.Len(page1, 2)
+		assert.Equal(retPlg, plg)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		page2, retPlg, ttime, err := repo.listHosts(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page1[1]),
+		)
+		require.NoError(err)
+		require.Len(page2, 2)
+		assert.Equal(retPlg, plg)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, retPlg, ttime, err := repo.listHosts(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page2[1]),
+		)
+		require.NoError(err)
+		require.Len(page3, 1)
+		assert.Equal(retPlg, plg)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+		}
+		page4, retPlg, ttime, err := repo.listHosts(
+			context.Background(),
+			catalog.GetPublicId(),
+			WithLimit(2),
+			WithStartPageAfterItem(page3[0]),
+		)
+		require.NoError(err)
+		require.Empty(page4)
+		require.Empty(retPlg)
+		assert.True(time.Now().Before(ttime.Add(10 * time.Second)))
+		assert.True(time.Now().After(ttime.Add(-10 * time.Second)))
+	})
+}
+
+func Test_listDeletedHostIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms, sched, plgm)
+	require.NoError(t, err)
+
+	// Expect no entries
+	deletedIds, ttime, err := repo.listDeletedHostIds(ctx, time.Now().AddDate(-1, 0, 0))
+	require.NoError(t, err)
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// It's not possible to delete a plugin host, so this is kinda hard to test
+}
+
+func Test_estimatedHostCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	_, proj1 := iam.TestScopes(t, iamRepo)
+	sched := scheduler.TestScheduler(t, conn, wrapper)
+	plg := plugin.TestPlugin(t, conn, "test")
+	plgm := map[string]plgpb.HostPluginServiceClient{
+		plg.GetPublicId(): &loopback.WrappingPluginHostClient{Server: &loopback.TestPluginServer{}},
+	}
+	catalog := TestCatalog(t, conn, proj1.GetPublicId(), plg.GetPublicId())
+
+	rw := db.New(conn)
+	repo, err := NewRepository(ctx, rw, rw, testKms, sched, plgm)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems, err := repo.estimatedHostCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create a host, expect 1 entries
+	TestHost(t, conn, catalog.GetPublicId(), "ext-id")
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems, err = repo.estimatedHostCount(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, numItems)
 }
