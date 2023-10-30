@@ -77,7 +77,7 @@ func TestTickerFullFetch(t *testing.T) {
 func TestNextIntervalWithRandomness(t *testing.T) {
 	ctx := context.Background()
 	refresher := &fakeRefresher{make(chan struct{})}
-	rt, err := newRefreshTicker(ctx, refresher, withIntervalRandomizationFactor(ctx, .2))
+	rt, err := newRefreshTicker(ctx, refresher, testWithIntervalRandomizationFactor(ctx, .2))
 	require.NoError(t, err)
 
 	interval := 10 * time.Second

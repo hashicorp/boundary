@@ -40,8 +40,8 @@ type refreshTicker struct {
 }
 
 // newRefreshTicker creates a new refresh ticker. Accepted options are
-// withRefreshInterval, withFullFetchInterval, and
-// withIntervalRandomizationFactor.
+// withRefreshInterval, and withFullFetchInterval.
+// testWithIntervalRandomizationFactor is provided for tests.
 // The intervals can deviate +/- randomizationFactor * configured interval.
 // For example, an interval of 10 seconds and a randomization factor of 0.2 will
 // encounter intervals of 8 to 12 seconds since 10 * .2 is 2 seconds and 10 +/- 2
@@ -69,8 +69,8 @@ func newRefreshTicker(ctx context.Context, refresh refreshService, opt ...Option
 	}
 
 	randomizationFactor := defaultRandomizationFactor
-	if opts.withIntervalRandomizationFactorSet {
-		randomizationFactor = opts.withIntervalRandomizationFactor
+	if opts.testWithIntervalRandomizationFactorSet {
+		randomizationFactor = opts.testWithIntervalRandomizationFactor
 	}
 
 	return &refreshTicker{

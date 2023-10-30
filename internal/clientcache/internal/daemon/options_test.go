@@ -57,24 +57,24 @@ func Test_GetOpts(t *testing.T) {
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)
 	})
-	t.Run("withIntervalRandomizationFactor", func(t *testing.T) {
-		opts, err := getOpts(withIntervalRandomizationFactor(ctx, 0.2))
+	t.Run("testWithIntervalRandomizationFactor", func(t *testing.T) {
+		opts, err := getOpts(testWithIntervalRandomizationFactor(ctx, 0.2))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
-		testOpts.withIntervalRandomizationFactor = 0.2
-		testOpts.withIntervalRandomizationFactorSet = true
+		testOpts.testWithIntervalRandomizationFactor = 0.2
+		testOpts.testWithIntervalRandomizationFactorSet = true
 		assert.Equal(t, opts, testOpts)
 	})
-	t.Run("withIntervalRandomizationFactor zero", func(t *testing.T) {
-		opts, err := getOpts(withIntervalRandomizationFactor(ctx, 0))
+	t.Run("testWithIntervalRandomizationFactor zero", func(t *testing.T) {
+		opts, err := getOpts(testWithIntervalRandomizationFactor(ctx, 0))
 		require.NoError(t, err)
 		testOpts := getDefaultOptions()
-		testOpts.withIntervalRandomizationFactor = 0
-		testOpts.withIntervalRandomizationFactorSet = true
+		testOpts.testWithIntervalRandomizationFactor = 0
+		testOpts.testWithIntervalRandomizationFactorSet = true
 		assert.Equal(t, opts, testOpts)
 	})
-	t.Run("withIntervalRandomizationFactor negative", func(t *testing.T) {
-		opts, err := getOpts(withIntervalRandomizationFactor(ctx, -0.2))
+	t.Run("testWithIntervalRandomizationFactor negative", func(t *testing.T) {
+		opts, err := getOpts(testWithIntervalRandomizationFactor(ctx, -0.2))
 		require.ErrorContains(t, err, "must be non negative")
 		testOpts := getDefaultOptions()
 		assert.Equal(t, opts, testOpts)

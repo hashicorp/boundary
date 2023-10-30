@@ -12,12 +12,12 @@ import (
 )
 
 type options struct {
-	withDebug                          bool
-	withRefreshInterval                time.Duration
-	withFullFetchInterval              time.Duration
-	withIntervalRandomizationFactor    float64
-	withIntervalRandomizationFactorSet bool
-	withBoundaryTokenReaderFunc        cache.BoundaryTokenReaderFn
+	withDebug                              bool
+	withRefreshInterval                    time.Duration
+	withFullFetchInterval                  time.Duration
+	testWithIntervalRandomizationFactor    float64
+	testWithIntervalRandomizationFactorSet bool
+	withBoundaryTokenReaderFunc            cache.BoundaryTokenReaderFn
 }
 
 // Option - how options are passed as args
@@ -68,14 +68,15 @@ func withFullFetchInterval(_ context.Context, d time.Duration) Option {
 	}
 }
 
-// withIntervalRandomizationFactor provides an optional interval randomization factor.
-func withIntervalRandomizationFactor(_ context.Context, f float64) Option {
+// testWithIntervalRandomizationFactor provides an optional test interval
+// randomization factor.
+func testWithIntervalRandomizationFactor(_ context.Context, f float64) Option {
 	return func(o *options) error {
 		if f < 0 {
-			return fmt.Errorf("withIntervalRandomizationFactor must be non negative")
+			return fmt.Errorf("testWithIntervalRandomizationFactor must be non negative")
 		}
-		o.withIntervalRandomizationFactor = f
-		o.withIntervalRandomizationFactorSet = true
+		o.testWithIntervalRandomizationFactor = f
+		o.testWithIntervalRandomizationFactorSet = true
 		return nil
 	}
 }
