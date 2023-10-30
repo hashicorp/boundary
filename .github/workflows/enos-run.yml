@@ -82,6 +82,7 @@ jobs:
           - filter: 'e2e_docker_base_with_vault builder:crt'
           - filter: 'e2e_docker_base_with_postgres builder:crt'
           - filter: 'e2e_docker_base_with_worker builder:crt'
+          - filter: 'e2e_docker_worker_registration_controller_led builder:crt'
     runs-on: ${{ fromJSON(vars.RUNNER_LARGE) }}
     env:
       GITHUB_TOKEN: ${{ secrets.SERVICE_USER_GITHUB_TOKEN }}
@@ -249,11 +250,17 @@ jobs:
           mkdir -p ./enos/terraform-plugin-cache
           export ENOS_VAR_enos_user=$GITHUB_ACTOR && \
           enos scenario launch --timeout 60m0s --chdir ./enos ${{ matrix.filter }}
+      - name: Rename e2e tests output
+        run : |
+          pushd enos
+          scenario="${{ matrix.filter }}"
+          for f in *.log; do mv --  "$f" "${f%.log}_${scenario%% *}.log"; done
+          popd
       - name: Upload e2e tests output
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
           name: test-e2e-output
-          path: enos/test*.log
+          path: enos/*.log
           retention-days: 5
       - name: Get logs from postgres container
         # Retrieve logs from the postgres container on a failed
