@@ -46,6 +46,7 @@ docker run \
     -v "$MODULE_DIR/test.sh:/scripts/test.sh" \
     -v "$E2E_SSH_KEY_PATH:/keys/target.pem" \
     -v "$BOUNDARY_CLI_DIR:/boundary.zip" \
+    -v "/var/run/docker.sock:/var/run/docker.sock" \
     --network $TEST_NETWORK_NAME \
     --cap-add=CAP_IPC_LOCK \
     $TEST_RUNNER_IMAGE \
