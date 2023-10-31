@@ -55,9 +55,6 @@ import (
 const (
 	credentialDomain = "credential"
 	hostDomain       = "host"
-	// The default max page size is used when one is not
-	// provided to NewService.
-	defaultMaxPageSize = 1000
 )
 
 // extraWorkerFilterFunc takes in a set of workers and returns another set,
@@ -178,7 +175,7 @@ func NewService(
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing static credential repository")
 	}
 	if maxPageSize == 0 {
-		maxPageSize = uint(defaultMaxPageSize)
+		maxPageSize = uint(globals.DefaultMaxPageSize)
 	}
 	return Service{
 		repoFn:                  repoFn,
