@@ -520,6 +520,7 @@ func TestAuthenticate_Password(t *testing.T) {
 		Mutex: testLock,
 		Name:  "test",
 	})
+	c.EventerConfig.TelemetryEnabled = true
 	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_Authenticate", event.WithEventerConfig(&c.EventerConfig)))
 	sinkFileName := c.ObservationEvents.Name()
 	t.Cleanup(func() {
