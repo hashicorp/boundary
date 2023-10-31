@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -19,9 +18,7 @@ import (
 	zkeyring "github.com/zalando/go-keyring"
 )
 
-const EnvBoundaryRetrievedToken = "_BOUNDARY_RETRIEVED_TOKEN"
-
-func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult) int {
+func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult, tokenIntercept *string) int {
 	token := new(authtokens.AuthToken)
 	if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
 		c.PrintCliError(fmt.Errorf("Error trying to decode response as an auth token: %w", err))
@@ -104,7 +101,10 @@ func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult
 		c.UI.Warn("\nStoring the token in a keyring was disabled. The token is:")
 		c.UI.Output(token.Token)
 		c.UI.Warn("Please be sure to store it safely!")
-		os.Setenv(EnvBoundaryRetrievedToken, token.Token)
+
+		if tokenIntercept != nil {
+			*tokenIntercept = token.Token
+		}
 	}
 
 	return base.CommandSuccess

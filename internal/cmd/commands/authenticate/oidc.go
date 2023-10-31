@@ -30,8 +30,9 @@ var (
 type OidcCommand struct {
 	*base.Command
 
-	Opts       []common.Option
-	parsedOpts *common.Options
+	Opts           []common.Option
+	parsedOpts     *common.Options
+	interceptValue *string
 }
 
 func (c *OidcCommand) Synopsis() string {
@@ -196,5 +197,9 @@ func (c *OidcCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	return saveAndOrPrintToken(c.Command, result)
+	return saveAndOrPrintToken(c.Command, result, c.interceptValue)
+}
+
+func (c *OidcCommand) SetTokenIntercept(v *string) {
+	c.interceptValue = v
 }

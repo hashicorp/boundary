@@ -22,7 +22,6 @@ import (
 	cachedb "github.com/hashicorp/boundary/internal/clientcache/internal/db"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/hashicorp/boundary/internal/cmd/base/logging"
-	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/event"
@@ -207,32 +206,6 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-
-	// If we have a token info already, add it to the repository immediately so
-	// it can start to get updated.
-	func() {
-		client, err := cmd.Client()
-		if err != nil {
-			event.WriteError(ctx, op, err)
-			return
-		}
-		ringlessToken := os.Getenv(authenticate.EnvBoundaryRetrievedToken)
-		if ringlessToken != "" {
-			repo.AddRawToken(ctx, client.Addr(), ringlessToken)
-			return
-		}
-		krType, tokName, err := cmd.DiscoverKeyringTokenInfo()
-		if err != nil {
-			event.WriteError(ctx, op, err)
-			return
-		}
-		if at := cmd.ReadTokenFromKeyring(krType, tokName); at != nil {
-			if err := repo.AddKeyringToken(ctx, client.Addr(), cache.KeyringToken{KeyringType: krType, TokenName: tokName, AuthTokenId: at.Id}); err != nil {
-				event.WriteError(ctx, op, err)
-				return
-			}
-		}
-	}()
 
 	refreshService, err := cache.NewRefreshService(ctx, repo)
 	if err != nil {

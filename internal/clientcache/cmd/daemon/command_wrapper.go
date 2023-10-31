@@ -10,7 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
+	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
 	"github.com/mitchellh/cli"
 )
@@ -36,18 +38,26 @@ func Wrap(c cacheEnabledCommand) cli.CommandFactory {
 	}
 }
 
+type SetTokenIntercepter interface {
+	SetTokenIntercept(*string)
+}
+
 // Run runs the wrapped command and then attempts to start the boundary daemon and send
 // the current persona
 func (w *CommandWrapper) Run(args []string) int {
-	r := w.cacheEnabledCommand.Run(args)
-
 	if w.BaseCommand().FlagSkipCacheDaemon {
-		return r
+		return w.cacheEnabledCommand.Run(args)
 	}
+
+	var token string
+	if v, ok := w.cacheEnabledCommand.(SetTokenIntercepter); ok {
+		v.SetTokenIntercept(&token)
+	}
+	r := w.cacheEnabledCommand.Run(args)
 
 	ctx := context.Background()
 	if w.startDaemon(ctx) {
-		w.addTokenToCache(ctx)
+		w.addTokenToCache(ctx, token)
 	}
 	return r
 }
@@ -74,7 +84,7 @@ func (w *CommandWrapper) startDaemon(ctx context.Context) bool {
 
 // addTokenToCache runs AddTokenCommand with the token used in, or retrieved by
 // the wrapped command.
-func (w *CommandWrapper) addTokenToCache(ctx context.Context) bool {
+func (w *CommandWrapper) addTokenToCache(ctx context.Context, token string) bool {
 	com := AddTokenCommand{Command: base.NewCommand(w.BaseCommand().UI)}
 	client, err := w.BaseCommand().Client()
 	if err != nil {
@@ -84,6 +94,47 @@ func (w *CommandWrapper) addTokenToCache(ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
+	if token != "" {
+		client.SetToken(token)
+	}
+
+	// Since the daemon might have just started, we need to wait until it can
+	// respond to our requests
+	waitCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	waitForDaemon(waitCtx)
+
 	apiErr, err := com.Add(ctx, client, keyringType, tokName)
+	if err != nil {
+		w.BaseCommand().UI.Error(err.Error())
+	}
+	if apiErr != nil {
+		w.BaseCommand().UI.Error(apiErr.Message)
+	}
 	return err == nil && apiErr == nil
+}
+
+// waitForDaemon continually looks for the unix socket until it is found or the
+// provided context is done. It returns an error if the unix socket is not found
+// before the context is done.
+func waitForDaemon(ctx context.Context) error {
+	dotPath, err := DefaultDotDirectory(ctx)
+	if err != nil {
+		return err
+	}
+	timer := time.NewTimer(0)
+
+	addr := daemon.SocketAddress(dotPath)
+	filePath := strings.TrimPrefix(addr, "unix://")
+	_, err = os.Stat(filePath)
+	for os.IsNotExist(err) {
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		_, err = os.Stat(filePath)
+		timer.Reset(10 * time.Millisecond)
+	}
+	return nil
 }

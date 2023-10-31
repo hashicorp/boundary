@@ -37,8 +37,9 @@ type PasswordCommand struct {
 	flagLoginName string
 	flagPassword  string
 
-	Opts       []common.Option
-	parsedOpts *common.Options
+	Opts           []common.Option
+	parsedOpts     *common.Options
+	interceptValue *string
 }
 
 func (c *PasswordCommand) Synopsis() string {
@@ -199,5 +200,9 @@ func (c *PasswordCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	return saveAndOrPrintToken(c.Command, result)
+	return saveAndOrPrintToken(c.Command, result, c.interceptValue)
+}
+
+func (c *PasswordCommand) SetTokenIntercept(v *string) {
+	c.interceptValue = v
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
@@ -98,10 +97,7 @@ func (c *AddTokenCommand) Add(ctx context.Context, client *api.Client, keyringTy
 	}
 	switch keyringType {
 	case "", base.NoneKeyring:
-		token, ok := os.LookupEnv(authenticate.EnvBoundaryRetrievedToken)
-		if !ok {
-			token = client.Token()
-		}
+		token := client.Token()
 		if parts := strings.SplitN(token, "_", 4); len(parts) == 3 {
 			pa.AuthTokenId = strings.Join(parts[:2], "_")
 		} else {
