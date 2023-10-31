@@ -7,11 +7,14 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
+	"github.com/hashicorp/boundary/internal/authtoken"
 	wl "github.com/hashicorp/boundary/internal/daemon/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
@@ -19,8 +22,10 @@ import (
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	authpb "github.com/hashicorp/boundary/internal/gen/controller/auth"
 	"github.com/hashicorp/boundary/internal/iam"
 	"github.com/hashicorp/boundary/internal/kms"
+	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/types/action"
 	"github.com/hashicorp/boundary/internal/types/scope"
@@ -44,7 +49,10 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-worker-tags", "set-worker-tags", "remove-worker-tags"}
+var (
+	testAuthorizedActions = []string{"no-op", "read", "update", "delete", "add-worker-tags", "set-worker-tags", "remove-worker-tags"}
+	kmsAuthorizedActions  = []string{"no-op", "read", "delete", "add-worker-tags", "set-worker-tags", "remove-worker-tags"}
+)
 
 func structListValue(t *testing.T, ss ...string) *structpb.ListValue {
 	t.Helper()
@@ -75,6 +83,44 @@ func equalTags(t *testing.T, expected map[string]*structpb.ListValue, actual map
 		}
 	}
 	return true
+}
+
+func kmsWorkerToProto(w *server.Worker, connectedDownstreams []string) *pb.Worker {
+	return &pb.Worker{
+		Id:                                 w.GetPublicId(),
+		ScopeId:                            w.GetScopeId(),
+		Scope:                              &scopes.ScopeInfo{Id: w.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+		CreatedTime:                        w.CreateTime.GetTimestamp(),
+		UpdatedTime:                        w.UpdateTime.GetTimestamp(),
+		Version:                            w.GetVersion(),
+		Name:                               wrapperspb.String(w.GetName()),
+		AuthorizedActions:                  kmsAuthorizedActions,
+		ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+		Address:                            w.GetAddress(),
+		Type:                               KmsWorkerType,
+		LastStatusTime:                     w.GetLastStatusTime().GetTimestamp(),
+		ReleaseVersion:                     w.ReleaseVersion,
+		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+	}
+}
+
+func pkiWorkerToProto(w *server.Worker, connectedDownstreams []string) *pb.Worker {
+	return &pb.Worker{
+		Id:                                 w.GetPublicId(),
+		ScopeId:                            w.GetScopeId(),
+		Scope:                              &scopes.ScopeInfo{Id: w.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
+		CreatedTime:                        w.CreateTime.GetTimestamp(),
+		UpdatedTime:                        w.UpdateTime.GetTimestamp(),
+		Version:                            w.GetVersion(),
+		Name:                               wrapperspb.String(w.GetName()),
+		ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
+		AuthorizedActions:                  testAuthorizedActions,
+		Address:                            w.GetAddress(),
+		Type:                               PkiWorkerType,
+		LastStatusTime:                     w.GetLastStatusTime().GetTimestamp(),
+		ReleaseVersion:                     w.ReleaseVersion,
+		DirectlyConnectedDownstreamWorkers: connectedDownstreams,
+	}
 }
 
 func TestGet(t *testing.T) {
@@ -284,7 +330,7 @@ func TestGet(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+			s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 			require.NoError(t, err, "Couldn't create new worker service.")
 
 			got, err := s.GetWorker(auth.DisabledAuthTestContext(iamRepoFn, tc.scopeId), tc.req)
@@ -330,45 +376,13 @@ func TestList(t *testing.T) {
 	var wantKmsWorkers []*pb.Worker
 	for i := 0; i < 10; i++ {
 		w := server.TestKmsWorker(t, conn, wrap, server.WithName(fmt.Sprintf("kms-worker%d", i)))
-		kmsAuthzActions := make([]string, len(testAuthorizedActions))
-		copy(kmsAuthzActions, testAuthorizedActions)
-		wantKmsWorkers = append(wantKmsWorkers, &pb.Worker{
-			Id:                                 w.GetPublicId(),
-			ScopeId:                            w.GetScopeId(),
-			Scope:                              &scopes.ScopeInfo{Id: w.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
-			CreatedTime:                        w.CreateTime.GetTimestamp(),
-			UpdatedTime:                        w.UpdateTime.GetTimestamp(),
-			Version:                            w.GetVersion(),
-			Name:                               wrapperspb.String(w.GetName()),
-			AuthorizedActions:                  strutil.StrListDelete(kmsAuthzActions, action.Update.String()),
-			ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
-			Address:                            w.GetAddress(),
-			Type:                               KmsWorkerType,
-			LastStatusTime:                     w.GetLastStatusTime().GetTimestamp(),
-			ReleaseVersion:                     w.ReleaseVersion,
-			DirectlyConnectedDownstreamWorkers: connectedDownstreams,
-		})
+		wantKmsWorkers = append(wantKmsWorkers, kmsWorkerToProto(w, connectedDownstreams))
 	}
 
 	var wantPkiWorkers []*pb.Worker
 	for i := 0; i < 10; i++ {
 		w := server.TestPkiWorker(t, conn, wrap, server.WithName(fmt.Sprintf("pki-worker%d", i)))
-		wantPkiWorkers = append(wantPkiWorkers, &pb.Worker{
-			Id:                                 w.GetPublicId(),
-			ScopeId:                            w.GetScopeId(),
-			Scope:                              &scopes.ScopeInfo{Id: w.GetScopeId(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"},
-			CreatedTime:                        w.CreateTime.GetTimestamp(),
-			UpdatedTime:                        w.UpdateTime.GetTimestamp(),
-			Version:                            w.GetVersion(),
-			Name:                               wrapperspb.String(w.GetName()),
-			ActiveConnectionCount:              &wrapperspb.UInt32Value{Value: 0},
-			AuthorizedActions:                  testAuthorizedActions,
-			Address:                            w.GetAddress(),
-			Type:                               PkiWorkerType,
-			LastStatusTime:                     w.GetLastStatusTime().GetTimestamp(),
-			ReleaseVersion:                     w.ReleaseVersion,
-			DirectlyConnectedDownstreamWorkers: connectedDownstreams,
-		})
+		wantPkiWorkers = append(wantPkiWorkers, pkiWorkerToProto(w, connectedDownstreams))
 	}
 
 	cases := []struct {
@@ -380,33 +394,55 @@ func TestList(t *testing.T) {
 		{
 			name: "List All Workers",
 			req:  &pbs.ListWorkersRequest{ScopeId: scope.Global.String()},
-			res:  &pbs.ListWorkersResponse{Items: append(wantKmsWorkers, wantPkiWorkers...)},
+			res: &pbs.ListWorkersResponse{
+				Items:        append(wantKmsWorkers, wantPkiWorkers...),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				EstItemCount: 20,
+			},
 		},
 		{
 			name: "List global workers recursively",
 			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true},
 			res: &pbs.ListWorkersResponse{
-				Items: append(wantKmsWorkers, wantPkiWorkers...),
+				Items:        append(wantKmsWorkers, wantPkiWorkers...),
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				EstItemCount: 20,
 			},
 		},
 		{
 			name: "Filter to a single worker of each type",
 			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/name"=="kms-worker2" or "/item/name"=="pki-worker2"`},
 			res: &pbs.ListWorkersResponse{
-				Items: []*pb.Worker{wantKmsWorkers[2], wantPkiWorkers[2]},
+				Items:        []*pb.Worker{wantKmsWorkers[2], wantPkiWorkers[2]},
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				EstItemCount: 2,
 			},
 		},
 		{
 			name: "Filter to 2 workers of each type",
 			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/name" matches "kms-worker[23]" or "/item/name" matches "pki-worker[23]"`},
 			res: &pbs.ListWorkersResponse{
-				Items: []*pb.Worker{wantKmsWorkers[2], wantKmsWorkers[3], wantPkiWorkers[2], wantPkiWorkers[3]},
+				Items:        []*pb.Worker{wantKmsWorkers[2], wantKmsWorkers[3], wantPkiWorkers[2], wantPkiWorkers[3]},
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				EstItemCount: 4,
 			},
 		},
 		{
 			name: "Filter to no workers",
 			req:  &pbs.ListWorkersRequest{ScopeId: "global", Recursive: true, Filter: `"/item/id"=="doesntmatch"`},
-			res:  &pbs.ListWorkersResponse{},
+			res: &pbs.ListWorkersResponse{
+				ResponseType: "complete",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+			},
 		},
 		{
 			name: "Filter Bad Format",
@@ -417,7 +453,7 @@ func TestList(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+			s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 			require.NoError(err, "Couldn't create new worker service.")
 
 			// Test with a non-anon user
@@ -435,7 +471,7 @@ func TestList(t *testing.T) {
 			sort.Slice(tc.res.Items, func(i, j int) bool {
 				return tc.res.Items[i].GetName().GetValue() < tc.res.Items[j].GetName().GetValue()
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListWorkers(%q) got response %q, wanted %q", tc.req.GetScopeId(), got, tc.res)
+			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.IgnoreFields(&pbs.ListWorkersResponse{}, "refresh_token")))
 
 			// Test the anon case
 			got, gErr = s.ListWorkers(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -448,6 +484,228 @@ func TestList(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestListPagination(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDB, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	kms := kms.TestKms(t, conn, wrapper)
+
+	rw := db.New(conn)
+
+	iamRepo := iam.TestRepo(t, conn, wrapper)
+	iamRepoFn := func() (*iam.Repository, error) {
+		return iamRepo, nil
+	}
+	tokenRepoFn := func() (*authtoken.Repository, error) {
+		return authtoken.NewRepository(ctx, rw, rw, kms)
+	}
+	serversRepoFn := func() (*server.Repository, error) {
+		return server.NewRepository(ctx, rw, rw, kms)
+	}
+	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
+		return server.NewRepositoryStorage(ctx, rw, rw, kms)
+	}
+	repo, err := server.NewRepository(ctx, rw, rw, kms)
+	require.NoError(t, err)
+
+	org, _ := iam.TestScopes(t, iamRepo)
+	at := authtoken.TestAuthToken(t, conn, kms, org.GetPublicId())
+	r := iam.TestRole(t, conn, scope.Global.String())
+	_ = iam.TestUserRole(t, conn, r.GetPublicId(), at.GetIamUserId())
+	_ = iam.TestRoleGrant(t, conn, r.GetPublicId(), "id=*;type=*;actions=*")
+	s, err := NewService(context.Background(), serversRepoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
+	require.NoError(t, err)
+
+	var allWorkers []*pb.Worker
+	for i := 0; i < 5; i++ {
+		allWorkers = append(allWorkers, kmsWorkerToProto(server.TestKmsWorker(t, conn, wrapper, server.WithName("kms-worker-"+strconv.Itoa(i))), nil))
+		allWorkers = append(allWorkers, pkiWorkerToProto(server.TestPkiWorker(t, conn, wrapper, server.WithName("pki-worker-"+strconv.Itoa(i))), nil))
+	}
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Test without anon user
+	requestInfo := authpb.RequestInfo{
+		TokenFormat: uint32(auth.AuthTokenTypeBearer),
+		PublicId:    at.GetPublicId(),
+		Token:       at.GetToken(),
+	}
+	requestContext := context.WithValue(context.Background(), requests.ContextRequestInformationKey, &requests.RequestContext{})
+	ctx = auth.NewVerifierContext(requestContext, iamRepoFn, tokenRepoFn, serversRepoFn, kms, &requestInfo)
+
+	// Start paginating, recursively
+	req := &pbs.ListWorkersRequest{
+		ScopeId:      "global",
+		Recursive:    true,
+		Filter:       "",
+		RefreshToken: "",
+		PageSize:     2,
+	}
+	got, err := s.ListWorkers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListWorkersResponse{
+				Items:        allWorkers[0:2],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListWorkersResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request second page
+	req.RefreshToken = got.RefreshToken
+	got, err = s.ListWorkers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListWorkersResponse{
+				Items:        allWorkers[2:4],
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListWorkersResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request rest of results
+	req.RefreshToken = got.RefreshToken
+	req.PageSize = 10
+	got, err = s.ListWorkers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 6)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListWorkersResponse{
+				Items:        allWorkers[4:],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListWorkersResponse{}, "refresh_token"),
+		),
+	)
+
+	// Create a few more workers
+	allWorkers = append(allWorkers, kmsWorkerToProto(server.TestKmsWorker(t, conn, wrapper, server.WithName("kms-worker-6")), nil))
+	allWorkers = append(allWorkers, pkiWorkerToProto(server.TestPkiWorker(t, conn, wrapper, server.WithName("pki-worker-6")), nil))
+
+	// Delete some of the other workers
+	_, err = repo.DeleteWorker(ctx, allWorkers[0].Id)
+	require.NoError(t, err)
+	deletedWorker1 := allWorkers[0]
+	allWorkers = allWorkers[1:]
+	_, err = repo.DeleteWorker(ctx, allWorkers[0].Id)
+	require.NoError(t, err)
+	deletedWorker2 := allWorkers[0]
+	allWorkers = allWorkers[1:]
+
+	// Run analyze to update postgres estimates
+	_, err = sqlDB.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+
+	// Request updated results
+	req.RefreshToken = got.RefreshToken
+	got, err = s.ListWorkers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 2)
+	// Compare without comparing the refresh token
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListWorkersResponse{
+				Items:        allWorkers[len(allWorkers)-2:],
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should contain the deleted workers
+				RemovedIds:   []string{deletedWorker1.Id, deletedWorker2.Id},
+				EstItemCount: 10,
+			},
+			// Sort strings since removed ids orde doesn't matter
+			cmpopts.SortSlices(func(i, j string) bool { return i < j }),
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListWorkersResponse{}, "refresh_token"),
+		),
+	)
+
+	// Request new page with filter requiring looping
+	// to fill the page.
+	req.RefreshToken = ""
+	req.PageSize = 1
+	req.Filter = fmt.Sprintf(`"/item/id"==%q or "/item/id"==%q`, allWorkers[len(allWorkers)-2].Id, allWorkers[len(allWorkers)-1].Id)
+	got, err = s.ListWorkers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListWorkersResponse{
+				Items:        []*pb.Worker{allWorkers[len(allWorkers)-2]},
+				ResponseType: "delta",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				// Should be empty again
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListWorkersResponse{}, "refresh_token"),
+		),
+	)
+	req.RefreshToken = got.RefreshToken
+	// Get the second page
+	got, err = s.ListWorkers(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, got.GetItems(), 1)
+	assert.Empty(t,
+		cmp.Diff(
+			got,
+			&pbs.ListWorkersResponse{
+				Items:        []*pb.Worker{allWorkers[len(allWorkers)-1]},
+				ResponseType: "complete",
+				RefreshToken: "",
+				SortBy:       "updated_time",
+				SortDir:      "asc",
+				RemovedIds:   nil,
+				EstItemCount: 10,
+			},
+			protocmp.Transform(),
+			protocmp.IgnoreFields(&pbs.ListWorkersResponse{}, "refresh_token"),
+		),
+	)
 }
 
 func TestDelete(t *testing.T) {
@@ -470,7 +728,7 @@ func TestDelete(t *testing.T) {
 		return workerAuthRepo, nil
 	}
 
-	s, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	s, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 	require.NoError(t, err, "Error when getting new worker service.")
 
 	wUnmanaged := server.TestKmsWorker(t, conn, wrap, server.WithWorkerTags(&server.Tag{
@@ -600,7 +858,7 @@ func TestUpdate(t *testing.T) {
 			Id: wkr.GetPublicId(),
 		}
 	}
-	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 	require.NoError(t, err)
 	expectedScope := &scopes.ScopeInfo{Id: scope.Global.String(), Type: scope.Global.String(), Name: scope.Global.String(), Description: "Global Scope"}
 
@@ -1082,7 +1340,7 @@ func TestUpdate_DeprecatedKMS(t *testing.T) {
 	toMerge := &pbs.UpdateWorkerRequest{
 		Id: wkr.GetPublicId(),
 	}
-	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -1167,7 +1425,7 @@ func TestUpdate_BadVersion(t *testing.T) {
 		return repo, nil
 	}
 
-	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	workerService, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 	require.NoError(t, err, "Failed to create a new host set service.")
 
 	wkr := server.TestPkiWorker(t, conn, wrapper)
@@ -1205,7 +1463,7 @@ func TestCreateWorkerLed(t *testing.T) {
 		return workerAuthRepo, nil
 	}
 
-	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 	require.NoError(t, err, "Error when getting new worker service.")
 
 	// Get an initial set of authorized node credentials
@@ -1457,7 +1715,7 @@ func TestCreateWorkerLed(t *testing.T) {
 				repoFn := func() (*server.Repository, error) {
 					return server.NewRepository(testCtx, rw, &db.Db{}, testKms)
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1490,7 +1748,7 @@ func TestCreateWorkerLed(t *testing.T) {
 						return server.NewRepository(testCtx, rw, rw, testKms)
 					}
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1590,7 +1848,7 @@ func TestCreateControllerLed(t *testing.T) {
 		return rootStorage, nil
 	}
 
-	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil)
+	testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil, 1000)
 	require.NoError(t, err, "Error when getting new worker service.")
 
 	// Get an initial set of authorized node credentials
@@ -1804,7 +2062,7 @@ func TestCreateControllerLed(t *testing.T) {
 				repoFn := func() (*server.Repository, error) {
 					return server.NewRepository(testCtx, rw, &db.Db{}, testKms)
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil, 1000)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1836,7 +2094,7 @@ func TestCreateControllerLed(t *testing.T) {
 						return server.NewRepository(testCtx, rw, rw, testKms)
 					}
 				}
-				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil)
+				testSrv, err := NewService(testCtx, repoFn, iamRepoFn, authRepoFn, nil, 1000)
 				require.NoError(t, err, "Error when getting new worker service.")
 				return testSrv
 			}(),
@@ -1938,7 +2196,7 @@ func TestService_AddWorkerTags(t *testing.T) {
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return workerAuthRepo, nil
 	}
-	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 	require.NoError(err)
 	worker := server.TestKmsWorker(t, conn, wrapper)
 
@@ -2098,7 +2356,7 @@ func TestService_SetWorkerTags(t *testing.T) {
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return workerAuthRepo, nil
 	}
-	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 	require.NoError(err)
 	worker := server.TestKmsWorker(t, conn, wrapper)
 
@@ -2261,7 +2519,7 @@ func TestService_RemoveWorkerTags(t *testing.T) {
 	workerAuthRepoFn := func() (*server.WorkerAuthRepositoryStorage, error) {
 		return workerAuthRepo, nil
 	}
-	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	s, err := NewService(context.Background(), repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 	require.NoError(err)
 	worker := server.TestKmsWorker(t, conn, wrapper)
 
@@ -2460,7 +2718,7 @@ func TestReadCertificateAuthority(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(err)
 
-	testSrv, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	testSrv, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 	require.NoError(err, "Error when getting new worker service.")
 
 	tests := []struct {
@@ -2536,7 +2794,7 @@ func TestReinitializeCertificateAuthority(t *testing.T) {
 	_, err = rotation.RotateRootCertificates(ctx, workerAuthRepo)
 	require.NoError(err)
 
-	testSrv, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil)
+	testSrv, err := NewService(ctx, repoFn, iamRepoFn, workerAuthRepoFn, nil, 1000)
 	require.NoError(err, "Error when getting new worker service.")
 
 	tests := []struct {

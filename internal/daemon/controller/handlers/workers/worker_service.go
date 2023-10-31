@@ -19,7 +19,9 @@ import (
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
 	pbs "github.com/hashicorp/boundary/internal/gen/controller/api/services"
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/internal/perms"
+	"github.com/hashicorp/boundary/internal/refreshtoken"
 	"github.com/hashicorp/boundary/internal/requests"
 	"github.com/hashicorp/boundary/internal/server"
 	"github.com/hashicorp/boundary/internal/server/store"
@@ -27,6 +29,7 @@ import (
 	"github.com/hashicorp/boundary/internal/types/resource"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/boundary/internal/util"
+	"github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/scopes"
 	pb "github.com/hashicorp/boundary/sdk/pbs/controller/api/resources/workers"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/nodeenrollment/types"
@@ -34,12 +37,16 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
 	PkiWorkerType = "pki"
 	KmsWorkerType = "kms"
+	// The default max page size is used when one is not
+	// provided to NewService.
+	defaultMaxPageSize = 1000
 )
 
 var (
@@ -94,13 +101,19 @@ type Service struct {
 	workerAuthFn common.WorkerAuthRepoStorageFactory
 	iamRepoFn    common.IamRepoFactory
 	downstreams  common.Downstreamers
+	maxPageSize  uint
 }
 
 var _ pbs.WorkerServiceServer = (*Service)(nil)
 
 // NewService returns a worker service which handles worker related requests to boundary.
-func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn common.IamRepoFactory,
-	workerAuthFn common.WorkerAuthRepoStorageFactory, ds common.Downstreamers,
+func NewService(
+	ctx context.Context,
+	repo common.ServersRepoFactory,
+	iamRepoFn common.IamRepoFactory,
+	workerAuthFn common.WorkerAuthRepoStorageFactory,
+	ds common.Downstreamers,
+	maxPageSize uint,
 ) (Service, error) {
 	const op = "workers.NewService"
 	if repo == nil {
@@ -112,11 +125,15 @@ func NewService(ctx context.Context, repo common.ServersRepoFactory, iamRepoFn c
 	if workerAuthFn == nil {
 		return Service{}, errors.New(ctx, errors.InvalidParameter, op, "missing worker auth repository")
 	}
-	return Service{repoFn: repo, iamRepoFn: iamRepoFn, workerAuthFn: workerAuthFn, downstreams: ds}, nil
+	if maxPageSize == 0 {
+		maxPageSize = uint(defaultMaxPageSize)
+	}
+	return Service{repoFn: repo, iamRepoFn: iamRepoFn, workerAuthFn: workerAuthFn, downstreams: ds, maxPageSize: maxPageSize}, nil
 }
 
 // ListWorkers implements the interface pbs.WorkerServiceServer.
 func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (*pbs.ListWorkersResponse, error) {
+	const op = "workers.(Service).ListWorkers"
 	if err := validateListRequest(ctx, req); err != nil {
 		return nil, err
 	}
@@ -144,50 +161,115 @@ func (s Service) ListWorkers(ctx context.Context, req *pbs.ListWorkersRequest) (
 		return &pbs.ListWorkersResponse{}, nil
 	}
 
-	ul, err := s.listFromRepo(ctx, scopeIds)
-	if err != nil {
-		return nil, err
+	pageSize := int(s.maxPageSize)
+	// Use the requested page size only if it is smaller than
+	// the configured max.
+	if req.GetPageSize() != 0 && uint(req.GetPageSize()) < s.maxPageSize {
+		pageSize = int(req.GetPageSize())
 	}
-	if len(ul) == 0 {
-		return &pbs.ListWorkersResponse{}, nil
-	}
-
 	filter, err := handlers.NewFilter(ctx, req.GetFilter())
 	if err != nil {
 		return nil, err
 	}
-	finalItems := make([]*pb.Worker, 0, len(ul))
-	res := perms.Resource{
-		Type: resource.Worker,
+
+	repo, err := s.repoFn()
+	if err != nil {
+		return nil, err
 	}
-	for _, item := range ul {
-		res.Id = item.GetPublicId()
-		res.ScopeId = item.GetScopeId()
-		authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
-		if len(authorizedActions) == 0 {
+	filterItemFn := func(ctx context.Context, item *server.Worker) (bool, error) {
+		outputOpts, ok := newOutputOpts(ctx, item, authResults, scopeInfoMap)
+		if !ok {
+			return false, nil
+		}
+		pbItem, err := s.toProto(ctx, item, outputOpts...)
+		if err != nil {
+			return false, err
+		}
+		return filter.Match(pbItem), nil
+	}
+	grantsHash, err := authResults.GrantsHash(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var listResp *pagination.ListResponse[*server.Worker]
+	if req.GetRefreshToken() == "" {
+		listResp, err = server.ListWorkers(ctx, grantsHash, pageSize, filterItemFn, repo, scopeIds)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		rt, err := handlers.ParseRefreshToken(ctx, req.GetRefreshToken())
+		if err != nil {
+			return nil, err
+		}
+		// We're doing the conversion from the protobuf types to the
+		// domain types here rather than in the domain so that the domain
+		// doesn't need to know about the protobuf types.
+		domainRefreshToken, err := refreshtoken.New(
+			ctx,
+			rt.CreatedTime.AsTime(),
+			rt.UpdatedTime.AsTime(),
+			handlers.RefreshTokenResourceToResource(rt.ResourceType),
+			rt.GrantsHash,
+			rt.LastItemId,
+			rt.LastItemUpdatedTime.AsTime(),
+		)
+		if err != nil {
+			return nil, err
+		}
+		if err := domainRefreshToken.Validate(ctx, resource.Worker, grantsHash); err != nil {
+			return nil, err
+		}
+		listResp, err = server.ListWorkersRefresh(ctx, grantsHash, pageSize, filterItemFn, domainRefreshToken, repo, scopeIds)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	finalItems := make([]*pb.Worker, 0, len(listResp.Items))
+	for _, item := range listResp.Items {
+		outputOpts, ok := newOutputOpts(ctx, item, authResults, scopeInfoMap)
+		if !ok {
 			continue
 		}
-
-		outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
-		outputOpts := make([]handlers.Option, 0, 3)
-		outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
-		if outputFields.Has(globals.ScopeField) {
-			outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
-		}
-		if outputFields.Has(globals.AuthorizedActionsField) {
-			outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
-		}
-
 		item, err := s.toProto(ctx, item, outputOpts...)
 		if err != nil {
 			return nil, err
 		}
+		finalItems = append(finalItems, item)
+	}
+	respType := "delta"
+	if listResp.CompleteListing {
+		respType = "complete"
+	}
+	resp := &pbs.ListWorkersResponse{
+		Items:        finalItems,
+		EstItemCount: uint32(listResp.EstimatedItemCount),
+		RemovedIds:   listResp.DeletedIds,
+		ResponseType: respType,
+		SortBy:       "updated_time",
+		SortDir:      "asc",
+	}
 
-		if filter.Match(item) {
-			finalItems = append(finalItems, item)
+	if listResp.RefreshToken != nil {
+		if listResp.RefreshToken.ResourceType != resource.Worker {
+			return nil, errors.New(ctx, errors.Internal, op, "refresh token resource type does not match service resource type")
+		}
+		resp.RefreshToken, err = handlers.MarshalRefreshToken(ctx, &pbs.ListRefreshToken{
+			CreatedTime:         timestamppb.New(listResp.RefreshToken.CreatedTime),
+			UpdatedTime:         timestamppb.New(listResp.RefreshToken.UpdatedTime),
+			ResourceType:        pbs.ResourceType_RESOURCE_TYPE_WORKER,
+			GrantsHash:          listResp.RefreshToken.GrantsHash,
+			LastItemId:          listResp.RefreshToken.LastItemId,
+			LastItemUpdatedTime: timestamppb.New(listResp.RefreshToken.LastItemUpdatedTime),
+		})
+		if err != nil {
+			return nil, err
 		}
 	}
-	return &pbs.ListWorkersResponse{Items: finalItems}, nil
+
+	return resp, nil
 }
 
 // GetWorker implements the interface pbs.WorkerServiceServer.
@@ -572,16 +654,27 @@ func (s Service) ReinitializeCertificateAuthority(ctx context.Context, req *pbs.
 	return &pbs.ReinitializeCertificateAuthorityResponse{Item: ca}, nil
 }
 
-func (s Service) listFromRepo(ctx context.Context, scopeIds []string) ([]*server.Worker, error) {
-	repo, err := s.repoFn()
-	if err != nil {
-		return nil, err
+func newOutputOpts(ctx context.Context, item *server.Worker, authResults auth.VerifyResults, scopeInfoMap map[string]*scopes.ScopeInfo) ([]handlers.Option, bool) {
+	res := perms.Resource{
+		Type:    resource.Worker,
+		Id:      item.GetPublicId(),
+		ScopeId: item.GetScopeId(),
 	}
-	wl, err := repo.ListWorkers(ctx, scopeIds, server.WithLiveness(-1), server.WithLimit(-1))
-	if err != nil {
-		return nil, err
+	authorizedActions := authResults.FetchActionSetForId(ctx, item.GetPublicId(), IdActions, auth.WithResource(&res)).Strings()
+	if len(authorizedActions) == 0 {
+		return nil, false
 	}
-	return wl, nil
+
+	outputFields := authResults.FetchOutputFields(res, action.List).SelfOrDefaults(authResults.UserId)
+	outputOpts := make([]handlers.Option, 0, 3)
+	outputOpts = append(outputOpts, handlers.WithOutputFields(outputFields))
+	if outputFields.Has(globals.ScopeField) {
+		outputOpts = append(outputOpts, handlers.WithScope(scopeInfoMap[item.GetScopeId()]))
+	}
+	if outputFields.Has(globals.AuthorizedActionsField) {
+		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authorizedActions))
+	}
+	return outputOpts, true
 }
 
 func (s Service) getFromRepo(ctx context.Context, id string) (*server.Worker, error) {
