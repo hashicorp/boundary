@@ -889,6 +889,7 @@ func TestAuthenticate_Ldap(t *testing.T) {
 		Mutex: testLock,
 		Name:  "test",
 	})
+	c.EventerConfig.TelemetryEnabled = true
 	require.NoError(t, event.InitSysEventer(testLogger, testLock, "use-Test_Authenticate", event.WithEventerConfig(&c.EventerConfig)))
 	iamRepoFn := func() (*iam.Repository, error) {
 		return iam.TestRepo(t, testConn, testRootWrapper), nil
