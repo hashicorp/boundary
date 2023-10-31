@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -241,7 +242,14 @@ func TestGet(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -390,7 +398,14 @@ func TestList(t *testing.T) {
 			for _, t := range got.Items {
 				want, ok := wantById[t.Id]
 				assert.True(ok, "Got unexpected target with id: %s", t.Id)
-				assert.Empty(cmp.Diff(t, want, protocmp.Transform()), "got %v, wanted %v", t, want)
+				assert.Empty(cmp.Diff(
+					t,
+					want,
+					protocmp.Transform(),
+					cmpopts.SortSlices(func(a, b string) bool {
+						return a < b
+					}),
+				), "got %v, wanted %v", t, want)
 			}
 
 			// Test with anon user
@@ -490,7 +505,14 @@ func TestDelete(t *testing.T) {
 				require.Error(gErr)
 				assert.True(errors.Is(gErr, tc.err), "DeleteTarget(%+v) got error %v, wanted %v", tc.req, gErr, tc.err)
 			}
-			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "DeleteTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				tc.res,
+				got,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "DeleteTarget(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -772,7 +794,14 @@ func TestCreate(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateTarget(%q)\n got response %q\n, wanted %q\n", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateTarget(%q)\n got response %q\n, wanted %q\n", tc.req, got, tc.res)
 		})
 	}
 	// Reset worker filter func
@@ -1266,7 +1295,14 @@ func TestUpdate(t *testing.T) {
 			if tc.res != nil {
 				tc.res.Item.Version = tc.req.Item.Version + 1
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateTarget(%q) got response %q, wanted %q", req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "UpdateTarget(%q) got response %q, wanted %q", req, got, tc.res)
 		})
 	}
 	// Reset worker filter funcs
@@ -2624,7 +2660,14 @@ func TestAuthorizeSession(t *testing.T) {
 				Id: tar.GetPublicId(),
 			})
 			require.NoError(t, err)
-			assert.NotEmpty(t, cmp.Diff(asRes1.GetItem().GetCredentials(), asRes2.GetItem().GetCredentials(), protocmp.Transform()),
+			assert.NotEmpty(t, cmp.Diff(
+				asRes1.GetItem().GetCredentials(),
+				asRes2.GetItem().GetCredentials(),
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			),
 				"the credentials aren't unique per request authorized session")
 
 			_, err = s.AuthorizeSession(ctx, &pbs.AuthorizeSessionRequest{
@@ -2697,7 +2740,14 @@ func TestAuthorizeSession(t *testing.T) {
 			gotCred.Secret = nil
 
 			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 		})
 	}
 }
@@ -3288,7 +3338,14 @@ func TestAuthorizeSessionTypedCredentials(t *testing.T) {
 
 			gotCred.Secret = nil
 			got.AuthorizationToken, got.SessionId, got.CreatedTime = "", "", nil
-			assert.Empty(t, cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 		})
 	}
 }

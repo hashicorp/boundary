@@ -225,6 +225,9 @@ func TestList(t *testing.T) {
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
 			}),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 		),
 	)
 
@@ -251,6 +254,9 @@ func TestList(t *testing.T) {
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
 			}),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 		),
 	)
 
@@ -274,6 +280,9 @@ func TestList(t *testing.T) {
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
 			}),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 		),
 	)
 
@@ -281,7 +290,14 @@ func TestList(t *testing.T) {
 		authmethods.WithFilter(`"/item/attributes/client_id"=="client-id"`))
 	require.NoError(err)
 	require.Len(result.Items, 1)
-	assert.Empty(cmp.Diff(oidcAM.Item, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(cmp.Diff(
+		oidcAM.Item,
+		result.Items[0],
+		cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
+		cmpopts.SortSlices(func(a, b string) bool {
+			return a < b
+		}),
+	))
 
 	result, err = amClient.List(tc.Context(), global,
 		authmethods.WithFilter(`"/item/attributes/min_login_name_length"==3`))
@@ -295,6 +311,9 @@ func TestList(t *testing.T) {
 			cmpopts.SortSlices(func(a, b *authmethods.AuthMethod) bool {
 				return a.Name < b.Name
 			}),
+			cmpopts.SortSlices(func(a, b string) bool {
+				return a < b
+			}),
 		),
 	)
 
@@ -302,7 +321,14 @@ func TestList(t *testing.T) {
 		authmethods.WithFilter(`"/item/attributes/min_password_length"==10`))
 	require.NoError(err)
 	require.Len(result.Items, 1)
-	assert.Empty(cmp.Diff(pwAM.Item, result.Items[0], cmpopts.IgnoreUnexported(authmethods.AuthMethod{})))
+	assert.Empty(cmp.Diff(
+		pwAM.Item,
+		result.Items[0],
+		cmpopts.IgnoreUnexported(authmethods.AuthMethod{}),
+		cmpopts.SortSlices(func(a, b string) bool {
+			return a < b
+		}),
+	))
 }
 
 func TestCustomMethods(t *testing.T) {

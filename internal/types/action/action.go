@@ -215,29 +215,61 @@ func (act Type) IsActionOrParent(suspect Type) bool {
 	return strings.HasPrefix(suspect.String(), fmt.Sprintf("%s:", act.String()))
 }
 
-// ActionSet stores a slice of action types
-type ActionSet []Type
+// ActionSet is a set of action.Type.
+type ActionSet map[Type]struct{}
+
+// NewActionSet creates an ActionSet.
+func NewActionSet(t ...Type) ActionSet {
+	a := make(ActionSet, len(t))
+	a.Add(t...)
+	return a
+}
+
+// Add adds the provided Types t to a, any duplicates are ignored.
+func (a ActionSet) Add(t ...Type) {
+	for _, tt := range t {
+		a[tt] = struct{}{}
+	}
+}
+
+// Union returns a new ActionSet that is the union of the sets.
+func Union(sets ...ActionSet) ActionSet {
+	a := make(ActionSet)
+	for _, s := range sets {
+		for k := range s {
+			a.Add(k)
+		}
+	}
+	return a
+}
+
+// Difference returns a new ActionSet that is the difference of a-b.
+func Difference(a ActionSet, b ActionSet) ActionSet {
+	c := make(ActionSet)
+	for t := range a {
+		if !b.HasAction(t) {
+			c.Add(t)
+		}
+	}
+	return c
+}
 
 // Strings converts Actions into a slice of the actions' string equivalents
 func (a ActionSet) Strings() []string {
 	if a == nil {
 		return nil
 	}
-	ret := make([]string, len(a))
-	for i, act := range a {
-		ret[i] = act.String()
+	ret := make([]string, 0, len(a))
+	for act := range a {
+		ret = append(ret, act.String())
 	}
 	return ret
 }
 
 // HasAction returns whether the action set contains the given action.
 func (a ActionSet) HasAction(act Type) bool {
-	for _, v := range a {
-		if v == act {
-			return true
-		}
-	}
-	return false
+	_, ok := a[act]
+	return ok
 }
 
 // OnlySelf returns true if all actions in the action set are self types. An
@@ -247,7 +279,7 @@ func (a ActionSet) OnlySelf() bool {
 	if len(a) == 0 {
 		return false
 	}
-	for _, v := range a {
+	for v := range a {
 		if !strings.HasSuffix(v.String(), ":self") {
 			return false
 		}

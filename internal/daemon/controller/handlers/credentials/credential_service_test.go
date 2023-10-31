@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/credential"
 	"github.com/hashicorp/boundary/internal/credential/static"
@@ -187,9 +188,17 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(t, gErr)
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeated(func(x, y *pb.Credential) bool {
-				return x.Id < y.Id
-			})))
+			assert.Empty(t, cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				protocmp.SortRepeated(func(x, y *pb.Credential) bool {
+					return x.Id < y.Id
+				}),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 
 			// Test anonymous listing
 			got, gErr = s.ListCredentials(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -389,7 +398,14 @@ func TestGet(t *testing.T) {
 				return
 			}
 			require.NoError(t, gErr)
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 
 			// Test anonymous get
 			got, gErr = s.GetCredential(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), req)
@@ -831,7 +847,15 @@ func TestCreate(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeatedFields(got)), "CreateCredential(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				protocmp.SortRepeatedFields(got),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateCredential(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1279,7 +1303,14 @@ func TestUpdate(t *testing.T) {
 			assert.EqualValues(2, got.Item.Version)
 			want.Item.Version = 2
 
-			assert.Empty(cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			))
 		})
 	}
 
