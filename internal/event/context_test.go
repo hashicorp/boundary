@@ -440,14 +440,14 @@ func Test_WriteObservation(t *testing.T) {
 			cleanup: func() { event.TestResetSystEventer(t) },
 		},
 		{
-			name:               "simple",
+			name:               "simple-header",
 			ctx:                testCtx,
 			telemetryFlag:      true,
 			observationPayload: testPayloads,
 			header:             testWantHeader,
 		},
 		{
-			name:               "simple",
+			name:               "simple-details",
 			ctx:                testCtx,
 			telemetryFlag:      true,
 			observationPayload: testPayloads,
