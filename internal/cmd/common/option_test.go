@@ -29,4 +29,14 @@ func Test_GetOpts(t *testing.T) {
 		testOpts.WithSkipScopeIdFlag = true
 		assert.Equal(opts, testOpts)
 	})
+
+	t.Run("WithSkipScopeIdFlag", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		var s string
+		opts, err := GetOpts(WithInterceptedToken(&s))
+		require.NoError(err)
+		testOpts := getDefaultOptions()
+		testOpts.WithInterceptedToken = &s
+		assert.Equal(opts, testOpts)
+	})
 }
