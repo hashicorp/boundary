@@ -110,7 +110,8 @@ func WriteObservation(ctx context.Context, caller Op, opt ...Option) error {
 			"%w", op, ErrInvalidParameter)
 	}
 	// For the case that the telemetry is not enabled, and we have events coming from interceptors.
-	if !eventer.conf.TelemetryEnabled && (opts.withRequest != nil || opts.withResponse != nil) {
+	// or the case that incoming call only has withDetails without enabling telemetry.
+	if !eventer.conf.TelemetryEnabled && (opts.withRequest != nil || opts.withResponse != nil || opts.withDetails != nil) {
 		return nil
 	}
 	// If telemetry is enabled, we add it to the options.
