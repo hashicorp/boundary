@@ -53,7 +53,7 @@ func TestWorkerUpgradeKmsAuthMethod(t *testing.T) {
 	require.NoError(t, c1.WaitForNextWorkerStatusUpdate(w1.Name()))
 
 	// Verify it's KMS type
-	workers, err := serversRepo.ListWorkers(c1.Context(), []string{scope.Global.String()})
+	workers, err := serversRepo.ListWorkersUnpaginated(c1.Context(), []string{scope.Global.String()})
 	require.NoError(t, err)
 	require.Len(t, workers, 1)
 	assert.Equal(t, "kms", workers[0].Type)
@@ -72,7 +72,7 @@ func TestWorkerUpgradeKmsAuthMethod(t *testing.T) {
 	require.NoError(t, c1.WaitForNextWorkerStatusUpdate(w1.Name()))
 
 	// Verify it's PKI type
-	workers, err = serversRepo.ListWorkers(c1.Context(), []string{scope.Global.String()})
+	workers, err = serversRepo.ListWorkersUnpaginated(c1.Context(), []string{scope.Global.String()})
 	require.NoError(t, err)
 	require.Len(t, workers, 1)
 	assert.Equal(t, "pki", workers[0].Type)

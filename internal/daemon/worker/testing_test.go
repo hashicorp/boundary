@@ -173,7 +173,7 @@ func TestNewTestMultihopWorkers(t *testing.T) {
 
 	srvRepo, err := c.Controller().ServersRepoFn()
 	require.NoError(t, err)
-	workers, err := srvRepo.ListWorkers(ctx, []string{"global"})
+	workers, err := srvRepo.ListWorkersUnpaginated(ctx, []string{"global"})
 	assert.Len(t, workers, 4)
 	require.NoError(t, err)
 	var kmsW, pkiW, childPkiW, childKmsW *server.Worker

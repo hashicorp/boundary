@@ -176,7 +176,7 @@ func (ws *workerServiceServer) Status(ctx context.Context, req *pbs.StatusReques
 
 	authorizedDownstreams := &pbs.AuthorizedDownstreamWorkerList{}
 	if len(req.GetConnectedWorkerPublicIds()) > 0 {
-		knownConnectedWorkers, err := serverRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithWorkerPool(req.GetConnectedWorkerPublicIds()), server.WithLiveness(-1))
+		knownConnectedWorkers, err := serverRepo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()}, server.WithWorkerPool(req.GetConnectedWorkerPublicIds()), server.WithLiveness(-1))
 		if err != nil {
 			event.WriteError(ctx, op, err, event.WithInfoMsg("error getting known connected worker ids"))
 			return &pbs.StatusResponse{}, status.Errorf(codes.Internal, "Error getting known connected worker ids: %v", err)
@@ -342,7 +342,7 @@ func (ws *workerServiceServer) ListHcpbWorkers(ctx context.Context, req *pbs.Lis
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Error getting servers repo: %v", err)
 	}
-	workers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()},
+	workers, err := serversRepo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()},
 		// We use the livenessTimeToStale here instead of WorkerStatusGracePeriod
 		// since WorkerStatusGracePeriod is more for deciding which workers
 		// should be used for session proxying, but here we care about providing

@@ -199,7 +199,7 @@ func (c *Controller) startWorkerConnectionMaintenanceTicking(cancelCtx context.C
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("error fetching server repository for cluster connection maintenance"))
 						break
 					}
-					knownWorker, err := serverRepo.ListWorkers(cancelCtx, []string{scope.Global.String()}, server.WithWorkerPool(connectionState.WorkerIds()), server.WithLiveness(-1))
+					knownWorker, err := serverRepo.ListWorkersUnpaginated(cancelCtx, []string{scope.Global.String()}, server.WithWorkerPool(connectionState.WorkerIds()), server.WithLiveness(-1))
 					if err != nil {
 						event.WriteError(cancelCtx, op, err, event.WithInfoMsg("couldn't get known workers from repo"))
 						break

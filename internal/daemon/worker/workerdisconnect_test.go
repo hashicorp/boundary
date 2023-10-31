@@ -42,7 +42,7 @@ func TestDeleteConnectedWorkers(t *testing.T) {
 		case <-workerTimeoutCtx.Done():
 			require.FailNow(t, "timeout waiting for all workers to connect")
 		default:
-			workers, err := serverRepo.ListWorkers(workerTimeoutCtx, []string{"global"}, server.WithLiveness(-1))
+			workers, err := serverRepo.ListWorkersUnpaginated(workerTimeoutCtx, []string{"global"}, server.WithLiveness(-1))
 			require.NoError(t, err)
 			for _, w := range workers {
 				if w.Type == "pki" && w.GetAddress() == multiHoppedPkiWorker.ProxyAddrs()[0] {

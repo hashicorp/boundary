@@ -955,7 +955,7 @@ func (s Service) AuthorizeSession(ctx context.Context, req *pbs.AuthorizeSession
 	}
 
 	// Get workers and filter down to ones that can service this request
-	selectedWorkers, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(time.Duration(s.workerStatusGracePeriod.Load())))
+	selectedWorkers, err := serversRepo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()}, server.WithLiveness(time.Duration(s.workerStatusGracePeriod.Load())))
 	if err != nil {
 		return nil, err
 	}

@@ -293,7 +293,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, "new_address", worker.GetAddress())
 
 		// Expect this worker to be returned as it is active
-		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
+		workers, err := repo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
 		require.NoError(t, err)
 		assert.Len(t, workers, 1)
 		assert.Equal(t, server.KmsWorkerType.String(), workers[0].Type)
@@ -310,7 +310,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		assert.Equal(t, "shutdown", worker.GetOperationalState())
 
 		// Should no longer see this worker in listing if we exclude shutdown workers
-		workers, err = repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
+		workers, err = repo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
 		require.NoError(t, err)
 		assert.Len(t, workers, 0)
 	})
@@ -439,7 +439,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 			tc.errAssert(t, err)
 
 			// Still only the original PKI and KMS workers exist.
-			workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
+			workers, err := repo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()})
 			require.NoError(t, err)
 			assert.Len(t, workers, 2)
 		})
@@ -453,7 +453,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
 
-		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
+		workers, err := repo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()})
 		require.NoError(t, err)
 		assert.Len(t, workers, 3)
 	})
@@ -467,7 +467,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		_, err = repo.UpsertWorkerStatus(ctx, anotherStatus)
 		require.NoError(t, err)
 
-		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()})
+		workers, err := repo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()})
 		require.NoError(t, err)
 		assert.Len(t, workers, 4)
 	})
@@ -482,7 +482,7 @@ func TestUpsertWorkerStatus(t *testing.T) {
 		require.NoError(t, err)
 
 		// Filtering out shutdown workers will remove the shutdown KMS and this shutdown worker, resulting in 2
-		workers, err := repo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
+		workers, err := repo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
 		require.NoError(t, err)
 		assert.Len(t, workers, 2)
 	})
@@ -630,7 +630,7 @@ func TestListWorkers(t *testing.T) {
 			// the purpose of these tests isn't to check liveness, so disable
 			// liveness checking.
 			opts := append(tt.opts, server.WithLiveness(-1))
-			got, err := repo.ListWorkers(ctx, tt.reqScopes, opts...)
+			got, err := repo.ListWorkersUnpaginated(ctx, tt.reqScopes, opts...)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -669,7 +669,7 @@ func TestListWorkers_WithWorkerPool(t *testing.T) {
 	worker2 := server.TestPkiWorker(t, conn, wrapper)
 	worker3 := server.TestKmsWorker(t, conn, wrapper)
 
-	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(-1))
+	result, err := serversRepo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()}, server.WithLiveness(-1))
 	require.NoError(err)
 	require.Len(result, 3)
 
@@ -701,7 +701,7 @@ func TestListWorkers_WithWorkerPool(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(-1), server.WithWorkerPool(tt.workerPool))
+			got, err := serversRepo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()}, server.WithLiveness(-1), server.WithWorkerPool(tt.workerPool))
 			require.NoError(err)
 			assert.ElementsMatch(t, tt.want, got)
 		})
@@ -723,7 +723,7 @@ func TestListWorkers_WithActiveWorkers(t *testing.T) {
 	worker2 := server.TestKmsWorker(t, conn, wrapper)
 	worker3 := server.TestKmsWorker(t, conn, wrapper)
 
-	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
+	result, err := serversRepo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()})
 	require.NoError(err)
 	require.Len(result, 3)
 
@@ -819,7 +819,7 @@ func TestListWorkers_WithActiveWorkers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			worker, err := tt.upsertFn()
 			require.NoError(err)
-			got, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
+			got, err := serversRepo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()}, server.WithActiveWorkers(true))
 			require.NoError(err)
 			assert.Len(t, got, tt.wantCnt)
 			if len(tt.wantState) > 0 {
@@ -872,7 +872,7 @@ func TestListWorkers_WithLiveness(t *testing.T) {
 	}
 
 	// Default liveness, should only list 1
-	result, err := serversRepo.ListWorkers(ctx, []string{scope.Global.String()})
+	result, err := serversRepo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()})
 	require.NoError(err)
 	require.Len(result, 1)
 	requireIds([]string{worker1.GetPublicId()}, result)
@@ -887,13 +887,13 @@ func TestListWorkers_WithLiveness(t *testing.T) {
 
 	// Static liveness. Should get two, so long as this did not take
 	// more than 5s to execute.
-	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(time.Second*5))
+	result, err = serversRepo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()}, server.WithLiveness(time.Second*5))
 	require.NoError(err)
 	require.Len(result, 2)
 	requireIds([]string{worker1.GetPublicId(), worker2.GetPublicId()}, result)
 
 	// Liveness disabled, should get all three workers.
-	result, err = serversRepo.ListWorkers(ctx, []string{scope.Global.String()}, server.WithLiveness(-1))
+	result, err = serversRepo.ListWorkersUnpaginated(ctx, []string{scope.Global.String()}, server.WithLiveness(-1))
 	require.NoError(err)
 	require.Len(result, 3)
 	requireIds([]string{worker1.GetPublicId(), worker2.GetPublicId(), worker3.GetPublicId()}, result)

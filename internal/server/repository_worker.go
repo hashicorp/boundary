@@ -165,9 +165,9 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 	return w, nil
 }
 
-// ListWorkers will return a listing of Workers and honor the WithLimit option.
+// ListWorkersUnpaginated will return a listing of Workers and honor the WithLimit option.
 // Supported options: WithWorkerType, WithActiveWorkers, WithLiveness,
-// WithWorkerPool, WithLimit
+// WithWorkerPool, WithLimit, WithStartPageAfterItem.
 //
 // If WithLiveness is zero the default liveness value is used, if it is negative
 // then the last status update time is ignored.
@@ -175,8 +175,8 @@ func lookupWorker(ctx context.Context, reader db.Reader, id string) (*Worker, er
 // default limits are used for results.  WithWorkerPool can be provided with a
 // non-zero length slice of worker ids to restrict the returned workers to only
 // ones with the ids provided.
-func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
-	const op = "server.(Repository).ListWorkers"
+func (r *Repository) ListWorkersUnpaginated(ctx context.Context, scopeIds []string, opt ...Option) ([]*Worker, error) {
+	const op = "server.(Repository).ListWorkersUnpaginated"
 
 	opts := GetOpts(opt...)
 	newOpts := []Option{}
@@ -198,12 +198,13 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 	newOpts = append(newOpts, WithWorkerType(opts.withWorkerType))
 	newOpts = append(newOpts, WithActiveWorkers(opts.withActiveWorkers))
 	newOpts = append(newOpts, WithWorkerPool(opts.withWorkerPool))
-	return ListWorkers(ctx, r.reader, scopeIds, newOpts...)
+	newOpts = append(newOpts, WithStartPageAfterItem(opts.withStartPageAfterItem))
+	return ListWorkersUnpaginated(ctx, r.reader, scopeIds, newOpts...)
 }
 
-// ListWorkers will return a listing of Workers and honor the WithLimit option.
+// ListWorkersUnpaginated will return a listing of Workers and honor the WithLimit option.
 // Supported options: WithWorkerType, WithActiveWorkers, WithLiveness,
-// WithWorkerPool, WithLimit
+// WithWorkerPool, WithLimit, WithStartPageAfterItem
 //
 // If WithLiveness is zero the default liveness value is used, if it is negative
 // then the last status update time is ignored.
@@ -211,8 +212,8 @@ func (r *Repository) ListWorkers(ctx context.Context, scopeIds []string, opt ...
 // default limits are used for results.  WithWorkerPool can be provided with a
 // non-zero length slice of worker ids to restrict the returned workers to only
 // ones with the ids provided.
-func ListWorkers(ctx context.Context, reader db.Reader, scopeIds []string, opt ...Option) ([]*Worker, error) {
-	const op = "server.ListWorkers"
+func ListWorkersUnpaginated(ctx context.Context, reader db.Reader, scopeIds []string, opt ...Option) ([]*Worker, error) {
+	const op = "server.ListWorkersUnpaginated"
 	switch {
 	case len(scopeIds) == 0:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, "no scope ids set")
