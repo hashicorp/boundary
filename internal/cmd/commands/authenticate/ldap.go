@@ -34,8 +34,6 @@ type LdapCommand struct {
 	flagPassword  string
 	Opts          []common.Option
 	parsedOpts    *common.Options
-
-	interceptValue *string
 }
 
 func (c *LdapCommand) Synopsis() string {
@@ -195,9 +193,5 @@ func (c *LdapCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	return saveAndOrPrintToken(c.Command, result, c.interceptValue)
-}
-
-func (c *LdapCommand) SetTokenIntercept(v *string) {
-	c.interceptValue = v
+	return saveAndOrPrintToken(c.Command, result, c.Opts...)
 }

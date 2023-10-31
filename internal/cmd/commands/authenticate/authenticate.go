@@ -21,7 +21,7 @@ var _ cli.Command = (*Command)(nil)
 
 type Command struct {
 	*base.Command
-	interceptValue *string
+	Opts []common.Option
 }
 
 func (c *Command) Synopsis() string {
@@ -105,24 +105,15 @@ func (c *Command) Run(args []string) int {
 
 	switch {
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.PasswordAuthMethodPrefix):
-		cmd := PasswordCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
-		if c.interceptValue != nil {
-			cmd.SetTokenIntercept(c.interceptValue)
-		}
+		cmd := PasswordCommand{Command: c.Command, Opts: append(c.Opts, common.WithSkipScopeIdFlag(true))}
 		cmd.Run([]string{})
 
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.OidcAuthMethodPrefix):
-		cmd := OidcCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
-		if c.interceptValue != nil {
-			cmd.SetTokenIntercept(c.interceptValue)
-		}
+		cmd := OidcCommand{Command: c.Command, Opts: append(c.Opts, common.WithSkipScopeIdFlag(true))}
 		cmd.Run([]string{})
 
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.LdapAuthMethodPrefix):
-		cmd := LdapCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
-		if c.interceptValue != nil {
-			cmd.SetTokenIntercept(c.interceptValue)
-		}
+		cmd := LdapCommand{Command: c.Command, Opts: append(c.Opts, common.WithSkipScopeIdFlag(true))}
 		cmd.Run([]string{})
 
 	default:
@@ -131,8 +122,4 @@ func (c *Command) Run(args []string) int {
 	}
 
 	return 0
-}
-
-func (c *Command) SetTokenIntercept(v *string) {
-	c.interceptValue = v
 }

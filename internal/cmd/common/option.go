@@ -22,7 +22,8 @@ type Option func(*Options) error
 
 // Options - how Options are represented.
 type Options struct {
-	WithSkipScopeIdFlag bool
+	WithSkipScopeIdFlag  bool
+	WithInterceptedToken *string
 }
 
 func getDefaultOptions() *Options {
@@ -34,6 +35,15 @@ func getDefaultOptions() *Options {
 func WithSkipScopeIdFlag(with bool) Option {
 	return func(o *Options) error {
 		o.WithSkipScopeIdFlag = with
+		return nil
+	}
+}
+
+// WithInterceptedToken provides a string pointer that will have the token
+// assigned to it when performing an authenticate command.
+func WithInterceptedToken(s *string) Option {
+	return func(o *Options) error {
+		o.WithInterceptedToken = s
 		return nil
 	}
 }

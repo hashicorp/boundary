@@ -14,6 +14,8 @@ import (
 
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
+	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/mitchellh/cli"
 )
 
@@ -38,10 +40,6 @@ func Wrap(c cacheEnabledCommand) cli.CommandFactory {
 	}
 }
 
-type SetTokenIntercepter interface {
-	SetTokenIntercept(*string)
-}
-
 // Run runs the wrapped command and then attempts to start the boundary daemon and send
 // the current persona
 func (w *CommandWrapper) Run(args []string) int {
@@ -49,9 +47,17 @@ func (w *CommandWrapper) Run(args []string) int {
 		return w.cacheEnabledCommand.Run(args)
 	}
 
+	// potentially intercept the token in case it isn't stored in the keyring
 	var token string
-	if v, ok := w.cacheEnabledCommand.(SetTokenIntercepter); ok {
-		v.SetTokenIntercept(&token)
+	switch v := w.cacheEnabledCommand.(type) {
+	case *authenticate.Command:
+		v.Opts = append(v.Opts, common.WithInterceptedToken(&token))
+	case *authenticate.LdapCommand:
+		v.Opts = append(v.Opts, common.WithInterceptedToken(&token))
+	case *authenticate.OidcCommand:
+		v.Opts = append(v.Opts, common.WithInterceptedToken(&token))
+	case *authenticate.PasswordCommand:
+		v.Opts = append(v.Opts, common.WithInterceptedToken(&token))
 	}
 	r := w.cacheEnabledCommand.Run(args)
 
@@ -102,15 +108,12 @@ func (w *CommandWrapper) addTokenToCache(ctx context.Context, token string) bool
 	// respond to our requests
 	waitCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	waitForDaemon(waitCtx)
+	if err := waitForDaemon(waitCtx); err != nil {
+		// TODO: Print the result of this out into a log in the dot directory
+		return false
+	}
 
 	apiErr, err := com.Add(ctx, client, keyringType, tokName)
-	if err != nil {
-		w.BaseCommand().UI.Error(err.Error())
-	}
-	if apiErr != nil {
-		w.BaseCommand().UI.Error(apiErr.Message)
-	}
 	return err == nil && apiErr == nil
 }
 
