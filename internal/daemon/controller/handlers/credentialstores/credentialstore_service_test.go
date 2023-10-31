@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	credstatic "github.com/hashicorp/boundary/internal/credential/static"
 	"github.com/hashicorp/boundary/internal/credential/vault"
@@ -184,9 +185,20 @@ func TestList(t *testing.T) {
 				return
 			}
 			require.NoError(t, gErr)
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform(), protocmp.SortRepeated(func(x, y *pb.CredentialStore) bool {
-				return x.Id < y.Id
-			})))
+			assert.Empty(t, cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				protocmp.SortRepeated(func(x, y *pb.CredentialStore) bool {
+					return x.Id < y.Id
+				}),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			))
 
 			// Test anonymous listing
 			got, gErr = s.ListCredentialStores(auth.DisabledAuthTestContext(iamRepoFn, tc.req.GetScopeId(), auth.WithUserId(globals.AnonymousUserId)), tc.req)
@@ -551,6 +563,12 @@ func TestCreateVault(t *testing.T) {
 			cmpOptions := []cmp.Option{
 				protocmp.Transform(),
 				protocmp.SortRepeatedFields(got),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
@@ -728,6 +746,12 @@ func TestCreateStatic(t *testing.T) {
 			cmpOptions := []cmp.Option{
 				protocmp.Transform(),
 				protocmp.SortRepeatedFields(got),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
 			}
 			if got != nil {
 				assert.Contains(got.GetUri(), tc.res.Uri)
@@ -870,7 +894,17 @@ func TestGet(t *testing.T) {
 				return
 			}
 			require.NoError(t, gErr)
-			assert.Empty(t, cmp.Diff(got, tc.res, protocmp.Transform()))
+			assert.Empty(t, cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			))
 
 			// Test anonymous get
 			got, gErr = s.GetCredentialStore(auth.DisabledAuthTestContext(iamRepoFn, prj.GetPublicId(), auth.WithUserId(globals.AnonymousUserId)), req)
@@ -1221,7 +1255,17 @@ func TestUpdateVault(t *testing.T) {
 				got.Item.GetVaultCredentialStoreAttributes().ClientCertificateKeyHmac = "<hmac>"
 			}
 
-			assert.Empty(cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			))
 		})
 	}
 
@@ -1412,7 +1456,17 @@ func TestUpdateStatic(t *testing.T) {
 			assert.EqualValues(2, got.Item.Version)
 			want.Item.Version = 2
 
-			assert.Empty(cmp.Diff(got, want, protocmp.Transform()))
+			assert.Empty(cmp.Diff(
+				got,
+				want,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+				cmpopts.SortSlices(func(a, b protocmp.Message) bool {
+					return a.String() < b.String()
+				}),
+			))
 		})
 	}
 

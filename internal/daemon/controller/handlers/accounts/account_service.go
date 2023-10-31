@@ -70,34 +70,34 @@ var (
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
 	IdActions = map[globals.Subtype]action.ActionSet{
-		password.Subtype: {
+		password.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
 			action.SetPassword,
 			action.ChangePassword,
-		},
-		oidc.Subtype: {
+		),
+		oidc.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
-		},
-		ldap.Subtype: {
+		),
+		ldap.Subtype: action.NewActionSet(
 			action.NoOp,
 			action.Read,
 			action.Update,
 			action.Delete,
-		},
+		),
 	}
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 )
 
 func init() {
