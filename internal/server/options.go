@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/hashicorp/boundary/internal/pagination"
 	"github.com/hashicorp/boundary/version"
 	"github.com/hashicorp/nodeenrollment/types"
 )
@@ -53,6 +54,7 @@ type options struct {
 	withFeature                            version.Feature
 	withDirectlyConnected                  bool
 	withWorkerPool                         []string
+	withStartPageAfterItem                 pagination.Item
 }
 
 func getDefaultOptions() options {
@@ -265,5 +267,13 @@ func WithDirectlyConnected(conn bool) Option {
 func WithWorkerPool(workerIds []string) Option {
 	return func(o *options) {
 		o.withWorkerPool = workerIds
+	}
+}
+
+// WithStartPageAfterItem is used to paginate over the results.
+// The next page will start after the provided item.
+func WithStartPageAfterItem(item pagination.Item) Option {
+	return func(o *options) {
+		o.withStartPageAfterItem = item
 	}
 }
