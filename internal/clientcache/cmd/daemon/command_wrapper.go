@@ -14,8 +14,6 @@ import (
 
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/commands/authenticate"
-	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/mitchellh/cli"
 )
 
@@ -49,16 +47,7 @@ func (w *CommandWrapper) Run(args []string) int {
 
 	// potentially intercept the token in case it isn't stored in the keyring
 	var token string
-	switch v := w.cacheEnabledCommand.(type) {
-	case *authenticate.Command:
-		v.Opts = append(v.Opts, common.WithInterceptedToken(&token))
-	case *authenticate.LdapCommand:
-		v.Opts = append(v.Opts, common.WithInterceptedToken(&token))
-	case *authenticate.OidcCommand:
-		v.Opts = append(v.Opts, common.WithInterceptedToken(&token))
-	case *authenticate.PasswordCommand:
-		v.Opts = append(v.Opts, common.WithInterceptedToken(&token))
-	}
+	w.cacheEnabledCommand.BaseCommand().Opts = append(w.cacheEnabledCommand.BaseCommand().Opts, base.WithInterceptedToken(&token))
 	r := w.cacheEnabledCommand.Run(args)
 
 	ctx := context.Background()

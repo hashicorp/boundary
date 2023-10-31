@@ -9,8 +9,8 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
-// getOpts - iterate the inbound Options and return a struct.
-func getOpts(opt ...Option) Options {
+// GetOpts - iterate the inbound Options and return a struct.
+func GetOpts(opt ...Option) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		if o != nil {
@@ -44,6 +44,8 @@ type Options struct {
 	withStatusCode                 int
 	withHostPlugin                 func() (string, plugin.HostPluginServiceClient)
 	withEventGating                bool
+	WithSkipScopeIdFlag            bool
+	WithInterceptedToken           *string
 }
 
 func getDefaultOptions() Options {
@@ -198,5 +200,21 @@ func WithHostPlugin(pluginId string, plg plugin.HostPluginServiceClient) Option 
 func WithEventGating(with bool) Option {
 	return func(o *Options) {
 		o.withEventGating = with
+	}
+}
+
+// WithSkipScopeIdFlag tells a command to not create a scope ID flag (usually
+// because it's already been defined)
+func WithSkipScopeIdFlag(with bool) Option {
+	return func(o *Options) {
+		o.WithSkipScopeIdFlag = with
+	}
+}
+
+// WithInterceptedToken provides a string pointer that will have the token
+// assigned to it when performing an authenticate command.
+func WithInterceptedToken(s *string) Option {
+	return func(o *Options) {
+		o.WithInterceptedToken = s
 	}
 }

@@ -85,6 +85,8 @@ type Command struct {
 	UI            cli.Ui
 	ShutdownCh    chan struct{}
 
+	Opts []Option
+
 	flags     *FlagSets
 	flagsOnce sync.Once
 
@@ -201,7 +203,7 @@ func (c *Command) Client(opt ...Option) (*api.Client, error) {
 		return c.client, nil
 	}
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	config, err := api.DefaultConfig()
 	if err != nil {

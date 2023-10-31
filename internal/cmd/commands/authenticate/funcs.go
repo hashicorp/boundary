@@ -14,22 +14,17 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/api/authtokens"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/common"
 	nkeyring "github.com/jefferai/keyring"
 	zkeyring "github.com/zalando/go-keyring"
 )
 
-func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult, opt ...common.Option) int {
+func saveAndOrPrintToken(c *base.Command, result *authmethods.AuthenticateResult, opt ...base.Option) int {
 	token := new(authtokens.AuthToken)
 	if err := json.Unmarshal(result.GetRawAttributes(), token); err != nil {
 		c.PrintCliError(fmt.Errorf("Error trying to decode response as an auth token: %w", err))
 		return base.CommandCliError
 	}
-	opts, err := common.GetOpts(opt...)
-	if err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
-	}
+	opts := base.GetOpts(opt...)
 
 	switch base.Format(c.UI) {
 	case "table":
