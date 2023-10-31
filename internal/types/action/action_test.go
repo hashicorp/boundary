@@ -155,23 +155,26 @@ func TestActionStrings(t *testing.T) {
 	}{
 		{
 			name:    "basic test",
-			actions: ActionSet{Read, AuthorizeSession},
+			actions: NewActionSet(Read, AuthorizeSession),
 			want:    []string{"read", "authorize-session"},
 		},
 		{
 			name:    "reverse test to check ordering",
-			actions: ActionSet{AuthorizeSession, Read},
+			actions: NewActionSet(AuthorizeSession, Read),
 			want:    []string{"authorize-session", "read"},
 		},
 		{
 			name:    "another test",
-			actions: ActionSet{Delete, AddGrants},
+			actions: NewActionSet(Delete, AddGrants),
 			want:    []string{"delete", "add-grants"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.actions.Strings(), tt.want)
+			// TODO: previously the order seemed to matter for these tests,
+			// Is this really imporant? And if so, is simply having a stable
+			// order sufficient?
+			assert.ElementsMatch(t, tt.actions.Strings(), tt.want)
 		})
 	}
 }
@@ -185,31 +188,31 @@ func TestHasAction(t *testing.T) {
 	}{
 		{
 			name:    "has 1",
-			actions: ActionSet{Read, AuthorizeSession},
+			actions: NewActionSet(Read, AuthorizeSession),
 			action:  Read,
 			want:    true,
 		},
 		{
 			name:    "has 2",
-			actions: ActionSet{Read, AuthorizeSession},
+			actions: NewActionSet(Read, AuthorizeSession),
 			action:  AuthorizeSession,
 			want:    true,
 		},
 		{
 			name:    "empty",
-			actions: ActionSet{},
+			actions: NewActionSet(),
 			action:  AuthorizeSession,
 			want:    false,
 		},
 		{
 			name:    "does not have 1",
-			actions: ActionSet{Read, AuthorizeSession},
+			actions: NewActionSet(Read, AuthorizeSession),
 			action:  ReadSelf,
 			want:    false,
 		},
 		{
 			name:    "does not have 2",
-			actions: ActionSet{Read, AuthorizeSession},
+			actions: NewActionSet(Read, AuthorizeSession),
 			action:  Delete,
 			want:    false,
 		},
@@ -229,12 +232,12 @@ func TestOnlySelf(t *testing.T) {
 	}{
 		{
 			name:    "has only self 1",
-			actions: ActionSet{ReadSelf, CancelSelf},
+			actions: NewActionSet(ReadSelf, CancelSelf),
 			want:    true,
 		},
 		{
 			name:    "has only self 2",
-			actions: ActionSet{ReadSelf},
+			actions: NewActionSet(ReadSelf),
 			want:    true,
 		},
 		{
@@ -244,12 +247,12 @@ func TestOnlySelf(t *testing.T) {
 		},
 		{
 			name:    "does not have only self 1",
-			actions: ActionSet{Read, AuthorizeSession},
+			actions: NewActionSet(Read, AuthorizeSession),
 			want:    false,
 		},
 		{
 			name:    "does not have only self 2",
-			actions: ActionSet{ReadSelf, AuthorizeSession},
+			actions: NewActionSet(ReadSelf, AuthorizeSession),
 			want:    false,
 		},
 	}
@@ -293,6 +296,222 @@ func TestIsActionOrParent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, tt.base.IsActionOrParent(tt.comp))
+		})
+	}
+}
+
+func TestNewActionSet(t *testing.T) {
+	tests := []struct {
+		name  string
+		types []Type
+		want  ActionSet
+	}{
+		{
+			name:  "empty",
+			types: []Type{},
+			want:  make(ActionSet),
+		},
+		{
+			name:  "single",
+			types: []Type{List},
+			want: ActionSet{
+				List: struct{}{},
+			},
+		},
+		{
+			name:  "multiple",
+			types: []Type{List, Create, Read, Update, Delete},
+			want: ActionSet{
+				List:   struct{}{},
+				Create: struct{}{},
+				Read:   struct{}{},
+				Update: struct{}{},
+				Delete: struct{}{},
+			},
+		},
+		{
+			name:  "multiple-duplicates",
+			types: []Type{List, Read, List, Read, Create, Read, Update, Delete},
+			want: ActionSet{
+				List:   struct{}{},
+				Create: struct{}{},
+				Read:   struct{}{},
+				Update: struct{}{},
+				Delete: struct{}{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewActionSet(tt.types...)
+			assert.Equal(t, tt.want, s)
+		})
+	}
+}
+
+func TestActionSetUnion(t *testing.T) {
+	tests := []struct {
+		name string
+		sets []ActionSet
+		want ActionSet
+	}{
+		{
+			name: "empty",
+			sets: []ActionSet{},
+			want: ActionSet{},
+		},
+		{
+			name: "one",
+			sets: []ActionSet{
+				{
+					List:   struct{}{},
+					Create: struct{}{},
+					Read:   struct{}{},
+				},
+			},
+			want: ActionSet{
+				List:   struct{}{},
+				Create: struct{}{},
+				Read:   struct{}{},
+			},
+		},
+		{
+			name: "multiple-no-duplicates",
+			sets: []ActionSet{
+				{
+					List:   struct{}{},
+					Create: struct{}{},
+				},
+				{
+					Update: struct{}{},
+					Delete: struct{}{},
+				},
+				{
+					Read: struct{}{},
+				},
+			},
+			want: ActionSet{
+				List:   struct{}{},
+				Create: struct{}{},
+				Read:   struct{}{},
+				Update: struct{}{},
+				Delete: struct{}{},
+			},
+		},
+		{
+			name: "multiple-duplicates",
+			sets: []ActionSet{
+				{
+					List:   struct{}{},
+					Create: struct{}{},
+				},
+				{
+					List:   struct{}{},
+					Update: struct{}{},
+					Delete: struct{}{},
+				},
+				{
+					Update: struct{}{},
+					Read:   struct{}{},
+				},
+			},
+			want: ActionSet{
+				List:   struct{}{},
+				Create: struct{}{},
+				Read:   struct{}{},
+				Update: struct{}{},
+				Delete: struct{}{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Union(tt.sets...)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestActionSetDifference(t *testing.T) {
+	tests := []struct {
+		name string
+		a    ActionSet
+		b    ActionSet
+		want ActionSet
+	}{
+		{
+			name: "same-set",
+			a: ActionSet{
+				List:   struct{}{},
+				Update: struct{}{},
+			},
+			b: ActionSet{
+				List:   struct{}{},
+				Update: struct{}{},
+			},
+			want: ActionSet{},
+		},
+		{
+			name: "distinct",
+			a: ActionSet{
+				List:   struct{}{},
+				Update: struct{}{},
+			},
+			b: ActionSet{
+				Read:   struct{}{},
+				Delete: struct{}{},
+			},
+			want: ActionSet{
+				List:   struct{}{},
+				Update: struct{}{},
+			},
+		},
+		{
+			name: "some-overlap",
+			a: ActionSet{
+				List:   struct{}{},
+				Update: struct{}{},
+			},
+			b: ActionSet{
+				Read:   struct{}{},
+				List:   struct{}{},
+				Delete: struct{}{},
+			},
+			want: ActionSet{
+				Update: struct{}{},
+			},
+		},
+		{
+			name: "nil-a",
+			a:    nil,
+			b: ActionSet{
+				Read:   struct{}{},
+				List:   struct{}{},
+				Delete: struct{}{},
+			},
+			want: ActionSet{},
+		},
+		{
+			name: "nil-b",
+			a: ActionSet{
+				Read:   struct{}{},
+				List:   struct{}{},
+				Delete: struct{}{},
+			},
+			b: nil,
+			want: ActionSet{
+				Read:   struct{}{},
+				List:   struct{}{},
+				Delete: struct{}{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Difference(tt.a, tt.b)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

@@ -49,23 +49,23 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
-	}
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
 		action.ListScopeKeys,
 		action.RotateScopeKeys,
 		action.ListScopeKeyVersionDestructionJobs,
 		action.DestroyScopeKeyVersion,
-	}
+	)
 
 	scopeCollectionTypeMapMap = map[string]map[resource.Type]action.ActionSet{
 		scope.Global.String(): {
@@ -96,9 +96,14 @@ var (
 			resource.Group:           groups.CollectionActions,
 			resource.HostCatalog:     host_catalogs.CollectionActions,
 			resource.Role:            roles.CollectionActions,
-			resource.Scope:           CollectionActions[2:], // Only Scope key actions are allowed on the project level
-			resource.Session:         sessions.CollectionActions,
-			resource.Target:          targets.CollectionActions,
+			resource.Scope: action.NewActionSet(
+				action.ListScopeKeys,
+				action.RotateScopeKeys,
+				action.ListScopeKeyVersionDestructionJobs,
+				action.DestroyScopeKeyVersion,
+			), // Only Scope key actions are allowed on the project level
+			resource.Session: sessions.CollectionActions,
+			resource.Target:  targets.CollectionActions,
 		},
 	}
 )
@@ -252,7 +257,7 @@ func (s Service) GetScope(ctx context.Context, req *pbs.GetScopeRequest) (*pbs.G
 	act := IdActions
 	// Can't delete global so elide it
 	if p.GetPublicId() == scope.Global.String() {
-		act = act[0:3]
+		act = action.Difference(act, action.NewActionSet(action.Delete))
 	}
 	if outputFields.Has(globals.AuthorizedActionsField) {
 		outputOpts = append(outputOpts, handlers.WithAuthorizedActions(authResults.FetchActionSetForId(ctx, p.GetPublicId(), act).Strings()))

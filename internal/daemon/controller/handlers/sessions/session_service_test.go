@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/authtoken"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
@@ -158,7 +159,14 @@ func TestGetSession(t *testing.T) {
 				assert.True(got.GetItem().GetExpirationTime().AsTime().Sub(tc.res.GetItem().GetExpirationTime().AsTime()) < 10*time.Millisecond)
 				tc.res.GetItem().ExpirationTime = got.GetItem().GetExpirationTime()
 			}
-			assert.Empty(cmp.Diff(tc.res, got, protocmp.Transform()), "GetSession(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				tc.res,
+				got,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetSession(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -544,7 +552,14 @@ func TestList(t *testing.T) {
 					wantSess.ExpirationTime = got.GetItems()[i].GetExpirationTime()
 				}
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListSessions(%q) got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Test with other user
 			otherRequestInfo := authpb.RequestInfo{
@@ -760,7 +775,14 @@ func TestCancel(t *testing.T) {
 					EndTime:   got.GetItem().GetUpdatedTime(),
 				},
 			}
-			assert.Empty(cmp.Diff(got.GetItem().GetStates(), wantState, protocmp.Transform()), "CancelSession(%q) states")
+			assert.Empty(cmp.Diff(
+				got.GetItem().GetStates(),
+				wantState,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CancelSession(%q) states")
 			got.GetItem().States = nil
 			got.GetItem().UpdatedTime = nil
 
@@ -771,7 +793,14 @@ func TestCancel(t *testing.T) {
 
 			assert.Equal(got.GetItem().HostId, tc.res.GetItem().HostId)
 			assert.Equal(got.GetItem().HostSetId, tc.res.GetItem().HostSetId)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CancelSession(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CancelSession(%q) got response\n%q, wanted\n%q", tc.req, got, tc.res)
 
 			if tc.req != nil {
 				require.NotNil(got)

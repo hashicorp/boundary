@@ -43,19 +43,19 @@ var (
 
 	// IdActions contains the set of actions that can be performed on
 	// individual resources
-	IdActions = action.ActionSet{
+	IdActions = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
-	}
+	)
 
 	// CollectionActions contains the set of actions that can be performed on
 	// this collection
-	CollectionActions = action.ActionSet{
+	CollectionActions = action.NewActionSet(
 		action.Create,
 		action.List,
-	}
+	)
 
 	collectionTypeMap = map[globals.Subtype]map[resource.Type]action.ActionSet{
 		static.Subtype: {
@@ -64,9 +64,9 @@ var (
 		},
 		hostplugin.Subtype: {
 			resource.HostSet: host_sets.CollectionActions,
-			resource.Host: action.ActionSet{
+			resource.Host: action.NewActionSet(
 				action.List,
-			},
+			),
 		},
 	}
 )

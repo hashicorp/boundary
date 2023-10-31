@@ -56,14 +56,14 @@ func init() {
 		panic(err)
 	}
 
-	IdActions[oidc.Subtype] = action.ActionSet{
+	IdActions[oidc.Subtype] = action.NewActionSet(
 		action.NoOp,
 		action.Read,
 		action.Update,
 		action.Delete,
 		action.ChangeState,
 		action.Authenticate,
-	}
+	)
 }
 
 type oidcState uint

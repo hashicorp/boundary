@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
@@ -252,7 +253,14 @@ func TestGet(t *testing.T) {
 				return
 			}
 			require.NoError(gErr)
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "GetManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "GetManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -393,7 +401,14 @@ func TestListOidc(t *testing.T) {
 				return strings.Compare(got.Items[i].GetName().GetValue(),
 					got.Items[j].GetName().GetValue()) < 0
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListManagedGroups() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListManagedGroups() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -551,7 +566,14 @@ func TestListLdap(t *testing.T) {
 				return strings.Compare(got.Items[i].GetName().GetValue(),
 					got.Items[j].GetName().GetValue()) < 0
 			})
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "ListManagedGroups() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "ListManagedGroups() with scope %q got response %q, wanted %q", tc.req, got, tc.res)
 
 			// Now test with anon
 			if tc.skipAnon {
@@ -909,7 +931,14 @@ func TestCreateOidc(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1115,7 +1144,14 @@ func TestCreateLdap(t *testing.T) {
 				got.Item.Id, tc.res.Item.Id = "", ""
 				got.Item.CreatedTime, got.Item.UpdatedTime, tc.res.Item.CreatedTime, tc.res.Item.UpdatedTime = nil, nil, nil, nil
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "CreateManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "CreateManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1503,7 +1539,14 @@ func TestUpdateOidc(t *testing.T) {
 				assert.EqualValues(2, got.Item.Version)
 				tc.res.Item.Version = 2
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "UpdateManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
@@ -1897,7 +1940,14 @@ func TestUpdateLdap(t *testing.T) {
 				assert.EqualValues(2, got.Item.Version)
 				tc.res.Item.Version = 2
 			}
-			assert.Empty(cmp.Diff(got, tc.res, protocmp.Transform()), "UpdateManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
+			assert.Empty(cmp.Diff(
+				got,
+				tc.res,
+				protocmp.Transform(),
+				cmpopts.SortSlices(func(a, b string) bool {
+					return a < b
+				}),
+			), "UpdateManagedGroup(%q) got response %q, wanted %q", tc.req, got, tc.res)
 		})
 	}
 }
