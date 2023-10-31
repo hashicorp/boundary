@@ -64,4 +64,8 @@ const (
 		where worker.scope_id = ?
 			and auth_token.key_id = ?
 	`
+
+	estimateCountWorkers = `
+select sum(reltuples::bigint) as estimate from pg_class where oid in ('server_worker'::regclass)
+`
 )

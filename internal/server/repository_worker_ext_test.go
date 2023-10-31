@@ -899,6 +899,196 @@ func TestListWorkers_WithLiveness(t *testing.T) {
 	requireIds([]string{worker1.GetPublicId(), worker2.GetPublicId(), worker3.GetPublicId()}, result)
 }
 
+func TestRepository_listDeletedWorkerIds(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, testKms.CreateKeys(ctx, scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	rw := db.New(conn)
+	repo, err := server.NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	// Expect no entries at the start
+	deletedIds, ttime := server.TestListDeletedWorkerIds(t, repo, ctx, time.Now().AddDate(-1, 0, 0))
+	require.Empty(t, deletedIds)
+	// Transaction timestamp should be within ~10 seconds of now
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Delete a couple of workers
+	w1 := server.TestKmsWorker(t, conn, wrapper)
+	_, err = repo.DeleteWorker(ctx, w1.GetPublicId())
+	require.NoError(t, err)
+	w2 := server.TestPkiWorker(t, conn, wrapper)
+	_, err = repo.DeleteWorker(ctx, w2.GetPublicId())
+	require.NoError(t, err)
+
+	// Expect a single entry
+	deletedIds, ttime = server.TestListDeletedWorkerIds(t, repo, ctx, time.Now().AddDate(-1, 0, 0))
+	require.ElementsMatch(t, []string{w1.GetPublicId(), w2.GetPublicId()}, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+
+	// Try again with the time set to now, expect no entries
+	deletedIds, ttime = server.TestListDeletedWorkerIds(t, repo, ctx, time.Now())
+	require.Empty(t, deletedIds)
+	assert.True(t, time.Now().Before(ttime.Add(10*time.Second)))
+	assert.True(t, time.Now().After(ttime.Add(-10*time.Second)))
+}
+
+func TestRepository_estimatedWorkerCount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	sqlDb, err := conn.SqlDB(ctx)
+	require.NoError(t, err)
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, testKms.CreateKeys(ctx, scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+
+	rw := db.New(conn)
+	repo, err := server.NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	// Check total entries at start, expect 0
+	numItems := server.TestEstimatedWorkerCount(t, repo, ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+
+	// Create some workers, expect 2 entries
+	w1 := server.TestKmsWorker(t, conn, wrapper)
+	w2 := server.TestPkiWorker(t, conn, wrapper)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems = server.TestEstimatedWorkerCount(t, repo, ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 2, numItems)
+
+	// Delete the workers, expect 0 again
+	_, err = repo.DeleteWorker(ctx, w1.GetPublicId())
+	require.NoError(t, err)
+	_, err = repo.DeleteWorker(ctx, w2.GetPublicId())
+	require.NoError(t, err)
+	// Run analyze to update estimate
+	_, err = sqlDb.ExecContext(ctx, "analyze")
+	require.NoError(t, err)
+	numItems = server.TestEstimatedWorkerCount(t, repo, ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 0, numItems)
+}
+
+func TestRepository_ListWorkersUnpaginated_WithStartPageAfterItem(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	conn, _ := db.TestSetup(t, "postgres")
+	wrapper := db.TestWrapper(t)
+	testKms := kms.TestKms(t, conn, wrapper)
+	require.NoError(t, testKms.CreateKeys(ctx, scope.Global.String(), kms.WithRandomReader(rand.Reader)))
+	scopeIds := []string{scope.Global.String()}
+
+	for i := 0; i < 5; i++ {
+		server.TestKmsWorker(t, conn, wrapper)
+		server.TestPkiWorker(t, conn, wrapper)
+	}
+
+	rw := db.New(conn)
+	repo, err := server.NewRepository(ctx, rw, rw, testKms)
+	require.NoError(t, err)
+
+	t.Run("WithStartPageAfterItem", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+
+		page1, err := repo.ListWorkersUnpaginated(
+			context.Background(),
+			scopeIds,
+			server.WithLimit(2),
+			server.WithLiveness(-1),
+		)
+		require.NoError(err)
+		require.Len(page1, 2)
+		page2, err := repo.ListWorkersUnpaginated(
+			context.Background(),
+			scopeIds,
+			server.WithLimit(2),
+			server.WithLiveness(-1),
+			server.WithStartPageAfterItem(page1[1]),
+		)
+		require.NoError(err)
+		require.Len(page2, 2)
+		for _, item := range page1 {
+			assert.NotEqual(item.GetPublicId(), page2[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page2[1].GetPublicId())
+		}
+		page3, err := repo.ListWorkersUnpaginated(
+			context.Background(),
+			scopeIds,
+			server.WithLimit(2),
+			server.WithLiveness(-1),
+			server.WithStartPageAfterItem(page2[1]),
+		)
+		require.NoError(err)
+		require.Len(page3, 2)
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page3[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page3[1].GetPublicId())
+		}
+		page4, err := repo.ListWorkersUnpaginated(
+			context.Background(),
+			scopeIds,
+			server.WithLimit(2),
+			server.WithLiveness(-1),
+			server.WithStartPageAfterItem(page3[1]),
+		)
+		require.NoError(err)
+		require.Len(page4, 2)
+		for _, item := range page3 {
+			assert.NotEqual(item.GetPublicId(), page4[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page4[1].GetPublicId())
+		}
+		page5, err := repo.ListWorkersUnpaginated(
+			context.Background(),
+			scopeIds,
+			server.WithLimit(2),
+			server.WithLiveness(-1),
+			server.WithStartPageAfterItem(page4[1]),
+		)
+		require.NoError(err)
+		require.Len(page5, 2)
+		for _, item := range page2 {
+			assert.NotEqual(item.GetPublicId(), page5[0].GetPublicId())
+			assert.NotEqual(item.GetPublicId(), page5[1].GetPublicId())
+		}
+		page6, err := repo.ListWorkersUnpaginated(
+			context.Background(),
+			scopeIds,
+			server.WithLimit(2),
+			server.WithLiveness(-1),
+			server.WithStartPageAfterItem(page5[1]),
+		)
+		require.NoError(err)
+		require.Empty(page6)
+
+		// Update the first target and check that it gets listed subsequently
+		page1[1].Name = "new-name"
+		_, _, err = repo.UpdateWorker(ctx, page1[1], page1[1].GetVersion(), []string{"name"})
+		require.NoError(err)
+		page7, err := repo.ListWorkersUnpaginated(
+			context.Background(),
+			scopeIds,
+			server.WithLimit(2),
+			server.WithLiveness(-1),
+			server.WithStartPageAfterItem(page5[1]),
+		)
+		require.NoError(err)
+		require.Len(page7, 1)
+		require.Equal(page7[0].GetPublicId(), page1[1].GetPublicId())
+	})
+}
+
 func TestRepository_CreateWorker(t *testing.T) {
 	t.Parallel()
 	testCtx := context.Background()

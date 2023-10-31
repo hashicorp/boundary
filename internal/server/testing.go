@@ -210,3 +210,17 @@ func TestPkiWorker(t *testing.T, conn *db.DB, wrapper wrapping.Wrapper, opt ...O
 	require.NoError(t, err)
 	return wrk
 }
+
+// TestListDeletedWorkerIds exposes the repo listDeletedWorkerIds method for testing purposes.
+func TestListDeletedWorkerIds(t testing.TB, repo *Repository, ctx context.Context, since time.Time) ([]string, time.Time) {
+	ids, ttime, err := repo.listDeletedWorkerIds(ctx, since)
+	require.NoError(t, err)
+	return ids, ttime
+}
+
+// TestEstimatedWorkerCount exposes the repo estimatedWorkerCount method for testing purposes.
+func TestEstimatedWorkerCount(t testing.TB, repo *Repository, ctx context.Context) int {
+	n, err := repo.estimatedWorkerCount(ctx)
+	require.NoError(t, err)
+	return n
+}

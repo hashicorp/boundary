@@ -5,9 +5,12 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	stderrors "errors"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/boundary/internal/db"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -230,34 +233,63 @@ func ListWorkersUnpaginated(ctx context.Context, reader db.Reader, scopeIds []st
 	if liveness > 0 {
 		where = append(where, fmt.Sprintf("last_status_time > now() - interval '%d seconds'", uint32(liveness.Seconds())))
 	}
-	if len(scopeIds) > 0 {
-		where = append(where, "scope_id in (?)")
-		whereArgs = append(whereArgs, scopeIds)
+	var scopeArgs []string
+	for i, scopeId := range scopeIds {
+		arg := "scope_id_" + strconv.Itoa(i)
+		scopeArgs = append(scopeArgs, "@"+arg)
+		whereArgs = append(whereArgs, sql.Named(arg, scopeId))
+	}
+	if len(scopeArgs) > 0 {
+		where = append(where, fmt.Sprintf("scope_id in (%s)", strings.Join(scopeArgs, ", ")))
 	}
 
 	switch opts.withWorkerType {
 	case "":
 	case KmsWorkerType, PkiWorkerType:
-		where = append(where, "type = ?")
-		whereArgs = append(whereArgs, opts.withWorkerType.String())
+		where = append(where, "type = @worker_type")
+		whereArgs = append(whereArgs, sql.Named("worker_type", opts.withWorkerType.String()))
 	default:
 		return nil, errors.New(ctx, errors.InvalidParameter, op, fmt.Sprintf("unknown worker type %v", opts.withWorkerType))
 	}
 
 	if opts.withActiveWorkers {
-		where = append(where, "operational_state = ?")
-		whereArgs = append(whereArgs, ActiveOperationalState.String())
+		where = append(where, "operational_state = @operational_state")
+		whereArgs = append(whereArgs, sql.Named("operational_state", ActiveOperationalState.String()))
 	}
 
-	if len(opts.withWorkerPool) > 0 {
-		where = append(where, "public_id in (?)")
-		whereArgs = append(whereArgs, opts.withWorkerPool)
+	var workerArgs []string
+	for i, worker := range opts.withWorkerPool {
+		arg := "public_id_" + strconv.Itoa(i)
+		workerArgs = append(workerArgs, "@"+arg)
+		whereArgs = append(whereArgs, sql.Named(arg, worker))
+	}
+	if len(workerArgs) > 0 {
+		where = append(where, fmt.Sprintf("public_id in (%s)", strings.Join(workerArgs, ", ")))
 	}
 
 	limit := db.DefaultLimit
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
+	}
+
+	// Ordering and pagination are tightly coupled.
+	// We order by update_time ascending so that new
+	// and updated items appear at the end of the pagination.
+	// We need to further order by public_id to distinguish items
+	// with identical update times.
+	withOrder := "update_time asc, public_id asc"
+	if opts.withStartPageAfterItem != nil {
+		// Now that the order is defined, we can use a simple where
+		// clause to only include items updated since the specified
+		// start of the page. We use greater than or equal for the update
+		// time as there may be items with identical update_times. We
+		// then use public_id as a tiebreaker.
+		whereArgs = append(whereArgs,
+			sql.Named("after_item_update_time", opts.withStartPageAfterItem.GetUpdateTime()),
+			sql.Named("after_item_id", opts.withStartPageAfterItem.GetPublicId()),
+		)
+		where = append(where, "(update_time > @after_item_update_time or (update_time = @after_item_update_time and public_id > @after_item_id))")
 	}
 
 	var wAggs []*workerAggregate
@@ -267,6 +299,7 @@ func ListWorkersUnpaginated(ctx context.Context, reader db.Reader, scopeIds []st
 		strings.Join(where, " and "),
 		whereArgs,
 		db.WithLimit(limit),
+		db.WithOrder(withOrder),
 	); err != nil {
 		return nil, errors.Wrap(ctx, err, op, errors.WithMsg("error searching for workers"))
 	}
@@ -832,4 +865,46 @@ func (r *Repository) DeleteWorkerTags(ctx context.Context, workerId string, work
 		return db.NoRowsAffected, errors.Wrap(ctx, err, op)
 	}
 	return rowsDeleted, nil
+}
+
+// listDeletedWorkerIds lists the public IDs of any workers deleted since the timestamp provided,
+// and the timestamp of the transaction within which the workers were listed.
+func (r *Repository) listDeletedWorkerIds(ctx context.Context, since time.Time) ([]string, time.Time, error) {
+	const op = "worker.(Repository).listDeletedWorkerIds"
+	var deletedWorkers []*deletedWorker
+	var transactionTimestamp time.Time
+	if _, err := r.writer.DoTx(ctx, db.StdRetryCnt, db.ExpBackoff{}, func(r db.Reader, _ db.Writer) error {
+		if err := r.SearchWhere(ctx, &deletedWorkers, "delete_time >= ?", []any{since}); err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to query deleted workers"))
+		}
+		var err error
+		transactionTimestamp, err = r.Now(ctx)
+		if err != nil {
+			return errors.Wrap(ctx, err, op, errors.WithMsg("failed to get transaction timestamp"))
+		}
+		return nil
+	}); err != nil {
+		return nil, time.Time{}, err
+	}
+	var workerIds []string
+	for _, t := range deletedWorkers {
+		workerIds = append(workerIds, t.PublicId)
+	}
+	return workerIds, transactionTimestamp, nil
+}
+
+// estimatedWorkerCount returns an estimate of the total number of workers.
+func (r *Repository) estimatedWorkerCount(ctx context.Context) (int, error) {
+	const op = "worker.(Repository).estimatedCount"
+	rows, err := r.reader.Query(ctx, estimateCountWorkers, nil)
+	if err != nil {
+		return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total workers"))
+	}
+	var count int
+	for rows.Next() {
+		if err := r.reader.ScanRows(ctx, rows, &count); err != nil {
+			return 0, errors.Wrap(ctx, err, op, errors.WithMsg("failed to query total workers"))
+		}
+	}
+	return count, nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/boundary/internal/db/timestamp"
 	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/internal/server/store"
+	"github.com/hashicorp/boundary/internal/types/resource"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -215,6 +216,11 @@ func (Worker) TableName() string {
 	return "server_worker"
 }
 
+// GetResourceType returns the resource type of the worker.
+func (Worker) GetResourceType() resource.Type {
+	return resource.Worker
+}
+
 // workerAggregate contains an aggregated view of the values associated with
 // a single worker.
 type workerAggregate struct {
@@ -302,4 +308,14 @@ func (a *workerAggregate) GetPublicId() string {
 
 func (workerAggregate) TableName() string {
 	return "server_worker_aggregate"
+}
+
+type deletedWorker struct {
+	PublicId   string `gorm:"primary_key"`
+	DeleteTime *timestamp.Timestamp
+}
+
+// TableName returns the tablename to override the default gorm table name
+func (s *deletedWorker) TableName() string {
+	return "server_worker_deleted"
 }
