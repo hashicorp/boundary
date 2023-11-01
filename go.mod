@@ -16,8 +16,8 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.16.2
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9
 	github.com/google/go-cmp v0.6.0
-	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
 	github.com/hashicorp/boundary/api v0.0.43
 	github.com/hashicorp/boundary/sdk v0.0.39
 	github.com/hashicorp/cap v0.4.0
@@ -76,7 +76,7 @@ require (
 	golang.org/x/tools v0.14.0
 	google.golang.org/genproto v0.0.0-20231030173426-d783a09b4405
 	google.golang.org/grpc v1.59.0
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0
 	google.golang.org/protobuf v1.31.0
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gorm v1.25.5 // indirect
@@ -196,7 +196,7 @@ require (
 	github.com/xo/dburl v0.16.0 // indirect
 	go.uber.org/goleak v1.1.12 // indirect
 	golang.org/x/mod v0.13.0 // indirect
-	golang.org/x/oauth2 v0.11.0 // indirect
+	golang.org/x/oauth2 v0.12.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
