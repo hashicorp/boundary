@@ -35,7 +35,6 @@ import (
 // and retrieve the keyring and token information used by a command.
 type Commander interface {
 	ClientProvider
-	DiscoverKeyringTokenInfo() (string, string, error)
 	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
 }
 
@@ -206,27 +205,6 @@ func (s *CacheServer) Serve(ctx context.Context, cmd Commander, opt ...Option) e
 	if err != nil {
 		return errors.Wrap(ctx, err, op)
 	}
-
-	// If we have a token info already, add it to the repository immediately so
-	// it can start to get updated.
-	func() {
-		client, err := cmd.Client()
-		if err != nil {
-			event.WriteError(ctx, op, err)
-			return
-		}
-		krType, tokName, err := cmd.DiscoverKeyringTokenInfo()
-		if err != nil {
-			event.WriteError(ctx, op, err)
-			return
-		}
-		if at := cmd.ReadTokenFromKeyring(krType, tokName); at != nil {
-			if err := repo.AddKeyringToken(ctx, client.Addr(), cache.KeyringToken{KeyringType: krType, TokenName: tokName, AuthTokenId: at.Id}); err != nil {
-				event.WriteError(ctx, op, err)
-				return
-			}
-		}
-	}()
 
 	refreshService, err := cache.NewRefreshService(ctx, repo)
 	if err != nil {
