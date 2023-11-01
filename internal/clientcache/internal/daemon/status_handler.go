@@ -16,19 +16,19 @@ import (
 
 // RefreshTokenStatus is the status of a resource token
 type RefreshTokenStatus struct {
-	Age      time.Duration `json:"age"`
-	LastUsed time.Duration `json:"last_used"`
+	Age      time.Duration `json:"age,omitempty"`
+	LastUsed time.Duration `json:"last_used,omitempty"`
 }
 
 type ErrorStatus struct {
-	Error        string        `json:"error"`
-	LastReturned time.Duration `json:"last_returned"`
+	Error        string        `json:"error,omitempty"`
+	LastReturned time.Duration `json:"last_returned,omitempty"`
 }
 
 // ResourceStatus contains the status of a specific resource type contained in
 // the cache for a specific user.
 type ResourceStatus struct {
-	Name         string              `json:"name"`
+	Name         string              `json:"name,omitempty"`
 	Count        int                 `json:"count"`
 	LastError    *ErrorStatus        `json:"last_error,omitempty"`
 	RefreshToken *RefreshTokenStatus `json:"refresh_token,omitempty"`
@@ -37,7 +37,7 @@ type ResourceStatus struct {
 // AuthTokenStatus contains the status of an auth token tracked in the cache for
 // a specific user.
 type AuthTokenStatus struct {
-	Id                    string `json:"id"`
+	Id                    string `json:"id,omitempty"`
 	KeyringReferences     int    `json:"keyring_references,omitempty"`
 	KeyringlessReferences int    `json:"keyringless_references,omitempty"`
 }
@@ -45,13 +45,13 @@ type AuthTokenStatus struct {
 // UserStatus contains the status of a specific user tracked by the cache
 type UserStatus struct {
 	// The Id of the user this status is for
-	Id string `json:"id"`
+	Id string `json:"id,omitempty"`
 	// The boundary address for this user
-	Address string `json:"address"`
+	Address string `json:"address,omitempty"`
 	// The auth tokens used by this user to authenticate with the boundary instance
-	AuthTokens []AuthTokenStatus `json:"auth_tokens"`
+	AuthTokens []AuthTokenStatus `json:"auth_tokens,omitempty"`
 	// The resources tracked by the cache for this user
-	Resources []ResourceStatus `json:"resources"`
+	Resources []ResourceStatus `json:"resources,omitempty"`
 }
 
 // StatusResult is the struct returned to status requests.

@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/hashicorp/boundary/version"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
@@ -97,7 +96,6 @@ func (c *StatusCommand) Run(args []string) int {
 }
 
 func (c *StatusCommand) Status(ctx context.Context) (*api.Response, error) {
-	const op = "daemon.(StatusCommand).Status"
 	dotPath, err := DefaultDotDirectory(ctx)
 	if err != nil {
 		return nil, err
@@ -107,10 +105,9 @@ func (c *StatusCommand) Status(ctx context.Context) (*api.Response, error) {
 }
 
 func status(ctx context.Context, daemonPath string) (*api.Response, error) {
-	const op = "daemon.status"
 	client, err := api.NewClient(nil)
 	if err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, fmt.Errorf("Error creating a new API client: %w", err)
 	}
 	addr := daemon.SocketAddress(daemonPath)
 	_, err = os.Stat(strings.TrimPrefix(addr, "unix://"))
@@ -118,7 +115,7 @@ func status(ctx context.Context, daemonPath string) (*api.Response, error) {
 		return nil, errDaemonNotRunning
 	}
 	if err := client.SetAddr(addr); err != nil {
-		return nil, errors.Wrap(ctx, err, op)
+		return nil, fmt.Errorf("Error when setting the client's address: %w", err)
 	}
 	// Because this is using the real lib it can pick up from stored locations
 	// like the system keychain. Explicitly clear the token for now
