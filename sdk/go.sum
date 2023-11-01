@@ -36,8 +36,8 @@ github.com/google/uuid v1.3.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY2I=
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
-github.com/hashicorp/eventlogger v0.2.5 h1:Z2hqgJDNHAewz/kmluhpOWuC2Ts5JzF3mXt6N5MTr6U=
-github.com/hashicorp/eventlogger v0.2.5/go.mod h1://CHt6/j+Q2lc0NlUB5af4aS2M0c0aVBg9/JfcpAyhM=
+github.com/hashicorp/eventlogger v0.2.6-0.20231025104552-802587e608f0 h1:f9oX8/3zxiQrfrWnBeyjDm4S02GAU02OBtCRoZOUwlo=
+github.com/hashicorp/eventlogger v0.2.6-0.20231025104552-802587e608f0/go.mod h1://CHt6/j+Q2lc0NlUB5af4aS2M0c0aVBg9/JfcpAyhM=
 github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0 h1:iAb287bq0TaWTnhDYuN/zVqdD2EwanQg9ncVelC60Xc=
 github.com/hashicorp/eventlogger/filters/encrypt v0.1.8-0.20231025104552-802587e608f0/go.mod h1:tMywUTIvdB/FXhwm6HMTt61C8/eODY6gitCHhXtyojg=
 github.com/hashicorp/go-hclog v1.5.0 h1:bI2ocEMgcVlz55Oj1xZNBsVi900c7II+fWDyV9o+13c=
