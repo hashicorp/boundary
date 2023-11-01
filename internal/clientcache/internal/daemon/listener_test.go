@@ -45,7 +45,9 @@ func TestListenComms(t *testing.T) {
 
 	client, err := api.NewClient(nil)
 	require.NoError(t, err)
-	require.NoError(t, client.SetAddr(SocketAddress(path)))
+	u, err := SocketAddress(path)
+	require.NoError(t, err)
+	require.NoError(t, client.SetAddr(u.String()))
 	client.SetToken("")
 	req, err := client.NewRequest(ctx, "GET", "/test", nil)
 	require.NoError(t, err)

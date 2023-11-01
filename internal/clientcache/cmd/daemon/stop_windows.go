@@ -69,12 +69,15 @@ func (s *StopCommand) stop(ctx context.Context) error {
 func stopThroughHandler(ctx context.Context, dotPath string) (*api.Error, error) {
 	const op = "daemon.stopThroughHandler"
 
-	sockAddr := daemon.SocketAddress(dotPath)
+	sockAddr, err := daemon.SocketAddress(dotPath)
+	if err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
 	client, err := api.NewClient(nil)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if err := client.SetAddr(sockAddr); err != nil {
+	if err := client.SetAddr(sockAddr.String()); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	// Because this is using the real lib it can pick up from stored locations

@@ -182,7 +182,7 @@ func WrapMap(prefixSpaces, maxLengthOverride int, input map[string]any) string {
 // information, to the UI in the appropriate format.  WithAttributeFieldPrefix is
 // used, all other options are ignored.
 func (c *Command) PrintApiError(in *api.Error, contextStr string, opt ...Option) {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	switch Format(c.UI) {
 	case "json":
 		var b []byte
@@ -310,7 +310,7 @@ func (c *Command) PrintJsonItem(resp *api.Response, opt ...Option) bool {
 
 // PrintJson prints the given raw JSON in our common format
 func (c *Command) PrintJson(input json.RawMessage, opt ...Option) bool {
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	output := struct {
 		StatusCode int             `json:"status_code,omitempty"`
 		Item       json.RawMessage `json:"item,omitempty"`

@@ -175,7 +175,7 @@ func (b *Server) SetupEventing(ctx context.Context, logger hclog.Logger, seriali
 	if serverName == "" {
 		return berrors.New(ctx, berrors.InvalidParameter, op, "missing server name")
 	}
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 	if opts.withEventerConfig != nil {
 		if err := opts.withEventerConfig.Validate(); err != nil {
 			return berrors.Wrap(ctx, err, op, berrors.WithMsg("invalid eventer config"))
