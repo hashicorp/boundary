@@ -7,9 +7,9 @@ import (
 	"net"
 	"time"
 
+	"github.com/hashicorp/boundary/globals"
 	intglobals "github.com/hashicorp/boundary/internal/globals"
 	"github.com/hashicorp/boundary/internal/perms"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 )
 
 // GetOpts - iterate the inbound Options and return a struct
@@ -35,7 +35,7 @@ type options struct {
 	WithProjectIds             []string
 	WithProjectName            string
 	WithUserId                 string
-	WithType                   subtypes.Subtype
+	WithType                   globals.Subtype
 	WithHostSources            []string
 	WithCredentialLibraries    []*CredentialLibrary
 	WithStaticCredentials      []*StaticCredential
@@ -148,7 +148,7 @@ func WithUserId(userId string) Option {
 }
 
 // WithType provides an option to search by a target type
-func WithType(t subtypes.Subtype) Option {
+func WithType(t globals.Subtype) Option {
 	return func(o *options) {
 		o.WithType = t
 	}

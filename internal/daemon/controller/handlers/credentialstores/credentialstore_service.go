@@ -395,7 +395,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Store, 
 	const op = "credentialstores.(Service).getFromRepo"
 
 	switch subtypes.SubtypeFromId(domain, id) {
-	case vault.Subtype:
+	case globals.VaultSubtype:
 		repo, err := s.vaultRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -408,7 +408,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Store, 
 			return cs, nil
 		}
 
-	case static.Subtype:
+	case globals.StaticSubtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -429,7 +429,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.Crede
 	const op = "credentialstores.(Service).createInRepo"
 
 	switch item.Type {
-	case vault.Subtype.String():
+	case globals.VaultSubtype.String():
 		cs, err := toStorageVaultStore(ctx, projId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -444,7 +444,7 @@ func (s Service) createInRepo(ctx context.Context, projId string, item *pb.Crede
 		}
 		return out, nil
 
-	case static.Subtype.String():
+	case globals.StaticSubtype.String():
 		cs, err := toStorageStaticStore(ctx, projId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -476,7 +476,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 	}
 
 	switch subtypes.SubtypeFromId(domain, id) {
-	case vault.Subtype:
+	case globals.VaultSubtype:
 		cs, err := toStorageVaultStore(ctx, projId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -492,7 +492,7 @@ func (s Service) updateInRepo(ctx context.Context, projId, id string, mask []str
 			return nil, errors.Wrap(ctx, err, op, errors.WithMsg("unable to update credential store"))
 		}
 
-	case static.Subtype:
+	case globals.StaticSubtype:
 		cs, err := toStorageStaticStore(ctx, projId, item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -519,7 +519,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 	var rows int
 
 	switch subtypes.SubtypeFromId(domain, id) {
-	case vault.Subtype:
+	case globals.VaultSubtype:
 		repo, err := s.vaultRepoFn()
 		if err != nil {
 			return false, err
@@ -532,7 +532,7 @@ func (s Service) deleteFromRepo(ctx context.Context, id string) (bool, error) {
 			return false, errors.Wrap(ctx, err, op, errors.WithMsg("unable to delete credential store"))
 		}
 
-	case static.Subtype:
+	case globals.StaticSubtype:
 		repo, err := s.staticRepoFn()
 		if err != nil {
 			return false, err
@@ -582,7 +582,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 		}
 	default:
 		switch subtypes.SubtypeFromId(domain, id) {
-		case vault.Subtype:
+		case globals.VaultSubtype:
 			cs, err := vaultRepo.LookupCredentialStore(ctx, id)
 			if err != nil {
 				res.Error = err
@@ -594,7 +594,7 @@ func (s Service) authResult(ctx context.Context, id string, a action.Type) auth.
 			}
 			parentId = cs.GetProjectId()
 
-		case static.Subtype:
+		case globals.StaticSubtype:
 			var err error
 			cs, err := staticRepo.LookupCredentialStore(ctx, id)
 			if err != nil {
@@ -658,7 +658,7 @@ func toProto(ctx context.Context, in credential.Store, opt ...handlers.Option) (
 	}
 	if outputFields.Has(globals.AttributesField) {
 		switch subtypes.SubtypeFromId(domain, in.GetPublicId()) {
-		case vault.Subtype:
+		case globals.VaultSubtype:
 			vaultIn, ok := in.(*vault.CredentialStore)
 			if !ok {
 				return nil, errors.New(ctx, errors.Internal, op, "unable to cast to vault credential store")
@@ -791,7 +791,7 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateCredentialStoreRe
 			badFields["scope_id"] = "This field must be a valid project scope id."
 		}
 		switch subtypes.SubtypeFromType(domain, req.GetItem().GetType()) {
-		case vault.Subtype:
+		case globals.VaultSubtype:
 			attrs := req.GetItem().GetVaultCredentialStoreAttributes()
 			if attrs == nil {
 				badFields[globals.AttributesField] = "Attributes are required for creating a vault credential store"
@@ -828,7 +828,7 @@ func validateCreateRequest(ctx context.Context, req *pbs.CreateCredentialStoreRe
 			if len(cs) > 0 && pk == nil {
 				badFields[clientCertField] = "Cannot set a client certificate without a private key."
 			}
-		case static.Subtype:
+		case globals.StaticSubtype:
 			// No additional validation required for static credential store
 		default:
 			badFields[globals.TypeField] = "This is a required field and must be a known credential store type."
@@ -841,8 +841,8 @@ func validateUpdateRequest(ctx context.Context, req *pbs.UpdateCredentialStoreRe
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
-		case vault.Subtype:
-			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != vault.Subtype {
+		case globals.VaultSubtype:
+			if req.GetItem().GetType() != "" && subtypes.SubtypeFromType(domain, req.GetItem().GetType()) != globals.VaultSubtype {
 				badFields["type"] = "Cannot modify resource type."
 			}
 			attrs := req.GetItem().GetVaultCredentialStoreAttributes()
@@ -904,10 +904,10 @@ func calculateAuthorizedCollectionActions(ctx context.Context, authResults auth.
 	var collectionActions map[string]*structpb.ListValue
 	var err error
 	switch subtypes.SubtypeFromId(domain, id) {
-	case vault.Subtype:
+	case globals.VaultSubtype:
 		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, vaultCollectionTypeMap, authResults.Scope.Id, id)
 
-	case static.Subtype:
+	case globals.StaticSubtype:
 		collectionActions, err = auth.CalculateAuthorizedCollectionActions(ctx, authResults, staticCollectionTypeMap, authResults.Scope.Id, id)
 	}
 	if err != nil {

@@ -18,13 +18,8 @@ import (
 	"github.com/hashicorp/boundary/internal/oplog"
 	"github.com/hashicorp/boundary/internal/target"
 	"github.com/hashicorp/boundary/internal/target/targettest/store"
-	"github.com/hashicorp/boundary/internal/types/subtypes"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
-)
-
-const (
-	Subtype = subtypes.Subtype("tcp")
 )
 
 // Target is a target.Target used for tests.
@@ -103,8 +98,8 @@ func (t *Target) GetVersion() uint32 {
 	return t.Version
 }
 
-func (t *Target) GetType() subtypes.Subtype {
-	return Subtype
+func (t *Target) GetType() globals.Subtype {
+	return globals.TcpSubtype
 }
 
 func (t *Target) GetCreateTime() *timestamp.Timestamp {

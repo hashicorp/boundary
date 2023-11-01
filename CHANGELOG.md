@@ -4,10 +4,37 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ## Next
 
+### Deprecations/Changes
+
+* Per the note in Boundary 0.12.0, the `vault` credential library subtype has
+  now been removed in favor of `vault-generic`. For example, instead of
+  `boundary credential-libraries create vault`, you must use `boundary
+  credential-libraries create vault-generic`.
+
+### New and Improved
+
+* cli: New generic commands `read`, `update`, and `delete` have been added.
+  These allow operating on resources by directly specifying the ID of the
+  resource as the next parameter (e.g. `boundary update ttcp_1234567890`).
+  Subtypes do not need to be specified (e.g. that command is equivalent to
+  `boundary targets update tcp -id ttcp_1234567890`), and any flags given after
+  the ID are passed through to the type-specific subcommand. Once the ID has
+  been entered, autocomplete is also supported.
+
+## 0.14.2 (Not Yet Released)
+
 ### Bug Fixes
-* High CPU consumption: A background GRPC connection state check caused high CPU utilization. This was caused by a long running loop that was checking for GRPC connection state changes between a worker and an upstream connection address. The loop was not correctly waiting for GRPC connection state changes before running. The issue was fixed by correctly updating the state that determines when the loop in GRPC connection state check should run. ([PR](https://github.com/hashicorp/boundary/pull/3884))
+
+* High CPU consumption: A background GRPC connection state check caused high CPU
+  utilization. This was caused by a long running loop that was checking for GRPC
+  connection state changes between a worker and an upstream connection address.
+  The loop was not correctly waiting for GRPC connection state changes before
+  running. The issue was fixed by correctly updating the state that determines
+  when the loop in GRPC connection state check should run.
+  ([PR](https://github.com/hashicorp/boundary/pull/3884))
 * LDAP auth methods: Fix encoding of mTLS client key which prevented Boundary
-  from making mTLS connections to an LDAP server ([Issue](https://github.com/hashicorp/boundary/issues/3927),
+  from making mTLS connections to an LDAP server
+  ([Issue](https://github.com/hashicorp/boundary/issues/3927),
   [PR](https://github.com/hashicorp/boundary/pull/3929)).
 
 ## 0.14.1 (2023/10/17)
@@ -23,10 +50,6 @@ Canonical reference for changes, improvements, and bugfixes for Boundary.
 
 ### Deprecations/Changes
 
-* Per the note in Boundary 0.12.0, the `vault` credential library subtype has
-  now been removed in favor of `vault-generic`. For example, instead of
-  `boundary credential-libraries create vault`, you must use `boundary
-  credential-libraries create vault-generic`.
 * Per the note in Boundary 0.12.0, errors returned from the cli when using the
   `-format=json` option will now only use the `status_code` field. The `status`
   field has been removed.

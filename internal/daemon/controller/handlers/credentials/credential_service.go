@@ -346,7 +346,7 @@ func (s Service) getFromRepo(ctx context.Context, id string) (credential.Static,
 func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Credential) (credential.Static, error) {
 	const op = "credentials.(Service).createInRepo"
 	switch item.GetType() {
-	case credential.UsernamePasswordSubtype.String():
+	case globals.UsernamePasswordSubtype.String():
 		cred, err := toUsernamePasswordStorageCredential(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -363,7 +363,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
 		}
 		return out, nil
-	case credential.SshPrivateKeySubtype.String():
+	case globals.SshPrivateKeySubtype.String():
 		cred, err := toSshPrivateKeyStorageCredential(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -380,7 +380,7 @@ func (s Service) createInRepo(ctx context.Context, scopeId string, item *pb.Cred
 			return nil, handlers.ApiErrorWithCodeAndMessage(codes.Internal, "Unable to create credential but no error returned from repository.")
 		}
 		return out, nil
-	case credential.JsonSubtype.String():
+	case globals.JsonSubtype.String():
 		cred, err := toJsonStorageCredential(ctx, item.GetCredentialStoreId(), item)
 		if err != nil {
 			return nil, errors.Wrap(ctx, err, op)
@@ -414,7 +414,7 @@ func (s Service) updateInRepo(
 	item := proto.Clone(in).(*pb.Credential)
 
 	switch subtypes.SubtypeFromId(domain, id) {
-	case credential.UsernamePasswordSubtype:
+	case globals.UsernamePasswordSubtype:
 		dbMasks = append(dbMasks, upMaskManager.Translate(masks)...)
 		if len(dbMasks) == 0 {
 			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
@@ -438,7 +438,7 @@ func (s Service) updateInRepo(
 		}
 		return out, nil
 
-	case credential.SshPrivateKeySubtype:
+	case globals.SshPrivateKeySubtype:
 		dbMasks = append(dbMasks, spkMaskManager.Translate(masks)...)
 		if len(dbMasks) == 0 {
 			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
@@ -472,7 +472,7 @@ func (s Service) updateInRepo(
 		}
 		return out, nil
 
-	case credential.JsonSubtype:
+	case globals.JsonSubtype:
 		dbMasks = append(dbMasks, jsonMaskManager.Translate(masks, "attributes", "object")...)
 		if len(dbMasks) == 0 {
 			return nil, handlers.InvalidArgumentErrorf("No valid fields included in the update mask.", map[string]string{"update_mask": "No valid fields provided in the update mask."})
@@ -585,11 +585,11 @@ func toProto(in credential.Static, opt ...handlers.Option) (*pb.Credential, erro
 	if outputFields.Has(globals.TypeField) {
 		switch in.(type) {
 		case *static.UsernamePasswordCredential:
-			out.Type = credential.UsernamePasswordSubtype.String()
+			out.Type = globals.UsernamePasswordSubtype.String()
 		case *static.SshPrivateKeyCredential:
-			out.Type = credential.SshPrivateKeySubtype.String()
+			out.Type = globals.SshPrivateKeySubtype.String()
 		case *static.JsonCredential:
-			out.Type = credential.JsonSubtype.String()
+			out.Type = globals.JsonSubtype.String()
 		}
 	}
 	if outputFields.Has(globals.DescriptionField) && in.GetDescription() != "" {
@@ -752,7 +752,7 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 		}
 
 		switch req.Item.GetType() {
-		case credential.UsernamePasswordSubtype.String():
+		case globals.UsernamePasswordSubtype.String():
 			if req.Item.GetUsernamePasswordAttributes().GetUsername().GetValue() == "" {
 				badFields[usernameField] = "Field required for creating a username-password credential."
 			}
@@ -760,7 +760,7 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 				badFields[passwordField] = "Field required for creating a username-password credential."
 			}
 
-		case credential.SshPrivateKeySubtype.String():
+		case globals.SshPrivateKeySubtype.String():
 			if req.Item.GetSshPrivateKeyAttributes().GetUsername().GetValue() == "" {
 				badFields[usernameField] = "Field required for creating an SSH private key credential."
 			}
@@ -789,7 +789,7 @@ func validateCreateRequest(req *pbs.CreateCredentialRequest) error {
 				}
 			}
 
-		case credential.JsonSubtype.String():
+		case globals.JsonSubtype.String():
 			object := req.GetItem().GetJsonAttributes().GetObject()
 			if object == nil || len(object.AsMap()) <= 0 {
 				badFields[objectField] = "This is a required field and cannot be set to empty."
@@ -809,7 +809,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 	return handlers.ValidateUpdateRequest(req, req.GetItem(), func() map[string]string {
 		badFields := map[string]string{}
 		switch subtypes.SubtypeFromId(domain, req.GetId()) {
-		case credential.UsernamePasswordSubtype:
+		case globals.UsernamePasswordSubtype:
 			attrs := req.GetItem().GetUsernamePasswordAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
 				badFields[usernameField] = "This is a required field and cannot be set to empty."
@@ -818,7 +818,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 				badFields[passwordField] = "This is a required field and cannot be set to empty."
 			}
 
-		case credential.SshPrivateKeySubtype:
+		case globals.SshPrivateKeySubtype:
 			attrs := req.GetItem().GetSshPrivateKeyAttributes()
 			if handlers.MaskContains(req.GetUpdateMask().GetPaths(), usernameField) && attrs.GetUsername().GetValue() == "" {
 				badFields[usernameField] = "This is a required field and cannot be set to empty."
@@ -850,7 +850,7 @@ func validateUpdateRequest(req *pbs.UpdateCredentialRequest) error {
 				}
 			}
 
-		case credential.JsonSubtype:
+		case globals.JsonSubtype:
 			if handlers.MaskContainsPrefix(req.GetUpdateMask().GetPaths(), objectField) {
 				object := req.GetItem().GetJsonAttributes().GetObject()
 				if object == nil || len(object.AsMap()) <= 0 {

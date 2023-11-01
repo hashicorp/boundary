@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth/ldap"
 	"github.com/hashicorp/boundary/internal/auth/oidc"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/daemon/controller/auth"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
@@ -294,7 +293,7 @@ func TestListOidc(t *testing.T) {
 			UpdatedTime:  mg.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         oidc.Subtype.String(),
+			Type:         globals.OidcSubtype.String(),
 			Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 				OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 					Filter: oidc.TestFakeManagedGroupFilter,
@@ -315,7 +314,7 @@ func TestListOidc(t *testing.T) {
 			UpdatedTime:  mg.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         oidc.Subtype.String(),
+			Type:         globals.OidcSubtype.String(),
 			Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 				OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 					Filter: oidc.TestFakeManagedGroupFilter,
@@ -447,7 +446,7 @@ func TestListLdap(t *testing.T) {
 			UpdatedTime:  mg.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         ldap.Subtype.String(),
+			Type:         globals.LdapSubtype.String(),
 			Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 				LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
 					GroupNames: testGroups,
@@ -468,7 +467,7 @@ func TestListLdap(t *testing.T) {
 			UpdatedTime:  mg.GetUpdateTime().GetTimestamp(),
 			Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 			Version:      1,
-			Type:         ldap.Subtype.String(),
+			Type:         globals.LdapSubtype.String(),
 			Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 				LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
 					GroupNames: testGroups,
@@ -752,7 +751,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 							Filter: oidc.TestFakeManagedGroupFilter,
@@ -768,7 +767,7 @@ func TestCreateOidc(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 							Filter: oidc.TestFakeManagedGroupFilter,
@@ -796,7 +795,7 @@ func TestCreateOidc(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 							Filter: oidc.TestFakeManagedGroupFilter,
@@ -811,7 +810,7 @@ func TestCreateOidc(t *testing.T) {
 			req: &pbs.CreateManagedGroupRequest{
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
-					Type:         password.Subtype.String(),
+					Type:         globals.PasswordSubtype.String(),
 					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 							Filter: oidc.TestFakeManagedGroupFilter,
@@ -828,7 +827,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					Id:           globals.OidcManagedGroupPrefix + "_notallowed",
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 							Filter: oidc.TestFakeManagedGroupFilter,
@@ -845,7 +844,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					CreatedTime:  timestamppb.Now(),
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 							Filter: oidc.TestFakeManagedGroupFilter,
@@ -862,7 +861,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 							Filter: oidc.TestFakeManagedGroupFilter,
@@ -879,7 +878,7 @@ func TestCreateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.ManagedGroup_OidcManagedGroupAttributes{
 						OidcManagedGroupAttributes: &pb.OidcManagedGroupAttributes{
 							Filter: "foobar",
@@ -952,7 +951,7 @@ func TestCreateLdap(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Name:         &wrapperspb.StringValue{Value: "name"},
 					Description:  &wrapperspb.StringValue{Value: "desc"},
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 						LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
 							GroupNames: []string{"admin", "users"},
@@ -968,7 +967,7 @@ func TestCreateLdap(t *testing.T) {
 					Description:  &wrapperspb.StringValue{Value: "desc"},
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 						LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
 							GroupNames: []string{"admin", "users"},
@@ -996,7 +995,7 @@ func TestCreateLdap(t *testing.T) {
 					AuthMethodId: am.GetPublicId(),
 					Scope:        &scopepb.ScopeInfo{Id: o.GetPublicId(), Type: scope.Org.String(), ParentScopeId: scope.Global.String()},
 					Version:      1,
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 						LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
 							GroupNames: []string{"admin", "users"},
@@ -1011,7 +1010,7 @@ func TestCreateLdap(t *testing.T) {
 			req: &pbs.CreateManagedGroupRequest{
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
-					Type:         password.Subtype.String(),
+					Type:         globals.PasswordSubtype.String(),
 					Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 						LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
 							GroupNames: []string{"admin", "users"},
@@ -1029,7 +1028,7 @@ func TestCreateLdap(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					Id:           globals.LdapManagedGroupPrefix + "_notallowed",
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 						LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
 							GroupNames: []string{"admin", "users"},
@@ -1047,7 +1046,7 @@ func TestCreateLdap(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					CreatedTime:  timestamppb.Now(),
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 						LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
 							GroupNames: []string{"admin", "users"},
@@ -1065,7 +1064,7 @@ func TestCreateLdap(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
 					UpdatedTime:  timestamppb.Now(),
-					Type:         ldap.Subtype.String(),
+					Type:         globals.LdapSubtype.String(),
 					Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 						LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
 							GroupNames: []string{"admin", "users"},
@@ -1082,7 +1081,7 @@ func TestCreateLdap(t *testing.T) {
 			req: &pbs.CreateManagedGroupRequest{
 				Item: &pb.ManagedGroup{
 					AuthMethodId: am.GetPublicId(),
-					Type:         oidc.Subtype.String(),
+					Type:         globals.OidcSubtype.String(),
 					Attrs: &pb.ManagedGroup_LdapManagedGroupAttributes{
 						LdapManagedGroupAttributes: &pb.LdapManagedGroupAttributes{
 							GroupNames: []string{},
@@ -1197,7 +1196,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateManagedGroupResponse{
@@ -1205,7 +1204,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1221,7 +1220,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        oidc.Subtype.String(),
+					Type:        globals.OidcSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateManagedGroupResponse{
@@ -1229,7 +1228,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1299,7 +1298,7 @@ func TestUpdateOidc(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1323,7 +1322,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1347,7 +1346,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1449,7 +1448,7 @@ func TestUpdateOidc(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              oidc.Subtype.String(),
+					Type:              globals.OidcSubtype.String(),
 					Attrs:             modifiedAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: oidcAuthorizedActions,
@@ -1582,7 +1581,7 @@ func TestUpdateLdap(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateManagedGroupResponse{
@@ -1590,7 +1589,7 @@ func TestUpdateLdap(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,
@@ -1606,7 +1605,7 @@ func TestUpdateLdap(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					Name:        &wrapperspb.StringValue{Value: "new"},
 					Description: &wrapperspb.StringValue{Value: "desc"},
-					Type:        ldap.Subtype.String(),
+					Type:        globals.LdapSubtype.String(),
 				},
 			},
 			res: &pbs.UpdateManagedGroupResponse{
@@ -1614,7 +1613,7 @@ func TestUpdateLdap(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "new"},
 					Description:       &wrapperspb.StringValue{Value: "desc"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,
@@ -1685,7 +1684,7 @@ func TestUpdateLdap(t *testing.T) {
 				Item: &pb.ManagedGroup{
 					AuthMethodId:      am.GetPublicId(),
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,
@@ -1709,7 +1708,7 @@ func TestUpdateLdap(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "updated"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,
@@ -1733,7 +1732,7 @@ func TestUpdateLdap(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "notignored"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             defaultAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,
@@ -1841,7 +1840,7 @@ func TestUpdateLdap(t *testing.T) {
 					AuthMethodId:      am.GetPublicId(),
 					Name:              &wrapperspb.StringValue{Value: "default"},
 					Description:       &wrapperspb.StringValue{Value: "default"},
-					Type:              ldap.Subtype.String(),
+					Type:              globals.LdapSubtype.String(),
 					Attrs:             modifiedAttributes,
 					Scope:             defaultScopeInfo,
 					AuthorizedActions: ldapAuthorizedActions,

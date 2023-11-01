@@ -14,9 +14,6 @@ import (
 	"github.com/hashicorp/boundary/api/recovery"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/auth"
-	"github.com/hashicorp/boundary/internal/auth/ldap"
-	"github.com/hashicorp/boundary/internal/auth/oidc"
-	"github.com/hashicorp/boundary/internal/auth/password"
 	"github.com/hashicorp/boundary/internal/daemon/controller/common"
 	"github.com/hashicorp/boundary/internal/daemon/controller/handlers"
 	"github.com/hashicorp/boundary/internal/errors"
@@ -556,21 +553,21 @@ func (v verifier) performAuthCheck(ctx context.Context) (
 		var acct auth.Account
 		var err error
 		switch subtypes.SubtypeFromId(domain, *userData.Account.Id) {
-		case password.Subtype:
+		case globals.PasswordSubtype:
 			repo, repoErr := v.passwordAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get password auth repo"))
 				return
 			}
 			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
-		case oidc.Subtype:
+		case globals.OidcSubtype:
 			repo, repoErr := v.oidcAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get oidc auth repo"))
 				return
 			}
 			acct, err = repo.LookupAccount(ctx, *userData.Account.Id)
-		case ldap.Subtype:
+		case globals.LdapSubtype:
 			repo, repoErr := v.ldapAuthRepoFn()
 			if repoErr != nil {
 				retErr = errors.Wrap(ctx, repoErr, op, errors.WithMsg("failed to get ldap auth repo"))
