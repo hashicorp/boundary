@@ -25,22 +25,10 @@ type testCommander struct {
 	at *authtokens.AuthToken
 }
 
-func (r *testCommander) keyring() string {
-	return r.at.Id
-}
-
-func (r *testCommander) tokenName() string {
-	return r.at.Id
-}
-
 func (r *testCommander) Client(opt ...base.Option) (*api.Client, error) {
 	client, err := api.NewClient(nil)
 	require.NoError(r.t, err)
 	return client, nil
-}
-
-func (r *testCommander) DiscoverKeyringTokenInfo() (string, string, error) {
-	return r.keyring(), r.tokenName(), nil
 }
 
 func (r *testCommander) ReadTokenFromKeyring(k, a string) *authtokens.AuthToken {
@@ -72,6 +60,7 @@ func TestSearch(t *testing.T) {
 	}()
 	// Give the store some time to get initialized
 	time.Sleep(100 * time.Millisecond)
+	srv.AddKeyringToken(t, "address", "keyringtype", "tokenname", at.Id, boundaryTokenReaderFn)
 
 	errorCases := []struct {
 		name           string

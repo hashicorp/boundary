@@ -68,6 +68,19 @@ func (s *TestServer) Serve(t *testing.T, opt ...Option) error {
 	return s.CacheServer.Serve(ctx, s.cmd, opt...)
 }
 
+func (s *TestServer) AddKeyringToken(t *testing.T, address, keyring, tokenName, tokenId string, atReadFn cache.BoundaryTokenReaderFn) {
+	t.Helper()
+	ctx := context.Background()
+	r, err := cache.NewRepository(ctx, s.CacheServer.store, &sync.Map{}, s.cmd.ReadTokenFromKeyring, atReadFn)
+	require.NoError(t, err)
+
+	require.NoError(t, r.AddKeyringToken(ctx, address, cache.KeyringToken{
+		KeyringType: keyring,
+		TokenName:   tokenName,
+		AuthTokenId: tokenId,
+	}))
+}
+
 // AddResources adds targets to the cache for the provided address, token name,
 // and keyring type. They token info must already be known to the server.
 func (s *TestServer) AddResources(t *testing.T, p *authtokens.AuthToken, tars []*targets.Target, sess []*sessions.Session, atReadFn cache.BoundaryTokenReaderFn) {

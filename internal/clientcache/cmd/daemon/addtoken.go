@@ -64,8 +64,19 @@ func (c *AddTokenCommand) Run(args []string) int {
 		c.PrintCliError(err)
 		return base.CommandUserError
 	}
+	client, err := c.Client()
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
 
-	apiErr, err := c.Add(ctx)
+	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
+	if err != nil {
+		c.PrintCliError(err)
+		return base.CommandCliError
+	}
+
+	apiErr, err := c.Add(ctx, client, keyringType, tokenName)
 	if err != nil {
 		c.PrintCliError(err)
 		return base.CommandCliError
@@ -78,24 +89,14 @@ func (c *AddTokenCommand) Run(args []string) int {
 	return base.CommandSuccess
 }
 
-func (c *AddTokenCommand) Add(ctx context.Context) (*api.Error, error) {
+func (c *AddTokenCommand) Add(ctx context.Context, client *api.Client, keyringType, tokenName string) (*api.Error, error) {
 	const op = "daemon.(AddTokenCommand).Add"
-	client, err := c.Client()
-	if err != nil {
-		return nil, err
-	}
-
-	keyringType, tokenName, err := c.DiscoverKeyringTokenInfo()
-	if err != nil {
-		return nil, err
-	}
 
 	pa := daemon.UpsertTokenRequest{
 		BoundaryAddr: client.Addr(),
 	}
 	switch keyringType {
 	case "", base.NoneKeyring:
-		keyringType = base.NoneKeyring
 		token := client.Token()
 		if parts := strings.SplitN(token, "_", 4); len(parts) == 3 {
 			pa.AuthTokenId = strings.Join(parts[:2], "_")
@@ -129,12 +130,15 @@ func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenReque
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	addr := daemon.SocketAddress(daemonPath)
-	_, err = os.Stat(strings.TrimPrefix(addr, "unix://"))
-	if strings.HasPrefix(addr, "unix://") && err != nil {
+	addr, err := daemon.SocketAddress(daemonPath)
+	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if err := client.SetAddr(addr); err != nil {
+	_, err = os.Stat(addr.Path)
+	if strings.EqualFold(addr.Scheme, "unix") && err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if err := client.SetAddr(addr.String()); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	// Because this is using the real lib it can pick up from stored locations

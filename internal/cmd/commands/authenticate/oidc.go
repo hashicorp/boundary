@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/boundary/api"
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/hashicorp/cap/util"
 	"github.com/mitchellh/cli"
@@ -30,8 +29,7 @@ var (
 type OidcCommand struct {
 	*base.Command
 
-	Opts       []common.Option
-	parsedOpts *common.Options
+	parsedOpts base.Options
 }
 
 func (c *OidcCommand) Synopsis() string {
@@ -61,7 +59,7 @@ func (c *OidcCommand) Flags() *base.FlagSets {
 		Usage:  "The auth-method resource to use for the operation",
 	})
 
-	if c.parsedOpts == nil || !c.parsedOpts.WithSkipScopeIdFlag {
+	if !c.parsedOpts.WithSkipScopeIdFlag {
 		f.StringVar(&base.StringVar{
 			Name:   "scope-id",
 			EnvVar: "BOUNDARY_SCOPE_ID",
@@ -81,13 +79,7 @@ func (c *OidcCommand) AutocompleteFlags() complete.Flags {
 }
 
 func (c *OidcCommand) Run(args []string) int {
-	opts, err := common.GetOpts(c.Opts...)
-	if err != nil {
-		c.PrintCliError(err)
-		return base.CommandCliError
-	}
-	c.parsedOpts = opts
-
+	c.parsedOpts = base.GetOpts(c.Opts...)
 	f := c.Flags()
 
 	if err := f.Parse(args); err != nil {
@@ -196,5 +188,5 @@ func (c *OidcCommand) Run(args []string) int {
 		return base.CommandCliError
 	}
 
-	return saveAndOrPrintToken(c.Command, result)
+	return saveAndOrPrintToken(c.Command, result, c.Opts...)
 }

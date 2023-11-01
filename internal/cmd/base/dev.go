@@ -35,7 +35,7 @@ func (b *Server) CreateDevDatabase(ctx context.Context, opt ...Option) error {
 	var err error
 	var c func() error
 
-	opts := getOpts(opt...)
+	opts := GetOpts(opt...)
 
 	// We should only get back postgres for now, but laying the foundation for non-postgres
 	switch opts.withDialect {
