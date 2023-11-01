@@ -146,4 +146,7 @@ const (
 
 	// OIDC authentication provided errors
 	OidcProviderCallbackError Code = 4000 // OidcProviderCallbackError represents an error that is passed by the OIDC provider to the callback endpoint
+
+	// Configuration error codes
+	InvalidConfiguration Code = 5000 // InvalidConfiguration represents an error with the configuration file.
 )
