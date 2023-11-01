@@ -169,14 +169,14 @@ func search(ctx context.Context, daemonPath string, fb filterBy) (*api.Response,
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	addr := daemon.SocketAddress(daemonPath)
+	addr, err := daemon.SocketAddress(daemonPath)
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if _, err := os.Stat(strings.TrimPrefix(addr, "unix://")); strings.HasPrefix(addr, "unix://") && err == os.ErrNotExist {
+	if _, err := os.Stat(addr.Path); addr.Scheme == "unix" && err == os.ErrNotExist {
 		return nil, errors.New(ctx, errors.Internal, op, "daemon unix socket is not setup")
 	}
-	if err := client.SetAddr(addr); err != nil {
+	if err := client.SetAddr(addr.String()); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 

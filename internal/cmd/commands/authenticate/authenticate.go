@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/boundary/api/authmethods"
 	"github.com/hashicorp/boundary/globals"
 	"github.com/hashicorp/boundary/internal/cmd/base"
-	"github.com/hashicorp/boundary/internal/cmd/common"
 	"github.com/hashicorp/boundary/internal/types/scope"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-wordwrap"
@@ -104,15 +103,18 @@ func (c *Command) Run(args []string) int {
 
 	switch {
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.PasswordAuthMethodPrefix):
-		cmd := PasswordCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
+		cmd := PasswordCommand{Command: c.Command}
+		cmd.Opts = append(c.Opts, base.WithSkipScopeIdFlag(true))
 		cmd.Run([]string{})
 
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.OidcAuthMethodPrefix):
-		cmd := OidcCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
+		cmd := OidcCommand{Command: c.Command}
+		cmd.Opts = append(c.Opts, base.WithSkipScopeIdFlag(true))
 		cmd.Run([]string{})
 
 	case strings.HasPrefix(c.FlagAuthMethodId, globals.LdapAuthMethodPrefix):
-		cmd := LdapCommand{Command: c.Command, Opts: []common.Option{common.WithSkipScopeIdFlag(true)}}
+		cmd := LdapCommand{Command: c.Command}
+		cmd.Opts = append(c.Opts, base.WithSkipScopeIdFlag(true))
 		cmd.Run([]string{})
 
 	default:
