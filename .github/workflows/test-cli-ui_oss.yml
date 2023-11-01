@@ -16,7 +16,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.RUNNER) }}
     name: CLI tests
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Import GPG key for Boundary pass keystore
         id: import_gpg
         uses: crazy-max/ghaction-import-gpg@82a020f1f7f605c65dd2449b392a52c3fcfef7ef # v6.0.0
@@ -36,7 +36,7 @@ jobs:
           path: /tmp/bats-cli-ui-deps
           key: enos-bats-cli-ui-deps-jq-1.6-password-store-1.7.4-vault-1.12.2
       - name: Set up Node for Bats install
-        uses: actions/setup-node@5e21ff4d9bc1a8cf6de233a3057d20ec6b3fb69d # v3.8.1
+        uses: actions/setup-node@8f152de45cc393bb48ce5d89d36b731f54556e65 # v4.0.0
         with:
           node-version: 16
       - name: Install Bats via NPM
