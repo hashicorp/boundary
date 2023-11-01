@@ -84,7 +84,7 @@ require (
 	nhooyr.io/websocket v1.8.7
 )
 
-require github.com/hashicorp/go-dbw v0.1.1-0.20231011231112-ed00db42814c
+require github.com/hashicorp/go-dbw v0.1.1
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
@@ -165,7 +165,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/lib/pq v1.10.9 // indirect
-	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
@@ -200,10 +200,10 @@ require (
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20231016165738-49dd2c1f3d0b // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231030173426-d783a09b4405 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/driver/sqlite v1.5.3 // indirect
+	gorm.io/driver/sqlite v1.5.4 // indirect
 )
 
 replace nhooyr.io/websocket => github.com/tmessi/websocket v0.0.0-20231006132118-662e2f7878ac
