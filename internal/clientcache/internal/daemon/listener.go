@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -52,8 +53,7 @@ func listener(ctx context.Context, path string) (net.Listener, error) {
 	return l, nil
 }
 
-// SocketAddress returns the unix socket filename with a 'unix://' prefix.
-// The returned value can be passed directly into the api.Client
-func SocketAddress(path string) string {
-	return fmt.Sprintf("unix://%s", filepath.Join(path, sockAddr))
+// SocketAddress returns the unix socket *url.URL with the scheme set to 'unix'.
+func SocketAddress(path string) (*url.URL, error) {
+	return url.Parse(fmt.Sprintf("unix://%s", filepath.Join(path, sockAddr)))
 }

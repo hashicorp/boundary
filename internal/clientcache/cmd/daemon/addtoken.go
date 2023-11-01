@@ -130,12 +130,15 @@ func addToken(ctx context.Context, daemonPath string, p *daemon.UpsertTokenReque
 	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	addr := daemon.SocketAddress(daemonPath)
-	_, err = os.Stat(strings.TrimPrefix(addr, "unix://"))
-	if strings.HasPrefix(addr, "unix://") && err != nil {
+	addr, err := daemon.SocketAddress(daemonPath)
+	if err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
-	if err := client.SetAddr(addr); err != nil {
+	_, err = os.Stat(addr.Path)
+	if strings.EqualFold(addr.Scheme, "unix") && err != nil {
+		return nil, errors.Wrap(ctx, err, op)
+	}
+	if err := client.SetAddr(addr.String()); err != nil {
 		return nil, errors.Wrap(ctx, err, op)
 	}
 	// Because this is using the real lib it can pick up from stored locations

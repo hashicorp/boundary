@@ -35,7 +35,6 @@ import (
 // and retrieve the keyring and token information used by a command.
 type Commander interface {
 	ClientProvider
-	DiscoverKeyringTokenInfo() (string, string, error)
 	ReadTokenFromKeyring(keyringType, tokenName string) *authtokens.AuthToken
 }
 

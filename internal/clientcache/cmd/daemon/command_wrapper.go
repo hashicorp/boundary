@@ -14,6 +14,7 @@ import (
 
 	"github.com/hashicorp/boundary/internal/clientcache/internal/daemon"
 	"github.com/hashicorp/boundary/internal/cmd/base"
+	"github.com/hashicorp/boundary/internal/errors"
 	"github.com/mitchellh/cli"
 )
 
@@ -110,22 +111,25 @@ func (w *CommandWrapper) addTokenToCache(ctx context.Context, token string) bool
 // provided context is done. It returns an error if the unix socket is not found
 // before the context is done.
 func waitForDaemon(ctx context.Context) error {
+	const op = "daemon.waitForDaemon"
 	dotPath, err := DefaultDotDirectory(ctx)
 	if err != nil {
 		return err
 	}
 	timer := time.NewTimer(0)
 
-	addr := daemon.SocketAddress(dotPath)
-	filePath := strings.TrimPrefix(addr, "unix://")
-	_, err = os.Stat(filePath)
+	addr, err := daemon.SocketAddress(dotPath)
+	if err != nil {
+		return errors.Wrap(ctx, err, op)
+	}
+	_, err = os.Stat(addr.Path)
 	for os.IsNotExist(err) {
 		select {
 		case <-timer.C:
 		case <-ctx.Done():
 			return ctx.Err()
 		}
-		_, err = os.Stat(filePath)
+		_, err = os.Stat(addr.Path)
 		timer.Reset(10 * time.Millisecond)
 	}
 	return nil
