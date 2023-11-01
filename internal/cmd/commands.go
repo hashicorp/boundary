@@ -397,12 +397,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) {
 				Func:    "create",
 			}, nil
 		},
-		"credential-libraries create vault": func() (cli.Command, error) {
-			return &credentiallibrariescmd.VaultCommand{
-				Command: base.NewCommand(ui, opts...),
-				Func:    "create",
-			}, nil
-		},
 		"credential-libraries create vault-generic": func() (cli.Command, error) {
 			return &credentiallibrariescmd.VaultGenericCommand{
 				Command: base.NewCommand(ui, opts...),
