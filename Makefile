@@ -25,9 +25,9 @@ cli:
 .PHONY: tools
 tools: golangci-lint
 	go generate -tags tools tools/tools.go
-	go install github.com/bufbuild/buf/cmd/buf@v1.15.1
-	go install github.com/mfridman/tparse@v0.10.3
-	go install github.com/hashicorp/copywrite@v0.15.0
+	go install github.com/bufbuild/buf/cmd/buf@v1.27.2
+	go install github.com/mfridman/tparse@v0.13.1
+	go install github.com/hashicorp/copywrite@v0.16.6
 
 # golangci-lint recommends installing the binary directly, instead of using go get
 # See the note: https://golangci-lint.run/usage/install/#install-from-source
